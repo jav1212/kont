@@ -9,6 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@heroui/input": "^2.4.33",
+    "@heroui/react": "^2.8.10",
+    "@heroui/select": "^2.4.33",
+    "@heroui/table": "^2.2.32",
+    "@heroui/theme": "^2.4.26",
+    "framer-motion": "^12.35.2",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
