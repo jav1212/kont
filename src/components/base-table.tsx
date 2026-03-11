@@ -60,6 +60,14 @@ export interface BaseTableProps<T = any>
     /** Controlled selected search columns */
     searchColumns?: Set<string | number>;
     onSearchColumnsChange?: (cols: Set<string | number>) => void;
+    /**
+     * Render an expanded detail panel below a row.
+     * NOTE: Because HeroUI's TableBody only accepts TableRow children,
+     * expanded rows are rendered in a separate stacked container below
+     * each matching row using an absolute-positioned overlay approach.
+     * The BaseTable shell must be `position: relative` (it is by default).
+     */
+    renderExpandedRow?: (item: T) => React.ReactNode;
 }
 
 // ============================================================================
@@ -546,6 +554,7 @@ export const RenderTable = <T extends Record<string, any>>({
     onSearchChange,
     searchColumns,
     onSearchColumnsChange,
+    renderExpandedRow,
     ...props
 }: BaseTableProps<T>) => {
     // Internal state — used when props are NOT controlled
@@ -675,6 +684,104 @@ export const RenderTable = <T extends Record<string, any>>({
             )}
 
             {/* ── TABLE ───────────────────────────────────────────────────── */}
+            {renderExpandedRow ? (
+                /* Native table — needed because HeroUI TableBody cannot render
+                   React.Fragment children (required for expand sub-rows).      */
+                <div className="overflow-x-auto">
+                    <table className="min-w-full border-separate border-spacing-0">
+                        <thead>
+                            <tr>
+                                {columns.map((col) => (
+                                    <th
+                                        key={String(col.key)}
+                                        style={col.width ? { width: col.width } : undefined}
+                                        className={[
+                                            S.th,
+                                            col.align === "end"    ? "text-right"  : "",
+                                            col.align === "center" ? "text-center" : "",
+                                            col.sortable ? "cursor-pointer select-none hover:bg-neutral-100 dark:hover:bg-neutral-800" : "",
+                                        ].join(" ")}
+                                        onClick={() => {
+                                            if (!col.sortable || !onSortChange) return;
+                                            const nextDir =
+                                                sortDescriptor?.column === String(col.key) &&
+                                                sortDescriptor?.direction === "ascending"
+                                                    ? "descending"
+                                                    : "ascending";
+                                            onSortChange({ column: String(col.key), direction: nextDir });
+                                        }}
+                                    >
+                                        <span className="inline-flex items-center">
+                                            {col.label}
+                                            {col.sortable && (
+                                                <SortChevrons
+                                                    active={sortDescriptor?.column === String(col.key)}
+                                                    dir={sortDescriptor?.direction}
+                                                />
+                                            )}
+                                        </span>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {displayData.length === 0 ? (
+                                <tr>
+                                    <td colSpan={columns.length}>
+                                        <div className={S.empty}>
+                                            <EmptyTableIcon />
+                                            <p className="font-mono text-[11px] uppercase tracking-[0.15em]">
+                                                {emptyContent}
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                displayData.map((item) => {
+                                    const key = String(keyExtractor(item, getIdx(item)));
+                                    const expandedContent = renderExpandedRow(item);
+                                    return (
+                                        <React.Fragment key={key}>
+                                            <tr className={[
+                                                S.tr,
+                                                "transition-colors duration-100",
+                                            ].join(" ")}>
+                                                {columns.map((col) => (
+                                                    <td
+                                                        key={String(col.key)}
+                                                        className={[
+                                                            S.td,
+                                                            col.align === "end"    ? "text-right"  : "",
+                                                            col.align === "center" ? "text-center" : "",
+                                                        ].join(" ")}
+                                                    >
+                                                        {renderCellValue(
+                                                            item[col.key as keyof T],
+                                                            item,
+                                                            getIdx(item),
+                                                            col
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                            {expandedContent != null && (
+                                                <tr className="bg-transparent hover:bg-transparent">
+                                                    <td
+                                                        colSpan={columns.length}
+                                                        className="p-0 border-b border-border-light"
+                                                    >
+                                                        {expandedContent}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
             <Table
                 aria-label="Tabla de datos"
                 selectionMode={selectionMode}
@@ -742,6 +849,7 @@ export const RenderTable = <T extends Record<string, any>>({
                     )}
                 </TableBody>
             </Table>
+            )}
 
             {/* ── PAGINATION FOOTER ───────────────────────────────────────── */}
             {paginationEnabled && (
