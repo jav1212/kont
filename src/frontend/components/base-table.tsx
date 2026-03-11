@@ -12,8 +12,8 @@ import {
     SortDescriptor,
     Button,
 } from "@heroui/react";
-import { BaseInput } from "@/src/components/base-input";
-import { BaseSelect, SelectItemData } from "@/src/components/base-select";
+import { BaseInput } from "@/src/frontend/components/base-input";
+import { BaseSelect, SelectItemData } from "@/src/frontend/components/base-select";
 
 // ============================================================================
 // TYPES & INTERFACES

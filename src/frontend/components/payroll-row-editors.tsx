@@ -6,7 +6,7 @@
 // Each editor is stateless — receives a row object + update/remove callbacks.
 // ============================================================================
 
-import { BaseInput } from "@/src/components/base-input";
+import { BaseInput } from "@/src/frontend/components/base-input";
 import { BonusRow, DeductionRow, EarningRow } from "../core/payroll-types";
 
 // ── Shared micro-buttons ───────────────────────────────────────────────────

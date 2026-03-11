@@ -1,0 +1,190 @@
+import Link from "next/link";
+
+// ============================================================================
+// UN-AUTH LANDING PAGE
+//
+// Design direction: industrial accounting ledger — dark, monospaced, precise.
+// No hero illustration, no stock photos. The UI itself IS the visual.
+// Atmosphere: a terminal that means business. Confident, minimal, serious.
+// ============================================================================
+
+// ── Feature card data ────────────────────────────────────────────────────────
+
+const FEATURES = [
+    {
+        code: "01",
+        label: "Cálculo LOTTT",
+        desc:  "Tasas SSO, RPE y FAOV aplicadas sobre base semanal o mensual según la ley.",
+    },
+    {
+        code: "02",
+        label: "Indexación BCV",
+        desc:  "Bonos y montos en USD convertidos automáticamente con la tasa del día.",
+    },
+    {
+        code: "03",
+        label: "Nómina por lotes",
+        desc:  "Fórmulas globales con sobrescritura por empleado. Extras individuales.",
+    },
+    {
+        code: "04",
+        label: "Auditoría en línea",
+        desc:  "Cada cálculo descompuesto en su fórmula. Sin cajas negras.",
+    },
+] as const;
+
+// ── Stat strip data ──────────────────────────────────────────────────────────
+
+const STATS = [
+    { value: "LOTTT",  label: "Marco legal"      },
+    { value: "BCV",    label: "Tasa de cambio"   },
+    { value: "≥0",     label: "Empleados"         },
+    { value: "0.00 %", label: "Margen de error"  },
+] as const;
+
+// ============================================================================
+// PAGE
+// ============================================================================
+
+export default function LandingPage() {
+    return (
+        <div className="flex flex-col">
+
+            {/* ── HERO ──────────────────────────────────────────────────── */}
+            <section className="px-8 pt-24 pb-20 max-w-5xl mx-auto w-full">
+
+                {/* Eyebrow */}
+                <div className="flex items-center gap-3 mb-10">
+                    <div className="h-px w-8 bg-indigo-500/60" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/80">
+                        Sistema de gestión · Venezuela
+                    </span>
+                </div>
+
+                {/* Headline — large, tight, monospaced */}
+                <h1
+                    className="font-mono font-black uppercase leading-[0.92] tracking-tighter text-white"
+                    style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+                >
+                    Nómina<br />
+                    <span className="text-white/20">precisa.</span><br />
+                    <span
+                        className="text-transparent"
+                        style={{
+                            WebkitTextStroke: "1px rgba(99,102,241,0.7)",
+                        }}
+                    >
+                        siempre.
+                    </span>
+                </h1>
+
+                {/* Subheadline */}
+                <p className="mt-10 max-w-lg font-mono text-[13px] leading-relaxed text-white/40 tracking-wide">
+                    Cálculo de nómina venezolana con base legal LOTTT, indexación BCV
+                    en tiempo real y auditoría línea a línea. Sin errores, sin hojas de cálculo sueltas.
+                </p>
+
+                {/* CTA row */}
+                <div className="flex items-center gap-4 mt-12">
+                    <Link
+                        href="/pages/un-auth/sign-in"
+                        className={[
+                            "inline-flex items-center gap-2.5 px-6 py-3",
+                            "bg-indigo-500 hover:bg-indigo-400",
+                            "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
+                            "rounded-lg transition-colors duration-150",
+                        ].join(" ")}
+                    >
+                        Acceder al sistema
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 6h8M6 2l4 4-4 4" />
+                        </svg>
+                    </Link>
+                    <Link
+                        href="/pages/un-auth/sign-up"
+                        className={[
+                            "inline-flex items-center px-6 py-3",
+                            "border border-white/10 hover:border-white/20",
+                            "font-mono text-[11px] uppercase tracking-[0.18em] text-white/50 hover:text-white/70",
+                            "rounded-lg transition-colors duration-150",
+                        ].join(" ")}
+                    >
+                        Crear cuenta
+                    </Link>
+                </div>
+            </section>
+
+            {/* ── STAT STRIP ────────────────────────────────────────────── */}
+            <section className="border-y border-white/[0.06] px-8 py-6">
+                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+                    {STATS.map((s) => (
+                        <div key={s.label} className="flex flex-col gap-1">
+                            <span className="font-mono text-[22px] font-black text-white tabular-nums tracking-tight">
+                                {s.value}
+                            </span>
+                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/30">
+                                {s.label}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* ── FEATURE GRID ──────────────────────────────────────────── */}
+            <section className="px-8 py-20 max-w-5xl mx-auto w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/[0.06] border border-white/[0.06] rounded-xl overflow-hidden">
+                    {FEATURES.map((f) => (
+                        <div
+                            key={f.code}
+                            className="bg-[#0a0a0b] p-8 hover:bg-white/[0.02] transition-colors duration-200 group"
+                        >
+                            <div className="flex items-start justify-between mb-5">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-indigo-500/60">
+                                    {f.code}
+                                </span>
+                                <div className="w-px h-4 bg-white/10 group-hover:bg-indigo-500/30 transition-colors" />
+                            </div>
+                            <h3 className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-white mb-3">
+                                {f.label}
+                            </h3>
+                            <p className="font-mono text-[11px] leading-relaxed text-white/35">
+                                {f.desc}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* ── BOTTOM CTA STRIP ──────────────────────────────────────── */}
+            <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-8 py-6 border border-indigo-500/20 rounded-xl bg-indigo-500/[0.04]">
+                    <div>
+                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-indigo-400/70 mb-1">
+                            ¿Listo para empezar?
+                        </p>
+                        <p className="font-mono text-[13px] text-white/50">
+                            Configura tu primera nómina en menos de 5 minutos.
+                        </p>
+                    </div>
+                    <Link
+                        href="/login"
+                        className={[
+                            "flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5",
+                            "border border-indigo-500/40 hover:border-indigo-400/60 hover:bg-indigo-500/10",
+                            "font-mono text-[10px] uppercase tracking-[0.18em] text-indigo-400",
+                            "rounded-lg transition-all duration-150",
+                        ].join(" ")}
+                    >
+                        Acceder
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 5h6M5 2l3 3-3 3" />
+                        </svg>
+                    </Link>
+                </div>
+            </section>
+
+        </div>
+    );
+}

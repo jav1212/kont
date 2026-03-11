@@ -1,7 +1,7 @@
 "use client";
 
-import { BaseTable, Column } from "@/src/components/base-table";
-import { BaseButton } from "@/src/components/base-button";
+import { BaseTable, Column } from "@/src/frontend/components/base-table";
+import { BaseButton } from "@/src/frontend/components/base-button";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 

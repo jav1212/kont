@@ -7,8 +7,8 @@
 // They receive rows + computed values + mutator callbacks from the page.
 // ============================================================================
 
-import { AuditContainer, AuditRow } from "@/src/components/base-audit";
-import { BaseInput } from "@/src/components/base-input";
+import { AuditContainer, AuditRow } from "@/src/frontend/components/base-audit";
+import { BaseInput } from "@/src/frontend/components/base-input";
 import { EarningRow, EarningValue, DeductionRow, DeductionValue, BonusRow, BonusValue } from "../core/payroll-types";
 import { EarningRowEditor, AddRowButton, DeductionRowEditor, BonusRowEditor } from "./payroll-row-editors";
 
