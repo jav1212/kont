@@ -18,7 +18,7 @@ function csvCell(value: string | number): string {
 
 export function employeesToCsv(employees: Employee[]): string {
     const header = HEADERS.map(csvCell).join(",");
-    const rows   = employees.map((e) =>
+    const rows = employees.map((e) =>
         [
             csvCell(e.cedula),
             csvCell(e.nombre),
@@ -33,11 +33,11 @@ export function employeesToCsv(employees: Employee[]): string {
 
 export function downloadCsv(content: string, filename: string) {
     // BOM for Excel UTF-8 detection
-    const bom  = "\uFEFF";
+    const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
@@ -47,13 +47,13 @@ export function downloadCsv(content: string, filename: string) {
 
 export interface CsvParseResult {
     employees: Omit<Employee, "id" | "companyId">[];
-    errors:    string[];
+    errors: string[];
 }
 
 export function parseCsv(raw: string): CsvParseResult {
     // Strip BOM if present, normalize line endings
     const normalized = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-    const lines      = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
+    const lines = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
     const errors: string[] = [];
     const employees: Omit<Employee, "id" | "companyId">[] = [];
 
@@ -71,7 +71,7 @@ export function parseCsv(raw: string): CsvParseResult {
 
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        let cols   = splitCsvLine(line);
+        let cols = splitCsvLine(line);
 
         // ── Edge case: Excel wraps the entire row in one quoted cell ──────────
         // Symptom: cols.length === 1 and the single value contains commas
@@ -113,10 +113,10 @@ export function parseCsv(raw: string): CsvParseResult {
 
         employees.push({
             cedula,
-            nombre:         nombre.toUpperCase(),
-            cargo:          cargo.toUpperCase(),
+            nombre: nombre.toUpperCase(),
+            cargo: cargo.toUpperCase(),
             salarioMensual: salario,
-            estado:         estado as Employee["estado"],
+            estado: estado as Employee["estado"],
         });
     }
 
@@ -127,7 +127,7 @@ export function parseCsv(raw: string): CsvParseResult {
 
 function splitCsvLine(line: string): string[] {
     const result: string[] = [];
-    let current  = "";
+    let current = "";
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
