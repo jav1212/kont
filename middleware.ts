@@ -11,45 +11,42 @@ import { createServerClient } from '@supabase/ssr';
 // reemplaza este archivo — el resto del dominio no se toca.
 //
 // Lógica:
-//   Sin sesión → redirige a /pages/un-auth
-//   Con sesión → redirige a /pages/auth (si intenta entrar a rutas públicas)
+//   Sin sesión → redirige a /sign-in (rutas protegidas)
+//   Con sesión → redirige a /payroll (si intenta entrar a rutas públicas)
 // ============================================================================
 
 function getSession(request: NextRequest) {
-    // createServerClient solo lee cookies aquí — no hace ninguna llamada de red.
-    // Es el único punto donde el middleware conoce a Supabase.
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
                 getAll:  () => request.cookies.getAll(),
-                setAll:  () => {},  // middleware no necesita mutar cookies
+                setAll:  () => {},
             },
         }
     );
 
-    // getUser() valida el JWT de la cookie — sin llamada a la DB
     return supabase.auth.getUser();
 }
+
+const PUBLIC_PATHS  = ['/', '/sign-in', '/sign-up', '/forgot-password'];
+const isPublic      = (p: string) => PUBLIC_PATHS.includes(p);
+const isProtected   = (p: string) => p.startsWith('/payroll') || p.startsWith('/inventory');
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     const { data: { user } } = await getSession(request);
 
-    // ── Sin sesión ────────────────────────────────────────────────────────
-    if (!user) {
-        if (pathname === '/' || pathname.startsWith('/pages/auth')) {
-            return NextResponse.redirect(new URL('/pages/un-auth', request.url));
-        }
+    // ── Sin sesión ────────────────────────────────────────────────────
+    if (!user && isProtected(pathname)) {
+        return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
-    // ── Con sesión ────────────────────────────────────────────────────────
-    if (user) {
-        if (pathname === '/' || pathname.startsWith('/pages/un-auth')) {
-            return NextResponse.redirect(new URL('/pages/auth', request.url));
-        }
+    // ── Con sesión ────────────────────────────────────────────────────
+    if (user && isPublic(pathname)) {
+        return NextResponse.redirect(new URL('/payroll', request.url));
     }
 
     return NextResponse.next();
@@ -58,7 +55,10 @@ export async function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         '/',
-        '/pages/auth/:path*',
-        '/pages/un-auth/:path*',
+        '/sign-in',
+        '/sign-up',
+        '/forgot-password',
+        '/payroll/:path*',
+        '/inventory/:path*',
     ],
 };

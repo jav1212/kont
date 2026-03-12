@@ -1,4 +1,4 @@
-import { getUserActions, handleUserResult } from "@/src/backend/users/infra/user-factory";
+import { getUserActions, handleUserResult } from "@/src/modules/users/backend/infra/user-factory";
 
 export async function PATCH(req: Request) {
     try {

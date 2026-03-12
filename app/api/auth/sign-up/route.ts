@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthActions, handleResult } from "@/src/backend/auth/infra/auth-factory";
-import { getUserActions } from "@/src/backend/users/infra/user-factory";
+import { getAuthActions } from "@/src/modules/auth/backend/infra/auth-factory";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
+import { getUserActions } from "@/src/modules/users/backend/infra/user-factory";
 
 // POST /api/auth/sign-up
 

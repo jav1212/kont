@@ -1,4 +1,5 @@
-import { getAuthActions, handleResult } from "@/src/backend/auth/infra/auth-factory";
+import { getAuthActions } from "@/src/modules/auth/backend/infra/auth-factory";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function GET() {
     const result = await getAuthActions().me.execute();

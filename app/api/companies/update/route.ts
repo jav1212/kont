@@ -1,4 +1,5 @@
-import { getCompanyActions, handleCompanyResult } from "@/src/backend/companies/infra/company-factory";
+import { getCompanyActions } from "@/src/modules/companies/backend/infra/company-factory";
+import { handleResult as handleCompanyResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function PATCH(req: Request) {
     try {

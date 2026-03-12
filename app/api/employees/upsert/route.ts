@@ -1,6 +1,6 @@
 // app/api/employees/upsert/route.ts
 
-import { getEmployeeActions } from "@/src/backend/employees/infra/employee-factory";
+import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
 import { NextRequest } from "next/server";
 
 export async function POST(request: NextRequest) {

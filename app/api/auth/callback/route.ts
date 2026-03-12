@@ -1,4 +1,4 @@
-import { SupabaseSource } from '@/src/backend/source/infra/supabase';
+import { SupabaseSource } from '@/src/shared/backend/source/infra/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
