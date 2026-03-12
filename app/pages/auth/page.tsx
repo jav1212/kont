@@ -234,6 +234,7 @@ export default function PayrollCalculator() {
                     mondaysInMonth={mondaysInMonth}
                     bcvRate={bcvRate}
                     companyName={company?.name ?? ""}
+                    companyId={company?.id ?? ""}
                     payrollDate={payrollDate}
                 />
 

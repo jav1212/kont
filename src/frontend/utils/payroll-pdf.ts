@@ -1,7 +1,6 @@
 // src/frontend/utils/payroll-pdf.ts
 //
-// Recibos de nómina — diseño que replica el sistema visual de la app:
-// fondo blanco/gris, acento violeta-indigo, mono uppercase, bordes sutiles.
+// Recibos de nomina — layout vertical por seccion, sin solapamiento.
 // Requiere: npm install jspdf
 
 import jsPDF from "jspdf";
@@ -33,44 +32,172 @@ export interface PdfEmployeeResult {
 
 export interface PdfPayrollOptions {
     companyName:    string;
+    companyId?:     string;
     payrollDate:    string;
     bcvRate:        number;
     mondaysInMonth: number;
 }
 
-// ── Design tokens (mirrors the app palette) ───────────────────────────────────
-
-const T = {
-    // Backgrounds
-    pageBg:     [248, 248, 250] as RGB,   // surface-2 equivalent
-    cardBg:     [255, 255, 255] as RGB,   // white card
-    rowAlt:     [250, 250, 252] as RGB,   // zebra stripe
-
-    // Borders
-    borderL:    [229, 229, 235] as RGB,   // border-light
-    borderM:    [210, 210, 218] as RGB,   // border-medium
-
-    // Text
-    ink:        [17,  17,  17]  as RGB,   // foreground / text primary
-    inkMed:     [55,  55,  65]  as RGB,   // text secondary
-    muted:      [140, 140, 150] as RGB,   // text muted / labels
-
-    // Accent — indigo/violet matching the app primary
-    primary:    [91,  91,  214] as RGB,   // ~#5B5BD6
-    primaryDim: [116, 116, 224] as RGB,   // lighter
-    primaryBg:  [237, 237, 252] as RGB,   // tinted bg
-
-    // Semantic
-    green:      [22,  101, 52]  as RGB,   // dark green for earnings
-    greenBg:    [240, 253, 244] as RGB,
-    red:        [153, 27,  27]  as RGB,   // dark red for deductions
-    redBg:      [255, 241, 242] as RGB,
-
-    white:      [255, 255, 255] as RGB,
-    black:      [0,   0,   0]   as RGB,
-};
+// ── Palette ───────────────────────────────────────────────────────────────────
 
 type RGB = [number, number, number];
+
+const C = {
+    ink:       [17,  17,  17]  as RGB,
+    inkMed:    [55,  55,  65]  as RGB,
+    muted:     [130, 130, 140] as RGB,
+    border:    [220, 220, 226] as RGB,
+    borderMed: [180, 180, 188] as RGB,
+    bg:        [248, 248, 250] as RGB,
+    rowAlt:    [242, 242, 246] as RGB,
+    white:     [255, 255, 255] as RGB,
+    primary:   [91,  91,  214] as RGB,
+    primaryBg: [237, 237, 252] as RGB,
+    green:     [21,  94,  48]  as RGB,
+    greenBg:   [240, 253, 244] as RGB,
+    greenBd:   [187, 235, 200] as RGB,
+    red:       [153, 27,  27]  as RGB,
+    redBg:     [254, 242, 242] as RGB,
+    redBd:     [254, 202, 202] as RGB,
+    netBg:     [22,  22,  30]  as RGB,
+};
+
+// ── Primitives ────────────────────────────────────────────────────────────────
+
+type Doc = jsPDF;
+
+const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
+    doc.setFillColor(c[0], c[1], c[2]); doc.rect(x, y, w, h, "F");
+};
+
+const box = (doc: Doc, x: number, y: number, w: number, h: number, fillC: RGB, strokeC: RGB, lw = 0.2) => {
+    doc.setFillColor(fillC[0], fillC[1], fillC[2]);
+    doc.setDrawColor(strokeC[0], strokeC[1], strokeC[2]);
+    doc.setLineWidth(lw);
+    doc.rect(x, y, w, h, "FD");
+};
+
+const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = C.border, lw = 0.25) => {
+    doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(lw); doc.line(x, y, x + w, y);
+};
+
+const vline = (doc: Doc, x: number, y1: number, y2: number, c: RGB = C.border, lw = 0.2) => {
+    doc.setDrawColor(c[0], c[1], c[2]); doc.setLineWidth(lw); doc.line(x, y1, x, y2);
+};
+
+const t = (
+    doc:   Doc,
+    text:  string,
+    x:     number,
+    y:     number,
+    size:  number,
+    bold:  boolean,
+    color: RGB,
+    align: "left" | "center" | "right" = "left",
+    maxW?: number,
+) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const opts: any = { align };
+    if (maxW) opts.maxWidth = maxW;
+    doc.text(text, x, y, opts);
+};
+
+const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left") =>
+    t(doc, text.toUpperCase(), x, y, 5.5, false, C.muted, align);
+
+// ── Section: full-width table for one group of lines ─────────────────────────
+
+interface SectionOpts {
+    title:    string;
+    lines:    PdfComputedLine[];
+    total:    number;
+    sign:     "+" | "-";
+    accentC:  RGB;
+    accentBg: RGB;
+    accentBd: RGB;
+    amtColor: RGB;
+}
+
+function drawSection(doc: Doc, x: number, y: number, w: number, opts: SectionOpts): number {
+    const { title, lines, total, sign, accentC, accentBg, accentBd, amtColor } = opts;
+
+    // ── Section header ────────────────────────────────────────────────────
+    const HDR_H = 7;
+    fill(doc, x, y, w, HDR_H, C.bg);
+    hline(doc, x, y,           w, C.border, 0.3);
+    hline(doc, x, y + HDR_H,   w, C.border, 0.3);
+
+    // Left accent strip
+    fill(doc, x, y, 2.5, HDR_H, accentC);
+
+    t(doc, title.toUpperCase(), x + 5, y + 4.8, 6.5, true, C.inkMed);
+
+    // Right: total preview
+    t(doc, `Total: ${fmtVES(total)}`, x + w - 3, y + 4.8, 6.5, true, amtColor, "right");
+
+    y += HDR_H;
+
+    if (lines.length === 0) {
+        fill(doc, x, y, w, 6, C.white);
+        hline(doc, x, y + 6, w, C.border, 0.15);
+        t(doc, "Sin conceptos", x + 4, y + 4, 6, false, C.muted);
+        return y + 6;
+    }
+
+    // ── Column layout (all relative to x, within width w) ────────────────
+    //   Label col:   x+4  .. SEP1   (~52% of w)
+    //   Formula col: SEP1 .. SEP2   (~28% of w)
+    //   Amount col:  SEP2 .. x+w-3  (~20% of w, right-aligned)
+    const SUB_H   = 5;
+    const LABEL_X = x + 4;
+    const SEP1_X  = x + w * 0.52;          // divider before formula col
+    const SEP2_X  = x + w * 0.80;          // divider before amount col
+    const AMT_X   = x + w - 3;             // right-align anchor (inside margin)
+
+    const LABEL_MAX   = SEP1_X - LABEL_X - 3;
+    const FORMULA_MAX = SEP2_X - SEP1_X - 3;
+
+    fill(doc, x, y, w, SUB_H, C.rowAlt);
+    hline(doc, x, y + SUB_H, w, C.border, 0.15);
+    lbl(doc, "Concepto", LABEL_X,       y + 3.6);
+    lbl(doc, "Formula",  SEP1_X + 2,    y + 3.6);
+    lbl(doc, "Monto",    AMT_X,         y + 3.6, "right");
+    y += SUB_H;
+
+    // ── Data rows ─────────────────────────────────────────────────────────
+    const ROW_H = 6;
+    lines.forEach((line, i) => {
+        const bg: RGB = i % 2 === 0 ? C.white : C.rowAlt;
+        fill(doc, x, y, w, ROW_H, bg);
+        hline(doc, x, y + ROW_H, w, C.border, 0.1);
+
+        // Vertical separators
+        vline(doc, SEP1_X, y, y + ROW_H, C.border, 0.1);
+        vline(doc, SEP2_X, y, y + ROW_H, C.border, 0.1);
+
+        // Concept label — left col
+        t(doc, line.label, LABEL_X, y + 4.1, 6.5, false, C.inkMed, "left", LABEL_MAX);
+
+        // Formula — middle col
+        t(doc, line.formula, SEP1_X + 2, y + 4.1, 5.5, false, C.muted, "left", FORMULA_MAX);
+
+        // Amount — right, right-aligned
+        t(doc, `${sign} ${fmtVES(line.amount)}`, AMT_X, y + 4.1, 6.5, true, amtColor, "right");
+
+        y += ROW_H;
+    });
+
+    // ── Subtotal row ──────────────────────────────────────────────────────
+    box(doc, x, y, w, 7, accentBg, accentBd, 0.25);
+    fill(doc, x, y, 2.5, 7, accentC);
+    t(doc, "SUBTOTAL", x + 5, y + 4.8, 6, false, accentC);
+    t(doc, fmtVES(total), x + w - 3, y + 5, 8, true, accentC, "right");
+    y += 7;
+
+    return y;
+}
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -80,404 +207,201 @@ const fmtVES = (n: number) =>
 const fmtUSD = (n: number) =>
     "$ " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("es-VE", {
-        day: "numeric", month: "long", year: "numeric",
-    }).toUpperCase();
+const fmtDate = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-VE", { day: "numeric", month: "long", year: "numeric" }).toUpperCase();
+};
 
-// ── Drawing primitives ────────────────────────────────────────────────────────
-
-type Doc = jsPDF;
-
-function fill(doc: Doc, x: number, y: number, w: number, h: number, color: RGB) {
-    doc.setFillColor(...color);
-    doc.rect(x, y, w, h, "F");
-}
-
-function stroke(doc: Doc, x: number, y: number, w: number, h: number, color: RGB, lw = 0.25) {
-    doc.setDrawColor(...color);
-    doc.setLineWidth(lw);
-    doc.rect(x, y, w, h, "S");
-}
-
-function card(doc: Doc, x: number, y: number, w: number, h: number) {
-    fill(doc, x, y, w, h, T.cardBg);
-    stroke(doc, x, y, w, h, T.borderL, 0.25);
-}
-
-function hline(doc: Doc, x: number, y: number, w: number, color: RGB = T.borderL, lw = 0.25) {
-    doc.setDrawColor(...color);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-}
-
-function vline(doc: Doc, x: number, y1: number, y2: number, color: RGB = T.borderL, lw = 0.25) {
-    doc.setDrawColor(...color);
-    doc.setLineWidth(lw);
-    doc.line(x, y1, x, y2);
-}
-
-function txt(
-    doc:  Doc,
-    text: string,
-    x:    number,
-    y:    number,
-    opts: {
-        size?:   number;
-        bold?:   boolean;
-        color?:  RGB;
-        align?:  "left" | "center" | "right";
-        maxW?:   number;
-        upper?:  boolean;
-    } = {}
-) {
-    const {
-        size  = 7,
-        bold  = false,
-        color = T.ink,
-        align = "left",
-        maxW,
-        upper = false,
-    } = opts;
-
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(...color);
-
-    const content = upper ? text.toUpperCase() : text;
-    const options: any = { align };
-    if (maxW) options.maxWidth = maxW;
-    doc.text(content, x, y, options);
-}
-
-// Label — small mono uppercase muted  (mirrors: font-mono text-[10px] uppercase tracking-[0.18em])
-function label(doc: Doc, text: string, x: number, y: number, align: "left" | "right" = "left") {
-    txt(doc, text, x, y, { size: 5.5, color: T.muted, upper: true, align });
-}
-
-// ── Section header pill ───────────────────────────────────────────────────────
-
-function sectionHeader(doc: Doc, text: string, x: number, y: number, w: number, accent: RGB) {
-    // Left accent bar
-    doc.setFillColor(...accent);
-    doc.rect(x, y, 2, 6, "F");
-
-    // Rest of header bg
-    fill(doc, x + 2, y, w - 2, 6, T.pageBg);
-    stroke(doc, x, y, w, 6, T.borderL, 0.2);
-
-    txt(doc, text, x + 5, y + 4.2, { size: 6, bold: true, color: T.inkMed, upper: true });
-}
-
-// ── Lines table ───────────────────────────────────────────────────────────────
-
-function linesTable(
-    doc:      Doc,
-    lines:    PdfComputedLine[],
-    x:        number,
-    y:        number,
-    w:        number,
-    sign:     "+" | "-",
-    amtColor: RGB,
-): number {
-    const ROW_H  = 5.8;
-    const LABEL_W  = w * 0.45;
-    const FORMULA_W = w * 0.30;
-    // amount takes the rest
-
-    if (lines.length === 0) {
-        fill(doc, x, y, w, ROW_H, T.cardBg);
-        stroke(doc, x, y, w, ROW_H, T.borderL, 0.15);
-        txt(doc, "Sin conceptos", x + 3, y + 3.8, { size: 6, color: T.muted });
-        return y + ROW_H;
-    }
-
-    lines.forEach((line, i) => {
-        const bg: RGB = i % 2 === 0 ? T.cardBg : T.rowAlt;
-        fill(doc, x, y, w, ROW_H, bg);
-        stroke(doc, x, y, w, ROW_H, T.borderL, 0.15);
-
-        // Label
-        txt(doc, line.label, x + 2.5, y + 3.8, {
-            size: 6.5, color: T.inkMed, maxW: LABEL_W - 3,
-        });
-
-        // Formula — muted
-        txt(doc, line.formula, x + LABEL_W + 1, y + 3.5, {
-            size: 5.5, color: T.muted, maxW: FORMULA_W - 2,
-        });
-
-        // Amount
-        txt(doc, `${sign} ${fmtVES(line.amount)}`, x + w - 2.5, y + 3.8, {
-            size: 7, bold: true, color: amtColor, align: "right",
-        });
-
-        y += ROW_H;
-    });
-
-    return y;
-}
-
-// ── One receipt page ──────────────────────────────────────────────────────────
+// ── One receipt ───────────────────────────────────────────────────────────────
 
 function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, isFirst: boolean) {
     if (!isFirst) doc.addPage();
 
-    const PW = doc.internal.pageSize.getWidth();   // 210mm
-    const PH = doc.internal.pageSize.getHeight();  // 297mm
+    const PW = doc.internal.pageSize.getWidth();
+    const PH = doc.internal.pageSize.getHeight();
     const ML = 14;
     const MR = PW - 14;
     const W  = MR - ML;
 
-    // ── PAGE BACKGROUND ───────────────────────────────────────────────────
-    fill(doc, 0, 0, PW, PH, T.pageBg);
+    // ── PAGE BG ───────────────────────────────────────────────────────────
+    fill(doc, 0, 0, PW, PH, C.bg);
 
-    // ── HEADER CARD ───────────────────────────────────────────────────────
-    card(doc, ML, 10, W, 22);
+    // ── HEADER ───────────────────────────────────────────────────────────
+    fill(doc, 0, 0, PW, 34, C.ink);
+    fill(doc, 0, 32, PW, 2, C.primary);
 
-    // Left: violet accent strip
-    doc.setFillColor(...T.primary);
-    doc.rect(ML, 10, 3, 22, "F");
+    // Left: company name + RIF + doc title
+    t(doc, opts.companyName, ML, 10, 12, true, C.white);
+    if (opts.companyId) t(doc, `RIF: ${opts.companyId}`, ML, 17, 7, false, [160, 160, 175] as RGB);
+    t(doc, "RECIBO DE PAGO DE NOMINA", ML, 24, 6.5, false, [110, 110, 130] as RGB);
 
-    // Company name
-    txt(doc, opts.companyName, ML + 7, 19, { size: 11, bold: true, color: T.ink, upper: true });
+    // Right side
+    lbl(doc, "Fecha de pago", MR, 9, "right");
+    t(doc, fmtDate(opts.payrollDate), MR, 17, 8.5, true, C.white, "right");
+    t(doc, `Tasa BCV: Bs. ${opts.bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })} / USD`, MR, 24, 6, false, [160, 160, 175] as RGB, "right");
 
-    // Sub-label
-    label(doc, "Recibo de Pago de Nómina", ML + 7, 27);
+    let y = 40;
 
-    // Right: date block
-    label(doc, "Fecha de Pago", MR - 4, 16, "right");
-    txt(doc, fmtDate(opts.payrollDate), MR - 4, 22, {
-        size: 8, bold: true, color: T.primary, align: "right",
-    });
-    label(doc, `Tasa BCV: Bs. ${opts.bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })} / USD`, MR - 4, 28, "right");
+    // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
+    box(doc, ML, y, W, 20, C.white, C.border, 0.3);
 
-    let y = 37;
+    // Left accent strip
+    fill(doc, ML, y, 3, 20, C.primary);
 
-    // ── EMPLOYEE IDENTITY ─────────────────────────────────────────────────
-    card(doc, ML, y, W, 18);
-
-    // Left block: nombre + cedula
-    label(doc, "Empleado", ML + 4, y + 5);
-    txt(doc, emp.nombre, ML + 4, y + 11, { size: 9, bold: true, color: T.ink });
-    label(doc, emp.cedula, ML + 4, y + 15.5);
+    // Name + cedula
+    lbl(doc, "Empleado", ML + 6, y + 5.5);
+    t(doc, emp.nombre, ML + 6, y + 12, 10, true, C.ink, "left", W * 0.48);
+    t(doc, emp.cedula, ML + 6, y + 17.5, 6.5, false, C.muted);
 
     // Vertical divider
-    vline(doc, ML + W * 0.52, y + 3, y + 15, T.borderL);
+    vline(doc, ML + W * 0.52, y + 3, y + 17, C.border);
 
-    // Mid block: cargo
-    const mid = ML + W * 0.54;
-    label(doc, "Cargo", mid, y + 5);
-    txt(doc, emp.cargo, mid, y + 11, { size: 8, bold: false, color: T.inkMed, upper: true });
+    // Cargo
+    const cx = ML + W * 0.54;
+    lbl(doc, "Cargo", cx, y + 5.5);
+    t(doc, emp.cargo, cx, y + 12, 8, false, C.inkMed, "left", W * 0.28);
 
-    // Right block: salary
-    label(doc, "Salario Base Mensual", MR - 4, y + 5, "right");
-    txt(doc, fmtUSD(emp.salarioMensual), MR - 4, y + 11, {
-        size: 9, bold: true, color: T.primary, align: "right",
+    // Salary
+    lbl(doc, "Salario Base Mensual", MR - 3, y + 5.5, "right");
+    t(doc, fmtUSD(emp.salarioMensual), MR - 3, y + 12, 10, true, C.primary, "right");
+    lbl(doc, "USD mensual", MR - 3, y + 17.5, "right");
+
+    y += 25;
+
+    // ── SECTIONS (vertical stack) ─────────────────────────────────────────
+
+    y = drawSection(doc, ML, y, W, {
+        title:    "Asignaciones",
+        lines:    emp.earningLines,
+        total:    emp.totalEarnings,
+        sign:     "+",
+        accentC:  C.green,
+        accentBg: C.greenBg,
+        accentBd: C.greenBd,
+        amtColor: C.green,
     });
-    label(doc, "USD", MR - 4, y + 15.5, "right");
 
-    y += 23;
+    y += 3;
 
-    // ── COLUMNS: ASIGNACIONES | BONIFICACIONES | DEDUCCIONES ──────────────
-
-    const GAP   = 3.5;
-    const COL_W = (W - GAP * 2) / 3;
-    const cols  = [
-        {
-            x:       ML,
-            title:   "Asignaciones",
-            lines:   emp.earningLines,
-            total:   emp.totalEarnings,
-            sign:    "+" as const,
-            accent:  T.green,
-            accentBg: T.greenBg,
-            amtColor: T.green,
-        },
-        {
-            x:       ML + COL_W + GAP,
-            title:   "Bonificaciones",
-            lines:   emp.bonusLines,
-            total:   emp.totalBonuses,
-            sign:    "+" as const,
-            accent:  T.primary,
-            accentBg: T.primaryBg,
-            amtColor: T.primary,
-        },
-        {
-            x:       ML + (COL_W + GAP) * 2,
-            title:   "Deducciones",
-            lines:   emp.deductionLines,
-            total:   emp.totalDeductions,
-            sign:    "-" as const,
-            accent:  T.red,
-            accentBg: T.redBg,
-            amtColor: T.red,
-        },
-    ];
-
-    // Column section headers
-    cols.forEach((col) => {
-        sectionHeader(doc, col.title, col.x, y, COL_W, col.accent);
+    y = drawSection(doc, ML, y, W, {
+        title:    "Bonificaciones",
+        lines:    emp.bonusLines,
+        total:    emp.totalBonuses,
+        sign:     "+",
+        accentC:  C.primary,
+        accentBg: C.primaryBg,
+        accentBd: [180, 180, 230] as RGB,
+        amtColor: C.primary,
     });
-    y += 7;
 
-    // Sub-header row
-    cols.forEach((col) => {
-        fill(doc, col.x, y, COL_W, 5, T.pageBg);
-        stroke(doc, col.x, y, COL_W, 5, T.borderL, 0.15);
-        label(doc, "Concepto", col.x + 2.5, y + 3.5);
-        label(doc, "Monto", col.x + COL_W - 2.5, y + 3.5, "right");
+    y += 3;
+
+    y = drawSection(doc, ML, y, W, {
+        title:    "Deducciones",
+        lines:    emp.deductionLines,
+        total:    emp.totalDeductions,
+        sign:     "-",
+        accentC:  C.red,
+        accentBg: C.redBg,
+        accentBd: C.redBd,
+        amtColor: C.red,
     });
+
     y += 5;
 
-    // Data rows — enforce equal height across all columns
-    const ROW_H     = 5.8;
-    const maxLines  = Math.max(
-        emp.earningLines.length,
-        emp.bonusLines.length,
-        emp.deductionLines.length,
-        1,
-    );
-
-    for (let r = 0; r < maxLines; r++) {
-        const bg: RGB = r % 2 === 0 ? T.cardBg : T.rowAlt;
-
-        cols.forEach((col) => {
-            fill(doc, col.x, y, COL_W, ROW_H, bg);
-            stroke(doc, col.x, y, COL_W, ROW_H, T.borderL, 0.12);
-
-            const line = col.lines[r];
-            if (!line) return;
-
-            txt(doc, line.label, col.x + 2.5, y + 3.8, {
-                size: 6.5, color: T.inkMed, maxW: COL_W * 0.5,
-            });
-
-            txt(doc, line.formula, col.x + COL_W * 0.5, y + 3.4, {
-                size: 5.5, color: T.muted, maxW: COL_W * 0.3,
-            });
-
-            txt(doc, `${col.sign} ${fmtVES(line.amount)}`, col.x + COL_W - 2.5, y + 3.8, {
-                size: 7, bold: true, color: col.amtColor, align: "right",
-            });
-        });
-
-        y += ROW_H;
-    }
-
-    // Subtotal footer row per column
-    cols.forEach((col) => {
-        fill(doc, col.x, y, COL_W, 7.5, col.accentBg);
-        stroke(doc, col.x, y, COL_W, 7.5, col.accent, 0.3);
-
-        label(doc, "Subtotal", col.x + 2.5, y + 4);
-        txt(doc, fmtVES(col.total), col.x + COL_W - 2.5, y + 5.5, {
-            size: 8, bold: true, color: col.accent, align: "right",
-        });
-    });
-
-    y += 11;
-
     // ── NET SUMMARY ───────────────────────────────────────────────────────
-    // Outer card
-    card(doc, ML, y, W, 26);
+    fill(doc, ML, y, W, 26, C.netBg);
+    // Top border: primary
+    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]); doc.setLineWidth(0.8);
+    doc.line(ML, y, MR, y);
 
-    // Top primary accent bar (4px tall)
-    doc.setFillColor(...T.primary);
-    doc.rect(ML, y, W, 3, "F");
+    const ny = y;
 
-    // Three info blocks inside
-    const netY = y + 3;
+    // Bruto
+    lbl(doc, "Total Bruto (VES)", ML + 6, ny + 7);
+    t(doc, fmtVES(emp.gross), ML + 6, ny + 15, 9, true, [200, 200, 210] as RGB);
 
-    // — Bruto —
-    const b1x = ML + 6;
-    label(doc, "Total Bruto (VES)", b1x, netY + 7);
-    txt(doc, fmtVES(emp.gross), b1x, netY + 14, {
-        size: 9, bold: true, color: T.inkMed,
-    });
+    // Separator
+    vline(doc, ML + W * 0.34, ny + 4, ny + 22, [60, 60, 80] as RGB, 0.3);
 
-    // — Deducciones —
-    vline(doc, ML + W * 0.33, netY + 4, netY + 20, T.borderL);
-    const b2x = ML + W * 0.35;
-    label(doc, "Total Deducciones", b2x, netY + 7);
-    txt(doc, `- ${fmtVES(emp.totalDeductions)}`, b2x, netY + 14, {
-        size: 9, bold: true, color: T.red,
-    });
+    // Deducciones
+    const d2x = ML + W * 0.36;
+    lbl(doc, "Total Deducciones", d2x, ny + 7);
+    t(doc, `- ${fmtVES(emp.totalDeductions)}`, d2x, ny + 15, 9, true, [220, 100, 100] as RGB);
 
-    // — Neto — (highlighted)
-    vline(doc, ML + W * 0.62, netY + 2, netY + 22, T.primary, 0.4);
-    const b3x = ML + W * 0.64;
-    label(doc, "Neto a Cobrar", b3x, netY + 6);
-    txt(doc, fmtVES(emp.net), b3x, netY + 15, {
-        size: 13, bold: true, color: T.primary,
-    });
-    label(doc, `Equiv. ${fmtUSD(emp.netUSD)}`, b3x, netY + 21);
+    // Separator
+    vline(doc, ML + W * 0.64, ny + 2, ny + 24, C.primary, 0.4);
 
-    y += 31;
+    // Neto — prominent
+    const nx = ML + W * 0.66;
+    lbl(doc, "Neto a Cobrar", nx, ny + 6);
+    t(doc, fmtVES(emp.net), nx, ny + 17, 14, true, C.primary);
+
+    // USD equiv
+    lbl(doc, `Equiv. ${fmtUSD(emp.netUSD)}`, MR - 3, ny + 23, "right");
+
+    y += 30;
 
     // ── LEGAL NOTE ────────────────────────────────────────────────────────
-    hline(doc, ML, y, W, T.borderL);
-    y += 4;
+    hline(doc, ML, y, W, C.border, 0.3);
+    y += 5;
+
     const legal =
         "El presente recibo acredita el pago de los haberes correspondientes al periodo indicado, " +
         "de conformidad con la Ley Organica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
         "Ambas partes declaran su conformidad con los montos reflejados en este documento.";
+
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(...T.muted);
-    const legalLines: string[] = doc.splitTextToSize(legal, W - 6);
-    const LEGAL_LINE_H = 3.8;
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    const legalLines: string[] = doc.splitTextToSize(legal, W - 4);
     legalLines.forEach((line: string, i: number) => {
-        doc.text(line, ML + 3, y + 4 + i * LEGAL_LINE_H);
+        doc.text(line, ML + 2, y + 4 + i * 3.8);
     });
-    y += legalLines.length * LEGAL_LINE_H + 7;
+    y += legalLines.length * 3.8 + 8;
 
     // ── SIGNATURES ────────────────────────────────────────────────────────
     const sigY = PH - 36;
-    const sigW = 68;
+    const sigW = 72;
 
-    // Employer
-    card(doc, ML, sigY, sigW, 20);
-    hline(doc, ML + 6, sigY + 12, sigW - 12, T.borderM, 0.4);
-    label(doc, "Firma y Sello del Empleador", ML + sigW / 2, sigY + 16, "right");
-    txt(doc, opts.companyName, ML + sigW / 2, sigY + 6, {
-        size: 7, bold: true, color: T.inkMed, align: "center", upper: true, maxW: sigW - 8,
-    });
+    // Employer signature box
+    const sigH   = 24;
+    const sigPad = 5;
+    box(doc, ML, sigY, sigW, sigH, C.white, C.border, 0.25);
+    // Name centered at top
+    t(doc, opts.companyName, ML + sigW / 2, sigY + 7, 7, true, C.inkMed, "center", sigW - 10);
+    if (opts.companyId) t(doc, opts.companyId, ML + sigW / 2, sigY + 12, 6, false, C.muted, "center");
+    // Signature line
+    hline(doc, ML + sigPad, sigY + 17, sigW - sigPad * 2, C.borderMed, 0.4);
+    // Label centered below line
+    lbl(doc, "Firma y Sello del Empleador", ML + sigW / 2, sigY + 22);
 
-    // Employee
+    // Employee signature box
     const esx = MR - sigW;
-    card(doc, esx, sigY, sigW, 20);
-    hline(doc, esx + 6, sigY + 12, sigW - 12, T.borderM, 0.4);
-    label(doc, "Firma del Trabajador / Conforme", esx + sigW / 2, sigY + 16, "right");
-    txt(doc, emp.nombre, esx + sigW / 2, sigY + 5.5, {
-        size: 7, bold: true, color: T.inkMed, align: "center", upper: true, maxW: sigW - 8,
-    });
-    label(doc, emp.cedula, esx + sigW / 2, sigY + 10, "right");
-    txt(doc, emp.cedula, esx + sigW / 2, sigY + 10, {
-        size: 6, color: T.muted, align: "center",
-    });
+    box(doc, esx, sigY, sigW, sigH, C.white, C.border, 0.25);
+    // Name centered at top
+    t(doc, emp.nombre, esx + sigW / 2, sigY + 7, 7, true, C.inkMed, "center", sigW - 10);
+    t(doc, emp.cedula, esx + sigW / 2, sigY + 12, 6, false, C.muted, "center");
+    // Signature line
+    hline(doc, esx + sigPad, sigY + 17, sigW - sigPad * 2, C.borderMed, 0.4);
+    // Label centered below line
+    lbl(doc, "Firma del Trabajador / Conforme", esx + sigW / 2, sigY + 22);
 
     // ── FOOTER ────────────────────────────────────────────────────────────
-    fill(doc, 0, PH - 10, PW, 10, T.pageBg);
-    hline(doc, 0, PH - 10, PW, T.borderL, 0.3);
-    txt(doc, `${opts.companyName}  ·  Generado el ${new Date().toLocaleDateString("es-VE")}  ·  Documento confidencial`, PW / 2, PH - 4.5, {
-        size: 5.5, color: T.muted, align: "center", upper: true,
-    });
+    fill(doc, 0, PH - 10, PW, 10, C.ink);
+    t(doc,
+        `${opts.companyName}  |  Generado el ${new Date().toLocaleDateString("es-VE")}  |  Documento Confidencial`,
+        PW / 2, PH - 4.5, 5.5, false, [120, 120, 135] as RGB, "center"
+    );
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function generatePayrollPdf(
-    employees: PdfEmployeeResult[],
-    opts:      PdfPayrollOptions,
-): void {
+export function generatePayrollPdf(employees: PdfEmployeeResult[], opts: PdfPayrollOptions): void {
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     active.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0));
-
-    const dateStr = opts.payrollDate.replaceAll("-", "");
-    doc.save(`nomina_${dateStr}.pdf`);
+    doc.save(`nomina_${opts.payrollDate.replaceAll("-", "")}.pdf`);
 }
