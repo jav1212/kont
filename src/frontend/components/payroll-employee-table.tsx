@@ -1,21 +1,14 @@
 "use client";
 
 // ============================================================================
-// PAYROLL EMPLOYEE TABLE  v2
+// PAYROLL EMPLOYEE TABLE  v4
 //
-// Each employee gets its own override: extra earnings, deductions, bonuses
-// that stack on top of the global accordion rows.
-//
-// Data flow:
-//   Employee.overrides (local state) ──┐
-//   Global accordion rows ─────────────┤→ computeEmployee() → EmployeeResult
-//   mondaysInMonth / bcvRate ──────────┘
-//
-// The expanded row renders three mini-editors (same row-editor components
-// used in the accordion) bound to that employee's override arrays.
+// Employees come from outside via props (useEmployee hook in parent).
+// CSV import calls onUpsert() which delegates to useEmployee.upsert().
+// No internal fetch logic — single responsibility.
 // ============================================================================
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import { BaseTable }     from "@/src/frontend/components/base-table";
 import type { Column }   from "@/src/frontend/components/base-table";
 import { AuditContainer, AuditRow } from "@/src/frontend/components/base-audit";
@@ -26,19 +19,13 @@ import {
     AddRowButton,
 } from "@/src/frontend/components/payroll-row-editors";
 import type { EarningRow, DeductionRow, BonusRow } from "@/src/frontend/core/payroll-types";
+import { employeesToCsv, downloadCsv, parseCsv } from "@/src/frontend/utils/employee-csv";
+import { generatePayrollPdf, PdfEmployeeResult } from "@/src/frontend/utils/payroll-pdf";
+import { Employee } from "../employee/hooks/use-employee";
 
 // ============================================================================
 // TYPES
 // ============================================================================
-
-export interface Employee {
-    id:             string;
-    cedula:         string;
-    nombre:         string;
-    cargo:          string;
-    salarioMensual: number;  // USD
-    estado:         "activo" | "inactivo" | "vacacion";
-}
 
 interface EmployeeOverride {
     extraEarnings:   EarningRow[];
@@ -62,7 +49,7 @@ interface EmployeeResult extends Employee {
 }
 
 // ============================================================================
-// ENGINE — global rows + per-employee extras → EmployeeResult
+// ENGINE
 // ============================================================================
 
 function computeEmployee(
@@ -78,9 +65,9 @@ function computeEmployee(
     const weekly     = (emp.salarioMensual * 12) / 52;
     const weeklyBase = weekly * mondaysInMonth;
 
-    const allEarnings   = [...earningRows,  ...overrides.extraEarnings];
-    const allDeductions = [...deductRows,   ...overrides.extraDeductions];
-    const allBonuses    = [...bonusRows,    ...overrides.extraBonuses];
+    const allEarnings   = [...earningRows, ...overrides.extraEarnings];
+    const allDeductions = [...deductRows,  ...overrides.extraDeductions];
+    const allBonuses    = [...bonusRows,   ...overrides.extraBonuses];
 
     const earningLines: ComputedLine[] = allEarnings.map((r) => {
         const qty    = parseFloat(r.quantity)   || 0;
@@ -146,7 +133,7 @@ const EMPTY_OVERRIDE = (): EmployeeOverride => ({
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ── Status badge ─────────────────────────────────────────────────────────────
+// ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_CLS: Record<Employee["estado"], string> = {
     activo:   "bg-success/10 text-success border-success/20",
@@ -191,7 +178,7 @@ const OverrideBadge = () => (
     </span>
 );
 
-// ── Section label inside expanded panel ──────────────────────────────────────
+// ── Section label ─────────────────────────────────────────────────────────────
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-400 mb-2 mt-4">
@@ -199,10 +186,30 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     </p>
 );
 
+// ── Placeholder ───────────────────────────────────────────────────────────────
+
+const TablePlaceholder = ({ loading, error }: { loading: boolean; error: string | null }) => (
+    <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
+        {loading ? (
+            <div className="flex items-center gap-2 text-neutral-400">
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                    <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="font-mono text-[11px] uppercase tracking-widest">Cargando empleados…</span>
+            </div>
+        ) : error ? (
+            <span className="font-mono text-[11px] text-error">{error}</span>
+        ) : (
+            <span className="font-mono text-[11px] text-neutral-300 uppercase tracking-widest">
+                Sin empleados. Importa un CSV para comenzar.
+            </span>
+        )}
+    </div>
+);
+
 // ============================================================================
 // EXPANDED PANEL
-// Top half:  audit trail (read-only, global + extras combined)
-// Bottom half: mini row-editors for extras only
 // ============================================================================
 
 interface ExpandedPanelProps {
@@ -213,25 +220,19 @@ interface ExpandedPanelProps {
     onChange:       (updated: EmployeeOverride) => void;
 }
 
-const ExpandedPanel = ({
-    result, override, mondaysInMonth, bcvRate, onChange,
-}: ExpandedPanelProps) => {
-
+const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange }: ExpandedPanelProps) => {
     const empDailyRate  = result.salarioMensual / 30;
     const empWeeklyRate = (result.salarioMensual * 12) / 52;
     const empWeeklyBase = empWeeklyRate * mondaysInMonth;
 
-    // Mutators for extraEarnings
-    const addXE    = () => onChange({ ...override, extraEarnings: [...override.extraEarnings, { id: uid("xe"), label: "", quantity: "0", multiplier: "1.0", useDaily: true }] });
+    const addXE    = () => onChange({ ...override, extraEarnings:   [...override.extraEarnings,   { id: uid("xe"), label: "", quantity: "0", multiplier: "1.0", useDaily: true }] });
     const updateXE = (id: string, u: EarningRow)   => onChange({ ...override, extraEarnings:   override.extraEarnings.map((r)   => r.id === id ? u : r) });
     const removeXE = (id: string)                   => onChange({ ...override, extraEarnings:   override.extraEarnings.filter((r)   => r.id !== id) });
 
-    // Mutators for extraBonuses
-    const addXB    = () => onChange({ ...override, extraBonuses: [...override.extraBonuses, { id: uid("xb"), label: "", amount: "0.00" }] });
+    const addXB    = () => onChange({ ...override, extraBonuses:    [...override.extraBonuses,    { id: uid("xb"), label: "", amount: "0.00" }] });
     const updateXB = (id: string, u: BonusRow)     => onChange({ ...override, extraBonuses:    override.extraBonuses.map((r)    => r.id === id ? u : r) });
     const removeXB = (id: string)                  => onChange({ ...override, extraBonuses:    override.extraBonuses.filter((r)    => r.id !== id) });
 
-    // Mutators for extraDeductions
     const addXD    = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "", rate: "0", base: "monthly" as const }] });
     const updateXD = (id: string, u: DeductionRow) => onChange({ ...override, extraDeductions: override.extraDeductions.map((r) => r.id === id ? u : r) });
     const removeXD = (id: string)                  => onChange({ ...override, extraDeductions: override.extraDeductions.filter((r) => r.id !== id) });
@@ -240,8 +241,6 @@ const ExpandedPanel = ({
 
     return (
         <div className="bg-surface-2 border-t border-border-light px-6 py-5">
-
-            {/* ── Audit trail (combined, read-only) ── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
                     {result.earningLines.map((l, i) => (
@@ -260,7 +259,6 @@ const ExpandedPanel = ({
                 </AuditContainer>
             </div>
 
-            {/* ── Divider with label ── */}
             <div className="flex items-center gap-3 mt-6 mb-1">
                 <div className="flex-1 border-t border-dashed border-border-light" />
                 <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-300">
@@ -269,53 +267,39 @@ const ExpandedPanel = ({
                 <div className="flex-1 border-t border-dashed border-border-light" />
             </div>
 
-            {/* ── Extra earnings ── */}
             <SectionLabel>Asignaciones adicionales</SectionLabel>
             {override.extraEarnings.length === 0 && (
                 <p className="font-mono text-[10px] text-neutral-300 italic mb-1">Sin asignaciones extra.</p>
             )}
             <div className="space-y-2">
                 {override.extraEarnings.map((row) => (
-                    <EarningRowEditor
-                        key={row.id} row={row} dailyRate={empDailyRate} canRemove
-                        onChange={(u) => updateXE(row.id, u)}
-                        onRemove={() => removeXE(row.id)}
-                    />
+                    <EarningRowEditor key={row.id} row={row} dailyRate={empDailyRate} canRemove
+                        onChange={(u) => updateXE(row.id, u)} onRemove={() => removeXE(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXE} />
 
-            {/* ── Extra bonuses ── */}
             <SectionLabel>Bonos adicionales</SectionLabel>
             {override.extraBonuses.length === 0 && (
                 <p className="font-mono text-[10px] text-neutral-300 italic mb-1">Sin bonos extra.</p>
             )}
             <div className="space-y-2">
                 {override.extraBonuses.map((row) => (
-                    <BonusRowEditor
-                        key={row.id} row={row} bcvRate={bcvRate} canRemove
-                        onChange={(u) => updateXB(row.id, u)}
-                        onRemove={() => removeXB(row.id)}
-                    />
+                    <BonusRowEditor key={row.id} row={row} bcvRate={bcvRate} canRemove
+                        onChange={(u) => updateXB(row.id, u)} onRemove={() => removeXB(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXB} />
 
-            {/* ── Extra deductions ── */}
             <SectionLabel>Deducciones adicionales</SectionLabel>
             {override.extraDeductions.length === 0 && (
                 <p className="font-mono text-[10px] text-neutral-300 italic mb-1">Sin deducciones extra.</p>
             )}
             <div className="space-y-2">
                 {override.extraDeductions.map((row) => (
-                    <DeductionRowEditor
-                        key={row.id} row={row}
-                        weeklyBase={empWeeklyBase}
-                        monthlyBase={result.salarioMensual}
-                        canRemove
-                        onChange={(u) => updateXD(row.id, u)}
-                        onRemove={() => removeXD(row.id)}
-                    />
+                    <DeductionRowEditor key={row.id} row={row}
+                        weeklyBase={empWeeklyBase} monthlyBase={result.salarioMensual} canRemove
+                        onChange={(u) => updateXD(row.id, u)} onRemove={() => removeXD(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXD} />
@@ -362,44 +346,79 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
 };
 
 // ============================================================================
-// DEFAULT EMPLOYEES (farmacia Alianza)
-// ============================================================================
-
-export const DEFAULT_EMPLOYEES: Employee[] = [
-    { id: "1", cedula: "V-19998667", nombre: "PEREZ APONTE KAREN YALINEY",    cargo: "AUXILIAR",   salarioMensual: 130, estado: "activo"   },
-    { id: "2", cedula: "V-12983113", nombre: "BLANCO FERRER MARIA ELISA",     cargo: "AUXILIAR",   salarioMensual: 130, estado: "activo"   },
-    { id: "3", cedula: "V-10203001", nombre: "DA SILVA CRAVO AFRICA ZUZETTY", cargo: "AUXILIAR",   salarioMensual: 130, estado: "activo"   },
-    { id: "4", cedula: "V-20190242", nombre: "NIETO CHIRINOS GERALDINE",      cargo: "AUXILIAR",   salarioMensual: 130, estado: "inactivo" },
-    { id: "5", cedula: "V-15834271", nombre: "PORRO ROMERO EDIBERTH ELLENA",  cargo: "AUXILIAR",   salarioMensual: 130, estado: "activo"   },
-    { id: "6", cedula: "V-15758731", nombre: "HENRIQUE ANDRADE KELLYS",       cargo: "AUXILIAR",   salarioMensual: 130, estado: "activo"   },
-    { id: "7", cedula: "V-20190999", nombre: "MUJICA CANU JENNIFER",          cargo: "FARMACEUTA", salarioMensual: 200, estado: "activo"   },
-];
-
-// ============================================================================
 // MAIN EXPORT
 // ============================================================================
 
 export interface PayrollEmployeeTableProps {
-    employees?:     Employee[];
+    // Data from useEmployee hook
+    employees:      Employee[];
+    empLoading:     boolean;
+    empError:       string | null;
+    onUpsert:       (employees: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
+    // Payroll config from PayrollCalculator
     earningRows:    EarningRow[];
     deductionRows:  DeductionRow[];
     bonusRows:      BonusRow[];
     mondaysInMonth: number;
     bcvRate:        number;
+    // PDF metadata
+    companyName:    string;
+    payrollDate:    string;
 }
 
 export const PayrollEmployeeTable = ({
-    employees     = DEFAULT_EMPLOYEES,
+    employees,
+    empLoading,
+    empError,
+    onUpsert,
     earningRows,
     deductionRows,
     bonusRows,
     mondaysInMonth,
     bcvRate,
+    companyName,
+    payrollDate,
 }: PayrollEmployeeTableProps) => {
 
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [csvLoading, setCsvLoading] = useState(false);
+    const [csvError,   setCsvError]   = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Map<employeeId, EmployeeOverride> — only populated when user adds extras
+    // ── CSV Export ────────────────────────────────────────────────────────
+    const handleExport = useCallback(() => {
+        if (!employees.length) return;
+        const csv   = employeesToCsv(employees);
+        const today = new Date().toISOString().split("T")[0];
+        downloadCsv(csv, `empleados_${today}.csv`);
+    }, [employees]);
+
+    // ── CSV Import ────────────────────────────────────────────────────────
+    const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setCsvError(null);
+        setCsvLoading(true);
+
+        const text = await file.text();
+        const { employees: parsed, errors } = parseCsv(text);
+
+        if (errors.length > 0) {
+            setCsvError(errors[0]);
+            setCsvLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        const err = await onUpsert(parsed);
+        if (err) setCsvError(err);
+
+        setCsvLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }, [onUpsert]);
+
+    // ── Overrides ─────────────────────────────────────────────────────────
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
 
     const getOverride = useCallback(
@@ -408,25 +427,44 @@ export const PayrollEmployeeTable = ({
     );
 
     const setOverride = useCallback((id: string, updated: EmployeeOverride) => {
-        setOverrides((prev) => {
-            const next = new Map(prev);
-            next.set(id, updated);
-            return next;
-        });
+        setOverrides((prev) => { const next = new Map(prev); next.set(id, updated); return next; });
     }, []);
+
+    // ── Results ───────────────────────────────────────────────────────────
+
+    // Employee.id is number | undefined — use cedula as stable key for overrides
+    const getKey = (emp: Employee) => emp.cedula;
 
     const results = useMemo<EmployeeResult[]>(() =>
         employees.map((emp) =>
-            computeEmployee(
-                emp, earningRows, deductionRows, bonusRows,
-                getOverride(emp.id), mondaysInMonth, bcvRate,
-            )
+            computeEmployee(emp, earningRows, deductionRows, bonusRows,
+                getOverride(getKey(emp)), mondaysInMonth, bcvRate)
         ),
-        // overrides Map reference changes on each setOverride call → correct invalidation
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [employees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, overrides]
     );
 
+    // ── PDF Export ────────────────────────────────────────────────────────
+    const handleExportPdf = useCallback(() => {
+        if (!results.length) return;
+        const pdfData: PdfEmployeeResult[] = results.map((r) => ({
+            cedula:          r.cedula,
+            nombre:          r.nombre,
+            cargo:           r.cargo,
+            salarioMensual:  r.salarioMensual,
+            estado:          r.estado,
+            earningLines:    r.earningLines,
+            bonusLines:      r.bonusLines,
+            deductionLines:  r.deductionLines,
+            totalEarnings:   r.totalEarnings,
+            totalBonuses:    r.totalBonuses,
+            totalDeductions: r.totalDeductions,
+            gross:           r.gross,
+            net:             r.net,
+            netUSD:          r.netUSD,
+        }));
+        generatePayrollPdf(pdfData, { companyName, payrollDate, bcvRate, mondaysInMonth });
+    }, [results, companyName, payrollDate, bcvRate, mondaysInMonth]);
     const columns: Column<EmployeeResult>[] = [
         {
             key: "nombre", label: "Empleado", sortable: true, searchable: true,
@@ -442,9 +480,7 @@ export const PayrollEmployeeTable = ({
         },
         {
             key: "cargo", label: "Cargo", sortable: true, searchable: true,
-            render: (v) => (
-                <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-neutral-500">{v}</span>
-            ),
+            render: (v) => <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-neutral-500">{v}</span>,
         },
         {
             key: "salarioMensual", label: "Salario $", sortable: true, align: "end",
@@ -460,66 +496,149 @@ export const PayrollEmployeeTable = ({
         },
         {
             key: "totalDeductions", label: "Deducciones", sortable: true, align: "end",
-            render: (_, r) => (
-                <span className="font-mono text-[12px] tabular-nums text-error/70">-{fmt(r.totalDeductions)}</span>
-            ),
+            render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-error/70">-{fmt(r.totalDeductions)}</span>,
         },
         {
             key: "net", label: "Neto VES", sortable: true, align: "end",
-            render: (_, r) => (
-                <span className="font-mono text-[13px] font-semibold tabular-nums text-primary-500">{fmt(r.net)}</span>
-            ),
+            render: (_, r) => <span className="font-mono text-[13px] font-semibold tabular-nums text-primary-500">{fmt(r.net)}</span>,
         },
         {
             key: "netUSD", label: "Neto $", sortable: true, align: "end",
-            render: (_, r) => (
-                <span className="font-mono text-[11px] tabular-nums text-neutral-400">{fmt(r.netUSD)}</span>
-            ),
+            render: (_, r) => <span className="font-mono text-[11px] tabular-nums text-neutral-400">{fmt(r.netUSD)}</span>,
         },
         {
             key: "_expand" as any, label: "", align: "center", width: 48,
             render: (_, r) => (
                 <ExpandBtn
-                    open={expandedId === r.id}
-                    onClick={() => setExpandedId((prev) => prev === r.id ? null : r.id)}
+                    open={expandedId === r.cedula}
+                    onClick={() => setExpandedId((prev) => prev === r.cedula ? null : r.cedula)}
                 />
             ),
         },
     ];
 
+    const showTable = !empLoading && !empError && employees.length > 0;
+
     return (
         <div className="space-y-4">
-            <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-400">
-                    Nómina / Empleados
-                </p>
-                <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">
-                    Resumen por Empleado
-                </h2>
+            {/* ── Header + toolbar ─────────────────────────────────────── */}
+            <div className="flex items-end justify-between gap-4">
+                <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-400">
+                        Nómina / Empleados
+                    </p>
+                    <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">
+                        Resumen por Empleado
+                    </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {/* Export PDF */}
+                    <button
+                        onClick={handleExportPdf}
+                        disabled={employees.length === 0}
+                        className={[
+                            "h-8 px-3 rounded-lg flex items-center gap-1.5",
+                            "border border-border-light bg-surface-1",
+                            "hover:border-border-medium hover:bg-surface-2",
+                            "disabled:opacity-40 disabled:cursor-not-allowed",
+                            "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground",
+                            "transition-colors duration-150",
+                        ].join(" ")}
+                    >
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+                            <path d="M7 2v3h3M4 7h4M4 9h2" />
+                        </svg>
+                        Exportar PDF
+                    </button>
+
+                    {/* Export CSV */}
+                    <button
+                        onClick={handleExport}
+                        disabled={csvLoading || employees.length === 0}
+                        className={[
+                            "h-8 px-3 rounded-lg flex items-center gap-1.5",
+                            "border border-border-light bg-surface-1",
+                            "hover:border-border-medium hover:bg-surface-2",
+                            "disabled:opacity-40 disabled:cursor-not-allowed",
+                            "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground",
+                            "transition-colors duration-150",
+                        ].join(" ")}
+                    >
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
+                        </svg>
+                        Exportar CSV
+                    </button>
+
+                    {/* Import */}
+                    <label className={[
+                        "h-8 px-3 rounded-lg flex items-center gap-1.5 cursor-pointer",
+                        "border border-border-light bg-surface-1",
+                        "hover:border-border-medium hover:bg-surface-2",
+                        csvLoading ? "opacity-40 cursor-not-allowed pointer-events-none" : "",
+                        "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground",
+                        "transition-colors duration-150",
+                    ].join(" ")}>
+                        {csvLoading ? (
+                            <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
+                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                        ) : (
+                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
+                            </svg>
+                        )}
+                        Importar CSV
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv"
+                            className="sr-only"
+                            onChange={handleImport}
+                            disabled={csvLoading}
+                        />
+                    </label>
+                </div>
             </div>
 
-            <BaseTable.Render
-                columns={columns}
-                data={results}
-                keyExtractor={(r) => r.id}
-                enableSearch
-                pagination
-                classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
-                renderExpandedRow={(result) => {
-                    if (expandedId !== result.id) return null;
-                    return (
-                        <ExpandedPanel
-                            result={result}
-                            override={getOverride(result.id)}
-                            mondaysInMonth={mondaysInMonth}
-                            bcvRate={bcvRate}
-                            onChange={(updated) => setOverride(result.id, updated)}
-                        />
-                    );
-                }}
-            />
+            {/* CSV error */}
+            {csvError && (
+                <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
+                    <p className="font-mono text-[10px] text-red-500">{csvError}</p>
+                </div>
+            )}
 
-            <TotalsBar results={results} />
+            {/* Table or placeholder */}
+            {showTable ? (
+                <>
+                    <BaseTable.Render
+                        columns={columns}
+                        data={results}
+                        keyExtractor={(r) => r.cedula}
+                        enableSearch
+                        pagination
+                        classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
+                        renderExpandedRow={(result) => {
+                            if (expandedId !== result.cedula) return null;
+                            return (
+                                <ExpandedPanel
+                                    result={result}
+                                    override={getOverride(getKey(result))}
+                                    mondaysInMonth={mondaysInMonth}
+                                    bcvRate={bcvRate}
+                                    onChange={(updated) => setOverride(getKey(result), updated)}
+                                />
+                            );
+                        }}
+                    />
+                    <TotalsBar results={results} />
+                </>
+            ) : (
+                <TablePlaceholder loading={empLoading} error={empError} />
+            )}
         </div>
     );
 };

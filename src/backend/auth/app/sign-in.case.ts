@@ -5,7 +5,7 @@ import { UseCase } from "@/src/core/domain/use-case";
 
 export interface SignInInput {
     email: string;
-    pass: string;
+    password: string;
 }
 
 export class SignInUseCase extends UseCase<SignInInput, Auth> {
@@ -14,6 +14,6 @@ export class SignInUseCase extends UseCase<SignInInput, Auth> {
     }
 
     async execute(input: SignInInput): Promise<Result<Auth>> {
-        return await this.authRepository.signIn(input.email, input.pass);
+        return await this.authRepository.signIn(input.email, input.password);
     }
 }

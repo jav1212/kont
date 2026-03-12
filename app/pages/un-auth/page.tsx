@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 // ============================================================================
 // UN-AUTH LANDING PAGE
@@ -14,32 +17,32 @@ const FEATURES = [
     {
         code: "01",
         label: "Cálculo LOTTT",
-        desc:  "Tasas SSO, RPE y FAOV aplicadas sobre base semanal o mensual según la ley.",
+        desc: "Tasas SSO, RPE y FAOV aplicadas sobre base semanal o mensual según la ley.",
     },
     {
         code: "02",
         label: "Indexación BCV",
-        desc:  "Bonos y montos en USD convertidos automáticamente con la tasa del día.",
+        desc: "Bonos y montos en USD convertidos automáticamente con la tasa del día.",
     },
     {
         code: "03",
         label: "Nómina por lotes",
-        desc:  "Fórmulas globales con sobrescritura por empleado. Extras individuales.",
+        desc: "Fórmulas globales con sobrescritura por empleado. Extras individuales.",
     },
     {
         code: "04",
         label: "Auditoría en línea",
-        desc:  "Cada cálculo descompuesto en su fórmula. Sin cajas negras.",
+        desc: "Cada cálculo descompuesto en su fórmula. Sin cajas negras.",
     },
 ] as const;
 
 // ── Stat strip data ──────────────────────────────────────────────────────────
 
 const STATS = [
-    { value: "LOTTT",  label: "Marco legal"      },
-    { value: "BCV",    label: "Tasa de cambio"   },
-    { value: "≥0",     label: "Empleados"         },
-    { value: "0.00 %", label: "Margen de error"  },
+    { value: "LOTTT", label: "Marco legal" },
+    { value: "BCV", label: "Tasa de cambio" },
+    { value: "≥0", label: "Empleados" },
+    { value: "0.00 %", label: "Margen de error" },
 ] as const;
 
 // ============================================================================
@@ -47,8 +50,50 @@ const STATS = [
 // ============================================================================
 
 export default function LandingPage() {
+
+    const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(null);
+
+    useEffect(() => {
+        // 1. Capturar errores del fragmento (#) - Flujo Implicit antiguo
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const errorMsg = hashParams.get('error_description');
+        const errorCode = hashParams.get('error_code');
+
+        // 2. Capturar errores de query (?) - Flujo PKCE
+        const queryParams = new URLSearchParams(window.location.search);
+        const queryError = queryParams.get('error_description');
+
+        if (errorMsg || queryError) {
+            const message = errorMsg || queryError;
+            setSystemMessage({
+                type: 'error',
+                text: message?.replace(/\+/g, ' ') || "Error de sistema"
+            });
+        }
+    }, []);
+
     return (
         <div className="flex flex-col">
+
+            {/* ── MENSAJE DE SISTEMA ────────────────────────────────────── */}
+            {systemMessage && (
+                <div className="w-full bg-red-500/10 border-b border-red-500/20 px-8 py-3 animate-pulse">
+                    <div className="max-w-5xl mx-auto flex items-center gap-4">
+                        <span className="font-mono text-[10px] text-red-400 font-bold uppercase tracking-widest">
+                            [ SYSTEM_ERROR ]:
+                        </span>
+                        <span className="font-mono text-[10px] text-red-200/70 uppercase">
+                            {systemMessage.text}
+                        </span>
+                        <button
+                            onClick={() => setSystemMessage(null)}
+                            className="ml-auto font-mono text-[10px] text-white/30 hover:text-white"
+                        >
+                            [ CERRAR ]
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* ── HERO ──────────────────────────────────────────────────── */}
             <section className="px-8 pt-24 pb-20 max-w-5xl mx-auto w-full">

@@ -3,17 +3,17 @@
 // ============================================================================
 // useAuth — client-side authentication hook
 //
-// Module-level singleton: all components share one state instance without
-// a Context provider. Register a forceUpdate listener on mount; dispatch
-// mutates _state and notifies all listeners.
+// Usa el browser client de Supabase directamente para:
+//   - Leer la sesión actual (sin llamada a /api/auth/me)
+//   - Escuchar cambios de sesión en tiempo real (onAuthStateChange)
 //
-// API response shape (from handleResult):
-//   success → { data: Auth | null }
-//   failure → { error: string }   + status 400
+// Las acciones (signIn, signUp, signOut) siguen pasando por los route
+// handlers para que las cookies se setteen correctamente en el servidor.
 // ============================================================================
 
 import { useEffect, useReducer, useCallback } from "react";
 import type { Auth } from "@/src/backend/auth/domain/auth";
+import { getSupabaseBrowser } from "../../utils/supabase-browser";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -26,24 +26,24 @@ interface AuthState {
 }
 
 type AuthAction =
-    | { type: "LOADING"                }
-    | { type: "SET_USER";  user: Auth  }
-    | { type: "CLEAR_USER"             }
+    | { type: "LOADING"                  }
+    | { type: "SET_USER";  user: Auth    }
+    | { type: "CLEAR_USER"               }
     | { type: "SET_ERROR"; error: string };
 
 function reducer(state: AuthState, action: AuthAction): AuthState {
     switch (action.type) {
-        case "LOADING":    return { ...state,         status: "loading",          error: null         };
-        case "SET_USER":   return { user: action.user, status: "authenticated",   error: null         };
-        case "CLEAR_USER": return { user: null,        status: "unauthenticated", error: null         };
-        case "SET_ERROR":  return { ...state,          status: "unauthenticated", error: action.error };
+        case "LOADING":    return { ...state,          status: "loading",          error: null         };
+        case "SET_USER":   return { user: action.user, status: "authenticated",    error: null         };
+        case "CLEAR_USER": return { user: null,        status: "unauthenticated",  error: null         };
+        case "SET_ERROR":  return { ...state,          status: "unauthenticated",  error: action.error };
     }
 }
 
 // ── Module-level singleton ────────────────────────────────────────────────────
 
-let _state:     AuthState        = { user: null, status: "loading", error: null };
-let _listeners: Set<() => void>  = new Set();
+let _state:     AuthState       = { user: null, status: "loading", error: null };
+let _listeners: Set<() => void> = new Set();
 
 function setState(next: AuthState) {
     _state = next;
@@ -54,7 +54,7 @@ function dispatch(action: AuthAction) {
     setState(reducer(_state, action));
 }
 
-// ── Fetch helper ──────────────────────────────────────────────────────────────
+// ── API fetch helper (para las acciones que van al servidor) ──────────────────
 
 async function apiFetch(path: string, body?: object) {
     const res  = await fetch(path, {
@@ -66,31 +66,44 @@ async function apiFetch(path: string, body?: object) {
     return { ok: res.ok, json };
 }
 
-// ── Bootstrap — runs once across all hook instances ───────────────────────────
+// ── Bootstrap — suscribe al estado de sesión del browser client ───────────────
 
 let _bootstrapped = false;
 
-async function bootstrap() {
+function bootstrap() {
     if (_bootstrapped) return;
     _bootstrapped = true;
 
-    const { ok, json } = await apiFetch("/api/auth/me");
+    const supabase = getSupabaseBrowser();
 
-    if (ok && json.data) {
-        dispatch({ type: "SET_USER", user: json.data });
-    } else {
-        dispatch({ type: "CLEAR_USER" });
-    }
+    // Lee la sesión actual inmediatamente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+            dispatch({ type: "SET_USER", user: { id: session.user.id, email: session.user.email! } });
+        } else {
+            dispatch({ type: "CLEAR_USER" });
+        }
+    });
+
+    // Escucha cambios: login, logout, token refresh, callback de email
+    supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+            dispatch({ type: "SET_USER", user: { id: session.user.id, email: session.user.email! } });
+        } else {
+            dispatch({ type: "CLEAR_USER" });
+        }
+    });
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────
-// Defined at module level so useCallback refs are always stable.
 
 async function signIn(email: string, password: string): Promise<string | null> {
     dispatch({ type: "LOADING" });
-    const { ok, json } = await apiFetch("/api/auth/sign-in", { email, password });
-    if (!ok) { dispatch({ type: "SET_ERROR", error: json.error }); return json.error; }
-    dispatch({ type: "SET_USER", user: json.data });
+    // Usa el browser client directamente — las cookies se setean en el browser
+    // para que el middleware las detecte en la siguiente navegación.
+    const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
+    if (error) { dispatch({ type: "SET_ERROR", error: error.message }); return error.message; }
+    // onAuthStateChange dispara SET_USER automáticamente
     return null;
 }
 
@@ -98,13 +111,13 @@ async function signUp(email: string, password: string, name?: string): Promise<s
     dispatch({ type: "LOADING" });
     const { ok, json } = await apiFetch("/api/auth/sign-up", { email, password, name });
     if (!ok) { dispatch({ type: "SET_ERROR", error: json.error }); return json.error; }
-    dispatch({ type: "SET_USER", user: json.data });
+    dispatch({ type: "CLEAR_USER" }); // pendiente de confirmar email
     return null;
 }
 
 async function signOut(): Promise<void> {
     await apiFetch("/api/auth/sign-out", {});
-    dispatch({ type: "CLEAR_USER" });
+    // onAuthStateChange lo limpia automáticamente
 }
 
 async function resetPassword(email: string): Promise<string | null> {
@@ -120,7 +133,7 @@ export function useAuth() {
 
     useEffect(() => {
         _listeners.add(forceUpdate);
-        bootstrap(); // no-op after first call
+        bootstrap();
         return () => { _listeners.delete(forceUpdate); };
     }, []);
 

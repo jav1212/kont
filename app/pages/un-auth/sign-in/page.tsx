@@ -1,8 +1,143 @@
+"use client";
+
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/src/frontend/auth/hooks/use-auth";
 
 // ============================================================================
-// SIGN IN PAGE  —  /un-auth/login
-// Same dark ledger aesthetic as the landing. Form-first, no distractions.
+// CONSTANTES DE ESTILO
+// ============================================================================
+
+const INPUT_CLS = [
+    "w-full h-10 px-3 rounded-lg",
+    "bg-white/[0.04] border border-white/10",
+    "font-mono text-[12px] text-white placeholder:text-white/20",
+    "outline-none focus:border-indigo-500/60 focus:bg-white/[0.06]",
+    "disabled:opacity-40 disabled:cursor-not-allowed",
+    "transition-colors duration-150",
+].join(" ");
+
+const Spinner = () => (
+    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);
+
+// ============================================================================
+// COMPONENTE INTERNO (Lógica que usa useSearchParams)
+// ============================================================================
+
+function SignInFormContent() {
+    const { signIn } = useAuth();
+    const router       = useRouter();
+    const searchParams = useSearchParams();
+
+    const [email,   setEmail]   = useState("");
+    const [pass,    setPass]    = useState("");
+    const [error,   setError]   = useState<string | null>(
+        searchParams.get("error") // Viene del callback cuando el link expira
+    );
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setError(null);
+
+        if (!email.trim()) { setError("El correo es requerido."); return; }
+        if (!pass)         { setError("La contraseña es requerida."); return; }
+
+        setLoading(true);
+        const err = await signIn(email, pass);
+        setLoading(false);
+
+        if (err) { setError(err); return; }
+
+        const redirectTo = searchParams.get("redirectTo") ?? "/pages/auth";
+        router.replace(redirectTo);
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                    Correo electrónico
+                </label>
+                <input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="usuario@empresa.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={loading}
+                    className={INPUT_CLS}
+                />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                        Contraseña
+                    </label>
+                    <Link
+                        href="/pages/un-auth/forgot-password"
+                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-indigo-400/60 hover:text-indigo-400 transition-colors"
+                    >
+                        ¿Olvidaste la tuya?
+                    </Link>
+                </div>
+                <input
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    value={pass}
+                    onChange={(e) => setPass(e.target.value)}
+                    disabled={loading}
+                    className={INPUT_CLS}
+                />
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
+                    <p className="font-mono text-[10px] text-red-400 leading-relaxed">
+                        {error}
+                    </p>
+                </div>
+            )}
+
+            {/* Submit */}
+            <button
+                type="submit"
+                disabled={loading}
+                className={[
+                    "w-full h-10 mt-2 rounded-lg",
+                    "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500",
+                    "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
+                    "transition-colors duration-150",
+                    "flex items-center justify-center gap-2",
+                ].join(" ")}
+            >
+                {loading ? (
+                    <><Spinner /> Autenticando…</>
+                ) : (
+                    <>
+                        Entrar
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 6h8M6 2l4 4-4 4" />
+                        </svg>
+                    </>
+                )}
+            </button>
+        </form>
+    );
+}
+
+// ============================================================================
+// SIGN IN PAGE — /pages/un-auth/sign-in
 // ============================================================================
 
 export default function SignInPage() {
@@ -26,73 +161,10 @@ export default function SignInPage() {
                     </p>
                 </div>
 
-                {/* ── Form ─────────────────────────────────────────────── */}
-                <form className="space-y-4">
-
-                    {/* Email */}
-                    <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-                            Correo electrónico
-                        </label>
-                        <input
-                            type="email"
-                            autoComplete="email"
-                            placeholder="usuario@empresa.com"
-                            className={[
-                                "w-full h-10 px-3 rounded-lg",
-                                "bg-white/[0.04] border border-white/10",
-                                "font-mono text-[12px] text-white placeholder:text-white/20",
-                                "outline-none focus:border-indigo-500/60 focus:bg-white/[0.06]",
-                                "transition-colors duration-150",
-                            ].join(" ")}
-                        />
-                    </div>
-
-                    {/* Password */}
-                    <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-                                Contraseña
-                            </label>
-                            <Link
-                                href="/pages/un-auth/forgot-password"
-                                className="font-mono text-[9px] uppercase tracking-[0.16em] text-indigo-400/60 hover:text-indigo-400 transition-colors"
-                            >
-                                ¿Olvidaste la tuya?
-                            </Link>
-                        </div>
-                        <input
-                            type="password"
-                            autoComplete="current-password"
-                            placeholder="••••••••"
-                            className={[
-                                "w-full h-10 px-3 rounded-lg",
-                                "bg-white/[0.04] border border-white/10",
-                                "font-mono text-[12px] text-white placeholder:text-white/20",
-                                "outline-none focus:border-indigo-500/60 focus:bg-white/[0.06]",
-                                "transition-colors duration-150",
-                            ].join(" ")}
-                        />
-                    </div>
-
-                    {/* Submit */}
-                    <button
-                        type="submit"
-                        className={[
-                            "w-full h-10 mt-2 rounded-lg",
-                            "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
-                            "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
-                            "transition-colors duration-150",
-                            "flex items-center justify-center gap-2",
-                        ].join(" ")}
-                    >
-                        Entrar
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 6h8M6 2l4 4-4 4" />
-                        </svg>
-                    </button>
-                </form>
+                {/* ── Form Envuelto en Suspense ───────────────────────── */}
+                <Suspense fallback={<div className="h-40 flex items-center justify-center font-mono text-[10px] text-white/20">Cargando...</div>}>
+                    <SignInFormContent />
+                </Suspense>
 
                 {/* ── Divider ───────────────────────────────────────────── */}
                 <div className="flex items-center gap-3 my-6">
@@ -101,7 +173,6 @@ export default function SignInPage() {
                     <div className="flex-1 h-px bg-white/[0.06]" />
                 </div>
 
-                {/* ── Register link ─────────────────────────────────────── */}
                 <p className="font-mono text-[10px] text-center text-white/30">
                     ¿Sin cuenta?{" "}
                     <Link

@@ -4,7 +4,7 @@ import { ISource } from '../domain/repository/source.repository';
 import { Source } from '../domain/source.abstract';
 
 export class SupabaseSource extends Source<SupabaseClient> implements ISource<SupabaseClient> {
-    
+
     constructor() {
         super();
         // Inicializamos la conexión al instanciar la clase
@@ -36,8 +36,9 @@ export class SupabaseSource extends Source<SupabaseClient> implements ISource<Su
 
             this._instance = createClient(url, key, {
                 auth: {
-                    persistSession: false, // Recomendado para Server Side si no usas cookies aún
-                    autoRefreshToken: false,
+                    flowType: 'pkce', // Forzar el uso de PKCE
+                    persistSession: true,
+                    detectSessionInUrl: true
                 }
             });
         }
@@ -45,6 +46,6 @@ export class SupabaseSource extends Source<SupabaseClient> implements ISource<Su
     }
 
     async disconnect(): Promise<void> {
-        this._instance = null; 
+        this._instance = null;
     }
 }

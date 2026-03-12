@@ -5,18 +5,18 @@ import { Auth } from '../../domain/auth';
 import { Result } from "@/src/core/domain/result";
 
 export class SupabaseAuthRepository implements IAuthRepository {
-    constructor(private readonly source: ISource<SupabaseClient>) {}
+    constructor(private readonly source: ISource<SupabaseClient>) { }
 
     async signIn(email: string, pass: string): Promise<Result<Auth>> {
         try {
-            const { data, error } = await this.source.instance.auth.signInWithPassword({ 
-                email, 
-                password: pass 
+            const { data, error } = await this.source.instance.auth.signInWithPassword({
+                email,
+                password: pass
             });
 
             if (error) return Result.fail(error.message);
             if (!data.user) return Result.fail('Auth failed: User not found');
-            
+
             return Result.success({ id: data.user.id, email: data.user.email! });
         } catch (err) {
             return Result.fail('Unexpected error during sign in');
@@ -28,6 +28,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
             const { data, error } = await this.source.instance.auth.signUp({
                 email,
                 password: pass,
+                options: {
+                    emailRedirectTo: 'http://localhost:3000/api/auth/callback',
+                },
             });
 
             if (error) return Result.fail(error.message);
@@ -43,7 +46,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         try {
             const { error } = await this.source.instance.auth.signOut();
             if (error) return Result.fail(error.message);
-            
+
             return Result.success();
         } catch (err) {
             return Result.fail('Unexpected error during sign out');
@@ -70,7 +73,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
         try {
             const { error } = await this.source.instance.auth.resetPasswordForEmail(email);
             if (error) return Result.fail(error.message);
-            
+
             return Result.success();
         } catch (err) {
             return Result.fail('Unexpected error during password reset');

@@ -2,18 +2,6 @@
 
 // ============================================================================
 // PAYROLL CALCULATOR — page (orchestration only)
-//
-// Component tree:
-//   PayrollCalculator
-//   ├─ BaseAccordion
-//   │  ├─ ParamsSection            payroll-accordion-sections.tsx
-//   │  ├─ EarningsSection          payroll-accordion-sections.tsx
-//   │  ├─ DeductionsSection        payroll-accordion-sections.tsx
-//   │  └─ BonusesSection           payroll-accordion-sections.tsx
-//   └─ PayrollEmployeeTable        payroll-employee-table.tsx
-//        ├─ BaseTable (native mode, renderExpandedRow)
-//        ├─ ExpandedAudit (per-row, on demand)
-//        └─ TotalsBar
 // ============================================================================
 
 import { useState, useMemo, useCallback } from "react";
@@ -22,7 +10,8 @@ import { calculateWeeklyFactor, getMondaysCount } from "@/src/frontend/utils/pay
 import { ParamsSection, EarningsSection, DeductionsSection, BonusesSection } from "@/src/frontend/components/payroll-accordion-sections";
 import { PayrollEmployeeTable } from "@/src/frontend/components/payroll-employee-table";
 import { EarningRow, DeductionRow, BonusRow, EarningValue, DeductionValue, BonusValue } from "@/src/frontend/core/payroll-types";
-
+import { useCompany } from "@/src/frontend/companies/hooks/use-companies";
+import { useEmployee } from "@/src/frontend/employee/hooks/use-employee";
 
 // ============================================================================
 // DEFAULTS
@@ -53,6 +42,9 @@ const DEFAULT_BONUSES: BonusRow[] = [
 // ============================================================================
 
 export default function PayrollCalculator() {
+    const { companyId, company, companies, loading: companyLoading, selectCompany } = useCompany();
+    const { employees, loading: empLoading, error: empError, upsert } = useEmployee(companyId);
+
     const [expandedKeys, setExpandedKeys] = useState<any>(
         new Set(["params", "earnings", "deductions", "bonuses"])
     );
@@ -74,7 +66,7 @@ export default function PayrollCalculator() {
     const bcvRate        = useMemo(() => parseFloat(exchangeRate) || 0,                         [exchangeRate]);
     const weeklyBase     = useMemo(() => weeklyRate * mondaysInMonth,                           [weeklyRate, mondaysInMonth]);
 
-    // ── Computed row values (for audit trail in accordion sections) ───────
+    // ── Computed row values ───────────────────────────────────────────────
     const earningValues = useMemo<EarningValue[]>(() =>
         earningRows.map((r) => ({
             ...r,
@@ -133,9 +125,35 @@ export default function PayrollCalculator() {
                     <nav className="text-[10px] uppercase text-neutral-400 mb-1 tracking-widest">
                         Nómina / Calculadora / v2.2
                     </nav>
-                    <h1 className="text-xl font-bold uppercase tracking-tighter">
-                        Panel de Configuración
-                    </h1>
+                    <div className="flex items-end justify-between">
+                        <h1 className="text-xl font-bold uppercase tracking-tighter">
+                            Panel de Configuración
+                        </h1>
+                        {companyLoading ? (
+                            <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest animate-pulse">
+                                Cargando empresa…
+                            </span>
+                        ) : companies.length > 1 ? (
+                            <select
+                                value={companyId ?? ""}
+                                onChange={(e) => selectCompany(e.target.value)}
+                                className={[
+                                    "h-8 px-3 rounded-lg border border-border-light bg-surface-1",
+                                    "hover:border-border-medium focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10",
+                                    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground",
+                                    "outline-none transition-colors duration-150",
+                                ].join(" ")}
+                            >
+                                {companies.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        ) : company ? (
+                            <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">
+                                {company.name}
+                            </span>
+                        ) : null}
+                    </div>
                 </header>
 
                 <BaseAccordion.Root selectedKeys={expandedKeys} onSelectionChange={setExpandedKeys}>
@@ -205,13 +223,18 @@ export default function PayrollCalculator() {
 
                 </BaseAccordion.Root>
 
-                {/* ── EMPLOYEE TABLE (replaces PayrollResultFooter) ────────── */}
                 <PayrollEmployeeTable
+                    employees={employees}
+                    empLoading={empLoading}
+                    empError={empError}
+                    onUpsert={upsert}
                     earningRows={earningRows}
                     deductionRows={deductionRows}
                     bonusRows={bonusRows}
                     mondaysInMonth={mondaysInMonth}
                     bcvRate={bcvRate}
+                    companyName={company?.name ?? ""}
+                    payrollDate={payrollDate}
                 />
 
             </div>
