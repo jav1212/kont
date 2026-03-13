@@ -3,7 +3,6 @@ import { handleResult } from "@/src/shared/backend/utils/handle-result";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
 export const GET = withTenant(async (_req, { userId }) => {
-    const { getByOwner } = getCompanyActions();
-    const result = await getByOwner.execute(userId);
+    const result = await getCompanyActions(userId).getByOwner.execute(userId);
     return handleResult(result);
 });

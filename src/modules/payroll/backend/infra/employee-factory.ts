@@ -1,12 +1,12 @@
-import { SupabaseSource } from "@/src/shared/backend/source/infra/supabase";
-import { SupabaseEmployeeRepository } from "./repository/supabase-employee.repository";
-import { GetEmployeesByCompanyUseCase } from "../app/get-employees-by-company.case";
-import { UpsertEmployeesUseCase }       from "../app/upsert-employees.case";
-import { DeleteEmployeesUseCase }       from "../app/delete-employees.case";
+import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
+import { RpcEmployeeRepository } from './repository/rpc-employee.repository';
+import { GetEmployeesByCompanyUseCase } from '../app/get-employees-by-company.case';
+import { UpsertEmployeesUseCase }       from '../app/upsert-employees.case';
+import { DeleteEmployeesUseCase }       from '../app/delete-employees.case';
 
-export function getEmployeeActions() {
-    const source     = new SupabaseSource();
-    const repository = new SupabaseEmployeeRepository(source);
+export function getEmployeeActions(userId: string) {
+    const source     = new ServerSupabaseSource();
+    const repository = new RpcEmployeeRepository(source, userId);
 
     return {
         getByCompany:    new GetEmployeesByCompanyUseCase(repository),

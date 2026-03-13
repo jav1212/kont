@@ -1,14 +1,14 @@
-import { SupabaseSource } from '@/src/shared/backend/source/infra/supabase';
-import { SupabaseCompanyRepository } from './repository/supabase-company.repository';
+import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
+import { RpcCompanyRepository } from './repository/rpc-company.repository';
 import { SaveCompanyUseCase } from '../app/save-company.case';
 import { UpdateCompanyUseCase } from '../app/update-company.case';
 import { DeleteCompanyUseCase } from '../app/delete-company.case';
 import { GetCompanyByIdUseCase } from '../app/get-company-by-id.case';
 import { GetUserCompaniesUseCase } from '../app/get-users-companies.case';
 
-export function getCompanyActions() {
-    const source = new SupabaseSource();
-    const repository = new SupabaseCompanyRepository(source);
+export function getCompanyActions(userId: string) {
+    const source = new ServerSupabaseSource();
+    const repository = new RpcCompanyRepository(source, userId);
 
     return {
         save:       new SaveCompanyUseCase(repository),
