@@ -147,6 +147,12 @@ BEGIN
     EXECUTE format('ALTER TABLE %I.payroll_runs      ENABLE ROW LEVEL SECURITY', v_schema);
     EXECUTE format('ALTER TABLE %I.payroll_receipts  ENABLE ROW LEVEL SECURITY', v_schema);
 
+    -- Drop primero para idempotencia
+    EXECUTE format('DROP POLICY IF EXISTS tenant_owner ON %I.companies',        v_schema);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_owner ON %I.employees',        v_schema);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_owner ON %I.payroll_runs',     v_schema);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_owner ON %I.payroll_receipts', v_schema);
+
     EXECUTE format('CREATE POLICY tenant_owner ON %I.companies        FOR ALL USING (auth.uid() = %L::uuid)', v_schema, p_user_id);
     EXECUTE format('CREATE POLICY tenant_owner ON %I.employees        FOR ALL USING (auth.uid() = %L::uuid)', v_schema, p_user_id);
     EXECUTE format('CREATE POLICY tenant_owner ON %I.payroll_runs     FOR ALL USING (auth.uid() = %L::uuid)', v_schema, p_user_id);
@@ -157,12 +163,16 @@ BEGIN
     EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated', v_schema);
 
     -- 9. Triggers de métricas en companies, employees y payroll_runs
-    --    El trigger llama a refresh_tenant_metrics con el UUID del owner fijo.
-    EXECUTE format($fn$
-        CREATE OR REPLACE FUNCTION %I.sync_metrics()
-        RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS
-        'BEGIN PERFORM public.refresh_tenant_metrics(%L::uuid); RETURN NULL; END;'
-    $fn$, v_schema, p_user_id);
+    EXECUTE format('DROP TRIGGER IF EXISTS metrics_sync ON %I.companies',    v_schema);
+    EXECUTE format('DROP TRIGGER IF EXISTS metrics_sync ON %I.employees',    v_schema);
+    EXECUTE format('DROP TRIGGER IF EXISTS metrics_sync ON %I.payroll_runs', v_schema);
+
+    EXECUTE format(
+        'CREATE OR REPLACE FUNCTION %I.sync_metrics() '
+        'RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS '
+        '$body$ BEGIN PERFORM public.refresh_tenant_metrics(%L::uuid); RETURN NULL; END; $body$',
+        v_schema, p_user_id
+    );
 
     EXECUTE format('CREATE TRIGGER metrics_sync AFTER INSERT OR UPDATE OR DELETE ON %I.companies     FOR EACH STATEMENT EXECUTE FUNCTION %I.sync_metrics()', v_schema, v_schema);
     EXECUTE format('CREATE TRIGGER metrics_sync AFTER INSERT OR UPDATE OR DELETE ON %I.employees     FOR EACH STATEMENT EXECUTE FUNCTION %I.sync_metrics()', v_schema, v_schema);
