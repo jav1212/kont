@@ -30,6 +30,12 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
             <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
         </svg>
     ),
+    billing: (
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="3" width="11" height="7" rx="1" />
+            <path d="M1 6h11M4.5 8.5h2" />
+        </svg>
+    ),
 };
 
 // ── Sub-navigation per module ─────────────────────────────────────────────────

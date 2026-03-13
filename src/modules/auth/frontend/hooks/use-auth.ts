@@ -99,10 +99,23 @@ function bootstrap() {
 
 async function signIn(email: string, password: string): Promise<string | null> {
     dispatch({ type: "LOADING" });
-    // Usa el browser client directamente — las cookies se setean en el browser
-    // para que el middleware las detecte en la siguiente navegación.
     const { error } = await getSupabaseBrowser().auth.signInWithPassword({ email, password });
     if (error) { dispatch({ type: "SET_ERROR", error: error.message }); return error.message; }
+
+    // Verificar que no sea una cuenta de administrador
+    try {
+        const res  = await fetch("/api/auth/verify-not-admin");
+        const json = await res.json();
+        if (json.isAdmin) {
+            await getSupabaseBrowser().auth.signOut();
+            const msg = "Correo o contraseña incorrectos.";
+            dispatch({ type: "SET_ERROR", error: msg });
+            return msg;
+        }
+    } catch {
+        // Si el chequeo falla no bloqueamos el login — el middleware igual protege
+    }
+
     // onAuthStateChange dispara SET_USER automáticamente
     return null;
 }

@@ -33,12 +33,18 @@ export class SupabaseAuthRepository implements IAuthRepository {
                 },
             });
 
-            if (error) return Result.fail(error.message);
-            if (!data.user) return Result.fail('Registration failed: Could not create user');
+            // No revelar si el email ya existe — siempre responder con éxito genérico
+            if (error && !error.message.toLowerCase().includes('already')) {
+                return Result.fail('No se pudo completar el registro.');
+            }
 
-            return Result.success({ id: data.user.id, email: data.user.email! });
-        } catch (err) {
-            return Result.fail('Unexpected error during sign up');
+            // Si el email ya existía, Supabase devuelve user con identities vacío
+            const userId = data.user?.id ?? email;
+            const userEmail = data.user?.email ?? email;
+
+            return Result.success({ id: userId, email: userEmail });
+        } catch {
+            return Result.fail('No se pudo completar el registro.');
         }
     }
 

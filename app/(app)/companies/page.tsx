@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
+import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 
 // ============================================================================
 // CONSTANTS
@@ -64,6 +65,8 @@ const IconPlus = () => (
 
 export default function CompaniesPage() {
     const { companies, loading, error, save, update, remove, reload } = useCompany();
+    const { capacity, canAddCompany } = useCapacity();
+    const atCompanyLimit = !canAddCompany();
 
     // ── Edit state ────────────────────────────────────────────────────────
     const [editingId,   setEditingId]   = useState<string | null>(null);
@@ -238,7 +241,10 @@ export default function CompaniesPage() {
                                 Mis Empresas
                             </h1>
                             <p className="text-[10px] text-foreground/40 mt-0.5 uppercase tracking-widest">
-                                {companies.length} empresa{companies.length !== 1 ? "s" : ""}
+                                {capacity?.companies.max !== null && capacity
+                                    ? `${capacity.companies.used} / ${capacity.companies.max} empresa${capacity.companies.max !== 1 ? "s" : ""}`
+                                    : `${companies.length} empresa${companies.length !== 1 ? "s" : ""}`
+                                }
                             </p>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -250,17 +256,20 @@ export default function CompaniesPage() {
                                 Exportar CSV
                             </button>
                             {/* Import file */}
-                            <label className={[toolbarBtn, "cursor-pointer", csvLoading ? "opacity-40 pointer-events-none" : ""].join(" ")}>
+                            <label className={[toolbarBtn, "cursor-pointer", (csvLoading || atCompanyLimit) ? "opacity-40 pointer-events-none" : ""].join(" ")}
+                                title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}>
                                 {csvLoading ? <Spinner /> : (
                                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
                                     </svg>
                                 )}
                                 Importar CSV
-                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImportFile} />
+                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImportFile} disabled={atCompanyLimit} />
                             </label>
                             {/* Paste CSV */}
-                            <button onClick={() => setPasteOpen(true)} className={toolbarBtn}>
+                            <button onClick={() => setPasteOpen(true)} disabled={atCompanyLimit}
+                                title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
+                                className={toolbarBtn}>
                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="2" y="3" width="8" height="8" rx="1" />
                                     <path d="M4 1h4v2H4z" />
@@ -270,7 +279,8 @@ export default function CompaniesPage() {
                             {/* New */}
                             <button
                                 onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
-                                disabled={showNew}
+                                disabled={showNew || atCompanyLimit}
+                                title={atCompanyLimit ? "Límite de empresas alcanzado según tu plan" : undefined}
                                 className={[
                                     "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                     "bg-primary-500 border-primary-600 text-white",

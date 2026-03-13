@@ -5,6 +5,7 @@ import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companie
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { employeesToCsv, downloadCsv, parseCsv } from "@/src/modules/payroll/frontend/utils/employee-csv";
+import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 
 // ============================================================================
 // TYPES
@@ -282,6 +283,9 @@ function EmployeeRow({
 export default function EmployeesPage() {
     const { companyId, company } = useCompany();
     const { employees, loading, error, upsert, remove, reload } = useEmployee(companyId);
+    const { canAddEmployee, employeesRemaining } = useCapacity();
+    const atEmployeeLimit = companyId ? !canAddEmployee(companyId) : false;
+    const empRemaining    = companyId ? employeesRemaining(companyId) : null;
 
     // ── Row state ──────────────────────────────────────────────────────────
     const [modes,    setModes]    = useState<Record<string, RowMode>>({});
@@ -501,7 +505,10 @@ export default function EmployeesPage() {
                             </h1>
                             {company && (
                                 <p className="text-[10px] text-foreground/40 mt-0.5 uppercase tracking-widest">
-                                    {company.name} · {employees.length} empleado{employees.length !== 1 ? "s" : ""}
+                                    {company.name} · {empRemaining !== null
+                                        ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
+                                        : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
+                                    }
                                 </p>
                             )}
                         </div>
@@ -512,16 +519,19 @@ export default function EmployeesPage() {
                                 </svg>
                                 Exportar CSV
                             </button>
-                            <label className={[toolbarBtn, "cursor-pointer", csvLoading ? "opacity-40 pointer-events-none" : ""].join(" ")}>
+                            <label className={[toolbarBtn, "cursor-pointer", (csvLoading || atEmployeeLimit) ? "opacity-40 pointer-events-none" : ""].join(" ")}
+                                title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}>
                                 {csvLoading ? <Spinner /> : (
                                     <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
                                     </svg>
                                 )}
                                 Importar CSV
-                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} />
+                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} disabled={atEmployeeLimit} />
                             </label>
-                            <button onClick={() => setPasteOpen(true)} className={toolbarBtn}>
+                            <button onClick={() => setPasteOpen(true)} disabled={atEmployeeLimit}
+                                title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}
+                                className={toolbarBtn}>
                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="2" y="3" width="8" height="8" rx="1" />
                                     <path d="M4 1h4v2H4z" />
@@ -530,6 +540,8 @@ export default function EmployeesPage() {
                             </button>
                             <button
                                 onClick={addNewRow}
+                                disabled={atEmployeeLimit}
+                                title={atEmployeeLimit ? "Límite de empleados alcanzado según tu plan" : undefined}
                                 className={[
                                     "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                     "bg-primary-500 border-primary-600 text-white",
