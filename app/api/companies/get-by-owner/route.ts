@@ -2,8 +2,8 @@ import { getCompanyActions } from "@/src/modules/companies/backend/infra/company
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const GET = withTenant(async (_req, { userId, schemaName }) => {
-    const { getByOwner } = getCompanyActions(schemaName);
+export const GET = withTenant(async (_req, { userId }) => {
+    const { getByOwner } = getCompanyActions();
     const result = await getByOwner.execute(userId);
     return handleResult(result);
 });

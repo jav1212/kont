@@ -1,7 +1,7 @@
 import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const POST = withTenant(async (req, { schemaName }) => {
+export const POST = withTenant(async (req, _tenant) => {
     try {
         const { companyId, employees } = await req.json();
 
@@ -13,7 +13,7 @@ export const POST = withTenant(async (req, { schemaName }) => {
         }
 
         const withCompany = employees.map((e: any) => ({ ...e, companyId }));
-        const result = await getEmployeeActions(schemaName).upsertEmployees.execute({ employees: withCompany });
+        const result = await getEmployeeActions().upsertEmployees.execute({ employees: withCompany });
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });

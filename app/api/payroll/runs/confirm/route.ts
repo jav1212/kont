@@ -1,7 +1,7 @@
 import { getPayrollRunActions } from "@/src/modules/payroll/backend/infra/payroll-run-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const POST = withTenant(async (req, { schemaName }) => {
+export const POST = withTenant(async (req, _tenant) => {
     try {
         const input = await req.json();
 
@@ -9,7 +9,7 @@ export const POST = withTenant(async (req, { schemaName }) => {
             return Response.json({ error: "Payload inválido" }, { status: 400 });
         }
 
-        const result = await getPayrollRunActions(schemaName).confirm.execute(input);
+        const result = await getPayrollRunActions().confirm.execute(input);
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });

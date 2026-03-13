@@ -1,7 +1,25 @@
-import { getAuthActions } from "@/src/modules/auth/backend/infra/auth-factory";
-import { handleResult } from "@/src/shared/backend/utils/handle-result";
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export async function POST() {
-    const result = await getAuthActions().signOut.execute();
-    return handleResult(result, 200);
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll: () => cookieStore.getAll(),
+                setAll: (cookiesToSet) => {
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        cookieStore.set(name, value, options);
+                    });
+                },
+            },
+        }
+    );
+
+    await supabase.auth.signOut();
+    return NextResponse.json({ ok: true });
 }

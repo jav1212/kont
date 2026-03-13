@@ -1,4 +1,4 @@
-import { TenantSupabaseSource } from '@/src/shared/backend/source/infra/tenant-supabase';
+import { SupabaseSource } from '@/src/shared/backend/source/infra/supabase';
 import { SupabaseCompanyRepository } from './repository/supabase-company.repository';
 import { SaveCompanyUseCase } from '../app/save-company.case';
 import { UpdateCompanyUseCase } from '../app/update-company.case';
@@ -6,8 +6,8 @@ import { DeleteCompanyUseCase } from '../app/delete-company.case';
 import { GetCompanyByIdUseCase } from '../app/get-company-by-id.case';
 import { GetUserCompaniesUseCase } from '../app/get-users-companies.case';
 
-export function getCompanyActions(schemaName: string) {
-    const source = new TenantSupabaseSource(schemaName);
+export function getCompanyActions() {
+    const source = new SupabaseSource();
     const repository = new SupabaseCompanyRepository(source);
 
     return {

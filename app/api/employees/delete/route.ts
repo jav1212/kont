@@ -1,7 +1,7 @@
 import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const DELETE = withTenant(async (req, { schemaName }) => {
+export const DELETE = withTenant(async (req, _tenant) => {
     try {
         const { ids } = await req.json();
 
@@ -9,7 +9,7 @@ export const DELETE = withTenant(async (req, { schemaName }) => {
             return Response.json({ error: "ids es requerido" }, { status: 400 });
         }
 
-        const result = await getEmployeeActions(schemaName).deleteEmployees.execute(ids);
+        const result = await getEmployeeActions().deleteEmployees.execute(ids);
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });
