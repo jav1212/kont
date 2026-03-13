@@ -1,15 +1,15 @@
 import { getPayrollRunActions } from "@/src/modules/payroll/backend/infra/payroll-run-factory";
-import { NextRequest }          from "next/server";
+import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async (req, { schemaName }) => {
     try {
-        const input = await request.json();
+        const input = await req.json();
 
         if (!input?.run || !input?.receipts) {
             return Response.json({ error: "Payload inválido" }, { status: 400 });
         }
 
-        const result = await getPayrollRunActions().confirm.execute(input);
+        const result = await getPayrollRunActions(schemaName).confirm.execute(input);
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });
@@ -19,4 +19,4 @@ export async function POST(request: NextRequest) {
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });
     }
-}
+});

@@ -1,13 +1,14 @@
 import { getCompanyActions } from "@/src/modules/companies/backend/infra/company-factory";
-import { handleResult as handleCompanyResult } from "@/src/shared/backend/utils/handle-result";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
+import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export async function PATCH(req: Request) {
+export const PATCH = withTenant(async (req, { schemaName }) => {
     try {
         const { id, name } = await req.json();
-        const { update } = getCompanyActions();
+        const { update } = getCompanyActions(schemaName);
         const result = await update.execute({ id, data: { name } });
-        return handleCompanyResult(result);
+        return handleResult(result);
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });
     }
-}
+});

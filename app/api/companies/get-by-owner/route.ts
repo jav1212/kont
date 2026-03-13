@@ -1,11 +1,9 @@
 import { getCompanyActions } from "@/src/modules/companies/backend/infra/company-factory";
-import { handleResult as handleCompanyResult } from "@/src/shared/backend/utils/handle-result";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
+import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const ownerId = searchParams.get('ownerId');
-
-    const { getByOwner } = getCompanyActions();
-    const result = await getByOwner.execute(ownerId!);
-    return handleCompanyResult(result);
-}
+export const GET = withTenant(async (_req, { userId, schemaName }) => {
+    const { getByOwner } = getCompanyActions(schemaName);
+    const result = await getByOwner.execute(userId);
+    return handleResult(result);
+});

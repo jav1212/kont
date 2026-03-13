@@ -1,11 +1,9 @@
-// app/api/employees/upsert/route.ts
-
 import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
-import { NextRequest } from "next/server";
+import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export async function POST(request: NextRequest) {
+export const POST = withTenant(async (req, { schemaName }) => {
     try {
-        const { companyId, employees } = await request.json();
+        const { companyId, employees } = await req.json();
 
         if (!companyId) {
             return Response.json({ error: "companyId es requerido" }, { status: 400 });
@@ -14,10 +12,8 @@ export async function POST(request: NextRequest) {
             return Response.json({ error: "La lista de empleados está vacía" }, { status: 400 });
         }
 
-        // Inject companyId into each employee
         const withCompany = employees.map((e: any) => ({ ...e, companyId }));
-
-        const result = await getEmployeeActions().upsertEmployees.execute({ employees: withCompany });
+        const result = await getEmployeeActions(schemaName).upsertEmployees.execute({ employees: withCompany });
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });
@@ -27,4 +23,4 @@ export async function POST(request: NextRequest) {
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });
     }
-}
+});

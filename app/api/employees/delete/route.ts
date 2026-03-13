@@ -1,15 +1,15 @@
 import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
-import { NextRequest }        from "next/server";
+import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withTenant(async (req, { schemaName }) => {
     try {
-        const { ids } = await request.json();
+        const { ids } = await req.json();
 
         if (!Array.isArray(ids) || ids.length === 0) {
             return Response.json({ error: "ids es requerido" }, { status: 400 });
         }
 
-        const result = await getEmployeeActions().deleteEmployees.execute(ids);
+        const result = await getEmployeeActions(schemaName).deleteEmployees.execute(ids);
 
         if (result.isFailure) {
             return Response.json({ error: result.getError() }, { status: 400 });
@@ -19,4 +19,4 @@ export async function DELETE(request: NextRequest) {
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });
     }
-}
+});
