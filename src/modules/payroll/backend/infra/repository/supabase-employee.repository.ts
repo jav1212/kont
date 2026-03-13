@@ -51,6 +51,20 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
         }
     }
 
+    async deleteByIds(ids: string[]): Promise<Result<void>> {
+        try {
+            if (ids.length === 0) return Result.success();
+            const { error } = await this.source.instance
+                .from(this.TABLE)
+                .delete()
+                .in("id", ids);
+            if (error) return Result.fail(error.message);
+            return Result.success();
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : "Delete error");
+        }
+    }
+
     private mapToDomain(data: any): Employee {
         return {
             id:             data.id,

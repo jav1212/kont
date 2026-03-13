@@ -31,7 +31,7 @@ interface EmployeeOverride {
 
 interface ComputedLine { label: string; formula: string; amount: number }
 
-interface EmployeeResult extends Employee {
+export interface EmployeeResult extends Employee {
     totalEarnings:   number;
     totalDeductions: number;
     totalBonuses:    number;
@@ -148,7 +148,7 @@ const StatusBadge = ({ estado }: { estado: Employee["estado"] }) => (
 const ExpandBtn = ({ open, onClick }: { open: boolean; onClick: () => void }) => (
     <button onClick={onClick}
         style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-        className={["w-6 h-6 flex items-center justify-center rounded-md border", open ? "border-primary-400 bg-primary-50 text-primary-500" : "border-border-light text-neutral-400 hover:border-border-medium"].join(" ")}
+        className={["w-6 h-6 flex items-center justify-center rounded-md border", open ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light text-foreground/30 hover:border-border-medium"].join(" ")}
     >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M2 4l3 3 3-3" />
@@ -157,7 +157,7 @@ const ExpandBtn = ({ open, onClick }: { open: boolean; onClick: () => void }) =>
 );
 
 const OverrideBadge = () => (
-    <span className="inline-flex px-1.5 py-0.5 rounded border border-primary-400/30 bg-primary-50 font-mono text-[8px] uppercase tracking-widest text-primary-500">+extras</span>
+    <span className="inline-flex px-1.5 py-0.5 rounded border border-primary-500/30 bg-primary-500/[0.08] font-mono text-[8px] uppercase tracking-widest text-primary-500">+extras</span>
 );
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
@@ -254,7 +254,7 @@ const BatchSalaryPanel = ({ employees, onSave }: BatchSalaryPanelProps) => {
     const modeBtn = (label: string, active2: boolean, onClick: () => void) => (
         <button onClick={onClick} className={[
             "h-7 px-3 rounded-md font-mono text-[9px] uppercase tracking-[0.15em] border transition-colors duration-150",
-            active2 ? "border-primary-400 bg-primary-50 text-primary-600" : "border-border-light bg-surface-1 text-neutral-500 hover:border-border-medium",
+            active2 ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
         ].join(" ")}>{label}</button>
     );
 
@@ -344,8 +344,8 @@ const BatchSalaryPanel = ({ employees, onSave }: BatchSalaryPanelProps) => {
                             <div key={emp.cedula} onClick={() => toggleEmp(emp.cedula)}
                                 className={[
                                     "flex items-center gap-3 px-3 py-2 cursor-pointer border-b border-border-light last:border-0",
-                                    "hover:bg-primary-50/40 transition-colors duration-100",
-                                    i % 2 === 0 ? "bg-white" : "bg-surface-2/40",
+                                    "hover:bg-primary-500/[0.04] transition-colors duration-100",
+                                    i % 2 === 0 ? "bg-surface-1" : "bg-surface-2",
                                     !isSelected && "opacity-50",
                                 ].join(" ")}
                             >
@@ -370,12 +370,12 @@ const BatchSalaryPanel = ({ employees, onSave }: BatchSalaryPanelProps) => {
 
                 {/* Summary bar */}
                 {preview && preview.length > 0 && (
-                    <div className="flex items-center gap-4 px-4 py-2.5 rounded-lg bg-primary-50 border border-primary-200/60">
+                    <div className="flex items-center gap-4 px-4 py-2.5 rounded-lg bg-primary-500/[0.06] border border-primary-500/20">
                         <span className="font-mono text-[9px] uppercase tracking-widest text-primary-500">{preview.length} empleado{preview.length !== 1 ? "s" : ""}</span>
-                        <div className="flex items-center gap-2 ml-auto font-mono text-[10px] text-primary-600">
+                        <div className="flex items-center gap-2 ml-auto font-mono text-[10px] text-primary-500">
                             <span>Total antes: <strong>${fmt(totalBefore)}</strong></span>
-                            <span className="text-primary-400">→</span>
-                            <span>Total despues: <strong className="text-primary-700">${fmt(totalAfter)}</strong></span>
+                            <span className="text-primary-500/50">→</span>
+                            <span>Total despues: <strong>${fmt(totalAfter)}</strong></span>
                             {mode === "percent" && (
                                 <span className={["ml-2 px-2 py-0.5 rounded-md font-bold text-[9px]", direction === "increase" ? "bg-success/10 text-success" : "bg-error/10 text-error"].join(" ")}>
                                     {direction === "increase" ? "+" : "-"}{value}%
@@ -525,25 +525,25 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
     const active = results.filter((r) => r.estado === "activo");
     const T = active.reduce((s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }), { gross: 0, ded: 0, net: 0, usd: 0 });
     return (
-        <div className="flex items-center justify-between px-5 py-3 bg-foreground text-background rounded-xl border border-white/10">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] opacity-40">{active.length} empleados activos</span>
+        <div className="flex items-center justify-between px-5 py-3 bg-surface-1 rounded-xl border border-border-light">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">{active.length} empleados activos</span>
             <div className="flex gap-8 tabular-nums items-center">
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase opacity-40 tracking-widest">Bruto</span>
-                    <span className="font-mono text-[12px]">{fmt(T.gross)}</span>
+                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Bruto</span>
+                    <span className="font-mono text-[12px] text-foreground/50">{fmt(T.gross)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase opacity-40 tracking-widest">Deducciones</span>
-                    <span className="font-mono text-[12px] text-red-400/80">-{fmt(T.ded)}</span>
+                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Deducciones</span>
+                    <span className="font-mono text-[12px] text-red-500 dark:text-red-400">-{fmt(T.ded)}</span>
                 </div>
-                <div className="w-px h-8 bg-white/10" />
+                <div className="w-px h-8 bg-border-light" />
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase text-primary-400/70 tracking-widest font-bold">Neto VES</span>
-                    <span className="font-mono text-[18px] font-black text-primary-400">{fmt(T.net)}</span>
+                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Neto VES</span>
+                    <span className="font-mono text-[18px] font-black text-primary-500">{fmt(T.net)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase opacity-40 tracking-widest">Neto USD</span>
-                    <span className="font-mono text-[12px] opacity-60">{fmt(T.usd)}</span>
+                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Neto USD</span>
+                    <span className="font-mono text-[12px] text-foreground/50">${fmt(T.usd)}</span>
                 </div>
             </div>
         </div>
@@ -559,6 +559,7 @@ export interface PayrollEmployeeTableProps {
     empLoading:     boolean;
     empError:       string | null;
     onUpsert:       (employees: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
+    onConfirm?:     (results: EmployeeResult[]) => Promise<string | null>;
     earningRows:    EarningRow[];
     deductionRows:  DeductionRow[];
     bonusRows:      BonusRow[];
@@ -570,15 +571,18 @@ export interface PayrollEmployeeTableProps {
 }
 
 export const PayrollEmployeeTable = ({
-    employees, empLoading, empError, onUpsert,
+    employees, empLoading, empError, onUpsert, onConfirm,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     companyName, companyId, payrollDate,
 }: PayrollEmployeeTableProps) => {
 
-    const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [showBatch,  setShowBatch]  = useState(false);
-    const [csvLoading, setCsvLoading] = useState(false);
-    const [csvError,   setCsvError]   = useState<string | null>(null);
+    const [expandedId,    setExpandedId]    = useState<string | null>(null);
+    const [showBatch,     setShowBatch]     = useState(false);
+    const [csvLoading,    setCsvLoading]    = useState(false);
+    const [csvError,      setCsvError]      = useState<string | null>(null);
+    const [confirmLoading, setConfirmLoading] = useState(false);
+    const [confirmError,   setConfirmError]   = useState<string | null>(null);
+    const [confirmOk,      setConfirmOk]      = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSalarySave = useCallback(async (emp: Employee, newSalary: number): Promise<string | null> => {
@@ -629,6 +633,17 @@ export const PayrollEmployeeTable = ({
         );
     }, [results, companyName, companyId, payrollDate, bcvRate, mondaysInMonth]);
 
+    const handleConfirm = useCallback(async () => {
+        if (!onConfirm || !results.length) return;
+        setConfirmLoading(true);
+        setConfirmError(null);
+        setConfirmOk(false);
+        const err = await onConfirm(results);
+        setConfirmLoading(false);
+        if (err) setConfirmError(err);
+        else     setConfirmOk(true);
+    }, [onConfirm, results]);
+
     const columns: Column<EmployeeResult>[] = [
         {
             key: "nombre", label: "Empleado", sortable: true, searchable: true,
@@ -668,7 +683,7 @@ export const PayrollEmployeeTable = ({
                 <div className="flex items-center gap-2">
                     <button onClick={() => setShowBatch((v) => !v)}
                         disabled={employees.filter(e => e.estado === "activo").length === 0}
-                        className={[toolbarBtnBase, showBatch ? "border-primary-400 bg-primary-50 text-primary-600" : ""].join(" ")}
+                        className={[toolbarBtnBase, showBatch ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : ""].join(" ")}
                     >
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M1 6h10M1 3h10M1 9h6" />
@@ -696,6 +711,27 @@ export const PayrollEmployeeTable = ({
                         Importar CSV
                         <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} disabled={csvLoading} />
                     </label>
+                    {onConfirm && (
+                        <button
+                            onClick={handleConfirm}
+                            disabled={confirmLoading || employees.length === 0}
+                            className={[
+                                "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
+                                "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                "disabled:opacity-40 disabled:cursor-not-allowed",
+                                confirmOk
+                                    ? "border-success/30 bg-success/10 text-success"
+                                    : "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.15]",
+                            ].join(" ")}
+                        >
+                            {confirmLoading ? <Spinner /> : confirmOk ? <CheckIcon /> : (
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M2 6l3 3 5-5" />
+                                </svg>
+                            )}
+                            {confirmOk ? "Confirmada" : "Confirmar nómina"}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -706,6 +742,13 @@ export const PayrollEmployeeTable = ({
             {csvError && (
                 <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
                     <p className="font-mono text-[10px] text-red-500">{csvError}</p>
+                </div>
+            )}
+
+            {/* Confirm error */}
+            {confirmError && (
+                <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
+                    <p className="font-mono text-[10px] text-red-500">{confirmError}</p>
                 </div>
             )}
 

@@ -42,12 +42,15 @@ export class SupabaseCompanyRepository implements ICompanyRepository {
 
     async save(company: Company): Promise<Result<void>> {
         try {
+            const now = new Date().toISOString();
             const { error } = await this.source.instance
                 .from(this.TABLE)
                 .insert({
-                    id: company.id,
-                    owner_id: company.ownerId, // Mapeo a snake_case
-                    name: company.name
+                    id:         company.id,
+                    owner_id:   company.ownerId,
+                    name:       company.name,
+                    created_at: now,
+                    updated_at: now,
                 });
 
             if (error) return Result.fail(error.message);
@@ -62,8 +65,8 @@ export class SupabaseCompanyRepository implements ICompanyRepository {
             const { data, error } = await this.source.instance
                 .from(this.TABLE)
                 .update({
-                    name: company.name
-                    // owner_id no se suele actualizar por seguridad
+                    name:       company.name,
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .select()

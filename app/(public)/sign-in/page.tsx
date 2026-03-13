@@ -7,9 +7,9 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
-    "bg-white/[0.04] border border-white/10",
-    "font-mono text-[12px] text-white placeholder:text-white/20",
-    "outline-none focus:border-indigo-500/60 focus:bg-white/[0.06]",
+    "bg-foreground/[0.04] border border-foreground/10",
+    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -53,7 +53,7 @@ function SignInFormContent() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                     Correo electrónico
                 </label>
                 <input
@@ -69,7 +69,7 @@ function SignInFormContent() {
 
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                         Contraseña
                     </label>
                     <Link
@@ -138,25 +138,25 @@ export default function SignInPage() {
                             Acceso
                         </span>
                     </div>
-                    <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-white leading-none">
+                    <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Iniciar<br />sesión
                     </h1>
-                    <p className="font-mono text-[11px] text-white/30 mt-3 leading-relaxed">
+                    <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
                         Ingresa tus credenciales para acceder al sistema de nómina.
                     </p>
                 </div>
 
-                <Suspense fallback={<div className="h-40 flex items-center justify-center font-mono text-[10px] text-white/20">Cargando...</div>}>
+                <Suspense fallback={<div className="h-40 flex items-center justify-center font-mono text-[10px] text-foreground/20">Cargando...</div>}>
                     <SignInFormContent />
                 </Suspense>
 
                 <div className="flex items-center gap-3 my-6">
-                    <div className="flex-1 h-px bg-white/[0.06]" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">o</span>
-                    <div className="flex-1 h-px bg-white/[0.06]" />
+                    <div className="flex-1 h-px bg-foreground/[0.06]" />
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/20">o</span>
+                    <div className="flex-1 h-px bg-foreground/[0.06]" />
                 </div>
 
-                <p className="font-mono text-[10px] text-center text-white/30">
+                <p className="font-mono text-[10px] text-center text-foreground/30">
                     ¿Sin cuenta?{" "}
                     <Link
                         href="/sign-up"

@@ -1,51 +1,81 @@
 "use client";
 
 // ============================================================================
-// PAYROLL ROW EDITORS
-// Self-contained line-item editor for each formula group.
-// Each editor is stateless — receives a row object + update/remove callbacks.
+// PAYROLL ROW EDITORS  — compact 2-row layout
+// Row 1: concept label input  +  remove button
+// Row 2: numeric inputs  +  toggle  +  computed result chip
 // ============================================================================
 
-import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BonusRow, DeductionRow, EarningRow } from "../types/payroll-types";
 
-// ── Shared micro-buttons ───────────────────────────────────────────────────
+// ── Shared styles ─────────────────────────────────────────────────────────────
+
+const inputCls = [
+    "h-8 px-2.5 rounded-md border border-border-light bg-surface-1 outline-none",
+    "font-mono text-[12px] text-foreground tabular-nums",
+    "focus:border-primary-500/60 hover:border-border-medium",
+    "transition-colors duration-150 placeholder:text-foreground/25",
+].join(" ");
+
+const numInputCls = inputCls + " text-center w-16";
+
+// ── Add row button ─────────────────────────────────────────────────────────────
 
 export const AddRowButton = ({ onClick }: { onClick: () => void }) => (
     <button
         onClick={onClick}
-        className={[
-            "flex items-center gap-2 mt-2",
-            "font-mono text-[10px] uppercase tracking-[0.18em]",
-            "text-neutral-400 hover:text-primary-500",
-            "transition-colors duration-150",
-        ].join(" ")}
+        className="flex items-center gap-1.5 mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/35 hover:text-primary-500 transition-colors duration-150"
     >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"
             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <path d="M6 1v10M1 6h10" />
+            <path d="M5.5 1v9M1 5.5h9" />
         </svg>
         Agregar fila
     </button>
 );
 
-export const RemoveRowButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
+// ── Remove row button ──────────────────────────────────────────────────────────
+
+const RemoveButton = ({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) => (
     <button
         onClick={onClick}
         disabled={disabled}
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md border border-border-light text-foreground/25 hover:text-red-400 hover:border-red-400/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors duration-150"
+    >
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M1 1l6 6M7 1L1 7" />
+        </svg>
+    </button>
+);
+
+// ── Result chip ───────────────────────────────────────────────────────────────
+
+const Result = ({ value, negative }: { value: number; negative?: boolean }) => (
+    <span className={[
+        "ml-auto shrink-0 font-mono text-[11px] tabular-nums",
+        negative ? "text-red-400" : "text-foreground/50",
+    ].join(" ")}>
+        {negative ? "−" : ""}{Math.abs(value).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+);
+
+// ── Toggle button ─────────────────────────────────────────────────────────────
+
+const Toggle = ({
+    active, activeLabel, inactiveLabel, onClick,
+}: { active: boolean; activeLabel: string; inactiveLabel: string; onClick: () => void }) => (
+    <button
+        onClick={onClick}
         className={[
-            "flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md",
-            "border border-border-light",
-            "text-neutral-300 hover:text-error hover:border-error/40",
-            "disabled:opacity-20 disabled:cursor-not-allowed",
-            "disabled:hover:text-neutral-300 disabled:hover:border-border-light",
-            "transition-colors duration-150",
+            "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+            "transition-colors duration-150 whitespace-nowrap",
+            active
+                ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
+                : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
         ].join(" ")}
     >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-            <path d="M1 1l8 8M9 1L1 9" />
-        </svg>
+        {active ? activeLabel : inactiveLabel}
     </button>
 );
 
@@ -67,60 +97,44 @@ export const EarningRowEditor = ({
         : (parseFloat(row.quantity) || 0);
 
     return (
-        <div className="flex items-end gap-2">
-            <div className="flex-[2] min-w-0">
-                <BaseInput.Field
-                    label="Concepto"
+        <div className="space-y-1.5">
+            {/* Row 1: Concepto + remove */}
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="text"
                     value={row.label}
-                    onValueChange={(v) => onChange({ ...row, label: v })}
-                    placeholder="Ej: Días Normales"
+                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    placeholder="Concepto"
+                    className={inputCls + " flex-1"}
                 />
+                <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Cantidad"
+            {/* Row 2: Qty | Factor | Modo | → result */}
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="number"
                     value={row.quantity}
-                    onValueChange={(v) => onChange({ ...row, quantity: v })}
+                    onChange={(e) => onChange({ ...row, quantity: e.target.value })}
                     placeholder="0"
+                    className={numInputCls}
                 />
-            </div>
-            {row.useDaily && (
-                <div className="flex-1 min-w-0">
-                    <BaseInput.Field
-                        label="Factor ×"
+                {row.useDaily && (
+                    <input
+                        type="number"
                         value={row.multiplier}
-                        onValueChange={(v) => onChange({ ...row, multiplier: v })}
+                        onChange={(e) => onChange({ ...row, multiplier: e.target.value })}
                         placeholder="1.0"
+                        className={numInputCls}
+                        step="0.5"
                     />
-                </div>
-            )}
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Subtotal VES"
-                    value={computed.toFixed(2)}
-                    isDisabled
-                />
-            </div>
-            {/* useDaily toggle */}
-            <div className="flex flex-col gap-1 pb-[1px]">
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">
-                    Modo
-                </span>
-                <button
+                )}
+                <Toggle
+                    active={row.useDaily}
+                    activeLabel="× diario"
+                    inactiveLabel="VES fijo"
                     onClick={() => onChange({ ...row, useDaily: !row.useDaily })}
-                    className={[
-                        "h-[38px] px-2.5 rounded-lg border font-mono text-[10px] uppercase tracking-[0.12em]",
-                        "transition-colors duration-150 whitespace-nowrap",
-                        row.useDaily
-                            ? "border-primary-400 bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400"
-                            : "border-border-light bg-surface-1 text-neutral-500 hover:border-border-medium",
-                    ].join(" ")}
-                >
-                    {row.useDaily ? "× Diario" : "VES fijo"}
-                </button>
-            </div>
-            <div className="pb-[1px]">
-                <RemoveRowButton onClick={onRemove} disabled={!canRemove} />
+                />
+                <Result value={computed} />
             </div>
         </div>
     );
@@ -140,52 +154,42 @@ export const DeductionRowEditor = ({
     weeklyBase:  number;
     monthlyBase: number;
 }) => {
-    const base    = row.base === "weekly" ? weeklyBase : monthlyBase;
+    const base     = row.base === "weekly" ? weeklyBase : monthlyBase;
     const computed = base * ((parseFloat(row.rate) || 0) / 100);
 
     return (
-        <div className="flex items-end gap-2">
-            <div className="flex-[2] min-w-0">
-                <BaseInput.Field
-                    label="Concepto"
+        <div className="space-y-1.5">
+            {/* Row 1: Concepto + remove */}
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="text"
                     value={row.label}
-                    onValueChange={(v) => onChange({ ...row, label: v })}
-                    placeholder="Ej: S.S.O"
+                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    placeholder="Concepto"
+                    className={inputCls + " flex-1"}
                 />
+                <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Tasa %"
-                    value={row.rate}
-                    onValueChange={(v) => onChange({ ...row, rate: v })}
-                    placeholder="0.00"
-                />
-            </div>
-            {/* base toggle */}
-            <div className="flex flex-col gap-1 pb-[1px]">
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">
-                    Base
-                </span>
-                <button
+            {/* Row 2: Tasa % | Base | → result */}
+            <div className="flex items-center gap-1.5">
+                <div className="relative">
+                    <input
+                        type="number"
+                        value={row.rate}
+                        onChange={(e) => onChange({ ...row, rate: e.target.value })}
+                        placeholder="0"
+                        className={numInputCls}
+                        step="0.5"
+                    />
+                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-foreground/30 pointer-events-none">%</span>
+                </div>
+                <Toggle
+                    active={row.base === "weekly"}
+                    activeLabel="semanal"
+                    inactiveLabel="mensual"
                     onClick={() => onChange({ ...row, base: row.base === "weekly" ? "monthly" : "weekly" })}
-                    className={[
-                        "h-[38px] px-2.5 rounded-lg border font-mono text-[10px] uppercase tracking-[0.12em]",
-                        "transition-colors duration-150 whitespace-nowrap",
-                        "border-border-light bg-surface-1 text-neutral-500 hover:border-border-medium",
-                    ].join(" ")}
-                >
-                    {row.base === "weekly" ? "Semanal" : "Mensual"}
-                </button>
-            </div>
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Retención VES"
-                    value={computed.toFixed(2)}
-                    isDisabled
                 />
-            </div>
-            <div className="pb-[1px]">
-                <RemoveRowButton onClick={onRemove} disabled={!canRemove} />
+                <Result value={computed} negative />
             </div>
         </div>
     );
@@ -207,32 +211,32 @@ export const BonusRowEditor = ({
     const computed = (parseFloat(row.amount) || 0) * bcvRate;
 
     return (
-        <div className="flex items-end gap-2">
-            <div className="flex-[2] min-w-0">
-                <BaseInput.Field
-                    label="Concepto"
+        <div className="space-y-1.5">
+            {/* Row 1: Concepto + remove */}
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="text"
                     value={row.label}
-                    onValueChange={(v) => onChange({ ...row, label: v })}
-                    placeholder="Ej: Bono Alimentación"
+                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    placeholder="Concepto"
+                    className={inputCls + " flex-1"}
                 />
+                <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Monto USD"
-                    value={row.amount}
-                    onValueChange={(v) => onChange({ ...row, amount: v })}
-                    placeholder="0.00"
-                />
-            </div>
-            <div className="flex-1 min-w-0">
-                <BaseInput.Field
-                    label="Equivalente VES"
-                    value={computed.toFixed(2)}
-                    isDisabled
-                />
-            </div>
-            <div className="pb-[1px]">
-                <RemoveRowButton onClick={onRemove} disabled={!canRemove} />
+            {/* Row 2: Monto USD | → VES result */}
+            <div className="flex items-center gap-1.5">
+                <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-foreground/30 pointer-events-none">$</span>
+                    <input
+                        type="number"
+                        value={row.amount}
+                        onChange={(e) => onChange({ ...row, amount: e.target.value })}
+                        placeholder="0.00"
+                        className={numInputCls + " pl-5 w-24"}
+                        step="5"
+                    />
+                </div>
+                <Result value={computed} />
             </div>
         </div>
     );

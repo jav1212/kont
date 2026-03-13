@@ -14,9 +14,9 @@ const PERKS = [
 
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
-    "bg-white/[0.04] border border-white/10",
-    "font-mono text-[12px] text-white placeholder:text-white/20",
-    "outline-none focus:border-indigo-500/60 focus:bg-white/[0.06]",
+    "bg-foreground/[0.04] border border-foreground/10",
+    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -83,10 +83,10 @@ export default function SignUpPage() {
                                 Registro
                             </span>
                         </div>
-                        <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-white leading-none">
+                        <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                             Crear<br />cuenta
                         </h1>
-                        <p className="font-mono text-[11px] text-white/30 mt-3 leading-relaxed">
+                        <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
                             Acceso completo al sistema de gestión de nómina.
                         </p>
                     </div>
@@ -105,7 +105,7 @@ export default function SignUpPage() {
                                     Cuenta creada exitosamente
                                 </span>
                             </div>
-                            <p className="font-mono text-[10px] text-white/30 leading-relaxed pl-6">
+                            <p className="font-mono text-[10px] text-foreground/30 leading-relaxed pl-6">
                                 Redirigiendo al inicio de sesión…
                             </p>
                         </div>
@@ -113,7 +113,7 @@ export default function SignUpPage() {
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                                     Nombre completo
                                 </label>
                                 <input
@@ -128,7 +128,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                                     Correo electrónico
                                 </label>
                                 <input
@@ -143,7 +143,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                                     Contraseña
                                 </label>
                                 <input
@@ -158,7 +158,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
                                     Confirmar contraseña
                                 </label>
                                 <input
@@ -187,7 +187,7 @@ export default function SignUpPage() {
                                         "transition-colors duration-150",
                                     ].join(" ")} />
                                 </div>
-                                <span className="font-mono text-[10px] text-white/30 leading-relaxed">
+                                <span className="font-mono text-[10px] text-foreground/30 leading-relaxed">
                                     Acepto los{" "}
                                     <Link href="/terms" className="text-indigo-400/70 hover:text-indigo-400 underline underline-offset-2">
                                         términos de uso
@@ -234,7 +234,7 @@ export default function SignUpPage() {
                         </form>
                     )}
 
-                    <p className="font-mono text-[10px] text-center text-white/30 mt-6">
+                    <p className="font-mono text-[10px] text-center text-foreground/30 mt-6">
                         ¿Ya tienes cuenta?{" "}
                         <Link
                             href="/sign-in"
@@ -247,7 +247,7 @@ export default function SignUpPage() {
 
                 {/* ── RIGHT: Feature list ───────────────────────────────── */}
                 <div className="hidden md:flex flex-col justify-center">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-white/20 mb-6">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-foreground/20 mb-6">
                         Incluido en tu cuenta
                     </p>
                     <div className="border border-white/[0.07] rounded-xl overflow-hidden">
@@ -270,7 +270,7 @@ export default function SignUpPage() {
                                         <path d="M1 3.5l1.8 1.8L6 1.5" />
                                     </svg>
                                 </div>
-                                <span className="font-mono text-[11px] text-white/50">{p.text}</span>
+                                <span className="font-mono text-[11px] text-foreground/50">{p.text}</span>
                             </div>
                         ))}
                     </div>

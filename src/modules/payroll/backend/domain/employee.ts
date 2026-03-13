@@ -1,7 +1,7 @@
 export type EmployeeEstado = "activo" | "inactivo" | "vacacion";
 
 export interface Employee {
-    id?:            number;   // bigint en DB — opcional al crear
+    id?:            string;   // text en DB (usa cedula como PK) — opcional al crear
     companyId:      string;
     cedula:         string;
     nombre:         string;

@@ -24,7 +24,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Anti-flash: apply theme class before paint */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('kont-theme');
+            if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            if (t === 'dark') document.documentElement.classList.add('dark');
+          } catch(e) {}
+        `}} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           {children}

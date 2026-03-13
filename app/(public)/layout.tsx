@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="relative min-h-screen bg-[#0a0a0b] text-white overflow-hidden">
+        <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
 
             {/* ── Ledger grid ───────────────────────────────────────────── */}
             <div
@@ -15,8 +15,8 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 className="pointer-events-none fixed inset-0 z-0"
                 style={{
                     backgroundImage: `
-                        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+                        linear-gradient(var(--grid-line) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)
                     `,
                     backgroundSize: "48px 48px",
                 }}
@@ -29,7 +29,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 style={{
                     top: "-20%", left: "-10%",
                     width: "60vw", height: "60vw",
-                    background: "radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)",
                 }}
             />
 
@@ -40,12 +40,12 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 style={{
                     bottom: "-20%", right: "-10%",
                     width: "50vw", height: "50vw",
-                    background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
                 }}
             />
 
             {/* ── Top bar ───────────────────────────────────────────────── */}
-            <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-white/[0.06]">
+            <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-foreground/[0.07]">
                 <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-[5px] bg-indigo-500 flex items-center justify-center flex-shrink-0">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -55,14 +55,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                             <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
                         </svg>
                     </div>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-white/60">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground/60">
                         Kont
                     </span>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/30">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/30">
                         Sistema operativo
                     </span>
                 </div>
@@ -74,11 +74,11 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </main>
 
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-white/[0.06] mt-auto">
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">
+            <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
+                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/25">
                     © {new Date().getFullYear()} Kont
                 </span>
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">
+                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/25">
                     v2.2 · LOTTT
                 </span>
             </footer>

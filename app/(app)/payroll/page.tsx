@@ -1,18 +1,14 @@
 "use client";
 
-// ============================================================================
-// PAYROLL CALCULATOR — page v3.0
-// Quincena-aware: selects month/year + fortnight, auto-fills earning rows.
-// ============================================================================
-
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { accordionItemProps, BaseAccordion } from "@/src/shared/frontend/components/base-accordion";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
-import { ParamsSection, EarningsSection, DeductionsSection, BonusesSection } from "@/src/modules/payroll/frontend/components/payroll-accordion-sections";
+import { EarningsSection, DeductionsSection, BonusesSection } from "@/src/modules/payroll/frontend/components/payroll-accordion-sections";
 import { PayrollEmployeeTable } from "@/src/modules/payroll/frontend/components/payroll-employee-table";
+import type { EmployeeResult }  from "@/src/modules/payroll/frontend/components/payroll-employee-table";
 import { EarningRow, DeductionRow, BonusRow, EarningValue, DeductionValue, BonusValue } from "@/src/modules/payroll/frontend/types/payroll-types";
-import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { useCompany }        from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useEmployee }       from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 
 // ============================================================================
 // QUINCENA UTILS
@@ -21,19 +17,12 @@ import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 type Quincena = 1 | 2;
 
 interface QuincenaInfo {
-    /** Lun–Vie count */
     weekdays:  number;
-    /** Saturday count */
     saturdays: number;
-    /** Sunday count */
     sundays:   number;
-    /** Monday count (for weekly deduction base) */
     mondays:   number;
-    /** ISO date of first day (used as payrollDate) */
     startDate: string;
-    /** ISO date of last day */
     endDate:   string;
-    /** Human label e.g. "1 – 15 de Marzo 2026" */
     label:     string;
 }
 
@@ -44,15 +33,14 @@ const MONTH_NAMES = [
 
 function getQuincenaInfo(year: number, month: number, q: Quincena): QuincenaInfo {
     const startDay = q === 1 ? 1 : 16;
-    const endDay   = q === 1 ? 15 : new Date(year, month, 0).getDate(); // month is 1-based here
-
-    const start = new Date(year, month - 1, startDay);
-    const end   = new Date(year, month - 1, endDay);
+    const endDay   = q === 1 ? 15 : new Date(year, month, 0).getDate();
+    const start    = new Date(year, month - 1, startDay);
+    const end      = new Date(year, month - 1, endDay);
 
     let weekdays = 0, saturdays = 0, sundays = 0, mondays = 0;
     const cur = new Date(start);
     while (cur <= end) {
-        const wd = cur.getDay(); // 0=Sun,1=Mon,...,6=Sat
+        const wd = cur.getDay();
         if (wd === 0)      sundays++;
         else if (wd === 6) saturdays++;
         else               weekdays++;
@@ -60,27 +48,26 @@ function getQuincenaInfo(year: number, month: number, q: Quincena): QuincenaInfo
         cur.setDate(cur.getDate() + 1);
     }
 
-    const pad  = (n: number) => String(n).padStart(2, "0");
-    const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const pad   = (n: number) => String(n).padStart(2, "0");
+    const toISO = (d: Date)   => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
     return {
         weekdays, saturdays, sundays, mondays,
-        startDate: toISO(start),
-        endDate:   toISO(end),
-        label: `${startDay} – ${endDay} de ${MONTH_NAMES[month-1]} ${year}`,
+        startDate: toISO(start), endDate: toISO(end),
+        label: `${startDay}–${endDay} de ${MONTH_NAMES[month-1]} ${year}`,
     };
 }
 
 // ============================================================================
-// DEFAULT ROWS (quantities will be overwritten by quincena auto-fill)
+// DEFAULT ROWS
 // ============================================================================
 
 let _seq = 0;
 const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 
 const makeDefaultEarnings = (wd: number, sat: number, sun: number): EarningRow[] => [
-    { id: uid("e"), label: "Dias Normales", quantity: String(wd),  multiplier: "1.0", useDaily: true },
-    { id: uid("e"), label: "Sabados",       quantity: String(sat), multiplier: "1.0", useDaily: true },
+    { id: uid("e"), label: "Días Normales", quantity: String(wd),  multiplier: "1.0", useDaily: true },
+    { id: uid("e"), label: "Sábados",       quantity: String(sat), multiplier: "1.0", useDaily: true },
     { id: uid("e"), label: "Domingos",      quantity: String(sun), multiplier: "1.5", useDaily: true },
 ];
 
@@ -91,133 +78,68 @@ const DEFAULT_DEDUCTIONS: DeductionRow[] = [
 ];
 
 const DEFAULT_BONUSES: BonusRow[] = [
-    { id: uid("b"), label: "Bono Alimentacion", amount: "40.00" },
+    { id: uid("b"), label: "Bono Alimentación", amount: "40.00" },
     { id: uid("b"), label: "Bono Transporte",   amount: "20.00" },
 ];
 
 // ============================================================================
-// MONTH / QUINCENA SELECTOR COMPONENT
+// LEFT PANEL — collapsible section
 // ============================================================================
 
-interface QuincenaSelectorProps {
-    year:       number;
-    month:      number;
-    quincena:   Quincena;
-    info:       QuincenaInfo;
-    onYearChange:     (y: number) => void;
-    onMonthChange:    (m: number) => void;
-    onQuincenaChange: (q: Quincena) => void;
-    onAutoFill:       () => void;
+function ConfigSection({
+    title, badge, open, onToggle, children,
+}: {
+    title:    string;
+    badge?:   string;
+    open:     boolean;
+    onToggle: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="border-b border-border-light last:border-0">
+            <button
+                onClick={onToggle}
+                className="w-full flex items-center justify-between px-5 py-3 hover:bg-foreground/[0.02] transition-colors duration-150"
+            >
+                <div className="flex items-center gap-3">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground/70">
+                        {title}
+                    </span>
+                    {badge && (
+                        <span className="font-mono text-[10px] tabular-nums text-foreground/35">
+                            {badge}
+                        </span>
+                    )}
+                </div>
+                <svg
+                    width="10" height="10" viewBox="0 0 10 10" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    className="text-foreground/30 transition-transform duration-200 flex-shrink-0"
+                    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+                >
+                    <path d="M2 4l3 3 3-3" />
+                </svg>
+            </button>
+            {open && (
+                <div className="px-5 pb-4">
+                    {children}
+                </div>
+            )}
+        </div>
+    );
 }
 
-const inputCls = [
-    "h-8 px-2 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[12px] text-foreground",
-    "focus:ring-2 focus:ring-primary-500/10 focus:border-primary-400",
-    "hover:border-border-medium transition-colors duration-150",
-].join(" ");
+// ============================================================================
+// STAT CHIP — small metric inside the period card
+// ============================================================================
 
-function QuincenaSelector({
-    year, month, quincena, info,
-    onYearChange, onMonthChange, onQuincenaChange, onAutoFill,
-}: QuincenaSelectorProps) {
-    const currentYear = new Date().getFullYear();
-    const years = [currentYear - 1, currentYear, currentYear + 1];
-
-    const qBtnCls = (active: boolean) => [
-        "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-[0.18em] border transition-colors duration-150",
-        active
-            ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-foreground hover:border-border-medium hover:bg-surface-2",
-    ].join(" ");
-
+function DayStat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
     return (
-        <div className="space-y-4">
-            {/* Row 1: Month + Year */}
-            <div className="flex flex-wrap items-end gap-4">
-                <div className="flex flex-col gap-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Mes</span>
-                    <select
-                        value={month}
-                        onChange={(e) => onMonthChange(Number(e.target.value))}
-                        className={inputCls + " w-40"}
-                    >
-                        {MONTH_NAMES.map((name, i) => (
-                            <option key={i+1} value={i+1}>{name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Año</span>
-                    <select
-                        value={year}
-                        onChange={(e) => onYearChange(Number(e.target.value))}
-                        className={inputCls + " w-24"}
-                    >
-                        {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                </div>
-
-                {/* Quincena toggle */}
-                <div className="flex flex-col gap-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Quincena</span>
-                    <div className="flex gap-2">
-                        <button onClick={() => onQuincenaChange(1)} className={qBtnCls(quincena === 1)}>
-                            1ra &nbsp;(1–15)
-                        </button>
-                        <button onClick={() => onQuincenaChange(2)} className={qBtnCls(quincena === 2)}>
-                            2da &nbsp;(16–fin)
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Row 2: Summary + auto-fill button */}
-            <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border-light bg-surface-2">
-                {/* Day breakdown */}
-                <div className="flex items-center gap-6">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">Periodo</span>
-                        <span className="font-mono text-[11px] font-medium text-foreground">{info.label}</span>
-                    </div>
-                    <div className="w-px h-8 bg-border-light" />
-                    <div className="flex items-center gap-5 tabular-nums">
-                        <div className="flex flex-col items-center gap-0.5">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">Normales</span>
-                            <span className="font-mono text-[16px] font-black text-foreground">{info.weekdays}</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-0.5">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">Sabados</span>
-                            <span className="font-mono text-[16px] font-black text-foreground">{info.saturdays}</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-0.5">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">Domingos</span>
-                            <span className="font-mono text-[16px] font-black text-foreground">{info.sundays}</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-0.5">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-neutral-400">Lunes</span>
-                            <span className="font-mono text-[16px] font-black text-neutral-400">{info.mondays}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Auto-fill button */}
-                <button
-                    onClick={onAutoFill}
-                    className={[
-                        "h-8 px-4 rounded-lg flex items-center gap-2",
-                        "font-mono text-[10px] uppercase tracking-[0.18em]",
-                        "bg-primary-500 text-white border border-primary-600",
-                        "hover:bg-primary-600 active:bg-primary-700 transition-colors duration-150",
-                    ].join(" ")}
-                >
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M4 1h4M2 4h8M1 7h10M3 10h6" />
-                    </svg>
-                    Rellenar dias
-                </button>
-            </div>
+        <div className="flex flex-col items-center gap-0.5">
+            <span className={["font-mono text-[18px] font-black tabular-nums", muted ? "text-foreground/30" : "text-foreground"].join(" ")}>
+                {value}
+            </span>
+            <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-foreground/35">{label}</span>
         </div>
     );
 }
@@ -227,17 +149,14 @@ function QuincenaSelector({
 // ============================================================================
 
 export default function PayrollCalculator() {
-    const { companyId, company, companies, loading: companyLoading, selectCompany } = useCompany();
+    const { companyId, company } = useCompany();
     const { employees, loading: empLoading, error: empError, upsert } = useEmployee(companyId);
+    const { confirm } = usePayrollHistory(companyId);
 
-    const [expandedKeys, setExpandedKeys] = useState<any>(
-        new Set(["params", "earnings", "deductions", "bonuses"])
-    );
-
-    // ── Quincena state ────────────────────────────────────────────────────
+    // ── Quincena ───────────────────────────────────────────────────────────
     const now = new Date();
     const [selYear,     setSelYear]     = useState(now.getFullYear());
-    const [selMonth,    setSelMonth]    = useState(now.getMonth() + 1); // 1-based
+    const [selMonth,    setSelMonth]    = useState(now.getMonth() + 1);
     const [selQuincena, setSelQuincena] = useState<Quincena>(now.getDate() <= 15 ? 1 : 2);
 
     const quincenaInfo = useMemo(
@@ -245,50 +164,46 @@ export default function PayrollCalculator() {
         [selYear, selMonth, selQuincena]
     );
 
-    // payrollDate = last day of quincena (used for PDF date header)
-    const payrollDate = quincenaInfo.endDate;
-
-    // ── Base params ───────────────────────────────────────────────────────
+    // ── Global params ──────────────────────────────────────────────────────
     const [exchangeRate,  setExchangeRate]  = useState("79.59");
     const [monthlySalary, setMonthlySalary] = useState("130.00");
 
-    // ── Dynamic row lists — pre-filled with current quincena ──────────────
+    // ── Row lists ──────────────────────────────────────────────────────────
     const [earningRows,   setEarningRows]   = useState<EarningRow[]>(() =>
         makeDefaultEarnings(quincenaInfo.weekdays, quincenaInfo.saturdays, quincenaInfo.sundays)
     );
     const [deductionRows, setDeductionRows] = useState<DeductionRow[]>(DEFAULT_DEDUCTIONS);
     const [bonusRows,     setBonusRows]     = useState<BonusRow[]>(DEFAULT_BONUSES);
 
-    // ── Auto-fill handler: update quantities of the first 3 earning rows ──
+    // ── Left panel sections open/closed ────────────────────────────────────
+    const [openSections, setOpenSections] = useState({
+        earnings:   true,
+        deductions: true,
+        bonuses:    true,
+    });
+    const toggleSection = (key: keyof typeof openSections) =>
+        setOpenSections((s) => ({ ...s, [key]: !s[key] }));
+
+    // ── Auto-fill days when quincena changes ───────────────────────────────
     const handleAutoFill = useCallback(() => {
         setEarningRows((prev) => {
             const next = [...prev];
-            const newQtys = [
-                String(quincenaInfo.weekdays),
-                String(quincenaInfo.saturdays),
-                String(quincenaInfo.sundays),
-            ];
-            newQtys.forEach((qty, i) => {
-                if (next[i]) next[i] = { ...next[i], quantity: qty };
-            });
+            [String(quincenaInfo.weekdays), String(quincenaInfo.saturdays), String(quincenaInfo.sundays)]
+                .forEach((qty, i) => { if (next[i]) next[i] = { ...next[i], quantity: qty }; });
             return next;
         });
     }, [quincenaInfo]);
 
-    // Auto-fill whenever quincena changes (convenience UX)
-    useEffect(() => {
-        handleAutoFill();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selYear, selMonth, selQuincena]);
+    useEffect(() => { handleAutoFill(); }, [selYear, selMonth, selQuincena]); // eslint-disable-line
 
-    // ── Derived scalars ───────────────────────────────────────────────────
+    // ── Derived ────────────────────────────────────────────────────────────
     const mondaysInMonth = quincenaInfo.mondays;
     const dailyRate      = useMemo(() => (parseFloat(monthlySalary) || 0) / 30,                 [monthlySalary]);
     const weeklyRate     = useMemo(() => calculateWeeklyFactor(parseFloat(monthlySalary) || 0), [monthlySalary]);
     const bcvRate        = useMemo(() => parseFloat(exchangeRate) || 0,                         [exchangeRate]);
     const weeklyBase     = useMemo(() => weeklyRate * mondaysInMonth,                           [weeklyRate, mondaysInMonth]);
 
-    // ── Computed row values ───────────────────────────────────────────────
+    // ── Computed row values (for audit display) ────────────────────────────
     const earningValues = useMemo<EarningValue[]>(() =>
         earningRows.map((r) => ({
             ...r,
@@ -314,166 +229,272 @@ export default function PayrollCalculator() {
     const totalDeductions = useMemo(() => deductionValues.reduce((s, r) => s + r.computed, 0), [deductionValues]);
     const totalBonuses    = useMemo(() => bonusValues.reduce((s, r)     => s + r.computed, 0), [bonusValues]);
 
-    // ── Earning mutators ──────────────────────────────────────────────────
-    const updateEarning = useCallback((id: string, u: EarningRow) =>
-        setEarningRows((rs) => rs.map((r) => r.id === id ? u : r)), []);
-    const removeEarning = useCallback((id: string) =>
-        setEarningRows((rs) => rs.filter((r) => r.id !== id)), []);
-    const addEarning    = useCallback((b: EarningRow) =>
-        setEarningRows((rs) => [...rs, b]), []);
+    // ── Row mutators ───────────────────────────────────────────────────────
+    const updateEarning   = useCallback((id: string, u: EarningRow)   => setEarningRows((rs)   => rs.map((r) => r.id === id ? u : r)), []);
+    const removeEarning   = useCallback((id: string)                   => setEarningRows((rs)   => rs.filter((r) => r.id !== id)), []);
+    const addEarning      = useCallback((b: EarningRow)                => setEarningRows((rs)   => [...rs, b]), []);
+    const updateDeduction = useCallback((id: string, u: DeductionRow) => setDeductionRows((rs) => rs.map((r) => r.id === id ? u : r)), []);
+    const removeDeduction = useCallback((id: string)                   => setDeductionRows((rs) => rs.filter((r) => r.id !== id)), []);
+    const addDeduction    = useCallback((b: DeductionRow)              => setDeductionRows((rs) => [...rs, b]), []);
+    const updateBonus     = useCallback((id: string, u: BonusRow)     => setBonusRows((rs)     => rs.map((r) => r.id === id ? u : r)), []);
+    const removeBonus     = useCallback((id: string)                   => setBonusRows((rs)     => rs.filter((r) => r.id !== id)), []);
+    const addBonus        = useCallback((b: BonusRow)                  => setBonusRows((rs)     => [...rs, b]), []);
 
-    // ── Deduction mutators ────────────────────────────────────────────────
-    const updateDeduction = useCallback((id: string, u: DeductionRow) =>
-        setDeductionRows((rs) => rs.map((r) => r.id === id ? u : r)), []);
-    const removeDeduction = useCallback((id: string) =>
-        setDeductionRows((rs) => rs.filter((r) => r.id !== id)), []);
-    const addDeduction    = useCallback((b: DeductionRow) =>
-        setDeductionRows((rs) => [...rs, b]), []);
+    // ── Confirm ────────────────────────────────────────────────────────────
+    const handleConfirm = useCallback(async (results: EmployeeResult[]): Promise<string | null> => {
+        if (!companyId) return "No hay empresa seleccionada";
+        return confirm({
+            run: {
+                companyId,
+                periodStart:  quincenaInfo.startDate,
+                periodEnd:    quincenaInfo.endDate,
+                exchangeRate: bcvRate,
+            },
+            receipts: results.map((r) => ({
+                companyId,
+                employeeId:      r.cedula,
+                employeeCedula:  r.cedula,
+                employeeNombre:  r.nombre,
+                employeeCargo:   r.cargo,
+                monthlySalary:   r.salarioMensual,
+                totalEarnings:   r.totalEarnings,
+                totalDeductions: r.totalDeductions,
+                totalBonuses:    r.totalBonuses,
+                netPay:          r.net,
+                calculationData: { gross: r.gross, netUsd: r.netUSD, mondaysInMonth },
+            })),
+        });
+    }, [companyId, quincenaInfo, bcvRate, mondaysInMonth, confirm]);
 
-    // ── Bonus mutators ────────────────────────────────────────────────────
-    const updateBonus = useCallback((id: string, u: BonusRow) =>
-        setBonusRows((rs) => rs.map((r) => r.id === id ? u : r)), []);
-    const removeBonus = useCallback((id: string) =>
-        setBonusRows((rs) => rs.filter((r) => r.id !== id)), []);
-    const addBonus    = useCallback((b: BonusRow) =>
-        setBonusRows((rs) => [...rs, b]), []);
+    // ── Quincena buttons ───────────────────────────────────────────────────
+    const qBtnCls = (active: boolean) => [
+        "flex-1 h-8 rounded-lg font-mono text-[10px] uppercase tracking-[0.16em] border transition-colors duration-150",
+        active
+            ? "bg-primary-500 border-primary-600 text-white"
+            : "bg-surface-1 border-border-light text-foreground/60 hover:border-border-medium hover:text-foreground",
+    ].join(" ");
 
-    // ── Render ────────────────────────────────────────────────────────────
+    const fieldCls = [
+        "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+        "font-mono text-[13px] text-foreground tabular-nums",
+        "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
+    ].join(" ");
+
+    const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+
+    // ── Render ─────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-surface-2 p-8 font-mono">
-            <div className="max-w-[1400px] mx-auto space-y-6">
+        <div className="flex h-full bg-surface-2 font-mono overflow-hidden">
 
-                <header className="pb-4 border-b border-border-light text-foreground">
-                    <nav className="text-[10px] uppercase text-neutral-400 mb-1 tracking-widest">
-                        Nomina / Calculadora / v3.0
-                    </nav>
-                    <div className="flex items-end justify-between">
-                        <h1 className="text-xl font-bold uppercase tracking-tighter">
-                            Panel de Configuracion
-                        </h1>
-                        {companyLoading ? (
-                            <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest animate-pulse">
-                                Cargando empresa...
-                            </span>
-                        ) : companies.length > 1 ? (
+            {/* ══ LEFT PANEL — configuration ══════════════════════════════ */}
+            <aside className="w-80 flex-shrink-0 flex flex-col border-r border-border-light bg-surface-1 overflow-y-auto">
+
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-border-light">
+                    <p className="text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">
+                        Nomina · Calculadora
+                    </p>
+                    <p className="text-[13px] font-bold uppercase tracking-tight text-foreground">
+                        Configuración
+                    </p>
+                </div>
+
+                {/* ── Period selector ─────────────────────────────────── */}
+                <div className="px-5 py-4 border-b border-border-light space-y-3">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                        Período
+                    </p>
+
+                    {/* Month + Year */}
+                    <div className="flex gap-2">
+                        <div className="flex-1">
+                            <label className={labelCls}>Mes</label>
                             <select
-                                value={companyId ?? ""}
-                                onChange={(e) => selectCompany(e.target.value)}
-                                className={[
-                                    "h-8 px-3 rounded-lg border border-border-light bg-surface-1",
-                                    "hover:border-border-medium focus:border-primary-400 focus:ring-2 focus:ring-primary-500/10",
-                                    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground",
-                                    "outline-none transition-colors duration-150",
-                                ].join(" ")}
+                                value={selMonth}
+                                onChange={(e) => setSelMonth(Number(e.target.value))}
+                                className={fieldCls}
                             >
-                                {companies.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                {MONTH_NAMES.map((name, i) => (
+                                    <option key={i+1} value={i+1}>{name}</option>
                                 ))}
                             </select>
-                        ) : company ? (
-                            <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">
-                                {company.name}
-                            </span>
-                        ) : null}
-                    </div>
-                </header>
-
-                <BaseAccordion.Root selectedKeys={expandedKeys} onSelectionChange={setExpandedKeys}>
-
-                    <BaseAccordion.Item key="params"
-                        {...accordionItemProps({ title: "01. Parametros Generales", subtitle: "Quincena, tasa BCV y salario base" })}
-                    >
-                        <div className="space-y-6">
-                            <QuincenaSelector
-                                year={selYear}
-                                month={selMonth}
-                                quincena={selQuincena}
-                                info={quincenaInfo}
-                                onYearChange={setSelYear}
-                                onMonthChange={setSelMonth}
-                                onQuincenaChange={setSelQuincena}
-                                onAutoFill={handleAutoFill}
-                            />
-
-                            <ParamsSection
-                                payrollDate={payrollDate}
-                                exchangeRate={exchangeRate}
-                                monthlySalary={monthlySalary}
-                                dailyRate={dailyRate}
-                                weeklyRate={weeklyRate}
-                                mondaysInMonth={mondaysInMonth}
-                                onDateChange={() => {}}
-                                onExchangeRateChange={setExchangeRate}
-                                onMonthlySalaryChange={setMonthlySalary}
-                            />
                         </div>
-                    </BaseAccordion.Item>
+                        <div className="w-20">
+                            <label className={labelCls}>Año</label>
+                            <select
+                                value={selYear}
+                                onChange={(e) => setSelYear(Number(e.target.value))}
+                                className={fieldCls}
+                            >
+                                {[now.getFullYear()-1, now.getFullYear(), now.getFullYear()+1].map((y) => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
 
-                    <BaseAccordion.Item key="earnings"
-                        {...accordionItemProps({ title: "02. Asignaciones", subtitle: `${quincenaInfo.weekdays}d norm / ${quincenaInfo.saturdays}d sab / ${quincenaInfo.sundays}d dom — auto-calculado` })}
+                    {/* Quincena toggle */}
+                    <div>
+                        <label className={labelCls}>Quincena</label>
+                        <div className="flex gap-1.5">
+                            <button onClick={() => setSelQuincena(1)} className={qBtnCls(selQuincena === 1)}>1–15</button>
+                            <button onClick={() => setSelQuincena(2)} className={qBtnCls(selQuincena === 2)}>16–fin</button>
+                        </div>
+                    </div>
+
+                    {/* Day summary */}
+                    <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border-light bg-surface-2">
+                        <DayStat label="Norm" value={quincenaInfo.weekdays} />
+                        <div className="w-px h-6 bg-border-light" />
+                        <DayStat label="Sáb"  value={quincenaInfo.saturdays} />
+                        <div className="w-px h-6 bg-border-light" />
+                        <DayStat label="Dom"  value={quincenaInfo.sundays} />
+                        <div className="w-px h-6 bg-border-light" />
+                        <DayStat label="Lun"  value={quincenaInfo.mondays} muted />
+                    </div>
+                </div>
+
+                {/* ── BCV Rate ────────────────────────────────────────── */}
+                <div className="px-5 py-4 border-b border-border-light">
+                    <label className={labelCls}>Tasa BCV (VES / $)</label>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                            Bs.
+                        </span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={exchangeRate}
+                            onChange={(e) => setExchangeRate(e.target.value)}
+                            className={fieldCls + " pl-9 text-right"}
+                        />
+                    </div>
+                    <p className="font-mono text-[9px] text-foreground/30 mt-1.5">
+                        Tasa oficial del Banco Central de Venezuela
+                    </p>
+                </div>
+
+                {/* ── Reference salary ────────────────────────────────── */}
+                <div className="px-5 py-3 border-b border-border-light">
+                    <label className={labelCls}>Salario mensual referencia ($)</label>
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                            $
+                        </span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={monthlySalary}
+                            onChange={(e) => setMonthlySalary(e.target.value)}
+                            className={fieldCls + " pl-7 text-right"}
+                        />
+                    </div>
+                    <p className="font-mono text-[9px] text-foreground/30 mt-1.5">
+                        Usado para previsualizar fórmulas · cada empleado usa su propio salario
+                    </p>
+                </div>
+
+                {/* ── Collapsible sections ─────────────────────────────── */}
+                <div className="flex-1">
+                    <ConfigSection
+                        title="Asignaciones"
+                        badge={totalEarnings > 0 ? `${totalEarnings.toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : undefined}
+                        open={openSections.earnings}
+                        onToggle={() => toggleSection("earnings")}
                     >
                         <EarningsSection
-                            rows={earningRows}
-                            values={earningValues}
-                            total={totalEarnings}
-                            dailyRate={dailyRate}
-                            weeklyRate={weeklyRate}
-                            mondaysInMonth={mondaysInMonth}
-                            onUpdate={updateEarning}
-                            onRemove={removeEarning}
-                            onAdd={addEarning}
+                            rows={earningRows}   values={earningValues} total={totalEarnings}
+                            dailyRate={dailyRate} weeklyRate={weeklyRate} mondaysInMonth={mondaysInMonth}
+                            onUpdate={updateEarning} onRemove={removeEarning} onAdd={addEarning}
                         />
-                    </BaseAccordion.Item>
+                    </ConfigSection>
 
-                    <BaseAccordion.Item key="deductions"
-                        {...accordionItemProps({ title: "03. Deducciones", subtitle: "Configuracion de retenciones" })}
+                    <ConfigSection
+                        title="Deducciones"
+                        badge={totalDeductions > 0 ? `-${totalDeductions.toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : undefined}
+                        open={openSections.deductions}
+                        onToggle={() => toggleSection("deductions")}
                     >
                         <DeductionsSection
-                            rows={deductionRows}
-                            values={deductionValues}
-                            total={totalDeductions}
-                            weeklyBase={weeklyBase}
-                            weeklyRate={weeklyRate}
-                            mondaysInMonth={mondaysInMonth}
+                            rows={deductionRows} values={deductionValues} total={totalDeductions}
+                            weeklyBase={weeklyBase} weeklyRate={weeklyRate} mondaysInMonth={mondaysInMonth}
                             monthlySalary={monthlySalary}
-                            onUpdate={updateDeduction}
-                            onRemove={removeDeduction}
-                            onAdd={addDeduction}
+                            onUpdate={updateDeduction} onRemove={removeDeduction} onAdd={addDeduction}
                         />
-                    </BaseAccordion.Item>
+                    </ConfigSection>
 
-                    <BaseAccordion.Item key="bonuses"
-                        {...accordionItemProps({ title: "04. Bonos y Extras", subtitle: "Pagos indexados a la tasa BCV" })}
+                    <ConfigSection
+                        title="Bonos y Extras"
+                        badge={totalBonuses > 0 ? `${totalBonuses.toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : undefined}
+                        open={openSections.bonuses}
+                        onToggle={() => toggleSection("bonuses")}
                     >
                         <BonusesSection
-                            rows={bonusRows}
-                            values={bonusValues}
-                            total={totalBonuses}
+                            rows={bonusRows} values={bonusValues} total={totalBonuses}
                             bcvRate={bcvRate}
-                            onUpdate={updateBonus}
-                            onRemove={removeBonus}
-                            onAdd={addBonus}
+                            onUpdate={updateBonus} onRemove={removeBonus} onAdd={addBonus}
                         />
-                    </BaseAccordion.Item>
+                    </ConfigSection>
+                </div>
 
-                </BaseAccordion.Root>
+            </aside>
 
-                <PayrollEmployeeTable
-                    employees={employees}
-                    empLoading={empLoading}
-                    empError={empError}
-                    onUpsert={upsert}
-                    earningRows={earningRows}
-                    deductionRows={deductionRows}
-                    bonusRows={bonusRows}
-                    mondaysInMonth={mondaysInMonth}
-                    bcvRate={bcvRate}
-                    companyName={company?.name ?? ""}
-                    companyId={company?.id ?? ""}
-                    payrollDate={payrollDate}
-                />
+            {/* ══ RIGHT PANEL — results ════════════════════════════════════ */}
+            <main className="flex-1 flex flex-col overflow-hidden">
 
-            </div>
+                {/* Header bar */}
+                <div className="flex items-center justify-between px-6 py-3.5 border-b border-border-light bg-surface-1 flex-shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col gap-0.5">
+                            <p className="font-mono text-[11px] font-semibold text-foreground uppercase tracking-tight">
+                                {quincenaInfo.label}
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/35">
+                                    {employees.filter(e => e.estado === "activo").length} activos · {employees.length} total
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {/* BCV badge */}
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2">
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/35">BCV</span>
+                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">
+                                {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                            </span>
+                        </div>
+
+                        {company && (
+                            <span className="font-mono text-[10px] text-foreground/35 uppercase tracking-widest">
+                                {company.name}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Table area */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    <PayrollEmployeeTable
+                        employees={employees}
+                        empLoading={empLoading}
+                        empError={empError}
+                        onUpsert={upsert}
+                        onConfirm={handleConfirm}
+                        earningRows={earningRows}
+                        deductionRows={deductionRows}
+                        bonusRows={bonusRows}
+                        mondaysInMonth={mondaysInMonth}
+                        bcvRate={bcvRate}
+                        companyName={company?.name ?? ""}
+                        companyId={company?.id ?? ""}
+                        payrollDate={quincenaInfo.endDate}
+                    />
+                </div>
+
+            </main>
+
         </div>
     );
 }

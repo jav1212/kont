@@ -8,20 +8,9 @@
 // ============================================================================
 
 import { useCallback, useEffect, useState } from "react";
+import type { Employee, EmployeeEstado } from "@/src/modules/payroll/backend/domain/employee";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type EmployeeEstado = "activo" | "inactivo" | "vacacion";
-
-export interface Employee {
-    id?:            number;
-    companyId:      string;
-    cedula:         string;
-    nombre:         string;
-    cargo:          string;
-    salarioMensual: number;
-    estado:         EmployeeEstado;
-}
+export type { Employee, EmployeeEstado };
 
 interface UseEmployeeResult {
     employees:  Employee[];
@@ -29,6 +18,7 @@ interface UseEmployeeResult {
     error:      string | null;
     reload:     () => Promise<void>;
     upsert:     (employees: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
+    remove:     (ids: string[]) => Promise<string | null>;
 }
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
@@ -98,6 +88,22 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         return null;
     }, [companyId, reload]);
 
+    // ── Delete ────────────────────────────────────────────────────────────
+
+    const remove = useCallback(async (ids: string[]): Promise<string | null> => {
+        if (!companyId) return "No hay empresa seleccionada";
+
+        const { ok, json } = await apiFetch("/api/employees/delete", {
+            method:  "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ ids }),
+        });
+
+        if (!ok) return json.error ?? "Error al eliminar empleados";
+        await reload();
+        return null;
+    }, [companyId, reload]);
+
     // ── Return ────────────────────────────────────────────────────────────
 
     return {
@@ -106,5 +112,6 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         error,
         reload,
         upsert,
+        remove,
     };
 }
