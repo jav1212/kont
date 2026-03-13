@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 
 // ============================================================================
 // CONSTANTS
@@ -13,6 +14,12 @@ const cellInput = [
     "font-mono text-[12px] text-foreground",
     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
     "transition-colors duration-150 placeholder:text-foreground/25",
+].join(" ");
+
+const toolbarBtn = [
+    "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
+    "hover:border-border-medium hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed",
+    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground transition-colors duration-150",
 ].join(" ");
 
 // ============================================================================
@@ -50,12 +57,13 @@ const IconPlus = () => (
         <path d="M6 1v10M1 6h10" />
     </svg>
 );
+
 // ============================================================================
 // PAGE
 // ============================================================================
 
 export default function CompaniesPage() {
-    const { companies, loading, error, save, update, remove } = useCompany();
+    const { companies, loading, error, save, update, remove, reload } = useCompany();
 
     // ── Edit state ────────────────────────────────────────────────────────
     const [editingId,   setEditingId]   = useState<string | null>(null);
@@ -74,6 +82,18 @@ export default function CompaniesPage() {
     const [confirmId,   setConfirmId]   = useState<string | null>(null);
     const [deleting,    setDeleting]    = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+
+    // ── CSV state ──────────────────────────────────────────────────────────
+    const [csvLoading,  setCsvLoading]  = useState(false);
+    const [csvError,    setCsvError]    = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ── Paste modal state ──────────────────────────────────────────────────
+    const [pasteOpen,   setPasteOpen]   = useState(false);
+    const [pasteText,   setPasteText]   = useState("");
+    const [pasteErrors, setPasteErrors] = useState<string[]>([]);
+    const [pasteCount,  setPasteCount]  = useState<number | null>(null);
+    const [pasteImporting, setPasteImporting] = useState(false);
 
     // ── Edit actions ───────────────────────────────────────────────────────
 
@@ -127,6 +147,71 @@ export default function CompaniesPage() {
         if (err) { setDeleteError(err); } else { setConfirmId(null); }
     }, [remove]);
 
+    // ── CSV export ─────────────────────────────────────────────────────────
+
+    const handleExport = useCallback(() => {
+        if (!companies.length) return;
+        downloadCsv(companiesToCsv(companies), `empresas_${new Date().toISOString().split("T")[0]}.csv`);
+    }, [companies]);
+
+    // ── CSV import (file) ──────────────────────────────────────────────────
+
+    const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setCsvError(null);
+        setCsvLoading(true);
+        const { companies: parsed, errors } = parseCompaniesCsv(await file.text());
+        if (errors.length > 0) {
+            setCsvError(errors[0]);
+            setCsvLoading(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+        let firstErr: string | null = null;
+        for (const row of parsed) {
+            const err = await save({ id: row.rif, name: row.nombre });
+            if (err && !firstErr) firstErr = err;
+        }
+        if (firstErr) setCsvError(firstErr);
+        setCsvLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }, [save]);
+
+    // ── Paste modal ────────────────────────────────────────────────────────
+
+    const handlePasteChange = useCallback((text: string) => {
+        setPasteText(text);
+        if (!text.trim()) { setPasteErrors([]); setPasteCount(null); return; }
+        const { companies: parsed, errors } = parseCompaniesCsv(text);
+        setPasteErrors(errors);
+        setPasteCount(errors.length === 0 ? parsed.length : null);
+    }, []);
+
+    const handlePasteImport = useCallback(async () => {
+        const { companies: parsed, errors } = parseCompaniesCsv(pasteText);
+        if (errors.length > 0) return;
+        setPasteImporting(true);
+        let firstErr: string | null = null;
+        for (const row of parsed) {
+            const err = await save({ id: row.rif, name: row.nombre });
+            if (err && !firstErr) firstErr = err;
+        }
+        setPasteImporting(false);
+        if (firstErr) { setPasteErrors([firstErr]); return; }
+        setPasteOpen(false);
+        setPasteText("");
+        setPasteErrors([]);
+        setPasteCount(null);
+    }, [pasteText, save]);
+
+    const closePasteModal = useCallback(() => {
+        setPasteOpen(false);
+        setPasteText("");
+        setPasteErrors([]);
+        setPasteCount(null);
+    }, []);
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     const formatDate = (iso?: string) => {
@@ -147,7 +232,7 @@ export default function CompaniesPage() {
                     <nav className="text-[10px] uppercase text-foreground/30 mb-1 tracking-widest">
                         Empresas
                     </nav>
-                    <div className="flex items-end justify-between gap-4">
+                    <div className="flex items-end justify-between gap-4 flex-wrap">
                         <div>
                             <h1 className="text-xl font-bold uppercase tracking-tighter text-foreground">
                                 Mis Empresas
@@ -156,26 +241,54 @@ export default function CompaniesPage() {
                                 {companies.length} empresa{companies.length !== 1 ? "s" : ""}
                             </p>
                         </div>
-                        <button
-                            onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
-                            disabled={showNew}
-                            className={[
-                                "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
-                                "bg-primary-500 border-primary-600 text-white",
-                                "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                                "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
-                            ].join(" ")}
-                        >
-                            <IconPlus />
-                            Nueva empresa
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Export */}
+                            <button onClick={handleExport} disabled={companies.length === 0} className={toolbarBtn}>
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
+                                </svg>
+                                Exportar CSV
+                            </button>
+                            {/* Import file */}
+                            <label className={[toolbarBtn, "cursor-pointer", csvLoading ? "opacity-40 pointer-events-none" : ""].join(" ")}>
+                                {csvLoading ? <Spinner /> : (
+                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
+                                    </svg>
+                                )}
+                                Importar CSV
+                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImportFile} />
+                            </label>
+                            {/* Paste CSV */}
+                            <button onClick={() => setPasteOpen(true)} className={toolbarBtn}>
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="8" height="8" rx="1" />
+                                    <path d="M4 1h4v2H4z" />
+                                </svg>
+                                Pegar CSV
+                            </button>
+                            {/* New */}
+                            <button
+                                onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
+                                disabled={showNew}
+                                className={[
+                                    "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
+                                    "bg-primary-500 border-primary-600 text-white",
+                                    "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
+                                    "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                ].join(" ")}
+                            >
+                                <IconPlus />
+                                Nueva empresa
+                            </button>
+                        </div>
                     </div>
                 </header>
 
                 {/* Errors */}
-                {(deleteError || error) && (
+                {(deleteError || error || csvError) && (
                     <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                        <p className="font-mono text-[10px] text-red-500">{deleteError ?? error}</p>
+                        <p className="font-mono text-[10px] text-red-500">{deleteError ?? csvError ?? error}</p>
                     </div>
                 )}
 
@@ -375,6 +488,85 @@ export default function CompaniesPage() {
                 )}
 
             </div>
+
+            {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
+            {pasteOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="w-full max-w-lg bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
+
+                        {/* Modal header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
+                            <div>
+                                <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
+                                    Pegar CSV
+                                </h2>
+                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                    Empresas · columnas: rif, nombre
+                                </p>
+                            </div>
+                            <button onClick={closePasteModal}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                <IconCancel />
+                            </button>
+                        </div>
+
+                        {/* Textarea */}
+                        <div className="p-5 space-y-3">
+                            <textarea
+                                autoFocus
+                                rows={10}
+                                value={pasteText}
+                                onChange={(e) => handlePasteChange(e.target.value)}
+                                placeholder={`"rif","nombre"\n"J-12345678-9","Mi Empresa S.A."\n"J-98765432-1","Otra Empresa C.A."`}
+                                className={[
+                                    "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
+                                    "font-mono text-[11px] text-foreground leading-relaxed",
+                                    "border-border-light focus:border-primary-500/60 hover:border-border-medium",
+                                    "transition-colors duration-150 placeholder:text-foreground/20",
+                                ].join(" ")}
+                            />
+
+                            {/* Validation feedback */}
+                            {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
+                                <p className="font-mono text-[10px] text-green-500">
+                                    {pasteCount} empresa{pasteCount !== 1 ? "s" : ""} lista{pasteCount !== 1 ? "s" : ""} para importar.
+                                </p>
+                            )}
+                            {pasteErrors.length > 0 && (
+                                <div className="space-y-1">
+                                    {pasteErrors.slice(0, 3).map((e, i) => (
+                                        <p key={i} className="font-mono text-[10px] text-red-500">{e}</p>
+                                    ))}
+                                    {pasteErrors.length > 3 && (
+                                        <p className="font-mono text-[10px] text-foreground/30">…y {pasteErrors.length - 3} error(es) más.</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal footer */}
+                        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
+                            <button onClick={closePasteModal}
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handlePasteImport}
+                                disabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
+                                className={[
+                                    "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-widest",
+                                    "bg-primary-500 text-white hover:bg-primary-600",
+                                    "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
+                                    "flex items-center gap-2",
+                                ].join(" ")}
+                            >
+                                {pasteImporting && <Spinner />}
+                                {pasteImporting ? "Importando…" : "Importar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

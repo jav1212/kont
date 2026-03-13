@@ -4,7 +4,7 @@
 // PAYROLL EMPLOYEE TABLE  v5
 // ============================================================================
 
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
 import type { Column }   from "@/src/shared/frontend/components/base-table";
 import { AuditContainer, AuditRow } from "@/src/shared/frontend/components/base-audit";
@@ -15,7 +15,6 @@ import {
     AddRowButton,
 } from "./payroll-row-editors";
 import type { EarningRow, DeductionRow, BonusRow } from "../types/payroll-types";
-import { employeesToCsv, downloadCsv, parseCsv } from "../utils/employee-csv";
 import { generatePayrollPdf, PdfEmployeeResult } from "../utils/payroll-pdf";
 import { Employee } from "../hooks/use-employee";
 
@@ -118,15 +117,6 @@ const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 const EMPTY_OVERRIDE = (): EmployeeOverride => ({ extraEarnings: [], extraDeductions: [], extraBonuses: [] });
 const fmt = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const inputCls = (error?: boolean, ok?: boolean) => [
-    "h-8 px-2 rounded-lg border bg-surface-1 outline-none",
-    "font-mono text-[12px] tabular-nums text-foreground",
-    "focus:ring-2 focus:ring-primary-500/10 transition-colors duration-150 disabled:opacity-50",
-    error  ? "border-error/60 focus:border-error"
-    : ok   ? "border-success/60 focus:border-success"
-           : "border-border-light focus:border-primary-400 hover:border-border-medium",
-].join(" ");
-
 const toolbarBtnBase = [
     "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
     "hover:border-border-medium hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed",
@@ -177,7 +167,7 @@ const TablePlaceholder = ({ loading, error }: { loading: boolean; error: string 
         ) : error ? (
             <span className="font-mono text-[11px] text-error">{error}</span>
         ) : (
-            <span className="font-mono text-[11px] text-neutral-300 uppercase tracking-widest">Sin empleados. Importa un CSV para comenzar.</span>
+            <span className="font-mono text-[11px] text-neutral-300 uppercase tracking-widest">Sin empleados. Agrega empleados en la sección de Empleados.</span>
         )}
     </div>
 );
@@ -196,200 +186,6 @@ const CheckIcon = () => (
 );
 
 // ============================================================================
-// BATCH SALARY PANEL
-// ============================================================================
-
-interface BatchSalaryPanelProps {
-    employees: Employee[];
-    onSave:    (updated: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
-}
-
-const BatchSalaryPanel = ({ employees, onSave }: BatchSalaryPanelProps) => {
-    const active = employees.filter((e) => e.estado === "activo");
-
-    const [mode,      setMode]      = useState<"percent" | "fixed">("percent");
-    const [value,     setValue]     = useState("");
-    const [direction, setDirection] = useState<"increase" | "decrease">("increase");
-    const [selected,  setSelected]  = useState<Set<string>>(new Set(active.map((e) => e.cedula)));
-    const [loading,   setLoading]   = useState(false);
-    const [error,     setError]     = useState<string | null>(null);
-    const [ok,        setOk]        = useState(false);
-
-    const allSelected  = selected.size === active.length && active.length > 0;
-    const noneSelected = selected.size === 0;
-
-    const toggleAll = () => setSelected(allSelected ? new Set() : new Set(active.map((e) => e.cedula)));
-    const toggleEmp = (cedula: string) => setSelected((prev) => {
-        const next = new Set(prev);
-        next.has(cedula) ? next.delete(cedula) : next.add(cedula);
-        return next;
-    });
-
-    const preview = useMemo(() => {
-        const num = parseFloat(value);
-        if (isNaN(num) || num <= 0) return null;
-        return active
-            .filter((e) => selected.has(e.cedula))
-            .map((e) => {
-                let next = mode === "fixed"
-                    ? num
-                    : direction === "increase"
-                        ? e.salarioMensual * (1 + num / 100)
-                        : e.salarioMensual * (1 - num / 100);
-                return { emp: e, next: Math.max(0, parseFloat(next.toFixed(2))) };
-            });
-    }, [active, selected, mode, direction, value]);
-
-    const handleApply = async () => {
-        if (!preview || preview.length === 0) return;
-        setLoading(true); setError(null); setOk(false);
-        const err = await onSave(preview.map(({ emp, next }) => ({
-            cedula: emp.cedula, nombre: emp.nombre, cargo: emp.cargo,
-            salarioMensual: next, estado: emp.estado,
-        })));
-        setLoading(false);
-        if (err) { setError(err); } else { setOk(true); setValue(""); setTimeout(() => setOk(false), 2500); }
-    };
-
-    const modeBtn = (label: string, active2: boolean, onClick: () => void) => (
-        <button onClick={onClick} className={[
-            "h-7 px-3 rounded-md font-mono text-[9px] uppercase tracking-[0.15em] border transition-colors duration-150",
-            active2 ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
-        ].join(" ")}>{label}</button>
-    );
-
-    const totalBefore = preview?.reduce((s, p) => s + p.emp.salarioMensual, 0) ?? 0;
-    const totalAfter  = preview?.reduce((s, p) => s + p.next, 0) ?? 0;
-
-    return (
-        <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border-light bg-surface-2">
-                <div>
-                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-400">Nomina / Herramientas</p>
-                    <h3 className="font-mono text-[13px] font-bold uppercase tracking-tighter text-foreground">Ajuste de Salarios por Lote</h3>
-                </div>
-                <span className="font-mono text-[9px] text-neutral-400 uppercase tracking-widest">{selected.size} de {active.length} seleccionados</span>
-            </div>
-
-            <div className="p-4 space-y-4">
-                {/* Controls row */}
-                <div className="flex flex-wrap items-end gap-3">
-                    <div className="flex flex-col gap-1.5">
-                        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Tipo de ajuste</span>
-                        <div className="flex gap-1.5">
-                            {modeBtn("% Porcentaje", mode === "percent", () => setMode("percent"))}
-                            {modeBtn("$ Monto fijo", mode === "fixed",   () => setMode("fixed"))}
-                        </div>
-                    </div>
-
-                    {mode === "percent" && (
-                        <div className="flex flex-col gap-1.5">
-                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Direccion</span>
-                            <div className="flex gap-1.5">
-                                {modeBtn("+ Aumento",   direction === "increase", () => setDirection("increase"))}
-                                {modeBtn("- Reduccion", direction === "decrease", () => setDirection("decrease"))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex flex-col gap-1.5">
-                        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">
-                            {mode === "percent" ? "Porcentaje (%)" : "Nuevo salario (USD)"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <span className="font-mono text-[11px] text-neutral-400">{mode === "percent" ? "%" : "$"}</span>
-                            <input
-                                type="number" min="0" step={mode === "percent" ? "0.1" : "0.01"}
-                                value={value} onChange={(e) => { setValue(e.target.value); setError(null); setOk(false); }}
-                                onKeyDown={(e) => e.key === "Enter" && handleApply()}
-                                placeholder={mode === "percent" ? "ej: 10" : "ej: 150.00"}
-                                className={inputCls(!!error, ok) + " w-32"}
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={handleApply}
-                        disabled={loading || noneSelected || !preview || preview.length === 0}
-                        className="h-8 px-4 rounded-lg flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] bg-primary-500 text-white border border-primary-600 hover:bg-primary-600 transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                        {loading ? <Spinner /> : ok ? <CheckIcon /> : null}
-                        {ok ? "Guardado" : "Aplicar"}
-                    </button>
-
-                    {error && <p className="font-mono text-[9px] text-error self-end pb-1">{error}</p>}
-                </div>
-
-                {/* Employee list with preview */}
-                <div className="rounded-lg border border-border-light overflow-hidden">
-                    {/* List header */}
-                    <div className="flex items-center gap-3 px-3 py-2 bg-surface-2 border-b border-border-light">
-                        <input type="checkbox" checked={allSelected}
-                            ref={(el) => { if (el) el.indeterminate = !allSelected && !noneSelected; }}
-                            onChange={toggleAll} className="accent-primary-500 w-3.5 h-3.5" />
-                        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Empleado</span>
-                        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400 ml-auto">Actual</span>
-                        {preview && preview.length > 0 && (
-                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-primary-500 w-28 text-right">Nuevo</span>
-                        )}
-                    </div>
-
-                    {active.map((emp, i) => {
-                        const isSelected = selected.has(emp.cedula);
-                        const previewRow = preview?.find((p) => p.emp.cedula === emp.cedula);
-                        const changed    = previewRow && previewRow.next !== emp.salarioMensual;
-
-                        return (
-                            <div key={emp.cedula} onClick={() => toggleEmp(emp.cedula)}
-                                className={[
-                                    "flex items-center gap-3 px-3 py-2 cursor-pointer border-b border-border-light last:border-0",
-                                    "hover:bg-primary-500/[0.04] transition-colors duration-100",
-                                    i % 2 === 0 ? "bg-surface-1" : "bg-surface-2",
-                                    !isSelected && "opacity-50",
-                                ].join(" ")}
-                            >
-                                <input type="checkbox" checked={isSelected}
-                                    onChange={() => toggleEmp(emp.cedula)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="accent-primary-500 w-3.5 h-3.5 shrink-0" />
-                                <div className="flex flex-col min-w-0">
-                                    <span className="font-mono text-[11px] font-medium text-foreground truncate">{emp.nombre}</span>
-                                    <span className="font-mono text-[9px] text-neutral-400 uppercase tracking-widest">{emp.cedula}</span>
-                                </div>
-                                <span className="font-mono text-[11px] tabular-nums text-neutral-500 ml-auto shrink-0">${fmt(emp.salarioMensual)}</span>
-                                {preview && preview.length > 0 && (
-                                    <span className={["font-mono text-[11px] tabular-nums w-28 text-right shrink-0", isSelected && changed ? "text-primary-600 font-bold" : "text-neutral-300"].join(" ")}>
-                                        {isSelected && previewRow ? `$${fmt(previewRow.next)}` : "—"}
-                                    </span>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Summary bar */}
-                {preview && preview.length > 0 && (
-                    <div className="flex items-center gap-4 px-4 py-2.5 rounded-lg bg-primary-500/[0.06] border border-primary-500/20">
-                        <span className="font-mono text-[9px] uppercase tracking-widest text-primary-500">{preview.length} empleado{preview.length !== 1 ? "s" : ""}</span>
-                        <div className="flex items-center gap-2 ml-auto font-mono text-[10px] text-primary-500">
-                            <span>Total antes: <strong>${fmt(totalBefore)}</strong></span>
-                            <span className="text-primary-500/50">→</span>
-                            <span>Total despues: <strong>${fmt(totalAfter)}</strong></span>
-                            {mode === "percent" && (
-                                <span className={["ml-2 px-2 py-0.5 rounded-md font-bold text-[9px]", direction === "increase" ? "bg-success/10 text-success" : "bg-error/10 text-error"].join(" ")}>
-                                    {direction === "increase" ? "+" : "-"}{value}%
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-// ============================================================================
 // EXPANDED PANEL
 // ============================================================================
 
@@ -399,28 +195,11 @@ interface ExpandedPanelProps {
     mondaysInMonth: number;
     bcvRate:        number;
     onChange:       (updated: EmployeeOverride) => void;
-    onSalarySave:   (emp: Employee, newSalary: number) => Promise<string | null>;
 }
 
-const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange, onSalarySave }: ExpandedPanelProps) => {
-    const [salaryInput,   setSalaryInput]   = useState(result.salarioMensual.toString());
-    const [salaryLoading, setSalaryLoading] = useState(false);
-    const [salaryError,   setSalaryError]   = useState<string | null>(null);
-    const [salaryOk,      setSalaryOk]      = useState(false);
-
-    const handleSalarySave = async () => {
-        const val = parseFloat(salaryInput);
-        if (isNaN(val) || val <= 0) { setSalaryError("Salario invalido"); return; }
-        if (val === result.salarioMensual) return;
-        setSalaryLoading(true); setSalaryError(null); setSalaryOk(false);
-        const err = await onSalarySave(result, val);
-        setSalaryLoading(false);
-        if (err) { setSalaryError(err); } else { setSalaryOk(true); setTimeout(() => setSalaryOk(false), 2000); }
-    };
-
-    const liveSalary    = parseFloat(salaryInput) || result.salarioMensual;
-    const empDailyRate  = liveSalary / 30;
-    const empWeeklyRate = (liveSalary * 12) / 52;
+const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange }: ExpandedPanelProps) => {
+    const empDailyRate  = result.salarioMensual / 30;
+    const empWeeklyRate = (result.salarioMensual * 12) / 52;
     const empWeeklyBase = empWeeklyRate * mondaysInMonth;
 
     const addXE    = () => onChange({ ...override, extraEarnings:   [...override.extraEarnings,   { id: uid("xe"), label: "", quantity: "0", multiplier: "1.0", useDaily: true }] });
@@ -439,35 +218,6 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange, on
 
     return (
         <div className="bg-surface-2 border-t border-border-light px-6 py-5">
-            {/* Salary editor */}
-            <div className="flex items-end gap-4 mb-5 pb-5 border-b border-border-light">
-                <div className="flex flex-col gap-1">
-                    <label className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Salario Mensual (USD)</label>
-                    <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-neutral-400">$</span>
-                        <input
-                            type="number" min="0" step="0.01" value={salaryInput} disabled={salaryLoading}
-                            onChange={(e) => { setSalaryInput(e.target.value); setSalaryError(null); setSalaryOk(false); }}
-                            onKeyDown={(e) => e.key === "Enter" && handleSalarySave()}
-                            onBlur={handleSalarySave}
-                            className={inputCls(!!salaryError, salaryOk) + " w-32"}
-                        />
-                        {salaryLoading && <Spinner />}
-                        {salaryOk      && <CheckIcon />}
-                    </div>
-                    {salaryError && <p className="font-mono text-[9px] text-error mt-0.5">{salaryError}</p>}
-                </div>
-                <div className="flex flex-col gap-0.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Diario</span>
-                    <span className="font-mono text-[11px] text-neutral-500 tabular-nums">${empDailyRate.toFixed(4)}</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">Semanal base</span>
-                    <span className="font-mono text-[11px] text-neutral-500 tabular-nums">${empWeeklyRate.toFixed(4)}</span>
-                </div>
-                <p className="font-mono text-[9px] text-neutral-300 italic ml-auto self-end">Enter o clic fuera para guardar</p>
-            </div>
-
             {/* Audit columns */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
@@ -509,7 +259,7 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange, on
             {override.extraDeductions.length === 0 && <p className="font-mono text-[10px] text-neutral-300 italic mb-1">Sin deducciones extra.</p>}
             <div className="space-y-2">
                 {override.extraDeductions.map((row) => (
-                    <DeductionRowEditor key={row.id} row={row} weeklyBase={empWeeklyBase} monthlyBase={liveSalary} canRemove onChange={(u) => updateXD(row.id, u)} onRemove={() => removeXD(row.id)} />
+                    <DeductionRowEditor key={row.id} row={row} weeklyBase={empWeeklyBase} monthlyBase={result.salarioMensual} canRemove onChange={(u) => updateXD(row.id, u)} onRemove={() => removeXD(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXD} />
@@ -558,7 +308,6 @@ export interface PayrollEmployeeTableProps {
     employees:      Employee[];
     empLoading:     boolean;
     empError:       string | null;
-    onUpsert:       (employees: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
     onConfirm?:     (results: EmployeeResult[]) => Promise<string | null>;
     earningRows:    EarningRow[];
     deductionRows:  DeductionRow[];
@@ -568,43 +317,21 @@ export interface PayrollEmployeeTableProps {
     companyName:    string;
     companyId?:     string;
     payrollDate:    string;
+    periodStart?:   string;
+    periodLabel?:   string;
 }
 
 export const PayrollEmployeeTable = ({
-    employees, empLoading, empError, onUpsert, onConfirm,
+    employees, empLoading, empError, onConfirm,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
-    companyName, companyId, payrollDate,
+    companyName, companyId, payrollDate, periodStart, periodLabel,
 }: PayrollEmployeeTableProps) => {
 
-    const [expandedId,    setExpandedId]    = useState<string | null>(null);
-    const [showBatch,     setShowBatch]     = useState(false);
-    const [csvLoading,    setCsvLoading]    = useState(false);
-    const [csvError,      setCsvError]      = useState<string | null>(null);
+    const [expandedId,     setExpandedId]     = useState<string | null>(null);
+    const [search,         setSearch]         = useState("");
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [confirmError,   setConfirmError]   = useState<string | null>(null);
     const [confirmOk,      setConfirmOk]      = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleSalarySave = useCallback(async (emp: Employee, newSalary: number): Promise<string | null> => {
-        return await onUpsert([{ cedula: emp.cedula, nombre: emp.nombre, cargo: emp.cargo, salarioMensual: newSalary, estado: emp.estado }]);
-    }, [onUpsert]);
-
-    const handleExport = useCallback(() => {
-        if (!employees.length) return;
-        downloadCsv(employeesToCsv(employees), `empleados_${new Date().toISOString().split("T")[0]}.csv`);
-    }, [employees]);
-
-    const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setCsvError(null); setCsvLoading(true);
-        const { employees: parsed, errors } = parseCsv(await file.text());
-        if (errors.length > 0) { setCsvError(errors[0]); setCsvLoading(false); if (fileInputRef.current) fileInputRef.current.value = ""; return; }
-        const err = await onUpsert(parsed);
-        if (err) setCsvError(err);
-        setCsvLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-    }, [onUpsert]);
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback((id: string) => overrides.get(id) ?? EMPTY_OVERRIDE(), [overrides]);
@@ -629,9 +356,9 @@ export const PayrollEmployeeTable = ({
                 totalEarnings: r.totalEarnings, totalBonuses: r.totalBonuses, totalDeductions: r.totalDeductions,
                 gross: r.gross, net: r.net, netUSD: r.netUSD,
             })),
-            { companyName, companyId, payrollDate, bcvRate, mondaysInMonth }
+            { companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth }
         );
-    }, [results, companyName, companyId, payrollDate, bcvRate, mondaysInMonth]);
+    }, [results, companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth]);
 
     const handleConfirm = useCallback(async () => {
         if (!onConfirm || !results.length) return;
@@ -658,7 +385,7 @@ export const PayrollEmployeeTable = ({
             ),
         },
         { key: "cargo", label: "Cargo", sortable: true, searchable: true, render: (v) => <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-neutral-500">{v}</span> },
-        { key: "salarioMensual", label: "Salario $", sortable: true, align: "end", render: (v) => <span className="font-mono text-[12px] tabular-nums">${fmt(v)}</span> },
+        { key: "salarioMensual", label: "Salario Bs.", sortable: true, align: "end", render: (v) => <span className="font-mono text-[12px] tabular-nums">Bs. {fmt(v)}</span> },
         { key: "estado", label: "Estado", align: "center", render: (v) => <StatusBadge estado={v} /> },
         { key: "gross", label: "Bruto VES", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums">{fmt(r.gross)}</span> },
         { key: "totalDeductions", label: "Deducciones", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-error/70">-{fmt(r.totalDeductions)}</span> },
@@ -669,6 +396,16 @@ export const PayrollEmployeeTable = ({
             render: (_, r) => <ExpandBtn open={expandedId === r.cedula} onClick={() => setExpandedId((prev) => prev === r.cedula ? null : r.cedula)} />,
         },
     ];
+
+    const filteredResults = useMemo(() => {
+        if (!search) return results;
+        const q = search.toLowerCase();
+        return results.filter((r) =>
+            r.nombre.toLowerCase().includes(q) ||
+            r.cedula.toLowerCase().includes(q) ||
+            r.cargo.toLowerCase().includes(q)
+        );
+    }, [results, search]);
 
     const showTable = !empLoading && !empError && employees.length > 0;
 
@@ -681,36 +418,12 @@ export const PayrollEmployeeTable = ({
                     <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">Resumen por Empleado</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={() => setShowBatch((v) => !v)}
-                        disabled={employees.filter(e => e.estado === "activo").length === 0}
-                        className={[toolbarBtnBase, showBatch ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : ""].join(" ")}
-                    >
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 6h10M1 3h10M1 9h6" />
-                        </svg>
-                        Ajuste por lote
-                    </button>
                     <button onClick={handleExportPdf} disabled={employees.length === 0} className={toolbarBtnBase}>
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
                         </svg>
                         Exportar PDF
                     </button>
-                    <button onClick={handleExport} disabled={csvLoading || employees.length === 0} className={toolbarBtnBase}>
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
-                        </svg>
-                        Exportar CSV
-                    </button>
-                    <label className={[toolbarBtnBase, "cursor-pointer", csvLoading ? "opacity-40 pointer-events-none" : ""].join(" ")}>
-                        {csvLoading ? <Spinner /> : (
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
-                            </svg>
-                        )}
-                        Importar CSV
-                        <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} disabled={csvLoading} />
-                    </label>
                     {onConfirm && (
                         <button
                             onClick={handleConfirm}
@@ -735,16 +448,6 @@ export const PayrollEmployeeTable = ({
                 </div>
             </div>
 
-            {/* Batch panel */}
-            {showBatch && <BatchSalaryPanel employees={employees} onSave={onUpsert} />}
-
-            {/* CSV error */}
-            {csvError && (
-                <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
-                    <p className="font-mono text-[10px] text-red-500">{csvError}</p>
-                </div>
-            )}
-
             {/* Confirm error */}
             {confirmError && (
                 <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
@@ -752,12 +455,32 @@ export const PayrollEmployeeTable = ({
                 </div>
             )}
 
+            {/* Search */}
+            {showTable && (
+                <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/30" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
+                    </svg>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre, cédula o cargo…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className={[
+                            "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+                            "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+                            "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
+                        ].join(" ")}
+                    />
+                </div>
+            )}
+
             {/* Table */}
             {showTable ? (
                 <>
                     <BaseTable.Render
-                        columns={columns} data={results} keyExtractor={(r) => r.cedula}
-                        enableSearch pagination
+                        columns={columns} data={filteredResults} keyExtractor={(r) => r.cedula}
+                        pagination
                         classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
                         renderExpandedRow={(result) => {
                             if (expandedId !== result.cedula) return null;
@@ -766,7 +489,6 @@ export const PayrollEmployeeTable = ({
                                     result={result} override={getOverride(getKey(result))}
                                     mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
                                     onChange={(updated) => setOverride(getKey(result), updated)}
-                                    onSalarySave={handleSalarySave}
                                 />
                             );
                         }}

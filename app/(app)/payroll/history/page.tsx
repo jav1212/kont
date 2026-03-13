@@ -128,7 +128,7 @@ function ReceiptsPanel({
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border-light bg-surface-2">
-                            {["Empleado", "Cargo", "Salario $", "Asignaciones", "Bonos", "Deducciones", "Bruto VES", "Neto VES", "Neto $"].map((h) => (
+                            {["Empleado", "Cargo", "Salario Bs.", "Asignaciones", "Bonos", "Deducciones", "Bruto VES", "Neto VES", "Neto $"].map((h) => (
                                 <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
                                     {h}
                                 </th>
@@ -145,7 +145,7 @@ function ReceiptsPanel({
                                     </div>
                                 </td>
                                 <td className="px-4 py-3 font-mono text-[10px] text-foreground/50 uppercase tracking-[0.08em]">{r.employeeCargo}</td>
-                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">${fmt(r.monthlySalary)}</td>
+                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">Bs. {fmt(r.monthlySalary)}</td>
                                 <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">{fmt(r.totalEarnings)}</td>
                                 <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">{fmt(r.totalBonuses)}</td>
                                 <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-red-500 dark:text-red-400">-{fmt(r.totalDeductions)}</td>

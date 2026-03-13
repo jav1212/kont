@@ -6,6 +6,6 @@ export interface Employee {
     cedula:         string;
     nombre:         string;
     cargo:          string;
-    salarioMensual: number;   // USD
+    salarioMensual: number;   // VES (Bolívares)
     estado:         EmployeeEstado;
 }

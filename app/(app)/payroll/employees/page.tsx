@@ -204,7 +204,7 @@ function EmployeeRow({
                     />
                 ) : (
                     <span className="font-mono text-[12px] tabular-nums text-foreground/80">
-                        ${Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        Bs. {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                     </span>
                 )}
             </td>
@@ -305,6 +305,13 @@ export default function EmployeesPage() {
     const [csvLoading, setCsvLoading] = useState(false);
     const [csvError,   setCsvError]   = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ── Paste modal state ──────────────────────────────────────────────────
+    const [pasteOpen,      setPasteOpen]      = useState(false);
+    const [pasteText,      setPasteText]      = useState("");
+    const [pasteErrors,    setPasteErrors]    = useState<string[]>([]);
+    const [pasteCount,     setPasteCount]     = useState<number | null>(null);
+    const [pasteImporting, setPasteImporting] = useState(false);
 
     // ── Search ─────────────────────────────────────────────────────────────
     const [search, setSearch] = useState("");
@@ -443,6 +450,36 @@ export default function EmployeesPage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
     }, [upsert]);
 
+    // ── Paste modal ────────────────────────────────────────────────────────
+
+    const handlePasteChange = useCallback((text: string) => {
+        setPasteText(text);
+        if (!text.trim()) { setPasteErrors([]); setPasteCount(null); return; }
+        const { employees: parsed, errors } = parseCsv(text);
+        setPasteErrors(errors);
+        setPasteCount(errors.length === 0 ? parsed.length : null);
+    }, []);
+
+    const handlePasteImport = useCallback(async () => {
+        const { employees: parsed, errors } = parseCsv(pasteText);
+        if (errors.length > 0) return;
+        setPasteImporting(true);
+        const err = await upsert(parsed);
+        setPasteImporting(false);
+        if (err) { setPasteErrors([err]); return; }
+        setPasteOpen(false);
+        setPasteText("");
+        setPasteErrors([]);
+        setPasteCount(null);
+    }, [pasteText, upsert]);
+
+    const closePasteModal = useCallback(() => {
+        setPasteOpen(false);
+        setPasteText("");
+        setPasteErrors([]);
+        setPasteCount(null);
+    }, []);
+
     // ── Render ─────────────────────────────────────────────────────────────
 
     const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.cedula));
@@ -484,6 +521,13 @@ export default function EmployeesPage() {
                                 Importar CSV
                                 <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} />
                             </label>
+                            <button onClick={() => setPasteOpen(true)} className={toolbarBtn}>
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="8" height="8" rx="1" />
+                                    <path d="M4 1h4v2H4z" />
+                                </svg>
+                                Pegar CSV
+                            </button>
                             <button
                                 onClick={addNewRow}
                                 className={[
@@ -594,7 +638,7 @@ export default function EmployeesPage() {
                                             className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30"
                                         />
                                     </th>
-                                    {["Cédula", "Nombre", "Cargo", "Salario USD", "Estado", ""].map((h) => (
+                                    {["Cédula", "Nombre", "Cargo", "Salario Bs.", "Estado", ""].map((h) => (
                                         <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
                                             {h}
                                         </th>
@@ -689,6 +733,85 @@ export default function EmployeesPage() {
                 )}
 
             </div>
+
+            {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
+            {pasteOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="w-full max-w-lg bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
+
+                        {/* Modal header */}
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
+                            <div>
+                                <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
+                                    Pegar CSV
+                                </h2>
+                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                    Empleados · columnas: cedula, nombre, cargo, salario_mensual_ves, estado
+                                </p>
+                            </div>
+                            <button onClick={closePasteModal}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                <IconCancel />
+                            </button>
+                        </div>
+
+                        {/* Textarea */}
+                        <div className="p-5 space-y-3">
+                            <textarea
+                                autoFocus
+                                rows={10}
+                                value={pasteText}
+                                onChange={(e) => handlePasteChange(e.target.value)}
+                                placeholder={`"cedula","nombre","cargo","salario_mensual_ves","estado"\n"V-12345678","JUAN PEREZ","ANALISTA","100000","activo"`}
+                                className={[
+                                    "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
+                                    "font-mono text-[11px] text-foreground leading-relaxed",
+                                    "border-border-light focus:border-primary-500/60 hover:border-border-medium",
+                                    "transition-colors duration-150 placeholder:text-foreground/20",
+                                ].join(" ")}
+                            />
+
+                            {/* Validation feedback */}
+                            {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
+                                <p className="font-mono text-[10px] text-green-500">
+                                    {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
+                                </p>
+                            )}
+                            {pasteErrors.length > 0 && (
+                                <div className="space-y-1">
+                                    {pasteErrors.slice(0, 3).map((e, i) => (
+                                        <p key={i} className="font-mono text-[10px] text-red-500">{e}</p>
+                                    ))}
+                                    {pasteErrors.length > 3 && (
+                                        <p className="font-mono text-[10px] text-foreground/30">…y {pasteErrors.length - 3} error(es) más.</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal footer */}
+                        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
+                            <button onClick={closePasteModal}
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handlePasteImport}
+                                disabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
+                                className={[
+                                    "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-widest",
+                                    "bg-primary-500 text-white hover:bg-primary-600",
+                                    "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
+                                    "flex items-center gap-2",
+                                ].join(" ")}
+                            >
+                                {pasteImporting && <Spinner />}
+                                {pasteImporting ? "Importando…" : "Importar"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

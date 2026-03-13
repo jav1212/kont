@@ -2,7 +2,7 @@
 
 import { Employee } from "@/src/modules/payroll/backend/domain/employee";
 
-const HEADERS = ["cedula", "nombre", "cargo", "salario_mensual_usd", "estado"] as const;
+const HEADERS = ["cedula", "nombre", "cargo", "salario_mensual_ves", "estado"] as const;
 
 // ── RFC 4180 CSV cell quoting ─────────────────────────────────────────────────
 // Always quote every field to avoid Excel/Numbers re-interpretation issues

@@ -168,6 +168,29 @@ export default function PayrollCalculator() {
     const [exchangeRate,  setExchangeRate]  = useState("79.59");
     const [monthlySalary, setMonthlySalary] = useState("130.00");
 
+    // ── BCV fetch ──────────────────────────────────────────────────────────
+    const [bcvDate,      setBcvDate]      = useState(() => new Date().toISOString().split("T")[0]);
+    const [bcvLoading,   setBcvLoading]   = useState(false);
+    const [bcvFetchError, setBcvFetchError] = useState<string | null>(null);
+    const [bcvFetchedDate, setBcvFetchedDate] = useState<string | null>(null);
+
+    const fetchBcvRate = useCallback(async () => {
+        setBcvLoading(true);
+        setBcvFetchError(null);
+        setBcvFetchedDate(null);
+        try {
+            const res  = await fetch(`/api/bcv/rate?date=${bcvDate}`);
+            const data = await res.json();
+            if (!res.ok) { setBcvFetchError(data.error ?? "Error al consultar."); return; }
+            setExchangeRate(String(data.rate));
+            setBcvFetchedDate(data.date);
+        } catch {
+            setBcvFetchError("No se pudo conectar con la API BCV.");
+        } finally {
+            setBcvLoading(false);
+        }
+    }, [bcvDate]);
+
     // ── Row lists ──────────────────────────────────────────────────────────
     const [earningRows,   setEarningRows]   = useState<EarningRow[]>(() =>
         makeDefaultEarnings(quincenaInfo.weekdays, quincenaInfo.saturdays, quincenaInfo.sundays)
@@ -195,6 +218,7 @@ export default function PayrollCalculator() {
     }, [quincenaInfo]);
 
     useEffect(() => { handleAutoFill(); }, [selYear, selMonth, selQuincena]); // eslint-disable-line
+    useEffect(() => { fetchBcvRate(); }, []); // eslint-disable-line
 
     // ── Derived ────────────────────────────────────────────────────────────
     const mondaysInMonth = quincenaInfo.mondays;
@@ -355,31 +379,79 @@ export default function PayrollCalculator() {
                 </div>
 
                 {/* ── BCV Rate ────────────────────────────────────────── */}
-                <div className="px-5 py-4 border-b border-border-light">
-                    <label className={labelCls}>Tasa BCV (VES / $)</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
-                            Bs.
-                        </span>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={exchangeRate}
-                            onChange={(e) => setExchangeRate(e.target.value)}
-                            className={fieldCls + " pl-9 text-right"}
-                        />
-                    </div>
-                    <p className="font-mono text-[9px] text-foreground/30 mt-1.5">
-                        Tasa oficial del Banco Central de Venezuela
+                <div className="px-5 py-4 border-b border-border-light space-y-3">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                        Tasa BCV (VES / USD)
                     </p>
+
+                    {/* Date picker + fetch button */}
+                    <div>
+                        <label className={labelCls}>Fecha de consulta</label>
+                        <div className="flex gap-1.5">
+                            <input
+                                type="date"
+                                value={bcvDate}
+                                max={new Date().toISOString().split("T")[0]}
+                                onChange={(e) => { setBcvDate(e.target.value); setBcvFetchError(null); setBcvFetchedDate(null); }}
+                                className={fieldCls + " flex-1"}
+                            />
+                            <button
+                                onClick={fetchBcvRate}
+                                disabled={bcvLoading || !bcvDate}
+                                className={[
+                                    "h-9 px-3 rounded-lg border flex items-center gap-1.5 shrink-0",
+                                    "font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150",
+                                    "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.16]",
+                                    "disabled:opacity-40 disabled:cursor-not-allowed",
+                                ].join(" ")}
+                            >
+                                {bcvLoading ? (
+                                    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                                    </svg>
+                                ) : (
+                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M10 6A4 4 0 1 1 6 2" /><path d="M10 2v4h-4" />
+                                    </svg>
+                                )}
+                                {bcvLoading ? "…" : "Consultar"}
+                            </button>
+                        </div>
+                        {bcvFetchError && (
+                            <p className="font-mono text-[9px] text-red-500 mt-1">{bcvFetchError}</p>
+                        )}
+                        {bcvFetchedDate && !bcvFetchError && (
+                            <p className="font-mono text-[9px] text-green-500 mt-1">
+                                Tasa al {new Date(bcvFetchedDate + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Manual rate input */}
+                    <div>
+                        <label className={labelCls}>Tasa (Bs. por USD)</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                                Bs.
+                            </span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={exchangeRate}
+                                onChange={(e) => { setExchangeRate(e.target.value); setBcvFetchedDate(null); }}
+                                className={fieldCls + " pl-9 text-right"}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── Reference salary ────────────────────────────────── */}
                 <div className="px-5 py-3 border-b border-border-light">
-                    <label className={labelCls}>Salario mensual referencia ($)</label>
+                    <label className={labelCls}>Salario mensual referencia (Bs.)</label>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
-                            $
+                            Bs.
                         </span>
                         <input
                             type="number"
@@ -480,7 +552,6 @@ export default function PayrollCalculator() {
                         employees={employees}
                         empLoading={empLoading}
                         empError={empError}
-                        onUpsert={upsert}
                         onConfirm={handleConfirm}
                         earningRows={earningRows}
                         deductionRows={deductionRows}
@@ -490,6 +561,8 @@ export default function PayrollCalculator() {
                         companyName={company?.name ?? ""}
                         companyId={company?.id ?? ""}
                         payrollDate={quincenaInfo.endDate}
+                        periodStart={quincenaInfo.startDate}
+                        periodLabel={quincenaInfo.label}
                     />
                 </div>
 
