@@ -419,7 +419,11 @@ export default function PayrollCalculator() {
                             </button>
                         </div>
                         {bcvFetchError && (
-                            <p className="font-mono text-[9px] text-red-500 mt-1">{bcvFetchError}</p>
+                            <div className="mt-1.5 px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.06]">
+                                <p className="font-mono text-[9px] text-amber-500 leading-relaxed">
+                                    No se pudo obtener la tasa BCV. Puedes introducirla manualmente en el campo de abajo.
+                                </p>
+                            </div>
                         )}
                         {bcvFetchedDate && !bcvFetchError && (
                             <p className="font-mono text-[9px] text-green-500 mt-1">

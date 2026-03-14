@@ -12,6 +12,37 @@ import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function exportReceiptsCsv(
+    receipts: PayrollReceipt[],
+    run: PayrollRun,
+    companyName: string,
+) {
+    const rows = [
+        ["cedula","nombre","cargo","salario_mensual_ves","asignaciones","bonos","deducciones","bruto_ves","neto_ves","neto_usd"].join(","),
+        ...receipts.map((r) => [
+            r.employeeCedula,
+            `"${r.employeeNombre}"`,
+            `"${r.employeeCargo}"`,
+            r.monthlySalary,
+            r.totalEarnings.toFixed(2),
+            r.totalBonuses.toFixed(2),
+            r.totalDeductions.toFixed(2),
+            (r.calculationData?.gross ?? 0).toFixed(2),
+            r.netPay.toFixed(2),
+            (r.calculationData?.netUsd ?? 0).toFixed(2),
+        ].join(",")),
+    ].join("\n");
+
+    const blob = new Blob([rows], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const slug = `${companyName.replace(/\s+/g, "_")}_${run.periodStart}_${run.periodEnd}`;
+    a.href     = url;
+    a.download = `nomina_${slug}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 function formatDateShort(iso: string) {
     return new Date(iso).toLocaleDateString("es-VE", {
         day: "2-digit", month: "short", year: "numeric",
@@ -202,6 +233,8 @@ export default function PayrollHistoryPage() {
         setReceipts(data);
     }
 
+    const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
+
     return (
         <div className="min-h-full bg-surface-2 p-8 font-mono">
             <div className="max-w-[1100px] mx-auto space-y-5">
@@ -222,6 +255,22 @@ export default function PayrollHistoryPage() {
                                 </p>
                             )}
                         </div>
+                        {selectedRun && receipts.length > 0 && (
+                            <button
+                                onClick={() => exportReceiptsCsv(receipts, selectedRun, company?.name ?? "empresa")}
+                                className={[
+                                    "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
+                                    "hover:border-border-medium hover:bg-surface-2",
+                                    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/60",
+                                    "transition-colors duration-150",
+                                ].join(" ")}
+                            >
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M6 2v7M2 9l4 2 4-2M2 5H1v6h10V5h-1" />
+                                </svg>
+                                Exportar CSV
+                            </button>
+                        )}
                     </div>
                 </header>
 

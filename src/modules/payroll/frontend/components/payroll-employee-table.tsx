@@ -332,6 +332,7 @@ export const PayrollEmployeeTable = ({
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [confirmError,   setConfirmError]   = useState<string | null>(null);
     const [confirmOk,      setConfirmOk]      = useState(false);
+    const [showModal,      setShowModal]      = useState(false);
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback((id: string) => overrides.get(id) ?? EMPTY_OVERRIDE(), [overrides]);
@@ -360,15 +361,19 @@ export const PayrollEmployeeTable = ({
         );
     }, [results, companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth]);
 
-    const handleConfirm = useCallback(async () => {
+    const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
         setConfirmLoading(true);
         setConfirmError(null);
         setConfirmOk(false);
         const err = await onConfirm(results);
         setConfirmLoading(false);
-        if (err) setConfirmError(err);
-        else     setConfirmOk(true);
+        if (err) {
+            setConfirmError(err);
+        } else {
+            setShowModal(false);
+            setConfirmOk(true);
+        }
     }, [onConfirm, results]);
 
     const columns: Column<EmployeeResult>[] = [
@@ -409,8 +414,143 @@ export const PayrollEmployeeTable = ({
 
     const showTable = !empLoading && !empError && employees.length > 0;
 
+    // ── Confirm modal totals ───────────────────────────────────────────────
+    const activeResults = results.filter((r) => r.estado === "activo");
+    const modalTotals   = activeResults.reduce(
+        (s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }),
+        { gross: 0, ded: 0, net: 0, usd: 0 }
+    );
+
     return (
         <div className="space-y-4">
+
+        {/* ── Confirmation Modal ─────────────────────────────────────────── */}
+        {showModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+                {/* Backdrop */}
+                <div
+                    className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                    onClick={() => { if (!confirmLoading) setShowModal(false); }}
+                />
+                {/* Panel */}
+                <div className="relative z-10 w-full max-w-md bg-surface-1 border border-border-default rounded-2xl shadow-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="px-6 py-5 border-b border-border-light">
+                        <div className="flex items-center gap-3 mb-1">
+                            <div className="h-px w-5 bg-primary-500/60" />
+                            <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-primary-400/70">
+                                Confirmar nómina
+                            </span>
+                        </div>
+                        <h2 className="font-mono text-[20px] font-black uppercase tracking-tighter text-foreground leading-none">
+                            {periodLabel ?? "Período seleccionado"}
+                        </h2>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="px-6 py-5 space-y-3">
+                        {/* Meta row */}
+                        <div className="flex items-center justify-between py-2 border-b border-border-light">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                Empleados activos
+                            </span>
+                            <span className="font-mono text-[13px] font-semibold tabular-nums text-foreground">
+                                {activeResults.length}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between py-2 border-b border-border-light">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                Tasa BCV
+                            </span>
+                            <span className="font-mono text-[13px] tabular-nums text-foreground">
+                                Bs. {fmt(bcvRate)} / USD
+                            </span>
+                        </div>
+                        {/* Totals */}
+                        <div className="flex items-center justify-between py-2 border-b border-border-light">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                Total bruto
+                            </span>
+                            <span className="font-mono text-[13px] tabular-nums text-foreground/70">
+                                Bs. {fmt(modalTotals.gross)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between py-2 border-b border-border-light">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                Total deducciones
+                            </span>
+                            <span className="font-mono text-[13px] tabular-nums text-error/80">
+                                -Bs. {fmt(modalTotals.ded)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 rounded-xl bg-primary-500/[0.06] border border-primary-500/20 px-4">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-400/80">
+                                Neto a pagar VES
+                            </span>
+                            <span className="font-mono text-[18px] font-black tabular-nums text-primary-500">
+                                Bs. {fmt(modalTotals.net)}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between py-2">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">
+                                Equivalente USD
+                            </span>
+                            <span className="font-mono text-[12px] tabular-nums text-foreground/50">
+                                ${fmt(modalTotals.usd)}
+                            </span>
+                        </div>
+
+                        {confirmError && (
+                            <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
+                                <p className="font-mono text-[10px] text-red-400">{confirmError}</p>
+                            </div>
+                        )}
+
+                        <p className="font-mono text-[9px] text-foreground/25 leading-relaxed">
+                            Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.
+                        </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="px-6 py-4 border-t border-border-light flex items-center gap-3">
+                        <button
+                            onClick={handleConfirmExecute}
+                            disabled={confirmLoading}
+                            className={[
+                                "flex-1 h-10 rounded-lg flex items-center justify-center gap-2",
+                                "bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed",
+                                "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
+                                "transition-colors duration-150",
+                            ].join(" ")}
+                        >
+                            {confirmLoading ? (
+                                <><Spinner /> Guardando…</>
+                            ) : (
+                                <>
+                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M2 6l3 3 5-5" />
+                                    </svg>
+                                    Confirmar y guardar
+                                </>
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setShowModal(false)}
+                            disabled={confirmLoading}
+                            className={[
+                                "h-10 px-4 rounded-lg border border-border-light",
+                                "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/50",
+                                "hover:border-border-medium hover:text-foreground/70",
+                                "disabled:opacity-40 disabled:cursor-not-allowed",
+                                "transition-colors duration-150",
+                            ].join(" ")}
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
             {/* Toolbar */}
             <div className="flex items-end justify-between gap-4">
                 <div>
@@ -426,8 +566,8 @@ export const PayrollEmployeeTable = ({
                     </button>
                     {onConfirm && (
                         <button
-                            onClick={handleConfirm}
-                            disabled={confirmLoading || employees.length === 0}
+                            onClick={() => { setConfirmError(null); setShowModal(true); }}
+                            disabled={employees.length === 0 || confirmOk}
                             className={[
                                 "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                 "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
@@ -437,7 +577,7 @@ export const PayrollEmployeeTable = ({
                                     : "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.15]",
                             ].join(" ")}
                         >
-                            {confirmLoading ? <Spinner /> : confirmOk ? <CheckIcon /> : (
+                            {confirmOk ? <CheckIcon /> : (
                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M2 6l3 3 5-5" />
                                 </svg>

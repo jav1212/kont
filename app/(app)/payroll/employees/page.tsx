@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -296,6 +296,7 @@ export default function EmployeesPage() {
     // ── New rows ───────────────────────────────────────────────────────────
     const [newRows, setNewRows] = useState<{ id: string; draft: RowState }[]>([]);
     const [newSaving, setNewSaving] = useState<Record<string, boolean>>({});
+    const [newRowError, setNewRowError] = useState<Record<string, string>>({});
 
     // ── Selection ─────────────────────────────────────────────────────────
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -393,21 +394,39 @@ export default function EmployeesPage() {
         if (!row) return;
         const { draft } = row;
 
-        if (!draft.cedula.trim()) return;
+        const cedula = draft.cedula.trim();
+        if (!cedula)           return;
         if (!draft.nombre.trim()) return;
 
+        // Check duplicate cédula
+        if (employees.some((e) => e.cedula === cedula)) {
+            setNewRowError((s) => ({ ...s, [id]: `La cédula ${cedula} ya existe.` }));
+            return;
+        }
+
+        const salary = parseFloat(draft.salarioMensual);
+        if (!salary || salary <= 0) {
+            setNewRowError((s) => ({ ...s, [id]: "El salario debe ser mayor a 0." }));
+            return;
+        }
+
+        setNewRowError((s) => ({ ...s, [id]: "" }));
         setNewSaving((s) => ({ ...s, [id]: true }));
         const err = await upsert([{
-            cedula:         draft.cedula.trim(),
+            cedula,
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
-            salarioMensual: parseFloat(draft.salarioMensual) || 0,
+            salarioMensual: salary,
             estado:         draft.estado,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
 
-        if (!err) cancelNewRow(id);
-    }, [newRows, upsert, cancelNewRow]);
+        if (err) {
+            setNewRowError((s) => ({ ...s, [id]: err }));
+        } else {
+            cancelNewRow(id);
+        }
+    }, [newRows, employees, upsert, cancelNewRow]);
 
     // ── Selection ─────────────────────────────────────────────────────────
 
@@ -660,7 +679,8 @@ export default function EmployeesPage() {
                             <tbody>
                                 {/* New rows */}
                                 {newRows.map((row) => (
-                                    <tr key={row.id} className="bg-primary-500/[0.03] border-b border-border-light/60">
+                                    <React.Fragment key={row.id}>
+                                    <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
                                         <td className="px-3 py-2.5 w-10 text-center">
                                             <div className="w-3.5 h-3.5 rounded border border-border-medium opacity-30 mx-auto" />
                                         </td>
@@ -707,6 +727,14 @@ export default function EmployeesPage() {
                                             )}
                                         </td>
                                     </tr>
+                                    {newRowError[row.id] && (
+                                        <tr className="bg-red-500/[0.04]">
+                                            <td colSpan={7} className="px-4 py-1.5">
+                                                <p className="font-mono text-[10px] text-red-400">{newRowError[row.id]}</p>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    </React.Fragment>
                                 ))}
 
                                 {/* Existing rows */}
