@@ -1,13 +1,12 @@
-// src/backend/employee/infra/repository/supabase-employee.repository.ts
-
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ISource } from "@/src/shared/backend/source/domain/repository/source.repository";
 import { IEmployeeRepository } from "../../domain/repository/employee.repository";
-import { Employee } from "../../domain/employee";
+import { Employee, SalaryHistoryEntry } from "../../domain/employee";
 import { Result } from "@/src/core/domain/result";
 
 export class SupabaseEmployeeRepository implements IEmployeeRepository {
-    private readonly TABLE = "employees";
+    private readonly TABLE         = "employees";
+    private readonly HISTORY_TABLE = "employee_salary_history";
 
     constructor(private readonly source: ISource<SupabaseClient>) {}
 
@@ -31,13 +30,15 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
             if (employees.length === 0) return Result.success();
 
             const rows = employees.map((e) => ({
-                id:              e.cedula,          // cedula es el PK
+                id:              e.cedula,
                 company_id:      e.companyId,
                 cedula:          e.cedula,
                 nombre:          e.nombre,
                 cargo:           e.cargo,
                 salario_mensual: e.salarioMensual,
                 estado:          e.estado,
+                moneda:          e.moneda ?? "VES",
+                fecha_ingreso:   e.fechaIngreso ?? null,
             }));
 
             const { error } = await this.source.instance
@@ -65,6 +66,28 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
         }
     }
 
+    async getSalaryHistory(companyId: string, cedula: string): Promise<Result<SalaryHistoryEntry[]>> {
+        try {
+            const { data, error } = await this.source.instance
+                .from(this.HISTORY_TABLE)
+                .select("id, salario_mensual, moneda, fecha_desde, created_at")
+                .eq("company_id", companyId)
+                .eq("employee_cedula", cedula)
+                .order("fecha_desde", { ascending: false });
+
+            if (error) return Result.fail(error.message);
+            return Result.success((data ?? []).map((r: any) => ({
+                id:             r.id,
+                salarioMensual: r.salario_mensual,
+                moneda:         r.moneda,
+                fechaDesde:     r.fecha_desde,
+                createdAt:      r.created_at,
+            })));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : "History fetch error");
+        }
+    }
+
     private mapToDomain(data: any): Employee {
         return {
             id:             data.id,
@@ -73,7 +96,9 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
             nombre:         data.nombre,
             cargo:          data.cargo,
             salarioMensual: data.salario_mensual,
+            moneda:         data.moneda ?? "VES",
             estado:         data.estado,
+            fechaIngreso:   data.fecha_ingreso ?? null,
         };
     }
 }

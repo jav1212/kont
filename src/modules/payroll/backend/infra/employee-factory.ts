@@ -12,5 +12,6 @@ export function getEmployeeActions(userId: string) {
         getByCompany:    new GetEmployeesByCompanyUseCase(repository),
         upsertEmployees: new UpsertEmployeesUseCase(repository),
         deleteEmployees: new DeleteEmployeesUseCase(repository),
+        repository,   // exposed for direct repo calls (e.g. getSalaryHistory)
     };
 }
