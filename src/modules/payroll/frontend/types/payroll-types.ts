@@ -14,7 +14,7 @@ export interface DeductionRow {
     id:    string;
     label: string;
     rate:  string;               // percentage string e.g. "4"
-    base:  "weekly" | "monthly"; // which salary base to apply the rate to
+    base:  "weekly" | "monthly" | "integral"; // which salary base to apply the rate to
 }
 
 export interface BonusRow {

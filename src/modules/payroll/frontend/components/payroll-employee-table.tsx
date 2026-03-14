@@ -41,6 +41,10 @@ export interface EmployeeResult extends Employee {
     deductionLines:  ComputedLine[];
     bonusLines:      ComputedLine[];
     hasOverrides:    boolean;
+    // Sprint 2: alícuotas
+    alicuotaUtil:    number;
+    alicuotaBono:    number;
+    salarioIntegral: number;
 }
 
 // ============================================================================
@@ -48,17 +52,24 @@ export interface EmployeeResult extends Employee {
 // ============================================================================
 
 function computeEmployee(
-    emp:            Employee,
-    earningRows:    EarningRow[],
-    deductRows:     DeductionRow[],
-    bonusRows:      BonusRow[],
-    overrides:      EmployeeOverride,
-    mondaysInMonth: number,
-    bcvRate:        number,
+    emp:                 Employee,
+    earningRows:         EarningRow[],
+    deductRows:          DeductionRow[],
+    bonusRows:           BonusRow[],
+    overrides:           EmployeeOverride,
+    mondaysInMonth:      number,
+    bcvRate:             number,
+    diasUtilidades:      number,
+    diasBonoVacacional:  number,
 ): EmployeeResult {
     const daily      = emp.salarioMensual / 30;
     const weekly     = (emp.salarioMensual * 12) / 52;
     const weeklyBase = weekly * mondaysInMonth;
+
+    // Sprint 2: alícuotas y salario integral
+    const alicuotaUtil    = emp.salarioMensual * (diasUtilidades / 365);
+    const alicuotaBono    = emp.salarioMensual * (diasBonoVacacional / 365);
+    const salarioIntegral = emp.salarioMensual + alicuotaUtil + alicuotaBono;
 
     const allEarnings   = [...earningRows, ...overrides.extraEarnings];
     const allDeductions = [...deductRows,  ...overrides.extraDeductions];
@@ -81,13 +92,16 @@ function computeEmployee(
     });
 
     const deductionLines: ComputedLine[] = allDeductions.map((r) => {
-        const base = r.base === "weekly" ? weeklyBase : emp.salarioMensual;
+        const base = r.base === "weekly" ? weeklyBase
+                   : r.base === "integral" ? salarioIntegral
+                   : emp.salarioMensual;
         const rate = parseFloat(r.rate) || 0;
-        return {
-            label:   r.label || "—",
-            formula: r.base === "weekly" ? `${weekly.toFixed(2)} x ${mondaysInMonth}L x ${rate}%` : `${emp.salarioMensual} x ${rate}%`,
-            amount: base * (rate / 100),
-        };
+        const formula = r.base === "weekly"
+            ? `${weekly.toFixed(2)} x ${mondaysInMonth}L x ${rate}%`
+            : r.base === "integral"
+                ? `${salarioIntegral.toFixed(2)} integral x ${rate}%`
+                : `${emp.salarioMensual} x ${rate}%`;
+        return { label: r.label || "—", formula, amount: base * (rate / 100) };
     });
 
     const totalEarnings   = earningLines.reduce((s, l)   => s + l.amount, 0);
@@ -105,6 +119,7 @@ function computeEmployee(
             overrides.extraEarnings.length   > 0 ||
             overrides.extraDeductions.length > 0 ||
             overrides.extraBonuses.length    > 0,
+        alicuotaUtil, alicuotaBono, salarioIntegral,
     };
 }
 
@@ -190,17 +205,20 @@ const CheckIcon = () => (
 // ============================================================================
 
 interface ExpandedPanelProps {
-    result:         EmployeeResult;
-    override:       EmployeeOverride;
-    mondaysInMonth: number;
-    bcvRate:        number;
-    onChange:       (updated: EmployeeOverride) => void;
+    result:             EmployeeResult;
+    override:           EmployeeOverride;
+    mondaysInMonth:     number;
+    bcvRate:            number;
+    diasUtilidades:     number;
+    diasBonoVacacional: number;
+    onChange:           (updated: EmployeeOverride) => void;
 }
 
-const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange }: ExpandedPanelProps) => {
-    const empDailyRate  = result.salarioMensual / 30;
-    const empWeeklyRate = (result.salarioMensual * 12) / 52;
-    const empWeeklyBase = empWeeklyRate * mondaysInMonth;
+const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, onChange }: ExpandedPanelProps) => {
+    const empDailyRate    = result.salarioMensual / 30;
+    const empWeeklyRate   = (result.salarioMensual * 12) / 52;
+    const empWeeklyBase   = empWeeklyRate * mondaysInMonth;
+    const empIntegralBase = result.salarioIntegral;
 
     const addXE    = () => onChange({ ...override, extraEarnings:   [...override.extraEarnings,   { id: uid("xe"), label: "", quantity: "0", multiplier: "1.0", useDaily: true }] });
     const updateXE = (id: string, u: EarningRow)   => onChange({ ...override, extraEarnings:   override.extraEarnings.map((r)   => r.id === id ? u : r) });
@@ -218,6 +236,17 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange }: 
 
     return (
         <div className="bg-surface-2 border-t border-border-light px-6 py-5">
+            {/* Alícuotas chip */}
+            <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-border-light bg-surface-1">
+                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/35 shrink-0">Sal. Integral</span>
+                <span className="font-mono text-[11px] tabular-nums text-foreground font-medium">{fmt(result.salarioIntegral)}</span>
+                <span className="font-mono text-[9px] text-foreground/25 mx-1">=</span>
+                <span className="font-mono text-[10px] text-foreground/50">{fmt(result.salarioMensual)}</span>
+                <span className="font-mono text-[9px] text-foreground/25">+</span>
+                <span className="font-mono text-[9px] text-amber-500" title={`Alíc. Utilidades (${diasUtilidades}d)`}>util {fmt(result.alicuotaUtil)}</span>
+                <span className="font-mono text-[9px] text-foreground/25">+</span>
+                <span className="font-mono text-[9px] text-amber-500" title={`Alíc. Bono Vacacional (${diasBonoVacacional}d)`}>bono vac {fmt(result.alicuotaBono)}</span>
+            </div>
             {/* Audit columns */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
@@ -259,7 +288,7 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, onChange }: 
             {override.extraDeductions.length === 0 && <p className="font-mono text-[10px] text-neutral-300 italic mb-1">Sin deducciones extra.</p>}
             <div className="space-y-2">
                 {override.extraDeductions.map((row) => (
-                    <DeductionRowEditor key={row.id} row={row} weeklyBase={empWeeklyBase} monthlyBase={result.salarioMensual} canRemove onChange={(u) => updateXD(row.id, u)} onRemove={() => removeXD(row.id)} />
+                    <DeductionRowEditor key={row.id} row={row} weeklyBase={empWeeklyBase} monthlyBase={result.salarioMensual} integralBase={empIntegralBase} canRemove onChange={(u) => updateXD(row.id, u)} onRemove={() => removeXD(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXD} />
@@ -305,25 +334,28 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
 // ============================================================================
 
 export interface PayrollEmployeeTableProps {
-    employees:      Employee[];
-    empLoading:     boolean;
-    empError:       string | null;
-    onConfirm?:     (results: EmployeeResult[]) => Promise<string | null>;
-    earningRows:    EarningRow[];
-    deductionRows:  DeductionRow[];
-    bonusRows:      BonusRow[];
-    mondaysInMonth: number;
-    bcvRate:        number;
-    companyName:    string;
-    companyId?:     string;
-    payrollDate:    string;
-    periodStart?:   string;
-    periodLabel?:   string;
+    employees:           Employee[];
+    empLoading:          boolean;
+    empError:            string | null;
+    onConfirm?:          (results: EmployeeResult[]) => Promise<string | null>;
+    earningRows:         EarningRow[];
+    deductionRows:       DeductionRow[];
+    bonusRows:           BonusRow[];
+    mondaysInMonth:      number;
+    bcvRate:             number;
+    diasUtilidades:      number;
+    diasBonoVacacional:  number;
+    companyName:         string;
+    companyId?:          string;
+    payrollDate:         string;
+    periodStart?:        string;
+    periodLabel?:        string;
 }
 
 export const PayrollEmployeeTable = ({
     employees, empLoading, empError, onConfirm,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
+    diasUtilidades, diasBonoVacacional,
     companyName, companyId, payrollDate, periodStart, periodLabel,
 }: PayrollEmployeeTableProps) => {
 
@@ -343,9 +375,9 @@ export const PayrollEmployeeTable = ({
     const getKey = (emp: Employee) => emp.cedula;
 
     const results = useMemo<EmployeeResult[]>(() =>
-        employees.map((emp) => computeEmployee(emp, earningRows, deductionRows, bonusRows, getOverride(getKey(emp)), mondaysInMonth, bcvRate)),
+        employees.map((emp) => computeEmployee(emp, earningRows, deductionRows, bonusRows, getOverride(getKey(emp)), mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional)),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [employees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, overrides]
+        [employees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, overrides]
     );
 
     const handleExportPdf = useCallback(() => {
@@ -628,6 +660,7 @@ export const PayrollEmployeeTable = ({
                                 <ExpandedPanel
                                     result={result} override={getOverride(getKey(result))}
                                     mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
+                                    diasUtilidades={diasUtilidades} diasBonoVacacional={diasBonoVacacional}
                                     onChange={(updated) => setOverride(getKey(result), updated)}
                                 />
                             );

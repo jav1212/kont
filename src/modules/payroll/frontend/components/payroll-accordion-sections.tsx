@@ -123,7 +123,7 @@ export const EarningsSection = ({
 
 export const DeductionsSection = ({
     rows, values, total,
-    weeklyBase, weeklyRate, mondaysInMonth, monthlySalary,
+    weeklyBase, weeklyRate, mondaysInMonth, monthlySalary, integralBase,
     onUpdate, onRemove, onAdd,
 }: {
     rows:           DeductionRow[];
@@ -133,6 +133,7 @@ export const DeductionsSection = ({
     weeklyRate:     number;
     mondaysInMonth: number;
     monthlySalary:  string;
+    integralBase:   number;
     onUpdate: (id: string, updated: DeductionRow) => void;
     onRemove: (id: string) => void;
     onAdd:    (blank: DeductionRow) => void;
@@ -144,6 +145,7 @@ export const DeductionsSection = ({
                 row={row}
                 weeklyBase={weeklyBase}
                 monthlyBase={parseFloat(monthlySalary) || 0}
+                integralBase={integralBase}
                 canRemove={rows.length > 1}
                 onChange={(updated) => onUpdate(row.id, updated)}
                 onRemove={() => onRemove(row.id)}
@@ -160,7 +162,9 @@ export const DeductionsSection = ({
                     formula={`${
                         r.base === "weekly"
                             ? `${weeklyRate.toFixed(2)} × ${mondaysInMonth}L`
-                            : monthlySalary
+                            : r.base === "integral"
+                                ? `${integralBase.toFixed(2)} integral`
+                                : monthlySalary
                     } × ${r.rate}%`}
                     value={r.computed}
                     isNegative

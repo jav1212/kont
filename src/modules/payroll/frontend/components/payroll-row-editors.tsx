@@ -144,18 +144,29 @@ export const EarningRowEditor = ({
 // DEDUCTION ROW EDITOR
 // ─────────────────────────────────────────────────────────────────────────────
 
+const BASE_CYCLE = ["weekly", "monthly", "integral"] as const;
+const BASE_LABELS: Record<string, string> = { weekly: "semanal", monthly: "mensual", integral: "integral" };
+
 export const DeductionRowEditor = ({
-    row, onChange, onRemove, canRemove, weeklyBase, monthlyBase,
+    row, onChange, onRemove, canRemove, weeklyBase, monthlyBase, integralBase,
 }: {
-    row:         DeductionRow;
-    onChange:    (updated: DeductionRow) => void;
-    onRemove:    () => void;
-    canRemove:   boolean;
-    weeklyBase:  number;
-    monthlyBase: number;
+    row:          DeductionRow;
+    onChange:     (updated: DeductionRow) => void;
+    onRemove:     () => void;
+    canRemove:    boolean;
+    weeklyBase:   number;
+    monthlyBase:  number;
+    integralBase: number;
 }) => {
-    const base     = row.base === "weekly" ? weeklyBase : monthlyBase;
-    const computed = base * ((parseFloat(row.rate) || 0) / 100);
+    const baseValue = row.base === "weekly" ? weeklyBase : row.base === "integral" ? integralBase : monthlyBase;
+    const computed  = baseValue * ((parseFloat(row.rate) || 0) / 100);
+
+    const cycleBase = () => {
+        const idx = BASE_CYCLE.indexOf(row.base as typeof BASE_CYCLE[number]);
+        onChange({ ...row, base: BASE_CYCLE[(idx + 1) % BASE_CYCLE.length] });
+    };
+
+    const isIntegral = row.base === "integral";
 
     return (
         <div className="space-y-1.5">
@@ -170,7 +181,7 @@ export const DeductionRowEditor = ({
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            {/* Row 2: Tasa % | Base | → result */}
+            {/* Row 2: Tasa % | Base (cycle) | → result */}
             <div className="flex items-center gap-1.5">
                 <div className="relative">
                     <input
@@ -183,12 +194,21 @@ export const DeductionRowEditor = ({
                     />
                     <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-foreground/30 pointer-events-none">%</span>
                 </div>
-                <Toggle
-                    active={row.base === "weekly"}
-                    activeLabel="semanal"
-                    inactiveLabel="mensual"
-                    onClick={() => onChange({ ...row, base: row.base === "weekly" ? "monthly" : "weekly" })}
-                />
+                <button
+                    onClick={cycleBase}
+                    className={[
+                        "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+                        "transition-colors duration-150 whitespace-nowrap",
+                        isIntegral
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                            : row.base === "weekly"
+                                ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
+                                : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
+                    ].join(" ")}
+                    title="Click para cambiar base: semanal → mensual → integral"
+                >
+                    {BASE_LABELS[row.base]}
+                </button>
                 <Result value={computed} negative />
             </div>
         </div>

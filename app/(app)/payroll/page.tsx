@@ -198,8 +198,13 @@ export default function PayrollCalculator() {
     const [deductionRows, setDeductionRows] = useState<DeductionRow[]>(DEFAULT_DEDUCTIONS);
     const [bonusRows,     setBonusRows]     = useState<BonusRow[]>(DEFAULT_BONUSES);
 
+    // ── Alícuotas ──────────────────────────────────────────────────────────
+    const [diasUtilidades,     setDiasUtilidades]     = useState("15");
+    const [diasBonoVacacional, setDiasBonoVacacional] = useState("15");
+
     // ── Left panel sections open/closed ────────────────────────────────────
     const [openSections, setOpenSections] = useState({
+        alicuotas:  true,
         earnings:   true,
         deductions: true,
         bonuses:    true,
@@ -227,6 +232,14 @@ export default function PayrollCalculator() {
     const bcvRate        = useMemo(() => parseFloat(exchangeRate) || 0,                         [exchangeRate]);
     const weeklyBase     = useMemo(() => weeklyRate * mondaysInMonth,                           [weeklyRate, mondaysInMonth]);
 
+    // Sprint 2: alícuotas para el salario de referencia (panel izquierdo)
+    const diasUtilNum  = useMemo(() => Math.max(0, parseFloat(diasUtilidades)     || 15), [diasUtilidades]);
+    const diasBonoNum  = useMemo(() => Math.max(0, parseFloat(diasBonoVacacional) || 15), [diasBonoVacacional]);
+    const refSalary    = useMemo(() => parseFloat(monthlySalary) || 0, [monthlySalary]);
+    const alicuotaUtil = useMemo(() => refSalary * (diasUtilNum / 365), [refSalary, diasUtilNum]);
+    const alicuotaBono = useMemo(() => refSalary * (diasBonoNum / 365), [refSalary, diasBonoNum]);
+    const integralBase = useMemo(() => refSalary + alicuotaUtil + alicuotaBono, [refSalary, alicuotaUtil, alicuotaBono]);
+
     // ── Computed row values (for audit display) ────────────────────────────
     const earningValues = useMemo<EarningValue[]>(() =>
         earningRows.map((r) => ({
@@ -239,9 +252,9 @@ export default function PayrollCalculator() {
     const deductionValues = useMemo<DeductionValue[]>(() =>
         deductionRows.map((r) => ({
             ...r,
-            computed: (r.base === "weekly" ? weeklyBase : parseFloat(monthlySalary) || 0)
+            computed: (r.base === "weekly" ? weeklyBase : r.base === "integral" ? integralBase : refSalary)
                 * ((parseFloat(r.rate) || 0) / 100),
-        })), [deductionRows, weeklyBase, monthlySalary]);
+        })), [deductionRows, weeklyBase, integralBase, refSalary]);
 
     const bonusValues = useMemo<BonusValue[]>(() =>
         bonusRows.map((r) => ({
@@ -472,6 +485,58 @@ export default function PayrollCalculator() {
 
                 {/* ── Collapsible sections ─────────────────────────────── */}
                 <div className="flex-1">
+                    {/* Alícuotas */}
+                    <ConfigSection
+                        title="Alícuotas"
+                        badge={`Sal. Integral: ${integralBase.toLocaleString("es-VE", { maximumFractionDigits: 2 })} Bs`}
+                        open={openSections.alicuotas}
+                        onToggle={() => toggleSection("alicuotas")}
+                    >
+                        <div className="py-3 space-y-3">
+                            <p className="font-mono text-[9px] text-foreground/35 leading-relaxed">
+                                Base para prestaciones y algunas retenciones.<br />
+                                Salario integral = salario + alíc. util + alíc. bono vac.
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className={labelCls}>Días Utilidades</label>
+                                    <input
+                                        type="number" min="15" step="1"
+                                        value={diasUtilidades}
+                                        onChange={(e) => setDiasUtilidades(e.target.value)}
+                                        className={fieldCls + " text-right"}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Días Bono Vac.</label>
+                                    <input
+                                        type="number" min="15" step="1"
+                                        value={diasBonoVacacional}
+                                        onChange={(e) => setDiasBonoVacacional(e.target.value)}
+                                        className={fieldCls + " text-right"}
+                                    />
+                                </div>
+                            </div>
+                            <div className="px-3 py-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] space-y-1">
+                                <div className="flex justify-between font-mono text-[10px]">
+                                    <span className="text-foreground/40">Alíc. Utilidades</span>
+                                    <span className="text-amber-500 tabular-nums">{alicuotaUtil.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
+                                </div>
+                                <div className="flex justify-between font-mono text-[10px]">
+                                    <span className="text-foreground/40">Alíc. Bono Vac.</span>
+                                    <span className="text-amber-500 tabular-nums">{alicuotaBono.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
+                                </div>
+                                <div className="border-t border-amber-500/20 pt-1 flex justify-between font-mono text-[10px]">
+                                    <span className="text-foreground/60 font-medium">Sal. Integral</span>
+                                    <span className="text-foreground font-medium tabular-nums">{integralBase.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
+                                </div>
+                            </div>
+                            <p className="font-mono text-[9px] text-foreground/25">
+                                En Deducciones usa la base <span className="text-amber-500">integral</span> para retenciones que apliquen sobre salario integral.
+                            </p>
+                        </div>
+                    </ConfigSection>
+
                     <ConfigSection
                         title="Asignaciones"
                         badge={totalEarnings > 0 ? `${totalEarnings.toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : undefined}
@@ -494,7 +559,7 @@ export default function PayrollCalculator() {
                         <DeductionsSection
                             rows={deductionRows} values={deductionValues} total={totalDeductions}
                             weeklyBase={weeklyBase} weeklyRate={weeklyRate} mondaysInMonth={mondaysInMonth}
-                            monthlySalary={monthlySalary}
+                            monthlySalary={monthlySalary} integralBase={integralBase}
                             onUpdate={updateDeduction} onRemove={removeDeduction} onAdd={addDeduction}
                         />
                     </ConfigSection>
@@ -562,6 +627,8 @@ export default function PayrollCalculator() {
                         bonusRows={bonusRows}
                         mondaysInMonth={mondaysInMonth}
                         bcvRate={bcvRate}
+                        diasUtilidades={diasUtilNum}
+                        diasBonoVacacional={diasBonoNum}
                         companyName={company?.name ?? ""}
                         companyId={company?.id ?? ""}
                         payrollDate={quincenaInfo.endDate}
