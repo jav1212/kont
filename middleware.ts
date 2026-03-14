@@ -11,14 +11,17 @@ import { createServerClient } from '@supabase/ssr';
 //   - Sin sesión en app routes       → /sign-in
 // ============================================================================
 
-const PUBLIC_PATHS  = ['/', '/sign-in', '/sign-up', '/forgot-password'];
+const PUBLIC_PATHS  = ['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-password'];
 const isPublic      = (p: string) => PUBLIC_PATHS.includes(p);
 const isAppRoute    = (p: string) =>
     p.startsWith('/payroll') ||
     p.startsWith('/companies') ||
     p.startsWith('/billing');
 const isAdminRoute  = (p: string) => p.startsWith('/admin');
-const isAdminSignIn = (p: string) => p === '/admin/sign-in';
+const isAdminPublic = (p: string) =>
+    p === '/admin/sign-in' ||
+    p === '/admin/forgot-password' ||
+    p === '/admin/reset-password';
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
@@ -45,13 +48,14 @@ export async function middleware(request: NextRequest) {
 
     // ── Rutas de administración ───────────────────────────────────────────
     if (isAdminRoute(pathname)) {
-        if (isAdminSignIn(pathname)) {
-            // Admin ya autenticado → panel
+        if (isAdminPublic(pathname)) {
+            // Admin ya autenticado con cookie → panel
             if (isAdminSession) {
                 return NextResponse.redirect(new URL('/admin', request.url));
             }
-            // Cliente con sesión activa intentando ver /admin/sign-in → app
-            if (user) {
+            // Cliente con sesión activa intentando ver páginas públicas de admin → app
+            // Excepto reset-password: necesita la sesión de Supabase para cambiar contraseña
+            if (user && pathname !== '/admin/reset-password') {
                 return NextResponse.redirect(new URL('/payroll', request.url));
             }
             return response;
@@ -78,7 +82,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
-    if (user && isPublic(pathname)) {
+    if (user && isPublic(pathname) && pathname !== '/reset-password') {
         return NextResponse.redirect(new URL('/payroll', request.url));
     }
 
@@ -110,6 +114,7 @@ export const config = {
         '/sign-in',
         '/sign-up',
         '/forgot-password',
+        '/reset-password',
         '/payroll/:path*',
         '/companies/:path*',
         '/billing/:path*',

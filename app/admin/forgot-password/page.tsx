@@ -7,7 +7,7 @@ const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
     "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
-    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
+    "outline-none focus:border-red-500/50 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -19,7 +19,7 @@ const Spinner = () => (
     </svg>
 );
 
-export default function ForgotPasswordPage() {
+export default function AdminForgotPasswordPage() {
     const [email,   setEmail]   = useState("");
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
         setLoading(true);
         setError(null);
 
-        const res  = await fetch("/api/auth/forgot-password", {
+        const res  = await fetch("/api/admin/forgot-password", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ email }),
@@ -40,49 +40,65 @@ export default function ForgotPasswordPage() {
         const json = await res.json();
         setLoading(false);
 
-        if (!res.ok) { setError(json.error ?? "Error al enviar el correo."); return; }
+        if (!res.ok) {
+            setError(json.error ?? "Error al enviar el correo.");
+            return;
+        }
 
         setSent(true);
     }
 
     return (
-        <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-8 py-16">
+        <div className="min-h-screen flex items-center justify-center px-8 bg-surface-2">
             <div className="w-full max-w-sm">
 
-                <div className="mb-10">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="h-px w-6 bg-indigo-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/70">
-                            Recuperación
-                        </span>
+                {/* Logo */}
+                <div className="flex items-center gap-3 mb-10">
+                    <div className="w-8 h-8 rounded-[6px] bg-red-600 flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
+                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
+                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
+                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
+                        </svg>
                     </div>
-                    <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
-                        Restablecer<br />contraseña
-                    </h1>
-                    <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
-                        Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.
-                    </p>
+                    <div>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground block">Kont</span>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-red-500/70 block">Administración</span>
+                    </div>
                 </div>
 
                 {sent ? (
                     <div className="space-y-6">
-                        <div className="px-4 py-3.5 border border-indigo-500/20 rounded-lg bg-indigo-500/[0.05]">
-                            <p className="font-mono text-[11px] text-foreground/60 leading-relaxed">
-                                Si <span className="text-foreground/80">{email}</span> está registrado, recibirás un enlace en tu correo. Revisa también la carpeta de spam.
+                        <div className="space-y-2">
+                            <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
+                                Revisa tu<br />correo
+                            </h1>
+                            <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                                Si <span className="text-foreground/70">{email}</span> está registrado como administrador, recibirás un enlace para restablecer tu contraseña.
                             </p>
                         </div>
                         <Link
-                            href="/sign-in"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                            href="/admin/sign-in"
+                            className="font-mono text-[11px] text-foreground/40 hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />
                             </svg>
-                            Volver a iniciar sesión
+                            Volver al inicio de sesión
                         </Link>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-8">
+                        <div className="space-y-2">
+                            <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
+                                Recuperar<br />contraseña
+                            </h1>
+                            <p className="font-mono text-[11px] text-foreground/30 leading-relaxed">
+                                Ingresa tu correo y te enviaremos un enlace para restablecerla.
+                            </p>
+                        </div>
+
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div className="flex flex-col gap-1.5">
                                 <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
@@ -90,9 +106,9 @@ export default function ForgotPasswordPage() {
                                 </label>
                                 <input
                                     type="email"
-                                    autoFocus
                                     autoComplete="email"
-                                    placeholder="usuario@empresa.com"
+                                    autoFocus
+                                    placeholder="admin@empresa.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     disabled={loading}
@@ -111,39 +127,24 @@ export default function ForgotPasswordPage() {
                                 disabled={loading}
                                 className={[
                                     "w-full h-10 mt-2 rounded-lg",
-                                    "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
+                                    "bg-red-600 hover:bg-red-500 active:bg-red-700",
                                     "disabled:opacity-50 disabled:cursor-not-allowed",
                                     "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
                                     "transition-colors duration-150 flex items-center justify-center gap-2",
                                 ].join(" ")}
                             >
-                                {loading ? (
-                                    <><Spinner /> Enviando…</>
-                                ) : (
-                                    <>
-                                        Enviar enlace
-                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M1 6h10M6 1l5 5-5 5" />
-                                        </svg>
-                                    </>
-                                )}
+                                {loading ? <><Spinner /> Enviando…</> : "Enviar enlace"}
                             </button>
                         </form>
 
-                        <div className="px-4 py-3.5 border border-foreground/[0.07] rounded-lg bg-foreground/[0.02]">
-                            <p className="font-mono text-[10px] text-foreground/25 leading-relaxed">
-                                El enlace expira en 30 minutos. Revisa también tu carpeta de spam.
-                            </p>
-                        </div>
-
                         <Link
-                            href="/sign-in"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                            href="/admin/sign-in"
+                            className="font-mono text-[11px] text-foreground/40 hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />
                             </svg>
-                            Volver a iniciar sesión
+                            Volver al inicio de sesión
                         </Link>
                     </div>
                 )}

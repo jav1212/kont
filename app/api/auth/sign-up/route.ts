@@ -8,8 +8,13 @@ import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function POST(req: NextRequest) {
     const { email, password } = await req.json();
+    const { origin } = new URL(req.url);
 
-    const result = await getAuthActions().signUp.execute({ email, pass: password });
+    const result = await getAuthActions().signUp.execute({
+        email,
+        pass: password,
+        emailRedirectTo: `${origin}/api/auth/callback`,
+    });
 
     return handleResult(result, 201);
 }

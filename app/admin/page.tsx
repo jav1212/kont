@@ -43,6 +43,17 @@ interface AdminUser {
     created_at: string;
 }
 
+interface PlanRow {
+    id:                     string;
+    name:                   string;
+    maxCompanies:           number | null;
+    maxEmployeesPerCompany: number | null;
+    priceMonthlyUsd:        number;
+    priceQuarterlyUsd:      number;
+    priceAnnualUsd:         number;
+    isActive:               boolean;
+}
+
 interface TenantRow {
     tenant_id:        string;
     email:            string | null;
@@ -93,7 +104,7 @@ function formatDate(iso?: string | null) {
 // ============================================================================
 
 export default function AdminPage() {
-    const [tab, setTab] = useState<"payments" | "tenants" | "admins">("payments");
+    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans">("payments");
 
     // Data
     const [summary,  setSummary]  = useState<PlatformSummary | null>(null);
@@ -115,6 +126,14 @@ export default function AdminPage() {
     const [tenantActionId,     setTenantActionId]     = useState<string | null>(null);
     const [tenantActionStatus, setTenantActionStatus] = useState("");
     const [tenantActioning,    setTenantActioning]    = useState(false);
+
+    // Plans
+    const [plans,        setPlans]        = useState<PlanRow[]>([]);
+    const [plansLoaded,  setPlansLoaded]  = useState(false);
+    const [planEditId,   setPlanEditId]   = useState<string | null>(null);
+    const [planDraft,    setPlanDraft]    = useState<Partial<PlanRow>>({});
+    const [planSaving,   setPlanSaving]   = useState(false);
+    const [planSaveErr,  setPlanSaveErr]  = useState<string | null>(null);
 
     // Admin users
     const [admins,       setAdmins]       = useState<AdminUser[]>([]);
@@ -176,6 +195,39 @@ export default function AdminPage() {
             await Promise.all([loadPayments(), loadAll()]);
         }
     }, [actionNote, loadPayments, loadAll]);
+
+    // ── Load plans (lazy) ─────────────────────────────────────────────────
+    const loadPlans = useCallback(async () => {
+        const res  = await fetch("/api/admin/plans");
+        const json = await res.json();
+        if (json.data) setPlans(json.data);
+        setPlansLoaded(true);
+    }, []);
+
+    useEffect(() => {
+        if (tab === "plans" && !plansLoaded) loadPlans();
+    }, [tab, plansLoaded, loadPlans]);
+
+    // ── Save plan edits ────────────────────────────────────────────────────
+    const handlePlanSave = useCallback(async (id: string) => {
+        setPlanSaving(true);
+        setPlanSaveErr(null);
+        const res  = await fetch(`/api/admin/plans/${id}`, {
+            method:  "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(planDraft),
+        });
+        const json = await res.json();
+        setPlanSaving(false);
+        if (!res.ok) {
+            setPlanSaveErr(json.error ?? "Error al guardar.");
+        } else {
+            setPlans((prev) => prev.map((p) => p.id === id ? { ...p, ...json.data } : p));
+            setPlanEditId(null);
+            setPlanDraft({});
+            setPlanSaveErr(null);
+        }
+    }, [planDraft]);
 
     // ── Load admins (lazy, solo cuando se abre la pestaña) ───────────────
     const loadAdmins = useCallback(async () => {
@@ -319,6 +371,9 @@ export default function AdminPage() {
                             </button>
                             <button className={tabBtn(tab === "admins")} onClick={() => setTab("admins")}>
                                 Administradores
+                            </button>
+                            <button className={tabBtn(tab === "plans")} onClick={() => setTab("plans")}>
+                                Planes
                             </button>
                         </div>
 
@@ -703,6 +758,175 @@ export default function AdminPage() {
                                 </div>
                             </div>
                         )}
+                        {/* ── PLANS TAB ──────────────────────────────────────────── */}
+                        {tab === "plans" && (
+                            <div className="space-y-4">
+                                {!plansLoaded ? (
+                                    <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
+                                        <Spinner />
+                                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando planes…</span>
+                                    </div>
+                                ) : plans.length === 0 ? (
+                                    <div className="border border-border-light rounded-xl px-4 py-10 text-center">
+                                        <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">Sin planes</p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-border-light bg-surface-2">
+                                                    {["Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
+                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {plans.map((plan) => {
+                                                    const isEditing = planEditId === plan.id;
+                                                    const d = isEditing ? planDraft : {};
+
+                                                    const numInput = (field: keyof PlanRow, label: string, nullable?: boolean) => (
+                                                        <div>
+                                                            <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">{label}</label>
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                value={(d[field] ?? plan[field] ?? "") as string | number}
+                                                                onChange={(e) => {
+                                                                    const raw = e.target.value;
+                                                                    setPlanDraft((prev) => ({
+                                                                        ...prev,
+                                                                        [field]: raw === "" && nullable ? null : Number(raw),
+                                                                    }));
+                                                                }}
+                                                                placeholder={nullable ? "∞" : "0"}
+                                                                className={inputCls + " w-24"}
+                                                            />
+                                                        </div>
+                                                    );
+
+                                                    return (
+                                                        <Fragment key={plan.id}>
+                                                            <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
+                                                                <td className="px-3 py-3 font-mono text-[12px] font-medium text-foreground">
+                                                                    {plan.name}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                                    {plan.maxCompanies ?? "∞"}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                                    {plan.maxEmployeesPerCompany ?? "∞"}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                    ${plan.priceMonthlyUsd}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                    ${plan.priceQuarterlyUsd}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                    ${plan.priceAnnualUsd}
+                                                                </td>
+                                                                <td className="px-3 py-3">
+                                                                    <span className={[
+                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                        plan.isActive
+                                                                            ? "border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400"
+                                                                            : "border-foreground/10 bg-foreground/[0.04] text-foreground/40",
+                                                                    ].join(" ")}>
+                                                                        {plan.isActive ? "Sí" : "No"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-3 text-right">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            if (isEditing) {
+                                                                                setPlanEditId(null);
+                                                                                setPlanDraft({});
+                                                                                setPlanSaveErr(null);
+                                                                            } else {
+                                                                                setPlanEditId(plan.id);
+                                                                                setPlanDraft({});
+                                                                                setPlanSaveErr(null);
+                                                                            }
+                                                                        }}
+                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/40 hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                    >
+                                                                        {isEditing ? "Cerrar" : "Editar"}
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+
+                                                            {isEditing && (
+                                                                <tr key={plan.id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
+                                                                    <td colSpan={8} className="px-4 py-4">
+                                                                        <div className="space-y-4">
+                                                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                                                <div>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Nombre</label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={(d.name ?? plan.name) as string}
+                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, name: e.target.value }))}
+                                                                                        className={inputCls}
+                                                                                    />
+                                                                                </div>
+                                                                                {numInput("maxCompanies", "Empresas máx.", true)}
+                                                                                {numInput("maxEmployeesPerCompany", "Empleados máx.", true)}
+                                                                                <div>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Activo</label>
+                                                                                    <select
+                                                                                        value={String(d.isActive ?? plan.isActive)}
+                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, isActive: e.target.value === "true" }))}
+                                                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
+                                                                                    >
+                                                                                        <option value="true">Sí</option>
+                                                                                        <option value="false">No</option>
+                                                                                    </select>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-3 gap-3">
+                                                                                {numInput("priceMonthlyUsd", "Precio mensual (USD)")}
+                                                                                {numInput("priceQuarterlyUsd", "Precio trimestral (USD)")}
+                                                                                {numInput("priceAnnualUsd", "Precio anual (USD)")}
+                                                                            </div>
+
+                                                                            {planSaveErr && (
+                                                                                <p className="font-mono text-[10px] text-red-500">{planSaveErr}</p>
+                                                                            )}
+
+                                                                            <div className="flex items-center gap-2">
+                                                                                <button
+                                                                                    onClick={() => handlePlanSave(plan.id)}
+                                                                                    disabled={planSaving}
+                                                                                    className="h-8 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                                                                >
+                                                                                    {planSaving && <Spinner />}
+                                                                                    {planSaving ? "Guardando…" : "Guardar"}
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => { setPlanEditId(null); setPlanDraft({}); setPlanSaveErr(null); }}
+                                                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                                                >
+                                                                                    Cancelar
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </Fragment>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                     </>
                 )}
             </div>

@@ -6,6 +6,7 @@ import { IAuthRepository } from "../domain/repository/auth.repository";
 export interface SignUpInput {
     email: string;
     pass: string;
+    emailRedirectTo?: string;
 }
 
 export class SignUpUseCase extends UseCase<SignUpInput, Auth> {
@@ -14,7 +15,6 @@ export class SignUpUseCase extends UseCase<SignUpInput, Auth> {
     }
 
     async execute(input: SignUpInput): Promise<Result<Auth>> {
-        // Aquí podrías añadir lógica de validación de contraseña fuerte
-        return await this.authRepository.signUp(input.email, input.pass);
+        return await this.authRepository.signUp(input.email, input.pass, input.emailRedirectTo);
     }
 }

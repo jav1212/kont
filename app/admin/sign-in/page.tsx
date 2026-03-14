@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
@@ -150,6 +151,13 @@ export default function AdminSignInPage() {
                         )}
                     </button>
                 </form>
+
+                <Link
+                    href="/admin/forgot-password"
+                    className="mt-6 block font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors text-center"
+                >
+                    Olvidé mi contraseña
+                </Link>
 
             </div>
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 
@@ -42,7 +41,6 @@ const Spinner = () => (
 
 export default function SignUpPage() {
     const { signUp } = useAuth();
-    const router     = useRouter();
 
     const [name,    setName]    = useState("");
     const [email,   setEmail]   = useState("");
@@ -67,7 +65,6 @@ export default function SignUpPage() {
         if (err) { setError(err); return; }
 
         setSuccess(true);
-        setTimeout(() => router.replace("/sign-in"), 2000);
     }
 
     return (
@@ -92,22 +89,36 @@ export default function SignUpPage() {
                     </div>
 
                     {success ? (
-                        <div className="px-5 py-5 border border-indigo-500/30 rounded-xl bg-indigo-500/[0.06] space-y-2">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-full border border-indigo-500/50 bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                    <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
-                                        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                        className="text-indigo-400">
-                                        <path d="M1 3.5l1.8 1.8L6 1.5" />
-                                    </svg>
+                        <div className="space-y-5">
+                            <div className="px-5 py-5 border border-indigo-500/30 rounded-xl bg-indigo-500/[0.06] space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border border-indigo-500/50 bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
+                                            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                                            className="text-indigo-400">
+                                            <path d="M1 3.5l1.8 1.8L6 1.5" />
+                                        </svg>
+                                    </div>
+                                    <span className="font-mono text-[11px] text-indigo-300 font-semibold">
+                                        Revisa tu correo
+                                    </span>
                                 </div>
-                                <span className="font-mono text-[11px] text-indigo-300 font-semibold">
-                                    Cuenta creada exitosamente
-                                </span>
+                                <p className="font-mono text-[10px] text-foreground/40 leading-relaxed pl-6">
+                                    Te enviamos un enlace de confirmación a <span className="text-foreground/70">{email}</span>. Haz clic en él para activar tu cuenta.
+                                </p>
+                                <p className="font-mono text-[10px] text-foreground/25 leading-relaxed pl-6">
+                                    Revisa también tu carpeta de spam si no lo encuentras.
+                                </p>
                             </div>
-                            <p className="font-mono text-[10px] text-foreground/30 leading-relaxed pl-6">
-                                Redirigiendo al inicio de sesión…
-                            </p>
+                            <Link
+                                href="/sign-in"
+                                className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                            >
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M10 6H2M6 2L2 6l4 4" />
+                                </svg>
+                                Volver a iniciar sesión
+                            </Link>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -250,14 +261,14 @@ export default function SignUpPage() {
                     <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-foreground/20 mb-6">
                         Incluido en tu cuenta
                     </p>
-                    <div className="border border-white/[0.07] rounded-xl overflow-hidden">
+                    <div className="border border-border-light rounded-xl overflow-hidden">
                         {PERKS.map((p, i) => (
                             <div
                                 key={p.code}
                                 className={[
                                     "flex items-center gap-4 px-5 py-4",
-                                    "hover:bg-white/[0.02] transition-colors duration-150",
-                                    i < PERKS.length - 1 ? "border-b border-white/[0.06]" : "",
+                                    "hover:bg-foreground/[0.02] transition-colors duration-150",
+                                    i < PERKS.length - 1 ? "border-b border-border-light" : "",
                                 ].join(" ")}
                             >
                                 <span className="font-mono text-[9px] text-indigo-500/50 tracking-widest w-4 flex-shrink-0">

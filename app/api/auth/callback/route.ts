@@ -10,11 +10,11 @@ export async function GET(request: Request) {
         const { error } = await source.instance.auth.exchangeCodeForSession(code);
         
         if (!error) {
-            return NextResponse.redirect(`${origin}/dashboard`);
+            return NextResponse.redirect(`${origin}/payroll`);
         }
-        
-        // Si hay error (ej. código expirado), redirigimos a la landing con el mensaje
-        return NextResponse.redirect(`${origin}/pages/un-auth?error_description=${encodeURIComponent(error.message)}`);
+
+        // Si hay error (ej. código expirado), redirigir al sign-in con mensaje
+        return NextResponse.redirect(`${origin}/sign-in?error=${encodeURIComponent("El enlace de confirmación expiró. Intenta iniciar sesión o regístrate de nuevo.")}`);
     }
 
     return NextResponse.redirect(`${origin}/pages/un-auth?error_description=No+auth+code+found`);
