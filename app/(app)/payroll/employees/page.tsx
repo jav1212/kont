@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
-import type { Employee, EmployeeEstado } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { employeesToCsv, downloadCsv, parseCsv } from "@/src/modules/payroll/frontend/utils/employee-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 
@@ -18,7 +18,9 @@ interface RowState {
     nombre:         string;
     cargo:          string;
     salarioMensual: string;
+    moneda:         EmployeeMoneda;
     estado:         EmployeeEstado;
+    fechaIngreso:   string;
 }
 
 function employeeToRow(e: Employee): RowState {
@@ -27,8 +29,26 @@ function employeeToRow(e: Employee): RowState {
         nombre:         e.nombre,
         cargo:          e.cargo,
         salarioMensual: String(e.salarioMensual),
+        moneda:         e.moneda ?? "VES",
         estado:         e.estado,
+        fechaIngreso:   e.fechaIngreso ?? "",
     };
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function calcAntiguedad(fechaIngreso: string | null | undefined): string {
+    if (!fechaIngreso) return "—";
+    const start = new Date(fechaIngreso);
+    const now   = new Date();
+    let years   = now.getFullYear() - start.getFullYear();
+    let months  = now.getMonth() - start.getMonth();
+    if (months < 0) { years--; months += 12; }
+    if (years === 0 && months === 0) return "< 1 mes";
+    const parts: string[] = [];
+    if (years > 0)  parts.push(`${years}a`);
+    if (months > 0) parts.push(`${months}m`);
+    return parts.join(" ");
 }
 
 // ============================================================================
@@ -98,175 +118,158 @@ const toolbarBtn = [
 // ============================================================================
 
 function EmployeeRow({
-    employee,
-    mode,
-    draft,
-    saving,
-    selected,
-    onSelect,
-    onDraftChange,
-    onEdit,
-    onSave,
-    onCancel,
-    onDelete,
+    employee, mode, draft, saving, selected,
+    onSelect, onDraftChange, onEdit, onSave, onCancel, onDelete, onShowHistory,
 }: {
-    employee:     Employee;
-    mode:         RowMode;
-    draft:        RowState;
-    saving:       boolean;
-    selected:     boolean;
-    onSelect:     (checked: boolean) => void;
-    onDraftChange:(field: keyof RowState, value: string) => void;
-    onEdit:       () => void;
-    onSave:       () => void;
-    onCancel:     () => void;
-    onDelete:     () => void;
+    employee:      Employee;
+    mode:          RowMode;
+    draft:         RowState;
+    saving:        boolean;
+    selected:      boolean;
+    onSelect:      (checked: boolean) => void;
+    onDraftChange: (field: keyof RowState, value: string) => void;
+    onEdit:        () => void;
+    onSave:        () => void;
+    onCancel:      () => void;
+    onDelete:      () => void;
+    onShowHistory: () => void;
 }) {
     const isEditing = mode === "edit" || mode === "new";
-
     const tdCls = "px-3 py-2.5 border-b border-border-light/60 last:border-b-0";
 
     return (
-        <tr className={[
-            "transition-colors duration-100 group",
-            selected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]",
-        ].join(" ")}>
+        <tr className={["transition-colors duration-100 group", selected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]"].join(" ")}>
 
             {/* Checkbox */}
             <td className={tdCls + " w-10 text-center"}>
-                <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={(e) => onSelect(e.target.checked)}
-                    disabled={isEditing}
-                    className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30"
-                />
+                <input type="checkbox" checked={selected}
+                    onChange={(e) => onSelect(e.target.checked)} disabled={isEditing}
+                    className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30" />
             </td>
 
             {/* Cédula */}
-            <td className={tdCls + " w-32"}>
+            <td className={tdCls + " w-28"}>
                 {mode === "new" ? (
-                    <input
-                        className={cellInput}
-                        placeholder="V-12345678"
-                        value={draft.cedula}
-                        onChange={(e) => onDraftChange("cedula", e.target.value)}
-                    />
+                    <input className={cellInput} placeholder="V-12345678"
+                        value={draft.cedula} onChange={(e) => onDraftChange("cedula", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-foreground/50 uppercase tracking-wider">
-                        {employee.cedula}
-                    </span>
+                    <span className="font-mono text-[11px] text-foreground/50 uppercase tracking-wider">{employee.cedula}</span>
                 )}
             </td>
 
             {/* Nombre */}
             <td className={tdCls}>
                 {isEditing ? (
-                    <input
-                        className={cellInput}
-                        placeholder="Nombre completo"
-                        value={draft.nombre}
-                        onChange={(e) => onDraftChange("nombre", e.target.value)}
-                    />
+                    <input className={cellInput} placeholder="Nombre completo"
+                        value={draft.nombre} onChange={(e) => onDraftChange("nombre", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[12px] font-medium text-foreground">
-                        {employee.nombre}
-                    </span>
+                    <span className="font-mono text-[12px] font-medium text-foreground">{employee.nombre}</span>
                 )}
             </td>
 
             {/* Cargo */}
-            <td className={tdCls + " w-44"}>
+            <td className={tdCls + " w-40"}>
                 {isEditing ? (
-                    <input
-                        className={cellInput}
-                        placeholder="Cargo"
-                        value={draft.cargo}
-                        onChange={(e) => onDraftChange("cargo", e.target.value)}
-                    />
+                    <input className={cellInput} placeholder="Cargo"
+                        value={draft.cargo} onChange={(e) => onDraftChange("cargo", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-foreground/60 uppercase tracking-[0.08em]">
-                        {employee.cargo}
-                    </span>
+                    <span className="font-mono text-[11px] text-foreground/60 uppercase tracking-[0.08em]">{employee.cargo}</span>
                 )}
             </td>
 
-            {/* Salario */}
-            <td className={tdCls + " w-36"}>
+            {/* Salario + Moneda */}
+            <td className={tdCls + " w-44"}>
                 {isEditing ? (
-                    <input
-                        className={cellInput + " text-right"}
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={draft.salarioMensual}
-                        onChange={(e) => onDraftChange("salarioMensual", e.target.value)}
-                    />
+                    <div className="flex gap-1">
+                        <input className={cellInput + " text-right flex-1"} type="number" step="0.01" min="0" placeholder="0.00"
+                            value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
+                        <select className={cellInput + " w-16"} value={draft.moneda}
+                            onChange={(e) => onDraftChange("moneda", e.target.value)}>
+                            <option value="VES">VES</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
                 ) : (
-                    <span className="font-mono text-[12px] tabular-nums text-foreground/80">
-                        Bs. {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[12px] tabular-nums text-foreground/80">
+                            {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        </span>
+                        <span className={[
+                            "font-mono text-[8px] px-1 py-0.5 rounded border uppercase tracking-widest",
+                            employee.moneda === "USD"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                                : "border-border-light text-foreground/30",
+                        ].join(" ")}>
+                            {employee.moneda ?? "VES"}
+                        </span>
+                    </div>
+                )}
+            </td>
+
+            {/* Fecha de ingreso */}
+            <td className={tdCls + " w-32"}>
+                {isEditing ? (
+                    <input className={cellInput} type="date"
+                        value={draft.fechaIngreso}
+                        onChange={(e) => onDraftChange("fechaIngreso", e.target.value)} />
+                ) : (
+                    <div className="flex flex-col gap-0.5">
+                        <span className="font-mono text-[11px] text-foreground/60">
+                            {employee.fechaIngreso
+                                ? new Date(employee.fechaIngreso + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "2-digit" })
+                                : <span className="text-foreground/25">—</span>}
+                        </span>
+                        {employee.fechaIngreso && (
+                            <span className="font-mono text-[9px] text-foreground/30 uppercase tracking-widest">
+                                {calcAntiguedad(employee.fechaIngreso)}
+                            </span>
+                        )}
+                    </div>
                 )}
             </td>
 
             {/* Estado */}
-            <td className={tdCls + " w-32"}>
+            <td className={tdCls + " w-28"}>
                 {isEditing ? (
-                    <select
-                        value={draft.estado}
-                        onChange={(e) => onDraftChange("estado", e.target.value)}
-                        className={cellInput}
-                    >
-                        {ESTADOS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
+                    <select value={draft.estado} onChange={(e) => onDraftChange("estado", e.target.value)} className={cellInput}>
+                        {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                 ) : (
-                    <span className={[
-                        "inline-flex px-2 py-0.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.14em]",
-                        ESTADO_CLS[employee.estado],
-                    ].join(" ")}>
+                    <span className={["inline-flex px-2 py-0.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.14em]", ESTADO_CLS[employee.estado]].join(" ")}>
                         {employee.estado}
                     </span>
                 )}
             </td>
 
             {/* Actions */}
-            <td className={tdCls + " w-24 text-right pr-4"}>
+            <td className={tdCls + " w-28 text-right pr-4"}>
                 {saving ? (
                     <div className="flex justify-end"><Spinner /></div>
                 ) : isEditing ? (
                     <div className="flex items-center justify-end gap-1">
-                        <button
-                            onClick={onSave}
-                            title="Guardar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors"
-                        >
+                        <button onClick={onSave} title="Guardar"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
                             <IconSave />
                         </button>
-                        <button
-                            onClick={onCancel}
-                            title="Cancelar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors"
-                        >
+                        <button onClick={onCancel} title="Cancelar"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors">
                             <IconCancel />
                         </button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                            onClick={onEdit}
-                            title="Editar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
-                        >
+                        <button onClick={onShowHistory} title="Historial de salario"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/30 hover:text-primary-500 hover:bg-primary-500/10 transition-colors">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1.5"/>
+                            </svg>
+                        </button>
+                        <button onClick={onEdit} title="Editar"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                             <IconEdit />
                         </button>
-                        <button
-                            onClick={onDelete}
-                            title="Eliminar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
-                        >
+                        <button onClick={onDelete} title="Eliminar"
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-red-500 hover:bg-red-500/[0.08] transition-colors">
                             <IconTrash />
                         </button>
                     </div>
@@ -282,7 +285,7 @@ function EmployeeRow({
 
 export default function EmployeesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading, error, upsert, remove, reload } = useEmployee(companyId);
+    const { employees, loading, error, upsert, remove, reload, getSalaryHistory } = useEmployee(companyId);
     const { canAddEmployee, employeesRemaining } = useCapacity();
     const atEmployeeLimit = companyId ? !canAddEmployee(companyId) : false;
     const empRemaining    = companyId ? employeesRemaining(companyId) : null;
@@ -317,6 +320,22 @@ export default function EmployeesPage() {
     const [pasteErrors,    setPasteErrors]    = useState<string[]>([]);
     const [pasteCount,     setPasteCount]     = useState<number | null>(null);
     const [pasteImporting, setPasteImporting] = useState(false);
+
+    // ── Salary history modal ───────────────────────────────────────────────
+    const [historyModal, setHistoryModal] = useState<{ cedula: string; nombre: string } | null>(null);
+    const [historyData,  setHistoryData]  = useState<SalaryHistoryEntry[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError,   setHistoryError]   = useState<string | null>(null);
+
+    const openHistory = useCallback(async (emp: Employee) => {
+        if (!companyId) return;
+        setHistoryModal({ cedula: emp.cedula, nombre: emp.nombre });
+        setHistoryData([]); setHistoryError(null); setHistoryLoading(true);
+        const { history, error: err } = await getSalaryHistory(companyId, emp.cedula);
+        setHistoryLoading(false);
+        if (err) setHistoryError(err);
+        else     setHistoryData(history);
+    }, [companyId, getSalaryHistory]);
 
     // ── Search ─────────────────────────────────────────────────────────────
     const [search, setSearch] = useState("");
@@ -353,15 +372,14 @@ export default function EmployeesPage() {
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
             salarioMensual: parseFloat(draft.salarioMensual) || 0,
+            moneda:         draft.moneda ?? "VES",
             estado:         draft.estado,
+            fechaIngreso:   draft.fechaIngreso || null,
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
 
-        if (err) {
-            setRowError((e) => ({ ...e, [cedula]: err }));
-        } else {
-            cancelEdit(cedula);
-        }
+        if (err) setRowError((e) => ({ ...e, [cedula]: err }));
+        else     cancelEdit(cedula);
     }, [drafts, upsert, cancelEdit]);
 
     const deleteOne = useCallback(async (id: string) => {
@@ -375,7 +393,7 @@ export default function EmployeesPage() {
         const id = `new_${Date.now()}`;
         setNewRows((r) => [{
             id,
-            draft: { cedula: "", nombre: "", cargo: "", salarioMensual: "", estado: "activo" },
+            draft: { cedula: "", nombre: "", cargo: "", salarioMensual: "", moneda: "VES", estado: "activo", fechaIngreso: "" },
         }, ...r]);
     }, []);
 
@@ -417,7 +435,9 @@ export default function EmployeesPage() {
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
             salarioMensual: salary,
+            moneda:         draft.moneda ?? "VES",
             estado:         draft.estado,
+            fechaIngreso:   draft.fechaIngreso || null,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
 
@@ -669,7 +689,7 @@ export default function EmployeesPage() {
                                             className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30"
                                         />
                                     </th>
-                                    {["Cédula", "Nombre", "Cargo", "Salario Bs.", "Estado", ""].map((h) => (
+                                    {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
                                         <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
                                             {h}
                                         </th>
@@ -684,7 +704,7 @@ export default function EmployeesPage() {
                                         <td className="px-3 py-2.5 w-10 text-center">
                                             <div className="w-3.5 h-3.5 rounded border border-border-medium opacity-30 mx-auto" />
                                         </td>
-                                        <td className="px-3 py-2.5 w-32">
+                                        <td className="px-3 py-2.5 w-28">
                                             <input className={cellInput} placeholder="V-12345678"
                                                 value={row.draft.cedula}
                                                 onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)} />
@@ -694,17 +714,29 @@ export default function EmployeesPage() {
                                                 value={row.draft.nombre}
                                                 onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)} />
                                         </td>
-                                        <td className="px-3 py-2.5 w-44">
+                                        <td className="px-3 py-2.5 w-40">
                                             <input className={cellInput} placeholder="Cargo"
                                                 value={row.draft.cargo}
                                                 onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)} />
                                         </td>
-                                        <td className="px-3 py-2.5 w-36">
-                                            <input className={cellInput + " text-right"} type="number" step="0.01" min="0" placeholder="0.00"
-                                                value={row.draft.salarioMensual}
-                                                onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
+                                        <td className="px-3 py-2.5 w-44">
+                                            <div className="flex gap-1">
+                                                <input className={cellInput + " text-right flex-1"} type="number" step="0.01" min="0" placeholder="0.00"
+                                                    value={row.draft.salarioMensual}
+                                                    onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
+                                                <select className={cellInput + " w-16"} value={row.draft.moneda}
+                                                    onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
+                                                    <option value="VES">VES</option>
+                                                    <option value="USD">USD</option>
+                                                </select>
+                                            </div>
                                         </td>
                                         <td className="px-3 py-2.5 w-32">
+                                            <input className={cellInput} type="date"
+                                                value={row.draft.fechaIngreso}
+                                                onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)} />
+                                        </td>
+                                        <td className="px-3 py-2.5 w-28">
                                             <select className={cellInput} value={row.draft.estado}
                                                 onChange={(e) => updateNewDraft(row.id, "estado", e.target.value)}>
                                                 {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -764,6 +796,7 @@ export default function EmployeesPage() {
                                             onSave={() => saveRow(emp.cedula)}
                                             onCancel={() => cancelEdit(emp.cedula)}
                                             onDelete={() => deleteOne(emp.cedula)}
+                                            onShowHistory={() => openHistory(emp)}
                                         />
                                     ))
                                 )}
@@ -773,6 +806,76 @@ export default function EmployeesPage() {
                 )}
 
             </div>
+
+            {/* ── Salary History Modal ────────────────────────────────────────── */}
+            {historyModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
+                            <div>
+                                <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
+                                    Historial de Salario
+                                </h2>
+                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                    {historyModal.nombre} · {historyModal.cedula}
+                                </p>
+                            </div>
+                            <button onClick={() => setHistoryModal(null)}
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                <IconCancel />
+                            </button>
+                        </div>
+                        <div className="p-5">
+                            {historyLoading ? (
+                                <div className="flex items-center justify-center h-24 gap-2 text-foreground/30">
+                                    <Spinner />
+                                    <span className="font-mono text-[11px] uppercase tracking-widest">Cargando…</span>
+                                </div>
+                            ) : historyError ? (
+                                <p className="font-mono text-[11px] text-red-500">{historyError}</p>
+                            ) : historyData.length === 0 ? (
+                                <p className="font-mono text-[11px] text-foreground/30 text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
+                            ) : (
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-border-light">
+                                            {["Desde", "Salario", "Moneda"].map((h) => (
+                                                <th key={h} className="pb-2 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {historyData.map((entry) => (
+                                            <tr key={entry.id} className="border-b border-border-light/50 last:border-0">
+                                                <td className="py-2 font-mono text-[11px] text-foreground/60">{entry.fechaDesde}</td>
+                                                <td className="py-2 font-mono text-[11px] text-foreground">
+                                                    {entry.salarioMensual.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="py-2">
+                                                    <span className={[
+                                                        "font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded",
+                                                        entry.moneda === "USD"
+                                                            ? "bg-green-500/10 text-green-500"
+                                                            : "bg-foreground/[0.06] text-foreground/50",
+                                                    ].join(" ")}>
+                                                        {entry.moneda}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        <div className="flex justify-end px-5 py-4 border-t border-border-light">
+                            <button onClick={() => setHistoryModal(null)}
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
             {pasteOpen && (
