@@ -22,32 +22,32 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 }}
             />
 
-            {/* ── Indigo glow — top-left ────────────────────────────────── */}
+            {/* ── Primary glow — top-left ───────────────────────────────── */}
             <div
                 aria-hidden
                 className="pointer-events-none fixed z-0"
                 style={{
                     top: "-20%", left: "-10%",
                     width: "60vw", height: "60vw",
-                    background: "radial-gradient(circle, rgba(99,102,241,0.10) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(8,145,178,0.10) 0%, transparent 70%)",
                 }}
             />
 
-            {/* ── Indigo glow — bottom-right ────────────────────────────── */}
+            {/* ── Primary glow — bottom-right ───────────────────────────── */}
             <div
                 aria-hidden
                 className="pointer-events-none fixed z-0"
                 style={{
                     bottom: "-20%", right: "-10%",
                     width: "50vw", height: "50vw",
-                    background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(8,145,178,0.06) 0%, transparent 70%)",
                 }}
             />
 
             {/* ── Top bar ───────────────────────────────────────────────── */}
             <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-foreground/[0.07]">
                 <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-[5px] bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded-[5px] bg-primary-500 flex items-center justify-center flex-shrink-0">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
                             <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />

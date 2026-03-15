@@ -123,17 +123,18 @@ export const EarningsSection = ({
 
 export const DeductionsSection = ({
     rows, values, total,
-    weeklyBase, weeklyRate, mondaysInMonth, monthlySalary, integralBase,
+    weeklyBase, weeklyRate, mondaysInMonth, monthlySalary, integralBase, cappedWeeklyBase,
     onUpdate, onRemove, onAdd,
 }: {
-    rows:           DeductionRow[];
-    values:         DeductionValue[];
-    total:          number;
-    weeklyBase:     number;
-    weeklyRate:     number;
-    mondaysInMonth: number;
-    monthlySalary:  string;
-    integralBase:   number;
+    rows:              DeductionRow[];
+    values:            DeductionValue[];
+    total:             number;
+    weeklyBase:        number;
+    weeklyRate:        number;
+    mondaysInMonth:    number;
+    monthlySalary:     string;
+    integralBase:      number;
+    cappedWeeklyBase?: number;
     onUpdate: (id: string, updated: DeductionRow) => void;
     onRemove: (id: string) => void;
     onAdd:    (blank: DeductionRow) => void;
@@ -146,13 +147,14 @@ export const DeductionsSection = ({
                 weeklyBase={weeklyBase}
                 monthlyBase={parseFloat(monthlySalary) || 0}
                 integralBase={integralBase}
+                cappedWeeklyBase={cappedWeeklyBase ?? weeklyBase}
                 canRemove={rows.length > 1}
                 onChange={(updated) => onUpdate(row.id, updated)}
                 onRemove={() => onRemove(row.id)}
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly",
+            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly", mode: "rate",
         })} />
         <AuditContainer title="Total Retenciones" total={total} type="deduction">
             {values.map((r) => (
@@ -197,7 +199,7 @@ export const BonusesSection = ({
                 key={row.id}
                 row={row}
                 bcvRate={bcvRate}
-                canRemove={rows.length > 1}
+                canRemove={true}
                 onChange={(updated) => onUpdate(row.id, updated)}
                 onRemove={() => onRemove(row.id)}
             />

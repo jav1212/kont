@@ -18,6 +18,7 @@ export interface Company {
     id:         string;
     ownerId:    string;
     name:       string;
+    rif?:       string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -94,7 +95,7 @@ export function useCompanyState(): UseCompanyResult {
         else setLoading(false);
     }, [isAuthenticated, user?.id, reload]);
 
-    const save = useCallback(async (data: { id: string; name: string }): Promise<string | null> => {
+    const save = useCallback(async (data: { id: string; name: string; rif?: string }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";
         const { ok, json } = await apiFetch("/api/companies/save", {
             method:  "POST",
@@ -106,11 +107,11 @@ export function useCompanyState(): UseCompanyResult {
         return null;
     }, [user?.id, reload]);
 
-    const update = useCallback(async (id: string, name: string): Promise<string | null> => {
+    const update = useCallback(async (id: string, name: string, rif?: string): Promise<string | null> => {
         const { ok, json } = await apiFetch("/api/companies/update", {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id, name }),
+            body:    JSON.stringify({ id, name, rif }),
         });
         if (!ok) return json.error ?? "Error al actualizar";
         await reload();

@@ -42,9 +42,13 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
 
 const MODULE_SUBNAV: Record<string, { href: string; label: string }[]> = {
     payroll: [
-        { href: "/payroll",           label: "Calculadora" },
-        { href: "/payroll/employees", label: "Empleados"   },
-        { href: "/payroll/history",   label: "Historial"   },
+        { href: "/payroll",                   label: "Calculadora"   },
+        { href: "/payroll/employees",         label: "Empleados"     },
+        { href: "/payroll/history",           label: "Historial"     },
+        { href: "/payroll/vacaciones",        label: "Vacaciones"    },
+        { href: "/payroll/utilidades",        label: "Utilidades"    },
+        { href: "/payroll/prestaciones",      label: "Prestaciones"  },
+        { href: "/payroll/liquidaciones",     label: "Liquidaciones" },
     ],
 };
 
@@ -88,18 +92,25 @@ export function AppSidebar() {
             {/* ── Logo ──────────────────────────────────────────────────── */}
             <div className="px-5 py-5" style={{ borderBottom: "1px solid var(--sidebar-border)" }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-[5px] bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <div className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0"
+                        style={{ background: "var(--primary-500)" }}>
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
+                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
+                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
+                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
+                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
                         </svg>
                     </div>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.22em]"
-                        style={{ color: "var(--sidebar-fg)" }}>
-                        Kont
-                    </span>
+                    <div className="flex flex-col gap-0">
+                        <span className="font-mono text-[12px] font-bold uppercase tracking-[0.20em]"
+                            style={{ color: "var(--sidebar-fg-hover)" }}>
+                            Kont
+                        </span>
+                        <span className="font-mono text-[8px] uppercase tracking-[0.18em]"
+                            style={{ color: "var(--sidebar-label)" }}>
+                            Nómina
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -120,8 +131,8 @@ export function AppSidebar() {
                     </p>
                 ) : companies.length === 1 ? (
                     <div className="px-2 py-1.5 flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                            <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase">
+                        <div className="w-5 h-5 rounded-md bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                            <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">
                                 {company?.name?.[0] ?? "?"}
                             </span>
                         </div>
@@ -142,8 +153,8 @@ export function AppSidebar() {
                                 (e.currentTarget as HTMLElement).style.background = "";
                             }}
                         >
-                            <div className="w-5 h-5 rounded-md bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase">
+                            <div className="w-5 h-5 rounded-md bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                                <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">
                                     {company?.name?.[0] ?? "?"}
                                 </span>
                             </div>
@@ -190,8 +201,8 @@ export function AppSidebar() {
                                                 (e.currentTarget as HTMLElement).style.background = "";
                                         }}
                                     >
-                                        <div className="w-5 h-5 rounded-md bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                            <span className="font-mono text-[9px] font-bold text-indigo-400 uppercase">
+                                        <div className="w-5 h-5 rounded-md bg-primary-500/20 flex items-center justify-center flex-shrink-0">
+                                            <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">
                                                 {c.name[0]}
                                             </span>
                                         </div>
@@ -254,7 +265,7 @@ export function AppSidebar() {
 
                             {/* Sub-nav */}
                             {subnav && pathname.startsWith(mod.href) && (
-                                <div className="pl-4 mt-0.5 space-y-0.5"
+                                <div className="pl-4 mt-0.5 space-y-px"
                                     style={{ borderLeft: "1px solid var(--sidebar-border)", marginLeft: "1.125rem" }}
                                 >
                                     {subnav.map(({ href, label }) => {
@@ -264,10 +275,24 @@ export function AppSidebar() {
                                                 key={href}
                                                 href={href}
                                                 className="flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors duration-150 font-mono text-[10px] uppercase tracking-[0.14em]"
-                                                style={{ color: subActive ? "var(--sidebar-active-fg)" : "var(--sidebar-label)" }}
+                                                style={subActive ? {
+                                                    color:      "var(--sidebar-active-fg)",
+                                                    background: "var(--sidebar-active-bg)",
+                                                } : {
+                                                    color: "var(--sidebar-label)",
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    if (!subActive) (e.currentTarget as HTMLElement).style.color = "var(--sidebar-fg-hover)";
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (!subActive) (e.currentTarget as HTMLElement).style.color = "var(--sidebar-label)";
+                                                }}
                                             >
-                                                <div className="w-1 h-1 rounded-full flex-shrink-0"
-                                                    style={{ background: subActive ? "var(--sidebar-active-fg)" : "var(--sidebar-label)" }}
+                                                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-150"
+                                                    style={{
+                                                        background: subActive ? "var(--sidebar-active-fg)" : "var(--sidebar-border)",
+                                                        boxShadow: subActive ? "0 0 6px var(--sidebar-active-fg)" : "none",
+                                                    }}
                                                 />
                                                 {label}
                                             </Link>

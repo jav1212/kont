@@ -6,7 +6,7 @@
 // Row 2: numeric inputs  +  toggle  +  computed result chip
 // ============================================================================
 
-import { BonusRow, DeductionRow, EarningRow } from "../types/payroll-types";
+import { BonusRow, DeductionRow, EarningRow, HorasExtrasRow, HorasExtrasTipo, HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
@@ -144,29 +144,51 @@ export const EarningRowEditor = ({
 // DEDUCTION ROW EDITOR
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_CYCLE = ["weekly", "monthly", "integral"] as const;
-const BASE_LABELS: Record<string, string> = { weekly: "semanal", monthly: "mensual", integral: "integral" };
+const BASE_CYCLE = ["weekly", "weekly-capped", "monthly", "integral"] as const;
+const BASE_LABELS: Record<string, string> = {
+    weekly:         "semanal",
+    "weekly-capped": "semanal (tope)",
+    monthly:        "mensual",
+    integral:       "integral",
+};
 
 export const DeductionRowEditor = ({
-    row, onChange, onRemove, canRemove, weeklyBase, monthlyBase, integralBase,
+    row, onChange, onRemove, canRemove, weeklyBase, monthlyBase, integralBase, cappedWeeklyBase,
 }: {
-    row:          DeductionRow;
-    onChange:     (updated: DeductionRow) => void;
-    onRemove:     () => void;
-    canRemove:    boolean;
-    weeklyBase:   number;
-    monthlyBase:  number;
-    integralBase: number;
+    row:              DeductionRow;
+    onChange:         (updated: DeductionRow) => void;
+    onRemove:         () => void;
+    canRemove:        boolean;
+    weeklyBase:       number;
+    monthlyBase:      number;
+    integralBase:     number;
+    cappedWeeklyBase: number; // min(weeklyBase, 10×salMin)
 }) => {
-    const baseValue = row.base === "weekly" ? weeklyBase : row.base === "integral" ? integralBase : monthlyBase;
-    const computed  = baseValue * ((parseFloat(row.rate) || 0) / 100);
+    const isFixed    = row.mode === "fixed";
+    const isIntegral = row.base === "integral";
+    const isCapped   = row.base === "weekly-capped";
+
+    const baseValue = isFixed       ? 1
+                    : isCapped      ? cappedWeeklyBase
+                    : row.base === "weekly"    ? weeklyBase
+                    : row.base === "integral"  ? integralBase
+                    : monthlyBase;
+
+    const computed = isFixed
+        ? (parseFloat(row.rate) || 0)
+        : baseValue * ((parseFloat(row.rate) || 0) / 100);
 
     const cycleBase = () => {
         const idx = BASE_CYCLE.indexOf(row.base as typeof BASE_CYCLE[number]);
         onChange({ ...row, base: BASE_CYCLE[(idx + 1) % BASE_CYCLE.length] });
     };
 
-    const isIntegral = row.base === "integral";
+    const toggleMode = () => onChange({
+        ...row,
+        mode: isFixed ? "rate" : "fixed",
+        rate: "0",
+        base: isFixed ? "weekly" : row.base,
+    });
 
     return (
         <div className="space-y-1.5">
@@ -181,7 +203,7 @@ export const DeductionRowEditor = ({
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            {/* Row 2: Tasa % | Base (cycle) | → result */}
+            {/* Row 2: amount/rate | base | mode toggle | → result */}
             <div className="flex items-center gap-1.5">
                 <div className="relative">
                     <input
@@ -190,27 +212,103 @@ export const DeductionRowEditor = ({
                         onChange={(e) => onChange({ ...row, rate: e.target.value })}
                         placeholder="0"
                         className={numInputCls}
-                        step="0.5"
+                        step={isFixed ? "10" : "0.5"}
                     />
-                    <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-foreground/30 pointer-events-none">%</span>
+                    {!isFixed && (
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-foreground/30 pointer-events-none">%</span>
+                    )}
                 </div>
+                {!isFixed && (
+                    <button
+                        onClick={cycleBase}
+                        className={[
+                            "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+                            "transition-colors duration-150 whitespace-nowrap",
+                            isIntegral  ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                            : isCapped  ? "border-red-500/40 bg-red-500/[0.08] text-red-400"
+                            : row.base === "weekly" ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
+                            : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
+                        ].join(" ")}
+                        title="Click para cambiar base"
+                    >
+                        {BASE_LABELS[row.base]}
+                    </button>
+                )}
                 <button
-                    onClick={cycleBase}
+                    onClick={toggleMode}
                     className={[
                         "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
                         "transition-colors duration-150 whitespace-nowrap",
-                        isIntegral
+                        isFixed
                             ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
-                            : row.base === "weekly"
-                                ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
-                                : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
+                            : "border-border-light bg-surface-1 text-foreground/35 hover:border-border-medium",
                     ].join(" ")}
-                    title="Click para cambiar base: semanal → mensual → integral"
+                    title={isFixed ? "Modo: monto fijo VES" : "Modo: porcentaje"}
                 >
-                    {BASE_LABELS[row.base]}
+                    {isFixed ? "Bs fijo" : "% base"}
                 </button>
                 <Result value={computed} negative />
             </div>
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HORAS EXTRAS ROW EDITOR  (Art. 118 LOTTT)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TIPO_LABELS: Record<HorasExtrasTipo, string> = {
+    diurna:   "Diurna +25%",
+    nocturna: "Nocturna +45%",
+    feriado:  "Feriado +100%",
+};
+
+const TIPO_CYCLE: HorasExtrasTipo[] = ["diurna", "nocturna", "feriado"];
+
+const TIPO_CLS: Record<HorasExtrasTipo, string> = {
+    diurna:   "border-primary-500/40 bg-primary-500/10 text-primary-500",
+    nocturna: "border-amber-500/40 bg-amber-500/10 text-amber-500",
+    feriado:  "border-red-500/40 bg-red-500/10 text-red-400",
+};
+
+export const HorasExtrasRowEditor = ({
+    row, onChange, onRemove, canRemove, hourlyRate,
+}: {
+    row:        HorasExtrasRow;
+    onChange:   (updated: HorasExtrasRow) => void;
+    onRemove:   () => void;
+    canRemove:  boolean;
+    hourlyRate: number; // salarioVES / 30 / 8
+}) => {
+    const mult     = HORAS_EXTRAS_MULTIPLIER[row.tipo];
+    const computed = (parseFloat(row.hours) || 0) * hourlyRate * mult;
+
+    const cycleTipo = () => {
+        const idx = TIPO_CYCLE.indexOf(row.tipo);
+        onChange({ ...row, tipo: TIPO_CYCLE[(idx + 1) % TIPO_CYCLE.length] });
+    };
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <button
+                onClick={cycleTipo}
+                className={["h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0 transition-colors duration-150 whitespace-nowrap", TIPO_CLS[row.tipo]].join(" ")}
+                title="Click para cambiar tipo: diurna → nocturna → feriado"
+            >
+                {TIPO_LABELS[row.tipo]}
+            </button>
+            <input
+                type="number"
+                value={row.hours}
+                onChange={(e) => onChange({ ...row, hours: e.target.value })}
+                placeholder="0"
+                className={numInputCls}
+                min="0"
+                step="0.5"
+            />
+            <span className="font-mono text-[9px] text-foreground/30 shrink-0">h</span>
+            <RemoveButton onClick={onRemove} disabled={!canRemove} />
+            <Result value={computed} />
         </div>
     );
 };

@@ -182,20 +182,20 @@ export default function BillingPage() {
     const labelCls = "font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/40 mb-1 block";
 
     return (
-        <div className="min-h-full bg-surface-2 p-8 font-mono overflow-y-auto">
+        <div className="min-h-full bg-surface-2 p-8 font-mono">
             <div className="max-w-[720px] mx-auto space-y-6">
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="text-[10px] uppercase text-foreground/30 mb-1 tracking-widest">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
                         Facturación
                     </nav>
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <h1 className="text-xl font-bold uppercase tracking-tighter text-foreground">
+                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Mi Plan
                             </h1>
-                            <p className="text-[10px] text-foreground/40 mt-0.5 uppercase tracking-widest">
+                            <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
                                 Suscripción y pagos
                             </p>
                         </div>

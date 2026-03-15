@@ -5,8 +5,8 @@ export default function NotFound() {
         <div className="min-h-screen bg-background flex items-center justify-center px-8">
             <div className="max-w-md w-full space-y-6">
                 <div className="flex items-center gap-3">
-                    <div className="h-px w-6 bg-indigo-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/70">
+                    <div className="h-px w-6 bg-primary-500/60" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
                         404
                     </span>
                 </div>

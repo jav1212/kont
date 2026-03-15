@@ -1,13 +1,13 @@
 -- =============================================================================
 -- 005_tenant_rpc_functions.sql
--- Funciones RPC en public que internamente consultan el schema privado del tenant.
--- Esto permite que el cliente Supabase (PostgREST) acceda a schemas dinámicos
--- sin necesidad de exponerlos explícitamente.
+-- Funciones RPC en public que consultan el schema privado del tenant.
+-- Todas usan public.tenant_get_schema(uuid) como helper.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
 -- Helper: resuelve el schema de un usuario
 -- ---------------------------------------------------------------------------
+
 CREATE OR REPLACE FUNCTION public.tenant_get_schema(p_user_id uuid)
 RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_schema text;
@@ -87,44 +87,70 @@ $$;
 
 -- ===========================================================================
 -- EMPLOYEES
+-- Note: DROP before CREATE because return type changed from jsonb to TABLE.
 -- ===========================================================================
 
-CREATE OR REPLACE FUNCTION public.tenant_employees_get_by_company(p_user_id uuid, p_company_id text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE v_schema text; v_result jsonb;
+DROP FUNCTION IF EXISTS public.tenant_employees_get_by_company(uuid, text);
+
+CREATE FUNCTION public.tenant_employees_get_by_company(p_user_id uuid, p_company_id text)
+RETURNS TABLE (
+    id              text,
+    company_id      text,
+    cedula          text,
+    nombre          text,
+    cargo           text,
+    salario_mensual numeric,
+    estado          text,
+    fecha_ingreso   date,
+    moneda          text
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_schema text;
 BEGIN
     v_schema := public.tenant_get_schema(p_user_id);
-    EXECUTE format(
-        'SELECT COALESCE(jsonb_agg(row_to_json(e) ORDER BY e.nombre), ''[]''::jsonb) FROM %I.employees e WHERE e.company_id = %L',
-        v_schema, p_company_id
-    ) INTO v_result;
-    RETURN v_result;
+    RETURN QUERY EXECUTE format(
+        'SELECT id::text, company_id::text, cedula, nombre, cargo,
+                salario_mensual, estado, fecha_ingreso,
+                COALESCE(moneda::text, ''VES'') AS moneda
+         FROM %I.employees
+         WHERE company_id = $1
+         ORDER BY nombre ASC',
+        v_schema
+    ) USING p_company_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.tenant_employees_upsert(p_user_id uuid, p_employees jsonb)
+DROP FUNCTION IF EXISTS public.tenant_employees_upsert(uuid, jsonb);
+
+CREATE FUNCTION public.tenant_employees_upsert(p_user_id uuid, p_employees jsonb)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-    v_schema text;
-    v_emp    jsonb;
+DECLARE v_schema text;
 BEGIN
     v_schema := public.tenant_get_schema(p_user_id);
-    FOR v_emp IN SELECT * FROM jsonb_array_elements(p_employees) LOOP
-        EXECUTE format(
-            'INSERT INTO %I.employees (id, company_id, cedula, nombre, cargo, salario_mensual, estado, updated_at)
-             VALUES (%L, %L, %L, %L, %L, %L, %L, now())
-             ON CONFLICT (id) DO UPDATE SET
-                company_id = EXCLUDED.company_id, cedula = EXCLUDED.cedula,
-                nombre = EXCLUDED.nombre, cargo = EXCLUDED.cargo,
-                salario_mensual = EXCLUDED.salario_mensual,
-                estado = EXCLUDED.estado, updated_at = now()',
-            v_schema,
-            v_emp->>'id', v_emp->>'company_id', v_emp->>'cedula',
-            v_emp->>'nombre', v_emp->>'cargo',
-            (v_emp->>'salario_mensual')::numeric,
-            COALESCE(v_emp->>'estado', 'activo')
-        );
-    END LOOP;
+    EXECUTE format(
+        'INSERT INTO %I.employees
+           (id, company_id, cedula, nombre, cargo, salario_mensual, estado, fecha_ingreso, moneda)
+         SELECT
+           (e->>''id'')::text,
+           (e->>''company_id'')::text,
+           (e->>''cedula'')::text,
+           (e->>''nombre'')::text,
+           (e->>''cargo'')::text,
+           (e->>''salario_mensual'')::numeric,
+           (e->>''estado'')::text,
+           NULLIF(e->>''fecha_ingreso'', '''')::date,
+           COALESCE(NULLIF(e->>''moneda'', ''''), ''VES'')
+         FROM jsonb_array_elements($1) AS e
+         ON CONFLICT (id) DO UPDATE SET
+           nombre          = EXCLUDED.nombre,
+           cargo           = EXCLUDED.cargo,
+           salario_mensual = EXCLUDED.salario_mensual,
+           estado          = EXCLUDED.estado,
+           fecha_ingreso   = EXCLUDED.fecha_ingreso,
+           moneda          = EXCLUDED.moneda,
+           updated_at      = now()',
+        v_schema
+    ) USING p_employees;
 END;
 $$;
 
@@ -134,9 +160,35 @@ DECLARE v_schema text;
 BEGIN
     v_schema := public.tenant_get_schema(p_user_id);
     EXECUTE format(
-        'DELETE FROM %I.employees WHERE id = ANY(%L::text[])',
-        v_schema, p_ids
-    );
+        'DELETE FROM %I.employees WHERE id = ANY($1)',
+        v_schema
+    ) USING p_ids;
+END;
+$$;
+
+CREATE FUNCTION public.tenant_employee_salary_history(
+    p_user_id         uuid,
+    p_company_id      text,
+    p_employee_cedula text
+)
+RETURNS TABLE (
+    id              uuid,
+    salario_mensual numeric,
+    moneda          text,
+    fecha_desde     date,
+    created_at      timestamptz
+)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_schema text;
+BEGIN
+    v_schema := public.tenant_get_schema(p_user_id);
+    RETURN QUERY EXECUTE format(
+        'SELECT id, salario_mensual, moneda, fecha_desde, created_at
+         FROM %I.employee_salary_history
+         WHERE company_id = $1 AND employee_cedula = $2
+         ORDER BY fecha_desde DESC, created_at DESC',
+        v_schema
+    ) USING p_company_id, p_employee_cedula;
 END;
 $$;
 

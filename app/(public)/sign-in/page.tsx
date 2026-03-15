@@ -9,7 +9,7 @@ const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
     "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
-    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
+    "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -74,7 +74,7 @@ function SignInFormContent() {
                     </label>
                     <Link
                         href="/forgot-password"
-                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-indigo-400/60 hover:text-indigo-400 transition-colors"
+                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-primary-400/60 hover:text-primary-400 transition-colors"
                     >
                         ¿Olvidaste la tuya?
                     </Link>
@@ -103,8 +103,8 @@ function SignInFormContent() {
                 disabled={loading}
                 className={[
                     "w-full h-10 mt-2 rounded-lg",
-                    "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500",
+                    "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500",
                     "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
                     "transition-colors duration-150",
                     "flex items-center justify-center gap-2",
@@ -133,8 +133,8 @@ export default function SignInPage() {
 
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="h-px w-6 bg-indigo-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/70">
+                        <div className="h-px w-6 bg-primary-500/60" />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
                             Acceso
                         </span>
                     </div>
@@ -160,7 +160,7 @@ export default function SignInPage() {
                     ¿Sin cuenta?{" "}
                     <Link
                         href="/sign-up"
-                        className="text-indigo-400/80 hover:text-indigo-400 transition-colors underline underline-offset-2"
+                        className="text-primary-400/80 hover:text-primary-400 transition-colors underline underline-offset-2"
                     >
                         Regístrate aquí
                     </Link>

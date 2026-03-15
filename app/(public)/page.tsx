@@ -117,8 +117,8 @@ export default function LandingPage() {
             <section className="px-8 pt-24 pb-20 max-w-5xl mx-auto w-full">
 
                 <div className="flex items-center gap-3 mb-10">
-                    <div className="h-px w-8 bg-indigo-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/80">
+                    <div className="h-px w-8 bg-primary-500/60" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/80">
                         Sistema de gestión · Venezuela
                     </span>
                 </div>
@@ -131,7 +131,7 @@ export default function LandingPage() {
                     <span className="text-foreground/20">precisa.</span><br />
                     <span
                         className="text-transparent"
-                        style={{ WebkitTextStroke: "1px rgba(99,102,241,0.7)" }}
+                        style={{ WebkitTextStroke: "1px rgba(8,145,178,0.7)" }}
                     >
                         siempre.
                     </span>
@@ -147,7 +147,7 @@ export default function LandingPage() {
                         href="/sign-in"
                         className={[
                             "inline-flex items-center gap-2.5 px-6 py-3",
-                            "bg-indigo-500 hover:bg-indigo-400",
+                            "bg-primary-500 hover:bg-primary-400",
                             "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
                             "rounded-lg transition-colors duration-150",
                         ].join(" ")}
@@ -197,10 +197,10 @@ export default function LandingPage() {
                             className="bg-surface-1 p-8 hover:bg-surface-2 transition-colors duration-200 group"
                         >
                             <div className="flex items-start justify-between mb-5">
-                                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-indigo-500/60">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary-500/60">
                                     {f.code}
                                 </span>
-                                <div className="w-px h-4 bg-foreground/10 group-hover:bg-indigo-500/30 transition-colors" />
+                                <div className="w-px h-4 bg-foreground/10 group-hover:bg-primary-500/30 transition-colors" />
                             </div>
                             <h3 className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground mb-3">
                                 {f.label}
@@ -218,8 +218,8 @@ export default function LandingPage() {
 
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-3">
-                    <div className="h-px w-8 bg-indigo-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/80">
+                    <div className="h-px w-8 bg-primary-500/60" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/80">
                         Planes
                     </span>
                 </div>
@@ -242,7 +242,7 @@ export default function LandingPage() {
                                 className={[
                                     "px-3 py-1.5 rounded-md font-mono text-[9px] uppercase tracking-[0.18em] transition-colors duration-150",
                                     cycle === key
-                                        ? "bg-indigo-500 text-white"
+                                        ? "bg-primary-500 text-white"
                                         : "text-foreground/35 hover:text-foreground/60",
                                 ].join(" ")}
                             >
@@ -272,15 +272,15 @@ export default function LandingPage() {
                                     className={[
                                         "relative flex flex-col rounded-xl border p-6 transition-colors duration-200",
                                         highlighted
-                                            ? "border-indigo-500/40 bg-indigo-500/[0.06]"
+                                            ? "border-primary-500/40 bg-primary-500/[0.06]"
                                             : "border-border-light bg-surface-1 hover:bg-surface-2",
                                     ].join(" ")}
                                 >
                                     {highlighted && (
-                                        <div className="absolute -top-px left-6 right-6 h-px bg-indigo-500/60" />
+                                        <div className="absolute -top-px left-6 right-6 h-px bg-primary-500/60" />
                                     )}
                                     {highlighted && (
-                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-indigo-500 font-mono text-[8px] uppercase tracking-[0.2em] text-white whitespace-nowrap">
+                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary-500 font-mono text-[8px] uppercase tracking-[0.2em] text-white whitespace-nowrap">
                                             Popular
                                         </span>
                                     )}
@@ -288,7 +288,7 @@ export default function LandingPage() {
                                     {/* Plan name */}
                                     <p className={[
                                         "font-mono text-[10px] uppercase tracking-[0.22em] mb-4",
-                                        highlighted ? "text-indigo-400" : "text-foreground/45",
+                                        highlighted ? "text-primary-400" : "text-foreground/45",
                                     ].join(" ")}>
                                         {plan.name}
                                     </p>
@@ -320,7 +320,7 @@ export default function LandingPage() {
                                     {/* Features */}
                                     <ul className="space-y-2.5 flex-1">
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-indigo-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
                                             <span className="font-mono text-[10px] text-foreground/55 leading-snug">
@@ -330,7 +330,7 @@ export default function LandingPage() {
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-indigo-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
                                             <span className="font-mono text-[10px] text-foreground/55 leading-snug">
@@ -340,7 +340,7 @@ export default function LandingPage() {
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-indigo-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
                                             <span className="font-mono text-[10px] text-foreground/55 leading-snug">
@@ -348,7 +348,7 @@ export default function LandingPage() {
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-indigo-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
                                             <span className="font-mono text-[10px] text-foreground/55 leading-snug">
@@ -364,7 +364,7 @@ export default function LandingPage() {
                                             "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
                                             "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
                                             highlighted
-                                                ? "bg-indigo-500 hover:bg-indigo-400 text-white"
+                                                ? "bg-primary-500 hover:bg-primary-400 text-white"
                                                 : "border border-border-default hover:border-border-medium text-foreground/50 hover:text-foreground/80",
                                         ].join(" ")}
                                     >
@@ -387,9 +387,9 @@ export default function LandingPage() {
 
             {/* ── BOTTOM CTA STRIP ──────────────────────────────────────── */}
             <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-8 py-6 border border-indigo-500/20 rounded-xl bg-indigo-500/[0.04]">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-8 py-6 border border-primary-500/20 rounded-xl bg-primary-500/[0.04]">
                     <div>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-indigo-400/70 mb-1">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary-400/70 mb-1">
                             ¿Listo para empezar?
                         </p>
                         <p className="font-mono text-[13px] text-foreground/60">
@@ -400,8 +400,8 @@ export default function LandingPage() {
                         href="/sign-in"
                         className={[
                             "flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5",
-                            "border border-indigo-500/40 hover:border-indigo-400/60 hover:bg-indigo-500/10",
-                            "font-mono text-[10px] uppercase tracking-[0.18em] text-indigo-400",
+                            "border border-primary-500/40 hover:border-primary-400/60 hover:bg-primary-500/10",
+                            "font-mono text-[10px] uppercase tracking-[0.18em] text-primary-400",
                             "rounded-lg transition-all duration-150",
                         ].join(" ")}
                     >

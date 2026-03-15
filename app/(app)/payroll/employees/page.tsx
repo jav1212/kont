@@ -144,7 +144,7 @@ function EmployeeRow({
             <td className={tdCls + " w-10 text-center"}>
                 <input type="checkbox" checked={selected}
                     onChange={(e) => onSelect(e.target.checked)} disabled={isEditing}
-                    className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30" />
+                    className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30" />
             </td>
 
             {/* Cédula */}
@@ -178,16 +178,20 @@ function EmployeeRow({
             </td>
 
             {/* Salario + Moneda */}
-            <td className={tdCls + " w-44"}>
+            <td className={tdCls + " w-52"}>
                 {isEditing ? (
-                    <div className="flex gap-1">
-                        <input className={cellInput + " text-right flex-1"} type="number" step="0.01" min="0" placeholder="0.00"
-                            value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
-                        <select className={cellInput + " w-16"} value={draft.moneda}
+                    <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
+                        <select
+                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-foreground/60 outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                            value={draft.moneda}
                             onChange={(e) => onDraftChange("moneda", e.target.value)}>
                             <option value="VES">VES</option>
                             <option value="USD">USD</option>
                         </select>
+                        <input
+                            className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[12px] text-right tabular-nums text-foreground outline-none"
+                            type="number" step="0.01" min="0" placeholder="0.00"
+                            value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5">
@@ -534,16 +538,16 @@ export default function EmployeesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="text-[10px] uppercase text-foreground/30 mb-1 tracking-widest">
-                        Nomina / Empleados
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
+                        Nómina / Empleados
                     </nav>
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <h1 className="text-xl font-bold uppercase tracking-tighter text-foreground">
-                                Gestión de Empleados
+                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
+                                Empleados
                             </h1>
                             {company && (
-                                <p className="text-[10px] text-foreground/40 mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
                                     {company.name} · {empRemaining !== null
                                         ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
                                         : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
@@ -686,7 +690,7 @@ export default function EmployeesPage() {
                                             checked={allSelected}
                                             onChange={(e) => toggleAll(e.target.checked)}
                                             disabled={anyEditing || filtered.length === 0}
-                                            className="w-3.5 h-3.5 rounded accent-indigo-500 cursor-pointer disabled:opacity-30"
+                                            className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30"
                                         />
                                     </th>
                                     {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
@@ -719,16 +723,20 @@ export default function EmployeesPage() {
                                                 value={row.draft.cargo}
                                                 onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)} />
                                         </td>
-                                        <td className="px-3 py-2.5 w-44">
-                                            <div className="flex gap-1">
-                                                <input className={cellInput + " text-right flex-1"} type="number" step="0.01" min="0" placeholder="0.00"
-                                                    value={row.draft.salarioMensual}
-                                                    onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
-                                                <select className={cellInput + " w-16"} value={row.draft.moneda}
+                                        <td className="px-3 py-2.5 w-52">
+                                            <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
+                                                <select
+                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-foreground/60 outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                                                    value={row.draft.moneda}
                                                     onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
                                                     <option value="VES">VES</option>
                                                     <option value="USD">USD</option>
                                                 </select>
+                                                <input
+                                                    className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[12px] text-right tabular-nums text-foreground outline-none"
+                                                    type="number" step="0.01" min="0" placeholder="0.00"
+                                                    value={row.draft.salarioMensual}
+                                                    onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
                                             </div>
                                         </td>
                                         <td className="px-3 py-2.5 w-32">

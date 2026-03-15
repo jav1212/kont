@@ -7,7 +7,7 @@ const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
     "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
-    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
+    "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
 
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="h-px w-6 bg-indigo-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/70">
+                        <div className="h-px w-6 bg-primary-500/60" />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
                             Recuperación
                         </span>
                     </div>
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
 
                 {sent ? (
                     <div className="space-y-6">
-                        <div className="px-4 py-3.5 border border-indigo-500/20 rounded-lg bg-indigo-500/[0.05]">
+                        <div className="px-4 py-3.5 border border-primary-500/20 rounded-lg bg-primary-500/[0.05]">
                             <p className="font-mono text-[11px] text-foreground/60 leading-relaxed">
                                 Si <span className="text-foreground/80">{email}</span> está registrado, recibirás un enlace en tu correo. Revisa también la carpeta de spam.
                             </p>
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
                                 disabled={loading}
                                 className={[
                                     "w-full h-10 mt-2 rounded-lg",
-                                    "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
+                                    "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
                                     "disabled:opacity-50 disabled:cursor-not-allowed",
                                     "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
                                     "transition-colors duration-150 flex items-center justify-center gap-2",

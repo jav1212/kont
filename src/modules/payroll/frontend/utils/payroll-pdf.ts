@@ -28,6 +28,9 @@ export interface PdfEmployeeResult {
     gross:           number;
     net:             number;
     netUSD:          number;
+    alicuotaUtil:    number;
+    alicuotaBono:    number;
+    salarioIntegral: number;
 }
 
 export interface PdfPayrollOptions {
@@ -35,9 +38,18 @@ export interface PdfPayrollOptions {
     companyId?:     string;
     payrollDate:    string;   // ISO end date
     periodStart?:   string;   // ISO start date
-    periodLabel?:   string;   // "1–15 de Marzo 2026"
-    bcvRate:        number;
+    periodLabel?:   string;   // "1ª Quincena — Marzo 2026"
+    bcvRate?:       number;   // ya no se imprime en el recibo, pero puede usarse externamente
     mondaysInMonth: number;
+    receiptSerial?: string;   // "NOM-2026-03-Q1"
+    salaryMode?:    "mensual" | "integral";  // qué salario mostrar en la tarjeta del empleado
+}
+
+// Genera el serial de nómina a partir del período
+export function makePayrollSerial(periodStart: string): string {
+    const [year, month, day] = periodStart.split("-");
+    const q = parseInt(day) <= 15 ? 1 : 2;
+    return `NOM-${year}-${month}-Q${q}`;
 }
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -53,9 +65,9 @@ const C = {
     bg:        [246, 246, 250] as RGB,
     rowAlt:    [240, 240, 245] as RGB,
     white:     [255, 255, 255] as RGB,
-    primary:   [88,  86,  214] as RGB,
-    primaryLt: [232, 232, 252] as RGB,
-    primaryBd: [175, 173, 238] as RGB,
+    primary:   [8,   145, 178] as RGB,
+    primaryLt: [207, 250, 254] as RGB,
+    primaryBd: [103, 232, 249] as RGB,
     green:     [22,  101, 52]  as RGB,
     greenLt:   [240, 253, 244] as RGB,
     greenBd:   [187, 235, 200] as RGB,
@@ -65,7 +77,7 @@ const C = {
     headerBg:  [18,  18,  26]  as RGB,
     headerSub: [30,  30,  42]  as RGB,
     netBg:     [18,  18,  26]  as RGB,
-    accent:    [110, 108, 230] as RGB,
+    accent:    [34,  211, 238] as RGB,
 };
 
 // ── Primitives ────────────────────────────────────────────────────────────────
@@ -110,9 +122,21 @@ const t = (
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    const opts: any = { align };
-    if (maxW) opts.maxWidth = maxW;
-    doc.text(text, x, y, opts);
+    // Reset char/word spacing — jsPDF can leave Tc/Tw set from prior ops
+    doc.setCharSpace(0);
+
+    // Pre-truncate with maxWidth instead of passing it to doc.text() to avoid
+    // jsPDF internally setting Tc/Tw that would bleed into subsequent calls.
+    const str = maxW
+        ? ((doc.splitTextToSize(text, maxW) as string[])[0] ?? "")
+        : text;
+
+    // Compute alignment manually — avoids jsPDF's align option modifying state.
+    let ax = x;
+    if (align === "right")  ax = x - doc.getTextWidth(str);
+    if (align === "center") ax = x - doc.getTextWidth(str) / 2;
+
+    doc.text(str, ax, y);
 };
 
 const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left") =>
@@ -120,11 +144,16 @@ const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "righ
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-const fmtVES = (n: number) =>
-    "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// jsPDF no maneja bien los separadores Unicode (U+00A0, U+202F) que devuelve
+// toLocaleString — usamos un formateador manual con caracteres ASCII simples.
+const fmtNum = (n: number): string => {
+    const [int, dec] = n.toFixed(2).split(".");
+    const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return intFmt + "," + dec;
+};
 
-const fmtUSD = (n: number) =>
-    "$ " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtVES = (n: number) => "Bs. " + fmtNum(n);
+const fmtUSD = (n: number) => "$ "   + fmtNum(n);
 
 const fmtDate = (iso: string) => {
     const [y, m, d] = iso.split("-").map(Number);
@@ -212,7 +241,7 @@ function drawSection(doc: Doc, x: number, y: number, w: number, opts: SectionOpt
 
 // ── Receipt ───────────────────────────────────────────────────────────────────
 
-function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, isFirst: boolean) {
+function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, isFirst: boolean, empIdx = 0) {
     if (!isFirst) doc.addPage();
 
     const PW = doc.internal.pageSize.getWidth();
@@ -236,26 +265,26 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     t(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true,  C.white);
     if (opts.companyId) t(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, [150, 150, 168] as RGB);
     t(doc, "RECIBO DE PAGO DE NÓMINA", ML + 2, 23, 6, false, [100, 100, 120] as RGB);
+    if (opts.receiptSerial) {
+        const empSerial = `${opts.receiptSerial}-${String(empIdx + 1).padStart(4, "0")}`;
+        t(doc, empSerial, ML + 2, 29, 5.5, false, C.accent, "left");
+    }
 
-    // Right: period + BCV
+    // Right: period + issued date
     const periodStr = opts.periodLabel
         ? opts.periodLabel.toUpperCase()
         : fmtDate(opts.payrollDate);
     lbl(doc, "Período",  MR, 9, "right");
-    t(doc, periodStr, MR, 16, 8, true, C.white, "right");
-    t(doc,
-        `Tasa BCV: Bs. ${opts.bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })} / USD`,
-        MR, 22.5, 6, false, [130, 130, 150] as RGB, "right"
-    );
+    t(doc, periodStr, MR, 18, 8, true, C.white, "right");
     t(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 29, 5.5, false, [100, 100, 118] as RGB, "right"
+        MR, 26, 5.5, false, [100, 100, 118] as RGB, "right"
     );
 
     let y = HDR_H + 5;
 
     // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
-    const CARD_H = 22;
+    const CARD_H = opts.salaryMode === "integral" ? 42 : 30;
     box(doc, ML, y, W, CARD_H, C.white, C.border, 0.3);
     fill(doc, ML, y, 3, CARD_H, C.primary);
 
@@ -268,7 +297,7 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     t(doc, emp.nombre, c1x, y + 12, 9.5, true, C.ink, "left", c2x - c1x - 4);
     t(doc, emp.cedula, c1x, y + 18, 6.5, false, C.muted);
 
-    vline(doc, c2x - 2, y + 3, y + 19, C.border);
+    vline(doc, c2x - 2, y + 3, y + CARD_H - 3, C.border);
 
     // — Col 2: cargo + estado
     lbl(doc, "Cargo / Condición", c2x, y + 5.5);
@@ -286,11 +315,39 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     box(doc, c2x, y + 14, badgeW, badgeH, estadoBg, estadoColor, 0.3);
     t(doc, estadoStr, c2x + badgeW / 2, y + 17.5, 5, true, estadoColor, "center");
 
-    vline(doc, c3x - 2, y + 3, y + 19, C.border);
+    vline(doc, c3x - 2, y + 3, y + CARD_H - 3, C.border);
 
-    // — Col 3: salario
-    lbl(doc, "Salario Base Mensual", MR - 4, y + 5.5, "right");
-    t(doc, fmtVES(emp.salarioMensual), MR - 4, y + 13, 10, true, C.primary, "right");
+    // — Col 3: salario según modo seleccionado
+    const c3Txt = c3x + 4;   // left edge for formula text inside col 3
+    if (opts.salaryMode === "integral") {
+        // Label + valor integral destacado
+        lbl(doc, "Sal. Integral", c3Txt, y + 5);
+        t(doc, fmtVES(emp.salarioIntegral), MR - 4, y + 12, 9, true, C.primary, "right");
+
+        // Separador
+        hline(doc, c3x - 2, y + 15, MR - (c3x - 2), C.border, 0.15);
+
+        // Fórmula vertical: = mensual + util + bono
+        const fOp  = [100, 100, 120] as RGB;   // operadores
+        const fVal = C.inkMed;                  // valores
+        const fMut = C.muted;                   // etiquetas
+        let fy = y + 19;
+        const step = 5.5;
+
+        t(doc, "=",                        c3Txt,     fy,          6, false, fOp);
+        t(doc, fmtVES(emp.salarioMensual), MR - 4,    fy,          6, false, fVal, "right");
+        fy += step;
+        t(doc, "+",                        c3Txt,     fy,          6, false, fOp);
+        t(doc, fmtNum(emp.alicuotaUtil),   MR - 4,    fy,          6, false, fVal, "right");
+        t(doc, "util",                     c3Txt + 5, fy,          5, false, fMut);
+        fy += step;
+        t(doc, "+",                        c3Txt,     fy,          6, false, fOp);
+        t(doc, fmtNum(emp.alicuotaBono),   MR - 4,    fy,          6, false, fVal, "right");
+        t(doc, "bono vac",                 c3Txt + 5, fy,          5, false, fMut);
+    } else {
+        lbl(doc, "Salario Base Mensual", MR - 4, y + 5.5, "right");
+        t(doc, fmtVES(emp.salarioMensual), MR - 4, y + 15, 10, true, C.primary, "right");
+    }
 
     y += CARD_H + 5;
 
@@ -336,38 +393,33 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     y += 6;
 
     // ── NET SUMMARY ───────────────────────────────────────────────────────
-    const NET_H = 28;
+    const NET_H = 22;
     fill(doc, ML, y, W, NET_H, C.netBg);
     // Top accent
     doc.setDrawColor(C.accent[0], C.accent[1], C.accent[2]);
     doc.setLineWidth(1);
     doc.line(ML, y, MR, y);
 
-    // 4-column layout: Bruto | Deducciones | sep | Neto VES | Neto USD
+    // 3-column layout: Bruto | Deducciones | sep | Neto VES
     const col1x = ML + 6;
     const col2x = ML + W * 0.30;
     const sep1x  = ML + W * 0.56;
     const col3x = sep1x + 6;
-    const col4x = MR - 4;
 
     // Vertical separator
     vline(doc, sep1x, y + 4, y + NET_H - 4, [50, 50, 70] as RGB, 0.5);
 
     // Bruto
-    lbl(doc, "Bruto (VES)", col1x, y + 8);
-    t(doc, fmtVES(emp.gross), col1x, y + 17, 9, true, [190, 190, 205] as RGB);
+    lbl(doc, "Bruto (VES)", col1x, y + 7);
+    t(doc, fmtVES(emp.gross), col1x, y + 15, 9, true, [190, 190, 205] as RGB);
 
     // Deducciones
-    lbl(doc, "Deducciones", col2x, y + 8);
-    t(doc, `− ${fmtVES(emp.totalDeductions)}`, col2x, y + 17, 9, true, [220, 100, 105] as RGB);
+    lbl(doc, "Deducciones", col2x, y + 7);
+    t(doc, `− ${fmtVES(emp.totalDeductions)}`, col2x, y + 15, 9, true, [220, 100, 105] as RGB);
 
     // Neto VES — prominent
-    lbl(doc, "Neto a Cobrar", col3x, y + 6);
-    t(doc, fmtVES(emp.net), col3x, y + 19, 14, true, C.accent);
-
-    // Neto USD — subtle
-    lbl(doc, `Equiv. USD`, col4x, y + 20, "right");
-    t(doc, fmtUSD(emp.netUSD), col4x, y + 26, 7, false, [130, 128, 200] as RGB, "right");
+    lbl(doc, "Neto a Cobrar (VES)", col3x, y + 6);
+    t(doc, fmtVES(emp.net), col3x, y + 18, 14, true, C.accent);
 
     y += NET_H + 6;
 
@@ -389,9 +441,9 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     });
 
     // ── SIGNATURES ────────────────────────────────────────────────────────
-    const sigY  = PH - 38;
+    const sigY  = PH - 44;
     const sigW  = 75;
-    const sigH  = 24;
+    const sigH  = 30;
     const sigPd = 6;
 
     // Employer
@@ -399,17 +451,29 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     fill(doc, ML, sigY, sigW, 1.5, C.primary);
     t(doc, opts.companyName, ML + sigW / 2, sigY + 9, 7, true, C.inkMed, "center", sigW - 10);
     if (opts.companyId) t(doc, opts.companyId, ML + sigW / 2, sigY + 14, 5.5, false, C.muted, "center");
-    hline(doc, ML + sigPd, sigY + 19, sigW - sigPd * 2, C.borderMed, 0.4);
-    lbl(doc, "Firma y Sello del Empleador", ML + sigW / 2, sigY + 23, "center");
+    hline(doc, ML + sigPd, sigY + 22, sigW - sigPd * 2, C.borderMed, 0.4);
+    lbl(doc, "Firma y Sello del Empleador", ML + sigW / 2, sigY + 26, "center");
 
     // Employee
     const esx = MR - sigW;
     box(doc, esx, sigY, sigW, sigH, C.white, C.border, 0.25);
     fill(doc, esx, sigY, sigW, 1.5, C.primary);
-    t(doc, emp.nombre, esx + sigW / 2, sigY + 9, 7, true, C.inkMed, "center", sigW - 10);
-    t(doc, emp.cedula, esx + sigW / 2, sigY + 14, 5.5, false, C.muted, "center");
-    hline(doc, esx + sigPd, sigY + 19, sigW - sigPd * 2, C.borderMed, 0.4);
-    lbl(doc, "Firma del Trabajador / Conforme", esx + sigW / 2, sigY + 23, "center");
+    t(doc, emp.nombre, esx + sigW / 2, sigY + 8, 7, true, C.inkMed, "center", sigW - 10);
+    t(doc, emp.cedula, esx + sigW / 2, sigY + 13, 5.5, false, C.muted, "center");
+    // Declaración de pago en bolívares
+    // Checkbox "recibido en bolívares"
+    const cbSize = 3;                            // 3×3 mm square
+    const cbX    = esx + sigPd;
+    const cbY    = sigY + 15.5;
+    doc.setDrawColor(C.borderMed[0], C.borderMed[1], C.borderMed[2]);
+    doc.setLineWidth(0.35);
+    doc.rect(cbX, cbY, cbSize, cbSize);          // empty checkbox
+    t(doc,
+        "Declaro haber recibido el pago en Bolívares (VES)",
+        cbX + cbSize + 2, cbY + cbSize - 0.3, 4.5, false, [100, 100, 120] as RGB, "left", sigW - sigPd - cbSize - 4
+    );
+    hline(doc, esx + sigPd, sigY + 24, sigW - sigPd * 2, C.borderMed, 0.4);
+    lbl(doc, "Firma del Trabajador / Conforme", esx + sigW / 2, sigY + 28, "center");
 
     // ── FOOTER ────────────────────────────────────────────────────────────
     fill(doc, 0, PH - 10, PW, 10, C.headerBg);
@@ -426,7 +490,13 @@ export function generatePayrollPdf(employees: PdfEmployeeResult[], opts: PdfPayr
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
 
+    // Auto-generar serial si no se pasó uno
+    const optsWithSerial: PdfPayrollOptions = {
+        ...opts,
+        receiptSerial: opts.receiptSerial ?? makePayrollSerial(opts.periodStart ?? opts.payrollDate),
+    };
+
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    active.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0));
+    active.forEach((emp, i) => drawReceipt(doc, emp, optsWithSerial, i === 0, i));
     doc.save(`nomina_${opts.payrollDate.replaceAll("-", "")}.pdf`);
 }

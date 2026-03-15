@@ -232,15 +232,15 @@ export default function CompaniesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="text-[10px] uppercase text-foreground/30 mb-1 tracking-widest">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
                         Empresas
                     </nav>
                     <div className="flex items-end justify-between gap-4 flex-wrap">
                         <div>
-                            <h1 className="text-xl font-bold uppercase tracking-tighter text-foreground">
+                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Mis Empresas
                             </h1>
-                            <p className="text-[10px] text-foreground/40 mt-0.5 uppercase tracking-widest">
+                            <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
                                 {capacity?.companies.max !== null && capacity
                                     ? `${capacity.companies.used} / ${capacity.companies.max} empresa${capacity.companies.max !== 1 ? "s" : ""}`
                                     : `${companies.length} empresa${companies.length !== 1 ? "s" : ""}`

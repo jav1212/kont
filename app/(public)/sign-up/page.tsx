@@ -15,7 +15,7 @@ const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
     "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
-    "outline-none focus:border-indigo-500/60 focus:bg-foreground/[0.06]",
+    "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
 ].join(" ");
@@ -75,8 +75,8 @@ export default function SignUpPage() {
                 <div>
                     <div className="mb-10">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="h-px w-6 bg-indigo-500/60" />
-                            <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-indigo-400/70">
+                            <div className="h-px w-6 bg-primary-500/60" />
+                            <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
                                 Registro
                             </span>
                         </div>
@@ -90,16 +90,16 @@ export default function SignUpPage() {
 
                     {success ? (
                         <div className="space-y-5">
-                            <div className="px-5 py-5 border border-indigo-500/30 rounded-xl bg-indigo-500/[0.06] space-y-2">
+                            <div className="px-5 py-5 border border-primary-500/30 rounded-xl bg-primary-500/[0.06] space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full border border-indigo-500/50 bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-4 h-4 rounded-full border border-primary-500/50 bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                                         <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
                                             stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                            className="text-indigo-400">
+                                            className="text-primary-400">
                                             <path d="M1 3.5l1.8 1.8L6 1.5" />
                                         </svg>
                                     </div>
-                                    <span className="font-mono text-[11px] text-indigo-300 font-semibold">
+                                    <span className="font-mono text-[11px] text-primary-300 font-semibold">
                                         Revisa tu correo
                                     </span>
                                 </div>
@@ -194,17 +194,17 @@ export default function SignUpPage() {
                                     />
                                     <div className={[
                                         "w-4 h-4 rounded border border-white/20 bg-white/[0.04]",
-                                        "peer-checked:bg-indigo-500 peer-checked:border-indigo-500",
+                                        "peer-checked:bg-primary-500 peer-checked:border-primary-500",
                                         "transition-colors duration-150",
                                     ].join(" ")} />
                                 </div>
                                 <span className="font-mono text-[10px] text-foreground/30 leading-relaxed">
                                     Acepto los{" "}
-                                    <Link href="/terms" className="text-indigo-400/70 hover:text-indigo-400 underline underline-offset-2">
+                                    <Link href="/terms" className="text-primary-400/70 hover:text-primary-400 underline underline-offset-2">
                                         términos de uso
                                     </Link>{" "}
                                     y la{" "}
-                                    <Link href="/privacy" className="text-indigo-400/70 hover:text-indigo-400 underline underline-offset-2">
+                                    <Link href="/privacy" className="text-primary-400/70 hover:text-primary-400 underline underline-offset-2">
                                         política de privacidad
                                     </Link>.
                                 </span>
@@ -223,8 +223,8 @@ export default function SignUpPage() {
                                 disabled={loading}
                                 className={[
                                     "w-full h-10 mt-2 rounded-lg",
-                                    "bg-indigo-500 hover:bg-indigo-400 active:bg-indigo-600",
-                                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500",
+                                    "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
+                                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500",
                                     "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
                                     "transition-colors duration-150",
                                     "flex items-center justify-center gap-2",
@@ -249,7 +249,7 @@ export default function SignUpPage() {
                         ¿Ya tienes cuenta?{" "}
                         <Link
                             href="/sign-in"
-                            className="text-indigo-400/80 hover:text-indigo-400 transition-colors underline underline-offset-2"
+                            className="text-primary-400/80 hover:text-primary-400 transition-colors underline underline-offset-2"
                         >
                             Inicia sesión
                         </Link>
@@ -271,13 +271,13 @@ export default function SignUpPage() {
                                     i < PERKS.length - 1 ? "border-b border-border-light" : "",
                                 ].join(" ")}
                             >
-                                <span className="font-mono text-[9px] text-indigo-500/50 tracking-widest w-4 flex-shrink-0">
+                                <span className="font-mono text-[9px] text-primary-500/50 tracking-widest w-4 flex-shrink-0">
                                     {p.code}
                                 </span>
-                                <div className="w-4 h-4 rounded-full border border-indigo-500/30 bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                                <div className="w-4 h-4 rounded-full border border-primary-500/30 bg-primary-500/10 flex items-center justify-center flex-shrink-0">
                                     <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
                                         stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                        className="text-indigo-400">
+                                        className="text-primary-400">
                                         <path d="M1 3.5l1.8 1.8L6 1.5" />
                                     </svg>
                                 </div>
@@ -285,8 +285,8 @@ export default function SignUpPage() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-6 px-5 py-4 border border-indigo-500/10 rounded-xl bg-indigo-500/[0.03]">
-                        <p className="font-mono text-[10px] text-indigo-400/50 leading-relaxed">
+                    <div className="mt-6 px-5 py-4 border border-primary-500/10 rounded-xl bg-primary-500/[0.03]">
+                        <p className="font-mono text-[10px] text-primary-400/50 leading-relaxed">
                             Sin límite de empleados.<br />
                             Sin costo por período de nómina.
                         </p>

@@ -10,69 +10,69 @@
 
 :root {
   /* Base */
-  --background:  #f0f2f8;
-  --foreground:  #0c0d14;
+  --background:  #EEF0F7;
+  --foreground:  #080910;
 
-  /* Primary — deep indigo (más formal y autoritario) */
-  --primary-50:  #eef0ff;
-  --primary-100: #e0e4ff;
-  --primary-200: #c6cdfb;
-  --primary-300: #a4adf8;
-  --primary-400: #7c88f5;
-  --primary-500: #4338ca;   /* deep indigo — alto contraste en fondo claro */
-  --primary-600: #3730a3;
-  --primary-700: #2f2885;
-  --primary-800: #26216a;
-  --primary-900: #1a174d;
+  /* Primary — Teal/Cyan: Bloomberg terminal meets precision finance */
+  --primary-50:  #ECFEFF;
+  --primary-100: #CFFAFE;
+  --primary-200: #A5F3FC;
+  --primary-300: #67E8F9;
+  --primary-400: #22D3EE;
+  --primary-500: #0891B2;
+  --primary-600: #0E7490;
+  --primary-700: #155E75;
+  --primary-800: #164E63;
+  --primary-900: #0C3549;
 
-  /* Neutral — slate */
-  --neutral-50:  #f8f9fc;
-  --neutral-100: #f0f2f8;
-  --neutral-200: #dde1ee;
-  --neutral-300: #c4cbdc;
-  --neutral-400: #8f97b3;
-  --neutral-500: #626a87;
-  --neutral-600: #49506a;
-  --neutral-700: #363c54;
-  --neutral-800: #242840;
-  --neutral-900: #151828;
+  /* Neutral — blue-tinted slate */
+  --neutral-50:  #F8F9FC;
+  --neutral-100: #EEF0F7;
+  --neutral-200: #DDE1EE;
+  --neutral-300: #C1C8DC;
+  --neutral-400: #8A93B0;
+  --neutral-500: #5F6780;
+  --neutral-600: #464D66;
+  --neutral-700: #333A52;
+  --neutral-800: #20253C;
+  --neutral-900: #111525;
 
   /* Semantic */
-  --success: #15803d;
-  --warning: #b45309;
-  --error:   #c02020;
-  --info:    #1d4ed8;
+  --success: #059669;
+  --warning: #D97706;
+  --error:   #DC2626;
+  --info:    #0891B2;
 
-  /* Surfaces */
-  --surface-1:    #ffffff;
-  --surface-2:    #e8eaf4;
-  --surface-3:    #dde0ef;
-  --surface-card: #ffffff;
+  /* Surfaces — pure white + very slightly tinted gray */
+  --surface-1:    #FFFFFF;
+  --surface-2:    #E8EBF5;
+  --surface-3:    #DDE0EE;
+  --surface-card: #FFFFFF;
 
   /* Borders */
-  --border-light:   #d2d6e8;
-  --border-default: #b8bdd2;
-  --border-medium:  #8890aa;
-  --border-strong:  #5a6080;
+  --border-light:   #D1D5E8;
+  --border-default: #B5BBCE;
+  --border-medium:  #858EAA;
+  --border-strong:  #565E7A;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.07);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.10);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.10);
+  --shadow-sm: 0 1px 3px 0 rgb(8 9 16 / 0.08), 0 1px 2px -1px rgb(8 9 16 / 0.08);
+  --shadow-md: 0 4px 8px -2px rgb(8 9 16 / 0.10), 0 2px 4px -2px rgb(8 9 16 / 0.08);
+  --shadow-lg: 0 12px 24px -4px rgb(8 9 16 / 0.12), 0 4px 8px -2px rgb(8 9 16 / 0.08);
 
-  /* Sidebar */
-  --sidebar-bg:             #e4e7f2;
-  --sidebar-border:         #cdd2e6;
-  --sidebar-label:          rgba(12, 13, 20, 0.44);
-  --sidebar-fg:             rgba(12, 13, 20, 0.70);
-  --sidebar-fg-hover:       rgba(12, 13, 20, 0.90);
-  --sidebar-bg-hover:       rgba(12, 13, 20, 0.06);
-  --sidebar-active-bg:      rgba(67, 56, 202, 0.10);
-  --sidebar-active-fg:      #4338ca;
-  --sidebar-active-border:  rgba(67, 56, 202, 0.24);
+  /* ── Sidebar — always dark (terminal contrast) ── */
+  --sidebar-bg:             #0B0C14;
+  --sidebar-border:         rgba(255, 255, 255, 0.07);
+  --sidebar-label:          rgba(255, 255, 255, 0.26);
+  --sidebar-fg:             rgba(255, 255, 255, 0.52);
+  --sidebar-fg-hover:       rgba(255, 255, 255, 0.88);
+  --sidebar-bg-hover:       rgba(255, 255, 255, 0.07);
+  --sidebar-active-bg:      rgba(8, 145, 178, 0.18);
+  --sidebar-active-fg:      #38BDF8;
+  --sidebar-active-border:  rgba(8, 145, 178, 0.40);
 
   /* Grid pattern (public layout) */
-  --grid-line: rgba(0, 0, 0, 0.05);
+  --grid-line: rgba(0, 0, 0, 0.045);
 
   /* Radii */
   --radius-sm: 0.375rem;
@@ -87,50 +87,50 @@
 
 .dark {
   /* Base */
-  --background: #0c0d14;
-  --foreground: #e4e6f0;
+  --background: #07080F;
+  --foreground: #DFE3F2;
 
-  /* Primary — indigo más brillante para fondos oscuros */
-  --primary-500: #6366f1;
-  --primary-400: #818cf8;
-  --primary-600: #4f46e5;
+  /* Primary — bright cyan for dark backgrounds */
+  --primary-500: #22D3EE;
+  --primary-400: #67E8F9;
+  --primary-600: #0891B2;
 
   /* Semantic */
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --error:   #ef4444;
-  --info:    #3b82f6;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error:   #EF4444;
+  --info:    #22D3EE;
 
   /* Surfaces */
-  --surface-1:    #14151f;
-  --surface-2:    #0e0f18;
-  --surface-3:    #1c1d2e;
-  --surface-card: #14151f;
+  --surface-1:    #0F1018;
+  --surface-2:    #090A12;
+  --surface-3:    #171828;
+  --surface-card: #0F1018;
 
   /* Borders */
-  --border-light:   #1e2035;
-  --border-default: #2c2f4a;
-  --border-medium:  #404468;
-  --border-strong:  #5a5e80;
+  --border-light:   #1A1C2E;
+  --border-default: #252840;
+  --border-medium:  #363A5C;
+  --border-strong:  #4E5278;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.35);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.45);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.45);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.40);
+  --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.50);
+  --shadow-lg: 0 12px 24px -4px rgb(0 0 0 / 0.55);
 
-  /* Sidebar */
-  --sidebar-bg:             #0a0b13;
-  --sidebar-border:         rgba(228, 230, 240, 0.08);
-  --sidebar-label:          rgba(228, 230, 240, 0.35);
-  --sidebar-fg:             rgba(228, 230, 240, 0.65);
-  --sidebar-fg-hover:       rgba(228, 230, 240, 0.90);
-  --sidebar-bg-hover:       rgba(228, 230, 240, 0.06);
-  --sidebar-active-bg:      rgba(99, 102, 241, 0.14);
-  --sidebar-active-fg:      #818cf8;
-  --sidebar-active-border:  rgba(99, 102, 241, 0.28);
+  /* Sidebar — even darker in dark mode */
+  --sidebar-bg:             #050608;
+  --sidebar-border:         rgba(255, 255, 255, 0.06);
+  --sidebar-label:          rgba(223, 227, 242, 0.28);
+  --sidebar-fg:             rgba(223, 227, 242, 0.52);
+  --sidebar-fg-hover:       rgba(223, 227, 242, 0.88);
+  --sidebar-bg-hover:       rgba(255, 255, 255, 0.06);
+  --sidebar-active-bg:      rgba(34, 211, 238, 0.14);
+  --sidebar-active-fg:      #67E8F9;
+  --sidebar-active-border:  rgba(34, 211, 238, 0.32);
 
-  /* Grid pattern (public layout) */
-  --grid-line: rgba(255, 255, 255, 0.03);
+  /* Grid pattern */
+  --grid-line: rgba(255, 255, 255, 0.028);
 }
 
 /* ============================================================================
@@ -212,6 +212,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Text selection */
+::selection {
+  background: rgba(8, 145, 178, 0.20);
+  color: inherit;
+}
+.dark ::selection {
+  background: rgba(34, 211, 238, 0.22);
+}
+
+/* ── Scrollbar — thin, refined ─────────────────────────────────────────── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: var(--border-medium); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover  { background: var(--border-strong); }
+* { scrollbar-width: thin; scrollbar-color: var(--border-medium) transparent; }
+
+/* ── Focus ring ────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* Smooth theme transition on bg + color only */
 *, *::before, *::after {
   transition-property: background-color, border-color, color;
@@ -223,4 +246,10 @@ body {
 .animate-pulse,
 [style*="transform"] {
   transition: none;
+}
+
+/* ── Tabular numbers for financial data ────────────────────────────────── */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
