@@ -153,6 +153,170 @@ function exportCsv(results: EmpLiqResult[], egreso: string, motivo: Motivo) {
     URL.revokeObjectURL(url);
 }
 
+function formatDateES(iso: string): string {
+    if (!iso) return "—";
+    const [y, m, d] = iso.split("-");
+    const meses = ["enero","febrero","marzo","abril","mayo","junio",
+                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+}
+
+// ============================================================================
+// CARD — Constancia de Liquidación (formato visual vacaciones)
+// ============================================================================
+
+function ConstanciaLiquidacion({ r, companyName, egreso, motivo, diasUtil, diasBono }: {
+    r: EmpLiqResult; companyName: string; egreso: string; motivo: Motivo;
+    diasUtil: string; diasBono: string;
+}) {
+    const motivoLabel = motivo === "renuncia" ? "Renuncia voluntaria"
+        : motivo === "despido_justificado" ? "Despido justificado"
+        : "Despido injustificado";
+    const accent      = motivo === "despido_injustificado" ? "#dc2626" : "#0891b2";
+    const accentLight = motivo === "despido_injustificado" ? "#fca5a5" : "#22d3ee";
+    const emitido     = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const diasVacBase = Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1));
+
+    const concepts: { label: string; sub: string; dias?: number; monto: number; alt: boolean }[] = [
+        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${r.diasPrestTrimestr}d trim.${r.diasPrestAdic > 0 ? ` + ${r.diasPrestAdic}d adic.` : ""}`, dias: r.diasPrest, monto: r.prestaciones, alt: false },
+        { label: "Utilidades fraccionadas", sub: `${r.diasEnAnioActual}d en año × ${diasUtil}d util. / 365`, monto: r.utilFrac, alt: true },
+        { label: "Vacaciones fraccionadas", sub: `${r.diasDesdeAniversario}d / 365 × ${diasVacBase}d vac.`, monto: r.vacFrac, alt: false },
+        { label: "Bono vacacional fraccionado", sub: `${r.diasDesdeAniversario}d / 365 × ${diasBono}d bono`, monto: r.bonoVacFrac, alt: true },
+        ...(r.indemnizacion > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto de prestaciones", monto: r.indemnizacion, alt: false }] : []),
+    ].filter(c => c.monto > 0);
+
+    if (r.warning) return (
+        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden border border-[#dadae2] shadow-sm">
+            <div className="bg-[#12121a] px-8 py-4 relative overflow-hidden">
+                <div className="absolute left-0 top-0 w-1 bottom-0 bg-amber-500" />
+                <div className="pl-3 flex items-center justify-between">
+                    <p className="font-mono text-[13px] font-bold uppercase text-white">{r.employee.nombre}</p>
+                    <span className="font-mono text-[9px] text-amber-400 uppercase tracking-widest border border-amber-500/40 px-2 py-0.5 rounded">{r.warning}</span>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2]">
+
+            {/* Header */}
+            <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
+                <div className="absolute left-0 top-0 w-1 bottom-0.5" style={{ backgroundColor: accent }} />
+                <div className="absolute left-1 right-0 bottom-0 h-0.5" style={{ backgroundColor: accentLight }} />
+                <div className="pl-3 flex items-start justify-between gap-4">
+                    <div>
+                        <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
+                        <p className="font-mono text-[10px] text-[#787884] mt-1.5 uppercase tracking-[0.2em]">Constancia de Liquidación Laboral</p>
+                        <p className="font-mono text-[9px] text-[#505064] mt-0.5">Art. 142 LOTTT — {motivoLabel}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#787884] mb-1">Fecha de Egreso</p>
+                        <p className="font-mono text-[11px] font-bold text-white">{formatDateES(egreso)}</p>
+                        <p className="font-mono text-[8px] text-[#787884] mt-1.5">Emitido: {emitido}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Employee card */}
+            <div className="mx-6 mt-5 bg-white border border-[#dadae2] rounded relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: accent }} />
+                <div className="pl-5 pr-5 py-3 flex items-start justify-between">
+                    <div>
+                        <p className="font-mono text-[14px] font-black uppercase text-[#32323c] tracking-tight">{r.employee.nombre}</p>
+                        {r.employee.cargo && <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#787884] mt-0.5">{r.employee.cargo}</p>}
+                    </div>
+                    <div className="text-right">
+                        <p className="font-mono text-[12px] font-bold text-[#32323c]">CI: {r.employee.cedula}</p>
+                        <p className="font-mono text-[9px] text-[#787884] mt-0.5">{r.antiguedadAnios} año{r.antiguedadAnios !== 1 ? "s" : ""} de servicio</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Params strip */}
+            <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
+                {[
+                    { lbl: "Salario Mensual",  val: fmtVES(r.salarioVES),                          cls: "text-white" },
+                    { lbl: "Fecha de Ingreso", val: formatDateES(r.employee.fechaIngreso ?? "").toUpperCase(), cls: "text-white" },
+                    { lbl: "Antigüedad",       val: `${r.antiguedadAnios}a ${r.antiguedadDias % 365}d`, cls: "text-[#96c8dc]" },
+                    { lbl: "Sal. Integral/Día",val: fmtVES(r.diasPrest > 0 ? r.prestaciones / r.diasPrest : r.salarioVES / 30), cls: "text-white" },
+                ].map(({ lbl, val, cls }) => (
+                    <div key={lbl}>
+                        <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-1">{lbl}</p>
+                        <p className={`font-mono text-[10px] font-bold tabular-nums leading-snug ${cls}`}>{val}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Concept table */}
+            <div className="mx-6 mt-3">
+                <div className="bg-[#12121a] px-5 py-2 flex justify-between">
+                    <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Concepto</p>
+                    <div className="flex gap-10">
+                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Días</p>
+                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Monto</p>
+                    </div>
+                </div>
+                {concepts.map((c, i) => (
+                    <div key={c.label} className={`px-5 py-3 flex items-start justify-between border-b border-[#dadae2] ${c.alt ? "bg-[#f0f0f5]" : "bg-white"}`}>
+                        <div>
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">{c.label}</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">{c.sub}</p>
+                        </div>
+                        <div className="flex items-center gap-10 text-right shrink-0">
+                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{c.dias != null ? `${c.dias} d` : "—"}</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums" style={{ color: i === concepts.length - 1 && r.indemnizacion > 0 ? "#dc2626" : i % 2 === 0 ? accent : "#b4780a" }}>
+                                Bs. {fmtN(c.monto)}
+                            </p>
+                        </div>
+                    </div>
+                ))}
+                {/* Total bar */}
+                <div className="bg-[#12121a] px-5 py-3 flex items-center justify-between relative">
+                    <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: accentLight }} />
+                    <p className="pl-3 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#787884]">
+                        Total Liquidación
+                    </p>
+                    <p className="font-mono text-[16px] font-black tabular-nums" style={{ color: accentLight }}>
+                        Bs. {fmtN(r.total)}
+                    </p>
+                </div>
+            </div>
+
+            {/* Firmas */}
+            <div className="mx-6 mt-6 mb-2">
+                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#32323c] font-bold mb-3">Firmas de Conformidad</p>
+                <div className="grid grid-cols-2 gap-8">
+                    {["Empleador", "Trabajador"].map(role => (
+                        <div key={role} className="bg-white border border-[#dadae2] rounded overflow-hidden">
+                            <div className="h-[3px] w-full bg-[#787884]" />
+                            <div className="px-4 pt-4 pb-3">
+                                <div className="h-8 border-b border-[#afafb9] mb-2" />
+                                <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#787884] text-center">{role}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Legal */}
+            <div className="mx-6 mb-5 mt-4 pt-3 border-t border-[#dadae2]">
+                <p className="font-mono text-[8px] text-[#787884] leading-relaxed">
+                    La presente constancia certifica la liquidación laboral de conformidad con la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto incluye prestaciones sociales (Art. 142), utilidades fraccionadas, vacaciones y bono vacacional fraccionados{motivo === "despido_injustificado" ? " e indemnización por despido injustificado (Art. 92)" : ""}.
+                </p>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-[#12121a] px-8 py-2.5 relative">
+                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: accentLight }} />
+                <p className="font-mono text-[7px] text-[#505064] text-center uppercase tracking-[0.2em]">
+                    {companyName.toUpperCase()} · Liquidación Laboral · Documento Confidencial
+                </p>
+            </div>
+        </div>
+    );
+}
+
 // ============================================================================
 // CONFIG SECTION
 // ============================================================================
@@ -384,7 +548,7 @@ export default function LiquidacionesPage() {
             </aside>
 
             {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-            <main className="flex-1 overflow-x-auto">
+            <main className="flex-1 overflow-y-auto p-6">
                 {loading ? (
                     <div className="flex items-center justify-center h-48 gap-2 text-foreground/30">
                         <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
@@ -396,100 +560,27 @@ export default function LiquidacionesPage() {
                 ) : error ? (
                     <div className="flex items-center justify-center h-48 font-mono text-[11px] text-red-500">{error}</div>
                 ) : results.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 gap-2 text-foreground/25">
-                        <span className="font-mono text-[11px] uppercase tracking-widest">Sin empleados</span>
-                        <span className="font-mono text-[10px]">Agrega empleados en la sección Empleados</span>
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <path d="M8 21h8M12 17v4"/>
+                        </svg>
+                        <p className="font-mono text-[12px] uppercase tracking-widest">Sin empleados</p>
                     </div>
                 ) : (
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-surface-1 border-b border-border-light">
-                                {[
-                                    { label: "Empleado",     cls: "text-left pl-5"  },
-                                    { label: "Salario Bs.",  cls: "text-right"      },
-                                    { label: "Antigüedad",   cls: "text-right"      },
-                                    { label: "Prestaciones", cls: "text-right"      },
-                                    { label: "Util. Frac.",  cls: "text-right"      },
-                                    { label: "Vac. Frac.",   cls: "text-right"      },
-                                    { label: "Bono Vac.",    cls: "text-right"      },
-                                    ...(motivo === "despido_injustificado" ? [{ label: "Indem.", cls: "text-right" }] : []),
-                                    { label: "Total",        cls: "text-right pr-5" },
-                                ].map(({ label, cls }) => (
-                                    <th key={label} className={["font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 py-2.5 px-3 font-normal", cls].join(" ")}>
-                                        {label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((r, i) => (
-                                <tr key={r.employee.cedula} className={["border-b border-border-light", i % 2 === 0 ? "bg-surface-2" : "bg-surface-1/40", r.warning ? "opacity-50" : ""].join(" ")}>
-                                    <td className="pl-5 pr-3 py-3">
-                                        <div className="flex flex-col gap-0.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono text-[11px] font-medium text-foreground">{r.employee.nombre}</span>
-                                                {r.warning && (
-                                                    <span className="font-mono text-[8px] uppercase text-amber-500 border border-amber-500/30 bg-amber-500/[0.08] px-1.5 py-0.5 rounded">{r.warning}</span>
-                                                )}
-                                            </div>
-                                            <span className="font-mono text-[9px] text-foreground/35 uppercase tracking-widest">{r.employee.cedula} · {r.employee.cargo}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-foreground/60">
-                                        {r.warning ? "—" : fmtVES(r.salarioVES)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-foreground/50">
-                                        {r.warning ? "—" : `${r.antiguedadAnios}a ${r.antiguedadDias % 365}d`}
-                                    </td>
-                                    <td className="px-3 py-3 text-right">
-                                        {r.warning ? <span className="font-mono text-[11px] text-foreground/30">—</span> : (
-                                            <div className="flex flex-col items-end gap-0.5">
-                                                <span className="font-mono text-[11px] tabular-nums text-foreground/70">{fmtVES(r.prestaciones)}</span>
-                                                <span className="font-mono text-[9px] text-foreground/30">
-                                                    {r.diasPrestTrimestr}d
-                                                    {r.diasPrestAdic > 0 && <span className="text-amber-500"> +{r.diasPrestAdic}d</span>}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-foreground/70">
-                                        {r.warning ? "—" : fmtVES(r.utilFrac)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-foreground/70">
-                                        {r.warning ? "—" : fmtVES(r.vacFrac)}
-                                    </td>
-                                    <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-foreground/70">
-                                        {r.warning ? "—" : fmtVES(r.bonoVacFrac)}
-                                    </td>
-                                    {motivo === "despido_injustificado" && (
-                                        <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-red-500/70">
-                                            {r.warning ? "—" : fmtVES(r.indemnizacion)}
-                                        </td>
-                                    )}
-                                    <td className="pl-3 pr-5 py-3 text-right font-mono text-[13px] font-bold tabular-nums text-primary-500">
-                                        {r.warning ? "—" : fmtVES(r.total)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        {validResults.length > 0 && (
-                            <tfoot>
-                                <tr className="bg-surface-1 border-t border-primary-500/20">
-                                    <td colSpan={motivo === "despido_injustificado" ? 7 : 6} className="pl-5 pr-3 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">
-                                        Total — {validResults.length} empleados
-                                    </td>
-                                    {motivo === "despido_injustificado" && (
-                                        <td className="px-3 py-3 text-right font-mono text-[11px] tabular-nums text-red-500/70">
-                                            {fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}
-                                        </td>
-                                    )}
-                                    <td className="pl-3 pr-5 py-3 text-right font-mono text-[15px] font-black tabular-nums text-primary-500">
-                                        {fmtVES(totalGeneral)}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
-                    </table>
+                    <div className="max-w-2xl mx-auto space-y-8">
+                        {results.map(r => (
+                            <ConstanciaLiquidacion
+                                key={r.employee.cedula}
+                                r={r}
+                                companyName={company?.name ?? "La Empresa"}
+                                egreso={egreso}
+                                motivo={motivo}
+                                diasUtil={diasUtil}
+                                diasBono={diasBono}
+                            />
+                        ))}
+                    </div>
                 )}
             </main>
         </div>

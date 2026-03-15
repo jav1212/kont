@@ -238,7 +238,7 @@ function CalcRow({ label, formula, value, accent, dim }: {
 function Hr() { return <div className="border-t border-border-light my-2" />; }
 
 // ============================================================================
-// RIGHT PANEL — Constancia Completa
+// RIGHT PANEL — Constancia Completa  (PDF-faithful preview)
 // ============================================================================
 
 function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
@@ -255,134 +255,158 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
         montoDisfrute: calc.montoDisfrute, montoBono: calc.montoBono, total: calc.total,
     });
 
+    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
     return (
         <div className="max-w-2xl mx-auto space-y-3">
-        <div className="flex justify-end">
-            <button onClick={handlePdf}
-                className="flex items-center gap-2 h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
-                </svg>
-                Descargar PDF
-            </button>
-        </div>
-        <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
-            {/* Header */}
-            <div className="bg-[#12121a] px-8 py-6 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-500" />
-                <div className="absolute left-1.5 right-0 bottom-0 h-0.5 bg-[#22d3ee]" />
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#64648a] mb-1">Constancia de Vacaciones</p>
-                        <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#64648a] mb-1">Período</p>
-                        <p className="font-mono text-[11px] font-bold text-white">{formatDateES(fechaInicio)}</p>
-                        <p className="font-mono text-[11px] font-bold text-white">al {formatDateES(fechaCulminacion)}</p>
+            <div className="flex justify-end">
+                <button onClick={handlePdf}
+                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-[#0891b2] hover:bg-[#0e7490] text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
+                    </svg>
+                    Descargar PDF
+                </button>
+            </div>
+
+            {/* Document shell — same bg as PDF page */}
+            <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2]">
+
+                {/* ── HEADER ── */}
+                <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 w-1 bottom-0.5 bg-[#0891b2]" />
+                    <div className="absolute left-1 right-0 bottom-0 h-0.5 bg-[#22d3ee]" />
+                    <div className="pl-3 flex items-start justify-between gap-4">
+                        <div>
+                            <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
+                            <p className="font-mono text-[10px] text-[#787884] mt-1.5 uppercase tracking-[0.2em]">Constancia de Vacaciones</p>
+                            <p className="font-mono text-[9px] text-[#505064] mt-0.5">Arts. 190 · 192 LOTTT — Disfrute y Bono Vacacional</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#787884] mb-1">Período</p>
+                            <p className="font-mono text-[11px] font-bold text-white leading-snug">{formatDateES(fechaInicio)}</p>
+                            <p className="font-mono text-[11px] font-bold text-white leading-snug">al {formatDateES(fechaCulminacion)}</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-1.5">Emitido: {emitido}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Employee */}
-            <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Trabajador</p>
-                    <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                    {employeeCargo && <p className="font-mono text-[10px] text-foreground/40 mt-0.5 uppercase">{employeeCargo}</p>}
+                {/* ── EMPLOYEE CARD ── */}
+                <div className="mx-6 mt-5 bg-white border border-[#dadae2] rounded relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#0891b2]" />
+                    <div className="pl-5 pr-5 py-3 flex items-start justify-between">
+                        <div>
+                            <p className="font-mono text-[14px] font-black uppercase text-[#32323c] tracking-tight">{employeeName || "—"}</p>
+                            {employeeCargo && <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#787884] mt-0.5">{employeeCargo}</p>}
+                        </div>
+                        <div className="text-right">
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">CI: {employeeCedula || "—"}</p>
+                            <p className="font-mono text-[9px] text-[#787884] mt-0.5">{calc.anios} año{calc.anios !== 1 ? "s" : ""} de servicio</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Cédula</p>
-                    <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
-                    <p className="font-mono text-[9px] text-foreground/35 mt-0.5">{calc.anios} año{calc.anios !== 1 ? "s" : ""} de servicio</p>
-                </div>
-            </div>
 
-            {/* Salary + reintegro */}
-            <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-surface-2/50">
-                {[
-                    { lbl: "Salario mensual",    val: fmt(calc.salarioVES) },
-                    { lbl: "Salario diario",     val: `${fmt(calc.salarioDia)} / día` },
-                    { lbl: "Fecha de reintegro", val: formatDateES(fechaReintegro) },
-                ].map(({ lbl, val }) => (
-                    <div key={lbl}>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
-                        <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Period stats */}
-            <div className="px-8 py-4 border-b border-border-light flex items-center gap-8">
-                {[
-                    { lbl: "Días calendario", val: calc.diasCalendario, cls: "text-foreground" },
-                    { lbl: "Días hábiles",    val: calc.diasHabiles,    cls: "text-primary-500" },
-                    { lbl: "Días descanso",   val: calc.diasDescanso,   cls: "text-foreground/35" },
-                ].map(({ lbl, val, cls }) => (
-                    <div key={lbl} className="text-center">
-                        <p className={`font-mono text-[22px] font-black tabular-nums ${cls}`}>{val}</p>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-foreground/30">{lbl}</p>
-                    </div>
-                ))}
-                {calc.feriadoList.length > 0 && (
-                    <div className="ml-auto text-right">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-foreground/30 mb-1">Feriados</p>
-                        {calc.feriadoList.map(f => <p key={f} className="font-mono text-[9px] text-primary-500/70">{f}</p>)}
-                    </div>
-                )}
-            </div>
-
-            {/* Concepts */}
-            <div className="px-8 py-5">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
-                    {["Concepto", "Días", "Bs./día", "Monto"].map(h => (
-                        <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 text-right first:text-left">{h}</p>
+                {/* ── PARAMS STRIP ── */}
+                <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
+                    {[
+                        { lbl: "Salario Mensual",  val: `Bs. ${fmtN(calc.salarioVES)}`,                                      cls: "text-white" },
+                        { lbl: "Salario Diario",   val: `Bs. ${fmtN(calc.salarioDia)}`,                                      cls: "text-white" },
+                        { lbl: "Reintegro",        val: formatDateES(fechaReintegro).toUpperCase(),                           cls: "text-[#96c8dc]" },
+                        { lbl: "Cal · Háb · Desc", val: `${calc.diasCalendario} · ${calc.diasHabiles} · ${calc.diasDescanso}`, cls: "text-white" },
+                    ].map(({ lbl, val, cls }) => (
+                        <div key={lbl}>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-1">{lbl}</p>
+                            <p className={`font-mono text-[10px] font-bold tabular-nums leading-snug ${cls}`}>{val}</p>
+                        </div>
                     ))}
                 </div>
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                    <div>
-                        <p className="font-mono text-[12px] font-bold text-foreground">Disfrute Vacacional</p>
-                        <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
-                            Art. 190 LOTTT · 15 días base{calc.diasAdicDisfrute > 0 ? ` + ${calc.diasAdicDisfrute} adicional${calc.diasAdicDisfrute !== 1 ? "es" : ""}` : ""}
-                        </p>
-                    </div>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.diasDisfrute}</p>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{fmtN(calc.salarioDia)}</p>
-                    <p className="font-mono text-[14px] font-black tabular-nums text-primary-500 text-right">{fmt(calc.montoDisfrute)}</p>
-                </div>
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                    <div>
-                        <p className="font-mono text-[12px] font-bold text-foreground">Bono Vacacional</p>
-                        <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
-                            Art. 192 LOTTT · 15 días base{calc.diasAdicBono > 0 ? ` + ${calc.diasAdicBono} adicional${calc.diasAdicBono !== 1 ? "es" : ""}` : ""}
-                        </p>
-                    </div>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.diasBono}</p>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{fmtN(calc.salarioDia)}</p>
-                    <p className="font-mono text-[14px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.montoBono)}</p>
-                </div>
-                <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                    <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total a recibir</p>
-                    <p className="font-mono text-[22px] font-black tabular-nums text-primary-500 text-right">{fmt(calc.total)}</p>
-                </div>
-            </div>
 
-            {/* Signatures */}
-            <div className="px-8 py-6 border-t border-border-light grid grid-cols-2 gap-10">
-                {["Empleador", "Trabajador"].map(role => (
-                    <div key={role} className="text-center">
-                        <div className="h-10 border-b border-border-medium mb-2" />
-                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/30">{role}</p>
+                {/* ── CONCEPT TABLE ── */}
+                <div className="mx-6 mt-3">
+                    {/* Header row */}
+                    <div className="bg-[#12121a] px-5 py-2 flex justify-between">
+                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Concepto</p>
+                        <div className="flex gap-10">
+                            <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Días</p>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Monto</p>
+                        </div>
                     </div>
-                ))}
+                    {/* Row 1: Disfrute */}
+                    <div className="bg-white px-5 py-3 flex items-start justify-between border-b border-[#dadae2]">
+                        <div>
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">Disfrute Vacacional</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">
+                                Art. 190 LOTTT · 15 días base{calc.diasAdicDisfrute > 0 ? ` + ${calc.diasAdicDisfrute} adicional${calc.diasAdicDisfrute !== 1 ? "es" : ""}` : ""}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-10 text-right shrink-0">
+                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{calc.diasDisfrute} d</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums text-[#0891b2]">Bs. {fmtN(calc.montoDisfrute)}</p>
+                        </div>
+                    </div>
+                    {/* Row 2: Bono */}
+                    <div className="bg-[#f0f0f5] px-5 py-3 flex items-start justify-between border-b border-[#dadae2]">
+                        <div>
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">Bono Vacacional</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">
+                                Art. 192 LOTTT · 15 días base{calc.diasAdicBono > 0 ? ` + ${calc.diasAdicBono} adicional${calc.diasAdicBono !== 1 ? "es" : ""}` : ""}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-10 text-right shrink-0">
+                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{calc.diasBono} d</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums text-[#b4780a]">Bs. {fmtN(calc.montoBono)}</p>
+                        </div>
+                    </div>
+                    {/* Total bar */}
+                    <div className="bg-[#12121a] px-5 py-3 flex items-center justify-between relative">
+                        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#22d3ee]" />
+                        <p className="pl-3 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#787884]">
+                            Total · {calc.diasDisfrute + calc.diasBono} días
+                        </p>
+                        <p className="font-mono text-[16px] font-black tabular-nums text-[#22d3ee]">
+                            Bs. {fmtN(calc.total)}
+                        </p>
+                    </div>
+                </div>
+
+                {/* ── FIRMAS ── */}
+                <div className="mx-6 mt-6 mb-2">
+                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#32323c] font-bold mb-3">Firmas de Conformidad</p>
+                    <div className="grid grid-cols-2 gap-8">
+                        {["Empleador", "Trabajador"].map(role => (
+                            <div key={role} className="bg-white border border-[#dadae2] rounded overflow-hidden">
+                                <div className="h-0.75 w-full bg-[#787884]" />
+                                <div className="px-4 pt-4 pb-3">
+                                    <div className="h-8 border-b border-[#afafb9] mb-2" />
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#787884] text-center">{role}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* ── LEGAL NOTE ── */}
+                <div className="mx-6 mb-5 mt-4 pt-3 border-t border-[#dadae2]">
+                    <p className="font-mono text-[8px] text-[#787884] leading-relaxed">
+                        La presente constancia certifica el disfrute del período vacacional de conformidad con los Arts. 190 y 192 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Las firmas de ambas partes confirman el acuerdo sobre las fechas y montos indicados.
+                    </p>
+                </div>
+
+                {/* ── FOOTER ── */}
+                <div className="bg-[#12121a] px-8 py-2.5 relative">
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#22d3ee]" />
+                    <p className="font-mono text-[7px] text-[#505064] text-center uppercase tracking-[0.2em]">
+                        {companyName.toUpperCase()} · Constancia de Vacaciones · Documento Confidencial
+                    </p>
+                </div>
+
             </div>
-        </div>
         </div>
     );
 }
 
 // ============================================================================
-// RIGHT PANEL — Constancia Fraccionada
+// RIGHT PANEL — Constancia Fraccionada  (PDF-faithful preview)
 // ============================================================================
 
 function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCargo,
@@ -400,133 +424,174 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
         montoDisfrute: calc.montoDisfrute, montoBono: calc.montoBono, total: calc.total,
     });
 
+    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
     return (
         <div className="max-w-2xl mx-auto space-y-3">
-        <div className="flex justify-end">
-            <button onClick={handlePdf}
-                className="flex items-center gap-2 h-8 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
-                </svg>
-                Descargar PDF
-            </button>
-        </div>
-        <div className="rounded-2xl border border-amber-500/20 bg-surface-1 overflow-hidden shadow-sm">
-            {/* Header */}
-            <div className="bg-[#12121a] px-8 py-6 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500" />
-                <div className="absolute left-1.5 right-0 bottom-0 h-0.5 bg-amber-500/50" />
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#64648a] mb-1">Vacaciones Fraccionadas · Art. 196 LOTTT</p>
-                        <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#64648a] mb-1">Egreso</p>
-                        <p className="font-mono text-[12px] font-bold text-white">{formatDateES(fechaEgreso)}</p>
+            <div className="flex justify-end">
+                <button onClick={handlePdf}
+                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-[#b4780a] hover:bg-[#92600a] text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
+                    </svg>
+                    Descargar PDF
+                </button>
+            </div>
+
+            {/* Document shell */}
+            <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2]">
+
+                {/* ── HEADER — amber accent ── */}
+                <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 w-1 bottom-0.5 bg-[#b4780a]" />
+                    <div className="absolute left-1 right-0 bottom-0 h-0.5 bg-[#fde68a]" />
+                    <div className="pl-3 flex items-start justify-between gap-4">
+                        <div>
+                            <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
+                            <p className="font-mono text-[10px] text-[#787884] mt-1.5 uppercase tracking-[0.2em]">Constancia de Vacaciones Fraccionadas</p>
+                            <p className="font-mono text-[9px] text-[#505064] mt-0.5">Art. 196 LOTTT — Porción proporcional al período trabajado</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#787884] mb-1">Fecha de Egreso</p>
+                            <p className="font-mono text-[11px] font-bold text-white leading-snug">{formatDateES(fechaEgreso)}</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-1.5">Emitido: {emitido}</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Employee */}
-            <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
-                <div className="col-span-2">
-                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Trabajador</p>
-                    <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                    {employeeCargo && <p className="font-mono text-[10px] text-foreground/40 mt-0.5 uppercase">{employeeCargo}</p>}
-                </div>
-                <div>
-                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Cédula</p>
-                    <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
-                    <p className="font-mono text-[9px] text-foreground/35 mt-0.5">
-                        {calc.aniosCompletos} año{calc.aniosCompletos !== 1 ? "s" : ""} completo{calc.aniosCompletos !== 1 ? "s" : ""}
-                    </p>
-                </div>
-            </div>
-
-            {/* Period overview */}
-            <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-amber-500/3">
-                {[
-                    { lbl: "Fecha de ingreso",        val: formatDateES(fechaIngreso) },
-                    { lbl: "Último aniversario",       val: formatDateES(calc.ultimoAniversario) },
-                    { lbl: "Meses en año en curso",   val: `${calc.mesesFraccion} mes${calc.mesesFraccion !== 1 ? "es" : ""}` },
-                ].map(({ lbl, val }) => (
-                    <div key={lbl}>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
-                        <p className="font-mono text-[11px] font-bold text-foreground">{val}</p>
+                {/* ── EMPLOYEE CARD ── */}
+                <div className="mx-6 mt-5 bg-white border border-[#dadae2] rounded relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#b4780a]" />
+                    <div className="pl-5 pr-5 py-3 flex items-start justify-between">
+                        <div>
+                            <p className="font-mono text-[14px] font-black uppercase text-[#32323c] tracking-tight">{employeeName || "—"}</p>
+                            {employeeCargo && <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#787884] mt-0.5">{employeeCargo}</p>}
+                        </div>
+                        <div className="text-right">
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">CI: {employeeCedula || "—"}</p>
+                            <p className="font-mono text-[9px] text-[#787884] mt-0.5">
+                                {calc.aniosCompletos} año{calc.aniosCompletos !== 1 ? "s" : ""} completo{calc.aniosCompletos !== 1 ? "s" : ""}
+                            </p>
+                        </div>
                     </div>
-                ))}
-            </div>
+                </div>
 
-            {/* Salary */}
-            <div className="px-8 py-4 border-b border-border-light flex gap-8 bg-surface-2/50">
-                {[
-                    { lbl: "Salario mensual", val: fmt(calc.salarioVES) },
-                    { lbl: "Salario diario",  val: `${fmt(calc.salarioDia)} / día` },
-                    { lbl: "Días anuales",    val: `${calc.diasAnuales} días (año ${calc.aniosCompletos + 1})` },
-                ].map(({ lbl, val }) => (
-                    <div key={lbl}>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
-                        <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Concepts */}
-            <div className="px-8 py-5">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
-                    {["Concepto", "Días", "Bs./día", "Monto"].map(h => (
-                        <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 text-right first:text-left">{h}</p>
+                {/* ── PARAMS STRIP ── */}
+                <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
+                    {[
+                        { lbl: "Fecha de Ingreso",     val: formatDateES(fechaIngreso).toUpperCase(),       cls: "text-white" },
+                        { lbl: "Último Aniversario",   val: formatDateES(calc.ultimoAniversario).toUpperCase(), cls: "text-white" },
+                        { lbl: "Meses Año en Curso",   val: `${calc.mesesFraccion} mes${calc.mesesFraccion !== 1 ? "es" : ""}`, cls: "text-[#96c8dc]" },
+                        { lbl: "Días Anuales Base",    val: `${calc.diasAnuales} días`,                     cls: "text-white" },
+                    ].map(({ lbl, val, cls }) => (
+                        <div key={lbl}>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-1">{lbl}</p>
+                            <p className={`font-mono text-[10px] font-bold tabular-nums leading-snug ${cls}`}>{val}</p>
+                        </div>
                     ))}
                 </div>
 
-                {/* Fórmula base visible */}
-                <div className="py-3 border-b border-border-light/40">
-                    <p className="font-mono text-[9px] text-foreground/30">
-                        Fórmula: ⌈ {calc.diasAnuales} días / 12 meses × {calc.mesesFraccion} meses ⌉ = ⌈ {fmtN((calc.diasAnuales / 12) * calc.mesesFraccion)} ⌉
+                {/* ── FÓRMULA BOX ── */}
+                <div className="mx-6 mt-3 bg-[#f0f0f5] border border-[#dadae2] px-5 py-2.5 rounded">
+                    <p className="font-mono text-[8px] text-[#787884] uppercase tracking-widest mb-0.5">Fórmula (Art. 196)</p>
+                    <p className="font-mono text-[11px] font-bold text-[#32323c]">
+                        ⌈ {calc.diasAnuales} días / 12 meses × {calc.mesesFraccion} meses ⌉ = {calc.fraccionDisfrute} días
                     </p>
                 </div>
 
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                    <div>
-                        <p className="font-mono text-[12px] font-bold text-foreground">Disfrute Fraccionado</p>
-                        <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
-                            Art. 190 + 196 LOTTT · {calc.diasAnuales}d/12 × {calc.mesesFraccion} meses
+                {/* ── CONCEPT TABLE ── */}
+                <div className="mx-6 mt-3">
+                    {/* Header row */}
+                    <div className="bg-[#12121a] px-5 py-2 flex justify-between">
+                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Concepto</p>
+                        <div className="flex gap-10">
+                            <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Días</p>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Monto</p>
+                        </div>
+                    </div>
+                    {/* Row 1: Disfrute Fraccionado */}
+                    <div className="bg-white px-5 py-3 flex items-start justify-between border-b border-[#dadae2]">
+                        <div>
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">Disfrute Fraccionado</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">
+                                Art. 190 + 196 LOTTT · {calc.diasAnuales}d/12 × {calc.mesesFraccion} meses
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-10 text-right shrink-0">
+                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{calc.fraccionDisfrute} d</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums text-[#b4780a]">Bs. {fmtN(calc.montoDisfrute)}</p>
+                        </div>
+                    </div>
+                    {/* Row 2: Bono Fraccionado */}
+                    <div className="bg-[#f0f0f5] px-5 py-3 flex items-start justify-between border-b border-[#dadae2]">
+                        <div>
+                            <p className="font-mono text-[12px] font-bold text-[#32323c]">Bono Vacacional Fraccionado</p>
+                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">
+                                Art. 192 + 196 LOTTT · {calc.diasAnuales}d/12 × {calc.mesesFraccion} meses
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-10 text-right shrink-0">
+                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{calc.fraccionBono} d</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums text-[#b4780a]">Bs. {fmtN(calc.montoBono)}</p>
+                        </div>
+                    </div>
+                    {/* Total bar — amber accent */}
+                    <div className="bg-[#12121a] px-5 py-3 flex items-center justify-between relative">
+                        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#fde68a]" />
+                        <p className="pl-3 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#787884]">
+                            Total Fraccionado · {calc.fraccionDisfrute + calc.fraccionBono} días
+                        </p>
+                        <p className="font-mono text-[16px] font-black tabular-nums text-[#fde68a]">
+                            Bs. {fmtN(calc.total)}
                         </p>
                     </div>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.fraccionDisfrute}</p>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{fmtN(calc.salarioDia)}</p>
-                    <p className="font-mono text-[14px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.montoDisfrute)}</p>
                 </div>
 
-                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                    <div>
-                        <p className="font-mono text-[12px] font-bold text-foreground">Bono Vacacional Fraccionado</p>
-                        <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
-                            Art. 192 + 196 LOTTT · {calc.diasAnuales}d/12 × {calc.mesesFraccion} meses
-                        </p>
+                {/* ── SALARY STRIP ── */}
+                <div className="mx-6 mt-3 bg-[#f0f0f5] border border-[#dadae2] px-5 py-2.5 rounded flex gap-8">
+                    {[
+                        { lbl: "Salario Mensual", val: `Bs. ${fmtN(calc.salarioVES)}` },
+                        { lbl: "Salario Diario",  val: `Bs. ${fmtN(calc.salarioDia)} / día` },
+                    ].map(({ lbl, val }) => (
+                        <div key={lbl}>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-0.5">{lbl}</p>
+                            <p className="font-mono text-[11px] font-bold tabular-nums text-[#32323c]">{val}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ── FIRMAS ── */}
+                <div className="mx-6 mt-6 mb-2">
+                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#32323c] font-bold mb-3">Firmas de Conformidad</p>
+                    <div className="grid grid-cols-2 gap-8">
+                        {["Empleador", "Trabajador"].map(role => (
+                            <div key={role} className="bg-white border border-[#dadae2] rounded overflow-hidden">
+                                <div className="h-0.75 w-full bg-[#787884]" />
+                                <div className="px-4 pt-4 pb-3">
+                                    <div className="h-8 border-b border-[#afafb9] mb-2" />
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#787884] text-center">{role}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.fraccionBono}</p>
-                    <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{fmtN(calc.salarioDia)}</p>
-                    <p className="font-mono text-[14px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.montoBono)}</p>
                 </div>
 
-                <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                    <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total fraccionado</p>
-                    <p className="font-mono text-[22px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.total)}</p>
+                {/* ── LEGAL NOTE ── */}
+                <div className="mx-6 mb-5 mt-4 pt-3 border-t border-[#dadae2]">
+                    <p className="font-mono text-[8px] text-[#787884] leading-relaxed">
+                        La presente constancia certifica el pago de las vacaciones fraccionadas de conformidad con el Art. 196 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT), correspondientes a la fracción del año de servicio no cubierta por el período completo. El cálculo se realiza sobre el salario normal (no integral) del trabajador.
+                    </p>
                 </div>
-            </div>
 
-            {/* Signatures */}
-            <div className="px-8 py-6 border-t border-border-light grid grid-cols-2 gap-10">
-                {["Empleador", "Trabajador"].map(role => (
-                    <div key={role} className="text-center">
-                        <div className="h-10 border-b border-border-medium mb-2" />
-                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/30">{role}</p>
-                    </div>
-                ))}
+                {/* ── FOOTER ── */}
+                <div className="bg-[#12121a] px-8 py-2.5 relative">
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#fde68a]" />
+                    <p className="font-mono text-[7px] text-[#505064] text-center uppercase tracking-[0.2em]">
+                        {companyName.toUpperCase()} · Constancia de Vacaciones Fraccionadas · Documento Confidencial
+                    </p>
+                </div>
+
             </div>
-        </div>
         </div>
     );
 }
