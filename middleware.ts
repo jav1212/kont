@@ -15,6 +15,7 @@ const PUBLIC_PATHS  = ['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-
 const isPublic      = (p: string) => PUBLIC_PATHS.includes(p);
 const isAppRoute    = (p: string) =>
     p.startsWith('/payroll') ||
+    p.startsWith('/inventory') ||
     p.startsWith('/companies') ||
     p.startsWith('/billing');
 const isAdminRoute  = (p: string) => p.startsWith('/admin');
@@ -116,6 +117,7 @@ export const config = {
         '/forgot-password',
         '/reset-password',
         '/payroll/:path*',
+        '/inventory/:path*',
         '/companies/:path*',
         '/billing/:path*',
         '/admin',

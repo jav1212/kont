@@ -7,6 +7,7 @@ import { APP_MODULES } from "@/src/shared/frontend/navigation";
 import { useAuth }     from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -78,6 +79,7 @@ export function AppSidebar() {
     const { theme, toggleTheme } = useTheme();
     const { companies, company, companyId, selectCompany, loading: companyLoading } = useCompany();
     const [companyOpen, setCompanyOpen] = useState(false);
+    const { hasAccess: hasInventory } = useModuleAccess("inventory");
 
     async function handleSignOut() {
         await signOut();
@@ -228,7 +230,9 @@ export function AppSidebar() {
                     Módulos
                 </p>
 
-                {APP_MODULES.map((mod) => {
+                {APP_MODULES.filter((mod) =>
+                    mod.id !== "inventory" || hasInventory
+                ).map((mod) => {
                     const subnav   = MODULE_SUBNAV[mod.id];
                     const isActive = pathname === mod.href ||
                         (pathname.startsWith(mod.href + "/") && !subnav?.some(s => s.href !== mod.href && pathname === s.href));

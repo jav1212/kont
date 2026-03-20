@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import Link from "next/link";
 
 // ============================================================================
 // TYPES
@@ -25,6 +26,16 @@ interface TenantData {
     currentPeriodEnd:   string | null;
     lastPaymentAt:      string | null;
     plan:               Plan | null;
+}
+
+interface Subscription {
+    id:                 string;
+    status:             string;
+    billingCycle:       string | null;
+    currentPeriodStart: string | null;
+    currentPeriodEnd:   string | null;
+    product:            { slug: string; name: string; description: string | null } | null;
+    plan:               { name: string; priceMonthlyUsd: number } | null;
 }
 
 interface PaymentRequest {
@@ -94,11 +105,12 @@ export default function BillingPage() {
     const { capacity } = useCapacity();
 
     // ── Data ──────────────────────────────────────────────────────────────
-    const [tenant,   setTenant]   = useState<TenantData | null>(null);
-    const [plans,    setPlans]    = useState<Plan[]>([]);
-    const [history,  setHistory]  = useState<PaymentRequest[]>([]);
-    const [loading,  setLoading]  = useState(true);
-    const [dataError, setDataError] = useState<string | null>(null);
+    const [tenant,        setTenant]        = useState<TenantData | null>(null);
+    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+    const [plans,         setPlans]         = useState<Plan[]>([]);
+    const [history,       setHistory]       = useState<PaymentRequest[]>([]);
+    const [loading,       setLoading]       = useState(true);
+    const [dataError,     setDataError]     = useState<string | null>(null);
 
     // ── Payment form ──────────────────────────────────────────────────────
     const [formOpen,     setFormOpen]     = useState(false);
@@ -115,17 +127,20 @@ export default function BillingPage() {
         setLoading(true);
         setDataError(null);
         try {
-            const [tenantRes, plansRes, histRes] = await Promise.all([
+            const [tenantRes, subsRes, plansRes, histRes] = await Promise.all([
                 fetch("/api/billing/tenant"),
+                fetch("/api/billing/subscriptions"),
                 fetch("/api/billing/plans"),
                 fetch("/api/billing/payment-requests"),
             ]);
-            const [t, p, h] = await Promise.all([
+            const [t, s, p, h] = await Promise.all([
                 tenantRes.json(),
+                subsRes.json(),
                 plansRes.json(),
                 histRes.json(),
             ]);
             if (t.data)  setTenant(t.data);
+            if (s.data)  setSubscriptions(s.data);
             if (p.data)  { setPlans(p.data); if (p.data.length > 0) setSelPlanId(p.data[0].id); }
             if (h.data)  setHistory(h.data);
         } catch {
@@ -318,6 +333,84 @@ export default function BillingPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Module subscriptions */}
+                        {subscriptions.length > 0 && (
+                            <div>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/35 mb-3">
+                                    Módulos activos
+                                </p>
+                                <div className="space-y-2">
+                                    {subscriptions.map((sub) => (
+                                        <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-foreground/30 flex-shrink-0">
+                                                    {sub.product?.slug === "payroll" ? (
+                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="1" y="1" width="11" height="11" rx="1.5" />
+                                                            <path d="M4 5h5M4 7.5h3" />
+                                                        </svg>
+                                                    ) : sub.product?.slug === "inventory" ? (
+                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
+                                                            <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
+                                                        </svg>
+                                                    ) : null}
+                                                </div>
+                                                <div>
+                                                    <p className="font-mono text-[12px] font-bold text-foreground">
+                                                        {sub.product?.name ?? "—"}
+                                                    </p>
+                                                    {sub.product?.description && (
+                                                        <p className="font-mono text-[10px] text-foreground/35 mt-0.5">
+                                                            {sub.product.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {sub.plan && (
+                                                    <p className="font-mono text-[11px] text-foreground/40">
+                                                        {sub.plan.name} · ${sub.plan.priceMonthlyUsd}/mes
+                                                    </p>
+                                                )}
+                                                <span className={[
+                                                    "h-6 px-2.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.18em] flex items-center",
+                                                    STATUS_CLS[sub.status] ?? "",
+                                                ].join(" ")}>
+                                                    {STATUS_LABEL[sub.status] ?? sub.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Inventory upsell if not subscribed */}
+                                    {!subscriptions.some((s) => s.product?.slug === "inventory") && (
+                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-foreground/20 flex-shrink-0">
+                                                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
+                                                        <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="font-mono text-[12px] font-bold text-foreground/40">
+                                                        Inventario
+                                                    </p>
+                                                    <p className="font-mono text-[10px] text-foreground/25 mt-0.5">
+                                                        Control de inventario — próximamente disponible
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/25 border border-border-light rounded-md h-6 px-2.5 flex items-center">
+                                                No activo
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Payment form */}
                         {formOpen && (
