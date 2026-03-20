@@ -26,11 +26,11 @@ export default function AppError({
                 <h2 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                     Algo salió mal.
                 </h2>
-                <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                     No se pudo cargar esta sección. Puedes reintentar o navegar a otra parte del sistema.
                 </p>
                 {error.digest && (
-                    <p className="font-mono text-[9px] text-foreground/20 tracking-widest">
+                    <p className="font-mono text-[9px] text-[var(--text-disabled)] tracking-widest">
                         REF: {error.digest}
                     </p>
                 )}
@@ -48,7 +48,7 @@ export default function AppError({
                     </button>
                     <Link
                         href="/payroll"
-                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                     >
                         Ir a nómina
                     </Link>

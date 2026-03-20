@@ -23,7 +23,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 
@@ -68,7 +68,7 @@ interface PrestacionesCalc {
 function SectionHeader({ label, color }: { label: string; color?: "green" | "amber" }) {
     const cls = color === "amber" ? "text-amber-500/70"
               : color === "green" ? "text-emerald-500/70"
-              : "text-foreground/35";
+              : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
@@ -76,15 +76,15 @@ function CalcRow({ label, formula, value, accent, dim }: {
     label: string; formula?: string; value: string;
     accent?: "green" | "amber"; dim?: boolean;
 }) {
-    const valCls = dim ? "text-foreground/40"
+    const valCls = dim ? "text-[var(--text-tertiary)]"
         : accent === "green"  ? "text-emerald-500"
         : accent === "amber"  ? "text-amber-500"
         : "text-foreground";
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
-                <span className="font-mono text-[11px] text-foreground/70 leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[9px] text-foreground/30 mt-0.5 tabular-nums">{formula}</div>}
+                <span className="font-mono text-[11px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
             </div>
             <span className={`font-mono text-[12px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
         </div>
@@ -200,7 +200,7 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                         { lbl: "Sal. integral/día", val: fmt(calc.salarioIntegralDiario) },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
-                            <p className="font-mono text-[7px] uppercase tracking-[0.16em] text-foreground/30 mb-0.5">{lbl}</p>
+                            <p className="font-mono text-[7px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
                             <p className="font-mono text-[10px] font-bold text-foreground tabular-nums">{val}</p>
                         </div>
                     ))}
@@ -208,21 +208,21 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
 
                 {/* Prestaciones: saldo + garantía = total */}
                 <div className="px-6 py-4 border-b border-border-light">
-                    <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-foreground/30 mb-3">Prestaciones acumuladas (Art. 142)</p>
+                    <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">Prestaciones acumuladas (Art. 142)</p>
                     <div className="space-y-2">
                         <div className="flex justify-between items-baseline">
                             <div>
-                                <span className="font-mono text-[11px] text-foreground/70">Saldo acumulado</span>
-                                <span className="font-mono text-[8px] text-foreground/30 ml-2">{calc.diasTotales}d × {fmt(calc.salarioIntegralDiario)}</span>
+                                <span className="font-mono text-[11px] text-[var(--text-secondary)]">Saldo acumulado</span>
+                                <span className="font-mono text-[8px] text-[var(--text-tertiary)] ml-2">{calc.diasTotales}d × {fmt(calc.salarioIntegralDiario)}</span>
                             </div>
-                            <span className="font-mono text-[12px] tabular-nums text-foreground/60">{fmt(calc.saldoAcumulado)}</span>
+                            <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmt(calc.saldoAcumulado)}</span>
                         </div>
                         <div className="flex justify-between items-baseline">
                             <div>
-                                <span className="font-mono text-[11px] text-foreground/70">Garantía Art. 142.c</span>
-                                <span className="font-mono text-[8px] text-foreground/30 ml-2">30d × {calc.anios} años × {fmt(calc.salarioIntegralDiario)}</span>
+                                <span className="font-mono text-[11px] text-[var(--text-secondary)]">Garantía Art. 142.c</span>
+                                <span className="font-mono text-[8px] text-[var(--text-tertiary)] ml-2">30d × {calc.anios} años × {fmt(calc.salarioIntegralDiario)}</span>
                             </div>
-                            <span className="font-mono text-[12px] tabular-nums text-foreground/60">{fmt(calc.garantia)}</span>
+                            <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmt(calc.garantia)}</span>
                         </div>
                     </div>
                 </div>
@@ -239,19 +239,19 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                 {/* Pago inmediato */}
                 {(calc.anticipoPrestaciones > 0 || calc.interesesAcumulados > 0) && (<>
                     <div className="px-6 py-4 border-b border-border-light">
-                        <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-foreground/30 mb-3">Pago inmediato (Art. 143 / 144)</p>
+                        <p className="font-mono text-[7px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">Pago inmediato (Art. 143 / 144)</p>
                         <div className="space-y-2 mb-3">
                             <div className="flex justify-between items-baseline">
-                                <span className="font-mono text-[11px] text-foreground/70">Anticipo ({porcentajeAnticipo}%) — Art. 144</span>
+                                <span className="font-mono text-[11px] text-[var(--text-secondary)]">Anticipo ({porcentajeAnticipo}%) — Art. 144</span>
                                 <span className="font-mono text-[12px] font-bold tabular-nums text-amber-500">{fmt(calc.anticipoPrestaciones)}</span>
                             </div>
                             <div className="flex justify-between items-baseline">
-                                <span className="font-mono text-[11px] text-foreground/70">Intereses ({tasaIntereses}%) — Art. 143</span>
+                                <span className="font-mono text-[11px] text-[var(--text-secondary)]">Intereses ({tasaIntereses}%) — Art. 143</span>
                                 <span className="font-mono text-[12px] font-bold tabular-nums text-emerald-600">{fmt(calc.interesesAcumulados)}</span>
                             </div>
                         </div>
                         <div className="flex items-baseline justify-between pt-2 border-t border-border-light">
-                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total pago inmediato</span>
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total pago inmediato</span>
                             <span className="font-mono text-[18px] font-black tabular-nums text-amber-500">{fmt(calc.pagoInmediato)}</span>
                         </div>
                     </div>
@@ -259,15 +259,15 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                     {/* Saldo a favor */}
                     <div className="px-6 py-4 bg-emerald-600/10 border-b border-emerald-500/20">
                         <div className="flex justify-between items-baseline mb-1">
-                            <span className="font-mono text-[11px] text-foreground/50">Monto total prestaciones</span>
-                            <span className="font-mono text-[11px] tabular-nums text-foreground/40">{fmt(calc.montoFinal)}</span>
+                            <span className="font-mono text-[11px] text-[var(--text-secondary)]">Monto total prestaciones</span>
+                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">{fmt(calc.montoFinal)}</span>
                         </div>
                         <div className="flex justify-between items-baseline mb-3">
-                            <span className="font-mono text-[11px] text-foreground/50">− Anticipo + Intereses</span>
-                            <span className="font-mono text-[11px] tabular-nums text-foreground/40">− {fmt(calc.pagoInmediato)}</span>
+                            <span className="font-mono text-[11px] text-[var(--text-secondary)]">− Anticipo + Intereses</span>
+                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">− {fmt(calc.pagoInmediato)}</span>
                         </div>
                         <div className="flex items-baseline justify-between pt-2 border-t border-emerald-500/20">
-                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/50">Saldo a favor</span>
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Saldo a favor</span>
                             <span className="font-mono text-[20px] font-black tabular-nums text-emerald-600">{fmt(calc.saldoFavor)}</span>
                         </div>
                     </div>
@@ -278,7 +278,7 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                     {["Empleador", "Trabajador"].map(role => (
                         <div key={role} className="text-center">
                             <div className="h-8 border-b border-border-medium mb-2" />
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30">{role}</p>
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{role}</p>
                         </div>
                     ))}
                 </div>
@@ -397,9 +397,9 @@ export default function PrestacionesPage() {
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">Nómina · Prestaciones</p>
+                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Prestaciones</p>
                     <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                    <p className="font-mono text-[9px] text-foreground/30 mt-1">Art. 142 LOTTT · Garantía de Prestaciones</p>
+                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT · Garantía de Prestaciones</p>
                 </div>
 
                 <div className="flex-1 divide-y divide-border-light">
@@ -426,7 +426,7 @@ export default function PrestacionesPage() {
                                     { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
                                 ].map(({ k, v }) => (
                                     <div key={k} className="flex justify-between font-mono text-[10px]">
-                                        <span className="text-foreground/40">{k}</span>
+                                        <span className="text-[var(--text-tertiary)]">{k}</span>
                                         <span className="text-foreground tabular-nums">{v}</span>
                                     </div>
                                 ))}
@@ -436,16 +436,16 @@ export default function PrestacionesPage() {
                         <div>
                             <label className={labelCls}>
                                 Salario mensual (Bs.)
-                                {selectedEmp && <span className="ml-1 text-primary-500/60">— editable</span>}
+                                {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">Bs.</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
                                 <input type="number" step="0.01" min="0" value={salarioOverride}
                                     onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
                                     className={fieldCls + " pl-9 text-right"} />
                             </div>
                             {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[9px] text-foreground/25 mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
+                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
                             )}
                         </div>
                         {!selectedEmp && (
@@ -461,7 +461,7 @@ export default function PrestacionesPage() {
                     <div className="px-5 py-4">
                         <SectionHeader label="Tasa BCV (auto)" />
                         {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-foreground/30">
+                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                                 <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
                                     <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
                                     <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -479,8 +479,8 @@ export default function PrestacionesPage() {
                         ) : (
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[10px] text-foreground/35">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[8px] text-primary-500/60 bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">Bs. / USD</span>
+                                <span className="ml-auto font-mono text-[8px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
                             </div>
                         )}
                     </div>
@@ -492,7 +492,7 @@ export default function PrestacionesPage() {
                             <label className={labelCls}>Fecha de corte</label>
                             <input type="date" value={fechaCorte}
                                 onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Fecha de egreso o consulta</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Fecha de egreso o consulta</p>
                         </div>
                         <div>
                             <label className={labelCls}>Días de utilidades</label>
@@ -500,7 +500,7 @@ export default function PrestacionesPage() {
                                 value={diasUtilidades}
                                 onChange={e => setDiasUtilidades(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Para calcular alícuota (mín. 15 · Art. 174)</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 174)</p>
                         </div>
                         <div>
                             <label className={labelCls}>Días bono vacacional</label>
@@ -508,7 +508,7 @@ export default function PrestacionesPage() {
                                 value={diasBono}
                                 onChange={e => setDiasBono(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Para calcular alícuota (mín. 15 · Art. 192)</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 192)</p>
                         </div>
                     </div>
 
@@ -522,9 +522,9 @@ export default function PrestacionesPage() {
                                     value={tasaIntereses}
                                     onChange={e => setTasaIntereses(e.target.value)}
                                     className={fieldCls + " pr-9 text-right"} />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
                             </div>
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Art. 143 LOTTT — sobre saldo × meses / 12</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Art. 143 LOTTT — sobre saldo × meses / 12</p>
                         </div>
                         <div>
                             <label className={labelCls}>Porcentaje de anticipo (%)</label>
@@ -533,18 +533,18 @@ export default function PrestacionesPage() {
                                     value={porcentajeAnticipo}
                                     onChange={e => setPorcentajeAnticipo(e.target.value)}
                                     className={fieldCls + " pr-9 text-right"} />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">%</span>
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
                             </div>
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Art. 144 LOTTT — máximo 75% del saldo</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Art. 144 LOTTT — máximo 75% del saldo</p>
                         </div>
                         {calc && (
                             <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-2">
                                 <div>
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-foreground/35 mb-0.5">Intereses calculados</p>
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Intereses calculados</p>
                                     <p className="font-mono text-[13px] font-black tabular-nums text-emerald-600">{fmt(calc.interesesAcumulados)}</p>
                                 </div>
                                 <div>
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-foreground/35 mb-0.5">Anticipo ({porcentajeAnticipo}% saldo)</p>
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Anticipo ({porcentajeAnticipo}% saldo)</p>
                                     <p className="font-mono text-[13px] font-black tabular-nums text-amber-500">{fmt(calc.anticipoPrestaciones)}</p>
                                 </div>
                             </div>
@@ -610,12 +610,12 @@ export default function PrestacionesPage() {
                                     value={`− ${fmt(calc.pagoInmediato)}`} dim />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">Saldo a favor</span>
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Saldo a favor</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-emerald-600">{fmt(calc.saldoFavor)}</span>
                                 </div>
                             </>)}
                         </>) : (
-                            <p className="font-mono text-[10px] text-foreground/30">
+                            <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
                                 {salarioVES <= 0
                                     ? "Ingresa el salario del empleado."
                                     : !fechaIngreso
@@ -642,7 +642,7 @@ export default function PrestacionesPage() {
                         tasaIntereses={tasaIntereses}
                     />
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                             <rect x="2" y="3" width="20" height="14" rx="2"/>
                             <path d="M8 21h8M12 17v4"/>

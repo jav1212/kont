@@ -16,7 +16,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const TIPOS: { value: TipoProducto; label: string }[] = [
     { value: "mercancia",          label: "Mercancía"         },
@@ -59,11 +59,11 @@ function empty(empresaId: string): Producto {
 
 function TipoBadge({ tipo }: { tipo: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        mercancia:          { label: "Mercancía",       cls: "bg-primary-500/10 text-primary-500" },
-        materia_prima:      { label: "Mat. Prima",      cls: "bg-amber-500/10 text-amber-600"     },
-        producto_terminado: { label: "Prod. Terminado", cls: "bg-green-500/10 text-green-600"     },
+        mercancia:          { label: "Mercancía",       cls: "border badge-info"    },
+        materia_prima:      { label: "Mat. Prima",      cls: "border badge-warning" },
+        producto_terminado: { label: "Prod. Terminado", cls: "border badge-success" },
     };
-    const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-foreground/60" };
+    const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-text-secondary border border-border-light" };
     return (
         <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium ${cls}`}>
             {label}
@@ -127,7 +127,7 @@ export default function ProductosPage() {
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                             Productos
                         </h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Catálogo de productos
                         </p>
                     </div>
@@ -241,9 +241,9 @@ export default function ProductosPage() {
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingProductos ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : productos.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay productos. Haz clic en "+ Nuevo producto" para crear uno.
                         </div>
                     ) : (
@@ -251,7 +251,7 @@ export default function ProductosPage() {
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Código", "Nombre", "Tipo", "Unidad", "Costo Prom.", "Existencia", "Mínimo", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal whitespace-nowrap">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -262,19 +262,19 @@ export default function ProductosPage() {
                                     const bajoMin = p.activo && p.existenciaActual <= p.existenciaMinima;
                                     return (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                            <td className="px-4 py-2.5 text-foreground/60">{p.codigo || "—"}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                             <td className="px-4 py-2.5"><TipoBadge tipo={p.tipo} /></td>
-                                            <td className="px-4 py-2.5 text-foreground/60">{p.unidadMedida}</td>
-                                            <td className="px-4 py-2.5 tabular-nums text-foreground/80">{fmtN(p.costoPromedio)}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.unidadMedida}</td>
+                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(p.costoPromedio)}</td>
                                             <td className={`px-4 py-2.5 tabular-nums font-medium ${bajoMin ? "text-amber-500" : "text-foreground"}`}>
                                                 {fmtN(p.existenciaActual)}
                                             </td>
-                                            <td className="px-4 py-2.5 tabular-nums text-foreground/60">{fmtN(p.existenciaMinima)}</td>
+                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(p.existenciaMinima)}</td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo
-                                                    ? <span className="text-green-500 text-[9px] uppercase tracking-[0.14em]">Activo</span>
-                                                    : <span className="text-foreground/40 text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
+                                                    ? <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
+                                                    : <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
                                                 }
                                             </td>
                                             <td className="px-4 py-2.5">
@@ -295,7 +295,7 @@ export default function ProductosPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(null)}
-                                                                className="text-[9px] uppercase tracking-[0.12em] text-foreground/40 hover:text-foreground/60 transition-colors"
+                                                                className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                                                             >
                                                                 Cancelar
                                                             </button>
@@ -303,7 +303,7 @@ export default function ProductosPage() {
                                                     ) : (
                                                         <button
                                                             onClick={() => setConfirmDelete(p.id!)}
-                                                            className="text-[9px] uppercase tracking-[0.12em] text-foreground/40 hover:text-red-500 transition-colors"
+                                                            className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                                         >
                                                             Eliminar
                                                         </button>

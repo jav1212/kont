@@ -6,7 +6,7 @@ import Link from "next/link";
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-red-500/50 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -74,13 +74,13 @@ export default function AdminForgotPasswordPage() {
                             <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Revisa tu<br />correo
                             </h1>
-                            <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
-                                Si <span className="text-foreground/70">{email}</span> está registrado como administrador, recibirás un enlace para restablecer tu contraseña.
+                            <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                                Si <span className="text-[var(--text-secondary)]">{email}</span> está registrado como administrador, recibirás un enlace para restablecer tu contraseña.
                             </p>
                         </div>
                         <Link
                             href="/admin/sign-in"
-                            className="font-mono text-[11px] text-foreground/40 hover:text-foreground transition-colors flex items-center gap-1.5"
+                            className="font-mono text-[11px] text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />
@@ -94,14 +94,14 @@ export default function AdminForgotPasswordPage() {
                             <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Recuperar<br />contraseña
                             </h1>
-                            <p className="font-mono text-[11px] text-foreground/30 leading-relaxed">
+                            <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                                 Ingresa tu correo y te enviaremos un enlace para restablecerla.
                             </p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                     Correo electrónico
                                 </label>
                                 <input
@@ -139,7 +139,7 @@ export default function AdminForgotPasswordPage() {
 
                         <Link
                             href="/admin/sign-in"
-                            className="font-mono text-[11px] text-foreground/40 hover:text-foreground transition-colors flex items-center gap-1.5"
+                            className="font-mono text-[11px] text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center gap-1.5"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />

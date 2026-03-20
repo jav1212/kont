@@ -17,10 +17,10 @@ const fieldCls = [
 
 const readonlyCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-2 outline-none",
-    "font-mono text-[13px] text-foreground/70 tabular-nums",
+    "font-mono text-[13px] text-[var(--text-secondary)] tabular-nums",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -158,7 +158,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
     if (loadingFactura) {
         return (
             <div className="min-h-full bg-surface-2 font-mono flex items-center justify-center">
-                <span className="text-[11px] text-foreground/40">Cargando…</span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">Cargando…</span>
             </div>
         );
     }
@@ -167,7 +167,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6">
-                    <p className="text-[11px] text-foreground/40">Factura no encontrada.</p>
+                    <p className="text-[11px] text-[var(--text-tertiary)]">Factura no encontrada.</p>
                 </div>
             </div>
         );
@@ -187,16 +187,16 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                             <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                                 Factura de Compra
                             </h1>
-                            <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                                 {factura.numeroFactura || `#${id.slice(0, 8)}`}
                             </p>
                         </div>
                         {isConfirmada ? (
-                            <span className="inline-flex px-2 py-1 rounded text-[9px] uppercase tracking-[0.12em] font-medium bg-green-500/10 text-green-600">
+                            <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-success">
                                 Confirmada
                             </span>
                         ) : (
-                            <span className="inline-flex px-2 py-1 rounded text-[9px] uppercase tracking-[0.12em] font-medium bg-amber-500/10 text-amber-600">
+                            <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-warning">
                                 Borrador
                             </span>
                         )}
@@ -305,7 +305,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                 {isBorrador && (
                                     <button
                                         onClick={addItem}
-                                        className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-foreground/60 hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
+                                        className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-secondary)] hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
                                     >
                                         + Agregar fila
                                     </button>
@@ -317,7 +317,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Producto", "Cantidad", "Costo Unit.", "Costo Total", ...(isBorrador ? [""] : [])].map((h) => (
-                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
@@ -342,17 +342,17 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                                     {isBorrador ? (
                                                         <input type="number" min="0.0001" step="0.0001" className={fieldCls} value={item.cantidad} onChange={(e) => updateItem(idx, "cantidad", parseFloat(e.target.value) || 0)} />
                                                     ) : (
-                                                        <span className="tabular-nums text-foreground/80">{item.cantidad}</span>
+                                                        <span className="tabular-nums text-[var(--text-primary)]">{item.cantidad}</span>
                                                     )}
                                                 </td>
                                                 <td className="px-2 py-2 w-28">
                                                     {isBorrador ? (
                                                         <input type="number" min="0" step="0.0001" className={fieldCls} value={item.costoUnitario} onChange={(e) => updateItem(idx, "costoUnitario", parseFloat(e.target.value) || 0)} />
                                                     ) : (
-                                                        <span className="tabular-nums text-foreground/80">{fmtN(item.costoUnitario)}</span>
+                                                        <span className="tabular-nums text-[var(--text-primary)]">{fmtN(item.costoUnitario)}</span>
                                                     )}
                                                 </td>
-                                                <td className="px-3 py-2 tabular-nums text-foreground/80 text-right">
+                                                <td className="px-3 py-2 tabular-nums text-[var(--text-primary)] text-right">
                                                     {fmtN(item.costoTotal)}
                                                 </td>
                                                 {isBorrador && (
@@ -360,7 +360,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                                         <button
                                                             onClick={() => removeItem(idx)}
                                                             disabled={items.length === 1}
-                                                            className="text-foreground/30 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
+                                                            className="text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
                                                         >
                                                             ×
                                                         </button>
@@ -375,19 +375,19 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                             {/* Totals */}
                             <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
                                 <div className="flex gap-8 items-center">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
-                                    <span className="tabular-nums font-medium text-foreground/80 w-32 text-right">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
+                                    <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">
                                         {fmtN(isBorrador ? subtotal : factura.subtotal)}
                                     </span>
                                 </div>
                                 <div className="flex gap-8 items-center">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">IVA ({isBorrador ? ivaPorcentaje : factura.ivaPorcentaje}%)</span>
-                                    <span className="tabular-nums text-foreground/60 w-32 text-right">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA ({isBorrador ? ivaPorcentaje : factura.ivaPorcentaje}%)</span>
+                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">
                                         {fmtN(isBorrador ? ivaMonto : factura.ivaMonto)}
                                     </span>
                                 </div>
                                 <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">Total</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
                                     <span className="tabular-nums font-bold text-foreground w-32 text-right">
                                         {fmtN(isBorrador ? total : factura.total)}
                                     </span>
@@ -430,40 +430,40 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                     {/* Right panel — summary */}
                     <div className="w-72 flex-shrink-0 sticky top-6">
                         <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-4">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/40">
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Resumen
                             </h3>
                             <div className="space-y-3 text-[11px]">
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Proveedor</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Proveedor</span>
                                     <span className="text-foreground font-medium truncate ml-4 text-right">
                                         {factura.proveedorNombre ?? "—"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Fecha</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Fecha</span>
                                     <span className="text-foreground tabular-nums">{fmtDate(factura.fecha)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Período</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Período</span>
                                     <span className="text-foreground tabular-nums">{factura.periodo}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Ítems</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Ítems</span>
                                     <span className="text-foreground tabular-nums">{(factura.items ?? items).length}</span>
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[11px]">
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
-                                    <span className="tabular-nums text-foreground/80">{fmtN(factura.subtotal)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
+                                    <span className="tabular-nums text-[var(--text-primary)]">{fmtN(factura.subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">IVA</span>
-                                    <span className="tabular-nums text-foreground/60">{fmtN(factura.ivaMonto)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
+                                    <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(factura.ivaMonto)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold">
-                                    <span className="text-foreground/60 uppercase tracking-[0.12em] text-[9px]">Total</span>
+                                    <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[9px]">Total</span>
                                     <span className="tabular-nums text-foreground">{fmtN(factura.total)}</span>
                                 </div>
                             </div>

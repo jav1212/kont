@@ -14,7 +14,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -151,7 +151,7 @@ export default function NuevaFacturaPage() {
                         <div className="text-green-500 text-[11px] font-bold uppercase tracking-[0.16em] mb-2">
                             Factura confirmada
                         </div>
-                        <p className="text-foreground/60 text-[11px] mb-6">
+                        <p className="text-[var(--text-secondary)] text-[11px] mb-6">
                             Las entradas de inventario han sido registradas exitosamente.
                         </p>
                         <div className="flex items-center justify-center gap-3">
@@ -183,7 +183,7 @@ export default function NuevaFacturaPage() {
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                             Nueva Factura de Compra
                         </h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Registrar compra a proveedor
                         </p>
                     </div>
@@ -281,7 +281,7 @@ export default function NuevaFacturaPage() {
                                 </h2>
                                 <button
                                     onClick={addItem}
-                                    className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-foreground/60 hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
+                                    className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-secondary)] hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
                                 >
                                     + Agregar fila
                                 </button>
@@ -292,7 +292,7 @@ export default function NuevaFacturaPage() {
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Producto", "Cantidad", "Costo Unit.", "Costo Total", ""].map((h) => (
-                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
@@ -333,14 +333,14 @@ export default function NuevaFacturaPage() {
                                                         onChange={(e) => updateItem(idx, "costoUnitario", parseFloat(e.target.value) || 0)}
                                                     />
                                                 </td>
-                                                <td className="px-3 py-2 tabular-nums text-foreground/80 text-right">
+                                                <td className="px-3 py-2 tabular-nums text-[var(--text-primary)] text-right">
                                                     {fmtN(item.costoTotal)}
                                                 </td>
                                                 <td className="px-2 py-2 text-center">
                                                     <button
                                                         onClick={() => removeItem(idx)}
                                                         disabled={items.length === 1}
-                                                        className="text-foreground/30 hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
+                                                        className="text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
                                                     >
                                                         ×
                                                     </button>
@@ -354,15 +354,15 @@ export default function NuevaFacturaPage() {
                             {/* Totals row */}
                             <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
                                 <div className="flex gap-8 items-center">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
-                                    <span className="tabular-nums font-medium text-foreground/80 w-32 text-right">{fmtN(subtotal)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
+                                    <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">{fmtN(subtotal)}</span>
                                 </div>
                                 <div className="flex gap-8 items-center">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">IVA ({ivaPorcentaje}%)</span>
-                                    <span className="tabular-nums text-foreground/60 w-32 text-right">{fmtN(ivaMonto)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA ({ivaPorcentaje}%)</span>
+                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(ivaMonto)}</span>
                                 </div>
                                 <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
-                                    <span className="text-foreground/40 uppercase tracking-[0.14em] text-[9px]">Total</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
                                     <span className="tabular-nums font-bold text-foreground w-32 text-right">{fmtN(total)}</span>
                                 </div>
                             </div>
@@ -395,12 +395,12 @@ export default function NuevaFacturaPage() {
                     {/* Right panel — summary (1/3) */}
                     <div className="w-72 flex-shrink-0 sticky top-6">
                         <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-4">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/40">
+                            <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Resumen
                             </h3>
                             <div className="space-y-3 text-[11px]">
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Proveedor</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Proveedor</span>
                                     <span className="text-foreground font-medium truncate ml-4 text-right">
                                         {proveedorId
                                             ? proveedores.find((p) => p.id === proveedorId)?.nombre ?? "—"
@@ -408,25 +408,25 @@ export default function NuevaFacturaPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Fecha</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Fecha</span>
                                     <span className="text-foreground tabular-nums">{fecha || "—"}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Ítems</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Ítems</span>
                                     <span className="text-foreground tabular-nums">{items.filter((i) => i.productoId).length}</span>
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[11px]">
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
-                                    <span className="tabular-nums text-foreground/80">{fmtN(subtotal)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
+                                    <span className="tabular-nums text-[var(--text-primary)]">{fmtN(subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-foreground/40 uppercase tracking-[0.12em] text-[9px]">IVA</span>
-                                    <span className="tabular-nums text-foreground/60">{fmtN(ivaMonto)}</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
+                                    <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(ivaMonto)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold">
-                                    <span className="text-foreground/60 uppercase tracking-[0.12em] text-[9px]">Total</span>
+                                    <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[9px]">Total</span>
                                     <span className="tabular-nums text-foreground">{fmtN(total)}</span>
                                 </div>
                             </div>

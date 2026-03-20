@@ -18,19 +18,19 @@ export default function GlobalError({
             <div className="max-w-md w-full space-y-6">
                 <div className="flex items-center gap-3">
                     <div className="h-px w-6 bg-red-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-red-400/70">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-error">
                         Error del sistema
                     </span>
                 </div>
                 <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                     Algo salió<br />mal.
                 </h1>
-                <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                <p className="font-mono text-[11px] text-text-tertiary leading-relaxed">
                     Ocurrió un error inesperado. Puedes intentar recargar la página.
                     Si el problema persiste, contacta al soporte.
                 </p>
                 {error.digest && (
-                    <p className="font-mono text-[9px] text-foreground/25 tracking-widest">
+                    <p className="font-mono text-[9px] text-text-disabled tracking-widest">
                         REF: {error.digest}
                     </p>
                 )}
@@ -48,7 +48,7 @@ export default function GlobalError({
                     </button>
                     <a
                         href="/"
-                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                        className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
                     >
                         Ir al inicio
                     </a>

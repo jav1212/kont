@@ -85,7 +85,7 @@ interface TenantRow {
 // ============================================================================
 
 const Spinner = () => (
-    <svg className="animate-spin text-foreground/30" width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
@@ -420,14 +420,14 @@ export default function AdminPage() {
         "w-full h-8 px-3 rounded-lg border bg-surface-1 outline-none",
         "font-mono text-[11px] text-foreground",
         "border-border-light focus:border-primary-500/60",
-        "transition-colors duration-150 placeholder:text-foreground/25",
+        "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
     ].join(" ");
 
     const tabBtn = (active: boolean) => [
         "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150 border",
         active
             ? "bg-primary-500/10 border-primary-500/20 text-primary-500"
-            : "border-transparent text-foreground/40 hover:text-foreground hover:bg-foreground/[0.04]",
+            : "border-transparent text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.04]",
     ].join(" ");
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -437,7 +437,7 @@ export default function AdminPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="text-[10px] uppercase text-foreground/30 mb-1 tracking-widest">
+                    <nav className="text-[10px] uppercase text-[var(--text-tertiary)] mb-1 tracking-widest">
                         Admin
                     </nav>
                     <h1 className="text-xl font-bold uppercase tracking-tighter text-foreground">
@@ -452,7 +452,7 @@ export default function AdminPage() {
                 ) : loading ? (
                     <div className="flex items-center justify-center h-40 gap-2 border border-border-light rounded-xl">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando…</span>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
                     </div>
                 ) : (
                     <>
@@ -469,7 +469,7 @@ export default function AdminPage() {
                                         "border rounded-xl px-4 py-3",
                                         highlight ? "border-amber-500/20 bg-amber-500/[0.04]" : "border-border-light bg-surface-1",
                                     ].join(" ")}>
-                                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1">{label}</p>
+                                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1">{label}</p>
                                         <p className={[
                                             "font-mono text-[22px] font-bold tabular-nums",
                                             highlight ? "text-amber-500" : "text-foreground",
@@ -516,7 +516,7 @@ export default function AdminPage() {
                                                 "h-7 px-3 rounded-lg border font-mono text-[9px] uppercase tracking-[0.15em] transition-colors",
                                                 payFilter === s
                                                     ? "bg-foreground/[0.08] border-border-medium text-foreground"
-                                                    : "border-border-light text-foreground/40 hover:text-foreground",
+                                                    : "border-border-light text-[var(--text-tertiary)] hover:text-foreground",
                                             ].join(" ")}
                                         >
                                             {s === "" ? "Todos" : STATUS_LABEL[s]}
@@ -526,7 +526,7 @@ export default function AdminPage() {
 
                                 {payments.length === 0 ? (
                                     <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                        <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">
+                                        <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                             Sin solicitudes{payFilter ? ` ${STATUS_LABEL[payFilter].toLowerCase()}s` : ""}
                                         </p>
                                     </div>
@@ -536,7 +536,7 @@ export default function AdminPage() {
                                             <thead>
                                                 <tr className="border-b border-border-light bg-surface-2">
                                                     {["Fecha", "Tenant", "Plan", "Ciclo", "Monto", "Método", "Estado", ""].map((h) => (
-                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                             {h}
                                                         </th>
                                                     ))}
@@ -548,22 +548,22 @@ export default function AdminPage() {
                                                     return (
                                                         <Fragment key={pr.id}>
                                                             <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors">
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/50 whitespace-nowrap">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)] whitespace-nowrap">
                                                                     {formatDate(pr.submitted_at)}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/60 max-w-[120px] truncate" title={pr.tenant_id}>
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)] max-w-[120px] truncate" title={pr.tenant_id}>
                                                                     {pr.tenant_id.slice(0, 8)}…
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[10px] text-foreground">
                                                                     {pr.tenants?.plans?.name ?? pr.plan_id.slice(0, 8)}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/60">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                                     {CYCLE_LABEL[pr.billing_cycle] ?? pr.billing_cycle}
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[11px] text-foreground tabular-nums font-medium">
                                                                     ${pr.amount_usd}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/60 capitalize">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)] capitalize">
                                                                     {pr.payment_method}
                                                                 </td>
                                                                 <td className="px-3 py-3">
@@ -578,14 +578,14 @@ export default function AdminPage() {
                                                                     {pr.status === "pending" && (
                                                                         <button
                                                                             onClick={() => { setActionId(isExpanded ? null : pr.id); setActionNote(""); setActionError(null); }}
-                                                                            className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors"
+                                                                            className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors"
                                                                         >
                                                                             {isExpanded ? "Cerrar" : "Revisar"}
                                                                         </button>
                                                                     )}
                                                                     {pr.receipt_url && (
                                                                         <a href={pr.receipt_url} target="_blank" rel="noopener noreferrer"
-                                                                            className="ml-1.5 h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-foreground/40 hover:text-foreground transition-colors inline-flex items-center">
+                                                                            className="ml-1.5 h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-[var(--text-tertiary)] hover:text-foreground transition-colors inline-flex items-center">
                                                                             Ver
                                                                         </a>
                                                                     )}
@@ -598,7 +598,7 @@ export default function AdminPage() {
                                                                     <td colSpan={8} className="px-4 py-3">
                                                                         <div className="flex items-end gap-3">
                                                                             <div className="flex-1">
-                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">
+                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
                                                                                     Nota (opcional)
                                                                                 </label>
                                                                                 <input
@@ -647,7 +647,7 @@ export default function AdminPage() {
                                     <thead>
                                         <tr className="border-b border-border-light bg-surface-2">
                                             {["Tenant ID", "Email", "Plan", "Estado", "Empresas", "Empleados", "Período fin", ""].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
@@ -656,7 +656,7 @@ export default function AdminPage() {
                                     <tbody>
                                         {tenants.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-4 py-10 text-center font-mono text-[11px] text-foreground/25 uppercase tracking-widest">
+                                                <td colSpan={8} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                                     Sin tenants
                                                 </td>
                                             </tr>
@@ -669,7 +669,7 @@ export default function AdminPage() {
                                                             <button
                                                                 onClick={() => navigator.clipboard.writeText(t.tenant_id)}
                                                                 title={`Copiar UUID: ${t.tenant_id}`}
-                                                                className="flex items-center gap-1.5 group/copy font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors"
+                                                                className="flex items-center gap-1.5 group/copy font-mono text-[10px] text-[var(--text-secondary)] hover:text-foreground transition-colors"
                                                             >
                                                                 <span>{t.tenant_id.slice(0, 8)}…</span>
                                                                 <svg className="opacity-0 group-hover/copy:opacity-100 transition-opacity" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -681,7 +681,7 @@ export default function AdminPage() {
                                                         <td className="px-3 py-3 font-mono text-[10px] text-foreground max-w-[160px] truncate">
                                                             {t.email ?? "—"}
                                                         </td>
-                                                        <td className="px-3 py-3 font-mono text-[10px] text-foreground/70">
+                                                        <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                             {t.plan_name ?? "—"}
                                                         </td>
                                                         <td className="px-3 py-3">
@@ -692,19 +692,19 @@ export default function AdminPage() {
                                                                 {STATUS_LABEL[t.status] ?? t.status}
                                                             </span>
                                                         </td>
-                                                        <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                        <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                             {t.total_companies}
                                                         </td>
-                                                        <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                        <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                             {t.total_employees}
                                                         </td>
-                                                        <td className="px-3 py-3 font-mono text-[10px] text-foreground/50">
+                                                        <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                             {formatDate(t.current_period_end)}
                                                         </td>
                                                         <td className="px-3 py-3 text-right">
                                                             <button
                                                                 onClick={() => { setTenantActionId(isEditing ? null : t.tenant_id); setTenantActionStatus(t.status); }}
-                                                                className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/40 hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
                                                             >
                                                                 {isEditing ? "Cerrar" : "Editar"}
                                                             </button>
@@ -716,7 +716,7 @@ export default function AdminPage() {
                                                             <td colSpan={8} className="px-4 py-3">
                                                                 <div className="flex items-end gap-3">
                                                                     <div>
-                                                                        <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">
+                                                                        <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
                                                                             Estado
                                                                         </label>
                                                                         <select
@@ -739,7 +739,7 @@ export default function AdminPage() {
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setTenantActionId(null); setTenantActionStatus(""); }}
-                                                                        className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                                        className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                                     >
                                                                         Cancelar
                                                                     </button>
@@ -765,7 +765,7 @@ export default function AdminPage() {
                                         <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.15em] text-foreground">
                                             Nuevo administrador
                                         </h2>
-                                        <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                             La cuenta se crea confirmada y lista para usar.
                                         </p>
                                     </div>
@@ -773,7 +773,7 @@ export default function AdminPage() {
                                     <div className="px-5 py-4 space-y-3">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
                                                     Correo electrónico
                                                 </label>
                                                 <input
@@ -785,7 +785,7 @@ export default function AdminPage() {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
                                                     Contraseña
                                                 </label>
                                                 <input
@@ -824,18 +824,18 @@ export default function AdminPage() {
 
                                 {/* Admin list */}
                                 <div>
-                                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-2">
+                                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-2">
                                         Administradores actuales
                                     </p>
 
                                     {!adminsLoaded ? (
                                         <div className="flex items-center gap-2 justify-center h-20 border border-border-light rounded-xl">
                                             <Spinner />
-                                            <span className="font-mono text-[10px] text-foreground/30 uppercase tracking-widest">Cargando…</span>
+                                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">Cargando…</span>
                                         </div>
                                     ) : admins.length === 0 ? (
                                         <div className="border border-border-light rounded-xl px-4 py-8 text-center">
-                                            <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">Sin administradores</p>
+                                            <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">Sin administradores</p>
                                         </div>
                                     ) : (
                                         <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
@@ -843,7 +843,7 @@ export default function AdminPage() {
                                                 <thead>
                                                     <tr className="border-b border-border-light bg-surface-2">
                                                         {["Correo", "Creado", ""].map((h) => (
-                                                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                                                            <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                                                                 {h}
                                                             </th>
                                                         ))}
@@ -855,7 +855,7 @@ export default function AdminPage() {
                                                             <td className="px-4 py-3 font-mono text-[12px] text-foreground">
                                                                 {a.email}
                                                             </td>
-                                                            <td className="px-4 py-3 font-mono text-[11px] text-foreground/40">
+                                                            <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-tertiary)]">
                                                                 {formatDate(a.created_at)}
                                                             </td>
                                                             <td className="px-4 py-3 text-right">
@@ -871,7 +871,7 @@ export default function AdminPage() {
                                                                         </button>
                                                                         <button
                                                                             onClick={() => setConfirmDeleteAdmin(null)}
-                                                                            className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-foreground/40 hover:text-foreground transition-colors"
+                                                                            className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                                         >
                                                                             No
                                                                         </button>
@@ -879,7 +879,7 @@ export default function AdminPage() {
                                                                 ) : (
                                                                     <button
                                                                         onClick={() => setConfirmDeleteAdmin(a.id)}
-                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/30 hover:text-red-500 hover:border-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
+                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-red-500 hover:border-red-500/20 transition-colors opacity-0 group-hover:opacity-100"
                                                                     >
                                                                         Eliminar
                                                                     </button>
@@ -900,7 +900,7 @@ export default function AdminPage() {
 
                                 {/* Header with "Nuevo plan" button */}
                                 <div className="flex items-center justify-between">
-                                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/40">
+                                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                                         Planes disponibles
                                     </p>
                                     <button
@@ -918,17 +918,17 @@ export default function AdminPage() {
                                 {newPlanOpen && (
                                     <div className="border border-primary-500/20 rounded-xl bg-surface-1 divide-y divide-border-light/60">
                                         <div className="px-5 py-3 flex items-center justify-between">
-                                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-bold">
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-secondary)] font-bold">
                                                 Nuevo plan
                                             </p>
-                                            <button onClick={() => { setNewPlanOpen(false); setNewPlanError(null); }} className="w-6 h-6 flex items-center justify-center rounded text-foreground/30 hover:text-foreground transition-colors">
+                                            <button onClick={() => { setNewPlanOpen(false); setNewPlanError(null); }} className="w-6 h-6 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground transition-colors">
                                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
                                             </button>
                                         </div>
                                         <div className="px-5 py-4 space-y-4">
                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
                                                     <select
                                                         value={newPlanDraft.productSlug ?? "payroll"}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, productSlug: e.target.value }))}
@@ -939,7 +939,7 @@ export default function AdminPage() {
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Nombre</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
                                                     <input
                                                         type="text"
                                                         placeholder="Ej: Básico, Pro…"
@@ -949,7 +949,7 @@ export default function AdminPage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Empresas máx.</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Empresas máx.</label>
                                                     <input type="number" min="0" placeholder="∞"
                                                         value={newPlanDraft.maxCompanies ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxCompanies: e.target.value === "" ? undefined : Number(e.target.value) }))}
@@ -957,7 +957,7 @@ export default function AdminPage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Empleados máx.</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Empleados máx.</label>
                                                     <input type="number" min="0" placeholder="∞"
                                                         value={newPlanDraft.maxEmployeesPerCompany ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxEmployeesPerCompany: e.target.value === "" ? undefined : Number(e.target.value) }))}
@@ -967,7 +967,7 @@ export default function AdminPage() {
                                             </div>
                                             <div className="grid grid-cols-3 gap-3">
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio mensual (USD) *</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio mensual (USD) *</label>
                                                     <input type="number" min="0" step="0.01" placeholder="0.00"
                                                         value={newPlanDraft.priceMonthlyUsd ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceMonthlyUsd: Number(e.target.value) }))}
@@ -975,7 +975,7 @@ export default function AdminPage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio trimestral (USD)</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio trimestral (USD)</label>
                                                     <input type="number" min="0" step="0.01" placeholder="—"
                                                         value={newPlanDraft.priceQuarterlyUsd ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceQuarterlyUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
@@ -983,7 +983,7 @@ export default function AdminPage() {
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio anual (USD)</label>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio anual (USD)</label>
                                                     <input type="number" min="0" step="0.01" placeholder="—"
                                                         value={newPlanDraft.priceAnnualUsd ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceAnnualUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
@@ -1003,7 +1003,7 @@ export default function AdminPage() {
                                                 </button>
                                                 <button
                                                     onClick={() => { setNewPlanOpen(false); setNewPlanDraft({ productSlug: "payroll", isActive: true }); setNewPlanError(null); }}
-                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                 >
                                                     Cancelar
                                                 </button>
@@ -1015,11 +1015,11 @@ export default function AdminPage() {
                                 {!plansLoaded ? (
                                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                                         <Spinner />
-                                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando planes…</span>
+                                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando planes…</span>
                                     </div>
                                 ) : plans.length === 0 ? (
                                     <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                        <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">Sin planes</p>
+                                        <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">Sin planes</p>
                                     </div>
                                 ) : (
                                     <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
@@ -1027,7 +1027,7 @@ export default function AdminPage() {
                                             <thead>
                                                 <tr className="border-b border-border-light bg-surface-2">
                                                     {["Módulo", "Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
-                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                             {h}
                                                         </th>
                                                     ))}
@@ -1040,7 +1040,7 @@ export default function AdminPage() {
 
                                                     const numInput = (field: keyof PlanRow, label: string, nullable?: boolean) => (
                                                         <div>
-                                                            <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">{label}</label>
+                                                            <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">{label}</label>
                                                             <input
                                                                 type="number"
                                                                 min="0"
@@ -1073,25 +1073,25 @@ export default function AdminPage() {
                                                                             {plan.productName}
                                                                         </span>
                                                                     ) : (
-                                                                        <span className="font-mono text-[10px] text-foreground/30">—</span>
+                                                                        <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[12px] font-medium text-foreground">
                                                                     {plan.name}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                                     {plan.maxCompanies ?? "∞"}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums text-center">
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                                     {plan.maxEmployeesPerCompany ?? "∞"}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums">
                                                                     ${plan.priceMonthlyUsd}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums">
                                                                     ${plan.priceQuarterlyUsd}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[11px] text-foreground/60 tabular-nums">
+                                                                <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums">
                                                                     ${plan.priceAnnualUsd}
                                                                 </td>
                                                                 <td className="px-3 py-3">
@@ -1099,7 +1099,7 @@ export default function AdminPage() {
                                                                         "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
                                                                         plan.isActive
                                                                             ? "border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400"
-                                                                            : "border-foreground/10 bg-foreground/[0.04] text-foreground/40",
+                                                                            : "border-foreground/10 bg-foreground/[0.04] text-[var(--text-tertiary)]",
                                                                     ].join(" ")}>
                                                                         {plan.isActive ? "Sí" : "No"}
                                                                     </span>
@@ -1117,7 +1117,7 @@ export default function AdminPage() {
                                                                                 setPlanSaveErr(null);
                                                                             }
                                                                         }}
-                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/40 hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
                                                                     >
                                                                         {isEditing ? "Cerrar" : "Editar"}
                                                                     </button>
@@ -1130,7 +1130,7 @@ export default function AdminPage() {
                                                                         <div className="space-y-4">
                                                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                                                                                 <div>
-                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
                                                                                     <select
                                                                                         value={(d as Partial<PlanRow & { productSlug: string }>).productSlug ?? plan.productSlug ?? "payroll"}
                                                                                         onChange={(e) => setPlanDraft((prev) => ({ ...prev, productSlug: e.target.value } as Partial<PlanRow>))}
@@ -1141,7 +1141,7 @@ export default function AdminPage() {
                                                                                     </select>
                                                                                 </div>
                                                                                 <div>
-                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Nombre</label>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
                                                                                     <input
                                                                                         type="text"
                                                                                         value={(d.name ?? plan.name) as string}
@@ -1152,7 +1152,7 @@ export default function AdminPage() {
                                                                                 {numInput("maxCompanies", "Empresas máx.", true)}
                                                                                 {numInput("maxEmployeesPerCompany", "Empleados máx.", true)}
                                                                                 <div>
-                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Activo</label>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Activo</label>
                                                                                     <select
                                                                                         value={String(d.isActive ?? plan.isActive)}
                                                                                         onChange={(e) => setPlanDraft((prev) => ({ ...prev, isActive: e.target.value === "true" }))}
@@ -1184,7 +1184,7 @@ export default function AdminPage() {
                                                                                 </button>
                                                                                 <button
                                                                                     onClick={() => { setPlanEditId(null); setPlanDraft({}); setPlanSaveErr(null); }}
-                                                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                                                 >
                                                                                     Cancelar
                                                                                 </button>
@@ -1210,14 +1210,14 @@ export default function AdminPage() {
                                 {/* New subscription form */}
                                 <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light/60">
                                     <div className="px-5 py-3">
-                                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/40">
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                                             Asignar módulo a tenant
                                         </p>
                                     </div>
                                     <div className="px-5 py-4">
                                         <div className="flex items-end gap-3 flex-wrap">
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Tenant</label>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Tenant</label>
                                                 <select
                                                     value={newSubTenantId}
                                                     onChange={(e) => setNewSubTenantId(e.target.value)}
@@ -1232,14 +1232,14 @@ export default function AdminPage() {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
                                                 <select value={newSubProductSlug} onChange={(e) => setNewSubProductSlug(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
                                                     <option value="payroll">Nómina</option>
                                                     <option value="inventory">Inventario</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Estado inicial</label>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado inicial</label>
                                                 <select value={newSubStatus} onChange={(e) => setNewSubStatus(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
                                                     <option value="trial">Prueba</option>
                                                     <option value="active">Activo</option>
@@ -1264,11 +1264,11 @@ export default function AdminPage() {
                                 {!subsLoaded ? (
                                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                                         <Spinner />
-                                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando…</span>
+                                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
                                     </div>
                                 ) : subscriptions.length === 0 ? (
                                     <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                        <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">Sin suscripciones</p>
+                                        <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">Sin suscripciones</p>
                                     </div>
                                 ) : (
                                     <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
@@ -1276,7 +1276,7 @@ export default function AdminPage() {
                                             <thead>
                                                 <tr className="border-b border-border-light bg-surface-2">
                                                     {["Tenant", "Módulo", "Plan", "Estado", "Período fin", "Creado", ""].map((h) => (
-                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                             {h}
                                                         </th>
                                                     ))}
@@ -1289,10 +1289,10 @@ export default function AdminPage() {
                                                         <Fragment key={sub.id}>
                                                             <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
                                                                 <td className="px-3 py-3">
-                                                                    <p className="font-mono text-[10px] text-foreground/60 truncate max-w-[160px]">
+                                                                    <p className="font-mono text-[10px] text-[var(--text-secondary)] truncate max-w-[160px]">
                                                                         {sub.tenantEmail ?? sub.tenantId.slice(0, 8) + "…"}
                                                                     </p>
-                                                                    <p className="font-mono text-[9px] text-foreground/30" title={sub.tenantId}>
+                                                                    <p className="font-mono text-[9px] text-[var(--text-tertiary)]" title={sub.tenantId}>
                                                                         {sub.tenantId.slice(0, 8)}…
                                                                     </p>
                                                                 </td>
@@ -1306,7 +1306,7 @@ export default function AdminPage() {
                                                                         {sub.product?.name ?? "—"}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/60">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                                     {sub.plan?.name ?? "—"}
                                                                 </td>
                                                                 <td className="px-3 py-3">
@@ -1317,16 +1317,16 @@ export default function AdminPage() {
                                                                         {STATUS_LABEL[sub.status] ?? sub.status}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/50">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                                     {formatDate(sub.currentPeriodEnd)}
                                                                 </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/40">
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-tertiary)]">
                                                                     {formatDate(sub.createdAt)}
                                                                 </td>
                                                                 <td className="px-3 py-3 text-right">
                                                                     <button
                                                                         onClick={() => { setSubActionId(isEditing ? null : sub.id); setSubActionStatus(sub.status); setSubActionError(null); }}
-                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/40 hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
                                                                     >
                                                                         {isEditing ? "Cerrar" : "Editar"}
                                                                     </button>
@@ -1338,7 +1338,7 @@ export default function AdminPage() {
                                                                     <td colSpan={7} className="px-4 py-3">
                                                                         <div className="flex items-end gap-3">
                                                                             <div>
-                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Estado</label>
+                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado</label>
                                                                                 <select
                                                                                     value={subActionStatus}
                                                                                     onChange={(e) => setSubActionStatus(e.target.value)}
@@ -1360,7 +1360,7 @@ export default function AdminPage() {
                                                                             </button>
                                                                             <button
                                                                                 onClick={() => { setSubActionId(null); setSubActionError(null); }}
-                                                                                className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                                                className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                                             >
                                                                                 Cancelar
                                                                             </button>

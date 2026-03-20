@@ -59,7 +59,7 @@ export default function InventoryDashboard() {
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                             Inventario
                         </h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Dashboard — {periodo}
                         </p>
                     </div>
@@ -87,10 +87,10 @@ export default function InventoryDashboard() {
                         { label: "Productos activos",   value: loading ? "…" : kpis.activos,    color: "text-primary-500" },
                         { label: "Entradas del mes",     value: loading ? "…" : kpis.entradas,  color: "text-green-500"   },
                         { label: "Salidas del mes",      value: loading ? "…" : kpis.salidas,   color: "text-red-500"     },
-                        { label: "Bajo mínimo",          value: loading ? "…" : kpis.bajoMinimo, color: kpis.bajoMinimo > 0 ? "text-amber-500" : "text-foreground/40" },
+                        { label: "Bajo mínimo",          value: loading ? "…" : kpis.bajoMinimo, color: kpis.bajoMinimo > 0 ? "text-amber-500" : "text-[var(--text-tertiary)]" },
                     ].map((kpi) => (
                         <div key={kpi.label} className="rounded-xl border border-border-light bg-surface-1 px-5 py-4">
-                            <p className="text-[9px] uppercase tracking-[0.20em] text-foreground/40 mb-2">{kpi.label}</p>
+                            <p className="text-[9px] uppercase tracking-[0.20em] text-[var(--text-tertiary)] mb-2">{kpi.label}</p>
                             <p className={`text-[22px] font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
                         </div>
                     ))}
@@ -99,7 +99,7 @@ export default function InventoryDashboard() {
                 {/* Productos table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                             Productos
                         </p>
                         <Link
@@ -111,9 +111,9 @@ export default function InventoryDashboard() {
                     </div>
 
                     {loading ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : productos.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay productos.{" "}
                             <Link href="/inventory/productos" className="text-primary-500 underline">
                                 Crear uno
@@ -124,7 +124,7 @@ export default function InventoryDashboard() {
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Código", "Nombre", "Tipo", "Existencia", "Mínimo", "Estado"].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal">
                                             {h}
                                         </th>
                                     ))}
@@ -135,7 +135,7 @@ export default function InventoryDashboard() {
                                     const bajoMin = p.existenciaActual <= p.existenciaMinima;
                                     return (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                            <td className="px-4 py-2.5 text-foreground/60">{p.codigo || "—"}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                             <td className="px-4 py-2.5">
                                                 <TipoBadge tipo={p.tipo} />
@@ -143,14 +143,14 @@ export default function InventoryDashboard() {
                                             <td className={`px-4 py-2.5 tabular-nums ${bajoMin ? "text-amber-500 font-bold" : "text-foreground"}`}>
                                                 {fmtN(p.existenciaActual)} {p.unidadMedida}
                                             </td>
-                                            <td className="px-4 py-2.5 tabular-nums text-foreground/60">
+                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">
                                                 {fmtN(p.existenciaMinima)}
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo ? (
-                                                    <span className="text-green-500 text-[9px] uppercase tracking-[0.14em]">Activo</span>
+                                                    <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
                                                 ) : (
-                                                    <span className="text-foreground/40 text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
+                                                    <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -176,7 +176,7 @@ export default function InventoryDashboard() {
                             <p className="text-[11px] font-medium text-foreground group-hover:text-primary-500 transition-colors">
                                 {q.label}
                             </p>
-                            <p className="text-[10px] text-foreground/40 mt-0.5">{q.desc}</p>
+                            <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5">{q.desc}</p>
                         </Link>
                     ))}
                 </div>
@@ -187,11 +187,11 @@ export default function InventoryDashboard() {
 
 function TipoBadge({ tipo }: { tipo: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        mercancia:          { label: "Mercancía",        cls: "bg-primary-500/10 text-primary-500" },
-        materia_prima:      { label: "Mat. Prima",       cls: "bg-amber-500/10 text-amber-600"     },
-        producto_terminado: { label: "Prod. Terminado",  cls: "bg-green-500/10 text-green-600"     },
+        mercancia:          { label: "Mercancía",        cls: "border badge-info"    },
+        materia_prima:      { label: "Mat. Prima",       cls: "border badge-warning" },
+        producto_terminado: { label: "Prod. Terminado",  cls: "border badge-success" },
     };
-    const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-foreground/60" };
+    const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-text-secondary border border-border-light" };
     return (
         <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium ${cls}`}>
             {label}

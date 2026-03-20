@@ -23,7 +23,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 
@@ -211,8 +211,8 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
 
 function SectionHeader({ label, color }: { label: string; color?: "primary" | "amber" }) {
     const cls = color === "amber"   ? "text-amber-500/70"
-              : color === "primary" ? "text-primary-500/70"
-              : "text-foreground/35";
+              : color === "primary" ? "text-[var(--text-link)]"
+              : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
@@ -220,15 +220,15 @@ function CalcRow({ label, formula, value, accent, dim }: {
     label: string; formula?: string; value: string;
     accent?: "primary" | "amber"; dim?: boolean;
 }) {
-    const valCls = dim ? "text-foreground/40"
+    const valCls = dim ? "text-[var(--text-tertiary)]"
         : accent === "primary" ? "text-primary-500"
         : accent === "amber"   ? "text-amber-500"
         : "text-foreground";
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
-                <span className="font-mono text-[11px] text-foreground/70 leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[9px] text-foreground/30 mt-0.5 tabular-nums">{formula}</div>}
+                <span className="font-mono text-[11px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
             </div>
             <span className={`font-mono text-[12px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
         </div>
@@ -629,7 +629,7 @@ function EmployeeSection({ employees, loading, selectedCedula, onSelect, selecte
                         { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
                     ].map(({ k, v }) => (
                         <div key={k} className="flex justify-between font-mono text-[10px]">
-                            <span className="text-foreground/40">{k}</span>
+                            <span className="text-[var(--text-tertiary)]">{k}</span>
                             <span className="text-foreground tabular-nums">{v}</span>
                         </div>
                     ))}
@@ -639,16 +639,16 @@ function EmployeeSection({ employees, loading, selectedCedula, onSelect, selecte
             <div>
                 <label className={labelCls}>
                     Salario mensual (Bs.)
-                    {selectedEmp && <span className="ml-1 text-primary-500/60">— editable</span>}
+                    {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
                 </label>
                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">Bs.</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
                     <input type="number" step="0.01" min="0" value={salarioOverride}
                         onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
                         className={fieldCls + " pl-9 text-right"} />
                 </div>
                 {selectedEmp?.moneda === "USD" && (
-                    <p className="font-mono text-[9px] text-foreground/25 mt-1">
+                    <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">
                         Pre-cargado desde USD (convertido con tasa BCV)
                     </p>
                 )}
@@ -658,7 +658,7 @@ function EmployeeSection({ employees, loading, selectedCedula, onSelect, selecte
                     <label className={labelCls}>Fecha de ingreso</label>
                     <input type="date" value={manualIngreso}
                         onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
-                    <p className="font-mono text-[9px] text-foreground/25 mt-1">Para calcular años de servicio y días adicionales</p>
+                    <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Para calcular años de servicio y días adicionales</p>
                 </div>
             )}
         </div>
@@ -770,7 +770,7 @@ export default function VacacionesPage() {
         "flex-1 h-8 rounded-lg font-mono text-[10px] uppercase tracking-[0.14em] border transition-colors duration-150",
         mode === m
             ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-foreground/50 hover:border-border-medium hover:text-foreground",
+            : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
     ].join(" ");
 
     return (
@@ -782,9 +782,9 @@ export default function VacacionesPage() {
                 {/* Header + mode toggle */}
                 <div className="px-5 py-4 border-b border-border-light space-y-3">
                     <div>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">Nómina · Vacaciones</p>
+                        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Vacaciones</p>
                         <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                        <p className="font-mono text-[9px] text-foreground/30 mt-1">Arts. 190 · 192 · 196 LOTTT</p>
+                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Arts. 190 · 192 · 196 LOTTT</p>
                     </div>
                     <div className="flex gap-1.5">
                         <button onClick={() => setMode("completas")}    className={modeBtnCls("completas")}>Completas</button>
@@ -807,7 +807,7 @@ export default function VacacionesPage() {
                     <div className="px-5 py-4">
                         <SectionHeader label="Tasa BCV (auto)" />
                         {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-foreground/30">
+                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                                 <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
                                     <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
                                     <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -825,8 +825,8 @@ export default function VacacionesPage() {
                         ) : (
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[10px] text-foreground/35">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[8px] text-primary-500/60 bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">Bs. / USD</span>
+                                <span className="ml-auto font-mono text-[8px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
                             </div>
                         )}
                     </div>
@@ -847,7 +847,7 @@ export default function VacacionesPage() {
                                 <input type="date" value={fechaCulminacion} min={fechaInicio}
                                     onChange={e => handleCulminacionChange(e.target.value)} className={fieldCls} />
                                 {!userEditedCulm && (
-                                    <p className="font-mono text-[9px] text-foreground/25 mt-1">
+                                    <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">
                                         Auto: {diasLegal} días hábiles desde el inicio
                                     </p>
                                 )}
@@ -859,7 +859,7 @@ export default function VacacionesPage() {
                                     onChange={e => { setFechaReintegro(e.target.value); setUserEditedReint(true); }}
                                     className={fieldCls} />
                                 {!userEditedReint && (
-                                    <p className="font-mono text-[9px] text-foreground/25 mt-1">Auto: primer día hábil tras culminación</p>
+                                    <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Auto: primer día hábil tras culminación</p>
                                 )}
                             </div>
                             {diasCal > 0 && (
@@ -867,19 +867,19 @@ export default function VacacionesPage() {
                                     {[
                                         { label: "Calendario", val: diasCal,              cls: "text-foreground" },
                                         { label: "Hábiles",    val: periodStats.habiles,  cls: "text-primary-500" },
-                                        { label: "Descanso",   val: periodStats.descanso, cls: "text-foreground/35" },
+                                        { label: "Descanso",   val: periodStats.descanso, cls: "text-[var(--text-tertiary)]" },
                                     ].map(({ label, val, cls }) => (
                                         <div key={label} className="rounded-lg border border-border-light bg-surface-2 px-3 py-2 text-center">
                                             <p className={`font-mono text-[17px] font-black tabular-nums ${cls}`}>{val}</p>
-                                            <p className="font-mono text-[7px] uppercase tracking-[0.16em] text-foreground/30">{label}</p>
+                                            <p className="font-mono text-[7px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</p>
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {periodStats.feriadoList.length > 0 && (
                                 <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/4 space-y-0.5">
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-primary-500/60 mb-1">Feriados en el período</p>
-                                    {periodStats.feriadoList.map(f => <p key={f} className="font-mono text-[9px] text-foreground/50">{f}</p>)}
+                                    <p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--text-link)] mb-1">Feriados en el período</p>
+                                    {periodStats.feriadoList.map(f => <p key={f} className="font-mono text-[9px] text-[var(--text-secondary)]">{f}</p>)}
                                 </div>
                             )}
                         </div>
@@ -924,11 +924,11 @@ export default function VacacionesPage() {
                                     value={fmt(calcCompletas.montoBono)} accent="amber" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total</span>
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-primary-500">{fmt(calcCompletas.total)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-foreground/30">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Selecciona las fechas de vacaciones."}
                                 </p>
                             )}
@@ -945,7 +945,7 @@ export default function VacacionesPage() {
                                 <label className={labelCls}>Fecha de egreso (salida)</label>
                                 <input type="date" value={fechaEgreso}
                                     onChange={e => setFechaEgreso(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[9px] text-foreground/25 mt-1">
+                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">
                                     Fecha efectiva de retiro o cálculo proporcional
                                 </p>
                             </div>
@@ -958,7 +958,7 @@ export default function VacacionesPage() {
                                         { k: "Días anuales base",   v: `${calcFrac.diasAnuales} días (año ${calcFrac.aniosCompletos + 1})` },
                                     ].map(({ k, v }) => (
                                         <div key={k} className="flex justify-between font-mono text-[10px]">
-                                            <span className="text-foreground/40">{k}</span>
+                                            <span className="text-[var(--text-tertiary)]">{k}</span>
                                             <span className="text-amber-500 tabular-nums font-medium">{v}</span>
                                         </div>
                                     ))}
@@ -997,11 +997,11 @@ export default function VacacionesPage() {
                                     value={fmt(calcFrac.montoBono)} accent="amber" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total fraccionado</span>
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.total)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-foreground/30">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0
                                         ? "Ingresa el salario del empleado."
                                         : !fechaIngreso
@@ -1029,7 +1029,7 @@ export default function VacacionesPage() {
                             fechaReintegro={fechaReintegro}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                                 <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                             </svg>
@@ -1048,7 +1048,7 @@ export default function VacacionesPage() {
                             fechaEgreso={fechaEgreso}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                                 <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                             </svg>

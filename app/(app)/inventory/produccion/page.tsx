@@ -22,7 +22,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 // ── component ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +124,7 @@ export default function ProduccionPage() {
                 <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                     Producción
                 </h1>
-                <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                     Lotes de transformación y producción
                 </p>
             </div>
@@ -211,7 +211,7 @@ export default function ProduccionPage() {
                                                 value={c.costoUnitario || ""}
                                                 onChange={(e) => setConsumo(idx, "costoUnitario", parseFloat(e.target.value) || 0)}
                                             />
-                                            <button onClick={() => removeConsumo(idx)} className="text-foreground/30 hover:text-red-500 transition-colors text-[13px]">
+                                            <button onClick={() => removeConsumo(idx)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors text-[13px]">
                                                 ×
                                             </button>
                                         </div>
@@ -222,7 +222,7 @@ export default function ProduccionPage() {
                             {/* Costo total lote */}
                             <div className="pt-2 border-t border-border-light">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] uppercase tracking-[0.16em] text-foreground/40">Costo total del lote</span>
+                                    <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Costo total del lote</span>
                                     <span className="text-[14px] font-bold tabular-nums text-foreground">{fmtN(costoLote)}</span>
                                 </div>
                             </div>
@@ -248,15 +248,15 @@ export default function ProduccionPage() {
                 <div className="col-span-3">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Lotes registrados
                             </p>
                         </div>
 
                         {loadingTransformaciones ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                         ) : transformaciones.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                                 No hay lotes registrados.
                             </div>
                         ) : (
@@ -264,7 +264,7 @@ export default function ProduccionPage() {
                                 <thead>
                                     <tr className="border-b border-border-light">
                                         {["Fecha","Descripción","Prod. Terminado","Cant. Producida","Período","Notas"].map((h) => (
-                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-foreground/40 font-normal whitespace-nowrap">
+                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                 {h}
                                             </th>
                                         ))}
@@ -275,12 +275,12 @@ export default function ProduccionPage() {
                                         const prod = productos.find((p) => p.id === t.productoTerminadoId);
                                         return (
                                             <tr key={t.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                <td className="px-4 py-2.5 text-foreground/60 whitespace-nowrap">{t.fecha}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{t.fecha}</td>
                                                 <td className="px-4 py-2.5 text-foreground font-medium">{t.descripcion}</td>
-                                                <td className="px-4 py-2.5 text-foreground/70">{prod?.nombre ?? "—"}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{prod?.nombre ?? "—"}</td>
                                                 <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(t.cantidadProducida)}</td>
-                                                <td className="px-4 py-2.5 text-foreground/60">{t.periodo}</td>
-                                                <td className="px-4 py-2.5 text-foreground/50 max-w-[120px] truncate">{t.notas || "—"}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{t.periodo}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[120px] truncate">{t.notas || "—"}</td>
                                             </tr>
                                         );
                                     })}

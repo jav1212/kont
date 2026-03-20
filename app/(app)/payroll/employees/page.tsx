@@ -58,9 +58,9 @@ function calcAntiguedad(fechaIngreso: string | null | undefined): string {
 const ESTADOS: EmployeeEstado[] = ["activo", "inactivo", "vacacion"];
 
 const ESTADO_CLS: Record<EmployeeEstado, string> = {
-    activo:   "border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400",
-    inactivo: "border-red-500/20 bg-red-500/[0.08] text-red-600 dark:text-red-400",
-    vacacion: "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
+    activo:   "border badge-success",
+    inactivo: "border badge-error",
+    vacacion: "border badge-warning",
 };
 
 // ============================================================================
@@ -75,7 +75,7 @@ const cellInput = [
 ].join(" ");
 
 const Spinner = () => (
-    <svg className="animate-spin text-foreground/30" width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
@@ -153,7 +153,7 @@ function EmployeeRow({
                     <input className={cellInput} placeholder="V-12345678"
                         value={draft.cedula} onChange={(e) => onDraftChange("cedula", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-foreground/50 uppercase tracking-wider">{employee.cedula}</span>
+                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">{employee.cedula}</span>
                 )}
             </td>
 
@@ -173,7 +173,7 @@ function EmployeeRow({
                     <input className={cellInput} placeholder="Cargo"
                         value={draft.cargo} onChange={(e) => onDraftChange("cargo", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-foreground/60 uppercase tracking-[0.08em]">{employee.cargo}</span>
+                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{employee.cargo}</span>
                 )}
             </td>
 
@@ -182,7 +182,7 @@ function EmployeeRow({
                 {isEditing ? (
                     <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
                         <select
-                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-foreground/60 outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                             value={draft.moneda}
                             onChange={(e) => onDraftChange("moneda", e.target.value)}>
                             <option value="VES">VES</option>
@@ -195,14 +195,14 @@ function EmployeeRow({
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[12px] tabular-nums text-foreground/80">
+                        <span className="font-mono text-[12px] tabular-nums text-[var(--text-primary)]">
                             {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                         </span>
                         <span className={[
                             "font-mono text-[8px] px-1 py-0.5 rounded border uppercase tracking-widest",
                             employee.moneda === "USD"
                                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                                : "border-border-light text-foreground/30",
+                                : "border-border-light text-[var(--text-tertiary)]",
                         ].join(" ")}>
                             {employee.moneda ?? "VES"}
                         </span>
@@ -218,13 +218,13 @@ function EmployeeRow({
                         onChange={(e) => onDraftChange("fechaIngreso", e.target.value)} />
                 ) : (
                     <div className="flex flex-col gap-0.5">
-                        <span className="font-mono text-[11px] text-foreground/60">
+                        <span className="font-mono text-[11px] text-[var(--text-secondary)]">
                             {employee.fechaIngreso
                                 ? new Date(employee.fechaIngreso + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "2-digit" })
-                                : <span className="text-foreground/25">—</span>}
+                                : <span className="text-[var(--text-disabled)]">—</span>}
                         </span>
                         {employee.fechaIngreso && (
-                            <span className="font-mono text-[9px] text-foreground/30 uppercase tracking-widest">
+                            <span className="font-mono text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">
                                 {calcAntiguedad(employee.fechaIngreso)}
                             </span>
                         )}
@@ -256,24 +256,24 @@ function EmployeeRow({
                             <IconSave />
                         </button>
                         <button onClick={onCancel} title="Cancelar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors">
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
                             <IconCancel />
                         </button>
                     </div>
                 ) : (
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={onShowHistory} title="Historial de salario"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/30 hover:text-primary-500 hover:bg-primary-500/10 transition-colors">
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                 <circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1.5"/>
                             </svg>
                         </button>
                         <button onClick={onEdit} title="Editar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                             <IconEdit />
                         </button>
                         <button onClick={onDelete} title="Eliminar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-red-500 hover:bg-red-500/[0.08] transition-colors">
+                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors">
                             <IconTrash />
                         </button>
                     </div>
@@ -538,7 +538,7 @@ export default function EmployeesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Nómina / Empleados
                     </nav>
                     <div className="flex items-end justify-between gap-4">
@@ -547,7 +547,7 @@ export default function EmployeesPage() {
                                 Empleados
                             </h1>
                             {company && (
-                                <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                     {company.name} · {empRemaining !== null
                                         ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
                                         : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
@@ -615,7 +615,7 @@ export default function EmployeesPage() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setSelected(new Set())}
-                                className="font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                             >
                                 Deseleccionar
                             </button>
@@ -631,7 +631,7 @@ export default function EmployeesPage() {
                                     </button>
                                     <button
                                         onClick={() => setConfirmDelete(false)}
-                                        className="h-7 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground transition-colors"
+                                        className="h-7 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground transition-colors"
                                     >
                                         Cancelar
                                     </button>
@@ -651,7 +651,7 @@ export default function EmployeesPage() {
 
                 {/* Search */}
                 <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/30" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
                     </svg>
                     <input
@@ -661,7 +661,7 @@ export default function EmployeesPage() {
                         onChange={(e) => setSearch(e.target.value)}
                         className={[
                             "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                            "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+                            "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
                             "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
                         ].join(" ")}
                     />
@@ -670,7 +670,7 @@ export default function EmployeesPage() {
                 {/* Table */}
                 {loading ? (
                     <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
-                        <div className="flex items-center gap-2 text-foreground/30">
+                        <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                             <Spinner />
                             <span className="font-mono text-[11px] uppercase tracking-widest">Cargando empleados…</span>
                         </div>
@@ -694,7 +694,7 @@ export default function EmployeesPage() {
                                         />
                                     </th>
                                     {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -726,7 +726,7 @@ export default function EmployeesPage() {
                                         <td className="px-3 py-2.5 w-52">
                                             <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
                                                 <select
-                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-foreground/60 outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                                                     value={row.draft.moneda}
                                                     onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
                                                     <option value="VES">VES</option>
@@ -760,7 +760,7 @@ export default function EmployeesPage() {
                                                         <IconSave />
                                                     </button>
                                                     <button onClick={() => cancelNewRow(row.id)} title="Cancelar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors">
+                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
                                                         <IconCancel />
                                                     </button>
                                                 </div>
@@ -780,7 +780,7 @@ export default function EmployeesPage() {
                                 {/* Existing rows */}
                                 {filtered.length === 0 && newRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center font-mono text-[11px] text-foreground/25 uppercase tracking-widest">
+                                        <td colSpan={7} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                             {employees.length === 0
                                                 ? "Sin empleados. Importa un CSV o agrega uno manualmente."
                                                 : "Sin resultados para la búsqueda."}
@@ -824,38 +824,38 @@ export default function EmployeesPage() {
                                 <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
                                     Historial de Salario
                                 </h2>
-                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                     {historyModal.nombre} · {historyModal.cedula}
                                 </p>
                             </div>
                             <button onClick={() => setHistoryModal(null)}
-                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                                 <IconCancel />
                             </button>
                         </div>
                         <div className="p-5">
                             {historyLoading ? (
-                                <div className="flex items-center justify-center h-24 gap-2 text-foreground/30">
+                                <div className="flex items-center justify-center h-24 gap-2 text-[var(--text-tertiary)]">
                                     <Spinner />
                                     <span className="font-mono text-[11px] uppercase tracking-widest">Cargando…</span>
                                 </div>
                             ) : historyError ? (
                                 <p className="font-mono text-[11px] text-red-500">{historyError}</p>
                             ) : historyData.length === 0 ? (
-                                <p className="font-mono text-[11px] text-foreground/30 text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
                             ) : (
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Desde", "Salario", "Moneda"].map((h) => (
-                                                <th key={h} className="pb-2 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">{h}</th>
+                                                <th key={h} className="pb-2 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {historyData.map((entry) => (
                                             <tr key={entry.id} className="border-b border-border-light/50 last:border-0">
-                                                <td className="py-2 font-mono text-[11px] text-foreground/60">{entry.fechaDesde}</td>
+                                                <td className="py-2 font-mono text-[11px] text-[var(--text-secondary)]">{entry.fechaDesde}</td>
                                                 <td className="py-2 font-mono text-[11px] text-foreground">
                                                     {entry.salarioMensual.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                                                 </td>
@@ -864,7 +864,7 @@ export default function EmployeesPage() {
                                                         "font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded",
                                                         entry.moneda === "USD"
                                                             ? "bg-green-500/10 text-green-500"
-                                                            : "bg-foreground/[0.06] text-foreground/50",
+                                                            : "bg-foreground/[0.06] text-[var(--text-secondary)]",
                                                     ].join(" ")}>
                                                         {entry.moneda}
                                                     </span>
@@ -877,7 +877,7 @@ export default function EmployeesPage() {
                         </div>
                         <div className="flex justify-end px-5 py-4 border-t border-border-light">
                             <button onClick={() => setHistoryModal(null)}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
                                 Cerrar
                             </button>
                         </div>
@@ -896,12 +896,12 @@ export default function EmployeesPage() {
                                 <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
                                     Pegar CSV
                                 </h2>
-                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                     Empleados · columnas: cedula, nombre, cargo, salario_mensual_ves, estado
                                 </p>
                             </div>
                             <button onClick={closePasteModal}
-                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                                 <IconCancel />
                             </button>
                         </div>
@@ -918,7 +918,7 @@ export default function EmployeesPage() {
                                     "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
                                     "font-mono text-[11px] text-foreground leading-relaxed",
                                     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-                                    "transition-colors duration-150 placeholder:text-foreground/20",
+                                    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
                                 ].join(" ")}
                             />
 
@@ -934,7 +934,7 @@ export default function EmployeesPage() {
                                         <p key={i} className="font-mono text-[10px] text-red-500">{e}</p>
                                     ))}
                                     {pasteErrors.length > 3 && (
-                                        <p className="font-mono text-[10px] text-foreground/30">…y {pasteErrors.length - 3} error(es) más.</p>
+                                        <p className="font-mono text-[10px] text-[var(--text-tertiary)]">…y {pasteErrors.length - 3} error(es) más.</p>
                                     )}
                                 </div>
                             )}
@@ -943,7 +943,7 @@ export default function EmployeesPage() {
                         {/* Modal footer */}
                         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
                             <button onClick={closePasteModal}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
                                 Cancelar
                             </button>
                             <button

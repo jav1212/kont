@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-red-500/50 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -114,7 +114,7 @@ export default function AdminResetPasswordPage() {
                 </div>
 
                 {stage === "loading" && (
-                    <div className="flex items-center gap-3 text-foreground/40">
+                    <div className="flex items-center gap-3 text-[var(--text-tertiary)]">
                         <Spinner />
                         <span className="font-mono text-[11px] uppercase tracking-widest">Verificando enlace…</span>
                     </div>
@@ -126,7 +126,7 @@ export default function AdminResetPasswordPage() {
                             <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Enlace<br />inválido
                             </h1>
-                            <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                            <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                                 El enlace expiró o ya fue usado. Solicita uno nuevo.
                             </p>
                         </div>
@@ -145,14 +145,14 @@ export default function AdminResetPasswordPage() {
                             <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Nueva<br />contraseña
                             </h1>
-                            <p className="font-mono text-[11px] text-foreground/30 leading-relaxed">
+                            <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                                 Elige una contraseña segura de al menos 8 caracteres.
                             </p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                     Nueva contraseña
                                 </label>
                                 <input
@@ -168,7 +168,7 @@ export default function AdminResetPasswordPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                     Confirmar contraseña
                                 </label>
                                 <input
@@ -211,7 +211,7 @@ export default function AdminResetPasswordPage() {
                             <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Contraseña<br />actualizada
                             </h1>
-                            <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                            <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
                                 Tu contraseña se cambió correctamente. Redirigiendo…
                             </p>
                         </div>

@@ -25,7 +25,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 
@@ -133,7 +133,7 @@ function computeFraccionadas(
 function SectionHeader({ label, color }: { label: string; color?: "emerald" | "amber" }) {
     const cls = color === "amber"   ? "text-amber-500/70"
               : color === "emerald" ? "text-emerald-500/70"
-              : "text-foreground/35";
+              : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
@@ -141,15 +141,15 @@ function CalcRow({ label, formula, value, accent, dim }: {
     label: string; formula?: string; value: string;
     accent?: "emerald" | "amber"; dim?: boolean;
 }) {
-    const valCls = dim ? "text-foreground/40"
+    const valCls = dim ? "text-[var(--text-tertiary)]"
         : accent === "emerald" ? "text-emerald-500"
         : accent === "amber"   ? "text-amber-500"
         : "text-foreground";
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
-                <span className="font-mono text-[11px] text-foreground/70 leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[9px] text-foreground/30 mt-0.5 tabular-nums">{formula}</div>}
+                <span className="font-mono text-[11px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
             </div>
             <span className={`font-mono text-[12px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
         </div>
@@ -209,12 +209,12 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                 {/* Employee */}
                 <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
                     <div className="col-span-2">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Trabajador</p>
+                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Trabajador</p>
                         <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                        {employeeCargo && <p className="font-mono text-[10px] text-foreground/40 mt-0.5 uppercase">{employeeCargo}</p>}
+                        {employeeCargo && <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase">{employeeCargo}</p>}
                     </div>
                     <div>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Cédula</p>
+                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Cédula</p>
                         <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
                     </div>
                 </div>
@@ -227,7 +227,7 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                         { lbl: "Días utilidades",   val: `${calc.diasUtilidades} días` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
                             <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
                         </div>
                     ))}
@@ -237,21 +237,21 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                 <div className="px-8 py-5">
                     <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
                         {["Concepto", "Días", "Monto"].map(h => (
-                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 text-right first:text-left">{h}</p>
+                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] text-right first:text-left">{h}</p>
                         ))}
                     </div>
                     <div className="grid grid-cols-[1fr_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
                         <div>
                             <p className="font-mono text-[12px] font-bold text-foreground">Utilidades Anuales</p>
-                            <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
+                            <p className="font-mono text-[8px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
                                 Art. 131 + 174 LOTTT · {calc.diasUtilidades}d × {fmt(calc.salarioDia)}/día
                             </p>
                         </div>
-                        <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.diasUtilidades}</p>
+                        <p className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)] text-right">{calc.diasUtilidades}</p>
                         <p className="font-mono text-[14px] font-black tabular-nums text-emerald-500 text-right">{fmt(calc.monto)}</p>
                     </div>
                     <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total a recibir</p>
+                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total a recibir</p>
                         <p className="font-mono text-[22px] font-black tabular-nums text-emerald-500 text-right">{fmt(calc.monto)}</p>
                     </div>
                 </div>
@@ -261,7 +261,7 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                     {["Empleador", "Trabajador"].map(role => (
                         <div key={role} className="text-center">
                             <div className="h-10 border-b border-border-medium mb-2" />
-                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/30">{role}</p>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{role}</p>
                         </div>
                     ))}
                 </div>
@@ -328,14 +328,14 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                 {/* Employee */}
                 <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
                     <div className="col-span-2">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Trabajador</p>
+                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Trabajador</p>
                         <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                        {employeeCargo && <p className="font-mono text-[10px] text-foreground/40 mt-0.5 uppercase">{employeeCargo}</p>}
+                        {employeeCargo && <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase">{employeeCargo}</p>}
                     </div>
                     <div>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">Cédula</p>
+                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Cédula</p>
                         <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
-                        <p className="font-mono text-[9px] text-foreground/35 mt-0.5">
+                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5">
                             {calc.mesesTrabajados} mes{calc.mesesTrabajados !== 1 ? "es" : ""} en {calc.anioFiscal}
                         </p>
                     </div>
@@ -349,7 +349,7 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                         { lbl: "Meses trabajados",  val: `${calc.mesesTrabajados} mes${calc.mesesTrabajados !== 1 ? "es" : ""}` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
                             <p className="font-mono text-[11px] font-bold text-foreground">{val}</p>
                         </div>
                     ))}
@@ -363,7 +363,7 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                         { lbl: "Días base anuales", val: `${calc.diasUtilidades} días` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 mb-0.5">{lbl}</p>
+                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
                             <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
                         </div>
                     ))}
@@ -373,12 +373,12 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                 <div className="px-8 py-5">
                     <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
                         {["Concepto", "Días", "Monto"].map(h => (
-                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-foreground/30 text-right first:text-left">{h}</p>
+                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] text-right first:text-left">{h}</p>
                         ))}
                     </div>
 
                     <div className="py-3 border-b border-border-light/40">
-                        <p className="font-mono text-[9px] text-foreground/30">
+                        <p className="font-mono text-[9px] text-[var(--text-tertiary)]">
                             Fórmula: ⌈ {calc.diasUtilidades} días / 12 meses × {calc.mesesTrabajados} meses ⌉ = ⌈ {fmtN((calc.diasUtilidades / 12) * calc.mesesTrabajados)} ⌉
                         </p>
                     </div>
@@ -386,16 +386,16 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                     <div className="grid grid-cols-[1fr_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
                         <div>
                             <p className="font-mono text-[12px] font-bold text-foreground">Utilidades Fraccionadas</p>
-                            <p className="font-mono text-[8px] text-foreground/30 mt-0.5 uppercase tracking-wide">
+                            <p className="font-mono text-[8px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
                                 Art. 175 LOTTT · {calc.diasUtilidades}d/12 × {calc.mesesTrabajados} meses
                             </p>
                         </div>
-                        <p className="font-mono text-[13px] tabular-nums text-foreground/60 text-right">{calc.diasFraccionados}</p>
+                        <p className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)] text-right">{calc.diasFraccionados}</p>
                         <p className="font-mono text-[14px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.monto)}</p>
                     </div>
 
                     <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total fraccionado</p>
+                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</p>
                         <p className="font-mono text-[22px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.monto)}</p>
                     </div>
                 </div>
@@ -405,7 +405,7 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                     {["Empleador", "Trabajador"].map(role => (
                         <div key={role} className="text-center">
                             <div className="h-10 border-b border-border-medium mb-2" />
-                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/30">{role}</p>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{role}</p>
                         </div>
                     ))}
                 </div>
@@ -495,7 +495,7 @@ export default function UtilidadesPage() {
         "flex-1 h-8 rounded-lg font-mono text-[10px] uppercase tracking-[0.14em] border transition-colors duration-150",
         mode === m
             ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-foreground/50 hover:border-border-medium hover:text-foreground",
+            : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
     ].join(" ");
 
     return (
@@ -507,9 +507,9 @@ export default function UtilidadesPage() {
                 {/* Header + mode toggle */}
                 <div className="px-5 py-4 border-b border-border-light space-y-3">
                     <div>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">Nómina · Utilidades</p>
+                        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Utilidades</p>
                         <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                        <p className="font-mono text-[9px] text-foreground/30 mt-1">Arts. 131 · 174 · 175 LOTTT</p>
+                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Arts. 131 · 174 · 175 LOTTT</p>
                     </div>
                     <div className="flex gap-1.5">
                         <button onClick={() => setMode("completas")}    className={modeBtnCls("completas")}>Completas</button>
@@ -541,7 +541,7 @@ export default function UtilidadesPage() {
                                     { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
                                 ].map(({ k, v }) => (
                                     <div key={k} className="flex justify-between font-mono text-[10px]">
-                                        <span className="text-foreground/40">{k}</span>
+                                        <span className="text-[var(--text-tertiary)]">{k}</span>
                                         <span className="text-foreground tabular-nums">{v}</span>
                                     </div>
                                 ))}
@@ -551,16 +551,16 @@ export default function UtilidadesPage() {
                         <div>
                             <label className={labelCls}>
                                 Salario mensual (Bs.)
-                                {selectedEmp && <span className="ml-1 text-primary-500/60">— editable</span>}
+                                {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
                             </label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">Bs.</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
                                 <input type="number" step="0.01" min="0" value={salarioOverride}
                                     onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
                                     className={fieldCls + " pl-9 text-right"} />
                             </div>
                             {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[9px] text-foreground/25 mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
+                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
                             )}
                         </div>
                         {!selectedEmp && (
@@ -568,7 +568,7 @@ export default function UtilidadesPage() {
                                 <label className={labelCls}>Fecha de ingreso</label>
                                 <input type="date" value={manualIngreso}
                                     onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[9px] text-foreground/25 mt-1">Requerida para calcular fraccionadas</p>
+                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Requerida para calcular fraccionadas</p>
                             </div>
                         )}
                     </div>
@@ -577,7 +577,7 @@ export default function UtilidadesPage() {
                     <div className="px-5 py-4">
                         <SectionHeader label="Tasa BCV (auto)" />
                         {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-foreground/30">
+                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                                 <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
                                     <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
                                     <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -595,8 +595,8 @@ export default function UtilidadesPage() {
                         ) : (
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[10px] text-foreground/35">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[8px] text-primary-500/60 bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">Bs. / USD</span>
+                                <span className="ml-auto font-mono text-[8px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
                             </div>
                         )}
                     </div>
@@ -617,7 +617,7 @@ export default function UtilidadesPage() {
                                 value={diasUtilidades}
                                 onChange={e => setDiasUtilidades(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-foreground/25 mt-1">Mínimo 15 · Máximo 120 (Art. 174 LOTTT)</p>
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Mínimo 15 · Máximo 120 (Art. 174 LOTTT)</p>
                         </div>
                     </div>
 
@@ -639,11 +639,11 @@ export default function UtilidadesPage() {
                                     value={fmt(calcCompletas.monto)} accent="emerald" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total</span>
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{fmt(calcCompletas.monto)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-foreground/30">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Verifica los parámetros."}
                                 </p>
                             )}
@@ -659,7 +659,7 @@ export default function UtilidadesPage() {
                                 <label className={labelCls}>Fecha de corte</label>
                                 <input type="date" value={fechaCorte}
                                     onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[9px] text-foreground/25 mt-1">
+                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">
                                     Fecha de egreso o fin del período a calcular
                                 </p>
                             </div>
@@ -674,7 +674,7 @@ export default function UtilidadesPage() {
                                         { k: "Días fraccionados",  v: `${calcFrac.diasFraccionados} días` },
                                     ].map(({ k, v }) => (
                                         <div key={k} className="flex justify-between font-mono text-[10px]">
-                                            <span className="text-foreground/40">{k}</span>
+                                            <span className="text-[var(--text-tertiary)]">{k}</span>
                                             <span className="text-amber-500 tabular-nums font-medium">{v}</span>
                                         </div>
                                     ))}
@@ -702,11 +702,11 @@ export default function UtilidadesPage() {
                                     value={fmt(calcFrac.monto)} accent="amber" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">Total fraccionado</span>
+                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.monto)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-foreground/30">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0
                                         ? "Ingresa el salario del empleado."
                                         : !fechaIngreso
@@ -731,7 +731,7 @@ export default function UtilidadesPage() {
                             companyName={company?.name ?? "La Empresa"}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                             </svg>
@@ -750,7 +750,7 @@ export default function UtilidadesPage() {
                             fechaCorte={fechaCorte}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                                 <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                             </svg>

@@ -23,7 +23,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 // ============================================================================
 // LIQUIDACIÓN ENGINE
@@ -327,9 +327,9 @@ function ConfigSection({ title, open, onToggle, children }: {
     return (
         <div className="border-b border-border-light last:border-0">
             <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 hover:bg-foreground/[0.02] transition-colors duration-150">
-                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground/70">{title}</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{title}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="text-foreground/30 flex-shrink-0 transition-transform duration-200"
+                    className="text-[var(--text-tertiary)] flex-shrink-0 transition-transform duration-200"
                     style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
                     <path d="M2 4l3 3 3-3" />
                 </svg>
@@ -441,9 +441,9 @@ export default function LiquidacionesPage() {
             <aside className="w-full lg:w-72 flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1">
 
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">Nómina · Liquidaciones</p>
+                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Liquidaciones</p>
                     <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Liquidaciones</p>
-                    <p className="font-mono text-[9px] text-foreground/30 mt-1">Art. 142 LOTTT — egreso del empleado</p>
+                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT — egreso del empleado</p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -480,7 +480,7 @@ export default function LiquidacionesPage() {
                             <div>
                                 <label className={labelCls}>Tasa BCV (Bs./USD)</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">Bs.</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
                                     <input type="number" step="0.01" value={bcvRate}
                                         onChange={e => setBcvRate(e.target.value)} className={fieldCls + " pl-9 text-right"} />
                                 </div>
@@ -491,7 +491,7 @@ export default function LiquidacionesPage() {
                                     className={["w-8 h-4.5 rounded-full transition-colors duration-150 flex items-center px-0.5 cursor-pointer", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
                                     <div className={["w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-150", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
                                 </div>
-                                <span className="font-mono text-[10px] text-foreground/50 uppercase tracking-widest">Solo activos</span>
+                                <span className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-widest">Solo activos</span>
                             </label>
                         </div>
                     </ConfigSection>
@@ -502,23 +502,23 @@ export default function LiquidacionesPage() {
                     {validResults.length > 0 && (
                         <div className="space-y-1">
                             <div className="flex justify-between font-mono text-[10px]">
-                                <span className="text-foreground/40">Empleados</span>
+                                <span className="text-[var(--text-tertiary)]">Empleados</span>
                                 <span className="text-foreground">{validResults.length}</span>
                             </div>
                             {results.length - validResults.length > 0 && (
                                 <div className="flex justify-between font-mono text-[10px]">
-                                    <span className="text-foreground/40">Sin fecha ingreso</span>
+                                    <span className="text-[var(--text-tertiary)]">Sin fecha ingreso</span>
                                     <span className="text-amber-500">{results.length - validResults.length}</span>
                                 </div>
                             )}
                             {motivo === "despido_injustificado" && (
                                 <div className="flex justify-between font-mono text-[10px]">
-                                    <span className="text-foreground/40">Incl. indemnización</span>
+                                    <span className="text-[var(--text-tertiary)]">Incl. indemnización</span>
                                     <span className="text-red-500/70">{fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}</span>
                                 </div>
                             )}
                             <div className="flex justify-between font-mono text-[12px] font-bold pt-1 border-t border-border-light">
-                                <span className="text-foreground/60">Total</span>
+                                <span className="text-[var(--text-secondary)]">Total</span>
                                 <span className="text-primary-500 tabular-nums">{fmtVES(totalGeneral)}</span>
                             </div>
                         </div>
@@ -550,7 +550,7 @@ export default function LiquidacionesPage() {
             {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
             <main className="flex-1 overflow-y-auto p-6">
                 {loading ? (
-                    <div className="flex items-center justify-center h-48 gap-2 text-foreground/30">
+                    <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
                         <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
                             <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
                             <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -560,7 +560,7 @@ export default function LiquidacionesPage() {
                 ) : error ? (
                     <div className="flex items-center justify-center h-48 font-mono text-[11px] text-red-500">{error}</div>
                 ) : results.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-foreground/20">
+                    <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
                             <rect x="2" y="3" width="20" height="14" rx="2"/>
                             <path d="M8 21h8M12 17v4"/>

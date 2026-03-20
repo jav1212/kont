@@ -13,7 +13,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function emptyProveedor(empresaId: string): Proveedor {
     return {
@@ -85,7 +85,7 @@ export default function ProveedoresPage() {
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                             Proveedores
                         </h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Catálogo de proveedores
                         </p>
                     </div>
@@ -185,9 +185,9 @@ export default function ProveedoresPage() {
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingProveedores ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : proveedores.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay proveedores. Haz clic en &quot;+ Nuevo proveedor&quot; para crear uno.
                         </div>
                     ) : (
@@ -195,7 +195,7 @@ export default function ProveedoresPage() {
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["RIF", "Nombre", "Contacto", "Teléfono", "Email", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal whitespace-nowrap">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -204,15 +204,15 @@ export default function ProveedoresPage() {
                             <tbody>
                                 {proveedores.map((p) => (
                                     <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                        <td className="px-4 py-2.5 text-foreground/60">{p.rif || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.rif || "—"}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
-                                        <td className="px-4 py-2.5 text-foreground/60">{p.contacto || "—"}</td>
-                                        <td className="px-4 py-2.5 text-foreground/60">{p.telefono || "—"}</td>
-                                        <td className="px-4 py-2.5 text-foreground/60">{p.email || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.contacto || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.telefono || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.email || "—"}</td>
                                         <td className="px-4 py-2.5">
                                             {p.activo
-                                                ? <span className="text-green-500 text-[9px] uppercase tracking-[0.14em]">Activo</span>
-                                                : <span className="text-foreground/40 text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
+                                                ? <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
+                                                : <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
                                             }
                                         </td>
                                         <td className="px-4 py-2.5">
@@ -233,7 +233,7 @@ export default function ProveedoresPage() {
                                                         </button>
                                                         <button
                                                             onClick={() => setConfirmDelete(null)}
-                                                            className="text-[9px] uppercase tracking-[0.12em] text-foreground/40 hover:text-foreground/60 transition-colors"
+                                                            className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                                                         >
                                                             Cancelar
                                                         </button>
@@ -241,7 +241,7 @@ export default function ProveedoresPage() {
                                                 ) : (
                                                     <button
                                                         onClick={() => setConfirmDelete(p.id!)}
-                                                        className="text-[9px] uppercase tracking-[0.12em] text-foreground/40 hover:text-red-500 transition-colors"
+                                                        className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                                     >
                                                         Eliminar
                                                     </button>

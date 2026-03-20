@@ -14,7 +14,7 @@ const cellInput = [
     "w-full h-8 px-2.5 rounded-lg border bg-surface-1 outline-none",
     "font-mono text-[12px] text-foreground",
     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-    "transition-colors duration-150 placeholder:text-foreground/25",
+    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
 ].join(" ");
 
 const toolbarBtn = [
@@ -28,7 +28,7 @@ const toolbarBtn = [
 // ============================================================================
 
 const Spinner = () => (
-    <svg className="animate-spin text-foreground/30" width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
@@ -232,7 +232,7 @@ export default function CompaniesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Empresas
                     </nav>
                     <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -240,7 +240,7 @@ export default function CompaniesPage() {
                             <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Mis Empresas
                             </h1>
-                            <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
+                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                 {capacity?.companies.max !== null && capacity
                                     ? `${capacity.companies.used} / ${capacity.companies.max} empresa${capacity.companies.max !== 1 ? "s" : ""}`
                                     : `${companies.length} empresa${companies.length !== 1 ? "s" : ""}`
@@ -306,7 +306,7 @@ export default function CompaniesPage() {
                 {loading ? (
                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando…</span>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
                     </div>
                 ) : (
                     <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
@@ -314,7 +314,7 @@ export default function CompaniesPage() {
                             <thead>
                                 <tr className="border-b border-border-light bg-surface-2">
                                     {["RIF", "Nombre", "Creada", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                        <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -358,7 +358,7 @@ export default function CompaniesPage() {
                                             </div>
                                         </td>
                                         <td className={tdCls}>
-                                            <span className="font-mono text-[10px] text-foreground/25">—</span>
+                                            <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
                                         </td>
                                         <td className={tdCls + " text-right pr-4"}>
                                             {newSaving ? (
@@ -370,7 +370,7 @@ export default function CompaniesPage() {
                                                         <IconSave />
                                                     </button>
                                                     <button onClick={cancelNew} title="Cancelar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors">
+                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
                                                         <IconCancel />
                                                     </button>
                                                 </div>
@@ -382,7 +382,7 @@ export default function CompaniesPage() {
                                 {/* Existing rows */}
                                 {companies.length === 0 && !showNew ? (
                                     <tr>
-                                        <td colSpan={4} className="px-4 py-12 text-center font-mono text-[11px] text-foreground/25 uppercase tracking-widest">
+                                        <td colSpan={4} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                             Sin empresas. Crea una para comenzar.
                                         </td>
                                     </tr>
@@ -396,7 +396,7 @@ export default function CompaniesPage() {
 
                                                 {/* RIF */}
                                                 <td className={tdCls + " w-40"}>
-                                                    <span className="font-mono text-[11px] text-foreground/50 uppercase tracking-wider">
+                                                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">
                                                         {company.id}
                                                     </span>
                                                 </td>
@@ -435,7 +435,7 @@ export default function CompaniesPage() {
 
                                                 {/* Creada */}
                                                 <td className={tdCls}>
-                                                    <span className="font-mono text-[11px] text-foreground/40">
+                                                    <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
                                                         {formatDate(company.createdAt)}
                                                     </span>
                                                 </td>
@@ -454,7 +454,7 @@ export default function CompaniesPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmId(null)}
-                                                                className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-foreground/40 hover:text-foreground transition-colors"
+                                                                className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                             >
                                                                 No
                                                             </button>
@@ -468,20 +468,20 @@ export default function CompaniesPage() {
                                                                 <IconSave />
                                                             </button>
                                                             <button onClick={cancelEdit} title="Cancelar"
-                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:bg-foreground/[0.06] transition-colors">
+                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
                                                                 <IconCancel />
                                                             </button>
                                                         </div>
                                                     ) : (
                                                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button onClick={() => startEdit(company)} title="Editar"
-                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                                                                 <IconEdit />
                                                             </button>
                                                             <button
                                                                 onClick={() => { setConfirmId(company.id); setDeleteError(null); }}
                                                                 title="Eliminar"
-                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
+                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
                                                             >
                                                                 <IconTrash />
                                                             </button>
@@ -510,12 +510,12 @@ export default function CompaniesPage() {
                                 <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
                                     Pegar CSV
                                 </h2>
-                                <p className="font-mono text-[9px] text-foreground/35 mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                     Empresas · columnas: rif, nombre
                                 </p>
                             </div>
                             <button onClick={closePasteModal}
-                                className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                                 <IconCancel />
                             </button>
                         </div>
@@ -532,7 +532,7 @@ export default function CompaniesPage() {
                                     "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
                                     "font-mono text-[11px] text-foreground leading-relaxed",
                                     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-                                    "transition-colors duration-150 placeholder:text-foreground/20",
+                                    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
                                 ].join(" ")}
                             />
 
@@ -548,7 +548,7 @@ export default function CompaniesPage() {
                                         <p key={i} className="font-mono text-[10px] text-red-500">{e}</p>
                                     ))}
                                     {pasteErrors.length > 3 && (
-                                        <p className="font-mono text-[10px] text-foreground/30">…y {pasteErrors.length - 3} error(es) más.</p>
+                                        <p className="font-mono text-[10px] text-[var(--text-tertiary)]">…y {pasteErrors.length - 3} error(es) más.</p>
                                     )}
                                 </div>
                             )}
@@ -557,7 +557,7 @@ export default function CompaniesPage() {
                         {/* Modal footer */}
                         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
                             <button onClick={closePasteModal}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors">
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
                                 Cancelar
                             </button>
                             <button

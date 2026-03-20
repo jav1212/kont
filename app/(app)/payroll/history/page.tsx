@@ -91,7 +91,7 @@ function buildPdfEmployees(receipts: PayrollReceipt[]): PdfEmployeeResult[] {
 // ============================================================================
 
 const Spinner = () => (
-    <svg className="animate-spin text-foreground/30" width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
@@ -114,22 +114,22 @@ function RunRow({ run, isSelected, onSelect }: {
                 <span className="font-mono text-[12px] font-semibold text-foreground">
                     {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
                 </span>
-                <span className="font-mono text-[10px] text-foreground/30 uppercase tracking-widest">
+                <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">
                     Confirmada: {formatDateTime(run.confirmedAt)}
                 </span>
             </div>
             <div className="flex items-center gap-6 tabular-nums">
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Tasa BCV</span>
-                    <span className="font-mono text-[11px] text-foreground/50">{fmt(run.exchangeRate)}</span>
+                    <span className="font-mono text-[9px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
+                    <span className="font-mono text-[11px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
                 </div>
-                <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400">
+                <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border badge-success">
                     {run.status}
                 </span>
                 <svg
                     width="12" height="12" viewBox="0 0 12 12" fill="none"
                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                    className={["transition-transform duration-150 text-foreground/30", isSelected ? "rotate-90" : ""].join(" ")}
+                    className={["transition-transform duration-150 text-[var(--text-tertiary)]", isSelected ? "rotate-90" : ""].join(" ")}
                 >
                     <path d="M4 2l4 4-4 4" />
                 </svg>
@@ -144,7 +144,7 @@ function ReceiptsPanel({ receipts, loading, error }: {
     if (loading) return (
         <div className="flex items-center justify-center h-24 gap-2 border border-border-light rounded-xl">
             <Spinner />
-            <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando recibos…</span>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando recibos…</span>
         </div>
     );
     if (error) return (
@@ -154,7 +154,7 @@ function ReceiptsPanel({ receipts, loading, error }: {
     );
     if (!receipts.length) return (
         <div className="flex items-center justify-center h-20 border border-border-light rounded-xl">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/30">Sin recibos</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">Sin recibos</span>
         </div>
     );
 
@@ -169,7 +169,7 @@ function ReceiptsPanel({ receipts, loading, error }: {
                     <thead>
                         <tr className="border-b border-border-light bg-surface-2">
                             {["Empleado", "Cargo", "Salario Bs.", "Asignaciones", "Bonos", "Deducciones", "Bruto VES", "Neto VES", "Neto $"].map((h) => (
-                                <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                     {h}
                                 </th>
                             ))}
@@ -181,17 +181,17 @@ function ReceiptsPanel({ receipts, loading, error }: {
                                 <td className="px-4 py-3">
                                     <div className="flex flex-col gap-0.5">
                                         <span className="font-mono text-[11px] font-medium text-foreground">{r.employeeNombre}</span>
-                                        <span className="font-mono text-[9px] text-foreground/30 uppercase tracking-widest">{r.employeeCedula}</span>
+                                        <span className="font-mono text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">{r.employeeCedula}</span>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 font-mono text-[10px] text-foreground/50 uppercase tracking-[0.08em]">{r.employeeCargo}</td>
-                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">Bs. {fmt(r.monthlySalary)}</td>
-                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">{fmt(r.totalEarnings)}</td>
-                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">{fmt(r.totalBonuses)}</td>
+                                <td className="px-4 py-3 font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{r.employeeCargo}</td>
+                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">Bs. {fmt(r.monthlySalary)}</td>
+                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalEarnings)}</td>
+                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalBonuses)}</td>
                                 <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-red-500 dark:text-red-400">-{fmt(r.totalDeductions)}</td>
-                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-foreground/60">{fmt(r.calculationData?.gross ?? 0)}</td>
+                                <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmt(r.calculationData?.gross ?? 0)}</td>
                                 <td className="px-4 py-3 font-mono text-[12px] font-semibold tabular-nums text-primary-500">{fmt(r.netPay)}</td>
-                                <td className="px-4 py-3 font-mono text-[10px] tabular-nums text-foreground/40">${fmt(r.calculationData?.netUsd ?? 0)}</td>
+                                <td className="px-4 py-3 font-mono text-[10px] tabular-nums text-[var(--text-tertiary)]">${fmt(r.calculationData?.netUsd ?? 0)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -201,17 +201,17 @@ function ReceiptsPanel({ receipts, loading, error }: {
             {/* Totals bar */}
             <div className="flex justify-end gap-8 px-5 py-3 border border-border-light rounded-xl bg-surface-1">
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/30">Total Bruto</span>
-                    <span className="font-mono text-[13px] text-foreground/50 tabular-nums">{fmt(totGross)}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Bruto</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">{fmt(totGross)}</span>
                 </div>
                 <div className="w-px bg-border-light" />
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/30">Total Neto VES</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Neto VES</span>
                     <span className="font-mono text-[18px] font-black text-primary-500 tabular-nums">{fmt(totNet)}</span>
                 </div>
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/30">Total Neto $</span>
-                    <span className="font-mono text-[13px] text-foreground/50 tabular-nums">${fmt(totNetUsd)}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Neto $</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">${fmt(totNetUsd)}</span>
                 </div>
             </div>
         </div>
@@ -264,7 +264,7 @@ export default function PayrollHistoryPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Nómina / Historial
                     </nav>
                     <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -273,7 +273,7 @@ export default function PayrollHistoryPage() {
                                 Historial
                             </h1>
                             {company && (
-                                <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                     {company.name} · {runs.length} período{runs.length !== 1 ? "s" : ""}
                                 </p>
                             )}
@@ -300,7 +300,7 @@ export default function PayrollHistoryPage() {
                                     className={[
                                         "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
                                         "hover:border-border-medium hover:bg-surface-2",
-                                        "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/60",
+                                        "font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]",
                                         "transition-colors duration-150",
                                     ].join(" ")}
                                 >
@@ -318,14 +318,14 @@ export default function PayrollHistoryPage() {
                 {loading ? (
                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando historial…</span>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
                     </div>
                 ) : error ? (
                     <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
                         <p className="font-mono text-[11px] text-red-500">{error}</p>
                     </div>
                 ) : runs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-foreground/30 gap-3">
+                    <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                         </svg>

@@ -16,7 +16,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isEntrada(tipo: TipoMovimiento): boolean {
     return ["entrada_compra","entrada_produccion","devolucion_compra","ajuste_positivo"].includes(tipo);
@@ -24,8 +24,8 @@ function isEntrada(tipo: TipoMovimiento): boolean {
 
 function tipoBadgeClass(tipo: TipoMovimiento): string {
     return isEntrada(tipo)
-        ? "bg-green-500/10 text-green-600"
-        : "bg-red-500/10 text-red-500";
+        ? "border badge-success"
+        : "border badge-error";
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export default function KardexPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">Kardex</h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Historial de movimientos por producto
                         </p>
                     </div>
@@ -179,7 +179,7 @@ export default function KardexPage() {
                                 { label: "Método valuación",   value: producto.metodoValuacion.replace("_"," ") },
                             ].map((i) => (
                                 <div key={i.label}>
-                                    <p className="text-[9px] uppercase tracking-[0.16em] text-foreground/40 mb-0.5">{i.label}</p>
+                                    <p className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">{i.label}</p>
                                     <p className="text-[13px] font-medium text-foreground tabular-nums">{i.value}</p>
                                 </div>
                             ))}
@@ -191,7 +191,7 @@ export default function KardexPage() {
                 {searched && (
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         {kardex.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                                 No hay movimientos para este producto.
                             </div>
                         ) : (
@@ -199,7 +199,7 @@ export default function KardexPage() {
                                 <thead>
                                     <tr className="border-b border-border-light">
                                         {["Fecha","Referencia","Tipo","Entrada","Salida","Saldo","Costo U.","Costo Total"].map((h) => (
-                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-foreground/40 font-normal whitespace-nowrap">
+                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                 {h}
                                             </th>
                                         ))}
@@ -210,21 +210,21 @@ export default function KardexPage() {
                                         const entrada = isEntrada(e.tipo as TipoMovimiento);
                                         return (
                                             <tr key={e.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                <td className="px-4 py-2.5 text-foreground/60 whitespace-nowrap">{e.fecha}</td>
-                                                <td className="px-4 py-2.5 text-foreground/60 max-w-[100px] truncate">{e.referencia || "—"}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{e.fecha}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[100px] truncate">{e.referencia || "—"}</td>
                                                 <td className="px-4 py-2.5">
                                                     <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${tipoBadgeClass(e.tipo as TipoMovimiento)}`}>
                                                         {e.tipo.replace(/_/g," ")}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2.5 tabular-nums text-green-600 font-medium">
+                                                <td className="px-4 py-2.5 tabular-nums text-text-success font-medium">
                                                     {entrada ? fmtN(e.cantidad) : ""}
                                                 </td>
-                                                <td className="px-4 py-2.5 tabular-nums text-red-500 font-medium">
+                                                <td className="px-4 py-2.5 tabular-nums text-text-error font-medium">
                                                     {!entrada ? fmtN(e.cantidad) : ""}
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums text-foreground font-medium">{fmtN(e.saldoCantidad)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-foreground/70">{fmtN(e.costoUnitario)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(e.costoUnitario)}</td>
                                                 <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(e.costoTotal)}</td>
                                             </tr>
                                         );
@@ -232,11 +232,11 @@ export default function KardexPage() {
                                 </tbody>
                                 <tfoot>
                                     <tr className="border-t border-border-medium bg-surface-2">
-                                        <td colSpan={3} className="px-4 py-2.5 text-[9px] uppercase tracking-[0.16em] text-foreground/60 font-bold">
+                                        <td colSpan={3} className="px-4 py-2.5 text-[9px] uppercase tracking-[0.16em] text-[var(--text-secondary)] font-bold">
                                             Totales
                                         </td>
-                                        <td className="px-4 py-2.5 tabular-nums text-green-600 font-bold">{fmtN(totalEntradas)}</td>
-                                        <td className="px-4 py-2.5 tabular-nums text-red-500 font-bold">{fmtN(totalSalidas)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-text-success font-bold">{fmtN(totalEntradas)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-text-error font-bold">{fmtN(totalSalidas)}</td>
                                         <td colSpan={3} />
                                     </tr>
                                 </tfoot>

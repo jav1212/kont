@@ -105,7 +105,7 @@ export default function LandingPage() {
                         </span>
                         <button
                             onClick={() => setSystemMessage(null)}
-                            className="ml-auto font-mono text-[10px] text-foreground/30 hover:text-foreground"
+                            className="ml-auto font-mono text-[10px] text-[var(--text-tertiary)] hover:text-foreground"
                         >
                             [ CERRAR ]
                         </button>
@@ -118,7 +118,7 @@ export default function LandingPage() {
 
                 <div className="flex items-center gap-3 mb-10">
                     <div className="h-px w-8 bg-primary-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/80">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                         Sistema de gestión · Venezuela
                     </span>
                 </div>
@@ -128,7 +128,7 @@ export default function LandingPage() {
                     style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
                 >
                     Nómina<br />
-                    <span className="text-foreground/20">precisa.</span><br />
+                    <span className="text-[var(--text-disabled)]">precisa.</span><br />
                     <span
                         className="text-transparent"
                         style={{ WebkitTextStroke: "1px rgba(8,145,178,0.7)" }}
@@ -137,7 +137,7 @@ export default function LandingPage() {
                     </span>
                 </h1>
 
-                <p className="mt-10 max-w-lg font-mono text-[13px] leading-relaxed text-foreground/50 tracking-wide">
+                <p className="mt-10 max-w-lg font-mono text-[13px] leading-relaxed text-text-tertiary tracking-wide">
                     Cálculo de nómina venezolana con base legal LOTTT, indexación BCV
                     en tiempo real y auditoría línea a línea. Sin errores, sin hojas de cálculo sueltas.
                 </p>
@@ -163,7 +163,7 @@ export default function LandingPage() {
                         className={[
                             "inline-flex items-center px-6 py-3",
                             "border border-foreground/10 hover:border-foreground/20",
-                            "font-mono text-[11px] uppercase tracking-[0.18em] text-foreground/50 hover:text-foreground/70",
+                            "font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary",
                             "rounded-lg transition-colors duration-150",
                         ].join(" ")}
                     >
@@ -180,7 +180,7 @@ export default function LandingPage() {
                             <span className="font-mono text-[22px] font-black text-foreground tabular-nums tracking-tight">
                                 {s.value}
                             </span>
-                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/35">
+                            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-text-tertiary">
                                 {s.label}
                             </span>
                         </div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
                             className="bg-surface-1 p-8 hover:bg-surface-2 transition-colors duration-200 group"
                         >
                             <div className="flex items-start justify-between mb-5">
-                                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary-500/60">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-link">
                                     {f.code}
                                 </span>
                                 <div className="w-px h-4 bg-foreground/10 group-hover:bg-primary-500/30 transition-colors" />
@@ -205,7 +205,7 @@ export default function LandingPage() {
                             <h3 className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground mb-3">
                                 {f.label}
                             </h3>
-                            <p className="font-mono text-[11px] leading-relaxed text-foreground/45">
+                            <p className="font-mono text-[11px] leading-relaxed text-text-tertiary">
                                 {f.desc}
                             </p>
                         </div>
@@ -219,14 +219,14 @@ export default function LandingPage() {
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-3">
                     <div className="h-px w-8 bg-primary-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/80">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                         Planes
                     </span>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
                     <h2 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Sin sorpresas.<br />
-                        <span className="text-foreground/20">Precio fijo.</span>
+                        <span className="text-[var(--text-disabled)]">Precio fijo.</span>
                     </h2>
 
                     {/* Cycle toggle */}
@@ -243,7 +243,7 @@ export default function LandingPage() {
                                     "px-3 py-1.5 rounded-md font-mono text-[9px] uppercase tracking-[0.18em] transition-colors duration-150",
                                     cycle === key
                                         ? "bg-primary-500 text-white"
-                                        : "text-foreground/35 hover:text-foreground/60",
+                                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]",
                                 ].join(" ")}
                             >
                                 {label}
@@ -288,7 +288,7 @@ export default function LandingPage() {
                                     {/* Plan name */}
                                     <p className={[
                                         "font-mono text-[10px] uppercase tracking-[0.22em] mb-4",
-                                        highlighted ? "text-primary-400" : "text-foreground/45",
+                                        highlighted ? "text-primary-400" : "text-[var(--text-tertiary)]",
                                     ].join(" ")}>
                                         {plan.name}
                                     </p>
@@ -298,11 +298,11 @@ export default function LandingPage() {
                                         <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
                                             ${price}
                                         </span>
-                                        <span className="font-mono text-[10px] text-foreground/35 ml-1">
+                                        <span className="font-mono text-[10px] text-[var(--text-tertiary)] ml-1">
                                             USD
                                         </span>
                                     </div>
-                                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/30 mb-1">
+                                    <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
                                         {cycle === "monthly"   && "por mes"}
                                         {cycle === "quarterly" && "por trimestre"}
                                         {cycle === "annual"    && "por año"}
@@ -320,38 +320,38 @@ export default function LandingPage() {
                                     {/* Features */}
                                     <ul className="space-y-2.5 flex-1">
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
-                                            <span className="font-mono text-[10px] text-foreground/55 leading-snug">
+                                            <span className="font-mono text-[10px] text-[var(--text-secondary)] leading-snug">
                                                 {plan.maxCompanies === null
                                                     ? "Empresas ilimitadas"
                                                     : `${plan.maxCompanies} empresa${plan.maxCompanies !== 1 ? "s" : ""}`}
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
-                                            <span className="font-mono text-[10px] text-foreground/55 leading-snug">
+                                            <span className="font-mono text-[10px] text-[var(--text-secondary)] leading-snug">
                                                 {plan.maxEmployeesPerCompany === null
                                                     ? "Empleados ilimitados"
                                                     : `Hasta ${plan.maxEmployeesPerCompany} empleados / empresa`}
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
-                                            <span className="font-mono text-[10px] text-foreground/55 leading-snug">
+                                            <span className="font-mono text-[10px] text-[var(--text-secondary)] leading-snug">
                                                 Cálculo LOTTT + BCV
                                             </span>
                                         </li>
                                         <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-primary-400/60" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                                 <path d="M2 5.5l2 2 4-4" />
                                             </svg>
-                                            <span className="font-mono text-[10px] text-foreground/55 leading-snug">
+                                            <span className="font-mono text-[10px] text-[var(--text-secondary)] leading-snug">
                                                 Recibos de nómina
                                             </span>
                                         </li>
@@ -365,7 +365,7 @@ export default function LandingPage() {
                                             "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
                                             highlighted
                                                 ? "bg-primary-500 hover:bg-primary-400 text-white"
-                                                : "border border-border-default hover:border-border-medium text-foreground/50 hover:text-foreground/80",
+                                                : "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
                                         ].join(" ")}
                                     >
                                         Comenzar
@@ -380,7 +380,7 @@ export default function LandingPage() {
                 )}
 
                 {/* Payment note */}
-                <p className="mt-6 text-center font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/25">
+                <p className="mt-6 text-center font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                     Pago por transferencia · Zelle · Binance · PayPal — Activación manual por el equipo
                 </p>
             </section>
@@ -389,10 +389,10 @@ export default function LandingPage() {
             <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-8 py-6 border border-primary-500/20 rounded-xl bg-primary-500/[0.04]">
                     <div>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-primary-400/70 mb-1">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-link)] mb-1">
                             ¿Listo para empezar?
                         </p>
-                        <p className="font-mono text-[13px] text-foreground/60">
+                        <p className="font-mono text-[13px] text-[var(--text-secondary)]">
                             Configura tu primera nómina en menos de 5 minutos.
                         </p>
                     </div>

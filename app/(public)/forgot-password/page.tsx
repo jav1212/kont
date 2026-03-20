@@ -6,7 +6,7 @@ import Link from "next/link";
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -52,14 +52,14 @@ export default function ForgotPasswordPage() {
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="h-px w-6 bg-primary-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                             Recuperación
                         </span>
                     </div>
                     <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Restablecer<br />contraseña
                     </h1>
-                    <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
+                    <p className="font-mono text-[11px] text-text-tertiary mt-3 leading-relaxed">
                         Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.
                     </p>
                 </div>
@@ -67,13 +67,13 @@ export default function ForgotPasswordPage() {
                 {sent ? (
                     <div className="space-y-6">
                         <div className="px-4 py-3.5 border border-primary-500/20 rounded-lg bg-primary-500/[0.05]">
-                            <p className="font-mono text-[11px] text-foreground/60 leading-relaxed">
-                                Si <span className="text-foreground/80">{email}</span> está registrado, recibirás un enlace en tu correo. Revisa también la carpeta de spam.
+                            <p className="font-mono text-[11px] text-text-secondary leading-relaxed">
+                                Si <span className="text-text-primary">{email}</span> está registrado, recibirás un enlace en tu correo. Revisa también la carpeta de spam.
                             </p>
                         </div>
                         <Link
                             href="/sign-in"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
                     <div className="space-y-4">
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
                                     Correo electrónico
                                 </label>
                                 <input
@@ -131,14 +131,14 @@ export default function ForgotPasswordPage() {
                         </form>
 
                         <div className="px-4 py-3.5 border border-foreground/[0.07] rounded-lg bg-foreground/[0.02]">
-                            <p className="font-mono text-[10px] text-foreground/25 leading-relaxed">
+                            <p className="font-mono text-[10px] text-text-disabled leading-relaxed">
                                 El enlace expira en 30 minutos. Revisa también tu carpeta de spam.
                             </p>
                         </div>
 
                         <Link
                             href="/sign-in"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors"
+                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
                         >
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 6H2M6 2L2 6l4 4" />

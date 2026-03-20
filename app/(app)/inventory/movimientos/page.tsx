@@ -22,7 +22,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const TIPO_GROUPS = [
     {
@@ -52,11 +52,11 @@ const TIPO_GROUPS = [
 
 function tipoBadgeClass(tipo: TipoMovimiento): string {
     if (["entrada_compra","entrada_produccion","devolucion_venta"].includes(tipo))
-        return "bg-green-500/10 text-green-600";
+        return "border badge-success";
     if (["salida_venta","salida_produccion","devolucion_compra"].includes(tipo))
-        return "bg-red-500/10 text-red-500";
-    if (tipo === "ajuste_positivo") return "bg-amber-500/10 text-amber-600";
-    return "bg-orange-500/10 text-orange-600";
+        return "border badge-error";
+    if (tipo === "ajuste_positivo") return "border badge-warning";
+    return "border badge-warning";
 }
 
 function tipoLabel(tipo: TipoMovimiento) {
@@ -140,7 +140,7 @@ export default function MovimientosPage() {
                 <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                     Movimientos
                 </h1>
-                <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                     Registro de entradas, salidas y ajustes
                 </p>
             </div>
@@ -263,11 +263,11 @@ export default function MovimientosPage() {
                 <div className="col-span-3">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Historial
                             </p>
                             <div className="flex items-center gap-2">
-                                <label className="text-[9px] uppercase tracking-[0.16em] text-foreground/40">Período</label>
+                                <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Período</label>
                                 <input
                                     type="month" className="h-7 px-2 rounded border border-border-light bg-surface-2 text-[11px] text-foreground outline-none"
                                     value={periodo}
@@ -277,9 +277,9 @@ export default function MovimientosPage() {
                         </div>
 
                         {loadingMovimientos ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                         ) : movimientos.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                                 No hay movimientos para este período.
                             </div>
                         ) : (
@@ -288,7 +288,7 @@ export default function MovimientosPage() {
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Fecha", "Producto", "Tipo", "Cantidad", "Costo U.", "Costo Total", "Referencia"].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-foreground/40 font-normal whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
@@ -299,7 +299,7 @@ export default function MovimientosPage() {
                                             const prod = productos.find((p) => p.id === m.productoId);
                                             return (
                                                 <tr key={m.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                    <td className="px-3 py-2.5 text-foreground/60 whitespace-nowrap">{m.fecha}</td>
+                                                    <td className="px-3 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{m.fecha}</td>
                                                     <td className="px-3 py-2.5 text-foreground max-w-[120px] truncate">
                                                         {prod?.nombre ?? m.productoId}
                                                     </td>
@@ -309,9 +309,9 @@ export default function MovimientosPage() {
                                                         </span>
                                                     </td>
                                                     <td className="px-3 py-2.5 tabular-nums text-foreground">{fmtN(m.cantidad)}</td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-foreground/70">{fmtN(m.costoUnitario)}</td>
+                                                    <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(m.costoUnitario)}</td>
                                                     <td className="px-3 py-2.5 tabular-nums text-foreground">{fmtN(m.costoTotal)}</td>
-                                                    <td className="px-3 py-2.5 text-foreground/60 max-w-[100px] truncate">{m.referencia || "—"}</td>
+                                                    <td className="px-3 py-2.5 text-[var(--text-secondary)] max-w-[100px] truncate">{m.referencia || "—"}</td>
                                                 </tr>
                                             );
                                         })}

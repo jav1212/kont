@@ -6,14 +6,14 @@ export default function NotFound() {
             <div className="max-w-md w-full space-y-6">
                 <div className="flex items-center gap-3">
                     <div className="h-px w-6 bg-primary-500/60" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                         404
                     </span>
                 </div>
                 <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                     Página no<br />encontrada.
                 </h1>
-                <p className="font-mono text-[11px] text-foreground/40 leading-relaxed">
+                <p className="font-mono text-[11px] text-text-tertiary leading-relaxed">
                     La ruta que buscas no existe o fue movida.
                 </p>
                 <Link

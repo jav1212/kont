@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="h-px w-6 bg-primary-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                             Recuperación
                         </span>
                     </div>
@@ -103,7 +103,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 {stage === "loading" && (
-                    <div className="flex items-center gap-3 text-foreground/40">
+                    <div className="flex items-center gap-3 text-text-tertiary">
                         <Spinner />
                         <span className="font-mono text-[11px] uppercase tracking-widest">Verificando enlace…</span>
                     </div>
@@ -112,13 +112,13 @@ export default function ResetPasswordPage() {
                 {stage === "invalid" && (
                     <div className="space-y-5">
                         <div className="px-4 py-3.5 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                            <p className="font-mono text-[11px] text-foreground/50 leading-relaxed">
+                            <p className="font-mono text-[11px] text-text-tertiary leading-relaxed">
                                 El enlace expiró o ya fue usado. Solicita uno nuevo.
                             </p>
                         </div>
                         <a
                             href="/forgot-password"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-primary-400/70 hover:text-primary-400 transition-colors"
+                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-link hover:text-text-link-hover transition-colors"
                         >
                             Solicitar nuevo enlace
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
                 {stage === "ready" && (
                     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                         <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
                                 Nueva contraseña
                             </label>
                             <input
@@ -147,7 +147,7 @@ export default function ResetPasswordPage() {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
                                 Confirmar contraseña
                             </label>
                             <input
@@ -186,11 +186,11 @@ export default function ResetPasswordPage() {
                 {stage === "success" && (
                     <div className="space-y-4">
                         <div className="px-4 py-3.5 border border-primary-500/20 rounded-lg bg-primary-500/[0.05]">
-                            <p className="font-mono text-[11px] text-foreground/60 leading-relaxed">
+                            <p className="font-mono text-[11px] text-text-secondary leading-relaxed">
                                 Contraseña actualizada correctamente. Redirigiendo al inicio de sesión…
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 text-primary-400/70">
+                        <div className="flex items-center gap-2 text-text-link">
                             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M2 7l3 3 6-6" />
                             </svg>

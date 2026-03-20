@@ -7,7 +7,7 @@ import Link from "next/link";
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-red-500/50 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -82,14 +82,14 @@ export default function AdminSignInPage() {
                     <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Acceso<br />restringido
                     </h1>
-                    <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
+                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-3 leading-relaxed">
                         Solo administradores autorizados pueden ingresar.
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                             Correo electrónico
                         </label>
                         <input
@@ -104,7 +104,7 @@ export default function AdminSignInPage() {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                        <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                             Contraseña
                         </label>
                         <input
@@ -154,7 +154,7 @@ export default function AdminSignInPage() {
 
                 <Link
                     href="/admin/forgot-password"
-                    className="mt-6 block font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30 hover:text-foreground/60 transition-colors text-center"
+                    className="mt-6 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors text-center"
                 >
                     Olvidé mi contraseña
                 </Link>

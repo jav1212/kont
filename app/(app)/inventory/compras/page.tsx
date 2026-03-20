@@ -20,13 +20,13 @@ const fmtDate = (d: string) => {
 function EstadoBadge({ estado }: { estado: EstadoFactura }) {
     if (estado === "confirmada") {
         return (
-            <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium bg-green-500/10 text-green-600">
+            <span className="inline-flex px-1.5 py-0.5 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-success">
                 Confirmada
             </span>
         );
     }
     return (
-        <span className="inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium bg-amber-500/10 text-amber-600">
+        <span className="inline-flex px-1.5 py-0.5 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-warning">
             Borrador
         </span>
     );
@@ -51,7 +51,7 @@ export default function ComprasPage() {
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                             Facturas de Compra
                         </h1>
-                        <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Registro de compras a proveedores
                         </p>
                     </div>
@@ -75,9 +75,9 @@ export default function ComprasPage() {
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingFacturas ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : facturas.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay facturas. Haz clic en &quot;+ Nueva factura&quot; para crear una.
                         </div>
                     ) : (
@@ -85,7 +85,7 @@ export default function ComprasPage() {
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Fecha", "Proveedor", "Nº Factura", "Subtotal", "IVA", "Total", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-foreground/40 font-normal whitespace-nowrap">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -94,11 +94,11 @@ export default function ComprasPage() {
                             <tbody>
                                 {facturas.map((f) => (
                                     <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                        <td className="px-4 py-2.5 text-foreground/60 tabular-nums">{fmtDate(f.fecha)}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{fmtDate(f.fecha)}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{f.proveedorNombre ?? "—"}</td>
-                                        <td className="px-4 py-2.5 text-foreground/60">{f.numeroFactura || "—"}</td>
-                                        <td className="px-4 py-2.5 tabular-nums text-foreground/80">{fmtN(f.subtotal)}</td>
-                                        <td className="px-4 py-2.5 tabular-nums text-foreground/60">{fmtN(f.ivaMonto)}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{f.numeroFactura || "—"}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(f.subtotal)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(f.ivaMonto)}</td>
                                         <td className="px-4 py-2.5 tabular-nums font-medium text-foreground">{fmtN(f.total)}</td>
                                         <td className="px-4 py-2.5"><EstadoBadge estado={f.estado} /></td>
                                         <td className="px-4 py-2.5">

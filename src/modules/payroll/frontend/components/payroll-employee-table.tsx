@@ -207,7 +207,7 @@ const StatusBadge = ({ estado }: { estado: Employee["estado"] }) => (
 const ExpandBtn = ({ open, onClick }: { open: boolean; onClick: () => void }) => (
     <button onClick={onClick}
         style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-        className={["w-6 h-6 flex items-center justify-center rounded-md border", open ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light text-foreground/30 hover:border-border-medium"].join(" ")}
+        className={["w-6 h-6 flex items-center justify-center rounded-md border", open ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light text-[var(--text-tertiary)] hover:border-border-medium"].join(" ")}
     >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M2 4l3 3 3-3" />
@@ -301,17 +301,17 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidad
         <div className="bg-surface-2 border-t border-border-light px-6 py-5">
             {/* Alícuotas chip */}
             <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-border-light bg-surface-1 flex-wrap">
-                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/35 shrink-0">Sal. Integral</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] shrink-0">Sal. Integral</span>
                 <span className="font-mono text-[11px] tabular-nums text-foreground font-medium">Bs. {fmt(result.salarioIntegral)}</span>
-                <span className="font-mono text-[9px] text-foreground/25 mx-1">=</span>
-                <span className="font-mono text-[10px] text-foreground/50">
+                <span className="font-mono text-[9px] text-[var(--text-disabled)] mx-1">=</span>
+                <span className="font-mono text-[10px] text-[var(--text-secondary)]">
                     {result.moneda === "USD"
                         ? `$${fmt(result.salarioMensual)} (Bs. ${fmt(result.salarioVES)})`
                         : `Bs. ${fmt(result.salarioVES)}`}
                 </span>
-                <span className="font-mono text-[9px] text-foreground/25">+</span>
+                <span className="font-mono text-[9px] text-[var(--text-disabled)]">+</span>
                 <span className="font-mono text-[9px] text-amber-500" title={`Alíc. Utilidades (${diasUtilidades}d)`}>util {fmt(result.alicuotaUtil)}</span>
-                <span className="font-mono text-[9px] text-foreground/25">+</span>
+                <span className="font-mono text-[9px] text-[var(--text-disabled)]">+</span>
                 <span className="font-mono text-[9px] text-amber-500" title={`Alíc. Bono Vacacional (${diasBonoVacacional}d)`}>bono vac {fmt(result.alicuotaBono)}</span>
             </div>
             {/* Audit columns */}
@@ -425,15 +425,15 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                 className="w-full flex items-center justify-between px-5 py-3 bg-surface-1 hover:bg-surface-2 transition-colors duration-150"
             >
                 <div className="flex items-center gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/60">Aportes Patronales</span>
-                    <span className="font-mono text-[9px] text-foreground/30">IVSS 9% · BANAVIH 2% · INCES 2%</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">Aportes Patronales</span>
+                    <span className="font-mono text-[9px] text-[var(--text-tertiary)]">IVSS 9% · BANAVIH 2% · INCES 2%</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="font-mono text-[12px] tabular-nums text-foreground/50">{fmtN(totals.total)} Bs</span>
+                    <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmtN(totals.total)} Bs</span>
                     <svg
                         width="10" height="10" viewBox="0 0 10 10" fill="none"
                         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                        className="text-foreground/30 transition-transform duration-200 flex-shrink-0"
+                        className="text-[var(--text-tertiary)] transition-transform duration-200 flex-shrink-0"
                         style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
                     >
                         <path d="M2 4l3 3 3-3" />
@@ -449,7 +449,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Empleado", "Sal. Mensual", "SSO 9%", "BANAVIH 2%", "INCES 2%", "Total"].map((h) => (
-                                        <th key={h} className="pb-2 pr-4 font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/35 whitespace-nowrap">{h}</th>
+                                        <th key={h} className="pb-2 pr-4 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -458,23 +458,23 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                                     <tr key={a.cedula} className="border-b border-border-light/40 hover:bg-surface-1/50">
                                         <td className="py-2 pr-4">
                                             <p className="font-mono text-[11px] text-foreground">{a.nombre}</p>
-                                            <p className="font-mono text-[9px] text-foreground/35">{a.cedula}</p>
+                                            <p className="font-mono text-[9px] text-[var(--text-tertiary)]">{a.cedula}</p>
                                         </td>
-                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-foreground/60">{fmtN(a.salarioVES)}</td>
-                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-foreground/60">{fmtN(a.ssoPatronal)}</td>
-                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-foreground/60">{fmtN(a.faovPatronal)}</td>
-                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-foreground/60">{fmtN(a.incesPatronal)}</td>
+                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmtN(a.salarioVES)}</td>
+                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmtN(a.ssoPatronal)}</td>
+                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmtN(a.faovPatronal)}</td>
+                                        <td className="py-2 pr-4 font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmtN(a.incesPatronal)}</td>
                                         <td className="py-2 font-mono text-[11px] tabular-nums text-foreground font-medium">{fmtN(a.total)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
                                 <tr className="border-t border-border-medium">
-                                    <td className="pt-2 pr-4 font-mono text-[9px] uppercase tracking-widest text-foreground/40">Total</td>
+                                    <td className="pt-2 pr-4 font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">Total</td>
                                     <td className="pt-2 pr-4" />
-                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-foreground/70 font-medium">{fmtN(totals.sso)}</td>
-                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-foreground/70 font-medium">{fmtN(totals.faov)}</td>
-                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-foreground/70 font-medium">{fmtN(totals.inces)}</td>
+                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-[var(--text-secondary)] font-medium">{fmtN(totals.sso)}</td>
+                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-[var(--text-secondary)] font-medium">{fmtN(totals.faov)}</td>
+                                    <td className="pt-2 pr-4 font-mono text-[12px] tabular-nums text-[var(--text-secondary)] font-medium">{fmtN(totals.inces)}</td>
                                     <td className="pt-2 font-mono text-[14px] tabular-nums text-primary-500 font-black">{fmtN(totals.total)}</td>
                                 </tr>
                             </tfoot>
@@ -483,7 +483,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
 
                     {/* Info + CSV */}
                     <div className="flex items-center justify-between pt-1">
-                        <p className="font-mono text-[9px] text-foreground/30 leading-relaxed">
+                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] leading-relaxed">
                             SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: devengado del período
                         </p>
                         <button
@@ -511,24 +511,24 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
     const T = active.reduce((s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }), { gross: 0, ded: 0, net: 0, usd: 0 });
     return (
         <div className="flex items-center justify-between px-5 py-3 bg-surface-1 rounded-xl border border-border-light">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">{active.length} empleados activos</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{active.length} empleados activos</span>
             <div className="flex gap-8 tabular-nums items-center">
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Bruto</span>
-                    <span className="font-mono text-[12px] text-foreground/50">{fmt(T.gross)}</span>
+                    <span className="font-mono text-[9px] uppercase text-[var(--text-tertiary)] tracking-widest">Bruto</span>
+                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">{fmt(T.gross)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Deducciones</span>
+                    <span className="font-mono text-[9px] uppercase text-[var(--text-tertiary)] tracking-widest">Deducciones</span>
                     <span className="font-mono text-[12px] text-red-500 dark:text-red-400">-{fmt(T.ded)}</span>
                 </div>
                 <div className="w-px h-8 bg-border-light" />
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Neto VES</span>
+                    <span className="font-mono text-[9px] uppercase text-[var(--text-tertiary)] tracking-widest">Neto VES</span>
                     <span className="font-mono text-[18px] font-black text-primary-500">{fmt(T.net)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[9px] uppercase text-foreground/30 tracking-widest">Neto USD</span>
-                    <span className="font-mono text-[12px] text-foreground/50">${fmt(T.usd)}</span>
+                    <span className="font-mono text-[9px] uppercase text-[var(--text-tertiary)] tracking-widest">Neto USD</span>
+                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">${fmt(T.usd)}</span>
                 </div>
             </div>
         </div>
@@ -655,7 +655,7 @@ export const PayrollEmployeeTable = ({
                                 <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-primary-500/30 bg-primary-500/[0.08] text-primary-400 uppercase tracking-widest">USD</span>
                                 <span className="font-mono text-[12px] tabular-nums">${fmt(r.salarioMensual)}</span>
                             </div>
-                            <span className="font-mono text-[10px] tabular-nums text-foreground/35">≈ Bs. {fmt(r.salarioVES)}</span>
+                            <span className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)]">≈ Bs. {fmt(r.salarioVES)}</span>
                         </>
                     ) : (
                         <span className="font-mono text-[12px] tabular-nums">Bs. {fmt(r.salarioMensual)}</span>
@@ -711,7 +711,7 @@ export const PayrollEmployeeTable = ({
                     <div className="px-6 py-5 border-b border-border-light">
                         <div className="flex items-center gap-3 mb-1">
                             <div className="h-px w-5 bg-primary-500/60" />
-                            <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-primary-400/70">
+                            <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-[var(--text-link)]">
                                 Confirmar nómina
                             </span>
                         </div>
@@ -724,7 +724,7 @@ export const PayrollEmployeeTable = ({
                     <div className="px-6 py-5 space-y-3">
                         {/* Meta row */}
                         <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Empleados activos
                             </span>
                             <span className="font-mono text-[13px] font-semibold tabular-nums text-foreground">
@@ -732,7 +732,7 @@ export const PayrollEmployeeTable = ({
                             </span>
                         </div>
                         <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Tasa BCV
                             </span>
                             <span className="font-mono text-[13px] tabular-nums text-foreground">
@@ -741,15 +741,15 @@ export const PayrollEmployeeTable = ({
                         </div>
                         {/* Totals */}
                         <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Total bruto
                             </span>
-                            <span className="font-mono text-[13px] tabular-nums text-foreground/70">
+                            <span className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">
                                 Bs. {fmt(modalTotals.gross)}
                             </span>
                         </div>
                         <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Total deducciones
                             </span>
                             <span className="font-mono text-[13px] tabular-nums text-error/80">
@@ -757,7 +757,7 @@ export const PayrollEmployeeTable = ({
                             </span>
                         </div>
                         <div className="flex items-center justify-between py-3 rounded-xl bg-primary-500/[0.06] border border-primary-500/20 px-4">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-400/80">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-link)]">
                                 Neto a pagar VES
                             </span>
                             <span className="font-mono text-[18px] font-black tabular-nums text-primary-500">
@@ -765,10 +765,10 @@ export const PayrollEmployeeTable = ({
                             </span>
                         </div>
                         <div className="flex items-center justify-between py-2">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/30">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Equivalente USD
                             </span>
-                            <span className="font-mono text-[12px] tabular-nums text-foreground/50">
+                            <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">
                                 ${fmt(modalTotals.usd)}
                             </span>
                         </div>
@@ -795,7 +795,7 @@ export const PayrollEmployeeTable = ({
                             </div>
                         )}
 
-                        <p className="font-mono text-[9px] text-foreground/25 leading-relaxed">
+                        <p className="font-mono text-[9px] text-[var(--text-disabled)] leading-relaxed">
                             Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.
                         </p>
                     </div>
@@ -828,8 +828,8 @@ export const PayrollEmployeeTable = ({
                             disabled={confirmLoading}
                             className={[
                                 "h-10 px-4 rounded-lg border border-border-light",
-                                "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/50",
-                                "hover:border-border-medium hover:text-foreground/70",
+                                "font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]",
+                                "hover:border-border-medium hover:text-[var(--text-secondary)]",
                                 "disabled:opacity-40 disabled:cursor-not-allowed",
                                 "transition-colors duration-150",
                             ].join(" ")}
@@ -846,10 +846,10 @@ export const PayrollEmployeeTable = ({
                     <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-neutral-400">Nómina / Empleados</p>
                     <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">
                         Resumen por Empleado
-                        <span className="ml-2 font-normal text-[11px] text-foreground/30 tracking-normal normal-case">
+                        <span className="ml-2 font-normal text-[11px] text-[var(--text-tertiary)] tracking-normal normal-case">
                             {results.length} en cálculo
                             {employees.filter(e => e.estado === "inactivo").length > 0 && (
-                                <span className="ml-1 text-foreground/20">· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
+                                <span className="ml-1 text-[var(--text-disabled)]">· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
                             )}
                         </span>
                     </h2>
@@ -864,7 +864,7 @@ export const PayrollEmployeeTable = ({
                                 "font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150",
                                 includeVacaciones
                                     ? "border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/[0.16]"
-                                    : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
+                                    : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
                             ].join(" ")}
                         >
                             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -914,7 +914,7 @@ export const PayrollEmployeeTable = ({
             {/* Search */}
             {showTable && (
                 <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/30" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
                     </svg>
                     <input
@@ -924,7 +924,7 @@ export const PayrollEmployeeTable = ({
                         onChange={(e) => setSearch(e.target.value)}
                         className={[
                             "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                            "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+                            "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
                             "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
                         ].join(" ")}
                     />

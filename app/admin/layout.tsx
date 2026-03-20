@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 <button
                     onClick={handleSignOut}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-[0.16em] text-foreground/40 hover:text-red-400 hover:bg-red-500/[0.06] transition-colors border border-transparent hover:border-red-500/10"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] hover:text-red-400 hover:bg-red-500/[0.06] transition-colors border border-transparent hover:border-red-500/10"
                 >
                     <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />

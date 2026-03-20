@@ -53,7 +53,7 @@ export default function CierresPage() {
         "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
     ].join(" ");
 
-    const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+    const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -62,7 +62,7 @@ export default function CierresPage() {
                 <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
                     Cierres de período
                 </h1>
-                <p className="text-[10px] text-foreground/40 uppercase tracking-[0.16em] mt-0.5">
+                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                     Gestión de períodos cerrados
                 </p>
             </div>
@@ -117,7 +117,7 @@ export default function CierresPage() {
                             </div>
                         ) : confirm ? (
                             <div className="mt-4 pt-4 border-t border-border-light space-y-2">
-                                <p className="text-[10px] text-foreground/60 text-center">
+                                <p className="text-[10px] text-[var(--text-secondary)] text-center">
                                     ¿Confirmar cierre de <span className="font-bold text-foreground">{closingPeriod}</span>?
                                 </p>
                                 <button
@@ -150,15 +150,15 @@ export default function CierresPage() {
                 <div className="col-span-2">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
                                 Períodos cerrados
                             </p>
                         </div>
 
                         {loadingCierres ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">Cargando…</div>
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                         ) : cierres.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-foreground/40">
+                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                                 No hay períodos cerrados.
                             </div>
                         ) : (
@@ -166,7 +166,7 @@ export default function CierresPage() {
                                 <thead>
                                     <tr className="border-b border-border-light">
                                         {["Período","Cerrado el","Notas"].map((h) => (
-                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-foreground/40 font-normal">
+                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal">
                                                 {h}
                                             </th>
                                         ))}
@@ -180,10 +180,10 @@ export default function CierresPage() {
                                                     {c.periodo}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-2.5 text-foreground/60 whitespace-nowrap">
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
                                                 {c.cerradoAt ? fmtDate(c.cerradoAt) : "—"}
                                             </td>
-                                            <td className="px-4 py-2.5 text-foreground/50">{c.notas || "—"}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{c.notas || "—"}</td>
                                         </tr>
                                     ))}
                                 </tbody>

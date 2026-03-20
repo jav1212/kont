@@ -8,7 +8,7 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-foreground/25",
+    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -53,7 +53,7 @@ function SignInFormContent() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
                     Correo electrónico
                 </label>
                 <input
@@ -69,12 +69,12 @@ function SignInFormContent() {
 
             <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/40">
+                    <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
                         Contraseña
                     </label>
                     <Link
                         href="/forgot-password"
-                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-primary-400/60 hover:text-primary-400 transition-colors"
+                        className="font-mono text-[9px] uppercase tracking-[0.16em] text-text-link hover:text-text-link-hover transition-colors"
                     >
                         ¿Olvidaste la tuya?
                     </Link>
@@ -134,33 +134,33 @@ export default function SignInPage() {
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="h-px w-6 bg-primary-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary-400/70">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
                             Acceso
                         </span>
                     </div>
                     <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Iniciar<br />sesión
                     </h1>
-                    <p className="font-mono text-[11px] text-foreground/30 mt-3 leading-relaxed">
+                    <p className="font-mono text-[11px] text-text-tertiary mt-3 leading-relaxed">
                         Ingresa tus credenciales para acceder al sistema de nómina.
                     </p>
                 </div>
 
-                <Suspense fallback={<div className="h-40 flex items-center justify-center font-mono text-[10px] text-foreground/20">Cargando...</div>}>
+                <Suspense fallback={<div className="h-40 flex items-center justify-center font-mono text-[10px] text-[var(--text-disabled)]">Cargando...</div>}>
                     <SignInFormContent />
                 </Suspense>
 
                 <div className="flex items-center gap-3 my-6">
                     <div className="flex-1 h-px bg-foreground/[0.06]" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/20">o</span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">o</span>
                     <div className="flex-1 h-px bg-foreground/[0.06]" />
                 </div>
 
-                <p className="font-mono text-[10px] text-center text-foreground/30">
+                <p className="font-mono text-[10px] text-center text-text-tertiary">
                     ¿Sin cuenta?{" "}
                     <Link
                         href="/sign-up"
-                        className="text-primary-400/80 hover:text-primary-400 transition-colors underline underline-offset-2"
+                        className="text-text-link hover:text-text-link-hover transition-colors underline underline-offset-2"
                     >
                         Regístrate aquí
                     </Link>

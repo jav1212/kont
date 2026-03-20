@@ -56,19 +56,19 @@ interface PaymentRequest {
 // ============================================================================
 
 const Spinner = () => (
-    <svg className="animate-spin text-foreground/30" width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
         <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
 );
 
 const STATUS_CLS: Record<string, string> = {
-    active:    "border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400",
-    suspended: "border-red-500/20 bg-red-500/[0.08] text-red-600 dark:text-red-400",
-    trial:     "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
-    pending:   "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
-    approved:  "border-green-500/20 bg-green-500/[0.08] text-green-600 dark:text-green-400",
-    rejected:  "border-red-500/20 bg-red-500/[0.08] text-red-600 dark:text-red-400",
+    active:    "border badge-success",
+    suspended: "border badge-error",
+    trial:     "border badge-warning",
+    pending:   "border badge-warning",
+    approved:  "border badge-success",
+    rejected:  "border badge-error",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -190,11 +190,11 @@ export default function BillingPage() {
         "w-full h-9 px-3 rounded-lg border bg-surface-1 outline-none",
         "font-mono text-[12px] text-foreground",
         "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-        "transition-colors duration-150 placeholder:text-foreground/25",
+        "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
     ].join(" ");
 
     const selectCls = inputCls + " cursor-pointer";
-    const labelCls = "font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/40 mb-1 block";
+    const labelCls = "font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block";
 
     return (
         <div className="min-h-full bg-surface-2 p-8 font-mono">
@@ -202,7 +202,7 @@ export default function BillingPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-2">
+                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Facturación
                     </nav>
                     <div className="flex items-end justify-between gap-4">
@@ -210,7 +210,7 @@ export default function BillingPage() {
                             <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Mi Plan
                             </h1>
-                            <p className="font-mono text-[10px] text-foreground/35 mt-1.5 uppercase tracking-[0.18em]">
+                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                 Suscripción y pagos
                             </p>
                         </div>
@@ -250,7 +250,7 @@ export default function BillingPage() {
                 {loading ? (
                     <div className="flex items-center justify-center h-40 gap-2 border border-border-light rounded-xl">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando…</span>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
                     </div>
                 ) : (
                     <>
@@ -265,7 +265,7 @@ export default function BillingPage() {
                                         {tenant?.plan?.name ?? "—"}
                                     </p>
                                     {tenant?.plan && (
-                                        <p className="font-mono text-[11px] text-foreground/40 mt-0.5">
+                                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5">
                                             ${tenant.plan.priceMonthlyUsd} USD / mes
                                         </p>
                                     )}
@@ -337,14 +337,14 @@ export default function BillingPage() {
                         {/* Module subscriptions */}
                         {subscriptions.length > 0 && (
                             <div>
-                                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/35 mb-3">
+                                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">
                                     Módulos activos
                                 </p>
                                 <div className="space-y-2">
                                     {subscriptions.map((sub) => (
                                         <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-foreground/30 flex-shrink-0">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
                                                     {sub.product?.slug === "payroll" ? (
                                                         <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                                             <rect x="1" y="1" width="11" height="11" rx="1.5" />
@@ -362,7 +362,7 @@ export default function BillingPage() {
                                                         {sub.product?.name ?? "—"}
                                                     </p>
                                                     {sub.product?.description && (
-                                                        <p className="font-mono text-[10px] text-foreground/35 mt-0.5">
+                                                        <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
                                                             {sub.product.description}
                                                         </p>
                                                     )}
@@ -370,7 +370,7 @@ export default function BillingPage() {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 {sub.plan && (
-                                                    <p className="font-mono text-[11px] text-foreground/40">
+                                                    <p className="font-mono text-[11px] text-[var(--text-tertiary)]">
                                                         {sub.plan.name} · ${sub.plan.priceMonthlyUsd}/mes
                                                     </p>
                                                 )}
@@ -388,22 +388,22 @@ export default function BillingPage() {
                                     {!subscriptions.some((s) => s.product?.slug === "inventory") && (
                                         <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-foreground/20 flex-shrink-0">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-disabled)] flex-shrink-0">
                                                     <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
                                                         <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <p className="font-mono text-[12px] font-bold text-foreground/40">
+                                                    <p className="font-mono text-[12px] font-bold text-[var(--text-tertiary)]">
                                                         Inventario
                                                     </p>
-                                                    <p className="font-mono text-[10px] text-foreground/25 mt-0.5">
+                                                    <p className="font-mono text-[10px] text-[var(--text-disabled)] mt-0.5">
                                                         Control de inventario — próximamente disponible
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/25 border border-border-light rounded-md h-6 px-2.5 flex items-center">
+                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-disabled)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
                                                 No activo
                                             </span>
                                         </div>
@@ -421,7 +421,7 @@ export default function BillingPage() {
                                     </h2>
                                     <button
                                         onClick={() => setFormOpen(false)}
-                                        className="w-7 h-7 flex items-center justify-center rounded-md text-foreground/40 hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
+                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
                                     >
                                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M2 2l9 9M11 2l-9 9" />
@@ -456,7 +456,7 @@ export default function BillingPage() {
                                         {/* Amount (read-only) */}
                                         <div>
                                             <label className={labelCls}>Monto (USD)</label>
-                                            <div className="h-9 px-3 flex items-center rounded-lg border border-border-light bg-surface-2 font-mono text-[12px] text-foreground/60">
+                                            <div className="h-9 px-3 flex items-center rounded-lg border border-border-light bg-surface-2 font-mono text-[12px] text-[var(--text-secondary)]">
                                                 ${amount}
                                             </div>
                                         </div>
@@ -494,7 +494,7 @@ export default function BillingPage() {
                                 <div className="px-5 py-4 flex items-center justify-end gap-2">
                                     <button
                                         onClick={() => setFormOpen(false)}
-                                        className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/50 hover:text-foreground hover:border-border-medium transition-colors"
+                                        className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors"
                                     >
                                         Cancelar
                                     </button>
@@ -516,13 +516,13 @@ export default function BillingPage() {
 
                         {/* Payment history */}
                         <div>
-                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/35 mb-3">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">
                                 Historial de pagos
                             </p>
 
                             {history.length === 0 ? (
                                 <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                    <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">
+                                    <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                         Sin solicitudes de pago
                                     </p>
                                 </div>
@@ -532,7 +532,7 @@ export default function BillingPage() {
                                         <thead>
                                             <tr className="border-b border-border-light bg-surface-2">
                                                 {["Fecha", "Plan", "Ciclo", "Monto", "Método", "Estado"].map((h) => (
-                                                    <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                    <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                         {h}
                                                     </th>
                                                 ))}
@@ -543,19 +543,19 @@ export default function BillingPage() {
                                                 const plan = plans.find((p) => p.id === req.plan_id);
                                                 return (
                                                     <tr key={req.id} className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors">
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-foreground/50">
+                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)]">
                                                             {formatDate(req.submitted_at)}
                                                         </td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-foreground">
                                                             {plan?.name ?? req.plan_id}
                                                         </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-foreground/60">
+                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)]">
                                                             {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
                                                         </td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-foreground tabular-nums">
                                                             ${req.amount_usd}
                                                         </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-foreground/60 capitalize">
+                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)] capitalize">
                                                             {req.payment_method}
                                                         </td>
                                                         <td className="px-4 py-3">
@@ -566,7 +566,7 @@ export default function BillingPage() {
                                                                 {STATUS_LABEL[req.status] ?? req.status}
                                                             </span>
                                                             {req.admin_note && (
-                                                                <p className="font-mono text-[9px] text-foreground/30 mt-0.5 max-w-[160px] truncate" title={req.admin_note}>
+                                                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 max-w-[160px] truncate" title={req.admin_note}>
                                                                     {req.admin_note}
                                                                 </p>
                                                             )}

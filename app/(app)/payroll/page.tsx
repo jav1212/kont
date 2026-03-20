@@ -123,11 +123,11 @@ function ConfigSection({
                 className="w-full flex items-center justify-between px-5 py-3 hover:bg-foreground/[0.02] transition-colors duration-150"
             >
                 <div className="flex items-center gap-3">
-                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground/70">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
                         {title}
                     </span>
                     {badge && (
-                        <span className="font-mono text-[10px] tabular-nums text-foreground/35">
+                        <span className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)]">
                             {badge}
                         </span>
                     )}
@@ -135,7 +135,7 @@ function ConfigSection({
                 <svg
                     width="10" height="10" viewBox="0 0 10 10" fill="none"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="text-foreground/30 transition-transform duration-200 flex-shrink-0"
+                    className="text-[var(--text-tertiary)] transition-transform duration-200 flex-shrink-0"
                     style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
                 >
                     <path d="M2 4l3 3 3-3" />
@@ -157,10 +157,10 @@ function ConfigSection({
 function DayStat({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
     return (
         <div className="flex flex-col items-center gap-0.5">
-            <span className={["font-mono text-[18px] font-black tabular-nums", muted ? "text-foreground/30" : "text-foreground"].join(" ")}>
+            <span className={["font-mono text-[18px] font-black tabular-nums", muted ? "text-[var(--text-tertiary)]" : "text-foreground"].join(" ")}>
                 {value}
             </span>
-            <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-foreground/35">{label}</span>
+            <span className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</span>
         </div>
     );
 }
@@ -373,7 +373,7 @@ export default function PayrollCalculator() {
         "flex-1 h-8 rounded-lg font-mono text-[10px] uppercase tracking-[0.16em] border transition-colors duration-150",
         active
             ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-foreground/60 hover:border-border-medium hover:text-foreground",
+            : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
     ].join(" ");
 
     const fieldCls = [
@@ -382,7 +382,7 @@ export default function PayrollCalculator() {
         "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
     ].join(" ");
 
-    const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-foreground/40 mb-1.5 block";
+    const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
@@ -393,7 +393,7 @@ export default function PayrollCalculator() {
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-foreground/30 mb-0.5">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">
                         Nómina · Calculadora
                     </p>
                     <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">
@@ -403,7 +403,7 @@ export default function PayrollCalculator() {
 
                 {/* ── Period selector ─────────────────────────────────── */}
                 <div className="px-5 py-4 border-b border-border-light space-y-3">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                         Período
                     </p>
 
@@ -465,7 +465,7 @@ export default function PayrollCalculator() {
                         <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04] space-y-1">
                             {quincenaInfo.holidayList.map((h) => (
                                 <div key={h.date} className="flex items-center justify-between">
-                                    <span className="font-mono text-[9px] text-foreground/50">{h.name}</span>
+                                    <span className="font-mono text-[9px] text-[var(--text-secondary)]">{h.name}</span>
                                     <span className="font-mono text-[9px] tabular-nums text-primary-500">
                                         {new Date(h.date + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short" })}
                                     </span>
@@ -477,7 +477,7 @@ export default function PayrollCalculator() {
 
                 {/* ── BCV Rate ────────────────────────────────────────── */}
                 <div className="px-5 py-4 border-b border-border-light space-y-3">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                         Tasa BCV (VES / USD)
                     </p>
 
@@ -533,7 +533,7 @@ export default function PayrollCalculator() {
                     <div>
                         <label className={labelCls}>Tasa (Bs. por USD)</label>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
                                 Bs.
                             </span>
                             <input
@@ -550,13 +550,13 @@ export default function PayrollCalculator() {
                 {/* ── Cesta Ticket (solo 2ª quincena) ─────────────────── */}
                 {selQuincena === 2 && (
                     <div className="px-5 py-4 border-b border-border-light space-y-3">
-                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35">
+                        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                             Cesta Ticket · 2ª Quincena
                         </p>
                         <div>
                             <label className={labelCls}>Monto por empleado (USD)</label>
                             <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
                                     $
                                 </span>
                                 <input
@@ -571,7 +571,7 @@ export default function PayrollCalculator() {
                         </div>
                         <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
                             <div className="flex justify-between font-mono text-[10px]">
-                                <span className="text-foreground/40">Equiv. por empleado</span>
+                                <span className="text-[var(--text-tertiary)]">Equiv. por empleado</span>
                                 <span className="text-primary-500 tabular-nums">
                                     {((parseFloat(cestaTicketUSD) || 0) * bcvRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
                                 </span>
@@ -584,7 +584,7 @@ export default function PayrollCalculator() {
                 <div className="px-5 py-3 border-b border-border-light">
                     <label className={labelCls}>Salario mensual referencia (Bs.)</label>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-foreground/35 pointer-events-none select-none">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
                             Bs.
                         </span>
                         <input
@@ -595,7 +595,7 @@ export default function PayrollCalculator() {
                             className={fieldCls + " pl-7 text-right"}
                         />
                     </div>
-                    <p className="font-mono text-[9px] text-foreground/30 mt-1.5">
+                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1.5">
                         Usado para previsualizar fórmulas · cada empleado usa su propio salario
                     </p>
                 </div>
@@ -610,19 +610,19 @@ export default function PayrollCalculator() {
                         onToggle={() => toggleSection("nocturno")}
                     >
                         <div className="py-3 space-y-3">
-                            <p className="font-mono text-[9px] text-foreground/35 leading-relaxed">
+                            <p className="font-mono text-[9px] text-[var(--text-tertiary)] leading-relaxed">
                                 Art. 117 LOTTT — recargo del 30% sobre el salario diario
                                 por cada día trabajado en turno nocturno.
                             </p>
                             <div className="flex items-center justify-between">
-                                <span className="font-mono text-[10px] text-foreground/60 uppercase tracking-[0.14em]">Activar para esta nómina</span>
+                                <span className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-[0.14em]">Activar para esta nómina</span>
                                 <button
                                     onClick={() => setBonoNocturnoEnabled((v) => !v)}
                                     className={[
                                         "h-7 px-3 rounded-md border font-mono text-[9px] uppercase tracking-[0.12em] transition-colors duration-150",
                                         bonoNocturnoEnabled
                                             ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
-                                            : "border-border-light bg-surface-1 text-foreground/40 hover:border-border-medium",
+                                            : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
                                     ].join(" ")}
                                 >
                                     {bonoNocturnoEnabled ? "Activo" : "Inactivo"}
@@ -640,12 +640,12 @@ export default function PayrollCalculator() {
                                         onChange={(e) => setDiasNocturnosInput(e.target.value)}
                                         className={fieldCls + " text-right"}
                                     />
-                                    <p className="font-mono text-[9px] text-foreground/30 mt-1.5">
+                                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1.5">
                                         Vacío = todos los días normales ({quincenaInfo.weekdays}d)
                                     </p>
                                     <div className="mt-2 px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
                                         <div className="flex justify-between font-mono text-[10px]">
-                                            <span className="text-foreground/40">Recargo por empleado</span>
+                                            <span className="text-[var(--text-tertiary)]">Recargo por empleado</span>
                                             <span className="text-primary-500 tabular-nums">
                                                 +{(diasNocturnosQuincena * (parseFloat(monthlySalary) || 0) / 30 * 0.30)
                                                     .toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
@@ -665,7 +665,7 @@ export default function PayrollCalculator() {
                         onToggle={() => toggleSection("alicuotas")}
                     >
                         <div className="py-3 space-y-3">
-                            <p className="font-mono text-[9px] text-foreground/35 leading-relaxed">
+                            <p className="font-mono text-[9px] text-[var(--text-tertiary)] leading-relaxed">
                                 Base para prestaciones y algunas retenciones.<br />
                                 Salario integral = salario + alíc. util + alíc. bono vac.
                             </p>
@@ -710,7 +710,7 @@ export default function PayrollCalculator() {
                             <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] space-y-1.5">
                                 {/* Resultado */}
                                 <div className="flex justify-between items-baseline font-mono">
-                                    <span className="text-[9px] uppercase tracking-[0.16em] text-foreground/50">Sal. Integral</span>
+                                    <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-secondary)]">Sal. Integral</span>
                                     <span className="text-[13px] font-black tabular-nums text-foreground">
                                         {integralBase.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
                                     </span>
@@ -719,20 +719,20 @@ export default function PayrollCalculator() {
                                 {/* Fórmula */}
                                 <div className="space-y-0.5 font-mono text-[10px] tabular-nums">
                                     <div className="flex justify-between">
-                                        <span className="text-foreground/30">=</span>
-                                        <span className="text-foreground/60">{refSalary.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
+                                        <span className="text-[var(--text-tertiary)]">=</span>
+                                        <span className="text-[var(--text-secondary)]">{refSalary.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-foreground/30">+ util <span className="text-foreground/25">({diasUtilNum}d / 360)</span></span>
+                                        <span className="text-[var(--text-tertiary)]">+ util <span className="text-[var(--text-disabled)]">({diasUtilNum}d / 360)</span></span>
                                         <span className="text-amber-500">{alicuotaUtil.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-foreground/30">+ bono vac <span className="text-foreground/25">({diasBonoNum}d / 360)</span></span>
+                                        <span className="text-[var(--text-tertiary)]">+ bono vac <span className="text-[var(--text-disabled)]">({diasBonoNum}d / 360)</span></span>
                                         <span className="text-amber-500">{alicuotaBono.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
                                     </div>
                                 </div>
                             </div>
-                            <p className="font-mono text-[9px] text-foreground/25">
+                            <p className="font-mono text-[9px] text-[var(--text-disabled)]">
                                 En Deducciones usa la base <span className="text-amber-500">integral</span> para retenciones que apliquen sobre salario integral.
                             </p>
                         </div>
@@ -766,7 +766,7 @@ export default function PayrollCalculator() {
                         />
                         {/* Salario mínimo para tope SSO */}
                         <div className="mt-3 pt-3 border-t border-border-light space-y-2">
-                            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-foreground/35">Tope SSO (10 × salario mínimo)</p>
+                            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Tope SSO (10 × salario mínimo)</p>
                             <input
                                 type="number"
                                 step="0.01"
@@ -776,10 +776,10 @@ export default function PayrollCalculator() {
                                 className={fieldCls + " text-right"}
                             />
                             {salarioMinimo > 0 && (
-                                <p className="font-mono text-[9px] text-foreground/35">
+                                <p className="font-mono text-[9px] text-[var(--text-tertiary)]">
                                     Base SSO máx: <span className="text-red-400 tabular-nums">{(10 * salarioMinimo).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</span>
                                     {cappedWeeklyBase < weeklyBase && (
-                                        <span className="text-foreground/30"> · tope activo</span>
+                                        <span className="text-[var(--text-tertiary)]"> · tope activo</span>
                                     )}
                                 </p>
                             )}
@@ -823,7 +823,7 @@ export default function PayrollCalculator() {
                                 {quincenaInfo.label}
                             </p>
                             <div className="flex items-center gap-2">
-                                <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/35">
+                                <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">
                                     {employees.filter(e => e.estado === "activo").length} activos · {employees.length} total
                                 </span>
                             </div>
@@ -861,14 +861,14 @@ export default function PayrollCalculator() {
 
                         {/* BCV badge */}
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2">
-                            <span className="font-mono text-[9px] uppercase tracking-widest text-foreground/35">BCV</span>
+                            <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                             <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">
                                 {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                             </span>
                         </div>
 
                         {company && (
-                            <span className="font-mono text-[10px] text-foreground/35 uppercase tracking-widest">
+                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">
                                 {company.name}
                             </span>
                         )}
