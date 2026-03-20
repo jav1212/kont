@@ -23,12 +23,16 @@ const INPUT_CLS = [
 function validate(
     name: string, email: string, pass: string, confirm: string, terms: boolean
 ): string | null {
-    if (!name.trim())                 return "El nombre es requerido.";
-    if (!email.trim())                return "El correo es requerido.";
-    if (!/\S+@\S+\.\S+/.test(email)) return "El correo no es válido.";
-    if (pass.length < 6)             return "La contraseña debe tener al menos 6 caracteres.";
-    if (pass !== confirm)            return "Las contraseñas no coinciden.";
-    if (!terms)                      return "Debes aceptar los términos para continuar.";
+    if (!name.trim())                        return "El nombre es requerido.";
+    if (!email.trim())                       return "El correo es requerido.";
+    if (!/\S+@\S+\.\S+/.test(email))        return "El correo no es válido.";
+    if (!/[a-z]/.test(pass))                return "La contraseña debe contener al menos una letra minúscula.";
+    if (!/[A-Z]/.test(pass))                return "La contraseña debe contener al menos una letra mayúscula.";
+    if (!/[0-9]/.test(pass))                return "La contraseña debe contener al menos un número.";
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|<>?,./`~]/.test(pass))
+                                             return "La contraseña debe contener al menos un carácter especial.";
+    if (pass !== confirm)                    return "Las contraseñas no coinciden.";
+    if (!terms)                              return "Debes aceptar los términos para continuar.";
     return null;
 }
 
@@ -193,10 +197,20 @@ export default function SignUpPage() {
                                         disabled={loading}
                                     />
                                     <div className={[
-                                        "w-4 h-4 rounded border border-white/20 bg-white/[0.04]",
+                                        "w-4 h-4 rounded border border-foreground/30 bg-foreground/[0.08]",
                                         "peer-checked:bg-primary-500 peer-checked:border-primary-500",
                                         "transition-colors duration-150",
-                                    ].join(" ")} />
+                                        "flex items-center justify-center",
+                                    ].join(" ")}>
+                                        {terms && (
+                                            <svg
+                                                width="8" height="8" viewBox="0 0 8 8" fill="none"
+                                                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                            >
+                                                <path d="M1 4l2 2 4-4" />
+                                            </svg>
+                                        )}
+                                    </div>
                                 </div>
                                 <span className="font-mono text-[10px] text-foreground/30 leading-relaxed">
                                     Acepto los{" "}
