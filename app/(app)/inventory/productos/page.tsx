@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion } from "@/src/modules/inventory/backend/domain/producto";
+import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
+import {
+    productosToCsv,
+    parseProductosCsv,
+    downloadCsv,
+    type ProductoCsvResult,
+} from "@/src/modules/inventory/frontend/utils/inventory-csv";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +47,11 @@ const METODOS: { value: MetodoValuacion; label: string }[] = [
     { value: "peps",               label: "PEPS"               },
 ];
 
+const IVA_TIPOS: { value: IvaTipo; label: string }[] = [
+    { value: "general", label: "General (G - 16%)" },
+    { value: "exento",  label: "Exento (E)"         },
+];
+
 function empty(empresaId: string): Producto {
     return {
         empresaId,
@@ -54,6 +65,8 @@ function empty(empresaId: string): Producto {
         existenciaMinima: 0,
         costoPromedio:   0,
         activo:          true,
+        ivaTipo:         "general",
+        departamentoId:  undefined,
     };
 }
 
@@ -78,15 +91,22 @@ export default function ProductosPage() {
     const {
         productos, loadingProductos, error, setError,
         loadProductos, saveProducto, deleteProducto,
+        departamentos, loadingDepartamentos, loadDepartamentos,
     } = useInventory();
 
     const [form, setForm] = useState<Producto | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+    const [importResult, setImportResult] = useState<ProductoCsvResult | null>(null);
+    const [importing, setImporting] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) {
+            loadProductos(companyId);
+            loadDepartamentos(companyId);
+        }
+    }, [companyId, loadProductos, loadDepartamentos]);
 
     function openNew() {
         if (!companyId) return;
@@ -118,6 +138,33 @@ export default function ProductosPage() {
     const set = (k: keyof Producto, v: unknown) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
+    function handleExport() {
+        downloadCsv(productosToCsv(productos), "productos.csv");
+    }
+
+    function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const result = parseProductosCsv(ev.target?.result as string, departamentos);
+            setImportResult(result);
+        };
+        reader.readAsText(file, "utf-8");
+        e.target.value = "";
+    }
+
+    async function handleImport() {
+        if (!importResult || !companyId) return;
+        setImporting(true);
+        for (const p of importResult.productos) {
+            await saveProducto({ ...p, empresaId: companyId, existenciaActual: 0 });
+        }
+        setImporting(false);
+        setImportResult(null);
+        loadProductos(companyId);
+    }
+
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             {/* Header */}
@@ -131,12 +178,28 @@ export default function ProductosPage() {
                             Catálogo de productos
                         </p>
                     </div>
-                    <button
-                        onClick={openNew}
-                        className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                    >
-                        + Nuevo producto
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExport}
+                            disabled={productos.length === 0}
+                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                        >
+                            Exportar CSV
+                        </button>
+                        <button
+                            onClick={() => fileRef.current?.click()}
+                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                        >
+                            Importar CSV
+                        </button>
+                        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                        <button
+                            onClick={openNew}
+                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                        >
+                            + Nuevo producto
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -145,6 +208,42 @@ export default function ProductosPage() {
                 {error && (
                     <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
                         {error}
+                    </div>
+                )}
+
+                {/* Import preview */}
+                {importResult && (
+                    <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
+                            Vista previa de importación
+                        </p>
+                        {importResult.errors.length > 0 && (
+                            <ul className="space-y-1">
+                                {importResult.errors.map((e, i) => (
+                                    <li key={i} className="text-[11px] text-red-500">{e}</li>
+                                ))}
+                            </ul>
+                        )}
+                        {importResult.productos.length > 0 && (
+                            <p className="text-[11px] text-[var(--text-secondary)]">
+                                {importResult.productos.length} producto(s) listos para importar.
+                            </p>
+                        )}
+                        <div className="flex items-center gap-3 pt-1 border-t border-border-light">
+                            <button
+                                onClick={handleImport}
+                                disabled={importing || importResult.productos.length === 0}
+                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                {importing ? "Importando…" : `Importar ${importResult.productos.length}`}
+                            </button>
+                            <button
+                                onClick={() => setImportResult(null)}
+                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -188,6 +287,29 @@ export default function ProductosPage() {
                                 <label className={labelCls}>Método de valuación</label>
                                 <select className={fieldCls} value={form.metodoValuacion} onChange={(e) => set("metodoValuacion", e.target.value as MetodoValuacion)}>
                                     {METODOS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className={labelCls}>Departamento</label>
+                                <select
+                                    className={fieldCls}
+                                    value={form.departamentoId ?? ""}
+                                    onChange={(e) => set("departamentoId", e.target.value || undefined)}
+                                    disabled={loadingDepartamentos}
+                                >
+                                    <option value="">Sin departamento</option>
+                                    {departamentos.filter((d) => d.activo).map((d) => (
+                                        <option key={d.id} value={d.id}>{d.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>IVA</label>
+                                <select className={fieldCls} value={form.ivaTipo ?? "general"} onChange={(e) => set("ivaTipo", e.target.value as IvaTipo)}>
+                                    {IVA_TIPOS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -250,7 +372,7 @@ export default function ProductosPage() {
                         <table className="w-full text-[11px]">
                             <thead>
                                 <tr className="border-b border-border-light">
-                                    {["Código", "Nombre", "Tipo", "Unidad", "Costo Prom.", "Existencia", "Mínimo", "Estado", ""].map((h) => (
+                                    {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Costo Prom.", "Existencia", "Mínimo", "Estado", ""].map((h) => (
                                         <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
@@ -264,6 +386,12 @@ export default function ProductosPage() {
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.departamentoNombre || "—"}</td>
+                                            <td className="px-4 py-2.5">
+                                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium ${p.ivaTipo === "exento" ? "border badge-info" : "border badge-warning"}`}>
+                                                    {p.ivaTipo === "exento" ? "E" : "G 16%"}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-2.5"><TipoBadge tipo={p.tipo} /></td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.unidadMedida}</td>
                                             <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(p.costoPromedio)}</td>

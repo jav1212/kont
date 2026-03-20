@@ -6,6 +6,16 @@ import Link from "next/link";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { FacturaCompra, FacturaCompraItem } from "@/src/modules/inventory/backend/domain/factura-compra";
+import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
+
+// ── types ──────────────────────────────────────────────────────────────────────
+interface DevItem {
+    productoId: string;
+    nombre: string;
+    cantOrig: number;
+    costoUnit: number;
+    cantDev: number;
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,10 +40,6 @@ const fmtDate = (d: string) => {
     return d.split("T")[0];
 };
 
-function emptyItem(): FacturaCompraItem {
-    return { productoId: "", cantidad: 1, costoUnitario: 0, costoTotal: 0 };
-}
-
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function FacturaDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -45,12 +51,13 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
         proveedores, loadProveedores,
         currentFactura, loadingFactura, loadFactura,
         error, setError,
-        saveFactura, confirmarFactura,
+        saveFactura, confirmarFactura, saveMovimiento,
     } = useInventory();
 
     // Editable form state (only used when borrador)
     const [proveedorId, setProveedorId] = useState("");
     const [numeroFactura, setNumeroFactura] = useState("");
+    const [numeroControl, setNumeroControl] = useState("");
     const [fecha, setFecha] = useState("");
     const [ivaPorcentaje, setIvaPorcentaje] = useState(16);
     const [notas, setNotas] = useState("");
@@ -59,6 +66,14 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [justConfirmed, setJustConfirmed] = useState(false);
+
+    // ── Devolución de compra ───────────────────────────────────────────────────
+    const [showDevModal, setShowDevModal] = useState(false);
+    const [devItems, setDevItems] = useState<DevItem[]>([]);
+    const [devFecha, setDevFecha] = useState("");
+    const [devNotas, setDevNotas] = useState("");
+    const [savingDev, setSavingDev] = useState(false);
+    const [devSuccess, setDevSuccess] = useState(false);
 
     useEffect(() => {
         if (companyId) {
@@ -76,6 +91,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
         if (currentFactura && currentFactura.id === id) {
             setProveedorId(currentFactura.proveedorId);
             setNumeroFactura(currentFactura.numeroFactura);
+            setNumeroControl(currentFactura.numeroControl ?? '');
             setFecha(fmtDate(currentFactura.fecha));
             setIvaPorcentaje(currentFactura.ivaPorcentaje);
             setNotas(currentFactura.notas);
@@ -94,28 +110,12 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
     const ivaMonto = Math.round(subtotal * ivaPorcentaje / 100 * 100) / 100;
     const total = subtotal + ivaMonto;
 
-    function updateItem(idx: number, field: keyof FacturaCompraItem, val: unknown) {
-        setItems((prev) => {
-            const next = [...prev];
-            const item = { ...next[idx], [field]: val };
-            if (field === "cantidad" || field === "costoUnitario") {
-                item.costoTotal = Math.round(
-                    Number(item.cantidad) * Number(item.costoUnitario) * 100
-                ) / 100;
-            }
-            next[idx] = item as FacturaCompraItem;
-            return next;
-        });
-    }
-
-    function addItem() { setItems((prev) => [...prev, emptyItem()]); }
-    function removeItem(idx: number) { setItems((prev) => prev.filter((_, i) => i !== idx)); }
-
     const buildFactura = useCallback((): FacturaCompra => ({
         id,
         empresaId:     currentFactura?.empresaId ?? companyId!,
         proveedorId,
         numeroFactura,
+        numeroControl,
         fecha,
         periodo:       fecha.slice(0, 7),
         estado:        "borrador",
@@ -124,7 +124,52 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
         ivaMonto,
         total,
         notas,
-    }), [id, currentFactura, companyId, proveedorId, numeroFactura, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
+    }), [id, currentFactura, companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
+
+    function openDevModal() {
+        const today = new Date().toISOString().split("T")[0];
+        setDevFecha(today);
+        setDevNotas("");
+        setDevSuccess(false);
+        setDevItems(
+            (factura.items ?? []).map((item) => ({
+                productoId:  item.productoId,
+                nombre:      item.productoNombre ?? item.productoId,
+                cantOrig:    item.cantidad,
+                costoUnit:   item.costoUnitario,
+                cantDev:     0,
+            }))
+        );
+        setShowDevModal(true);
+    }
+
+    async function handleDevolucion() {
+        const toReturn = devItems.filter((i) => i.cantDev > 0);
+        if (toReturn.length === 0) { setError("Ingresa al menos una cantidad a devolver"); return; }
+        setSavingDev(true);
+        setError(null);
+        let allOk = true;
+        for (const item of toReturn) {
+            const producto = productos.find((p) => p.id === item.productoId);
+            const ok = await saveMovimiento({
+                empresaId:        factura.empresaId,
+                productoId:       item.productoId,
+                tipo:             "devolucion_compra",
+                fecha:            devFecha,
+                periodo:          devFecha.slice(0, 7),
+                cantidad:         item.cantDev,
+                costoUnitario:    item.costoUnit,
+                costoTotal:       item.cantDev * item.costoUnit,
+                saldoCantidad:    0,
+                referencia:       `DEV-${factura.numeroFactura}`,
+                notas:            devNotas,
+                existenciaActual: producto?.existenciaActual,
+            });
+            if (!ok) { allOk = false; break; }
+        }
+        setSavingDev(false);
+        if (allOk) { setDevSuccess(true); setShowDevModal(false); }
+    }
 
     function validate(): boolean {
         if (!proveedorId) { setError("Selecciona un proveedor"); return false; }
@@ -210,6 +255,113 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                 </div>
             </div>
 
+            {/* Devolución de Compra Modal */}
+            {showDevModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-surface-1 border border-border-light rounded-xl shadow-xl w-full max-w-lg mx-4">
+                        <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.16em] text-foreground">
+                                Registrar Devolución de Compra
+                            </h2>
+                            <button
+                                onClick={() => setShowDevModal(false)}
+                                className="text-[var(--text-tertiary)] hover:text-foreground text-[11px] uppercase tracking-[0.12em]"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                            <p className="text-[10px] text-[var(--text-tertiary)]">
+                                Referencia: DEV-{factura.numeroFactura} — solo facturas confirmadas
+                            </p>
+
+                            {/* Items */}
+                            <div className="space-y-2">
+                                {devItems.map((item, idx) => (
+                                    <div key={item.productoId} className="flex items-center gap-3 py-2 border-b border-border-light/50">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] text-foreground truncate">{item.nombre}</p>
+                                            <p className="text-[9px] text-[var(--text-tertiary)]">
+                                                Comprado: {item.cantOrig} × {fmtN(item.costoUnit)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <label className={labelCls + " mb-0"}>Cant.</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={item.cantOrig}
+                                                step="0.001"
+                                                className="w-20 h-8 px-2 rounded-lg border border-border-light bg-surface-2 text-[12px] text-foreground outline-none focus:border-primary-500/60 text-right tabular-nums"
+                                                value={item.cantDev === 0 ? "" : item.cantDev}
+                                                placeholder="0"
+                                                onChange={(e) => {
+                                                    const v = parseFloat(e.target.value) || 0;
+                                                    setDevItems((prev) =>
+                                                        prev.map((it, i) => i === idx ? { ...it, cantDev: Math.min(v, it.cantOrig) } : it)
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Totals preview */}
+                            {devItems.some((i) => i.cantDev > 0) && (
+                                <div className="pt-2 text-[10px] text-[var(--text-tertiary)]">
+                                    Total a devolver:{" "}
+                                    <span className="tabular-nums font-bold text-red-500">
+                                        {fmtN(devItems.reduce((acc, i) => acc + i.cantDev * i.costoUnit, 0))} Bs.
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Fecha */}
+                            <div>
+                                <label className={labelCls}>Fecha de devolución</label>
+                                <input
+                                    type="date"
+                                    className={fieldCls}
+                                    value={devFecha}
+                                    onChange={(e) => setDevFecha(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Notas */}
+                            <div>
+                                <label className={labelCls}>Notas</label>
+                                <textarea
+                                    className={`${fieldCls} h-auto py-2`}
+                                    rows={2}
+                                    value={devNotas}
+                                    onChange={(e) => setDevNotas(e.target.value)}
+                                    placeholder="Motivo de la devolución…"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => setShowDevModal(false)}
+                                disabled={savingDev}
+                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDevolucion}
+                                disabled={savingDev || !devFecha || devItems.every((i) => i.cantDev === 0)}
+                                className="h-8 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                {savingDev ? "Registrando…" : "Confirmar devolución"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="px-8 py-6">
                 {error && (
                     <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
@@ -263,6 +415,16 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
+                                    <label className={labelCls}>Nº Control</label>
+                                    {isBorrador ? (
+                                        <input className={fieldCls} value={numeroControl} onChange={(e) => setNumeroControl(e.target.value)} placeholder="Ej. 00-00123456" />
+                                    ) : (
+                                        <div className={readonlyCls + " flex items-center"}>
+                                            {factura.numeroControl || "—"}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
                                     <label className={labelCls}>Fecha</label>
                                     {isBorrador ? (
                                         <input type="date" className={fieldCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
@@ -272,6 +434,9 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className={labelCls}>IVA %</label>
                                     {isBorrador ? (
@@ -298,79 +463,18 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
 
                         {/* Items */}
                         <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                            <div className="flex items-center justify-between mb-5">
+                            <div className="mb-5">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
                                     Productos
                                 </h2>
-                                {isBorrador && (
-                                    <button
-                                        onClick={addItem}
-                                        className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-secondary)] hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
-                                    >
-                                        + Agregar fila
-                                    </button>
-                                )}
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-[11px]">
-                                    <thead>
-                                        <tr className="border-b border-border-light">
-                                            {["Producto", "Cantidad", "Costo Unit.", "Costo Total", ...(isBorrador ? [""] : [])].map((h) => (
-                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
-                                                    {h}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, idx) => (
-                                            <tr key={idx} className="border-b border-border-light/40">
-                                                <td className="px-2 py-2 w-1/3">
-                                                    {isBorrador ? (
-                                                        <select className={fieldCls} value={item.productoId} onChange={(e) => updateItem(idx, "productoId", e.target.value)}>
-                                                            <option value="">Seleccionar…</option>
-                                                            {productos.filter((p) => p.activo).map((p) => (
-                                                                <option key={p.id} value={p.id}>{p.nombre}</option>
-                                                            ))}
-                                                        </select>
-                                                    ) : (
-                                                        <span className="text-foreground">{item.productoNombre ?? item.productoId}</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2 w-24">
-                                                    {isBorrador ? (
-                                                        <input type="number" min="0.0001" step="0.0001" className={fieldCls} value={item.cantidad} onChange={(e) => updateItem(idx, "cantidad", parseFloat(e.target.value) || 0)} />
-                                                    ) : (
-                                                        <span className="tabular-nums text-[var(--text-primary)]">{item.cantidad}</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-2 py-2 w-28">
-                                                    {isBorrador ? (
-                                                        <input type="number" min="0" step="0.0001" className={fieldCls} value={item.costoUnitario} onChange={(e) => updateItem(idx, "costoUnitario", parseFloat(e.target.value) || 0)} />
-                                                    ) : (
-                                                        <span className="tabular-nums text-[var(--text-primary)]">{fmtN(item.costoUnitario)}</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-3 py-2 tabular-nums text-[var(--text-primary)] text-right">
-                                                    {fmtN(item.costoTotal)}
-                                                </td>
-                                                {isBorrador && (
-                                                    <td className="px-2 py-2 text-center">
-                                                        <button
-                                                            onClick={() => removeItem(idx)}
-                                                            disabled={items.length === 1}
-                                                            className="text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <FacturaItemsGrid
+                                items={items}
+                                productos={productos}
+                                onChange={setItems}
+                                readOnly={!isBorrador}
+                            />
 
                             {/* Totals */}
                             <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
@@ -423,6 +527,18 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                 >
                                     Ver movimientos →
                                 </Link>
+                                <button
+                                    onClick={openDevModal}
+                                    className="h-8 px-4 rounded-lg border border-red-500/30 bg-red-500/[0.06] hover:bg-red-500/[0.12] text-red-500 text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                >
+                                    Registrar devolución
+                                </button>
+                            </div>
+                        )}
+
+                        {devSuccess && (
+                            <div className="px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[11px]">
+                                Devolución registrada — movimientos de devolución_compra creados.
                             </div>
                         )}
                     </div>
@@ -439,6 +555,10 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                     <span className="text-foreground font-medium truncate ml-4 text-right">
                                         {factura.proveedorNombre ?? "—"}
                                     </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Nº Control</span>
+                                    <span className="text-foreground tabular-nums">{factura.numeroControl || "—"}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Fecha</span>

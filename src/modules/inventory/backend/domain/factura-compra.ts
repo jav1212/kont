@@ -16,6 +16,7 @@ export interface FacturaCompra {
   proveedorId: string;
   proveedorNombre?: string;
   numeroFactura: string;
+  numeroControl?: string;
   fecha: string;       // YYYY-MM-DD
   periodo: string;     // YYYY-MM
   estado: EstadoFactura;

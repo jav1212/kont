@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { FacturaCompra, FacturaCompraItem } from "@/src/modules/inventory/backend/domain/factura-compra";
+import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,10 +22,6 @@ const fmtN = (n: number) =>
 
 const todayStr = () => new Date().toISOString().split("T")[0];
 
-function emptyItem(): FacturaCompraItem {
-    return { productoId: "", cantidad: 1, costoUnitario: 0, costoTotal: 0 };
-}
-
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function NuevaFacturaPage() {
@@ -40,6 +37,7 @@ export default function NuevaFacturaPage() {
     // Form state
     const [proveedorId, setProveedorId] = useState("");
     const [numeroFactura, setNumeroFactura] = useState("");
+    const [numeroControl, setNumeroControl] = useState("");
     const [fecha, setFecha] = useState(todayStr());
     const [ivaPorcentaje, setIvaPorcentaje] = useState(16);
     const [notas, setNotas] = useState("");
@@ -62,32 +60,11 @@ export default function NuevaFacturaPage() {
     const ivaMonto = Math.round(subtotal * ivaPorcentaje / 100 * 100) / 100;
     const total = subtotal + ivaMonto;
 
-    function updateItem(idx: number, field: keyof FacturaCompraItem, val: unknown) {
-        setItems((prev) => {
-            const next = [...prev];
-            const item = { ...next[idx], [field]: val };
-            if (field === "cantidad" || field === "costoUnitario") {
-                item.costoTotal = Math.round(
-                    Number(item.cantidad) * Number(item.costoUnitario) * 100
-                ) / 100;
-            }
-            next[idx] = item as FacturaCompraItem;
-            return next;
-        });
-    }
-
-    function addItem() {
-        setItems((prev) => [...prev, emptyItem()]);
-    }
-
-    function removeItem(idx: number) {
-        setItems((prev) => prev.filter((_, i) => i !== idx));
-    }
-
     const buildFactura = useCallback((): FacturaCompra => ({
         empresaId:     companyId!,
         proveedorId,
         numeroFactura,
+        numeroControl,
         fecha,
         periodo:       fecha.slice(0, 7),
         estado:        "borrador",
@@ -96,7 +73,7 @@ export default function NuevaFacturaPage() {
         ivaMonto,
         total,
         notas,
-    }), [companyId, proveedorId, numeroFactura, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
+    }), [companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
 
     function validate(): boolean {
         if (!proveedorId) { setError("Selecciona un proveedor"); return false; }
@@ -240,6 +217,15 @@ export default function NuevaFacturaPage() {
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
+                                    <label className={labelCls}>Nº Control</label>
+                                    <input
+                                        className={fieldCls}
+                                        value={numeroControl}
+                                        onChange={(e) => setNumeroControl(e.target.value)}
+                                        placeholder="Ej. 00-00123456"
+                                    />
+                                </div>
+                                <div>
                                     <label className={labelCls}>Fecha</label>
                                     <input
                                         type="date"
@@ -248,6 +234,9 @@ export default function NuevaFacturaPage() {
                                         onChange={(e) => setFecha(e.target.value)}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label className={labelCls}>IVA %</label>
                                     <input
@@ -275,81 +264,17 @@ export default function NuevaFacturaPage() {
 
                         {/* Productos */}
                         <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                            <div className="flex items-center justify-between mb-5">
+                            <div className="mb-5">
                                 <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
                                     Productos
                                 </h2>
-                                <button
-                                    onClick={addItem}
-                                    className="h-7 px-3 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-secondary)] hover:text-foreground text-[10px] uppercase tracking-[0.12em] transition-colors"
-                                >
-                                    + Agregar fila
-                                </button>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-[11px]">
-                                    <thead>
-                                        <tr className="border-b border-border-light">
-                                            {["Producto", "Cantidad", "Costo Unit.", "Costo Total", ""].map((h) => (
-                                                <th key={h} className="px-3 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
-                                                    {h}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, idx) => (
-                                            <tr key={idx} className="border-b border-border-light/40">
-                                                <td className="px-2 py-2 w-1/3">
-                                                    <select
-                                                        className={fieldCls}
-                                                        value={item.productoId}
-                                                        onChange={(e) => updateItem(idx, "productoId", e.target.value)}
-                                                    >
-                                                        <option value="">Seleccionar…</option>
-                                                        {productos.filter((p) => p.activo).map((p) => (
-                                                            <option key={p.id} value={p.id}>{p.nombre}</option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="px-2 py-2 w-24">
-                                                    <input
-                                                        type="number"
-                                                        min="0.0001"
-                                                        step="0.0001"
-                                                        className={fieldCls}
-                                                        value={item.cantidad}
-                                                        onChange={(e) => updateItem(idx, "cantidad", parseFloat(e.target.value) || 0)}
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-2 w-28">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.0001"
-                                                        className={fieldCls}
-                                                        value={item.costoUnitario}
-                                                        onChange={(e) => updateItem(idx, "costoUnitario", parseFloat(e.target.value) || 0)}
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-2 tabular-nums text-[var(--text-primary)] text-right">
-                                                    {fmtN(item.costoTotal)}
-                                                </td>
-                                                <td className="px-2 py-2 text-center">
-                                                    <button
-                                                        onClick={() => removeItem(idx)}
-                                                        disabled={items.length === 1}
-                                                        className="text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-20 disabled:cursor-not-allowed text-[14px] leading-none transition-colors"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <FacturaItemsGrid
+                                items={items}
+                                productos={productos}
+                                onChange={setItems}
+                            />
 
                             {/* Totals row */}
                             <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">

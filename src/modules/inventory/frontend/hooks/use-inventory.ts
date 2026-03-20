@@ -6,8 +6,13 @@ import type { Movimiento, KardexEntry } from '../../backend/domain/movimiento';
 import type { Transformacion, Cierre } from '../../backend/domain/transformacion';
 import type { Proveedor } from '../../backend/domain/proveedor';
 import type { FacturaCompra, FacturaCompraItem } from '../../backend/domain/factura-compra';
+import type { Departamento } from '../../backend/domain/departamento';
+import type { ReportePeriodoRow } from '../../backend/domain/reporte-periodo';
+import type { LibroComprasRow } from '../../backend/domain/libro-compras';
+import type { ReporteISLRProducto } from '../../backend/domain/reporte-islr';
+import type { LibroVentasRow } from '../../backend/domain/libro-ventas';
 
-export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem };
+export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, LibroVentasRow };
 
 export function useInventory() {
     const [productos, setProductos]             = useState<Producto[]>([]);
@@ -18,6 +23,11 @@ export function useInventory() {
     const [proveedores, setProveedores]         = useState<Proveedor[]>([]);
     const [facturas, setFacturas]               = useState<FacturaCompra[]>([]);
     const [currentFactura, setCurrentFactura]   = useState<FacturaCompra | null>(null);
+    const [departamentos, setDepartamentos]     = useState<Departamento[]>([]);
+    const [reportePeriodo, setReportePeriodo]   = useState<ReportePeriodoRow[]>([]);
+    const [libroCompras, setLibroCompras]       = useState<LibroComprasRow[]>([]);
+    const [reporteISLR, setReporteISLR]         = useState<ReporteISLRProducto[]>([]);
+    const [libroVentas, setLibroVentas]         = useState<LibroVentasRow[]>([]);
 
     const [loadingProductos, setLoadingProductos]         = useState(false);
     const [loadingMovimientos, setLoadingMovimientos]     = useState(false);
@@ -27,6 +37,11 @@ export function useInventory() {
     const [loadingProveedores, setLoadingProveedores]     = useState(false);
     const [loadingFacturas, setLoadingFacturas]           = useState(false);
     const [loadingFactura, setLoadingFactura]             = useState(false);
+    const [loadingDepartamentos, setLoadingDepartamentos] = useState(false);
+    const [loadingReporte, setLoadingReporte]             = useState(false);
+    const [loadingLibroCompras, setLoadingLibroCompras]   = useState(false);
+    const [loadingReporteISLR, setLoadingReporteISLR]     = useState(false);
+    const [loadingLibroVentas, setLoadingLibroVentas]     = useState(false);
 
     const [error, setError] = useState<string | null>(null);
 
@@ -357,14 +372,179 @@ export function useInventory() {
         }
     }, []);
 
+    // ── Departamentos ─────────────────────────────────────────────────────────
+
+    const loadDepartamentos = useCallback(async (empresaId: string) => {
+        setLoadingDepartamentos(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/inventory/departamentos?empresaId=${encodeURIComponent(empresaId)}`);
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar departamentos'); return; }
+            setDepartamentos(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingDepartamentos(false);
+        }
+    }, []);
+
+    const saveDepartamento = useCallback(async (departamento: Departamento): Promise<Departamento | null> => {
+        setError(null);
+        try {
+            const res = await fetch('/api/inventory/departamentos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(departamento),
+            });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al guardar departamento'); return null; }
+            const saved: Departamento = json.data;
+            setDepartamentos((prev) => {
+                const idx = prev.findIndex((d) => d.id === saved.id);
+                return idx >= 0
+                    ? prev.map((d) => (d.id === saved.id ? saved : d))
+                    : [...prev, saved];
+            });
+            return saved;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return null;
+        }
+    }, []);
+
+    const deleteDepartamento = useCallback(async (id: string): Promise<boolean> => {
+        setError(null);
+        try {
+            const res = await fetch(`/api/inventory/departamentos/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al eliminar departamento'); return false; }
+            setDepartamentos((prev) => prev.filter((d) => d.id !== id));
+            return true;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return false;
+        }
+    }, []);
+
+    // ── Libro de Compras ──────────────────────────────────────────────────────
+
+    const loadLibroCompras = useCallback(async (empresaId: string, periodo: string) => {
+        setLoadingLibroCompras(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/libro-compras?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de compras'); return; }
+            setLibroCompras(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingLibroCompras(false);
+        }
+    }, []);
+
+    // ── Reporte ISLR Art. 177 ─────────────────────────────────────────────────
+
+    const loadReporteISLR = useCallback(async (empresaId: string, periodo: string) => {
+        setLoadingReporteISLR(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/reporte-islr?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte ISLR'); return; }
+            setReporteISLR(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingReporteISLR(false);
+        }
+    }, []);
+
+    // ── Libro de Ventas ───────────────────────────────────────────────────────
+
+    const loadLibroVentas = useCallback(async (empresaId: string, periodo: string) => {
+        setLoadingLibroVentas(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/libro-ventas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de ventas'); return; }
+            setLibroVentas(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingLibroVentas(false);
+        }
+    }, []);
+
+    const saveVenta = useCallback(async (payload: {
+        empresaId: string;
+        numeroFactura: string;
+        clienteRif: string;
+        clienteNombre: string;
+        fecha: string;
+        items: { productoId: string; cantidad: number; precioVentaUnitario: number; ivaTipo: 'general' | 'exento'; existenciaActual?: number }[];
+    }): Promise<boolean> => {
+        setError(null);
+        try {
+            const res = await fetch('/api/inventory/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al registrar venta'); return false; }
+            const saved = json.data as import('../../backend/domain/movimiento').Movimiento[];
+            // Update product existencias
+            setProductos((prev) =>
+                prev.map((p) => {
+                    const lastMov = saved.filter((m) => m.productoId === p.id).at(-1);
+                    return lastMov ? { ...p, existenciaActual: lastMov.saldoCantidad } : p;
+                })
+            );
+            return true;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return false;
+        }
+    }, []);
+
+    // ── Reporte de Período ────────────────────────────────────────────────────
+
+    const loadReportePeriodo = useCallback(async (empresaId: string, periodo: string) => {
+        setLoadingReporte(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/reporte?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte'); return; }
+            setReportePeriodo(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingReporte(false);
+        }
+    }, []);
+
     return {
         // state
         productos, movimientos, kardex, transformaciones, cierres,
         proveedores, facturas, currentFactura,
+        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas,
         // loading
         loadingProductos, loadingMovimientos, loadingKardex,
         loadingTransformaciones, loadingCierres,
         loadingProveedores, loadingFacturas, loadingFactura,
+        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas,
         // error
         error, setError,
         // actions
@@ -375,5 +555,10 @@ export function useInventory() {
         loadCierres, saveCierre,
         loadProveedores, saveProveedor, deleteProveedor,
         loadFacturas, loadFactura, saveFactura, confirmarFactura,
+        loadDepartamentos, saveDepartamento, deleteDepartamento,
+        loadReportePeriodo,
+        loadLibroCompras,
+        loadReporteISLR,
+        loadLibroVentas, saveVenta,
     };
 }

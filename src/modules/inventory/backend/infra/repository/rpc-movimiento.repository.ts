@@ -30,19 +30,24 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
     async save(movimiento: Movimiento): Promise<Result<Movimiento>> {
         try {
             const row = {
-                id:               movimiento.id ?? '',
-                empresa_id:       movimiento.empresaId,
-                producto_id:      movimiento.productoId,
-                tipo:             movimiento.tipo,
-                fecha:            movimiento.fecha,
-                periodo:          movimiento.periodo,
-                cantidad:         movimiento.cantidad,
-                costo_unitario:   movimiento.costoUnitario,
-                costo_total:      movimiento.costoTotal,
-                saldo_cantidad:   movimiento.saldoCantidad,
-                referencia:       movimiento.referencia,
-                notas:            movimiento.notas,
-                transformacion_id: movimiento.transformacionId ?? null,
+                id:                    movimiento.id ?? '',
+                empresa_id:            movimiento.empresaId,
+                producto_id:           movimiento.productoId,
+                tipo:                  movimiento.tipo,
+                fecha:                 movimiento.fecha,
+                periodo:               movimiento.periodo,
+                cantidad:              movimiento.cantidad,
+                costo_unitario:        movimiento.costoUnitario,
+                costo_total:           movimiento.costoTotal,
+                saldo_cantidad:        movimiento.saldoCantidad,
+                referencia:            movimiento.referencia,
+                notas:                 movimiento.notas,
+                transformacion_id:     movimiento.transformacionId ?? null,
+                numero_factura_venta:  movimiento.numeroFacturaVenta ?? null,
+                cliente_rif:           movimiento.clienteRif ?? null,
+                cliente_nombre:        movimiento.clienteNombre ?? null,
+                precio_venta_unitario: movimiento.precioVentaUnitario ?? null,
+                iva_venta_monto:       movimiento.ivaVentaMonto ?? null,
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_movimientos_save', {
@@ -83,10 +88,15 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
             costoUnitario:    Number(data.costo_unitario ?? 0),
             costoTotal:       Number(data.costo_total ?? 0),
             saldoCantidad:    Number(data.saldo_cantidad ?? 0),
-            referencia:       data.referencia ?? '',
-            notas:            data.notas ?? '',
-            transformacionId: data.transformacion_id ?? null,
-            createdAt:        data.created_at,
+            referencia:           data.referencia ?? '',
+            notas:                data.notas ?? '',
+            transformacionId:     data.transformacion_id ?? null,
+            numeroFacturaVenta:   data.numero_factura_venta ?? null,
+            clienteRif:           data.cliente_rif ?? null,
+            clienteNombre:        data.cliente_nombre ?? null,
+            precioVentaUnitario:  data.precio_venta_unitario != null ? Number(data.precio_venta_unitario) : null,
+            ivaVentaMonto:        data.iva_venta_monto != null ? Number(data.iva_venta_monto) : null,
+            createdAt:            data.created_at,
         };
     }
 }

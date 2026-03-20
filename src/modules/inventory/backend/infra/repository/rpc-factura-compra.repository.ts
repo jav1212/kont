@@ -42,13 +42,14 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
     async save(factura: FacturaCompra, items: FacturaCompraItem[]): Promise<Result<FacturaCompra>> {
         try {
             const facturaRow = {
-                id:             factura.id ?? '',
-                empresa_id:     factura.empresaId,
-                proveedor_id:   factura.proveedorId,
-                numero_factura: factura.numeroFactura,
-                fecha:          factura.fecha,
-                iva_porcentaje: factura.ivaPorcentaje,
-                notas:          factura.notas,
+                id:              factura.id ?? '',
+                empresa_id:      factura.empresaId,
+                proveedor_id:    factura.proveedorId,
+                numero_factura:  factura.numeroFactura,
+                numero_control:  factura.numeroControl ?? '',
+                fecha:           factura.fecha,
+                iva_porcentaje:  factura.ivaPorcentaje,
+                notas:           factura.notas,
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productoId,
@@ -102,6 +103,7 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
             proveedorId:     data.proveedor_id,
             proveedorNombre: data.proveedor_nombre,
             numeroFactura:   data.numero_factura ?? '',
+            numeroControl:   data.numero_control ?? '',
             fecha:           data.fecha,
             periodo:         data.periodo,
             estado:          (data.estado ?? 'borrador') as EstadoFactura,

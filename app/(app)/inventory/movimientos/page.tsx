@@ -50,17 +50,20 @@ const TIPO_GROUPS = [
     },
 ];
 
+// autoconsumo is excluded from the main form and has its own dedicated section
+
 function tipoBadgeClass(tipo: TipoMovimiento): string {
     if (["entrada_compra","entrada_produccion","devolucion_venta"].includes(tipo))
         return "border badge-success";
     if (["salida_venta","salida_produccion","devolucion_compra"].includes(tipo))
         return "border badge-error";
+    if (tipo === "autoconsumo") return "border border-amber-500/40 text-amber-500 bg-amber-500/[0.06]";
     if (tipo === "ajuste_positivo") return "border badge-warning";
     return "border badge-warning";
 }
 
 function tipoLabel(tipo: TipoMovimiento) {
-    const all = TIPO_GROUPS.flatMap((g) => g.items);
+    const all = [...TIPO_GROUPS.flatMap((g) => g.items), { value: "autoconsumo", label: "Autoconsumo" }];
     return all.find((i) => i.value === tipo)?.label ?? tipo;
 }
 
@@ -70,13 +73,14 @@ export default function MovimientosPage() {
     const { companyId } = useCompany();
     const {
         productos, movimientos,
-        loadingProductos, loadingMovimientos, saving: _s, error, setError,
+        loadingProductos, loadingMovimientos, error, setError,
         loadProductos, loadMovimientos, saveMovimiento,
-    } = useInventory() as ReturnType<typeof useInventory> & { saving?: boolean };
+    } = useInventory();
 
     const [periodo, setPeriodo] = useState(currentPeriod());
     const [saving, setSaving] = useState(false);
 
+    // ── main form state ──────────────────────────────────────────────────────
     const emptyForm = (): Omit<Movimiento, "saldoCantidad" | "costoTotal" | "periodo"> & { saldoCantidad: number; costoTotal: number; periodo: string } => ({
         empresaId:    companyId ?? "",
         productoId:   "",
@@ -93,13 +97,28 @@ export default function MovimientosPage() {
 
     const [form, setForm] = useState(emptyForm());
 
+    // ── autoconsumo form state ───────────────────────────────────────────────
+    const emptyAcForm = () => ({ productoId: "", cantidad: 0, fecha: isoToday(), notas: "" });
+    const [acForm, setAcForm] = useState(emptyAcForm());
+    const [acStep, setAcStep] = useState<"form" | "confirm">("form");
+    const [acSaving, setAcSaving] = useState(false);
+
+    const acProducto = useMemo(
+        () => productos.find((p) => p.id === acForm.productoId),
+        [acForm.productoId, productos],
+    );
+    const acCostoTotal = acProducto ? acForm.cantidad * acProducto.costoPromedio : 0;
+    const acIva        = acProducto?.ivaTipo === "general" ? acCostoTotal * 0.16 : 0;
+    const acStockOk    = !acProducto || acForm.cantidad <= acProducto.existenciaActual;
+
+    // ── effects ──────────────────────────────────────────────────────────────
     useEffect(() => {
         if (!companyId) return;
         loadProductos(companyId);
         loadMovimientos(companyId, periodo);
     }, [companyId, loadProductos, loadMovimientos, periodo]);
 
-    // Pre-fill costo unitario when producto changes
+    // Pre-fill costo unitario when producto changes (main form)
     useEffect(() => {
         if (!form.productoId) return;
         const p = productos.find((x) => x.id === form.productoId);
@@ -110,6 +129,7 @@ export default function MovimientosPage() {
         form.cantidad * form.costoUnitario,
     [form.cantidad, form.costoUnitario]);
 
+    // ── main form handlers ───────────────────────────────────────────────────
     function setF<K extends keyof typeof form>(k: K, v: typeof form[K]) {
         setForm((f) => ({ ...f, [k]: v }));
     }
@@ -118,18 +138,64 @@ export default function MovimientosPage() {
         if (!form.productoId) { setError("Selecciona un producto"); return; }
         if (!form.cantidad || form.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return; }
         setSaving(true);
+        const producto = productos.find((p) => p.id === form.productoId);
         const mov: Movimiento = {
             ...form,
             empresaId:    companyId!,
             costoTotal,
-            saldoCantidad: 0, // server calculates
+            saldoCantidad: 0,
             periodo:      form.fecha.slice(0, 7),
+            existenciaActual: producto?.existenciaActual,
         };
         const saved = await saveMovimiento(mov);
         setSaving(false);
         if (saved) {
             setForm(emptyForm());
             loadMovimientos(companyId!, periodo);
+        }
+    }
+
+    // ── autoconsumo handlers ─────────────────────────────────────────────────
+    function setAc<K extends keyof typeof acForm>(k: K, v: typeof acForm[K]) {
+        setAcForm((f) => ({ ...f, [k]: v }));
+    }
+
+    function handleAcPreview() {
+        if (!acForm.productoId) { setError("Selecciona un producto para el autoconsumo"); return; }
+        if (!acForm.cantidad || acForm.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return; }
+        if (!acStockOk) {
+            setError(`Stock insuficiente. Existencia actual: ${fmtN(acProducto!.existenciaActual)}`);
+            return;
+        }
+        setError(null);
+        setAcStep("confirm");
+    }
+
+    async function handleAcConfirm() {
+        if (!acProducto) return;
+        setAcSaving(true);
+        const mov: Movimiento = {
+            empresaId:        companyId!,
+            productoId:       acForm.productoId,
+            tipo:             "autoconsumo",
+            fecha:            acForm.fecha,
+            periodo:          acForm.fecha.slice(0, 7),
+            cantidad:         acForm.cantidad,
+            costoUnitario:    acProducto.costoPromedio,
+            costoTotal:       acCostoTotal,
+            saldoCantidad:    0,
+            referencia:       "",
+            notas:            acForm.notas,
+            ivaVentaMonto:    acProducto.ivaTipo === "general" ? Math.round(acCostoTotal * 0.16 * 100) / 100 : null,
+            existenciaActual: acProducto.existenciaActual,
+        };
+        const saved = await saveMovimiento(mov);
+        setAcSaving(false);
+        if (saved) {
+            setAcForm(emptyAcForm());
+            setAcStep("form");
+            loadMovimientos(companyId!, periodo);
+            loadProductos(companyId!);
         }
     }
 
@@ -146,18 +212,21 @@ export default function MovimientosPage() {
             </div>
 
             <div className="px-8 py-6 grid grid-cols-5 gap-6">
-                {/* Left: form */}
+                {/* Left: forms */}
                 <div className="col-span-2 space-y-4">
+
+                    {/* ── Error banner ─────────────────────────────────────── */}
+                    {error && (
+                        <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* ── Main movement form ───────────────────────────────── */}
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5">
                         <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground mb-4">
                             Nuevo movimiento
                         </h2>
-
-                        {error && (
-                            <div className="mb-4 px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
-                                {error}
-                            </div>
-                        )}
 
                         <div className="space-y-3">
                             <div>
@@ -256,6 +325,201 @@ export default function MovimientosPage() {
                                 {saving ? "Registrando…" : "Registrar movimiento"}
                             </button>
                         </div>
+                    </div>
+
+                    {/* ── Autoconsumo section ──────────────────────────────── */}
+                    <div className="rounded-xl border border-amber-500/30 bg-surface-1 p-5">
+                        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500 mb-0.5">
+                            Autoconsumo
+                        </h2>
+                        <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-[0.14em] mb-4">
+                            Retiro de bienes — hecho imponible IVA
+                        </p>
+
+                        {/* Warning */}
+                        <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.05]">
+                            <span className="text-amber-500 text-[13px] leading-none mt-0.5">⚠</span>
+                            <p className="text-[10px] text-amber-500/90 leading-relaxed">
+                                Esta operación genera un <strong>débito fiscal de IVA</strong> que debe
+                                declararse ante el SENIAT.
+                            </p>
+                        </div>
+
+                        {acStep === "form" ? (
+                            <div className="space-y-3">
+                                <div>
+                                    <label className={labelCls}>Producto *</label>
+                                    <select
+                                        className={fieldCls}
+                                        value={acForm.productoId}
+                                        onChange={(e) => setAc("productoId", e.target.value)}
+                                    >
+                                        <option value="">Seleccionar…</option>
+                                        {productos.filter((p) => p.activo).map((p) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.codigo ? `[${p.codigo}] ` : ""}{p.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Product info */}
+                                {acProducto && (
+                                    <div className="grid grid-cols-2 gap-2 px-3 py-2.5 rounded-lg bg-surface-2 border border-border-light">
+                                        <div>
+                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Costo promedio</p>
+                                            <p className="text-[12px] tabular-nums text-foreground">{fmtN(acProducto.costoPromedio)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">IVA tipo</p>
+                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium border ${
+                                                acProducto.ivaTipo === "general"
+                                                    ? "border-primary-500/30 text-primary-500 bg-primary-500/[0.06]"
+                                                    : "border-border-light text-[var(--text-tertiary)]"
+                                            }`}>
+                                                {acProducto.ivaTipo === "general" ? "16% General" : "Exento"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Existencia actual</p>
+                                            <p className={`text-[12px] tabular-nums ${acForm.cantidad > acProducto.existenciaActual && acForm.cantidad > 0 ? "text-red-500" : "text-foreground"}`}>
+                                                {fmtN(acProducto.existenciaActual)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className={labelCls}>Fecha</label>
+                                    <input
+                                        type="date" className={fieldCls}
+                                        value={acForm.fecha}
+                                        onChange={(e) => setAc("fecha", e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className={labelCls}>Cantidad a retirar *</label>
+                                    <input
+                                        type="number" min="0.0001" step="0.0001" className={fieldCls}
+                                        value={acForm.cantidad || ""}
+                                        onChange={(e) => setAc("cantidad", parseFloat(e.target.value) || 0)}
+                                    />
+                                    {!acStockOk && acForm.cantidad > 0 && (
+                                        <p className="mt-1 text-[10px] text-red-500">
+                                            Supera la existencia disponible
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className={labelCls}>Motivo / Notas</label>
+                                    <input
+                                        className={fieldCls}
+                                        value={acForm.notas}
+                                        onChange={(e) => setAc("notas", e.target.value)}
+                                        placeholder="Ej. Uso interno, muestra, pérdida…"
+                                    />
+                                </div>
+
+                                {/* IVA preview */}
+                                {acProducto && acForm.cantidad > 0 && (
+                                    <div className="px-3 py-3 rounded-lg border border-border-light bg-surface-2 space-y-1.5">
+                                        <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-2">Preview</p>
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className="text-[var(--text-secondary)]">Costo retirado</span>
+                                            <span className="tabular-nums text-foreground">{fmtN(acCostoTotal)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className={acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}>
+                                                IVA 16% {acProducto.ivaTipo === "exento" ? "(exento)" : "débito fiscal"}
+                                            </span>
+                                            <span className={`tabular-nums font-medium ${acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}`}>
+                                                {fmtN(acIva)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between text-[12px] pt-1.5 border-t border-border-light">
+                                            <span className="font-bold text-foreground">Total impacto</span>
+                                            <span className="tabular-nums font-bold text-foreground">{fmtN(acCostoTotal + acIva)}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="pt-1">
+                                    <button
+                                        onClick={handleAcPreview}
+                                        disabled={!acForm.productoId || !acForm.cantidad || !acStockOk}
+                                        className="w-full h-9 rounded-lg border border-amber-500/50 hover:bg-amber-500/10 disabled:opacity-40 text-amber-500 text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                    >
+                                        Revisar y confirmar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Confirmation step */
+                            <div className="space-y-4">
+                                <div className="px-4 py-4 rounded-lg border border-amber-500/30 bg-amber-500/[0.04] space-y-3">
+                                    <p className="text-[9px] uppercase tracking-[0.16em] text-amber-500/70 mb-2">Confirmar autoconsumo</p>
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className="text-[var(--text-secondary)]">Producto</span>
+                                            <span className="text-foreground font-medium">{acProducto?.nombre}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className="text-[var(--text-secondary)]">Cantidad</span>
+                                            <span className="tabular-nums text-foreground">{fmtN(acForm.cantidad)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className="text-[var(--text-secondary)]">Costo unitario</span>
+                                            <span className="tabular-nums text-foreground">{fmtN(acProducto?.costoPromedio ?? 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[11px]">
+                                            <span className="text-[var(--text-secondary)]">Costo total retirado</span>
+                                            <span className="tabular-nums text-foreground">{fmtN(acCostoTotal)}</span>
+                                        </div>
+                                        {acForm.notas && (
+                                            <div className="flex justify-between text-[11px]">
+                                                <span className="text-[var(--text-secondary)]">Motivo</span>
+                                                <span className="text-foreground max-w-[140px] truncate text-right">{acForm.notas}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* IVA highlight */}
+                                    <div className="mt-3 pt-3 border-t border-amber-500/20 space-y-1.5">
+                                        <div className="flex justify-between items-center text-[12px]">
+                                            <span className="text-amber-500 font-bold uppercase tracking-[0.10em] text-[10px]">
+                                                Débito fiscal IVA 16%
+                                            </span>
+                                            <span className={`tabular-nums font-bold text-[14px] ${acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}`}>
+                                                {fmtN(acIva)}
+                                            </span>
+                                        </div>
+                                        {acIva === 0 && (
+                                            <p className="text-[9px] text-[var(--text-tertiary)]">Producto exento — no genera débito fiscal</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setAcStep("form")}
+                                        disabled={acSaving}
+                                        className="flex-1 h-9 rounded-lg border border-border-light hover:bg-surface-2 disabled:opacity-50 text-[var(--text-secondary)] text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                    >
+                                        Volver
+                                    </button>
+                                    <button
+                                        onClick={handleAcConfirm}
+                                        disabled={acSaving}
+                                        className="flex-1 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                    >
+                                        {acSaving ? "Registrando…" : "Confirmar"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

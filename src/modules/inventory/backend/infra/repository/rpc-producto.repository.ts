@@ -39,6 +39,8 @@ export class RpcProductoRepository implements IProductoRepository {
                 existencia_minima: producto.existenciaMinima,
                 costo_promedio:   producto.costoPromedio,
                 activo:           producto.activo,
+                departamento_id:  producto.departamentoId ?? null,
+                iva_tipo:         producto.ivaTipo ?? 'general',
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_productos_upsert', {
@@ -68,20 +70,23 @@ export class RpcProductoRepository implements IProductoRepository {
 
     private mapToDomain(data: any): Producto {
         return {
-            id:               data.id,
-            empresaId:        data.empresa_id,
-            codigo:           data.codigo ?? '',
-            nombre:           data.nombre,
-            descripcion:      data.descripcion ?? '',
-            tipo:             data.tipo,
-            unidadMedida:     data.unidad_medida,
-            metodoValuacion:  data.metodo_valuacion,
-            existenciaActual: Number(data.existencia_actual ?? 0),
-            existenciaMinima: Number(data.existencia_minima ?? 0),
-            costoPromedio:    Number(data.costo_promedio ?? 0),
-            activo:           Boolean(data.activo ?? true),
-            createdAt:        data.created_at,
-            updatedAt:        data.updated_at,
+            id:                 data.id,
+            empresaId:          data.empresa_id,
+            codigo:             data.codigo ?? '',
+            nombre:             data.nombre,
+            descripcion:        data.descripcion ?? '',
+            tipo:               data.tipo,
+            unidadMedida:       data.unidad_medida,
+            metodoValuacion:    data.metodo_valuacion,
+            existenciaActual:   Number(data.existencia_actual ?? 0),
+            existenciaMinima:   Number(data.existencia_minima ?? 0),
+            costoPromedio:      Number(data.costo_promedio ?? 0),
+            activo:             Boolean(data.activo ?? true),
+            departamentoId:     data.departamento_id ?? undefined,
+            departamentoNombre: data.departamento_nombre ?? undefined,
+            ivaTipo:            (data.iva_tipo === 'exento' ? 'exento' : 'general') as import('../../domain/producto').IvaTipo,
+            createdAt:          data.created_at,
+            updatedAt:          data.updated_at,
         };
     }
 }
