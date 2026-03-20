@@ -35,7 +35,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
             // No revelar si el email ya existe — siempre responder con éxito genérico
             if (error && !error.message.toLowerCase().includes('already')) {
-                return Result.fail('No se pudo completar el registro.');
+                return Result.fail(error.message); // temporal: mostrar error real
             }
 
             // Si el email ya existía, Supabase devuelve user con identities vacío
