@@ -52,6 +52,21 @@ interface PlanRow {
     priceQuarterlyUsd:      number;
     priceAnnualUsd:         number;
     isActive:               boolean;
+    productSlug:            string | null;
+    productName:            string | null;
+}
+
+interface SubscriptionRow {
+    id:                 string;
+    tenantId:           string;
+    tenantEmail:        string | null;
+    status:             string;
+    billingCycle:       string | null;
+    currentPeriodStart: string | null;
+    currentPeriodEnd:   string | null;
+    createdAt:          string;
+    product:            { id: string; slug: string; name: string } | null;
+    plan:               { id: string; name: string; priceMonthlyUsd: number } | null;
 }
 
 interface TenantRow {
@@ -104,7 +119,7 @@ function formatDate(iso?: string | null) {
 // ============================================================================
 
 export default function AdminPage() {
-    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans">("payments");
+    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans" | "subscriptions">("payments");
 
     // Data
     const [summary,  setSummary]  = useState<PlatformSummary | null>(null);
@@ -134,6 +149,24 @@ export default function AdminPage() {
     const [planDraft,    setPlanDraft]    = useState<Partial<PlanRow>>({});
     const [planSaving,   setPlanSaving]   = useState(false);
     const [planSaveErr,  setPlanSaveErr]  = useState<string | null>(null);
+    const [newPlanOpen,        setNewPlanOpen]        = useState(false);
+    const [newPlanDraft,       setNewPlanDraft]       = useState<Partial<PlanRow & { productSlug: string }>>({ productSlug: "payroll", isActive: true });
+    const [newPlanSaving,      setNewPlanSaving]      = useState(false);
+    const [newPlanError,       setNewPlanError]       = useState<string | null>(null);
+
+    // Subscriptions
+    const [subscriptions,       setSubscriptions]       = useState<SubscriptionRow[]>([]);
+    const [subsLoaded,          setSubsLoaded]          = useState(false);
+    const [subActionId,         setSubActionId]         = useState<string | null>(null);
+    const [subActionStatus,     setSubActionStatus]     = useState("");
+    const [subActioning,        setSubActioning]        = useState(false);
+    const [subActionError,      setSubActionError]      = useState<string | null>(null);
+    const [newSubTenantId,      setNewSubTenantId]      = useState("");
+    const [newSubProductSlug,   setNewSubProductSlug]   = useState("inventory");
+    const [newSubStatus,        setNewSubStatus]        = useState("trial");
+    const [newSubSaving,        setNewSubSaving]        = useState(false);
+    const [newSubError,         setNewSubError]         = useState<string | null>(null);
+    const [newSubOk,            setNewSubOk]            = useState(false);
 
     // Admin users
     const [admins,       setAdmins]       = useState<AdminUser[]>([]);
@@ -228,6 +261,96 @@ export default function AdminPage() {
             setPlanSaveErr(null);
         }
     }, [planDraft]);
+
+    // ── Create new plan ───────────────────────────────────────────────────
+    const handleNewPlan = useCallback(async () => {
+        if (!newPlanDraft.name || !newPlanDraft.productSlug || newPlanDraft.priceMonthlyUsd == null) return;
+        setNewPlanSaving(true);
+        setNewPlanError(null);
+        const res = await fetch("/api/admin/plans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name:                   newPlanDraft.name,
+                productSlug:            newPlanDraft.productSlug,
+                priceMonthlyUsd:        newPlanDraft.priceMonthlyUsd,
+                priceQuarterlyUsd:      newPlanDraft.priceQuarterlyUsd ?? null,
+                priceAnnualUsd:         newPlanDraft.priceAnnualUsd    ?? null,
+                maxCompanies:           newPlanDraft.maxCompanies       ?? null,
+                maxEmployeesPerCompany: newPlanDraft.maxEmployeesPerCompany ?? null,
+                isActive:               newPlanDraft.isActive ?? true,
+            }),
+        });
+        const json = await res.json();
+        setNewPlanSaving(false);
+        if (!res.ok) {
+            setNewPlanError(json.error ?? "Error al crear plan.");
+        } else {
+            setPlans((prev) => [...prev, json.data]);
+            setNewPlanOpen(false);
+            setNewPlanDraft({ productSlug: "payroll", isActive: true });
+            setNewPlanError(null);
+        }
+    }, [newPlanDraft]);
+
+    // ── Load subscriptions (lazy) ─────────────────────────────────────────
+    const loadSubscriptions = useCallback(async () => {
+        const res  = await fetch("/api/admin/subscriptions");
+        const json = await res.json();
+        if (json.data) setSubscriptions(json.data);
+        setSubsLoaded(true);
+    }, []);
+
+    useEffect(() => {
+        if (tab === "subscriptions" && !subsLoaded) loadSubscriptions();
+    }, [tab, subsLoaded, loadSubscriptions]);
+
+    // ── Update subscription status ────────────────────────────────────────
+    const handleSubStatus = useCallback(async (id: string) => {
+        setSubActioning(true);
+        setSubActionError(null);
+        const res = await fetch(`/api/admin/subscriptions/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: subActionStatus }),
+        });
+        const json = await res.json();
+        setSubActioning(false);
+        if (!res.ok) {
+            setSubActionError(json.error ?? "Error al actualizar.");
+        } else {
+            setSubActionId(null);
+            setSubActionStatus("");
+            setSubActionError(null);
+            await loadSubscriptions();
+        }
+    }, [subActionStatus, loadSubscriptions]);
+
+    // ── Create subscription ───────────────────────────────────────────────
+    const handleNewSub = useCallback(async () => {
+        if (!newSubTenantId.trim()) return;
+        setNewSubSaving(true);
+        setNewSubError(null);
+        const res = await fetch("/api/admin/subscriptions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                tenantId:    newSubTenantId.trim(),
+                productSlug: newSubProductSlug,
+                status:      newSubStatus,
+            }),
+        });
+        const json = await res.json();
+        setNewSubSaving(false);
+        if (!res.ok) {
+            setNewSubError(json.error ?? "Error al crear suscripción.");
+        } else {
+            setNewSubOk(true);
+            setNewSubTenantId("");
+            await loadSubscriptions();
+            setTimeout(() => setNewSubOk(false), 3000);
+        }
+    }, [newSubTenantId, newSubProductSlug, newSubStatus, loadSubscriptions]);
 
     // ── Load admins (lazy, solo cuando se abre la pestaña) ───────────────
     const loadAdmins = useCallback(async () => {
@@ -374,6 +497,9 @@ export default function AdminPage() {
                             </button>
                             <button className={tabBtn(tab === "plans")} onClick={() => setTab("plans")}>
                                 Planes
+                            </button>
+                            <button className={tabBtn(tab === "subscriptions")} onClick={() => setTab("subscriptions")}>
+                                Suscripciones
                             </button>
                         </div>
 
@@ -539,8 +665,18 @@ export default function AdminPage() {
                                             return (
                                                 <Fragment key={t.tenant_id}>
                                                     <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
-                                                        <td className="px-3 py-3 font-mono text-[10px] text-foreground/50" title={t.tenant_id}>
-                                                            {t.tenant_id.slice(0, 8)}…
+                                                        <td className="px-3 py-3">
+                                                            <button
+                                                                onClick={() => navigator.clipboard.writeText(t.tenant_id)}
+                                                                title={`Copiar UUID: ${t.tenant_id}`}
+                                                                className="flex items-center gap-1.5 group/copy font-mono text-[10px] text-foreground/50 hover:text-foreground transition-colors"
+                                                            >
+                                                                <span>{t.tenant_id.slice(0, 8)}…</span>
+                                                                <svg className="opacity-0 group-hover/copy:opacity-100 transition-opacity" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <rect x="4" y="4" width="7" height="7" rx="1" />
+                                                                    <path d="M8 4V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h2" />
+                                                                </svg>
+                                                            </button>
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[10px] text-foreground max-w-[160px] truncate">
                                                             {t.email ?? "—"}
@@ -761,6 +897,121 @@ export default function AdminPage() {
                         {/* ── PLANS TAB ──────────────────────────────────────────── */}
                         {tab === "plans" && (
                             <div className="space-y-4">
+
+                                {/* Header with "Nuevo plan" button */}
+                                <div className="flex items-center justify-between">
+                                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/40">
+                                        Planes disponibles
+                                    </p>
+                                    <button
+                                        onClick={() => { setNewPlanOpen((v) => !v); setNewPlanError(null); }}
+                                        className="h-7 px-3 rounded-lg flex items-center gap-1.5 border bg-primary-500 border-primary-600 text-white hover:bg-primary-600 font-mono text-[9px] uppercase tracking-[0.18em] transition-colors"
+                                    >
+                                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                            <path d="M6 1v10M1 6h10" />
+                                        </svg>
+                                        Nuevo plan
+                                    </button>
+                                </div>
+
+                                {/* New plan form */}
+                                {newPlanOpen && (
+                                    <div className="border border-primary-500/20 rounded-xl bg-surface-1 divide-y divide-border-light/60">
+                                        <div className="px-5 py-3 flex items-center justify-between">
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/60 font-bold">
+                                                Nuevo plan
+                                            </p>
+                                            <button onClick={() => { setNewPlanOpen(false); setNewPlanError(null); }} className="w-6 h-6 flex items-center justify-center rounded text-foreground/30 hover:text-foreground transition-colors">
+                                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                                            </button>
+                                        </div>
+                                        <div className="px-5 py-4 space-y-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                    <select
+                                                        value={newPlanDraft.productSlug ?? "payroll"}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, productSlug: e.target.value }))}
+                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 w-full cursor-pointer"
+                                                    >
+                                                        <option value="payroll">Nómina</option>
+                                                        <option value="inventory">Inventario</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Nombre</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Ej: Básico, Pro…"
+                                                        value={newPlanDraft.name ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, name: e.target.value }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Empresas máx.</label>
+                                                    <input type="number" min="0" placeholder="∞"
+                                                        value={newPlanDraft.maxCompanies ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxCompanies: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Empleados máx.</label>
+                                                    <input type="number" min="0" placeholder="∞"
+                                                        value={newPlanDraft.maxEmployeesPerCompany ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxEmployeesPerCompany: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio mensual (USD) *</label>
+                                                    <input type="number" min="0" step="0.01" placeholder="0.00"
+                                                        value={newPlanDraft.priceMonthlyUsd ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceMonthlyUsd: Number(e.target.value) }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio trimestral (USD)</label>
+                                                    <input type="number" min="0" step="0.01" placeholder="—"
+                                                        value={newPlanDraft.priceQuarterlyUsd ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceQuarterlyUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Precio anual (USD)</label>
+                                                    <input type="number" min="0" step="0.01" placeholder="—"
+                                                        value={newPlanDraft.priceAnnualUsd ?? ""}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceAnnualUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                                                        className={inputCls}
+                                                    />
+                                                </div>
+                                            </div>
+                                            {newPlanError && <p className="font-mono text-[10px] text-red-500">{newPlanError}</p>}
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={handleNewPlan}
+                                                    disabled={newPlanSaving || !newPlanDraft.name || !newPlanDraft.priceMonthlyUsd}
+                                                    className="h-8 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                                >
+                                                    {newPlanSaving && <Spinner />}
+                                                    {newPlanSaving ? "Creando…" : "Crear plan"}
+                                                </button>
+                                                <button
+                                                    onClick={() => { setNewPlanOpen(false); setNewPlanDraft({ productSlug: "payroll", isActive: true }); setNewPlanError(null); }}
+                                                    className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {!plansLoaded ? (
                                     <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
                                         <Spinner />
@@ -775,7 +1026,7 @@ export default function AdminPage() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-border-light bg-surface-2">
-                                                    {["Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
+                                                    {["Módulo", "Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
                                                         <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
                                                             {h}
                                                         </th>
@@ -811,6 +1062,20 @@ export default function AdminPage() {
                                                     return (
                                                         <Fragment key={plan.id}>
                                                             <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
+                                                                <td className="px-3 py-3">
+                                                                    {plan.productName ? (
+                                                                        <span className={[
+                                                                            "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                            plan.productSlug === "payroll"
+                                                                                ? "border-primary-500/20 bg-primary-500/[0.08] text-primary-500"
+                                                                                : "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
+                                                                        ].join(" ")}>
+                                                                            {plan.productName}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="font-mono text-[10px] text-foreground/30">—</span>
+                                                                    )}
+                                                                </td>
                                                                 <td className="px-3 py-3 font-mono text-[12px] font-medium text-foreground">
                                                                     {plan.name}
                                                                 </td>
@@ -861,9 +1126,20 @@ export default function AdminPage() {
 
                                                             {isEditing && (
                                                                 <tr key={plan.id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
-                                                                    <td colSpan={8} className="px-4 py-4">
+                                                                    <td colSpan={9} className="px-4 py-4">
                                                                         <div className="space-y-4">
-                                                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                                                                                <div>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                                                    <select
+                                                                                        value={(d as Partial<PlanRow & { productSlug: string }>).productSlug ?? plan.productSlug ?? "payroll"}
+                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, productSlug: e.target.value } as Partial<PlanRow>))}
+                                                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 w-full cursor-pointer"
+                                                                                    >
+                                                                                        <option value="payroll">Nómina</option>
+                                                                                        <option value="inventory">Inventario</option>
+                                                                                    </select>
+                                                                                </div>
                                                                                 <div>
                                                                                     <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Nombre</label>
                                                                                     <input
@@ -914,6 +1190,182 @@ export default function AdminPage() {
                                                                                 </button>
                                                                             </div>
                                                                         </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </Fragment>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── SUBSCRIPTIONS TAB ──────────────────────────────────── */}
+                        {tab === "subscriptions" && (
+                            <div className="space-y-4">
+
+                                {/* New subscription form */}
+                                <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light/60">
+                                    <div className="px-5 py-3">
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-foreground/40">
+                                            Asignar módulo a tenant
+                                        </p>
+                                    </div>
+                                    <div className="px-5 py-4">
+                                        <div className="flex items-end gap-3 flex-wrap">
+                                            <div>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Tenant</label>
+                                                <select
+                                                    value={newSubTenantId}
+                                                    onChange={(e) => setNewSubTenantId(e.target.value)}
+                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer w-72"
+                                                >
+                                                    <option value="">Seleccionar tenant…</option>
+                                                    {tenants.map((t) => (
+                                                        <option key={t.tenant_id} value={t.tenant_id}>
+                                                            {t.email ?? t.tenant_id.slice(0, 8)}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Módulo</label>
+                                                <select value={newSubProductSlug} onChange={(e) => setNewSubProductSlug(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
+                                                    <option value="payroll">Nómina</option>
+                                                    <option value="inventory">Inventario</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Estado inicial</label>
+                                                <select value={newSubStatus} onChange={(e) => setNewSubStatus(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
+                                                    <option value="trial">Prueba</option>
+                                                    <option value="active">Activo</option>
+                                                    <option value="suspended">Suspendido</option>
+                                                </select>
+                                            </div>
+                                            <button
+                                                onClick={handleNewSub}
+                                                disabled={newSubSaving || !newSubTenantId.trim()}
+                                                className="h-9 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                            >
+                                                {newSubSaving && <Spinner />}
+                                                {newSubSaving ? "Guardando…" : "Asignar"}
+                                            </button>
+                                        </div>
+                                        {newSubError && <p className="font-mono text-[10px] text-red-500 mt-2">{newSubError}</p>}
+                                        {newSubOk    && <p className="font-mono text-[10px] text-green-500 mt-2">Suscripción creada correctamente.</p>}
+                                    </div>
+                                </div>
+
+                                {/* Subscriptions list */}
+                                {!subsLoaded ? (
+                                    <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
+                                        <Spinner />
+                                        <span className="font-mono text-[11px] uppercase tracking-widest text-foreground/30">Cargando…</span>
+                                    </div>
+                                ) : subscriptions.length === 0 ? (
+                                    <div className="border border-border-light rounded-xl px-4 py-10 text-center">
+                                        <p className="font-mono text-[11px] text-foreground/25 uppercase tracking-widest">Sin suscripciones</p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-border-light bg-surface-2">
+                                                    {["Tenant", "Módulo", "Plan", "Estado", "Período fin", "Creado", ""].map((h) => (
+                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 whitespace-nowrap">
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {subscriptions.map((sub) => {
+                                                    const isEditing = subActionId === sub.id;
+                                                    return (
+                                                        <Fragment key={sub.id}>
+                                                            <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
+                                                                <td className="px-3 py-3">
+                                                                    <p className="font-mono text-[10px] text-foreground/60 truncate max-w-[160px]">
+                                                                        {sub.tenantEmail ?? sub.tenantId.slice(0, 8) + "…"}
+                                                                    </p>
+                                                                    <p className="font-mono text-[9px] text-foreground/30" title={sub.tenantId}>
+                                                                        {sub.tenantId.slice(0, 8)}…
+                                                                    </p>
+                                                                </td>
+                                                                <td className="px-3 py-3">
+                                                                    <span className={[
+                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                        sub.product?.slug === "payroll"
+                                                                            ? "border-primary-500/20 bg-primary-500/[0.08] text-primary-500"
+                                                                            : "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
+                                                                    ].join(" ")}>
+                                                                        {sub.product?.name ?? "—"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/60">
+                                                                    {sub.plan?.name ?? "—"}
+                                                                </td>
+                                                                <td className="px-3 py-3">
+                                                                    <span className={[
+                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                        STATUS_CLS[sub.status] ?? "",
+                                                                    ].join(" ")}>
+                                                                        {STATUS_LABEL[sub.status] ?? sub.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/50">
+                                                                    {formatDate(sub.currentPeriodEnd)}
+                                                                </td>
+                                                                <td className="px-3 py-3 font-mono text-[10px] text-foreground/40">
+                                                                    {formatDate(sub.createdAt)}
+                                                                </td>
+                                                                <td className="px-3 py-3 text-right">
+                                                                    <button
+                                                                        onClick={() => { setSubActionId(isEditing ? null : sub.id); setSubActionStatus(sub.status); setSubActionError(null); }}
+                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-foreground/40 hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                    >
+                                                                        {isEditing ? "Cerrar" : "Editar"}
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+
+                                                            {isEditing && (
+                                                                <tr key={sub.id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
+                                                                    <td colSpan={7} className="px-4 py-3">
+                                                                        <div className="flex items-end gap-3">
+                                                                            <div>
+                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-foreground/35 mb-1 block">Estado</label>
+                                                                                <select
+                                                                                    value={subActionStatus}
+                                                                                    onChange={(e) => setSubActionStatus(e.target.value)}
+                                                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
+                                                                                >
+                                                                                    <option value="trial">Prueba</option>
+                                                                                    <option value="active">Activo</option>
+                                                                                    <option value="suspended">Suspendido</option>
+                                                                                    <option value="cancelled">Cancelado</option>
+                                                                                </select>
+                                                                            </div>
+                                                                            <button
+                                                                                onClick={() => handleSubStatus(sub.id)}
+                                                                                disabled={subActioning}
+                                                                                className="h-8 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                                                            >
+                                                                                {subActioning && <Spinner />}
+                                                                                Guardar
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => { setSubActionId(null); setSubActionError(null); }}
+                                                                                className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-foreground/40 hover:text-foreground transition-colors"
+                                                                            >
+                                                                                Cancelar
+                                                                            </button>
+                                                                        </div>
+                                                                        {subActionError && <p className="font-mono text-[10px] text-red-500 mt-2">{subActionError}</p>}
                                                                     </td>
                                                                 </tr>
                                                             )}

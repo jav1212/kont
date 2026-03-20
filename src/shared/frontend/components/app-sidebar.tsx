@@ -51,6 +51,16 @@ const MODULE_SUBNAV: Record<string, { href: string; label: string }[]> = {
         { href: "/payroll/prestaciones",      label: "Prestaciones"  },
         { href: "/payroll/liquidaciones",     label: "Liquidaciones" },
     ],
+    inventory: [
+        { href: "/inventory",             label: "Dashboard"   },
+        { href: "/inventory/productos",   label: "Productos"   },
+        { href: "/inventory/proveedores", label: "Proveedores" },
+        { href: "/inventory/compras",     label: "Compras"     },
+        { href: "/inventory/movimientos", label: "Movimientos" },
+        { href: "/inventory/produccion",  label: "Producción"  },
+        { href: "/inventory/kardex",      label: "Kardex"      },
+        { href: "/inventory/cierres",     label: "Cierres"     },
+    ],
 };
 
 // ── Sun / Moon icons ──────────────────────────────────────────────────────────

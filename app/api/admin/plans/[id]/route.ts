@@ -26,6 +26,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         'price_quarterly_usd',
         'price_annual_usd',
         'is_active',
+        'product_id',
     ];
 
     // Map camelCase keys sent from the client to snake_case DB columns
@@ -37,6 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         priceQuarterlyUsd:      'price_quarterly_usd',
         priceAnnualUsd:         'price_annual_usd',
         isActive:               'is_active',
+        productId:              'product_id',
     };
 
     const updates: Record<string, unknown> = {};
@@ -57,14 +59,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         { auth: { persistSession: false } }
     );
 
+    // If productSlug is provided, resolve to product_id
+    if (body.productSlug && typeof body.productSlug === 'string') {
+        const { data: prod } = await supabase
+            .from('products')
+            .select('id')
+            .eq('slug', body.productSlug)
+            .single();
+        if (prod) updates['product_id'] = prod.id;
+    }
+
     const { data, error } = await supabase
         .from('plans')
         .update(updates)
         .eq('id', id)
-        .select()
+        .select('*, products ( slug, name )')
         .single();
 
     if (error) return Response.json({ error: error.message }, { status: 500 });
+
+    const product = Array.isArray(data.products) ? data.products[0] : data.products;
 
     return Response.json({
         data: {
@@ -76,6 +90,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             priceQuarterlyUsd:      data.price_quarterly_usd,
             priceAnnualUsd:         data.price_annual_usd,
             isActive:               data.is_active,
+            productSlug:            product?.slug ?? null,
+            productName:            product?.name ?? null,
         },
     });
 }
