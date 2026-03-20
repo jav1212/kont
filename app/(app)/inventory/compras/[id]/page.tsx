@@ -59,7 +59,6 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
     const [numeroFactura, setNumeroFactura] = useState("");
     const [numeroControl, setNumeroControl] = useState("");
     const [fecha, setFecha] = useState("");
-    const [ivaPorcentaje, setIvaPorcentaje] = useState(16);
     const [notas, setNotas] = useState("");
     const [items, setItems] = useState<FacturaCompraItem[]>([]);
 
@@ -93,7 +92,6 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
             setNumeroFactura(currentFactura.numeroFactura);
             setNumeroControl(currentFactura.numeroControl ?? '');
             setFecha(fmtDate(currentFactura.fecha));
-            setIvaPorcentaje(currentFactura.ivaPorcentaje);
             setNotas(currentFactura.notas);
             setItems(
                 currentFactura.items && currentFactura.items.length > 0
@@ -105,10 +103,15 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
 
     const isBorrador = currentFactura?.estado === "borrador";
 
-    // Derived totals
-    const subtotal = items.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
-    const ivaMonto = Math.round(subtotal * ivaPorcentaje / 100 * 100) / 100;
-    const total = subtotal + ivaMonto;
+    // Derived totals — computed per-item from ivaAlicuota
+    const subtotal      = items.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
+    const baseExenta    = items.filter(i => (i.ivaAlicuota ?? "general_16") === "exenta").reduce((acc, i) => acc + i.costoTotal, 0);
+    const baseGravada8  = items.filter(i => (i.ivaAlicuota ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.costoTotal, 0);
+    const baseGravada16 = items.filter(i => (i.ivaAlicuota ?? "general_16") === "general_16").reduce((acc, i) => acc + i.costoTotal, 0);
+    const iva8          = Math.round(baseGravada8  * 8  / 100 * 100) / 100;
+    const iva16         = Math.round(baseGravada16 * 16 / 100 * 100) / 100;
+    const ivaMonto      = iva8 + iva16;
+    const total         = subtotal + ivaMonto;
 
     const buildFactura = useCallback((): FacturaCompra => ({
         id,
@@ -120,11 +123,11 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
         periodo:       fecha.slice(0, 7),
         estado:        "borrador",
         subtotal,
-        ivaPorcentaje,
+        ivaPorcentaje: 0,
         ivaMonto,
         total,
         notas,
-    }), [id, currentFactura, companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
+    }), [id, currentFactura, companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaMonto, total, notas]);
 
     function openDevModal() {
         const today = new Date().toISOString().split("T")[0];
@@ -436,19 +439,6 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className={labelCls}>IVA %</label>
-                                    {isBorrador ? (
-                                        <input type="number" min="0" max="100" step="0.01" className={fieldCls} value={ivaPorcentaje} onChange={(e) => setIvaPorcentaje(parseFloat(e.target.value) || 0)} />
-                                    ) : (
-                                        <div className={readonlyCls + " flex items-center"}>
-                                            {factura.ivaPorcentaje}%
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
                             <div>
                                 <label className={labelCls}>Notas</label>
                                 {isBorrador ? (
@@ -477,26 +467,66 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                             />
 
                             {/* Totals */}
-                            <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
-                                <div className="flex gap-8 items-center">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
-                                    <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">
-                                        {fmtN(isBorrador ? subtotal : factura.subtotal)}
-                                    </span>
-                                </div>
-                                <div className="flex gap-8 items-center">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA ({isBorrador ? ivaPorcentaje : factura.ivaPorcentaje}%)</span>
-                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">
-                                        {fmtN(isBorrador ? ivaMonto : factura.ivaMonto)}
-                                    </span>
-                                </div>
-                                <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
-                                    <span className="tabular-nums font-bold text-foreground w-32 text-right">
-                                        {fmtN(isBorrador ? total : factura.total)}
-                                    </span>
-                                </div>
-                            </div>
+                            {(() => {
+                                // For confirmed facturas, compute breakdown from stored items
+                                const displayItems = isBorrador ? items : (factura.items ?? []);
+                                const dSubtotal      = displayItems.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
+                                const dBaseExenta    = displayItems.filter(i => (i.ivaAlicuota ?? "general_16") === "exenta").reduce((acc, i) => acc + i.costoTotal, 0);
+                                const dBaseGravada8  = displayItems.filter(i => (i.ivaAlicuota ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.costoTotal, 0);
+                                const dBaseGravada16 = displayItems.filter(i => (i.ivaAlicuota ?? "general_16") === "general_16").reduce((acc, i) => acc + i.costoTotal, 0);
+                                const dIva8          = Math.round(dBaseGravada8  * 8  / 100 * 100) / 100;
+                                const dIva16         = Math.round(dBaseGravada16 * 16 / 100 * 100) / 100;
+                                const dIvaMonto      = dIva8 + dIva16;
+                                const dTotal         = isBorrador ? total : factura.total;
+                                return (
+                                    <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
+                                        <div className="flex gap-8 items-center">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
+                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">{fmtN(dSubtotal)}</span>
+                                        </div>
+                                        {dBaseExenta > 0 && (
+                                            <div className="flex gap-8 items-center">
+                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base exenta</span>
+                                                <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseExenta)}</span>
+                                            </div>
+                                        )}
+                                        {dBaseGravada8 > 0 && (
+                                            <>
+                                                <div className="flex gap-8 items-center">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 8%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseGravada8)}</span>
+                                                </div>
+                                                <div className="flex gap-8 items-center">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 8%</span>
+                                                    <span className="tabular-nums text-amber-600 w-32 text-right">{fmtN(dIva8)}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                        {dBaseGravada16 > 0 && (
+                                            <>
+                                                <div className="flex gap-8 items-center">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 16%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseGravada16)}</span>
+                                                </div>
+                                                <div className="flex gap-8 items-center">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 16%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dIva16)}</span>
+                                                </div>
+                                            </>
+                                        )}
+                                        {dIvaMonto > 0 && (
+                                            <div className="flex gap-8 items-center">
+                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total IVA</span>
+                                                <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dIvaMonto)}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
+                                            <span className="tabular-nums font-bold text-foreground w-32 text-right">{fmtN(dTotal)}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* Actions */}
@@ -578,10 +608,12 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
                                     <span className="tabular-nums text-[var(--text-primary)]">{fmtN(factura.subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
-                                    <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(factura.ivaMonto)}</span>
-                                </div>
+                                {factura.ivaMonto > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(factura.ivaMonto)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between font-bold">
                                     <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[9px]">Total</span>
                                     <span className="tabular-nums text-foreground">{fmtN(factura.total)}</span>

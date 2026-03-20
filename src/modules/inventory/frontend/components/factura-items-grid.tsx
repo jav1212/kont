@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { FacturaCompraItem } from "@/src/modules/inventory/backend/domain/factura-compra";
+import type { FacturaCompraItem, IvaAlicuota } from "@/src/modules/inventory/backend/domain/factura-compra";
 import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
 type ColIdx = 0 | 1 | 2; // 0=producto, 1=cantidad, 2=costoUnitario
 type NavDir = "tab" | "shift-tab" | "enter" | "down" | "up";
+
+const ALICUOTA_LABELS: Record<IvaAlicuota, string> = {
+    exenta:      'Exenta (0%)',
+    reducida_8:  'Red. (8%)',
+    general_16:  'Gen. (16%)',
+};
 
 interface Props {
     items: FacturaCompraItem[];
@@ -19,7 +25,7 @@ interface Props {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 export function emptyItem(): FacturaCompraItem {
-    return { productoId: "", cantidad: 1, costoUnitario: 0, costoTotal: 0 };
+    return { productoId: "", cantidad: 1, costoUnitario: 0, costoTotal: 0, ivaAlicuota: "general_16" };
 }
 
 const fmtN = (n: number) =>
@@ -294,6 +300,13 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false 
             item.costoTotal =
                 Math.round(Number(item.cantidad) * Number(item.costoUnitario) * 100) / 100;
         }
+        // Auto-fill alícuota from product's iva_tipo when product is selected
+        if (field === "productoId") {
+            const producto = productos.find((p) => p.id === val);
+            if (producto && item.ivaAlicuota === "general_16") {
+                item.ivaAlicuota = producto.ivaTipo === "exento" ? "exenta" : "general_16";
+            }
+        }
         next[idx] = item as FacturaCompraItem;
         onChange(next);
     }
@@ -357,6 +370,9 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false 
                         <th className="px-2 py-2 text-right text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal w-32">
                             Costo Unit.
                         </th>
+                        <th className="px-2 py-2 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal w-28">
+                            IVA
+                        </th>
                         <th className="px-2 py-2 text-right text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal w-32">
                             Costo Total
                         </th>
@@ -415,6 +431,33 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false 
                                         onNavigate={(dir) => handleNavigate(idx, 2, dir)}
                                         registerRef={registerRef(idx, 2)}
                                     />
+                                )}
+                            </td>
+
+                            {/* Alícuota IVA */}
+                            <td className="px-1 py-0.5">
+                                {readOnly ? (
+                                    <span className={[
+                                        "inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.1em] font-medium",
+                                        item.ivaAlicuota === "exenta"
+                                            ? "bg-surface-2 text-[var(--text-tertiary)]"
+                                            : item.ivaAlicuota === "reducida_8"
+                                              ? "bg-amber-500/10 text-amber-600"
+                                              : "bg-primary-500/10 text-primary-500",
+                                    ].join(" ")}>
+                                        {item.ivaAlicuota === "exenta" ? "Exenta" : item.ivaAlicuota === "reducida_8" ? "8%" : "16%"}
+                                    </span>
+                                ) : (
+                                    <select
+                                        tabIndex={-1}
+                                        value={item.ivaAlicuota ?? "general_16"}
+                                        onChange={(e) => updateItem(idx, "ivaAlicuota", e.target.value as IvaAlicuota)}
+                                        className="w-full h-8 px-1.5 outline-none bg-transparent text-[11px] text-foreground font-mono focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer"
+                                    >
+                                        <option value="exenta">Exenta (0%)</option>
+                                        <option value="reducida_8">Reducida (8%)</option>
+                                        <option value="general_16">General (16%)</option>
+                                    </select>
                                 )}
                             </td>
 

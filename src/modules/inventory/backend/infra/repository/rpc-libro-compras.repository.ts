@@ -33,10 +33,12 @@ export class RpcLibroComprasRepository implements ILibroComprasRepository {
             numeroControl:    row.numero_control ?? '',
             proveedorRif:     row.proveedor_rif ?? '',
             proveedorNombre:  row.proveedor_nombre ?? '',
-            baseGravada:      Number(row.base_gravada ?? 0),
-            ivaGeneral:       Number(row.iva_general ?? 0),
-            baseExenta:       Number(row.base_exenta ?? 0),
-            total:            Number(row.total ?? 0),
+            baseExenta:       Number(row.base_exenta    ?? 0),
+            baseGravada8:     Number(row.base_gravada_8 ?? 0),
+            iva8:             Number(row.iva_8          ?? 0),
+            baseGravada16:    Number(row.base_gravada_16 ?? 0),
+            iva16:            Number(row.iva_16         ?? 0),
+            total:            Number(row.total          ?? 0),
         };
     }
 }

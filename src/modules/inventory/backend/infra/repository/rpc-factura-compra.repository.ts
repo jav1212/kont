@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { IFacturaCompraRepository } from '../../domain/repository/factura-compra.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { FacturaCompra, FacturaCompraItem, EstadoFactura } from '../../domain/factura-compra';
+import { FacturaCompra, FacturaCompraItem, EstadoFactura, IvaAlicuota } from '../../domain/factura-compra';
 
 export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
     constructor(
@@ -56,6 +56,7 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
                 cantidad:       i.cantidad,
                 costo_unitario: i.costoUnitario,
                 costo_total:    i.costoTotal,
+                iva_alicuota:   i.ivaAlicuota ?? 'general_16',
             }));
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_factura_save', {
@@ -94,6 +95,7 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
                   cantidad:       Number(i.cantidad ?? 0),
                   costoUnitario:  Number(i.costo_unitario ?? 0),
                   costoTotal:     Number(i.costo_total ?? 0),
+                  ivaAlicuota:    (i.iva_alicuota ?? 'general_16') as IvaAlicuota,
               }))
             : undefined;
 

@@ -23,7 +23,7 @@ function sum(rows: LibroComprasRow[], key: keyof LibroComprasRow): number {
 function exportCSV(rows: LibroComprasRow[], periodo: string) {
     const headers = [
         "Fecha", "N° Factura", "N° Control", "RIF Proveedor", "Proveedor",
-        "Base Gravada", "IVA 16%", "Base Exenta", "Total",
+        "Base Exenta", "Base Gravada 8%", "IVA 8%", "Base Gravada 16%", "IVA 16%", "Total",
     ];
     const lines = [
         headers.join(","),
@@ -33,9 +33,11 @@ function exportCSV(rows: LibroComprasRow[], periodo: string) {
             `"${r.numeroControl}"`,
             `"${r.proveedorRif}"`,
             `"${r.proveedorNombre}"`,
-            r.baseGravada,
-            r.ivaGeneral,
             r.baseExenta,
+            r.baseGravada8,
+            r.iva8,
+            r.baseGravada16,
+            r.iva16,
             r.total,
         ].join(",")),
     ];
@@ -71,10 +73,12 @@ export default function LibroComprasPage() {
     }
 
     const totales = useMemo(() => ({
-        baseGravada: sum(libroCompras, "baseGravada"),
-        ivaGeneral:  sum(libroCompras, "ivaGeneral"),
-        baseExenta:  sum(libroCompras, "baseExenta"),
-        total:       sum(libroCompras, "total"),
+        baseExenta:    sum(libroCompras, "baseExenta"),
+        baseGravada8:  sum(libroCompras, "baseGravada8"),
+        iva8:          sum(libroCompras, "iva8"),
+        baseGravada16: sum(libroCompras, "baseGravada16"),
+        iva16:         sum(libroCompras, "iva16"),
+        total:         sum(libroCompras, "total"),
     }), [libroCompras]);
 
     return (
@@ -156,14 +160,20 @@ export default function LibroComprasPage() {
                                         <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[160px]">
                                             Proveedor
                                         </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[110px]">
-                                            Base Gravada
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[90px]">
-                                            IVA 16%
-                                        </th>
                                         <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
                                             Base Exenta
+                                        </th>
+                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
+                                            Base 8%
+                                        </th>
+                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[80px]">
+                                            IVA 8%
+                                        </th>
+                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
+                                            Base 16%
+                                        </th>
+                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[80px]">
+                                            IVA 16%
                                         </th>
                                         <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[110px]">
                                             Total
@@ -180,14 +190,20 @@ export default function LibroComprasPage() {
                                             <td className="px-3 py-2 text-foreground max-w-[180px] truncate" title={row.proveedorNombre}>
                                                 {row.proveedorNombre}
                                             </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtN(row.baseGravada)}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtN(row.ivaGeneral)}
+                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
+                                                {row.baseExenta > 0 ? fmtN(row.baseExenta) : "—"}
                                             </td>
                                             <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {fmtN(row.baseExenta)}
+                                                {row.baseGravada8 > 0 ? fmtN(row.baseGravada8) : "—"}
+                                            </td>
+                                            <td className="px-3 py-2 tabular-nums text-right text-amber-600">
+                                                {row.iva8 > 0 ? fmtN(row.iva8) : "—"}
+                                            </td>
+                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
+                                                {row.baseGravada16 > 0 ? fmtN(row.baseGravada16) : "—"}
+                                            </td>
+                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
+                                                {row.iva16 > 0 ? fmtN(row.iva16) : "—"}
                                             </td>
                                             <td className="px-3 py-2 tabular-nums text-right font-medium text-foreground">
                                                 {fmtN(row.total)}
@@ -201,13 +217,19 @@ export default function LibroComprasPage() {
                                             Total del período
                                         </td>
                                         <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.baseGravada)}
-                                        </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.ivaGeneral)}
-                                        </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
                                             {fmtN(totales.baseExenta)}
+                                        </td>
+                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
+                                            {fmtN(totales.baseGravada8)}
+                                        </td>
+                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-amber-600">
+                                            {fmtN(totales.iva8)}
+                                        </td>
+                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
+                                            {fmtN(totales.baseGravada16)}
+                                        </td>
+                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
+                                            {fmtN(totales.iva16)}
                                         </td>
                                         <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
                                             {fmtN(totales.total)}
@@ -218,13 +240,23 @@ export default function LibroComprasPage() {
                         </div>
 
                         {/* Resumen crédito fiscal */}
-                        <div className="px-4 py-3 border-t border-border-light bg-surface-2 flex items-center gap-6">
+                        <div className="px-4 py-3 border-t border-border-light bg-surface-2 flex items-center gap-6 flex-wrap">
                             <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-medium">
                                 Crédito fiscal del período:
                             </span>
                             <span className="text-[13px] font-bold tabular-nums text-primary-500">
-                                {fmtN(totales.ivaGeneral)} Bs.
+                                {fmtN(totales.iva8 + totales.iva16)} Bs.
                             </span>
+                            {totales.iva8 > 0 && (
+                                <span className="text-[9px] text-amber-600 tabular-nums">
+                                    IVA 8%: {fmtN(totales.iva8)}
+                                </span>
+                            )}
+                            {totales.iva16 > 0 && (
+                                <span className="text-[9px] text-[var(--text-tertiary)] tabular-nums">
+                                    IVA 16%: {fmtN(totales.iva16)}
+                                </span>
+                            )}
                             <span className="text-[9px] text-[var(--text-tertiary)]">
                                 ({libroCompras.length} {libroCompras.length === 1 ? "factura" : "facturas"} confirmadas)
                             </span>

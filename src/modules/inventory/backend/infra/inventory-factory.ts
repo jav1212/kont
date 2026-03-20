@@ -9,6 +9,7 @@ import { RpcReportePeriodoRepository }   from './repository/rpc-reporte-periodo.
 import { RpcLibroComprasRepository }     from './repository/rpc-libro-compras.repository';
 import { RpcReporteISLRRepository }     from './repository/rpc-reporte-islr.repository';
 import { RpcLibroVentasRepository }     from './repository/rpc-libro-ventas.repository';
+import { RpcLibroInventariosRepository } from './repository/rpc-libro-inventarios.repository';
 import { GetProductosUseCase }           from '../app/get-productos.use-case';
 import { SaveProductoUseCase }           from '../app/save-producto.use-case';
 import { DeleteProductoUseCase }         from '../app/delete-producto.use-case';
@@ -31,6 +32,7 @@ import { GetReportePeriodoUseCase }      from '../app/get-reporte-periodo.use-ca
 import { GetLibroComprasUseCase }        from '../app/get-libro-compras.use-case';
 import { GetReporteISLRUseCase }        from '../app/get-reporte-islr.use-case';
 import { GetLibroVentasUseCase }        from '../app/get-libro-ventas.use-case';
+import { GetLibroInventariosUseCase }   from '../app/get-libro-inventarios.use-case';
 
 export function getInventoryActions(userId: string) {
     const source             = new ServerSupabaseSource();
@@ -43,7 +45,8 @@ export function getInventoryActions(userId: string) {
     const reporteRepo        = new RpcReportePeriodoRepository(source, userId);
     const libroComprasRepo   = new RpcLibroComprasRepository(source, userId);
     const reporteISLRRepo    = new RpcReporteISLRRepository(source, userId);
-    const libroVentasRepo    = new RpcLibroVentasRepository(source, userId);
+    const libroVentasRepo       = new RpcLibroVentasRepository(source, userId);
+    const libroInventariosRepo  = new RpcLibroInventariosRepository(source, userId);
 
     return {
         getProductos:           new GetProductosUseCase(productoRepo),
@@ -68,5 +71,6 @@ export function getInventoryActions(userId: string) {
         getLibroCompras:        new GetLibroComprasUseCase(libroComprasRepo),
         getReporteISLR:         new GetReporteISLRUseCase(reporteISLRRepo),
         getLibroVentas:         new GetLibroVentasUseCase(libroVentasRepo),
+        getLibroInventarios:    new GetLibroInventariosUseCase(libroInventariosRepo),
     };
 }

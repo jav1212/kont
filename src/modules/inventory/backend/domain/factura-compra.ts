@@ -1,3 +1,5 @@
+export type IvaAlicuota = 'exenta' | 'reducida_8' | 'general_16';
+
 export interface FacturaCompraItem {
   id?: string;
   facturaId?: string;
@@ -6,6 +8,7 @@ export interface FacturaCompraItem {
   cantidad: number;
   costoUnitario: number;
   costoTotal: number;
+  ivaAlicuota: IvaAlicuota;
 }
 
 export type EstadoFactura = 'borrador' | 'confirmada';

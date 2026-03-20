@@ -39,9 +39,10 @@ export default function NuevaFacturaPage() {
     const [numeroFactura, setNumeroFactura] = useState("");
     const [numeroControl, setNumeroControl] = useState("");
     const [fecha, setFecha] = useState(todayStr());
-    const [ivaPorcentaje, setIvaPorcentaje] = useState(16);
     const [notas, setNotas] = useState("");
     const [items, setItems] = useState<FacturaCompraItem[]>([emptyItem()]);
+
+    // ivaPorcentaje removed — IVA is now computed per-item from ivaAlicuota
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -55,10 +56,15 @@ export default function NuevaFacturaPage() {
         }
     }, [companyId, loadProductos, loadProveedores]);
 
-    // Derived totals
-    const subtotal = items.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
-    const ivaMonto = Math.round(subtotal * ivaPorcentaje / 100 * 100) / 100;
-    const total = subtotal + ivaMonto;
+    // Derived totals — computed per-item from ivaAlicuota
+    const subtotal      = items.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
+    const baseExenta    = items.filter(i => (i.ivaAlicuota ?? "general_16") === "exenta").reduce((acc, i) => acc + i.costoTotal, 0);
+    const baseGravada8  = items.filter(i => (i.ivaAlicuota ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.costoTotal, 0);
+    const baseGravada16 = items.filter(i => (i.ivaAlicuota ?? "general_16") === "general_16").reduce((acc, i) => acc + i.costoTotal, 0);
+    const iva8          = Math.round(baseGravada8  * 8  / 100 * 100) / 100;
+    const iva16         = Math.round(baseGravada16 * 16 / 100 * 100) / 100;
+    const ivaMonto      = iva8 + iva16;
+    const total         = subtotal + ivaMonto;
 
     const buildFactura = useCallback((): FacturaCompra => ({
         empresaId:     companyId!,
@@ -69,11 +75,11 @@ export default function NuevaFacturaPage() {
         periodo:       fecha.slice(0, 7),
         estado:        "borrador",
         subtotal,
-        ivaPorcentaje,
+        ivaPorcentaje: 0,
         ivaMonto,
         total,
         notas,
-    }), [companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaPorcentaje, ivaMonto, total, notas]);
+    }), [companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaMonto, total, notas]);
 
     function validate(): boolean {
         if (!proveedorId) { setError("Selecciona un proveedor"); return false; }
@@ -236,21 +242,6 @@ export default function NuevaFacturaPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className={labelCls}>IVA %</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                        className={fieldCls}
-                                        value={ivaPorcentaje}
-                                        onChange={(e) => setIvaPorcentaje(parseFloat(e.target.value) || 0)}
-                                    />
-                                </div>
-                            </div>
-
                             <div>
                                 <label className={labelCls}>Notas</label>
                                 <textarea
@@ -282,10 +273,42 @@ export default function NuevaFacturaPage() {
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
                                     <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">{fmtN(subtotal)}</span>
                                 </div>
-                                <div className="flex gap-8 items-center">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA ({ivaPorcentaje}%)</span>
-                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(ivaMonto)}</span>
-                                </div>
+                                {baseExenta > 0 && (
+                                    <div className="flex gap-8 items-center">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base exenta</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseExenta)}</span>
+                                    </div>
+                                )}
+                                {baseGravada8 > 0 && (
+                                    <>
+                                        <div className="flex gap-8 items-center">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 8%</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseGravada8)}</span>
+                                        </div>
+                                        <div className="flex gap-8 items-center">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 8%</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(iva8)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {baseGravada16 > 0 && (
+                                    <>
+                                        <div className="flex gap-8 items-center">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 16%</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseGravada16)}</span>
+                                        </div>
+                                        <div className="flex gap-8 items-center">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 16%</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(iva16)}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {ivaMonto > 0 && (
+                                    <div className="flex gap-8 items-center">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total IVA</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(ivaMonto)}</span>
+                                    </div>
+                                )}
                                 <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
                                     <span className="tabular-nums font-bold text-foreground w-32 text-right">{fmtN(total)}</span>
@@ -346,10 +369,18 @@ export default function NuevaFacturaPage() {
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
                                     <span className="tabular-nums text-[var(--text-primary)]">{fmtN(subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
-                                    <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(ivaMonto)}</span>
-                                </div>
+                                {iva8 > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA 8%</span>
+                                        <span className="tabular-nums text-amber-600">{fmtN(iva8)}</span>
+                                    </div>
+                                )}
+                                {iva16 > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA 16%</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(iva16)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between font-bold">
                                     <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[9px]">Total</span>
                                     <span className="tabular-nums text-foreground">{fmtN(total)}</span>

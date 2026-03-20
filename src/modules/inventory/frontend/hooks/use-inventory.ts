@@ -9,10 +9,11 @@ import type { FacturaCompra, FacturaCompraItem } from '../../backend/domain/fact
 import type { Departamento } from '../../backend/domain/departamento';
 import type { ReportePeriodoRow } from '../../backend/domain/reporte-periodo';
 import type { LibroComprasRow } from '../../backend/domain/libro-compras';
-import type { ReporteISLRProducto } from '../../backend/domain/reporte-islr';
+import type { ReporteISLRProducto, ReporteISLRMovimiento } from '../../backend/domain/reporte-islr';
 import type { LibroVentasRow } from '../../backend/domain/libro-ventas';
+import type { LibroInventariosRow } from '../../backend/domain/libro-inventarios';
 
-export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, LibroVentasRow };
+export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, ReporteISLRMovimiento, LibroVentasRow, LibroInventariosRow };
 
 export function useInventory() {
     const [productos, setProductos]             = useState<Producto[]>([]);
@@ -27,7 +28,8 @@ export function useInventory() {
     const [reportePeriodo, setReportePeriodo]   = useState<ReportePeriodoRow[]>([]);
     const [libroCompras, setLibroCompras]       = useState<LibroComprasRow[]>([]);
     const [reporteISLR, setReporteISLR]         = useState<ReporteISLRProducto[]>([]);
-    const [libroVentas, setLibroVentas]         = useState<LibroVentasRow[]>([]);
+    const [libroVentas, setLibroVentas]             = useState<LibroVentasRow[]>([]);
+    const [libroInventarios, setLibroInventarios]   = useState<LibroInventariosRow[]>([]);
 
     const [loadingProductos, setLoadingProductos]         = useState(false);
     const [loadingMovimientos, setLoadingMovimientos]     = useState(false);
@@ -41,7 +43,8 @@ export function useInventory() {
     const [loadingReporte, setLoadingReporte]             = useState(false);
     const [loadingLibroCompras, setLoadingLibroCompras]   = useState(false);
     const [loadingReporteISLR, setLoadingReporteISLR]     = useState(false);
-    const [loadingLibroVentas, setLoadingLibroVentas]     = useState(false);
+    const [loadingLibroVentas, setLoadingLibroVentas]         = useState(false);
+    const [loadingLibroInventarios, setLoadingLibroInventarios] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
 
@@ -516,6 +519,25 @@ export function useInventory() {
         }
     }, []);
 
+    // ── Libro de Inventarios ──────────────────────────────────────────────────
+
+    const loadLibroInventarios = useCallback(async (empresaId: string, anio: number) => {
+        setLoadingLibroInventarios(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/libro-inventarios?empresaId=${encodeURIComponent(empresaId)}&anio=${anio}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de inventarios'); return; }
+            setLibroInventarios(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingLibroInventarios(false);
+        }
+    }, []);
+
     // ── Reporte de Período ────────────────────────────────────────────────────
 
     const loadReportePeriodo = useCallback(async (empresaId: string, periodo: string) => {
@@ -539,12 +561,12 @@ export function useInventory() {
         // state
         productos, movimientos, kardex, transformaciones, cierres,
         proveedores, facturas, currentFactura,
-        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas,
+        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas, libroInventarios,
         // loading
         loadingProductos, loadingMovimientos, loadingKardex,
         loadingTransformaciones, loadingCierres,
         loadingProveedores, loadingFacturas, loadingFactura,
-        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas,
+        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas, loadingLibroInventarios,
         // error
         error, setError,
         // actions
@@ -560,5 +582,6 @@ export function useInventory() {
         loadLibroCompras,
         loadReporteISLR,
         loadLibroVentas, saveVenta,
+        loadLibroInventarios,
     };
 }

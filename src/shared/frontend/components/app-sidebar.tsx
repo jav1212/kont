@@ -65,7 +65,8 @@ const MODULE_SUBNAV: Record<string, { href: string; label: string }[]> = {
         { href: "/inventory/libro-compras",    label: "Libro de Compras"  },
         { href: "/inventory/reporte-islr",     label: "Reporte ISLR 177"  },
         { href: "/inventory/ventas",           label: "Ventas"            },
-        { href: "/inventory/libro-ventas",     label: "Libro de Ventas"   },
+        { href: "/inventory/libro-ventas",       label: "Libro de Ventas"      },
+        { href: "/inventory/libro-inventarios", label: "Libro de Inventarios" },
     ],
 };
 
