@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { PayrollRun }     from "@/src/modules/payroll/backend/domain/payroll-run";
+import { apiFetch as tenantFetch } from "@/src/shared/frontend/utils/api-fetch";
 import type { PayrollReceipt } from "@/src/modules/payroll/backend/domain/payroll-receipt";
 
 export type { PayrollRun, PayrollReceipt };
@@ -9,7 +10,7 @@ export type { PayrollRun, PayrollReceipt };
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
 async function apiFetch(path: string, options?: RequestInit) {
-    const res  = await fetch(path, options);
+    const res  = await tenantFetch(path, options);
     const text = await res.text();
     let json: any = {};
     try   { json = JSON.parse(text); }

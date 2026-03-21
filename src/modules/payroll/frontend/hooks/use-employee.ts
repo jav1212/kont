@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/backend/domain/employee";
+import { apiFetch as tenantFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 export type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry };
 
@@ -16,7 +17,7 @@ interface UseEmployeeResult {
 }
 
 async function apiFetch(path: string, options?: RequestInit) {
-    const res  = await fetch(path, options);
+    const res  = await tenantFetch(path, options);
     const text = await res.text();
     let json: any = {};
     try { json = JSON.parse(text); } catch { json = { error: `Error del servidor (${res.status})` }; }
