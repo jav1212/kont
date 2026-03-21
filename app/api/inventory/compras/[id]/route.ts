@@ -10,6 +10,13 @@ export const GET = withTenant(async (req, { userId }) => {
     return handleResult(result);
 });
 
+export const DELETE = withTenant(async (req, { userId }) => {
+    const segments = new URL(req.url).pathname.split('/');
+    const id = segments[segments.length - 1];
+    const result = await getInventoryActions(userId).deleteFacturaCompra.execute({ facturaId: id });
+    return handleResult(result);
+});
+
 export const POST = withTenant(async (req, { userId }) => {
     const segments = new URL(req.url).pathname.split('/');
     const id = segments[segments.length - 1];

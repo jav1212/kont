@@ -1,57 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BASE = "https://api-monitor-bcv.vercel.app";
+const BASE = process.env.BCV_API_URL ?? "https://api-monitor-bcv.vercel.app";
 
-// Parsea "42,10" → 42.10
-function parseRate(s: string): number {
-    return parseFloat(String(s).replace(",", "."));
+interface BcvEntry {
+    code: string;
+    buy: number;
+    sell: number;
+    date: string; // "DD/MM/YYYY"
 }
 
-// Convierte "28/01/2026" → "2026-01-28"
+/** "28/01/2026" → "2026-01-28" */
 function parseVeDate(s: string): string {
     const [d, m, y] = s.split("/");
     return `${y}-${m}-${d}`;
 }
 
-function extractUsd(items: any[]): { rate: number; date: string } | null {
-    const usd = items.find((i) => i.code === "USD");
-    if (!usd) return null;
-    const rate = parseRate(usd.sell ?? usd.buy ?? "0");
-    if (!rate) return null;
-    return { rate, date: parseVeDate(usd.date) };
+function extractCode(items: BcvEntry[], code: string): { rate: number; date: string } | null {
+    const entry = items.find((i) => i.code === code);
+    if (!entry || !entry.sell) return null;
+    return { rate: entry.sell, date: parseVeDate(entry.date) };
+}
+
+/** Subtract N days from YYYY-MM-DD string */
+function subtractDays(dateStr: string, days: number): string {
+    const d = new Date(dateStr + "T00:00:00Z");
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().split("T")[0];
 }
 
 export async function GET(req: NextRequest) {
     const date = req.nextUrl.searchParams.get("date");
+    const code = req.nextUrl.searchParams.get("code") ?? "USD";
+
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return NextResponse.json({ error: "Fecha inválida. Usa formato YYYY-MM-DD." }, { status: 400 });
     }
 
-    const today = new Date().toISOString().split("T")[0];
-
     try {
-        let result: { rate: number; date: string } | null = null;
+        // Try exact date first; if empty (weekend/holiday), fall back up to 7 days prior
+        const start = subtractDays(date, 7);
+        const res = await fetch(`${BASE}/exchange-rate/list?start=${start}&end=${date}`, {
+            next: { revalidate: 3600 },
+        });
 
-        if (date === today) {
-            const res = await fetch(`${BASE}/exchange-rate/main`, { next: { revalidate: 1800 } });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            result = extractUsd(await res.json());
-        } else {
-            const res = await fetch(`${BASE}/exchange-rate/list?start=${date}&end=${date}`, {
-                next: { revalidate: 86400 },
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            result = extractUsd(await res.json());
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        if (!result) {
+        const data: BcvEntry[] = await res.json();
+
+        if (!data.length) {
             return NextResponse.json(
-                { error: "No hay tasa USD disponible para esa fecha." },
+                { error: "No hay tasa disponible para esa fecha." },
                 { status: 404 }
             );
         }
 
-        return NextResponse.json(result);
+        // The API groups all currencies per date; take the last available date ≤ requested
+        // Group by date and pick the latest
+        const byDate = new Map<string, BcvEntry[]>();
+        for (const entry of data) {
+            const iso = parseVeDate(entry.date);
+            if (!byDate.has(iso)) byDate.set(iso, []);
+            byDate.get(iso)!.push(entry);
+        }
+
+        // Sort dates descending, take the most recent ≤ requested date
+        const sortedDates = [...byDate.keys()].sort().reverse();
+        for (const d of sortedDates) {
+            const result = extractCode(byDate.get(d)!, code);
+            if (result) return NextResponse.json({ ...result, code });
+        }
+
+        return NextResponse.json(
+            { error: `No hay tasa ${code} disponible para esa fecha.` },
+            { status: 404 }
+        );
     } catch {
         return NextResponse.json(
             { error: "No se pudo consultar la tasa BCV. Ingrésala manualmente." },

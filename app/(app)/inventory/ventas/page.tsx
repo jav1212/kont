@@ -16,22 +16,22 @@ function currentPeriod() {
 }
 
 const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "font-mono text-[14px] text-foreground tabular-nums",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
 interface LineItem {
     productoId: string;
     cantidad: number;
     precioVentaUnitario: number;
-    ivaTipo: "general" | "exento";
+    ivaTipo: "general_16" | "reducida_8" | "exento";
 }
 
 function emptyLine(): LineItem {
-    return { productoId: "", cantidad: 0, precioVentaUnitario: 0, ivaTipo: "general" };
+    return { productoId: "", cantidad: 0, precioVentaUnitario: 0, ivaTipo: "general_16" };
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -80,23 +80,31 @@ export default function VentasPage() {
     // ── totals ───────────────────────────────────────────────────────────────
 
     const totales = useMemo(() => {
-        let baseGravada = 0, ivaDebito = 0, baseExenta = 0;
+        let baseGravada16 = 0, ivaDebito16 = 0;
+        let baseGravada8  = 0, ivaDebito8  = 0;
+        let baseExenta    = 0;
         for (const l of lines) {
             const sub = l.cantidad * l.precioVentaUnitario;
-            if (l.ivaTipo === "general") {
-                baseGravada += sub;
-                ivaDebito   += Math.round(sub * 0.16 * 100) / 100;
+            if (l.ivaTipo === "general_16") {
+                baseGravada16 += sub;
+                ivaDebito16   += Math.round(sub * 0.16 * 100) / 100;
+            } else if (l.ivaTipo === "reducida_8") {
+                baseGravada8 += sub;
+                ivaDebito8   += Math.round(sub * 0.08 * 100) / 100;
             } else {
                 baseExenta += sub;
             }
         }
-        return { baseGravada, ivaDebito, baseExenta, total: baseGravada + ivaDebito + baseExenta };
+        const totalIva = ivaDebito16 + ivaDebito8;
+        const baseGravada = baseGravada16 + baseGravada8;
+        return { baseGravada16, ivaDebito16, baseGravada8, ivaDebito8, baseExenta, baseGravada, ivaDebito: totalIva, total: baseGravada + totalIva + baseExenta };
     }, [lines]);
 
     // ── save ─────────────────────────────────────────────────────────────────
 
     async function handleSave() {
         if (!numeroFactura.trim()) { setError("El número de factura es requerido"); return; }
+        if (!clienteRif.trim()) { setError("El RIF del cliente es requerido (Art. 14 Providencia SNAT/2011/00071)"); return; }
         if (!clienteNombre.trim()) { setError("El nombre del cliente es requerido"); return; }
         const validLines = lines.filter((l) => l.productoId && l.cantidad > 0 && l.precioVentaUnitario > 0);
         if (!validLines.length) { setError("Agrega al menos un producto con cantidad y precio"); return; }
@@ -146,10 +154,10 @@ export default function VentasPage() {
         <div className="min-h-full bg-surface-2 font-mono">
             {/* Header */}
             <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
+                <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
                     Nota de Despacho / Factura de Venta
                 </h1>
-                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
+                <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
                     Registra salidas por venta con datos del cliente e IVA
                 </p>
             </div>
@@ -159,14 +167,14 @@ export default function VentasPage() {
                 <div className="col-span-2 space-y-4">
 
                     {error && (
-                        <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                        <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
                             {error}
                         </div>
                     )}
 
                     {/* Header fields */}
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5">
-                        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground mb-4">
+                        <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-4">
                             Datos del cliente
                         </h2>
                         <div className="space-y-3">
@@ -177,10 +185,11 @@ export default function VentasPage() {
                                     placeholder="Ej. 0001-0123456" />
                             </div>
                             <div>
-                                <label className={labelCls}>RIF Cliente</label>
+                                <label className={labelCls}>RIF Cliente *</label>
                                 <input className={fieldCls} value={clienteRif}
                                     onChange={(e) => setClienteRif(e.target.value)}
-                                    placeholder="Ej. J-12345678-9" />
+                                    placeholder="Ej. J-12345678-9"
+                                    required />
                             </div>
                             <div>
                                 <label className={labelCls}>Nombre Cliente *</label>
@@ -199,12 +208,12 @@ export default function VentasPage() {
                     {/* Line items */}
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
+                            <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
                                 Productos
                             </h2>
                             <button
                                 onClick={addLine}
-                                className="h-7 px-3 rounded-lg border border-border-light hover:bg-surface-2 text-[10px] uppercase tracking-[0.14em] text-[var(--text-secondary)] transition-colors"
+                                className="h-8 px-3 rounded-lg border border-border-light hover:bg-surface-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-secondary)] transition-colors"
                             >
                                 + Línea
                             </button>
@@ -214,18 +223,22 @@ export default function VentasPage() {
                             {lines.map((line, idx) => {
                                 const prod = getProducto(line.productoId);
                                 const sub  = line.cantidad * line.precioVentaUnitario;
-                                const iva  = line.ivaTipo === "general" ? Math.round(sub * 0.16 * 100) / 100 : 0;
+                                const iva  = line.ivaTipo === "general_16"
+                                    ? Math.round(sub * 0.16 * 100) / 100
+                                    : line.ivaTipo === "reducida_8"
+                                    ? Math.round(sub * 0.08 * 100) / 100
+                                    : 0;
                                 const stockOk = !prod || line.cantidad <= prod.existenciaActual;
 
                                 return (
                                     <div key={idx} className="rounded-lg border border-border-light/70 bg-surface-2 p-3 space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                                            <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                                 Línea {idx + 1}
                                             </span>
                                             {lines.length > 1 && (
                                                 <button onClick={() => removeLine(idx)}
-                                                    className="text-[9px] text-red-500/60 hover:text-red-500 transition-colors uppercase tracking-[0.12em]">
+                                                    className="text-[11px] text-red-500/60 hover:text-red-500 transition-colors uppercase tracking-[0.10em]">
                                                     Quitar
                                                 </button>
                                             )}
@@ -237,7 +250,7 @@ export default function VentasPage() {
                                             onChange={(e) => {
                                                 const p = getProducto(e.target.value);
                                                 updateLine(idx, "productoId", e.target.value);
-                                                if (p) updateLine(idx, "ivaTipo", p.ivaTipo as "general" | "exento");
+                                                if (p) updateLine(idx, "ivaTipo", p.ivaTipo === "exento" ? "exento" : "general_16");
                                             }}
                                         >
                                             <option value="">Seleccionar producto…</option>
@@ -249,10 +262,10 @@ export default function VentasPage() {
                                         </select>
 
                                         {prod && (
-                                            <div className="flex gap-2 text-[9px] text-[var(--text-tertiary)] px-1">
+                                            <div className="flex gap-2 text-[11px] text-[var(--text-tertiary)] px-1">
                                                 <span>Exist: <span className={`font-medium ${!stockOk && line.cantidad > 0 ? "text-red-500" : "text-foreground"}`}>{fmtN(prod.existenciaActual)}</span></span>
                                                 <span>·</span>
-                                                <span>IVA: <span className="font-medium text-foreground">{prod.ivaTipo === "general" ? "16%" : "Exento"}</span></span>
+                                                <span>IVA prod.: <span className="font-medium text-foreground">{prod.ivaTipo === "exento" ? "Exento" : "16%"}</span></span>
                                             </div>
                                         )}
 
@@ -274,14 +287,15 @@ export default function VentasPage() {
                                         <div>
                                             <label className={labelCls}>IVA</label>
                                             <select className={fieldCls} value={line.ivaTipo}
-                                                onChange={(e) => updateLine(idx, "ivaTipo", e.target.value as "general" | "exento")}>
-                                                <option value="general">16% General</option>
+                                                onChange={(e) => updateLine(idx, "ivaTipo", e.target.value as "general_16" | "reducida_8" | "exento")}>
+                                                <option value="general_16">16% General</option>
+                                                <option value="reducida_8">8% Reducida</option>
                                                 <option value="exento">Exento</option>
                                             </select>
                                         </div>
 
                                         {line.cantidad > 0 && line.precioVentaUnitario > 0 && (
-                                            <div className="flex justify-between text-[10px] px-1 pt-1 border-t border-border-light/50">
+                                            <div className="flex justify-between text-[12px] px-1 pt-1 border-t border-border-light/50">
                                                 <span className="text-[var(--text-tertiary)]">Subtotal + IVA</span>
                                                 <span className="tabular-nums text-foreground font-medium">
                                                     {fmtN(sub)} + {fmtN(iva)} = {fmtN(sub + iva)}
@@ -297,22 +311,38 @@ export default function VentasPage() {
                     {/* Totals preview */}
                     {lines.some((l) => l.cantidad > 0 && l.precioVentaUnitario > 0) && (
                         <div className="rounded-xl border border-border-light bg-surface-1 p-4 space-y-2">
-                            <p className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-3">Resumen de factura</p>
-                            <div className="flex justify-between text-[11px]">
-                                <span className="text-[var(--text-secondary)]">Base gravada 16%</span>
-                                <span className="tabular-nums text-foreground">{fmtN(totales.baseGravada)}</span>
-                            </div>
-                            <div className="flex justify-between text-[11px]">
-                                <span className="text-[var(--text-secondary)]">IVA 16%</span>
-                                <span className="tabular-nums text-foreground">{fmtN(totales.ivaDebito)}</span>
-                            </div>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-3">Resumen de factura</p>
+                            {totales.baseGravada16 > 0 && (
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-[var(--text-secondary)]">Base gravada 16%</span>
+                                    <span className="tabular-nums text-foreground">{fmtN(totales.baseGravada16)}</span>
+                                </div>
+                            )}
+                            {totales.ivaDebito16 > 0 && (
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-[var(--text-secondary)]">IVA 16%</span>
+                                    <span className="tabular-nums text-foreground">{fmtN(totales.ivaDebito16)}</span>
+                                </div>
+                            )}
+                            {totales.baseGravada8 > 0 && (
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-[var(--text-secondary)]">Base gravada 8%</span>
+                                    <span className="tabular-nums text-foreground">{fmtN(totales.baseGravada8)}</span>
+                                </div>
+                            )}
+                            {totales.ivaDebito8 > 0 && (
+                                <div className="flex justify-between text-[13px]">
+                                    <span className="text-[var(--text-secondary)]">IVA 8% reducida</span>
+                                    <span className="tabular-nums text-foreground">{fmtN(totales.ivaDebito8)}</span>
+                                </div>
+                            )}
                             {totales.baseExenta > 0 && (
-                                <div className="flex justify-between text-[11px]">
+                                <div className="flex justify-between text-[13px]">
                                     <span className="text-[var(--text-secondary)]">Base exenta</span>
                                     <span className="tabular-nums text-foreground">{fmtN(totales.baseExenta)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between text-[13px] font-bold pt-2 border-t border-border-light">
+                            <div className="flex justify-between text-[15px] font-bold pt-2 border-t border-border-light">
                                 <span className="text-foreground">Total</span>
                                 <span className="tabular-nums text-foreground">{fmtN(totales.total)} Bs.</span>
                             </div>
@@ -321,7 +351,7 @@ export default function VentasPage() {
 
                     <button
                         onClick={handleSave} disabled={saving}
-                        className="w-full h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                        className="w-full h-10 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[13px] uppercase tracking-[0.12em] transition-colors"
                     >
                         {saving ? "Registrando…" : "Registrar venta"}
                     </button>
@@ -331,13 +361,13 @@ export default function VentasPage() {
                 <div className="col-span-3">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                            <p className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                                 Ventas recientes
                             </p>
                             <div className="flex items-center gap-2">
-                                <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Período</label>
+                                <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Período</label>
                                 <input
-                                    type="month" className="h-7 px-2 rounded border border-border-light bg-surface-2 text-[11px] text-foreground outline-none"
+                                    type="month" className="h-8 px-2 rounded border border-border-light bg-surface-2 text-[12px] text-foreground outline-none"
                                     value={periodo}
                                     onChange={(e) => setPeriodo(e.target.value)}
                                 />
@@ -345,18 +375,18 @@ export default function VentasPage() {
                         </div>
 
                         {loadingMovimientos ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
+                            <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
                         ) : ventasRecientes.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
+                            <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                                 No hay ventas para este período.
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-[11px]">
+                                <table className="w-full text-[13px]">
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Fecha", "Factura", "Cliente", "Producto", "Cant.", "Precio Vta.", "IVA", "Total"].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}

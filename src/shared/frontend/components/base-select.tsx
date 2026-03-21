@@ -102,13 +102,13 @@ export const BaseSelect = <T extends SelectItemData>({
                             variant="flat"
                             classNames={{
                                 base: [
-                                    "h-[20px]",
+                                    "h-[22px]",
                                     "bg-neutral-100 dark:bg-neutral-800",
                                     "border border-border-light",
                                     "rounded-md",
                                 ].join(" "),
                                 content: [
-                                    "font-mono text-[10px] uppercase tracking-wide",
+                                    "font-mono text-[11px] uppercase tracking-wide",
                                     "text-neutral-600 dark:text-neutral-400",
                                     "px-1",
                                 ].join(" "),
@@ -133,7 +133,7 @@ export const BaseSelect = <T extends SelectItemData>({
                             "inline-flex items-center px-1.5 h-[20px] rounded-md",
                             "bg-neutral-100 dark:bg-neutral-800",
                             "border border-border-light",
-                            "font-mono text-[10px] text-neutral-500",
+                            "font-mono text-[11px] text-neutral-500",
                         ].join(" ")}>
                             +{overflow}
                         </div>
@@ -172,7 +172,7 @@ export const BaseSelect = <T extends SelectItemData>({
                     base: "w-full",
 
                     label: [
-                        "font-mono text-[10px] uppercase tracking-[0.18em]",
+                        "font-mono text-[11px] uppercase tracking-[0.14em]",
                         "text-neutral-500 dark:text-neutral-400",
                         "mb-1.5",
                     ].join(" "),
@@ -236,7 +236,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                         <div className={[
                                             "w-6 h-6 rounded-md flex-shrink-0",
                                             "flex items-center justify-center",
-                                            "font-mono text-[9px] font-bold",
+                                            "font-mono text-[10px] font-bold",
                                             isSelected
                                                 ? "bg-primary-500 text-white"
                                                 : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400",
@@ -248,7 +248,7 @@ export const BaseSelect = <T extends SelectItemData>({
 
                                     <div className="min-w-0">
                                         <p className={[
-                                            "font-mono text-[12px] font-medium truncate",
+                                            "font-mono text-[13px] font-medium truncate",
                                             isSelected
                                                 ? "text-primary-700 dark:text-primary-300"
                                                 : "text-foreground",
@@ -256,7 +256,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                             {item.name}
                                         </p>
                                         {item.subtitle && (
-                                            <p className="font-mono text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                                            <p className="font-mono text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
                                                 {item.subtitle}
                                             </p>
                                         )}

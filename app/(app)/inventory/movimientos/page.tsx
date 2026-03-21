@@ -17,28 +17,19 @@ function currentPeriod() {
 }
 
 const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "font-mono text-[14px] text-foreground tabular-nums",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const TIPO_GROUPS = [
     {
-        label: "Entradas",
+        label: "Devoluciones",
         items: [
-            { value: "entrada_compra",    label: "Entrada compra"     },
-            { value: "entrada_produccion", label: "Entrada producción" },
-            { value: "devolucion_compra", label: "Devolución compra"  },
-        ],
-    },
-    {
-        label: "Salidas",
-        items: [
-            { value: "salida_venta",       label: "Salida venta"        },
-            { value: "salida_produccion",  label: "Salida producción"   },
-            { value: "devolucion_venta",   label: "Devolución venta"    },
+            { value: "devolucion_compra", label: "Devolución compra" },
+            { value: "devolucion_venta",  label: "Devolución venta"  },
         ],
     },
     {
@@ -50,6 +41,7 @@ const TIPO_GROUPS = [
     },
 ];
 
+// entradas/salidas de compra, venta y producción se registran desde sus páginas dedicadas
 // autoconsumo is excluded from the main form and has its own dedicated section
 
 function tipoBadgeClass(tipo: TipoMovimiento): string {
@@ -75,13 +67,18 @@ export default function MovimientosPage() {
         productos, movimientos,
         loadingProductos, loadingMovimientos, error, setError,
         loadProductos, loadMovimientos, saveMovimiento,
+        loadCierres, tasaDolarActual,
     } = useInventory();
 
     const [periodo, setPeriodo] = useState(currentPeriod());
     const [saving, setSaving] = useState(false);
+    const [tasaDolarStr, setTasaDolarStr] = useState<string>("");
+    const [tasaBcvLoading, setTasaBcvLoading] = useState(false);
+    const [tasaBcvFecha, setTasaBcvFecha] = useState<string | null>(null);
+    const [tasaBcvError, setTasaBcvError] = useState<string | null>(null);
 
     // ── main form state ──────────────────────────────────────────────────────
-    const emptyForm = (): Omit<Movimiento, "saldoCantidad" | "costoTotal" | "periodo"> & { saldoCantidad: number; costoTotal: number; periodo: string } => ({
+    const emptyForm = (): Omit<Movimiento, "saldoCantidad" | "costoTotal" | "periodo"> & { saldoCantidad: number; costoTotal: number; periodo: string; moneda: 'B' | 'D'; costoMoneda: number } => ({
         empresaId:    companyId ?? "",
         productoId:   "",
         tipo:         "entrada_compra" as TipoMovimiento,
@@ -93,6 +90,8 @@ export default function MovimientosPage() {
         saldoCantidad: 0,
         referencia:   "",
         notas:        "",
+        moneda:       "B",
+        costoMoneda:  0,
     });
 
     const [form, setForm] = useState(emptyForm());
@@ -116,18 +115,71 @@ export default function MovimientosPage() {
         if (!companyId) return;
         loadProductos(companyId);
         loadMovimientos(companyId, periodo);
-    }, [companyId, loadProductos, loadMovimientos, periodo]);
+        loadCierres(companyId);
+    }, [companyId, loadProductos, loadMovimientos, loadCierres, periodo]);
+
+    // Pre-fill tasa from last cierre
+    useEffect(() => {
+        if (tasaDolarActual != null && tasaDolarStr === "") {
+            setTasaDolarStr(String(tasaDolarActual));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasaDolarActual]);
+
+    // Auto-fetch BCV rate when form date changes
+    useEffect(() => {
+        if (!form.fecha) return;
+        let cancelled = false;
+        setTasaBcvLoading(true);
+        setTasaBcvFecha(null);
+        setTasaBcvError(null);
+        fetch(`/api/bcv/rate?date=${form.fecha}&code=USD`)
+            .then(r => r.json())
+            .then(json => {
+                if (cancelled) return;
+                if (json.rate) {
+                    setTasaDolarStr(String(json.rate));
+                    setTasaBcvFecha(json.date);
+                } else {
+                    setTasaBcvError(json.error ?? 'Sin datos BCV para esta fecha');
+                    setTasaBcvFecha(null);
+                }
+            })
+            .catch(() => { if (!cancelled) { setTasaBcvError('Error al consultar BCV'); setTasaBcvFecha(null); } })
+            .finally(() => { if (!cancelled) setTasaBcvLoading(false); });
+        return () => { cancelled = true; };
+    }, [form.fecha]);
 
     // Pre-fill costo unitario when producto changes (main form)
     useEffect(() => {
         if (!form.productoId) return;
         const p = productos.find((x) => x.id === form.productoId);
-        if (p) setForm((f) => ({ ...f, costoUnitario: p.costoPromedio, empresaId: companyId ?? "" }));
+        if (!p) return;
+        const moneda = p.monedaDefecto ?? 'B';
+        setForm((f) => ({
+            ...f,
+            moneda,
+            costoUnitario: moneda === 'B' ? p.costoPromedio : f.costoUnitario,
+            costoMoneda:   moneda === 'D' ? 0 : 0,
+            empresaId:     companyId ?? "",
+        }));
     }, [form.productoId, productos, companyId]);
 
+    const tasaDolar = useMemo(() => {
+        const v = parseFloat(tasaDolarStr.replace(",", "."));
+        return isNaN(v) || v <= 0 ? null : v;
+    }, [tasaDolarStr]);
+
+    const costoUnitarioEffective = useMemo(() => {
+        if (form.moneda === 'D' && form.costoMoneda > 0 && tasaDolar) {
+            return Math.round(form.costoMoneda * tasaDolar * 10000) / 10000;
+        }
+        return form.costoUnitario;
+    }, [form.moneda, form.costoMoneda, form.costoUnitario, tasaDolar]);
+
     const costoTotal = useMemo(() =>
-        form.cantidad * form.costoUnitario,
-    [form.cantidad, form.costoUnitario]);
+        form.cantidad * costoUnitarioEffective,
+    [form.cantidad, costoUnitarioEffective]);
 
     // ── main form handlers ───────────────────────────────────────────────────
     function setF<K extends keyof typeof form>(k: K, v: typeof form[K]) {
@@ -142,10 +194,14 @@ export default function MovimientosPage() {
         const mov: Movimiento = {
             ...form,
             empresaId:    companyId!,
+            costoUnitario: costoUnitarioEffective,
             costoTotal,
             saldoCantidad: 0,
             periodo:      form.fecha.slice(0, 7),
             existenciaActual: producto?.existenciaActual,
+            moneda:       form.moneda,
+            costoMoneda:  form.moneda === 'D' ? form.costoMoneda : undefined,
+            tasaDolar:    form.moneda === 'D' ? tasaDolar : undefined,
         };
         const saved = await saveMovimiento(mov);
         setSaving(false);
@@ -203,11 +259,11 @@ export default function MovimientosPage() {
         <div className="min-h-full bg-surface-2 font-mono">
             {/* Header */}
             <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                    Movimientos
+                <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
+                    Ajustes y Devoluciones
                 </h1>
-                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                    Registro de entradas, salidas y ajustes
+                <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
+                    Correcciones de inventario y devoluciones — compras en Compras · ventas en Ventas
                 </p>
             </div>
 
@@ -217,16 +273,32 @@ export default function MovimientosPage() {
 
                     {/* ── Error banner ─────────────────────────────────────── */}
                     {error && (
-                        <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                        <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
                             {error}
                         </div>
                     )}
 
                     {/* ── Main movement form ───────────────────────────────── */}
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5">
-                        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground mb-4">
-                            Nuevo movimiento
+                        <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-4">
+                            Nuevo ajuste / devolución
                         </h2>
+
+                        {/* Tasa BCV */}
+                        <div className="mb-4 flex items-center gap-3 flex-wrap">
+                            <label className={labelCls + " mb-0 whitespace-nowrap"}>Tasa BCV (Bs/USD)</label>
+                            <input
+                                type="number" min="0" step="0.0001"
+                                className="h-8 w-36 px-3 rounded-lg border border-border-light bg-surface-2 outline-none font-mono text-[12px] text-foreground focus:border-primary-500/60 transition-colors disabled:opacity-60"
+                                value={tasaDolarStr}
+                                onChange={(e) => { setTasaDolarStr(e.target.value); setTasaBcvFecha(null); }}
+                                placeholder={tasaBcvLoading ? 'Consultando…' : 'Ej. 46.50'}
+                                disabled={tasaBcvLoading}
+                            />
+                            {tasaBcvLoading && <span className="text-[11px] text-[var(--text-tertiary)] animate-pulse">···</span>}
+                            {tasaBcvFecha && !tasaBcvLoading && <span className="text-[11px] text-green-500 uppercase tracking-[0.12em]">BCV {tasaBcvFecha}</span>}
+                            {tasaBcvError && !tasaBcvLoading && <span className="text-[11px] text-amber-500">{tasaBcvError}</span>}
+                        </div>
 
                         <div className="space-y-3">
                             <div>
@@ -240,6 +312,7 @@ export default function MovimientosPage() {
                                     {productos.filter((p) => p.activo).map((p) => (
                                         <option key={p.id} value={p.id}>
                                             {p.codigo ? `[${p.codigo}] ` : ""}{p.nombre}
+                                            {p.monedaDefecto === 'D' ? ' (USD)' : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -281,16 +354,51 @@ export default function MovimientosPage() {
                             </div>
 
                             <div>
-                                <label className={labelCls}>Costo unitario</label>
-                                <input
-                                    type="number" min="0" step="0.0001" className={fieldCls}
-                                    value={form.costoUnitario || ""}
-                                    onChange={(e) => setF("costoUnitario", parseFloat(e.target.value) || 0)}
-                                />
+                                <label className={labelCls}>Moneda</label>
+                                <select
+                                    className={fieldCls}
+                                    value={form.moneda}
+                                    onChange={(e) => setF("moneda", e.target.value as 'B' | 'D')}
+                                >
+                                    <option value="B">Bolívares (Bs)</option>
+                                    <option value="D">Dólares (USD)</option>
+                                </select>
                             </div>
 
+                            {form.moneda === 'D' ? (
+                                <div>
+                                    <label className={labelCls}>Costo USD</label>
+                                    <input
+                                        type="number" min="0" step="0.0001" className={fieldCls}
+                                        value={form.costoMoneda || ""}
+                                        onChange={(e) => setF("costoMoneda", parseFloat(e.target.value) || 0)}
+                                        placeholder="Costo en dólares"
+                                    />
+                                    {tasaDolar && form.costoMoneda > 0 && (
+                                        <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
+                                            = {fmtN(form.costoMoneda * tasaDolar)} Bs
+                                            {" "}(tasa {fmtN(tasaDolar)} Bs/USD)
+                                        </p>
+                                    )}
+                                    {!tasaDolar && (
+                                        <p className="mt-1 text-[11px] text-amber-500">
+                                            Ingresa la tasa BCV para calcular el costo en Bs
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className={labelCls}>Costo unitario (Bs)</label>
+                                    <input
+                                        type="number" min="0" step="0.0001" className={fieldCls}
+                                        value={form.costoUnitario || ""}
+                                        onChange={(e) => setF("costoUnitario", parseFloat(e.target.value) || 0)}
+                                    />
+                                </div>
+                            )}
+
                             <div>
-                                <label className={labelCls}>Costo total (calculado)</label>
+                                <label className={labelCls}>Costo total Bs (calculado)</label>
                                 <input
                                     readOnly className={fieldCls + " cursor-default opacity-70"}
                                     value={fmtN(costoTotal)}
@@ -320,26 +428,26 @@ export default function MovimientosPage() {
                         <div className="mt-4 pt-4 border-t border-border-light">
                             <button
                                 onClick={handleSave} disabled={saving}
-                                className="w-full h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                className="w-full h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
-                                {saving ? "Registrando…" : "Registrar movimiento"}
+                                {saving ? "Registrando…" : "Registrar ajuste"}
                             </button>
                         </div>
                     </div>
 
                     {/* ── Autoconsumo section ──────────────────────────────── */}
                     <div className="rounded-xl border border-amber-500/30 bg-surface-1 p-5">
-                        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-amber-500 mb-0.5">
+                        <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-amber-500 mb-0.5">
                             Autoconsumo
                         </h2>
-                        <p className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-[0.14em] mb-4">
+                        <p className="text-[11px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mb-4">
                             Retiro de bienes — hecho imponible IVA
                         </p>
 
                         {/* Warning */}
                         <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-lg border border-amber-500/25 bg-amber-500/[0.05]">
                             <span className="text-amber-500 text-[13px] leading-none mt-0.5">⚠</span>
-                            <p className="text-[10px] text-amber-500/90 leading-relaxed">
+                            <p className="text-[12px] text-amber-500/90 leading-relaxed">
                                 Esta operación genera un <strong>débito fiscal de IVA</strong> que debe
                                 declararse ante el SENIAT.
                             </p>
@@ -367,12 +475,12 @@ export default function MovimientosPage() {
                                 {acProducto && (
                                     <div className="grid grid-cols-2 gap-2 px-3 py-2.5 rounded-lg bg-surface-2 border border-border-light">
                                         <div>
-                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Costo promedio</p>
+                                            <p className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] mb-0.5">Costo promedio</p>
                                             <p className="text-[12px] tabular-nums text-foreground">{fmtN(acProducto.costoPromedio)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">IVA tipo</p>
-                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium border ${
+                                            <p className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] mb-0.5">IVA tipo</p>
+                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border ${
                                                 acProducto.ivaTipo === "general"
                                                     ? "border-primary-500/30 text-primary-500 bg-primary-500/[0.06]"
                                                     : "border-border-light text-[var(--text-tertiary)]"
@@ -381,7 +489,7 @@ export default function MovimientosPage() {
                                             </span>
                                         </div>
                                         <div>
-                                            <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Existencia actual</p>
+                                            <p className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] mb-0.5">Existencia actual</p>
                                             <p className={`text-[12px] tabular-nums ${acForm.cantidad > acProducto.existenciaActual && acForm.cantidad > 0 ? "text-red-500" : "text-foreground"}`}>
                                                 {fmtN(acProducto.existenciaActual)}
                                             </p>
@@ -406,7 +514,7 @@ export default function MovimientosPage() {
                                         onChange={(e) => setAc("cantidad", parseFloat(e.target.value) || 0)}
                                     />
                                     {!acStockOk && acForm.cantidad > 0 && (
-                                        <p className="mt-1 text-[10px] text-red-500">
+                                        <p className="mt-1 text-[11px] text-red-500">
                                             Supera la existencia disponible
                                         </p>
                                     )}
@@ -425,12 +533,12 @@ export default function MovimientosPage() {
                                 {/* IVA preview */}
                                 {acProducto && acForm.cantidad > 0 && (
                                     <div className="px-3 py-3 rounded-lg border border-border-light bg-surface-2 space-y-1.5">
-                                        <p className="text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-2">Preview</p>
-                                        <div className="flex justify-between text-[11px]">
+                                        <p className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] mb-2">Preview</p>
+                                        <div className="flex justify-between text-[12px]">
                                             <span className="text-[var(--text-secondary)]">Costo retirado</span>
                                             <span className="tabular-nums text-foreground">{fmtN(acCostoTotal)}</span>
                                         </div>
-                                        <div className="flex justify-between text-[11px]">
+                                        <div className="flex justify-between text-[12px]">
                                             <span className={acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}>
                                                 IVA 16% {acProducto.ivaTipo === "exento" ? "(exento)" : "débito fiscal"}
                                             </span>
@@ -449,7 +557,7 @@ export default function MovimientosPage() {
                                     <button
                                         onClick={handleAcPreview}
                                         disabled={!acForm.productoId || !acForm.cantidad || !acStockOk}
-                                        className="w-full h-9 rounded-lg border border-amber-500/50 hover:bg-amber-500/10 disabled:opacity-40 text-amber-500 text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                        className="w-full h-9 rounded-lg border border-amber-500/50 hover:bg-amber-500/10 disabled:opacity-40 text-amber-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
                                     >
                                         Revisar y confirmar
                                     </button>
@@ -459,27 +567,27 @@ export default function MovimientosPage() {
                             /* Confirmation step */
                             <div className="space-y-4">
                                 <div className="px-4 py-4 rounded-lg border border-amber-500/30 bg-amber-500/[0.04] space-y-3">
-                                    <p className="text-[9px] uppercase tracking-[0.16em] text-amber-500/70 mb-2">Confirmar autoconsumo</p>
+                                    <p className="text-[11px] uppercase tracking-[0.12em] text-amber-500/70 mb-2">Confirmar autoconsumo</p>
 
                                     <div className="space-y-2">
-                                        <div className="flex justify-between text-[11px]">
+                                        <div className="flex justify-between text-[12px]">
                                             <span className="text-[var(--text-secondary)]">Producto</span>
                                             <span className="text-foreground font-medium">{acProducto?.nombre}</span>
                                         </div>
-                                        <div className="flex justify-between text-[11px]">
+                                        <div className="flex justify-between text-[12px]">
                                             <span className="text-[var(--text-secondary)]">Cantidad</span>
                                             <span className="tabular-nums text-foreground">{fmtN(acForm.cantidad)}</span>
                                         </div>
-                                        <div className="flex justify-between text-[11px]">
+                                        <div className="flex justify-between text-[12px]">
                                             <span className="text-[var(--text-secondary)]">Costo unitario</span>
                                             <span className="tabular-nums text-foreground">{fmtN(acProducto?.costoPromedio ?? 0)}</span>
                                         </div>
-                                        <div className="flex justify-between text-[11px]">
+                                        <div className="flex justify-between text-[12px]">
                                             <span className="text-[var(--text-secondary)]">Costo total retirado</span>
                                             <span className="tabular-nums text-foreground">{fmtN(acCostoTotal)}</span>
                                         </div>
                                         {acForm.notas && (
-                                            <div className="flex justify-between text-[11px]">
+                                            <div className="flex justify-between text-[12px]">
                                                 <span className="text-[var(--text-secondary)]">Motivo</span>
                                                 <span className="text-foreground max-w-[140px] truncate text-right">{acForm.notas}</span>
                                             </div>
@@ -489,15 +597,15 @@ export default function MovimientosPage() {
                                     {/* IVA highlight */}
                                     <div className="mt-3 pt-3 border-t border-amber-500/20 space-y-1.5">
                                         <div className="flex justify-between items-center text-[12px]">
-                                            <span className="text-amber-500 font-bold uppercase tracking-[0.10em] text-[10px]">
+                                            <span className="text-amber-500 font-bold uppercase tracking-[0.10em] text-[12px]">
                                                 Débito fiscal IVA 16%
                                             </span>
-                                            <span className={`tabular-nums font-bold text-[14px] ${acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}`}>
+                                            <span className={`tabular-nums font-bold text-[15px] ${acIva > 0 ? "text-amber-500" : "text-[var(--text-secondary)]"}`}>
                                                 {fmtN(acIva)}
                                             </span>
                                         </div>
                                         {acIva === 0 && (
-                                            <p className="text-[9px] text-[var(--text-tertiary)]">Producto exento — no genera débito fiscal</p>
+                                            <p className="text-[11px] text-[var(--text-tertiary)]">Producto exento — no genera débito fiscal</p>
                                         )}
                                     </div>
                                 </div>
@@ -506,14 +614,14 @@ export default function MovimientosPage() {
                                     <button
                                         onClick={() => setAcStep("form")}
                                         disabled={acSaving}
-                                        className="flex-1 h-9 rounded-lg border border-border-light hover:bg-surface-2 disabled:opacity-50 text-[var(--text-secondary)] text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                        className="flex-1 h-9 rounded-lg border border-border-light hover:bg-surface-2 disabled:opacity-50 text-[var(--text-secondary)] text-[12px] uppercase tracking-[0.12em] transition-colors"
                                     >
                                         Volver
                                     </button>
                                     <button
                                         onClick={handleAcConfirm}
                                         disabled={acSaving}
-                                        className="flex-1 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                        className="flex-1 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                                     >
                                         {acSaving ? "Registrando…" : "Confirmar"}
                                     </button>
@@ -527,13 +635,13 @@ export default function MovimientosPage() {
                 <div className="col-span-3">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                            <p className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                                 Historial
                             </p>
                             <div className="flex items-center gap-2">
-                                <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Período</label>
+                                <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Período</label>
                                 <input
-                                    type="month" className="h-7 px-2 rounded border border-border-light bg-surface-2 text-[11px] text-foreground outline-none"
+                                    type="month" className="h-8 px-2 rounded border border-border-light bg-surface-2 text-[12px] text-foreground outline-none"
                                     value={periodo}
                                     onChange={(e) => setPeriodo(e.target.value)}
                                 />
@@ -541,18 +649,18 @@ export default function MovimientosPage() {
                         </div>
 
                         {loadingMovimientos ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
+                            <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
                         ) : movimientos.length === 0 ? (
-                            <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
+                            <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                                 No hay movimientos para este período.
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-[11px]">
+                                <table className="w-full text-[13px]">
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Fecha", "Producto", "Tipo", "Cantidad", "Costo U.", "Costo Total", "Referencia"].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
+                                                <th key={h} className="px-3 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
@@ -568,7 +676,7 @@ export default function MovimientosPage() {
                                                         {prod?.nombre ?? m.productoId}
                                                     </td>
                                                     <td className="px-3 py-2.5">
-                                                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${tipoBadgeClass(m.tipo as TipoMovimiento)}`}>
+                                                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${tipoBadgeClass(m.tipo as TipoMovimiento)}`}>
                                                             {tipoLabel(m.tipo as TipoMovimiento)}
                                                         </span>
                                                     </td>

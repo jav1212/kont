@@ -23,4 +23,5 @@ export interface Cierre {
   periodo: string;
   cerradoAt?: string;
   notas: string;
+  tasaDolar?: number | null;
 }

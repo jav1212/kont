@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { Producto } from '../../backend/domain/producto';
 import type { Movimiento, KardexEntry } from '../../backend/domain/movimiento';
 import type { Transformacion, Cierre } from '../../backend/domain/transformacion';
@@ -12,8 +12,9 @@ import type { LibroComprasRow } from '../../backend/domain/libro-compras';
 import type { ReporteISLRProducto, ReporteISLRMovimiento } from '../../backend/domain/reporte-islr';
 import type { LibroVentasRow } from '../../backend/domain/libro-ventas';
 import type { LibroInventariosRow } from '../../backend/domain/libro-inventarios';
+import type { ReporteSaldoRow } from '../../backend/domain/reporte-saldo';
 
-export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, ReporteISLRMovimiento, LibroVentasRow, LibroInventariosRow };
+export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, ReporteISLRMovimiento, LibroVentasRow, LibroInventariosRow, ReporteSaldoRow };
 
 export function useInventory() {
     const [productos, setProductos]             = useState<Producto[]>([]);
@@ -30,6 +31,7 @@ export function useInventory() {
     const [reporteISLR, setReporteISLR]         = useState<ReporteISLRProducto[]>([]);
     const [libroVentas, setLibroVentas]             = useState<LibroVentasRow[]>([]);
     const [libroInventarios, setLibroInventarios]   = useState<LibroInventariosRow[]>([]);
+    const [reporteSaldo, setReporteSaldo]           = useState<ReporteSaldoRow[]>([]);
 
     const [loadingProductos, setLoadingProductos]         = useState(false);
     const [loadingMovimientos, setLoadingMovimientos]     = useState(false);
@@ -45,6 +47,7 @@ export function useInventory() {
     const [loadingReporteISLR, setLoadingReporteISLR]     = useState(false);
     const [loadingLibroVentas, setLoadingLibroVentas]         = useState(false);
     const [loadingLibroInventarios, setLoadingLibroInventarios] = useState(false);
+    const [loadingReporteSaldo, setLoadingReporteSaldo]         = useState(false);
 
     const [error, setError] = useState<string | null>(null);
 
@@ -221,13 +224,23 @@ export function useInventory() {
         }
     }, []);
 
-    const saveCierre = useCallback(async (empresaId: string, periodo: string, notas?: string): Promise<boolean> => {
+    const tasaDolarActual = useMemo(
+        () => cierres.find((c) => c.tasaDolar != null)?.tasaDolar ?? null,
+        [cierres],
+    );
+
+    const saveCierre = useCallback(async (
+        empresaId: string,
+        periodo: string,
+        notas?: string,
+        tasaDolar?: number | null,
+    ): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/cierres', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ empresaId, periodo, notas: notas ?? '' }),
+                body: JSON.stringify({ empresaId, periodo, notas: notas ?? '', tasaDolar: tasaDolar ?? null }),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cerrar período'); return false; }
@@ -354,6 +367,20 @@ export function useInventory() {
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
             return null;
+        }
+    }, []);
+
+    const deleteFactura = useCallback(async (facturaId: string): Promise<boolean> => {
+        setError(null);
+        try {
+            const res = await fetch(`/api/inventory/compras/${facturaId}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al eliminar factura'); return false; }
+            setFacturas((prev) => prev.filter((f) => f.id !== facturaId));
+            return true;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return false;
         }
     }, []);
 
@@ -493,7 +520,7 @@ export function useInventory() {
         clienteRif: string;
         clienteNombre: string;
         fecha: string;
-        items: { productoId: string; cantidad: number; precioVentaUnitario: number; ivaTipo: 'general' | 'exento'; existenciaActual?: number }[];
+        items: { productoId: string; cantidad: number; precioVentaUnitario: number; ivaTipo: 'general_16' | 'reducida_8' | 'exento'; existenciaActual?: number }[];
     }): Promise<boolean> => {
         setError(null);
         try {
@@ -538,6 +565,25 @@ export function useInventory() {
         }
     }, []);
 
+    // ── Reporte SALDO por Departamento ────────────────────────────────────────
+
+    const loadReporteSaldo = useCallback(async (empresaId: string, periodo: string) => {
+        setLoadingReporteSaldo(true);
+        setError(null);
+        try {
+            const res = await fetch(
+                `/api/inventory/reporte-saldo?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+            );
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte SALDO'); return; }
+            setReporteSaldo(json.data ?? []);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+        } finally {
+            setLoadingReporteSaldo(false);
+        }
+    }, []);
+
     // ── Reporte de Período ────────────────────────────────────────────────────
 
     const loadReportePeriodo = useCallback(async (empresaId: string, periodo: string) => {
@@ -561,12 +607,13 @@ export function useInventory() {
         // state
         productos, movimientos, kardex, transformaciones, cierres,
         proveedores, facturas, currentFactura,
-        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas, libroInventarios,
+        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas, libroInventarios, reporteSaldo,
+        tasaDolarActual,
         // loading
         loadingProductos, loadingMovimientos, loadingKardex,
         loadingTransformaciones, loadingCierres,
         loadingProveedores, loadingFacturas, loadingFactura,
-        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas, loadingLibroInventarios,
+        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas, loadingLibroInventarios, loadingReporteSaldo,
         // error
         error, setError,
         // actions
@@ -576,12 +623,13 @@ export function useInventory() {
         loadTransformaciones, saveTransformacion,
         loadCierres, saveCierre,
         loadProveedores, saveProveedor, deleteProveedor,
-        loadFacturas, loadFactura, saveFactura, confirmarFactura,
+        loadFacturas, loadFactura, saveFactura, confirmarFactura, deleteFactura,
         loadDepartamentos, saveDepartamento, deleteDepartamento,
         loadReportePeriodo,
         loadLibroCompras,
         loadReporteISLR,
         loadLibroVentas, saveVenta,
         loadLibroInventarios,
+        loadReporteSaldo,
     };
 }

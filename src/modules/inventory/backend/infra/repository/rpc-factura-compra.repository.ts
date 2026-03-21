@@ -57,6 +57,9 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
                 costo_unitario: i.costoUnitario,
                 costo_total:    i.costoTotal,
                 iva_alicuota:   i.ivaAlicuota ?? 'general_16',
+                moneda:         i.moneda ?? 'B',
+                costo_moneda:   i.costoMoneda ?? null,
+                tasa_dolar:     i.tasaDolar ?? null,
             }));
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_factura_save', {
@@ -68,6 +71,20 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
             return Result.success(this.mapToDomain(data));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al guardar factura');
+        }
+    }
+
+    async delete(facturaId: string): Promise<Result<void>> {
+        try {
+            const { error } = await this.source.instance
+                .rpc('tenant_inventario_factura_delete', {
+                    p_user_id:    this.userId,
+                    p_factura_id: facturaId,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(undefined);
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error al eliminar factura');
         }
     }
 
@@ -96,6 +113,9 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
                   costoUnitario:  Number(i.costo_unitario ?? 0),
                   costoTotal:     Number(i.costo_total ?? 0),
                   ivaAlicuota:    (i.iva_alicuota ?? 'general_16') as IvaAlicuota,
+                  moneda:         (i.moneda === 'D' ? 'D' : 'B') as import('../../domain/factura-compra').MonedaItem,
+                  costoMoneda:    i.costo_moneda != null ? Number(i.costo_moneda) : null,
+                  tasaDolar:      i.tasa_dolar   != null ? Number(i.tasa_dolar)   : null,
               }))
             : undefined;
 

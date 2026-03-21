@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
+import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo, MonedaDefecto } from "@/src/modules/inventory/backend/domain/producto";
 import {
     productosToCsv,
     parseProductosCsv,
@@ -17,12 +17,12 @@ const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "font-mono text-[14px] text-foreground tabular-nums",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const TIPOS: { value: TipoProducto; label: string }[] = [
     { value: "mercancia",          label: "Mercancía"         },
@@ -44,12 +44,16 @@ const UNIDADES: { value: UnidadMedida; label: string }[] = [
 
 const METODOS: { value: MetodoValuacion; label: string }[] = [
     { value: "promedio_ponderado", label: "Promedio Ponderado" },
-    { value: "peps",               label: "PEPS"               },
 ];
 
 const IVA_TIPOS: { value: IvaTipo; label: string }[] = [
     { value: "general", label: "General (G - 16%)" },
     { value: "exento",  label: "Exento (E)"         },
+];
+
+const MONEDAS: { value: MonedaDefecto; label: string }[] = [
+    { value: "B", label: "Bolívares (Bs)" },
+    { value: "D", label: "Dólares (USD)"  },
 ];
 
 function empty(empresaId: string): Producto {
@@ -66,6 +70,7 @@ function empty(empresaId: string): Producto {
         costoPromedio:   0,
         activo:          true,
         ivaTipo:         "general",
+        monedaDefecto:   "B" as MonedaDefecto,
         departamentoId:  undefined,
     };
 }
@@ -78,7 +83,7 @@ function TipoBadge({ tipo }: { tipo: string }) {
     };
     const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-text-secondary border border-border-light" };
     return (
-        <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium ${cls}`}>
+        <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${cls}`}>
             {label}
         </span>
     );
@@ -115,7 +120,11 @@ export default function ProductosPage() {
     }
 
     function openEdit(p: Producto) {
-        setForm({ ...p });
+        setForm({
+            ...p,
+            // peps is no longer supported; treat it as promedio_ponderado
+            metodoValuacion: p.metodoValuacion === "peps" ? "promedio_ponderado" : p.metodoValuacion,
+        });
         setError(null);
     }
 
@@ -171,10 +180,10 @@ export default function ProductosPage() {
             <div className="px-8 py-6 border-b border-border-light bg-surface-1">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
+                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
                             Productos
                         </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
+                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
                             Catálogo de productos
                         </p>
                     </div>
@@ -182,20 +191,20 @@ export default function ProductosPage() {
                         <button
                             onClick={handleExport}
                             disabled={productos.length === 0}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
                             Exportar CSV
                         </button>
                         <button
                             onClick={() => fileRef.current?.click()}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
                             Importar CSV
                         </button>
                         <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
                         <button
                             onClick={openNew}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
                             + Nuevo producto
                         </button>
@@ -206,7 +215,7 @@ export default function ProductosPage() {
             <div className="px-8 py-6 space-y-4">
                 {/* Error */}
                 {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
                         {error}
                     </div>
                 )}
@@ -214,18 +223,18 @@ export default function ProductosPage() {
                 {/* Import preview */}
                 {importResult && (
                     <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-3">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
+                        <p className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground">
                             Vista previa de importación
                         </p>
                         {importResult.errors.length > 0 && (
                             <ul className="space-y-1">
                                 {importResult.errors.map((e, i) => (
-                                    <li key={i} className="text-[11px] text-red-500">{e}</li>
+                                    <li key={i} className="text-[13px] text-red-500">{e}</li>
                                 ))}
                             </ul>
                         )}
                         {importResult.productos.length > 0 && (
-                            <p className="text-[11px] text-[var(--text-secondary)]">
+                            <p className="text-[13px] text-[var(--text-secondary)]">
                                 {importResult.productos.length} producto(s) listos para importar.
                             </p>
                         )}
@@ -233,13 +242,13 @@ export default function ProductosPage() {
                             <button
                                 onClick={handleImport}
                                 disabled={importing || importResult.productos.length === 0}
-                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 {importing ? "Importando…" : `Importar ${importResult.productos.length}`}
                             </button>
                             <button
                                 onClick={() => setImportResult(null)}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -250,7 +259,7 @@ export default function ProductosPage() {
                 {/* Form panel */}
                 {form && (
                     <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground mb-5">
+                        <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
                             {form.id ? "Editar producto" : "Nuevo producto"}
                         </h2>
 
@@ -291,7 +300,7 @@ export default function ProductosPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="grid grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label className={labelCls}>Departamento</label>
                                 <select
@@ -310,6 +319,12 @@ export default function ProductosPage() {
                                 <label className={labelCls}>IVA</label>
                                 <select className={fieldCls} value={form.ivaTipo ?? "general"} onChange={(e) => set("ivaTipo", e.target.value as IvaTipo)}>
                                     {IVA_TIPOS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>Moneda habitual</label>
+                                <select className={fieldCls} value={form.monedaDefecto ?? "B"} onChange={(e) => set("monedaDefecto", e.target.value as MonedaDefecto)}>
+                                    {MONEDAS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -338,7 +353,7 @@ export default function ProductosPage() {
                                         onChange={(e) => set("activo", e.target.checked)}
                                         className="w-4 h-4 rounded"
                                     />
-                                    <span className="text-[11px] text-foreground">Activo</span>
+                                    <span className="text-[14px] text-foreground">Activo</span>
                                 </label>
                             </div>
                         </div>
@@ -346,13 +361,13 @@ export default function ProductosPage() {
                         <div className="flex items-center gap-3 pt-2 border-t border-border-light">
                             <button
                                 onClick={handleSave} disabled={saving}
-                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 {saving ? "Guardando…" : "Guardar"}
                             </button>
                             <button
                                 onClick={closeForm}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Cancelar
                             </button>
@@ -363,17 +378,17 @@ export default function ProductosPage() {
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingProductos ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
+                        <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : productos.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
+                        <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay productos. Haz clic en "+ Nuevo producto" para crear uno.
                         </div>
                     ) : (
-                        <table className="w-full text-[11px]">
+                        <table className="w-full text-[13px]">
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Costo Prom.", "Existencia", "Mínimo", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -388,7 +403,7 @@ export default function ProductosPage() {
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.departamentoNombre || "—"}</td>
                                             <td className="px-4 py-2.5">
-                                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.12em] font-medium ${p.ivaTipo === "exento" ? "border badge-info" : "border badge-warning"}`}>
+                                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${p.ivaTipo === "exento" ? "border badge-info" : "border badge-warning"}`}>
                                                     {p.ivaTipo === "exento" ? "E" : "G 16%"}
                                                 </span>
                                             </td>
@@ -401,15 +416,15 @@ export default function ProductosPage() {
                                             <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(p.existenciaMinima)}</td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo
-                                                    ? <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
-                                                    : <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
+                                                    ? <span className="text-text-success text-[11px] uppercase tracking-[0.10em]">Activo</span>
+                                                    : <span className="text-text-tertiary text-[11px] uppercase tracking-[0.10em]">Inactivo</span>
                                                 }
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={() => openEdit(p)}
-                                                        className="text-[9px] uppercase tracking-[0.12em] text-primary-500 hover:text-primary-600 transition-colors"
+                                                        className="text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                                                     >
                                                         Editar
                                                     </button>
@@ -417,13 +432,13 @@ export default function ProductosPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleDelete(p.id!)}
-                                                                className="text-[9px] uppercase tracking-[0.12em] text-red-500 hover:text-red-600 transition-colors"
+                                                                className="text-[11px] uppercase tracking-[0.10em] text-red-500 hover:text-red-600 transition-colors"
                                                             >
                                                                 Confirmar
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(null)}
-                                                                className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+                                                                className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
                                                             >
                                                                 Cancelar
                                                             </button>
@@ -431,7 +446,7 @@ export default function ProductosPage() {
                                                     ) : (
                                                         <button
                                                             onClick={() => setConfirmDelete(p.id!)}
-                                                            className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                            className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                                         >
                                                             Eliminar
                                                         </button>

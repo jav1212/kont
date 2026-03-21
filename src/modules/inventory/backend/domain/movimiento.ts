@@ -19,12 +19,17 @@ export interface Movimiento {
   referencia: string;
   notas: string;
   transformacionId?: string | null;
+  // Multi-moneda (referencia histórica — costo_unitario siempre en Bs)
+  moneda?: 'B' | 'D';
+  costoMoneda?: number | null;
+  tasaDolar?: number | null;
   // Campos opcionales para salida_venta y autoconsumo
   numeroFacturaVenta?: string | null;
   clienteRif?: string | null;
   clienteNombre?: string | null;
   precioVentaUnitario?: number | null;
   ivaVentaMonto?: number | null;
+  ivaVentaAlicuota?: 'general_16' | 'reducida_8' | 'exenta' | null;
   existenciaActual?: number; // solo para validación de stock, no se persiste
   createdAt?: string;
 }

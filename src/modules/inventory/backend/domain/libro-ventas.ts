@@ -4,9 +4,11 @@ export interface LibroVentasRow {
   numeroFactura: string;
   clienteRif: string;
   clienteNombre: string;
-  baseGravada: number;
-  ivaDebito: number;
   baseExenta: number;
+  baseGravada8: number;
+  iva8: number;
+  baseGravada16: number;
+  iva16: number;
   autoconsumo: number;
   ivaAutoconsumo: number;
   total: number;

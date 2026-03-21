@@ -6,4 +6,5 @@ export interface IFacturaCompraRepository {
   findById(facturaId: string): Promise<Result<FacturaCompra>>;
   save(factura: FacturaCompra, items: FacturaCompraItem[]): Promise<Result<FacturaCompra>>;
   confirmar(facturaId: string): Promise<Result<FacturaCompra>>;
+  delete(facturaId: string): Promise<Result<void>>;
 }

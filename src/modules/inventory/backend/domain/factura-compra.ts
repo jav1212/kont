@@ -1,4 +1,5 @@
 export type IvaAlicuota = 'exenta' | 'reducida_8' | 'general_16';
+export type MonedaItem = 'B' | 'D';
 
 export interface FacturaCompraItem {
   id?: string;
@@ -6,9 +7,12 @@ export interface FacturaCompraItem {
   productoId: string;
   productoNombre?: string;
   cantidad: number;
-  costoUnitario: number;
-  costoTotal: number;
+  costoUnitario: number;   // siempre en Bs (canónico)
+  costoTotal: number;      // siempre en Bs
   ivaAlicuota: IvaAlicuota;
+  moneda: MonedaItem;      // moneda original de la factura del proveedor
+  costoMoneda?: number | null; // costo en la moneda original (USD si moneda='D')
+  tasaDolar?: number | null;   // tasa BCV usada para la conversión
 }
 
 export type EstadoFactura = 'borrador' | 'confirmada';

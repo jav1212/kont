@@ -148,7 +148,7 @@ const S = {
     th: [
         "bg-surface-2",
         "border-b border-border-light",
-        "font-mono text-[10px] uppercase tracking-[0.18em]",
+        "font-mono text-[11px] uppercase tracking-[0.16em]",
         "text-neutral-500 dark:text-neutral-400",
         "h-10 px-4 py-0",
         "select-none",
@@ -156,7 +156,7 @@ const S = {
 
     td: [
         "px-4 py-3",
-        "font-mono text-[13px] text-foreground",
+        "font-mono text-[14px] text-foreground",
         "border-b border-border-light",
         "align-middle",
     ].join(" "),
@@ -291,7 +291,7 @@ const ResultBadge = ({ filtered, total }: { filtered: number; total: number }) =
             "inline-flex items-center gap-1 px-2 h-[22px] rounded-md flex-shrink-0",
             "bg-neutral-100 dark:bg-neutral-800",
             "border border-border-light",
-            "font-mono text-[10px] tracking-wide whitespace-nowrap",
+            "font-mono text-[11px] tracking-wide whitespace-nowrap",
             "text-neutral-600 dark:text-neutral-400",
         ].join(" ")}>
             <span className="font-bold">{filtered.toLocaleString()}</span>
@@ -335,9 +335,9 @@ const PageBtn = ({
         onClick={onPress}
         disabled={disabled}
         className={[
-            isIconOnly ? "w-7 h-7" : "h-7 px-2 min-w-[1.75rem]",
+            isIconOnly ? "w-8 h-8" : "h-8 px-2.5 min-w-[2rem]",
             "inline-flex items-center justify-center rounded-md",
-            "font-mono text-[11px] tabular-nums",
+            "font-mono text-[12px] tabular-nums",
             "border transition-colors duration-100",
             "disabled:opacity-30 disabled:cursor-not-allowed",
             active
@@ -394,7 +394,7 @@ const PaginationFooter = ({
         <div className={S.footer}>
             {/* left — record count + page size */}
             <div className="flex items-center gap-3 flex-wrap">
-                <p className="font-mono text-[11px] text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
+                <p className="font-mono text-[12px] text-neutral-400 dark:text-neutral-500 whitespace-nowrap">
                     <span className="text-foreground font-semibold">{visibleCount.toLocaleString()}</span>
                     {" "}de{" "}
                     <span className="text-foreground font-semibold">{totalItems.toLocaleString()}</span>
@@ -402,7 +402,7 @@ const PaginationFooter = ({
                 </p>
 
                 <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-400">
                         Filas
                     </span>
                     <select
@@ -412,7 +412,7 @@ const PaginationFooter = ({
                             onPageChange(1);
                         }}
                         className={[
-                            "font-mono text-[11px] text-foreground",
+                            "font-mono text-[12px] text-foreground",
                             "bg-surface-1 border border-border-light rounded-md",
                             "px-2 py-0.5 cursor-pointer",
                             "focus:outline-none focus:border-primary-400",
@@ -440,7 +440,7 @@ const PaginationFooter = ({
                         {pageNumbers.map((p, i) =>
                             p === "…" ? (
                                 <span key={`e${i}`}
-                                    className="w-7 text-center font-mono text-[11px] text-neutral-300 dark:text-neutral-700">
+                                    className="w-8 text-center font-mono text-[12px] text-neutral-300 dark:text-neutral-700">
                                     …
                                 </span>
                             ) : (
@@ -485,7 +485,7 @@ const renderCellValue = <T extends Record<string, any>>(
     if (typeof value === "boolean")
         return (
             <span className={[
-                "inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em]",
+                "inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.08em]",
                 value ? "text-success" : "text-error",
             ].join(" ")}>
                 <span className={[
@@ -498,7 +498,7 @@ const renderCellValue = <T extends Record<string, any>>(
 
     if (value instanceof Date)
         return (
-            <span className="font-mono text-[12px] text-neutral-500 dark:text-neutral-400 tabular-nums">
+            <span className="font-mono text-[13px] text-neutral-500 dark:text-neutral-400 tabular-nums">
                 {value.toLocaleDateString("es-VE")}
             </span>
         );
@@ -631,7 +631,7 @@ export const RenderTable = <T extends Record<string, any>>({
                 <div className={S.toolbar}>
                     <div className={S.toolbarRow}>
                         {title && (
-                            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-400 dark:text-neutral-500 whitespace-nowrap hidden sm:block mr-1">
+                            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-neutral-400 dark:text-neutral-500 whitespace-nowrap hidden sm:block mr-1">
                                 {title}
                             </span>
                         )}
@@ -730,7 +730,7 @@ export const RenderTable = <T extends Record<string, any>>({
                                     <td colSpan={columns.length}>
                                         <div className={S.empty}>
                                             <EmptyTableIcon />
-                                            <p className="font-mono text-[11px] uppercase tracking-[0.15em]">
+                                            <p className="font-mono text-[12px] uppercase tracking-[0.12em]">
                                                 {emptyContent}
                                             </p>
                                         </div>

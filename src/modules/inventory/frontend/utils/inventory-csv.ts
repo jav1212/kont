@@ -1,4 +1,4 @@
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
+import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo, MonedaDefecto } from "@/src/modules/inventory/backend/domain/producto";
 import type { Departamento } from "@/src/modules/inventory/backend/domain/departamento";
 import type { Proveedor } from "@/src/modules/inventory/backend/domain/proveedor";
 
@@ -168,7 +168,7 @@ export function parseProveedoresCsv(raw: string): ProveedorCsvResult {
 const PROD_HEADERS = [
     "codigo", "nombre", "descripcion", "tipo", "unidad_medida",
     "metodo_valuacion", "existencia_minima", "costo_promedio",
-    "iva_tipo", "activo", "departamento_nombre",
+    "iva_tipo", "activo", "departamento_nombre", "moneda_defecto",
 ] as const;
 
 const TIPOS_VALIDOS: TipoProducto[]      = ["mercancia", "materia_prima", "producto_terminado"];
@@ -191,6 +191,7 @@ export function productosToCsv(productos: Producto[]): string {
             csvCell(p.ivaTipo),
             csvCell(p.activo),
             csvCell(p.departamentoNombre ?? ""),
+            csvCell(p.monedaDefecto ?? "B"),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
@@ -208,6 +209,7 @@ export interface ProductoCsvRow {
     ivaTipo:         IvaTipo;
     activo:          boolean;
     departamentoId?: string;
+    monedaDefecto:   MonedaDefecto;
 }
 
 export interface ProductoCsvResult {
@@ -234,7 +236,7 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
         const [
             codigo, nombre, descripcion, tipoRaw, unidadRaw,
             metodoRaw, existMinRaw, costoRaw,
-            ivaRaw, activoRaw, deptNombre,
+            ivaRaw, activoRaw, deptNombre, monedaRaw,
         ] = clean;
 
         if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
@@ -272,6 +274,8 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
             departamentoId = found;
         }
 
+        const monedaDefecto: MonedaDefecto = (monedaRaw?.toUpperCase() === "D" ? "D" : "B");
+
         productos.push({
             codigo:          codigo ?? "",
             nombre,
@@ -284,6 +288,7 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
             ivaTipo,
             activo,
             departamentoId,
+            monedaDefecto,
         });
     }
 

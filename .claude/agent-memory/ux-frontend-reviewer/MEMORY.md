@@ -9,3 +9,4 @@
 ## Patterns & Conventions
 - [badge_patterns.md](./badge_patterns.md) — How status badges are implemented in this codebase
 - [text_color_conventions.md](./text_color_conventions.md) — When to use which text color tokens
+- [sidebar_patterns.md](./sidebar_patterns.md) — Sidebar nav item classes, active state logic, dropdown ARIA, SVG aria-hidden convention

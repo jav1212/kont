@@ -6,7 +6,7 @@ interface VentaItem {
     productoId: string;
     cantidad: number;
     precioVentaUnitario: number;
-    ivaTipo: 'general' | 'exento';
+    ivaTipo: 'general_16' | 'reducida_8' | 'exento';
     existenciaActual?: number;
 }
 
@@ -23,19 +23,22 @@ export const POST = withTenant(async (req, { userId }) => {
     const body: NotaDespachoBody = await req.json();
     const { empresaId, numeroFactura, clienteRif, clienteNombre, fecha, items } = body;
 
-    if (!empresaId)      return Response.json({ error: 'empresaId es requerido' }, { status: 400 });
-    if (!numeroFactura)  return Response.json({ error: 'numeroFactura es requerido' }, { status: 400 });
-    if (!clienteNombre)  return Response.json({ error: 'clienteNombre es requerido' }, { status: 400 });
-    if (!fecha)          return Response.json({ error: 'fecha es requerida' }, { status: 400 });
-    if (!items?.length)  return Response.json({ error: 'Se requiere al menos un producto' }, { status: 400 });
+    if (!empresaId)          return Response.json({ error: 'empresaId es requerido' }, { status: 400 });
+    if (!numeroFactura)      return Response.json({ error: 'numeroFactura es requerido' }, { status: 400 });
+    if (!clienteRif?.trim()) return Response.json({ error: 'El RIF del cliente es requerido (Art. 14 Providencia SNAT/2011/00071)' }, { status: 400 });
+    if (!clienteNombre)      return Response.json({ error: 'clienteNombre es requerido' }, { status: 400 });
+    if (!fecha)              return Response.json({ error: 'fecha es requerida' }, { status: 400 });
+    if (!items?.length)      return Response.json({ error: 'Se requiere al menos un producto' }, { status: 400 });
 
     const actions = getInventoryActions(userId);
     const periodo = fecha.slice(0, 7);
     const saved: Movimiento[] = [];
 
     for (const item of items) {
-        const ivaVentaMonto = item.ivaTipo === 'general'
+        const ivaVentaMonto = item.ivaTipo === 'general_16'
             ? Math.round(item.precioVentaUnitario * item.cantidad * 0.16 * 100) / 100
+            : item.ivaTipo === 'reducida_8'
+            ? Math.round(item.precioVentaUnitario * item.cantidad * 0.08 * 100) / 100
             : 0;
 
         const mov: Movimiento = {
@@ -56,6 +59,7 @@ export const POST = withTenant(async (req, { userId }) => {
             clienteNombre:        clienteNombre,
             precioVentaUnitario:  item.precioVentaUnitario,
             ivaVentaMonto:        ivaVentaMonto > 0 ? ivaVentaMonto : null,
+            ivaVentaAlicuota:     item.ivaTipo === 'exento' ? 'exenta' : item.ivaTipo,
         };
 
         const result = await actions.saveMovimiento.execute(mov);

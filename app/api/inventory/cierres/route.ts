@@ -16,7 +16,7 @@ export const GET = withTenant(async (req, { userId }) => {
 
 export const POST = withTenant(async (req, { userId }) => {
     const body = await req.json();
-    const { empresaId, periodo, notas } = body;
+    const { empresaId, periodo, notas, tasaDolar } = body;
     if (!empresaId) return Response.json({ error: 'empresaId es requerido' }, { status: 400 });
     if (!periodo)   return Response.json({ error: 'periodo es requerido' }, { status: 400 });
 
@@ -26,6 +26,7 @@ export const POST = withTenant(async (req, { userId }) => {
         p_empresa_id: empresaId,
         p_periodo:    periodo,
         p_notas:      notas ?? '',
+        p_tasa_dolar: tasaDolar ?? null,
     });
     if (error) return Response.json({ error: error.message }, { status: 400 });
     return Response.json({ data });

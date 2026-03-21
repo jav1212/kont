@@ -44,3 +44,17 @@ All tokens defined in `app/globals.css` under `:root` (light) and `.dark`.
 - `.text-primary-400` → `--text-link`
 
 These overrides catch legacy code. New code should use the semantic tokens directly.
+
+## Sidebar CSS var token hierarchy
+
+The sidebar uses its own scoped CSS vars, separate from the global text tokens above. They form a strict hierarchy:
+
+| Token | Purpose | Do NOT use for |
+|---|---|---|
+| `--sidebar-fg-hover` | Strongest text — logo mark, hovered items | Section headers, labels |
+| `--sidebar-fg` | Standard nav item text (inactive) | Headers, labels |
+| `--sidebar-active-fg` | Active/selected nav item | Any other text |
+| `--sidebar-label` | Secondary labels — section headers ("Módulos", "Empresa"), group headers ("Catálogos", "Operaciones"), inactive sub-nav items | Borders, structural chrome |
+| `--sidebar-border` | Structural chrome only — divider lines, left-rail borders, inactive bullet dots | Any text, even decorative |
+
+**Key rule: `--sidebar-border` is a structural token, not a text token.** It has calibrated opacity to make borders barely perceptible — using it for text at any size, especially at 8px mono uppercase, produces illegible output. The group headers (Catálogos / Operaciones / Reportes) are confirmed to use `--sidebar-label`. Found and fixed 2026-03-21.
