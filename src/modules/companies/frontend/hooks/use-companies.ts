@@ -98,8 +98,15 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
     }, [user?.id, activeTenantId]);
 
     useEffect(() => {
-        if (isAuthenticated && user?.id) reload();
-        else setLoading(false);
+        if (isAuthenticated && user?.id) {
+            reload();
+        } else {
+            // Clear stale company selection on sign-out
+            if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
+            setCompanies([]);
+            setSelectedCompanyId(null);
+            setLoading(false);
+        }
     }, [isAuthenticated, user?.id, activeTenantId, reload]);
 
     const save = useCallback(async (data: { id: string; name: string; rif?: string }): Promise<string | null> => {

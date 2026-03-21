@@ -32,6 +32,12 @@ export function useActiveTenant(): UseActiveTenantResult {
     // Fetch all accessible tenants
     useEffect(() => {
         if (!isAuthenticated || !user?.id) {
+            // Clear stale tenant selection on sign-out so the next user starts fresh
+            if (typeof window !== "undefined") {
+                localStorage.removeItem(STORAGE_KEY);
+            }
+            setAllTenants([]);
+            setActiveTenantId(null);
             setLoading(false);
             return;
         }
