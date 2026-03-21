@@ -161,12 +161,12 @@ export function PWAInstallButton({ navItemBase, navItemIdle }: {
 
             <button
                 onClick={handleClick}
-                aria-label="Obtener aplicación móvil"
+                aria-label="Obtener aplicación"
                 aria-expanded={popoverOpen}
                 className={[navItemBase, navItemIdle].join(" ")}
             >
                 <DownloadIcon />
-                Obtener app móvil
+                Obtener app
             </button>
         </div>
     );
