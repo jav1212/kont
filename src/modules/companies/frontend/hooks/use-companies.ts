@@ -11,6 +11,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+import { apiFetch as tenantApiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ export const CompanyContext = createContext<UseCompanyResult | null>(null);
 
 // ── Internal hook — used only by CompanyProvider ──────────────────────────────
 
-export function useCompanyState(): UseCompanyResult {
+export function useCompanyState(activeTenantId?: string | null): UseCompanyResult {
     const { user, isAuthenticated } = useAuth();
 
     const [companies,         setCompanies]         = useState<Company[]>([]);
@@ -71,7 +72,13 @@ export function useCompanyState(): UseCompanyResult {
         setLoading(true);
         setError(null);
 
-        const { ok, json } = await apiFetch(`/api/companies/get-by-owner?ownerId=${user.id}`);
+        // When acting on behalf, fetch companies of the active tenant owner
+        const ownerId = activeTenantId ?? user.id;
+        const res = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
+        const text = await res.text();
+        let json: any = {};
+        try { json = JSON.parse(text); } catch { json = { error: `Error del servidor (${res.status})` }; }
+        const { ok } = { ok: res.ok };
 
         if (!ok) {
             setError(json.error ?? "Error al cargar empresas");
@@ -88,12 +95,12 @@ export function useCompanyState(): UseCompanyResult {
         }
 
         setLoading(false);
-    }, [user?.id]);
+    }, [user?.id, activeTenantId]);
 
     useEffect(() => {
         if (isAuthenticated && user?.id) reload();
         else setLoading(false);
-    }, [isAuthenticated, user?.id, reload]);
+    }, [isAuthenticated, user?.id, activeTenantId, reload]);
 
     const save = useCallback(async (data: { id: string; name: string; rif?: string }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";

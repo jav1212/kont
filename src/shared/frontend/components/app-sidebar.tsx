@@ -9,8 +9,10 @@ import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
+import { TenantSwitcher } from "@/src/modules/memberships/frontend/components/tenant-switcher";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -133,6 +135,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { companies, company, companyId, selectCompany, loading: companyLoading } = useCompany();
     const [companyOpen, setCompanyOpen] = useState(false);
     const { hasAccess: hasInventory } = useModuleAccess("inventory");
+    const { activeTenantRole } = useActiveTenantContext();
     const companyDropdownRef = useRef<HTMLDivElement>(null);
     const isDesktop = useIsDesktop();
 
@@ -206,6 +209,9 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     </div>
                 </div>
             </div>
+
+            {/* ── Tenant switcher (solo visible si hay más de un tenant) ── */}
+            <TenantSwitcher />
 
             {/* ── Company selector ──────────────────────────────────────── */}
             <div className="px-3 py-3 border-b border-sidebar-border">
@@ -364,6 +370,25 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
             {/* ── Bottom actions ─────────────────────────────────────────── */}
             <div className="px-3 py-4 space-y-1 border-t border-sidebar-border">
+
+                {/* Members settings — hidden only for contables acting on behalf */}
+                {activeTenantRole !== "contable" && (
+                    <Link
+                        href="/settings/members"
+                        aria-current={pathname.startsWith("/settings/members") ? "page" : undefined}
+                        className={[
+                            NAV_ITEM_BASE,
+                            pathname.startsWith("/settings/members") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE,
+                        ].join(" ")}
+                    >
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="5" cy="4" r="2.5" />
+                            <path d="M1 11c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+                            <path d="M10 5v4M12 7H8" />
+                        </svg>
+                        Miembros
+                    </Link>
+                )}
 
                 {/* PWA install */}
                 <PWAInstallButton navItemBase={NAV_ITEM_BASE} navItemIdle={NAV_ITEM_IDLE} />
