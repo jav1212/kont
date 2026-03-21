@@ -188,7 +188,7 @@ export default function BillingPage() {
 
     const inputCls = [
         "w-full h-9 px-3 rounded-lg border bg-surface-1 outline-none",
-        "font-mono text-[12px] text-foreground",
+        "font-mono text-base sm:text-[12px] text-foreground",
         "border-border-light focus:border-primary-500/60 hover:border-border-medium",
         "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
     ].join(" ");
@@ -197,7 +197,7 @@ export default function BillingPage() {
     const labelCls = "font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block";
 
     return (
-        <div className="min-h-full bg-surface-2 p-8 font-mono">
+        <div className="min-h-full bg-surface-2 p-4 sm:p-8 font-mono">
             <div className="max-w-[720px] mx-auto space-y-6">
 
                 {/* Header */}
@@ -205,7 +205,7 @@ export default function BillingPage() {
                     <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Facturación
                     </nav>
-                    <div className="flex items-end justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
                         <div>
                             <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Mi Plan
@@ -281,7 +281,7 @@ export default function BillingPage() {
                             </div>
 
                             {/* Period */}
-                            <div className="px-5 py-3 grid grid-cols-3 gap-4">
+                            <div className="px-5 py-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div>
                                     <p className={labelCls}>Ciclo</p>
                                     <p className="font-mono text-[12px] text-foreground">
@@ -304,7 +304,7 @@ export default function BillingPage() {
 
                             {/* Capacity */}
                             {capacity && (
-                                <div className="px-5 py-3 grid grid-cols-2 gap-4">
+                                <div className="px-5 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <p className={labelCls}>Empresas</p>
                                         <div className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export default function BillingPage() {
                                 </p>
                                 <div className="space-y-2">
                                     {subscriptions.map((sub) => (
-                                        <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
+                                        <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
                                                     {sub.product?.slug === "payroll" ? (
@@ -386,7 +386,7 @@ export default function BillingPage() {
 
                                     {/* Inventory upsell if not subscribed */}
                                     {!subscriptions.some((s) => s.product?.slug === "inventory") && (
-                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex items-center justify-between gap-4">
+                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-disabled)] flex-shrink-0">
                                                     <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -430,7 +430,7 @@ export default function BillingPage() {
                                 </div>
 
                                 <div className="px-5 py-4 space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {/* Plan */}
                                         <div>
                                             <label className={labelCls}>Plan</label>
@@ -528,6 +528,7 @@ export default function BillingPage() {
                                 </div>
                             ) : (
                                 <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                <div className="overflow-x-auto">
                                     <table className="w-full">
                                         <thead>
                                             <tr className="border-b border-border-light bg-surface-2">
@@ -576,6 +577,7 @@ export default function BillingPage() {
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
                                 </div>
                             )}
                         </div>

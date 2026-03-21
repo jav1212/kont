@@ -12,7 +12,7 @@ import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 
 const cellInput = [
     "w-full h-8 px-2.5 rounded-lg border bg-surface-1 outline-none",
-    "font-mono text-[12px] text-foreground",
+    "font-mono text-base sm:text-[12px] text-foreground",
     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
     "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
 ].join(" ");
@@ -227,7 +227,7 @@ export default function CompaniesPage() {
     // ── Render ─────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-full bg-surface-2 p-8 font-mono">
+        <div className="min-h-full bg-surface-2 p-4 sm:p-8 font-mono">
             <div className="max-w-[800px] mx-auto space-y-5">
 
                 {/* Header */}
@@ -310,11 +310,15 @@ export default function CompaniesPage() {
                     </div>
                 ) : (
                     <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                    <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-border-light bg-surface-2">
                                     {["RIF", "Nombre", "Creada", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                        <th key={h} className={[
+                                            "px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap",
+                                            h === "Creada" ? "hidden sm:table-cell" : "",
+                                        ].join(" ")}>
                                             {h}
                                         </th>
                                     ))}
@@ -434,7 +438,7 @@ export default function CompaniesPage() {
                                                 </td>
 
                                                 {/* Creada */}
-                                                <td className={tdCls}>
+                                                <td className={tdCls + " hidden sm:table-cell"}>
                                                     <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
                                                         {formatDate(company.createdAt)}
                                                     </span>
@@ -473,7 +477,7 @@ export default function CompaniesPage() {
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                             <button onClick={() => startEdit(company)} title="Editar"
                                                                 className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
                                                                 <IconEdit />
@@ -495,14 +499,15 @@ export default function CompaniesPage() {
                             </tbody>
                         </table>
                     </div>
+                    </div>
                 )}
 
             </div>
 
             {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
             {pasteOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="w-full max-w-lg bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="w-full sm:max-w-lg bg-surface-1 border border-border-light sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
 
                         {/* Modal header */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
@@ -521,7 +526,7 @@ export default function CompaniesPage() {
                         </div>
 
                         {/* Textarea */}
-                        <div className="p-5 space-y-3">
+                        <div className="p-5 space-y-3 overflow-y-auto flex-1">
                             <textarea
                                 autoFocus
                                 rows={10}

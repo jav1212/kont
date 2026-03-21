@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+        <div className="relative min-h-dvh bg-background text-foreground overflow-hidden">
 
             {/* ── Ledger grid ───────────────────────────────────────────── */}
             <div

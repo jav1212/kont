@@ -9,6 +9,8 @@ import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
+import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -118,7 +120,12 @@ const NAV_ITEM_ACTIVE =
 // COMPONENT
 // ============================================================================
 
-export function AppSidebar() {
+interface AppSidebarProps {
+    open: boolean;
+    onClose: () => void;
+}
+
+export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const pathname         = usePathname();
     const router           = useRouter();
     const { signOut }      = useAuth();
@@ -127,6 +134,13 @@ export function AppSidebar() {
     const [companyOpen, setCompanyOpen] = useState(false);
     const { hasAccess: hasInventory } = useModuleAccess("inventory");
     const companyDropdownRef = useRef<HTMLDivElement>(null);
+    const isDesktop = useIsDesktop();
+
+    // Close drawer on route change (mobile navigation)
+    useEffect(() => {
+        onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname]);
 
     // Close company dropdown when clicking outside
     useEffect(() => {
@@ -157,8 +171,15 @@ export function AppSidebar() {
 
     return (
         <aside
-            className="w-52 h-full flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border"
             aria-label="Navegación principal"
+            className={[
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border",
+                // Mobile/tablet: fixed drawer deslizable desde la izquierda
+                "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
+                open ? "translate-x-0" : "-translate-x-full",
+                // Desktop (xl+): estático en el flujo, ancho fijo, sin transformación
+                "xl:static xl:inset-auto xl:z-auto xl:w-52 xl:translate-x-0 xl:transition-none",
+            ].join(" ")}
         >
 
             {/* ── Logo ──────────────────────────────────────────────────── */}
@@ -267,9 +288,11 @@ export function AppSidebar() {
                     Módulos
                 </p>
 
-                {APP_MODULES.filter((mod) =>
-                    mod.id !== "inventory" || hasInventory
-                ).map((mod) => {
+                {APP_MODULES.filter((mod) => {
+                    if (mod.id === "inventory" && !hasInventory) return false;
+                    if (mod.desktopOnly && !isDesktop) return false;
+                    return true;
+                }).map((mod) => {
                     const subnav = MODULE_SUBNAV[mod.id];
                     const subnavOpen = subnav && pathname.startsWith(mod.href);
 
@@ -341,6 +364,9 @@ export function AppSidebar() {
 
             {/* ── Bottom actions ─────────────────────────────────────────── */}
             <div className="px-3 py-4 space-y-1 border-t border-sidebar-border">
+
+                {/* PWA install */}
+                <PWAInstallButton navItemBase={NAV_ITEM_BASE} navItemIdle={NAV_ITEM_IDLE} />
 
                 {/* Theme toggle */}
                 <button

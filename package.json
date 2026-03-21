@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
@@ -17,6 +17,7 @@
     "@heroui/switch": "^2.2.27",
     "@heroui/table": "^2.2.32",
     "@heroui/theme": "^2.4.26",
+    "@serwist/next": "^9.5.7",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
     "framer-motion": "^12.35.2",
@@ -24,6 +25,7 @@
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "serwist": "^9.5.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
