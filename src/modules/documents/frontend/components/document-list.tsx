@@ -84,9 +84,22 @@ export function DocumentList({ documents, loading, onDelete, onDownload }: Docum
         const id = confirmDownload.id;
         setConfirmDownload(null);
         setDownloadingId(id);
+
+        // Abrir la ventana de forma SÍNCRONA antes del await para que iOS Safari
+        // no lo bloquee como popup (el contexto del gesto del usuario se pierde después de await).
+        const win = window.open('', '_blank');
+
         try {
             const url = await onDownload(id);
-            window.open(url, '_blank', 'noopener');
+            if (win) {
+                win.location.href = url;
+            } else {
+                // Fallback por si el navegador bloqueó la ventana
+                window.location.href = url;
+            }
+        } catch (err) {
+            win?.close();
+            throw err;
         } finally {
             setDownloadingId(null);
         }
