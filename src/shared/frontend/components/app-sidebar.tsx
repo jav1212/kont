@@ -42,6 +42,12 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
             <path d="M1 6h11M4.5 8.5h2" />
         </svg>
     ),
+    documents: (
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 1h5l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
+            <path d="M8 1v3h3M5 7h3M5 9.5h2" />
+        </svg>
+    ),
 };
 
 // ── Sub-navigation per module ─────────────────────────────────────────────────
