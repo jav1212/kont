@@ -46,9 +46,9 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: error.message }, { status: 500 });
     }
 
-    // Construir el link de aceptación
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const acceptUrl = `${baseUrl}/accept-invite?token=${inv.token}`;
+    // Construir el link de aceptación usando el origin del request
+    const origin    = new URL(req.url).origin;
+    const acceptUrl = `${origin}/accept-invite?token=${inv.token}`;
 
     return Response.json({ data: { invitationId: inv.id, acceptUrl, expiresAt: inv.expires_at } });
 });
