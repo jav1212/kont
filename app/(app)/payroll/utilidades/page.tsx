@@ -25,7 +25,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 
@@ -134,7 +134,7 @@ function SectionHeader({ label, color }: { label: string; color?: "emerald" | "a
     const cls = color === "amber"   ? "text-amber-500/70"
               : color === "emerald" ? "text-emerald-500/70"
               : "text-[var(--text-tertiary)]";
-    return <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
+    return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
 function CalcRow({ label, formula, value, accent, dim }: {
@@ -148,10 +148,10 @@ function CalcRow({ label, formula, value, accent, dim }: {
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
-                <span className="font-mono text-[11px] text-[var(--text-secondary)] leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
+                <span className="font-mono text-[13px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[12px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
             </div>
-            <span className={`font-mono text-[12px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
+            <span className={`font-mono text-[13px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
         </div>
     );
 }
@@ -492,7 +492,7 @@ export default function UtilidadesPage() {
 
     // ── Mode toggle classes ───────────────────────────────────────────────────
     const modeBtnCls = (m: Mode) => [
-        "flex-1 h-8 rounded-lg font-mono text-[10px] uppercase tracking-[0.14em] border transition-colors duration-150",
+        "flex-1 h-8 rounded-lg font-mono text-[12px] uppercase tracking-[0.14em] border transition-colors duration-150",
         mode === m
             ? "bg-primary-500 border-primary-600 text-white"
             : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
@@ -507,9 +507,9 @@ export default function UtilidadesPage() {
                 {/* Header + mode toggle */}
                 <div className="px-5 py-4 border-b border-border-light space-y-3">
                     <div>
-                        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Utilidades</p>
+                        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Utilidades</p>
                         <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Arts. 131 · 174 · 175 LOTTT</p>
+                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Arts. 131 · 174 · 175 LOTTT</p>
                     </div>
                     <div className="flex gap-1.5">
                         <button onClick={() => setMode("completas")}    className={modeBtnCls("completas")}>Completas</button>
@@ -540,7 +540,7 @@ export default function UtilidadesPage() {
                                     { k: "Cargo",         v: selectedEmp.cargo || "—" },
                                     { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
                                 ].map(({ k, v }) => (
-                                    <div key={k} className="flex justify-between font-mono text-[10px]">
+                                    <div key={k} className="flex justify-between font-mono text-[12px]">
                                         <span className="text-[var(--text-tertiary)]">{k}</span>
                                         <span className="text-foreground tabular-nums">{v}</span>
                                     </div>
@@ -560,7 +560,7 @@ export default function UtilidadesPage() {
                                     className={fieldCls + " pl-9 text-right"} />
                             </div>
                             {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
+                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
                             )}
                         </div>
                         {!selectedEmp && (
@@ -568,7 +568,7 @@ export default function UtilidadesPage() {
                                 <label className={labelCls}>Fecha de ingreso</label>
                                 <input type="date" value={manualIngreso}
                                     onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Requerida para calcular fraccionadas</p>
+                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Requerida para calcular fraccionadas</p>
                             </div>
                         )}
                     </div>
@@ -586,7 +586,7 @@ export default function UtilidadesPage() {
                             </div>
                         ) : bcvError ? (
                             <div className="space-y-2">
-                                <p className="font-mono text-[10px] text-red-500">{bcvError}</p>
+                                <p className="font-mono text-[12px] text-red-500">{bcvError}</p>
                                 <input type="number" step="0.01" value={bcvRate || ""}
                                     onChange={e => setBcvRate(parseFloat(e.target.value) || 0)}
                                     placeholder="Ingresar tasa manualmente"
@@ -595,8 +595,8 @@ export default function UtilidadesPage() {
                         ) : (
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[8px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                                <span className="font-mono text-[12px] text-[var(--text-tertiary)]">Bs. / USD</span>
+                                <span className="ml-auto font-mono text-[11px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
                             </div>
                         )}
                     </div>
@@ -617,7 +617,7 @@ export default function UtilidadesPage() {
                                 value={diasUtilidades}
                                 onChange={e => setDiasUtilidades(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Mínimo 15 · Máximo 120 (Art. 174 LOTTT)</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Mínimo 15 · Máximo 120 (Art. 174 LOTTT)</p>
                         </div>
                     </div>
 
@@ -639,11 +639,11 @@ export default function UtilidadesPage() {
                                     value={fmt(calcCompletas.monto)} accent="emerald" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
+                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{fmt(calcCompletas.monto)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
+                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Verifica los parámetros."}
                                 </p>
                             )}
@@ -659,7 +659,7 @@ export default function UtilidadesPage() {
                                 <label className={labelCls}>Fecha de corte</label>
                                 <input type="date" value={fechaCorte}
                                     onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">
+                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
                                     Fecha de egreso o fin del período a calcular
                                 </p>
                             </div>
@@ -673,7 +673,7 @@ export default function UtilidadesPage() {
                                         { k: "Meses trabajados",   v: `${calcFrac.mesesTrabajados} mes${calcFrac.mesesTrabajados !== 1 ? "es" : ""}` },
                                         { k: "Días fraccionados",  v: `${calcFrac.diasFraccionados} días` },
                                     ].map(({ k, v }) => (
-                                        <div key={k} className="flex justify-between font-mono text-[10px]">
+                                        <div key={k} className="flex justify-between font-mono text-[12px]">
                                             <span className="text-[var(--text-tertiary)]">{k}</span>
                                             <span className="text-amber-500 tabular-nums font-medium">{v}</span>
                                         </div>
@@ -702,11 +702,11 @@ export default function UtilidadesPage() {
                                     value={fmt(calcFrac.monto)} accent="amber" />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
+                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.monto)}</span>
                                 </div>
                             </>) : (
-                                <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
+                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
                                     {salarioVES <= 0
                                         ? "Ingresa el salario del empleado."
                                         : !fechaIngreso

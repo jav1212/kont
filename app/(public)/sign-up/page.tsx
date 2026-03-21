@@ -14,7 +14,7 @@ const PERKS = [
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
+    "font-mono text-[15px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -80,14 +80,14 @@ export default function SignUpPage() {
                     <div className="mb-10">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="h-px w-6 bg-primary-500/60" />
-                            <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
+                            <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
                                 Registro
                             </span>
                         </div>
                         <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                             Crear<br />cuenta
                         </h1>
-                        <p className="font-mono text-[11px] text-text-tertiary mt-3 leading-relaxed">
+                        <p className="font-mono text-[14px] text-text-tertiary mt-3 leading-relaxed">
                             Acceso completo al sistema de gestión de nómina.
                         </p>
                     </div>
@@ -103,20 +103,20 @@ export default function SignUpPage() {
                                             <path d="M1 3.5l1.8 1.8L6 1.5" />
                                         </svg>
                                     </div>
-                                    <span className="font-mono text-[11px] text-text-link font-semibold">
+                                    <span className="font-mono text-[13px] text-text-link font-semibold">
                                         Revisa tu correo
                                     </span>
                                 </div>
-                                <p className="font-mono text-[10px] text-text-tertiary leading-relaxed pl-6">
+                                <p className="font-mono text-[13px] text-text-tertiary leading-relaxed pl-6">
                                     Te enviamos un enlace de confirmación a <span className="text-text-secondary">{email}</span>. Haz clic en él para activar tu cuenta.
                                 </p>
-                                <p className="font-mono text-[10px] text-text-disabled leading-relaxed pl-6">
+                                <p className="font-mono text-[13px] text-text-disabled leading-relaxed pl-6">
                                     Revisa también tu carpeta de spam si no lo encuentras.
                                 </p>
                             </div>
                             <Link
                                 href="/sign-in"
-                                className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
+                                className="flex items-center gap-2 font-mono text-[13px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
                             >
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M10 6H2M6 2L2 6l4 4" />
@@ -128,7 +128,7 @@ export default function SignUpPage() {
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                     Nombre completo
                                 </label>
                                 <input
@@ -143,7 +143,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                     Correo electrónico
                                 </label>
                                 <input
@@ -158,7 +158,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                     Contraseña
                                 </label>
                                 <input
@@ -173,7 +173,7 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                     Confirmar contraseña
                                 </label>
                                 <input
@@ -212,7 +212,7 @@ export default function SignUpPage() {
                                         )}
                                     </div>
                                 </div>
-                                <span className="font-mono text-[10px] text-text-tertiary leading-relaxed">
+                                <span className="font-mono text-[13px] text-text-tertiary leading-relaxed">
                                     Acepto los{" "}
                                     <Link href="/terms" className="text-text-link hover:text-text-link-hover underline underline-offset-2">
                                         términos de uso
@@ -226,7 +226,7 @@ export default function SignUpPage() {
 
                             {error && (
                                 <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                    <p className="font-mono text-[10px] text-red-400 leading-relaxed">
+                                    <p className="font-mono text-[13px] text-red-400 leading-relaxed">
                                         {error}
                                     </p>
                                 </div>
@@ -239,7 +239,7 @@ export default function SignUpPage() {
                                     "w-full h-10 mt-2 rounded-lg",
                                     "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
                                     "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500",
-                                    "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
+                                    "font-mono text-[13px] uppercase tracking-[0.18em] text-white",
                                     "transition-colors duration-150",
                                     "flex items-center justify-center gap-2",
                                 ].join(" ")}
@@ -259,7 +259,7 @@ export default function SignUpPage() {
                         </form>
                     )}
 
-                    <p className="font-mono text-[10px] text-center text-text-tertiary mt-6">
+                    <p className="font-mono text-[13px] text-center text-text-tertiary mt-6">
                         ¿Ya tienes cuenta?{" "}
                         <Link
                             href="/sign-in"
@@ -272,7 +272,7 @@ export default function SignUpPage() {
 
                 {/* ── RIGHT: Feature list ───────────────────────────────── */}
                 <div className="hidden md:flex flex-col justify-center">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.24em] text-text-disabled mb-6">
+                    <p className="font-mono text-[12px] uppercase tracking-[0.24em] text-text-disabled mb-6">
                         Incluido en tu cuenta
                     </p>
                     <div className="border border-border-light rounded-xl overflow-hidden">
@@ -285,7 +285,7 @@ export default function SignUpPage() {
                                     i < PERKS.length - 1 ? "border-b border-border-light" : "",
                                 ].join(" ")}
                             >
-                                <span className="font-mono text-[9px] text-text-link tracking-widest w-4 flex-shrink-0">
+                                <span className="font-mono text-[12px] text-text-link tracking-widest w-4 flex-shrink-0">
                                     {p.code}
                                 </span>
                                 <div className="w-4 h-4 rounded-full border border-primary-500/30 bg-primary-500/10 flex items-center justify-center flex-shrink-0">
@@ -295,12 +295,12 @@ export default function SignUpPage() {
                                         <path d="M1 3.5l1.8 1.8L6 1.5" />
                                     </svg>
                                 </div>
-                                <span className="font-mono text-[11px] text-text-tertiary">{p.text}</span>
+                                <span className="font-mono text-[13px] text-text-tertiary">{p.text}</span>
                             </div>
                         ))}
                     </div>
                     <div className="mt-6 px-5 py-4 border border-primary-500/10 rounded-xl bg-primary-500/[0.03]">
-                        <p className="font-mono text-[10px] text-text-tertiary leading-relaxed">
+                        <p className="font-mono text-[13px] text-text-tertiary leading-relaxed">
                             Sin límite de empleados.<br />
                             Sin costo por período de nómina.
                         </p>

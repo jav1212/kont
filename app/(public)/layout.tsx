@@ -55,14 +55,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                             <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
                         </svg>
                     </div>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
+                    <span className="font-mono text-[13px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
                         Kont
                     </span>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
                         Sistema operativo
                     </span>
                 </div>
@@ -75,10 +75,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* ── Footer ───────────────────────────────────────────────── */}
             <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                     © {new Date().getFullYear()} Kont
                 </span>
-                <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                     v2.2 · LOTTT
                 </span>
             </footer>

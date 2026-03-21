@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button, ButtonProps } from "@heroui/react";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
 // ============================================================================
 // TYPES
@@ -66,9 +67,9 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
 };
 
 const SIZE_STYLES: Record<ButtonSize, string> = {
-    sm: "h-8  px-3   text-[11px] gap-1.5",
-    md: "h-9  px-4   text-[12px] gap-2",
-    lg: "h-10 px-5   text-[13px] gap-2",
+    sm: APP_SIZES.button.sm,
+    md: APP_SIZES.button.md,
+    lg: APP_SIZES.button.lg,
 };
 
 // ============================================================================
@@ -162,9 +163,9 @@ export abstract class BaseButton {
         const disabled = isDisabled || loading;
 
         const iconSize: Record<ButtonSize, string> = {
-            sm: "w-7 h-7",
-            md: "w-8 h-8",
-            lg: "w-9 h-9",
+            sm: APP_SIZES.iconButton.sm,
+            md: APP_SIZES.iconButton.md,
+            lg: APP_SIZES.iconButton.lg,
         };
 
         return (

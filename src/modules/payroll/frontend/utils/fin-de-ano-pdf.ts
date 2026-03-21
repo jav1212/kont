@@ -98,7 +98,7 @@ const C = {
     primary:  [8,   145, 178] as RGB,
     primaryLt:[207, 250, 254] as RGB,
     accent:   [34,  211, 238] as RGB,
-    headerBg: [18,  18,  26]  as RGB,
+    headerBg: [255, 255, 255] as RGB,
     rowAlt:   [240, 240, 245] as RGB,
     subtotal: [207, 250, 254] as RGB,
     subtotalBd:[103, 232, 249] as RGB,
@@ -159,12 +159,12 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
     fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
 
-    txt(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, "left", C.white);
+    txt(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, "left", C.ink);
     txt(doc, "BONIFICACIÓN DE FIN DE AÑO — LOTTT Arts. 131, 142, 190, 192",
-        ML + 2, 17, 6, false, "left", [100, 100, 120] as RGB);
+        ML + 2, 17, 6, false, "left", C.muted);
 
-    txt(doc, "PERÍODO", MR, 9, 5, false, "right", [120, 120, 140] as RGB);
-    txt(doc, `${opts.periodStart} — ${opts.periodEnd}`, MR, 16, 8, true, "right", C.white);
+    txt(doc, "PERÍODO", MR, 9, 5, false, "right", C.muted);
+    txt(doc, `${opts.periodStart} — ${opts.periodEnd}`, MR, 16, 8, true, "right", C.ink);
     txt(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
         MR, 24, 5.5, false, "right", [100, 100, 118] as RGB);
@@ -208,11 +208,11 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     const COL_W        = COL_DIAS - ML - 2;
 
     // Header row
-    fill(doc, ML, y - 4, W, 6, C.sectionHdr);
+    fill(doc, ML, y - 4, W, 6, C.rowAlt);
     fill(doc, ML, y - 4, 3, 6, C.primary);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.setTextColor(200, 210, 220);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("CONCEPTOS",  COL_CONCEPTO + 5, y, { align: "left"  });
     doc.text("DÍAS",       COL_DIAS,     y, { align: "center" });
     doc.text("SALARIO",    COL_SALARIO,  y, { align: "center" });
@@ -271,11 +271,11 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     y += 8;
 
     // ── Deductions ────────────────────────────────────────────────────────
-    fill(doc, ML, y - 4, W, 6, C.sectionHdr);
+    fill(doc, ML, y - 4, W, 6, C.rowAlt);
     fill(doc, ML, y - 4, 3, 6, C.primary);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.setTextColor(200, 210, 220);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("DEDUCCIONES", COL_CONCEPTO + 5, y);
     doc.text("MONTO (Bs)", COL_MONTO, y, { align: "right" });
     y += 5;
@@ -311,16 +311,19 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     y += 5;
 
     // Total recibido
-    fill(doc, ML, y - 4.5, W, 9, C.headerBg);
+    fill(doc, ML, y - 4.5, W, 9, C.white);
     // Top accent line
-    doc.setDrawColor(C.accent[0], C.accent[1], C.accent[2]);
+    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
     doc.setLineWidth(1);
     doc.line(ML, y - 4.5, ML + W, y - 4.5);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(ML, y - 4.5 + 9, ML + W, y - 4.5 + 9);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.setTextColor(C.white[0], C.white[1], C.white[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("TOTAL RECIBIDO", COL_CONCEPTO + 2, y + 0.5);
-    doc.setTextColor(C.accent[0], C.accent[1], C.accent[2]);
+    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
     doc.text(fmtVES(emp.totalRecibido), COL_MONTO, y + 0.5, { align: "right" });
     y += 12;
 
@@ -374,10 +377,13 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     txt(doc, `${opts.ciudad}, ${opts.fechaDoc}`, PW / 2, y + sigH + 6, 7.5, false, "center", C.inkMed);
 
     // ── FOOTER ────────────────────────────────────────────────────────────
-    fill(doc, 0, PH - 10, PW, 10, C.headerBg);
+    fill(doc, 0, PH - 10, PW, 10, C.white);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(0, PH - 10, PW, PH - 10);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5.5);
-    doc.setTextColor(100, 100, 120);
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text(opts.companyName.toUpperCase(), ML, PH - 4);
     doc.text("DOCUMENTO CONFIDENCIAL", PW / 2, PH - 4, { align: "center" });
     doc.text(

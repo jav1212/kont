@@ -56,23 +56,23 @@ export default function InventoryDashboard() {
             <div className="px-8 py-6 border-b border-border-light bg-surface-1">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
+                        <h1 className="text-[20px] font-bold uppercase tracking-[0.14em] text-foreground">
                             Inventario
                         </h1>
-                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
+                        <p className="text-[13px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
                             Dashboard — {periodo}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <Link
                             href="/inventory/compras/nueva"
-                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
                             + Compra
                         </Link>
                         <Link
                             href="/inventory/ventas"
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
                             + Venta
                         </Link>
@@ -90,7 +90,7 @@ export default function InventoryDashboard() {
                         { label: "Bajo mínimo",          value: loading ? "…" : kpis.bajoMinimo, color: kpis.bajoMinimo > 0 ? "text-amber-500" : "text-[var(--text-tertiary)]" },
                     ].map((kpi) => (
                         <div key={kpi.label} className="rounded-xl border border-border-light bg-surface-1 px-5 py-4">
-                            <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-2">{kpi.label}</p>
+                            <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-2">{kpi.label}</p>
                             <p className={`text-[24px] font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
                         </div>
                     ))}
@@ -99,12 +99,12 @@ export default function InventoryDashboard() {
                 {/* Productos table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                        <p className="text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                        <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                             Productos
                         </p>
                         <Link
                             href="/inventory/productos"
-                            className="text-[12px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
+                            className="text-[13px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                         >
                             Ver todos →
                         </Link>
@@ -124,7 +124,7 @@ export default function InventoryDashboard() {
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Código", "Nombre", "Tipo", "Existencia", "Mínimo", "Estado"].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
+                                        <th key={h} className="px-4 py-2.5 text-left text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
                                             {h}
                                         </th>
                                     ))}
@@ -148,9 +148,9 @@ export default function InventoryDashboard() {
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo ? (
-                                                    <span className="text-text-success text-[11px] uppercase tracking-[0.10em]">Activo</span>
+                                                    <span className="text-text-success text-[12px] uppercase tracking-[0.10em]">Activo</span>
                                                 ) : (
-                                                    <span className="text-text-tertiary text-[11px] uppercase tracking-[0.10em]">Inactivo</span>
+                                                    <span className="text-text-tertiary text-[12px] uppercase tracking-[0.10em]">Inactivo</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -176,7 +176,7 @@ export default function InventoryDashboard() {
                             <p className="text-[13px] font-medium text-foreground group-hover:text-primary-500 transition-colors">
                                 {q.label}
                             </p>
-                            <p className="text-[12px] text-[var(--text-tertiary)] mt-0.5">{q.desc}</p>
+                            <p className="text-[13px] text-[var(--text-tertiary)] mt-0.5">{q.desc}</p>
                         </Link>
                     ))}
                 </div>
@@ -193,7 +193,7 @@ function TipoBadge({ tipo }: { tipo: string }) {
     };
     const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-text-secondary border border-border-light" };
     return (
-        <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${cls}`}>
+        <span className={`inline-flex px-1.5 py-0.5 rounded text-[12px] uppercase tracking-[0.08em] font-medium ${cls}`}>
             {label}
         </span>
     );

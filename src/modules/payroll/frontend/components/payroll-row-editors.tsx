@@ -24,7 +24,7 @@ const numInputCls = inputCls + " text-center w-16";
 export const AddRowButton = ({ onClick }: { onClick: () => void }) => (
     <button
         onClick={onClick}
-        className="flex items-center gap-1.5 mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] hover:text-primary-500 transition-colors duration-150"
+        className="flex items-center gap-1.5 mt-1 font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] hover:text-primary-500 transition-colors duration-150"
     >
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none"
             stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -53,7 +53,7 @@ const RemoveButton = ({ onClick, disabled }: { onClick: () => void; disabled?: b
 
 const Result = ({ value, negative }: { value: number; negative?: boolean }) => (
     <span className={[
-        "ml-auto shrink-0 font-mono text-[11px] tabular-nums",
+        "ml-auto shrink-0 font-mono text-[12px] tabular-nums",
         negative ? "text-red-400" : "text-[var(--text-secondary)]",
     ].join(" ")}>
         {negative ? "−" : ""}{Math.abs(value).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -68,7 +68,7 @@ const Toggle = ({
     <button
         onClick={onClick}
         className={[
-            "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+            "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
             "transition-colors duration-150 whitespace-nowrap",
             active
                 ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
@@ -215,14 +215,14 @@ export const DeductionRowEditor = ({
                         step={isFixed ? "10" : "0.5"}
                     />
                     {!isFixed && (
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-[var(--text-tertiary)] pointer-events-none">%</span>
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[11px] text-[var(--text-tertiary)] pointer-events-none">%</span>
                     )}
                 </div>
                 {!isFixed && (
                     <button
                         onClick={cycleBase}
                         className={[
-                            "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+                            "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
                             "transition-colors duration-150 whitespace-nowrap",
                             isIntegral  ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
                             : isCapped  ? "border-red-500/40 bg-red-500/[0.08] text-red-400"
@@ -237,7 +237,7 @@ export const DeductionRowEditor = ({
                 <button
                     onClick={toggleMode}
                     className={[
-                        "h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0",
+                        "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
                         "transition-colors duration-150 whitespace-nowrap",
                         isFixed
                             ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
@@ -292,7 +292,7 @@ export const HorasExtrasRowEditor = ({
         <div className="flex items-center gap-1.5">
             <button
                 onClick={cycleTipo}
-                className={["h-8 px-2 rounded-md border font-mono text-[9px] uppercase tracking-[0.1em] shrink-0 transition-colors duration-150 whitespace-nowrap", TIPO_CLS[row.tipo]].join(" ")}
+                className={["h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0 transition-colors duration-150 whitespace-nowrap", TIPO_CLS[row.tipo]].join(" ")}
                 title="Click para cambiar tipo: diurna → nocturna → feriado"
             >
                 {TIPO_LABELS[row.tipo]}
@@ -306,7 +306,7 @@ export const HorasExtrasRowEditor = ({
                 min="0"
                 step="0.5"
             />
-            <span className="font-mono text-[9px] text-[var(--text-tertiary)] shrink-0">h</span>
+            <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">h</span>
             <RemoveButton onClick={onRemove} disabled={!canRemove} />
             <Result value={computed} />
         </div>
@@ -344,7 +344,7 @@ export const BonusRowEditor = ({
             {/* Row 2: Monto USD | → VES result */}
             <div className="flex items-center gap-1.5">
                 <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--text-tertiary)] pointer-events-none">$</span>
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[11px] text-[var(--text-tertiary)] pointer-events-none">$</span>
                     <input
                         type="number"
                         value={row.amount}

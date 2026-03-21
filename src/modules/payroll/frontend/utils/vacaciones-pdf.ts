@@ -61,13 +61,13 @@ const C = {
     muted2:   [80,  80,  100] as RGB,
     border:   [218, 218, 226] as RGB,   // #dadae2 — border-light
     bgStripe: [240, 240, 245] as RGB,   // #f0f0f5 — row alt
-    bgPage:   [246, 246, 250] as RGB,   // #f6f6fa
+    bgPage:   [255, 255, 255] as RGB,   // blanco para impresión
     white:    [255, 255, 255] as RGB,
     primary:  [8,   145, 178] as RGB,   // #0891b2
     accent:   [34,  211, 238] as RGB,   // #22d3ee
     amber:    [180, 120, 10]  as RGB,   // #b4780a
     amberAcc: [253, 230, 138] as RGB,   // #fde68a
-    header:   [18,  18,  26]  as RGB,   // #12121a
+    header:   [255, 255, 255] as RGB,
     accentBg: [150, 200, 220] as RGB,   // light cyan for reintegro / meses
 };
 
@@ -142,13 +142,13 @@ function drawHeader(
     // Bottom accent line (2mm tall)
     fill(doc, 4, HDR_H - 2, PW - 4, 2, accentBottom);
 
-    txt(doc, companyName.toUpperCase(),  ML + 6, 11,   11, true,  C.white);
+    txt(doc, companyName.toUpperCase(),  ML + 6, 11,   11, true,  C.ink);
     txt(doc, titleLine1,                  ML + 6, 18,   6,  false, C.muted);
     txt(doc, titleLine2,                  ML + 6, 23.5, 5.5,false, C.muted2);
 
     txt(doc, rightLabel.toUpperCase(),   MR, 11,   5,  false, C.muted, "right");
-    txt(doc, rightLine1,                  MR, 17.5, 7,  true,  C.white, "right");
-    if (rightLine2) txt(doc, rightLine2, MR, 23.5, 7,  true,  C.white, "right");
+    txt(doc, rightLine1,                  MR, 17.5, 7,  true,  C.ink, "right");
+    if (rightLine2) txt(doc, rightLine2, MR, 23.5, 7,  true,  C.ink, "right");
     txt(doc, `Emitido: ${emitidoStr()}`, MR, 30,   5,  false, C.muted, "right");
 
     return HDR_H + 5;
@@ -181,12 +181,15 @@ interface ParamCol { lbl: string; val: string; color: RGB; }
 
 function drawParamsStrip(doc: jsPDF, ML: number, W: number, y: number, cols: ParamCol[]): number {
     const H = 14;
-    fill(doc, ML, y, W, H, C.header);
+    fill(doc, ML, y, W, H, C.bgStripe);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.rect(ML, y, W, H, "D");
     const colW = W / cols.length;
-    cols.forEach(({ lbl, val, color }, i) => {
+    cols.forEach(({ lbl, val }, i) => {
         const cx = ML + i * colW + 4;
         txt(doc, lbl.toUpperCase(), cx, y + 4.5, 5, false, C.muted);
-        txt(doc, val,               cx, y + 10,  6.5, true, color, "left", colW - 6);
+        txt(doc, val,               cx, y + 10,  6.5, true, C.inkMed, "left", colW - 6);
     });
     return y + H + 1;
 }
@@ -201,11 +204,14 @@ function drawConceptTable(
     totalLabel: string, totalDias: number, total: number,
     totalAccent: RGB, totalBar: RGB,
 ): number {
-    // Table header (dark)
-    fill(doc, ML, y, W, 8, C.header);
-    txt(doc, "CONCEPTO", ML + 4, y + 5.5, 5.5, true, C.muted);
-    txt(doc, "DÍAS",     MR - 38, y + 5.5, 5.5, true, C.muted, "right");
-    txt(doc, "MONTO",    MR,      y + 5.5, 5.5, true, C.muted, "right");
+    // Table header (light)
+    fill(doc, ML, y, W, 8, C.bgStripe);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 8, ML + W, y + 8);
+    txt(doc, "CONCEPTO", ML + 4, y + 5.5, 5.5, true, C.inkMed);
+    txt(doc, "DÍAS",     MR - 38, y + 5.5, 5.5, true, C.inkMed, "right");
+    txt(doc, "MONTO",    MR,      y + 5.5, 5.5, true, C.inkMed, "right");
     y += 8;
 
     // Rows
@@ -225,10 +231,16 @@ function drawConceptTable(
 
     y += 2;
 
-    // Total bar (dark)
-    fill(doc, ML, y, W, 13, C.header);
+    // Total bar (light with top border)
+    fill(doc, ML, y, W, 13, C.white);
     fill(doc, ML, y, 3,  13, totalBar);
-    txt(doc, `${totalLabel}  ·  ${totalDias} días`, ML + 7, y + 8.5, 6.5, true, C.muted);
+    doc.setDrawColor(totalBar[0], totalBar[1], totalBar[2]);
+    doc.setLineWidth(0.8);
+    doc.line(ML, y, ML + W, y);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 13, ML + W, y + 13);
+    txt(doc, `${totalLabel}  ·  ${totalDias} días`, ML + 7, y + 8.5, 6.5, true, C.inkMed);
     txt(doc, fmtVES(total), MR, y + 8.5, 11, true, totalAccent, "right");
 
     return y + 13 + 6;
@@ -272,13 +284,15 @@ function drawLegal(doc: jsPDF, ML: number, W: number, y: number, text: string): 
 
 function drawFooter(
     doc: jsPDF, PW: number, PH: number,
-    text: string, accentLine: RGB,
+    text: string, _accentLine: RGB,
 ) {
-    fill(doc, 0, PH - 11, PW, 11, C.header);
-    fill(doc, 0, PH - 11, PW,  1, accentLine);
+    fill(doc, 0, PH - 11, PW, 11, C.white);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(0, PH - 11, PW, PH - 11);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5);
-    doc.setTextColor(80, 80, 100);
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text(text, PW / 2, PH - 4, { align: "center" });
 }
 

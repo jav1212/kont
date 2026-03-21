@@ -45,7 +45,7 @@ const C = {
     muted:     [100, 115, 130] as RGB,
     border:    [210, 220, 230] as RGB,
     borderMed: [160, 178, 192] as RGB,
-    bg:        [238, 240, 247] as RGB,
+    bg:        [255, 255, 255] as RGB,   // blanco para impresión
     rowAlt:    [228, 233, 244] as RGB,
     white:     [255, 255, 255] as RGB,
     // Primary — teal #0891B2
@@ -67,8 +67,8 @@ const C = {
     redLt:     [254, 242, 242] as RGB,
     redBd:     [252, 165, 165] as RGB,
     // Header
-    headerBg:  [11,  12,  20]  as RGB,
-    headerSub: [20,  22,  38]  as RGB,
+    headerBg:  [255, 255, 255] as RGB,
+    headerSub: [245, 245, 250] as RGB,
 };
 
 // ── Primitives ────────────────────────────────────────────────────────────────
@@ -160,17 +160,17 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
     fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
 
     // Left: company
-    t(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, C.white);
-    if (opts.companyId) t(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, [150, 150, 168] as RGB);
-    t(doc, "LIQUIDACIÓN LABORAL · LOTTT ART. 92 Y 142", ML + 2, 23, 6, false, [100, 100, 120] as RGB);
+    t(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, C.ink);
+    if (opts.companyId) t(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, C.inkMed);
+    t(doc, "LIQUIDACIÓN LABORAL · LOTTT ART. 92 Y 142", ML + 2, 23, 6, false, C.muted);
 
     // Right: motivo + fecha
-    t(doc, (MOTIVO_LABEL[emp.motivo] ?? emp.motivo).toUpperCase(), MR, 9, 8, true, C.white, "right");
+    t(doc, (MOTIVO_LABEL[emp.motivo] ?? emp.motivo).toUpperCase(), MR, 9, 8, true, C.ink, "right");
     lbl(doc, "Motivo de egreso", MR, 14.5, "right");
-    t(doc, `Egreso: ${fmtDate(emp.fechaEgreso)}`, MR, 22.5, 6.5, false, [150, 175, 185] as RGB, "right");
+    t(doc, `Egreso: ${fmtDate(emp.fechaEgreso)}`, MR, 22.5, 6.5, false, C.inkMed, "right");
     t(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 29, 5.5, false, [100, 100, 118] as RGB, "right"
+        MR, 29, 5.5, false, C.muted, "right"
     );
 
     let y = HDR_H + 5;
@@ -218,13 +218,13 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
     const LABEL_MAX    = COL_DIAS - ML - 10;
 
     const TH_H = 7.5;
-    fill(doc, ML, y, W, TH_H, C.headerBg);
+    fill(doc, ML, y, W, TH_H, C.rowAlt);
     fill(doc, ML, y, 3, TH_H, C.primary);
-    hline(doc, ML, y + TH_H, W, C.primaryBd, 0.4);
+    hline(doc, ML, y + TH_H, W, C.borderMed, 0.4);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
-    doc.setTextColor(140, 200, 215);
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text("CONCEPTO",        COL_CONCEPTO + 6, y + 4.8, { align: "left"   });
     doc.text("DÍAS",            COL_DIAS,          y + 4.8, { align: "center" });
     doc.text("SALARIO DIARIO",  COL_SAL,           y + 4.8, { align: "center" });
@@ -261,21 +261,24 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
 
     // ── TOTAL BAR ─────────────────────────────────────────────────────────
     const NET_H = 20;
-    fill(doc, ML, y, W, NET_H, C.headerBg);
-    doc.setDrawColor(C.accent[0], C.accent[1], C.accent[2]);
+    fill(doc, ML, y, W, NET_H, C.white);
+    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
     doc.setLineWidth(1.2);
     doc.line(ML, y, MR, y);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(ML, y + NET_H, MR, y + NET_H);
 
     const midX = ML + W * 0.5;
-    vline(doc, midX, y + 4, y + NET_H - 4, [50, 65, 85] as RGB, 0.5);
+    vline(doc, midX, y + 4, y + NET_H - 4, C.border, 0.5);
 
     // Left: employee summary
     lbl(doc, `${emp.lines.length} concepto${emp.lines.length !== 1 ? "s" : ""}`, ML + 6, y + 7);
-    t(doc, emp.nombre, ML + 6, y + 14, 7, false, [160, 180, 190] as RGB, "left", midX - ML - 10);
+    t(doc, emp.nombre, ML + 6, y + 14, 7, false, C.inkMed, "left", midX - ML - 10);
 
     // Right: total
     lbl(doc, "Total a Cobrar", midX + 6, y + 7);
-    t(doc, fmtVES(emp.total), MR - 4, y + 16, 14, true, C.accent, "right");
+    t(doc, fmtVES(emp.total), MR - 4, y + 16, 14, true, C.primary, "right");
 
     y += NET_H + 10;
 
@@ -316,11 +319,13 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
     lbl(doc, "Firma del Trabajador · Conforme", esx + sigW / 2, sigY + 23, "center");
 
     // ── FOOTER ────────────────────────────────────────────────────────────
-    fill(doc, 0, PH - 10, PW, 10, C.headerBg);
-    fill(doc, 0, PH - 10, PW, 1, C.accent);
+    fill(doc, 0, PH - 10, PW, 10, C.white);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(0, PH - 10, PW, PH - 10);
     t(doc,
         `${opts.companyName.toUpperCase()}  ·  LIQUIDACIÓN LABORAL  ·  ${fmtDate(opts.fechaDoc)}  ·  DOCUMENTO CONFIDENCIAL`,
-        PW / 2, PH - 4, 5, false, [90, 95, 112] as RGB, "center"
+        PW / 2, PH - 4, 5, false, C.muted, "center"
     );
 }
 

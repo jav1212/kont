@@ -7,7 +7,7 @@ import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
+    "font-mono text-[15px] text-foreground placeholder:text-[var(--text-disabled)]",
     "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
     "disabled:opacity-40 disabled:cursor-not-allowed",
     "transition-colors duration-150",
@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
                 <div className="mb-10">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="h-px w-6 bg-primary-500/60" />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-link">
+                        <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
                             Recuperación
                         </span>
                     </div>
@@ -105,20 +105,20 @@ export default function ResetPasswordPage() {
                 {stage === "loading" && (
                     <div className="flex items-center gap-3 text-text-tertiary">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest">Verificando enlace…</span>
+                        <span className="font-mono text-[13px] uppercase tracking-widest">Verificando enlace…</span>
                     </div>
                 )}
 
                 {stage === "invalid" && (
                     <div className="space-y-5">
                         <div className="px-4 py-3.5 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                            <p className="font-mono text-[11px] text-text-tertiary leading-relaxed">
+                            <p className="font-mono text-[14px] text-text-tertiary leading-relaxed">
                                 El enlace expiró o ya fue usado. Solicita uno nuevo.
                             </p>
                         </div>
                         <a
                             href="/forgot-password"
-                            className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-link hover:text-text-link-hover transition-colors"
+                            className="flex items-center gap-2 font-mono text-[13px] uppercase tracking-[0.18em] text-text-link hover:text-text-link-hover transition-colors"
                         >
                             Solicitar nuevo enlace
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
                 {stage === "ready" && (
                     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                         <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                            <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                 Nueva contraseña
                             </label>
                             <input
@@ -147,7 +147,7 @@ export default function ResetPasswordPage() {
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">
+                            <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
                                 Confirmar contraseña
                             </label>
                             <input
@@ -163,7 +163,7 @@ export default function ResetPasswordPage() {
 
                         {error && (
                             <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                <p className="font-mono text-[10px] text-red-400">{error}</p>
+                                <p className="font-mono text-[13px] text-red-400">{error}</p>
                             </div>
                         )}
 
@@ -174,7 +174,7 @@ export default function ResetPasswordPage() {
                                 "w-full h-10 mt-2 rounded-lg",
                                 "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
                                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                                "font-mono text-[11px] uppercase tracking-[0.18em] text-white",
+                                "font-mono text-[13px] uppercase tracking-[0.18em] text-white",
                                 "transition-colors duration-150 flex items-center justify-center gap-2",
                             ].join(" ")}
                         >
@@ -186,7 +186,7 @@ export default function ResetPasswordPage() {
                 {stage === "success" && (
                     <div className="space-y-4">
                         <div className="px-4 py-3.5 border border-primary-500/20 rounded-lg bg-primary-500/[0.05]">
-                            <p className="font-mono text-[11px] text-text-secondary leading-relaxed">
+                            <p className="font-mono text-[14px] text-text-secondary leading-relaxed">
                                 Contraseña actualizada correctamente. Redirigiendo al inicio de sesión…
                             </p>
                         </div>
@@ -194,7 +194,7 @@ export default function ResetPasswordPage() {
                             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M2 7l3 3 6-6" />
                             </svg>
-                            <span className="font-mono text-[10px] uppercase tracking-widest">Listo</span>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Listo</span>
                         </div>
                     </div>
                 )}

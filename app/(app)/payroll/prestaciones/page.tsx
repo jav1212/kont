@@ -23,7 +23,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 
@@ -69,7 +69,7 @@ function SectionHeader({ label, color }: { label: string; color?: "green" | "amb
     const cls = color === "amber" ? "text-amber-500/70"
               : color === "green" ? "text-emerald-500/70"
               : "text-[var(--text-tertiary)]";
-    return <p className={`font-mono text-[9px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
+    return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
 function CalcRow({ label, formula, value, accent, dim }: {
@@ -83,10 +83,10 @@ function CalcRow({ label, formula, value, accent, dim }: {
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
-                <span className="font-mono text-[11px] text-[var(--text-secondary)] leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
+                <span className="font-mono text-[13px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[12px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
             </div>
-            <span className={`font-mono text-[12px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
+            <span className={`font-mono text-[13px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
         </div>
     );
 }
@@ -397,9 +397,9 @@ export default function PrestacionesPage() {
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Prestaciones</p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Prestaciones</p>
                     <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT · Garantía de Prestaciones</p>
+                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT · Garantía de Prestaciones</p>
                 </div>
 
                 <div className="flex-1 divide-y divide-border-light">
@@ -425,7 +425,7 @@ export default function PrestacionesPage() {
                                     { k: "Cargo",         v: selectedEmp.cargo || "—" },
                                     { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
                                 ].map(({ k, v }) => (
-                                    <div key={k} className="flex justify-between font-mono text-[10px]">
+                                    <div key={k} className="flex justify-between font-mono text-[12px]">
                                         <span className="text-[var(--text-tertiary)]">{k}</span>
                                         <span className="text-foreground tabular-nums">{v}</span>
                                     </div>
@@ -445,7 +445,7 @@ export default function PrestacionesPage() {
                                     className={fieldCls + " pl-9 text-right"} />
                             </div>
                             {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
+                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
                             )}
                         </div>
                         {!selectedEmp && (
@@ -470,7 +470,7 @@ export default function PrestacionesPage() {
                             </div>
                         ) : bcvError ? (
                             <div className="space-y-2">
-                                <p className="font-mono text-[10px] text-red-500">{bcvError}</p>
+                                <p className="font-mono text-[12px] text-red-500">{bcvError}</p>
                                 <input type="number" step="0.01" value={bcvRate || ""}
                                     onChange={e => setBcvRate(parseFloat(e.target.value) || 0)}
                                     placeholder="Ingresar tasa manualmente"
@@ -479,8 +479,8 @@ export default function PrestacionesPage() {
                         ) : (
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[8px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                                <span className="font-mono text-[12px] text-[var(--text-tertiary)]">Bs. / USD</span>
+                                <span className="ml-auto font-mono text-[11px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
                             </div>
                         )}
                     </div>
@@ -492,7 +492,7 @@ export default function PrestacionesPage() {
                             <label className={labelCls}>Fecha de corte</label>
                             <input type="date" value={fechaCorte}
                                 onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Fecha de egreso o consulta</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Fecha de egreso o consulta</p>
                         </div>
                         <div>
                             <label className={labelCls}>Días de utilidades</label>
@@ -500,7 +500,7 @@ export default function PrestacionesPage() {
                                 value={diasUtilidades}
                                 onChange={e => setDiasUtilidades(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 174)</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 174)</p>
                         </div>
                         <div>
                             <label className={labelCls}>Días bono vacacional</label>
@@ -508,7 +508,7 @@ export default function PrestacionesPage() {
                                 value={diasBono}
                                 onChange={e => setDiasBono(e.target.value)}
                                 className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 192)</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 192)</p>
                         </div>
                     </div>
 
@@ -524,7 +524,7 @@ export default function PrestacionesPage() {
                                     className={fieldCls + " pr-9 text-right"} />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
                             </div>
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Art. 143 LOTTT — sobre saldo × meses / 12</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Art. 143 LOTTT — sobre saldo × meses / 12</p>
                         </div>
                         <div>
                             <label className={labelCls}>Porcentaje de anticipo (%)</label>
@@ -535,16 +535,16 @@ export default function PrestacionesPage() {
                                     className={fieldCls + " pr-9 text-right"} />
                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
                             </div>
-                            <p className="font-mono text-[9px] text-[var(--text-disabled)] mt-1">Art. 144 LOTTT — máximo 75% del saldo</p>
+                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Art. 144 LOTTT — máximo 75% del saldo</p>
                         </div>
                         {calc && (
                             <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-2">
                                 <div>
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Intereses calculados</p>
+                                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Intereses calculados</p>
                                     <p className="font-mono text-[13px] font-black tabular-nums text-emerald-600">{fmt(calc.interesesAcumulados)}</p>
                                 </div>
                                 <div>
-                                    <p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Anticipo ({porcentajeAnticipo}% saldo)</p>
+                                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Anticipo ({porcentajeAnticipo}% saldo)</p>
                                     <p className="font-mono text-[13px] font-black tabular-nums text-amber-500">{fmt(calc.anticipoPrestaciones)}</p>
                                 </div>
                             </div>
@@ -610,12 +610,12 @@ export default function PrestacionesPage() {
                                     value={`− ${fmt(calc.pagoInmediato)}`} dim />
                                 <Hr />
                                 <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Saldo a favor</span>
+                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Saldo a favor</span>
                                     <span className="font-mono text-[20px] font-black tabular-nums text-emerald-600">{fmt(calc.saldoFavor)}</span>
                                 </div>
                             </>)}
                         </>) : (
-                            <p className="font-mono text-[10px] text-[var(--text-tertiary)]">
+                            <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
                                 {salarioVES <= 0
                                     ? "Ingresa el salario del empleado."
                                     : !fechaIngreso

@@ -6,6 +6,9 @@
 ## Color System
 - [color_system_refactor.md](./color_system_refactor.md) — Complete color token system: what was broken, what was fixed, WCAG contrast values
 
+## Typography
+- [typography_scale.md](./typography_scale.md) — Canonical font-size scale; now centralized in `src/shared/frontend/sizes.ts` (APP_SIZES) — all shared components import from it
+
 ## Patterns & Conventions
 - [badge_patterns.md](./badge_patterns.md) — How status badges are implemented in this codebase
 - [text_color_conventions.md](./text_color_conventions.md) — When to use which text color tokens

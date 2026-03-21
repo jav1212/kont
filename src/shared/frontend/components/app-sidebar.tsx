@@ -8,6 +8,7 @@ import { useAuth }     from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
 // Shared so hover/focus states stay consistent across Link and button elements.
 
 const NAV_ITEM_BASE =
-    "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono text-[12px] uppercase tracking-[0.12em] border";
+    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border`;
 
 const NAV_ITEM_IDLE =
     "text-sidebar-fg border-transparent hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
@@ -175,10 +176,10 @@ export function AppSidebar() {
                         </svg>
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-sidebar-fg-hover">
+                        <span className={`font-mono ${APP_SIZES.nav.logoWordmark} font-bold uppercase text-sidebar-fg-hover`}>
                             Kont
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-sidebar-label">
+                        <span className={`font-mono ${APP_SIZES.nav.logoSubtitle} uppercase text-sidebar-label`}>
                             Nómina
                         </span>
                     </div>
@@ -187,7 +188,7 @@ export function AppSidebar() {
 
             {/* ── Company selector ──────────────────────────────────────── */}
             <div className="px-3 py-3 border-b border-sidebar-border">
-                <p className="px-2 mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-sidebar-label">
+                <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
                     Empresa
                 </p>
 
@@ -196,13 +197,13 @@ export function AppSidebar() {
                         <div className="h-3 rounded bg-foreground/[0.06] animate-pulse w-3/4" />
                     </div>
                 ) : companies.length === 0 ? (
-                    <p className="px-2 font-mono text-[11px] text-sidebar-label">
+                    <p className={`px-2 font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
                         Sin empresas
                     </p>
                 ) : companies.length === 1 ? (
                     <div className="px-2 py-1.5 flex items-center gap-2">
                         <CompanyAvatar name={company?.name} />
-                        <span className="font-mono text-[12px] truncate text-sidebar-fg">
+                        <span className={`font-mono ${APP_SIZES.nav.companyName} truncate text-sidebar-fg`}>
                             {company?.name}
                         </span>
                     </div>
@@ -216,7 +217,7 @@ export function AppSidebar() {
                             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
                         >
                             <CompanyAvatar name={company?.name} />
-                            <span className="font-mono text-[12px] truncate flex-1 text-left">
+                            <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
                                 {company?.name ?? "Seleccionar…"}
                             </span>
                             <ChevronIcon open={companyOpen} />
@@ -236,7 +237,7 @@ export function AppSidebar() {
                                             <button
                                                 onClick={() => { selectCompany(c.id); setCompanyOpen(false); }}
                                                 className={[
-                                                    "w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono text-[12px] text-left",
+                                                    `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
                                                     isSelected
                                                         ? "text-sidebar-active-fg bg-sidebar-active-bg"
                                                         : "text-sidebar-fg hover:bg-sidebar-bg-hover",
@@ -262,7 +263,7 @@ export function AppSidebar() {
 
             {/* ── Module nav ────────────────────────────────────────────── */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Módulos">
-                <p className="px-2 mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-sidebar-label">
+                <p className={`px-2 mb-3 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
                     Módulos
                 </p>
 
@@ -304,7 +305,7 @@ export function AppSidebar() {
                                             return (
                                                 <div key={href}>
                                                     {showGroupHeader && (
-                                                        <p className="px-2 pt-2 pb-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-sidebar-label">
+                                                        <p className={`px-2 pt-2 pb-0.5 font-mono ${APP_SIZES.nav.group} uppercase text-sidebar-label`}>
                                                             {group}
                                                         </p>
                                                     )}
@@ -312,7 +313,7 @@ export function AppSidebar() {
                                                         href={href}
                                                         aria-current={subActive ? "page" : undefined}
                                                         className={[
-                                                            "flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors duration-150 font-mono text-[12px] uppercase tracking-[0.10em]",
+                                                            `flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors duration-150 font-mono ${APP_SIZES.nav.subItem}`,
                                                             subActive
                                                                 ? "text-sidebar-active-fg bg-sidebar-active-bg"
                                                                 : "text-sidebar-label hover:text-sidebar-fg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
@@ -355,7 +356,7 @@ export function AppSidebar() {
                 <button
                     onClick={handleSignOut}
                     aria-label="Cerrar sesión"
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono text-[12px] uppercase tracking-[0.12em] border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40`}
                 >
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />
@@ -376,7 +377,7 @@ function CompanyAvatar({ name }: { name?: string }) {
             aria-hidden="true"
             className="w-5 h-5 rounded-md bg-primary-500/20 flex items-center justify-center flex-shrink-0"
         >
-            <span className="font-mono text-[10px] font-bold text-primary-400 uppercase">
+            <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
                 {name?.[0] ?? "?"}
             </span>
         </div>

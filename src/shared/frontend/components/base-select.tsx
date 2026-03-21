@@ -2,6 +2,7 @@
 
 import React, { useCallback } from "react";
 import { Select, SelectItem, Chip, SelectedItems } from "@heroui/react";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
 // ============================================================================
 // TYPES
@@ -108,7 +109,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                     "rounded-md",
                                 ].join(" "),
                                 content: [
-                                    "font-mono text-[11px] uppercase tracking-wide",
+                                    `font-mono ${APP_SIZES.text.badge} uppercase`,
                                     "text-neutral-600 dark:text-neutral-400",
                                     "px-1",
                                 ].join(" "),
@@ -133,7 +134,7 @@ export const BaseSelect = <T extends SelectItemData>({
                             "inline-flex items-center px-1.5 h-[20px] rounded-md",
                             "bg-neutral-100 dark:bg-neutral-800",
                             "border border-border-light",
-                            "font-mono text-[11px] text-neutral-500",
+                            `font-mono ${APP_SIZES.text.badgeOverflow} text-neutral-500`,
                         ].join(" ")}>
                             +{overflow}
                         </div>
@@ -172,9 +173,9 @@ export const BaseSelect = <T extends SelectItemData>({
                     base: "w-full",
 
                     label: [
-                        "font-mono text-[11px] uppercase tracking-[0.14em]",
+                        `font-mono ${APP_SIZES.text.label} uppercase`,
                         "text-neutral-500 dark:text-neutral-400",
-                        "mb-1.5",
+                        APP_SIZES.spacing.labelBottom,
                     ].join(" "),
 
                     trigger: [
@@ -236,7 +237,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                         <div className={[
                                             "w-6 h-6 rounded-md flex-shrink-0",
                                             "flex items-center justify-center",
-                                            "font-mono text-[10px] font-bold",
+                                            `font-mono ${APP_SIZES.text.selectAvatar} font-bold`,
                                             isSelected
                                                 ? "bg-primary-500 text-white"
                                                 : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400",
@@ -248,7 +249,7 @@ export const BaseSelect = <T extends SelectItemData>({
 
                                     <div className="min-w-0">
                                         <p className={[
-                                            "font-mono text-[13px] font-medium truncate",
+                                            `font-mono ${APP_SIZES.text.selectItem} font-medium truncate`,
                                             isSelected
                                                 ? "text-primary-700 dark:text-primary-300"
                                                 : "text-foreground",
@@ -256,7 +257,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                             {item.name}
                                         </p>
                                         {item.subtitle && (
-                                            <p className="font-mono text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5 truncate">
+                                            <p className={`font-mono ${APP_SIZES.text.selectSubtitle} text-neutral-400 dark:text-neutral-500 mt-0.5 truncate`}>
                                                 {item.subtitle}
                                             </p>
                                         )}

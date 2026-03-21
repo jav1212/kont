@@ -110,7 +110,7 @@ const IconPlus = () => (
 const toolbarBtn = [
     "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
     "hover:border-border-medium hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed",
-    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground transition-colors duration-150",
+    "font-mono text-[12px] uppercase tracking-[0.18em] text-foreground transition-colors duration-150",
 ].join(" ");
 
 // ============================================================================
@@ -153,7 +153,7 @@ function EmployeeRow({
                     <input className={cellInput} placeholder="V-12345678"
                         value={draft.cedula} onChange={(e) => onDraftChange("cedula", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">{employee.cedula}</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)] uppercase tracking-wider">{employee.cedula}</span>
                 )}
             </td>
 
@@ -163,7 +163,7 @@ function EmployeeRow({
                     <input className={cellInput} placeholder="Nombre completo"
                         value={draft.nombre} onChange={(e) => onDraftChange("nombre", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[12px] font-medium text-foreground">{employee.nombre}</span>
+                    <span className="font-mono text-[14px] font-medium text-foreground">{employee.nombre}</span>
                 )}
             </td>
 
@@ -173,7 +173,7 @@ function EmployeeRow({
                     <input className={cellInput} placeholder="Cargo"
                         value={draft.cargo} onChange={(e) => onDraftChange("cargo", e.target.value)} />
                 ) : (
-                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{employee.cargo}</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{employee.cargo}</span>
                 )}
             </td>
 
@@ -182,24 +182,24 @@ function EmployeeRow({
                 {isEditing ? (
                     <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
                         <select
-                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                             value={draft.moneda}
                             onChange={(e) => onDraftChange("moneda", e.target.value)}>
                             <option value="VES">VES</option>
                             <option value="USD">USD</option>
                         </select>
                         <input
-                            className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[12px] text-right tabular-nums text-foreground outline-none"
+                            className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
                             type="number" step="0.01" min="0" placeholder="0.00"
                             value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
                     </div>
                 ) : (
                     <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[12px] tabular-nums text-[var(--text-primary)]">
+                        <span className="font-mono text-[14px] tabular-nums text-[var(--text-primary)]">
                             {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                         </span>
                         <span className={[
-                            "font-mono text-[8px] px-1 py-0.5 rounded border uppercase tracking-widest",
+                            "font-mono text-[11px] px-1 py-0.5 rounded border uppercase tracking-widest",
                             employee.moneda === "USD"
                                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
                                 : "border-border-light text-[var(--text-tertiary)]",
@@ -218,13 +218,13 @@ function EmployeeRow({
                         onChange={(e) => onDraftChange("fechaIngreso", e.target.value)} />
                 ) : (
                     <div className="flex flex-col gap-0.5">
-                        <span className="font-mono text-[11px] text-[var(--text-secondary)]">
+                        <span className="font-mono text-[13px] text-[var(--text-secondary)]">
                             {employee.fechaIngreso
                                 ? new Date(employee.fechaIngreso + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "2-digit" })
                                 : <span className="text-[var(--text-disabled)]">—</span>}
                         </span>
                         {employee.fechaIngreso && (
-                            <span className="font-mono text-[9px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                            <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
                                 {calcAntiguedad(employee.fechaIngreso)}
                             </span>
                         )}
@@ -239,7 +239,7 @@ function EmployeeRow({
                         {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                 ) : (
-                    <span className={["inline-flex px-2 py-0.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.14em]", ESTADO_CLS[employee.estado]].join(" ")}>
+                    <span className={["inline-flex px-2 py-0.5 rounded-md border font-mono text-[11px] uppercase tracking-[0.14em]", ESTADO_CLS[employee.estado]].join(" ")}>
                         {employee.estado}
                     </span>
                 )}
@@ -538,7 +538,7 @@ export default function EmployeesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
+                    <nav className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
                         Nómina / Empleados
                     </nav>
                     <div className="flex items-end justify-between gap-4">
@@ -547,7 +547,7 @@ export default function EmployeesPage() {
                                 Empleados
                             </h1>
                             {company && (
-                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
+                                <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                     {company.name} · {empRemaining !== null
                                         ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
                                         : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
@@ -589,7 +589,7 @@ export default function EmployeesPage() {
                                     "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                     "bg-primary-500 border-primary-600 text-white",
                                     "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                                    "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                    "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
                                 ].join(" ")}
                             >
                                 <IconPlus />
@@ -602,36 +602,36 @@ export default function EmployeesPage() {
                 {/* Errors */}
                 {(csvError || bulkError) && (
                     <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                        <p className="font-mono text-[10px] text-red-500">{csvError ?? bulkError}</p>
+                        <p className="font-mono text-[12px] text-red-500">{csvError ?? bulkError}</p>
                     </div>
                 )}
 
                 {/* Bulk action bar */}
                 {selected.size > 0 && (
                     <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary-500/20 bg-primary-500/[0.05]">
-                        <span className="font-mono text-[11px] text-primary-500">
+                        <span className="font-mono text-[13px] text-primary-500">
                             {selected.size} empleado{selected.size !== 1 ? "s" : ""} seleccionado{selected.size !== 1 ? "s" : ""}
                         </span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setSelected(new Set())}
-                                className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
+                                className="font-mono text-[12px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                             >
                                 Deseleccionar
                             </button>
                             {confirmDelete ? (
                                 <div className="flex items-center gap-2">
-                                    <span className="font-mono text-[10px] text-red-500">¿Confirmar eliminación?</span>
+                                    <span className="font-mono text-[12px] text-red-500">¿Confirmar eliminación?</span>
                                     <button
                                         onClick={handleBulkDelete}
                                         disabled={bulkDeleting}
-                                        className="h-7 px-3 rounded-lg bg-red-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                        className="h-7 px-3 rounded-lg bg-red-500 text-white font-mono text-[12px] uppercase tracking-widest hover:bg-red-600 disabled:opacity-50 transition-colors"
                                     >
                                         {bulkDeleting ? "Eliminando…" : "Sí, eliminar"}
                                     </button>
                                     <button
                                         onClick={() => setConfirmDelete(false)}
-                                        className="h-7 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground transition-colors"
+                                        className="h-7 px-3 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground transition-colors"
                                     >
                                         Cancelar
                                     </button>
@@ -639,7 +639,7 @@ export default function EmployeesPage() {
                             ) : (
                                 <button
                                     onClick={() => setConfirmDelete(true)}
-                                    className="h-7 px-3 rounded-lg border border-red-500/30 bg-red-500/[0.08] text-red-500 font-mono text-[10px] uppercase tracking-widest hover:bg-red-500/[0.14] transition-colors flex items-center gap-1.5"
+                                    className="h-7 px-3 rounded-lg border border-red-500/30 bg-red-500/[0.08] text-red-500 font-mono text-[12px] uppercase tracking-widest hover:bg-red-500/[0.14] transition-colors flex items-center gap-1.5"
                                 >
                                     <IconTrash />
                                     Eliminar selección
@@ -661,7 +661,7 @@ export default function EmployeesPage() {
                         onChange={(e) => setSearch(e.target.value)}
                         className={[
                             "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                            "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
+                            "font-mono text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
                             "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
                         ].join(" ")}
                     />
@@ -672,12 +672,12 @@ export default function EmployeesPage() {
                     <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
                         <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                             <Spinner />
-                            <span className="font-mono text-[11px] uppercase tracking-widest">Cargando empleados…</span>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
                         </div>
                     </div>
                 ) : error ? (
                     <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                        <p className="font-mono text-[11px] text-red-500">{error}</p>
+                        <p className="font-mono text-[13px] text-red-500">{error}</p>
                     </div>
                 ) : (
                     <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
@@ -694,7 +694,7 @@ export default function EmployeesPage() {
                                         />
                                     </th>
                                     {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -726,14 +726,14 @@ export default function EmployeesPage() {
                                         <td className="px-3 py-2.5 w-52">
                                             <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
                                                 <select
-                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[10px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                                                     value={row.draft.moneda}
                                                     onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
                                                     <option value="VES">VES</option>
                                                     <option value="USD">USD</option>
                                                 </select>
                                                 <input
-                                                    className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[12px] text-right tabular-nums text-foreground outline-none"
+                                                    className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
                                                     type="number" step="0.01" min="0" placeholder="0.00"
                                                     value={row.draft.salarioMensual}
                                                     onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
@@ -770,7 +770,7 @@ export default function EmployeesPage() {
                                     {newRowError[row.id] && (
                                         <tr className="bg-red-500/[0.04]">
                                             <td colSpan={7} className="px-4 py-1.5">
-                                                <p className="font-mono text-[10px] text-red-400">{newRowError[row.id]}</p>
+                                                <p className="font-mono text-[12px] text-red-400">{newRowError[row.id]}</p>
                                             </td>
                                         </tr>
                                     )}
@@ -780,7 +780,7 @@ export default function EmployeesPage() {
                                 {/* Existing rows */}
                                 {filtered.length === 0 && newRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                        <td colSpan={7} className="px-4 py-12 text-center font-mono text-[13px] text-[var(--text-disabled)] uppercase tracking-widest">
                                             {employees.length === 0
                                                 ? "Sin empleados. Importa un CSV o agrega uno manualmente."
                                                 : "Sin resultados para la búsqueda."}
@@ -824,7 +824,7 @@ export default function EmployeesPage() {
                                 <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
                                     Historial de Salario
                                 </h2>
-                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                     {historyModal.nombre} · {historyModal.cedula}
                                 </p>
                             </div>
@@ -837,31 +837,31 @@ export default function EmployeesPage() {
                             {historyLoading ? (
                                 <div className="flex items-center justify-center h-24 gap-2 text-[var(--text-tertiary)]">
                                     <Spinner />
-                                    <span className="font-mono text-[11px] uppercase tracking-widest">Cargando…</span>
+                                    <span className="font-mono text-[13px] uppercase tracking-widest">Cargando…</span>
                                 </div>
                             ) : historyError ? (
-                                <p className="font-mono text-[11px] text-red-500">{historyError}</p>
+                                <p className="font-mono text-[13px] text-red-500">{historyError}</p>
                             ) : historyData.length === 0 ? (
-                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
+                                <p className="font-mono text-[13px] text-[var(--text-tertiary)] text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
                             ) : (
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {["Desde", "Salario", "Moneda"].map((h) => (
-                                                <th key={h} className="pb-2 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{h}</th>
+                                                <th key={h} className="pb-2 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {historyData.map((entry) => (
                                             <tr key={entry.id} className="border-b border-border-light/50 last:border-0">
-                                                <td className="py-2 font-mono text-[11px] text-[var(--text-secondary)]">{entry.fechaDesde}</td>
-                                                <td className="py-2 font-mono text-[11px] text-foreground">
+                                                <td className="py-2 font-mono text-[13px] text-[var(--text-secondary)]">{entry.fechaDesde}</td>
+                                                <td className="py-2 font-mono text-[13px] text-foreground">
                                                     {entry.salarioMensual.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                                                 </td>
                                                 <td className="py-2">
                                                     <span className={[
-                                                        "font-mono text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded",
+                                                        "font-mono text-[11px] uppercase tracking-widest px-1.5 py-0.5 rounded",
                                                         entry.moneda === "USD"
                                                             ? "bg-green-500/10 text-green-500"
                                                             : "bg-foreground/[0.06] text-[var(--text-secondary)]",
@@ -877,7 +877,7 @@ export default function EmployeesPage() {
                         </div>
                         <div className="flex justify-end px-5 py-4 border-t border-border-light">
                             <button onClick={() => setHistoryModal(null)}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
                                 Cerrar
                             </button>
                         </div>
@@ -896,7 +896,7 @@ export default function EmployeesPage() {
                                 <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
                                     Pegar CSV
                                 </h2>
-                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
                                     Empleados · columnas: cedula, nombre, cargo, salario_mensual_ves, estado
                                 </p>
                             </div>
@@ -916,7 +916,7 @@ export default function EmployeesPage() {
                                 placeholder={`"cedula","nombre","cargo","salario_mensual_ves","estado"\n"V-12345678","JUAN PEREZ","ANALISTA","100000","activo"`}
                                 className={[
                                     "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
-                                    "font-mono text-[11px] text-foreground leading-relaxed",
+                                    "font-mono text-[13px] text-foreground leading-relaxed",
                                     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
                                     "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
                                 ].join(" ")}
@@ -924,17 +924,17 @@ export default function EmployeesPage() {
 
                             {/* Validation feedback */}
                             {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
-                                <p className="font-mono text-[10px] text-green-500">
+                                <p className="font-mono text-[12px] text-green-500">
                                     {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
                                 </p>
                             )}
                             {pasteErrors.length > 0 && (
                                 <div className="space-y-1">
                                     {pasteErrors.slice(0, 3).map((e, i) => (
-                                        <p key={i} className="font-mono text-[10px] text-red-500">{e}</p>
+                                        <p key={i} className="font-mono text-[12px] text-red-500">{e}</p>
                                     ))}
                                     {pasteErrors.length > 3 && (
-                                        <p className="font-mono text-[10px] text-[var(--text-tertiary)]">…y {pasteErrors.length - 3} error(es) más.</p>
+                                        <p className="font-mono text-[12px] text-[var(--text-tertiary)]">…y {pasteErrors.length - 3} error(es) más.</p>
                                     )}
                                 </div>
                             )}
@@ -943,14 +943,14 @@ export default function EmployeesPage() {
                         {/* Modal footer */}
                         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
                             <button onClick={closePasteModal}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
+                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
                                 Cancelar
                             </button>
                             <button
                                 onClick={handlePasteImport}
                                 disabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
                                 className={[
-                                    "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-widest",
+                                    "h-8 px-4 rounded-lg font-mono text-[12px] uppercase tracking-widest",
                                     "bg-primary-500 text-white hover:bg-primary-600",
                                     "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
                                     "flex items-center gap-2",

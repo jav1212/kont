@@ -44,7 +44,7 @@ const EstadoBadge = ({ estado }: { estado: Employee["estado"] }) => {
     };
     const { label, cls } = cfg[estado];
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded border font-mono text-[10px] uppercase tracking-[0.12em] font-semibold ${cls}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded border font-mono text-[11px] uppercase tracking-[0.12em] font-semibold ${cls}`}>
             {label}
         </span>
     );
@@ -52,7 +52,7 @@ const EstadoBadge = ({ estado }: { estado: Employee["estado"] }) => {
 
 const Stat = ({ label, value, muted }: { label: string; value: string | number; muted?: boolean }) => (
     <div className="flex flex-col gap-0.5">
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-600">{label}</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-600">{label}</span>
         <span className={["font-mono text-[13px] font-bold tabular-nums leading-none", muted ? "text-neutral-500 dark:text-neutral-400" : "text-foreground"].join(" ")}>
             {value}
         </span>
@@ -97,7 +97,7 @@ export function PayrollTableView() {
         { key: "nombre", label: "Empleado", sortable: true, searchable: true, render: (val, item) => (
             <div className="flex flex-col min-w-0">
                 <span className="font-mono text-[12px] font-semibold text-foreground truncate leading-none">{val}</span>
-                <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mt-[3px]">{item.cargo}</span>
+                <span className="font-mono text-[11px] text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mt-[3px]">{item.cargo}</span>
             </div>
         )},
         { key: "periodo", label: "Período", width: 100, render: (val) => <span className="font-mono text-[11px] text-neutral-500 dark:text-neutral-400">{val}</span> },
@@ -114,7 +114,7 @@ export function PayrollTableView() {
             <div className="max-w-6xl mx-auto space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-1">
                     <div className="space-y-1">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-neutral-400 dark:text-neutral-600">Recursos Humanos / Nómina</p>
+                        <p className="font-mono text-[12px] uppercase tracking-[0.22em] text-neutral-400 dark:text-neutral-600">Recursos Humanos / Nómina</p>
                         <h1 className="font-mono text-xl font-bold text-foreground leading-none">Nómina de Empleados</h1>
                     </div>
                     <BaseButton.Root variant="primary" size="sm">+ Nuevo</BaseButton.Root>

@@ -23,7 +23,7 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 // ============================================================================
 // LIQUIDACIÓN ENGINE
@@ -191,7 +191,7 @@ function ConstanciaLiquidacion({ r, companyName, egreso, motivo, diasUtil, diasB
                 <div className="absolute left-0 top-0 w-1 bottom-0 bg-amber-500" />
                 <div className="pl-3 flex items-center justify-between">
                     <p className="font-mono text-[13px] font-bold uppercase text-white">{r.employee.nombre}</p>
-                    <span className="font-mono text-[9px] text-amber-400 uppercase tracking-widest border border-amber-500/40 px-2 py-0.5 rounded">{r.warning}</span>
+                    <span className="font-mono text-[11px] text-amber-400 uppercase tracking-widest border border-amber-500/40 px-2 py-0.5 rounded">{r.warning}</span>
                 </div>
             </div>
         </div>
@@ -327,7 +327,7 @@ function ConfigSection({ title, open, onToggle, children }: {
     return (
         <div className="border-b border-border-light last:border-0">
             <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 hover:bg-foreground/[0.02] transition-colors duration-150">
-                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{title}</span>
+                <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{title}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     className="text-[var(--text-tertiary)] flex-shrink-0 transition-transform duration-200"
                     style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
@@ -441,9 +441,9 @@ export default function LiquidacionesPage() {
             <aside className="w-full lg:w-72 flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1">
 
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Liquidaciones</p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Liquidaciones</p>
                     <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Liquidaciones</p>
-                    <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT — egreso del empleado</p>
+                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT — egreso del empleado</p>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -491,7 +491,7 @@ export default function LiquidacionesPage() {
                                     className={["w-8 h-4.5 rounded-full transition-colors duration-150 flex items-center px-0.5 cursor-pointer", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
                                     <div className={["w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-150", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
                                 </div>
-                                <span className="font-mono text-[10px] text-[var(--text-secondary)] uppercase tracking-widest">Solo activos</span>
+                                <span className="font-mono text-[12px] text-[var(--text-secondary)] uppercase tracking-widest">Solo activos</span>
                             </label>
                         </div>
                     </ConfigSection>
@@ -501,18 +501,18 @@ export default function LiquidacionesPage() {
                 <div className="px-5 py-4 border-t border-border-light space-y-3">
                     {validResults.length > 0 && (
                         <div className="space-y-1">
-                            <div className="flex justify-between font-mono text-[10px]">
+                            <div className="flex justify-between font-mono text-[12px]">
                                 <span className="text-[var(--text-tertiary)]">Empleados</span>
                                 <span className="text-foreground">{validResults.length}</span>
                             </div>
                             {results.length - validResults.length > 0 && (
-                                <div className="flex justify-between font-mono text-[10px]">
+                                <div className="flex justify-between font-mono text-[12px]">
                                     <span className="text-[var(--text-tertiary)]">Sin fecha ingreso</span>
                                     <span className="text-amber-500">{results.length - validResults.length}</span>
                                 </div>
                             )}
                             {motivo === "despido_injustificado" && (
-                                <div className="flex justify-between font-mono text-[10px]">
+                                <div className="flex justify-between font-mono text-[12px]">
                                     <span className="text-[var(--text-tertiary)]">Incl. indemnización</span>
                                     <span className="text-red-500/70">{fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}</span>
                                 </div>
@@ -525,7 +525,7 @@ export default function LiquidacionesPage() {
                     )}
                     <button onClick={handleExport} disabled={results.length === 0}
                         className={["w-full h-9 rounded-lg flex items-center justify-center gap-2 border",
-                            "font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150",
+                            "font-mono text-[12px] uppercase tracking-[0.16em] transition-colors duration-150",
                             "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.16]",
                             "disabled:opacity-40 disabled:cursor-not-allowed"].join(" ")}>
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -536,7 +536,7 @@ export default function LiquidacionesPage() {
 
                     <button onClick={handlePdf} disabled={validResults.length === 0}
                         className={["w-full h-9 rounded-lg flex items-center justify-center gap-2",
-                            "font-mono text-[10px] uppercase tracking-[0.16em] transition-colors duration-150",
+                            "font-mono text-[12px] uppercase tracking-[0.16em] transition-colors duration-150",
                             "bg-primary-500 text-white hover:bg-primary-600",
                             "disabled:opacity-40 disabled:cursor-not-allowed"].join(" ")}>
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -555,10 +555,10 @@ export default function LiquidacionesPage() {
                             <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
                             <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                         </svg>
-                        <span className="font-mono text-[11px] uppercase tracking-widest">Cargando empleados…</span>
+                        <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
                     </div>
                 ) : error ? (
-                    <div className="flex items-center justify-center h-48 font-mono text-[11px] text-red-500">{error}</div>
+                    <div className="flex items-center justify-center h-48 font-mono text-[13px] text-red-500">{error}</div>
                 ) : results.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">

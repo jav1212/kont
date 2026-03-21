@@ -29,12 +29,12 @@ const C = {
     muted:     [120, 120, 132] as RGB,
     border:    [218, 218, 226] as RGB,
     borderMed: [175, 175, 185] as RGB,
-    bg:        [246, 246, 250] as RGB,
+    bg:        [255, 255, 255] as RGB,   // blanco para impresión
     rowAlt:    [240, 240, 245] as RGB,
     white:     [255, 255, 255] as RGB,
     primary:   [8,   145, 178] as RGB,
     accent:    [34,  211, 238] as RGB,
-    header:    [18,  18,  26]  as RGB,
+    header:    [255, 255, 255] as RGB,
     green:     [22,  101, 52]  as RGB,
 };
 
@@ -97,11 +97,13 @@ function drawPageBg(doc: jsPDF, PW: number, PH: number) {
 }
 
 function drawFooter(doc: jsPDF, PW: number, PH: number, opts: CestaTicketOptions) {
-    fill(doc, 0, PH - 10, PW, 10, C.header);
-    fill(doc, 0, PH - 10, PW, 1, C.accent);
+    fill(doc, 0, PH - 10, PW, 10, C.white);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(0, PH - 10, PW, PH - 10);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5);
-    doc.setTextColor(90, 90, 108);
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text(
         `${opts.companyName.toUpperCase()}  ·  ${opts.periodLabel}  ·  DOCUMENTO CONFIDENCIAL`,
         PW / 2, PH - 4, { align: "center" },
@@ -130,11 +132,11 @@ export function generateCestaTicketPdf(
     fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
     fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
 
-    txt(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, C.white);
-    if (opts.companyId) txt(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, [150, 150, 168]);
-    txt(doc, "REPORTE DE CESTA TICKET — 2ª QUINCENA", ML + 2, 23, 6, false, [100, 100, 120]);
+    txt(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, C.ink);
+    if (opts.companyId) txt(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, C.inkMed);
+    txt(doc, "REPORTE DE CESTA TICKET — 2ª QUINCENA", ML + 2, 23, 6, false, C.muted);
 
-    txt(doc, opts.periodLabel.toUpperCase(), MR, 18, 8, true, C.white, "right");
+    txt(doc, opts.periodLabel.toUpperCase(), MR, 18, 8, true, C.ink, "right");
     txt(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
         MR, 26, 5.5, false, [100, 100, 118], "right"
@@ -169,11 +171,14 @@ export function generateCestaTicketPdf(
 
     // Table header
     const TH_H = 6.5;
-    fill(doc, ML, y, W, TH_H, C.header);
+    fill(doc, ML, y, W, TH_H, C.rowAlt);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + TH_H, ML + W, y + TH_H);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
 
     const th = (text: string, x: number, align: "left" | "right" | "center" = "left") =>
         doc.text(text.toUpperCase(), x, y + 4.3, { align });
@@ -229,15 +234,21 @@ export function generateCestaTicketPdf(
     const totalUSD = opts.montoUSD * active.length;
     const totalVES = montoVES * active.length;
 
-    fill(doc, ML, y, W, 10, C.header);
-    fill(doc, ML, y, 3, 10, C.accent);
+    fill(doc, ML, y, W, 10, C.white);
+    fill(doc, ML, y, 3, 10, C.primary);
+    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
+    doc.setLineWidth(0.8);
+    doc.line(ML, y, ML + W, y);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 10, ML + W, y + 10);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text(`TOTAL  ·  ${active.length} EMPLEADOS`, ML + 8, y + 6);
 
-    doc.setTextColor(C.accent[0], C.accent[1], C.accent[2]);
+    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
     doc.text(fmtUSD(totalUSD), COL_USD, y + 6);
 
     doc.setTextColor(C.green[0], C.green[1], C.green[2]);

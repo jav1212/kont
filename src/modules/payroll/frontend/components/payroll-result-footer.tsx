@@ -17,7 +17,7 @@ const StatCell = ({
 }) => (
     <div className="flex flex-col">
         <span className={[
-            "text-[10px] uppercase opacity-40 mb-1 tracking-wider",
+            "text-[12px] uppercase opacity-40 mb-1 tracking-wider",
             accent ? "font-bold text-primary-400" : "",
         ].join(" ")}>
             {label}

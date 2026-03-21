@@ -2,6 +2,7 @@
 
 import React, { useId, useState, useCallback } from "react";
 import { Input, InputProps } from "@heroui/react";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
 // ============================================================================
 // TYPES
@@ -38,9 +39,9 @@ const INPUT_STYLES = {
 
     input: [
         "w-full outline-none bg-transparent",
-        "font-mono text-[14px] text-foreground",
+        `font-mono ${APP_SIZES.text.input} text-foreground`,
         "placeholder:text-neutral-400 dark:placeholder:text-neutral-600",
-        "placeholder:font-mono placeholder:text-[14px]",
+        `placeholder:font-mono placeholder:${APP_SIZES.text.placeholder}`,
         "transition-colors duration-150",
         "tabular-nums",
     ].join(" "),
@@ -114,7 +115,7 @@ export abstract class BaseInput {
                     <label
                         htmlFor={id}
                         className={[
-                            "font-mono text-[11px] uppercase tracking-[0.14em] block mb-1.5",
+                            `font-mono ${APP_SIZES.text.label} uppercase block ${APP_SIZES.spacing.labelBottom}`,
                             "transition-colors duration-150",
                             isInvalid
                                 ? "text-error/80"
@@ -148,10 +149,10 @@ export abstract class BaseInput {
 
                 {/* ── helper / error ─────────────────────────────────────── */}
                 {(helperText || error) && (
-                    <div className="flex items-start gap-1.5 mt-1.5">
+                    <div className={`flex items-start gap-1.5 ${APP_SIZES.spacing.helperTop}`}>
                         {error ? <ErrorIcon /> : <InfoIcon />}
                         <p className={[
-                            "font-mono text-[12px] leading-snug",
+                            `font-mono ${APP_SIZES.text.helper} leading-snug`,
                             error
                                 ? "text-error/80"
                                 : "text-neutral-400 dark:text-neutral-500",

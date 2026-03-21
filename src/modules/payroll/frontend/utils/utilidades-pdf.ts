@@ -47,12 +47,12 @@ const C = {
     muted:    [120, 120, 132] as RGB,
     border:   [218, 218, 226] as RGB,
     borderMd: [175, 175, 185] as RGB,
-    bg:       [246, 246, 250] as RGB,
+    bg:       [255, 255, 255] as RGB,   // blanco para impresión
     rowAlt:   [240, 240, 245] as RGB,
     white:    [255, 255, 255] as RGB,
     primary:  [8,   145, 178] as RGB,
     accent:   [34,  211, 238] as RGB,
-    header:   [18,  18,  26]  as RGB,
+    header:   [255, 255, 255] as RGB,
     green:    [22,  101, 52]  as RGB,
     emerald:  [5,   150, 105] as RGB,
     emBg:     [167, 243, 208] as RGB,
@@ -110,11 +110,13 @@ function drawBg(doc: jsPDF, PW: number, PH: number) {
 }
 
 function drawFooter(doc: jsPDF, PW: number, PH: number, companyName: string, sub: string) {
-    fill(doc, 0, PH - 10, PW, 10, C.header);
-    fill(doc, 0, PH - 10, PW, 1, C.emBg);
+    fill(doc, 0, PH - 10, PW, 10, C.white);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.3);
+    doc.line(0, PH - 10, PW, PH - 10);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(5);
-    doc.setTextColor(90, 90, 108);
+    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text(
         `${companyName.toUpperCase()}  ·  ${sub}  ·  DOCUMENTO CONFIDENCIAL`,
         PW / 2, PH - 4, { align: "center" },
@@ -155,11 +157,11 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
     fill(doc, 0, HDR_H - 2, PW, 2, C.emBg);
     fill(doc, 0, 0, 4, HDR_H - 2, C.emerald);
 
-    txt(doc, data.companyName.toUpperCase(), ML + 2, 10,   11, true,  C.white);
-    txt(doc, "CONSTANCIA DE UTILIDADES ANUALES",  ML + 2, 17,   6,  false, [100,100,120] as RGB);
-    txt(doc, "Art. 131 + 174 LOTTT — Participación en Beneficios", ML + 2, 23.5, 5.5, false, [80,80,100] as RGB);
-    txt(doc, "AÑO FISCAL",              MR, 12,   5,  false, [100,100,118] as RGB, "right");
-    txt(doc, String(data.anioFiscal),   MR, 19,   11, true,  C.white, "right");
+    txt(doc, data.companyName.toUpperCase(), ML + 2, 10,   11, true,  C.inkMed);
+    txt(doc, "CONSTANCIA DE UTILIDADES ANUALES",  ML + 2, 17,   6,  false, C.muted);
+    txt(doc, "Art. 131 + 174 LOTTT — Participación en Beneficios", ML + 2, 23.5, 5.5, false, C.muted);
+    txt(doc, "AÑO FISCAL",              MR, 12,   5,  false, C.muted, "right");
+    txt(doc, String(data.anioFiscal),   MR, 19,   11, true,  C.inkMed, "right");
     txt(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
         MR, 27, 5, false, [100,100,118] as RGB, "right",
@@ -180,14 +182,17 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
     y += 18;
 
     // ── Params strip ──────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 13, C.header);
+    fill(doc, ML, y, W, 13, C.rowAlt);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.rect(ML, y, W, 13, "D");
     const px1 = ML + 4, px2 = ML + W * 0.35, px3 = MR - 4;
     txt(doc, "SALARIO MENSUAL",       px1, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.salarioVES), px1, y + 9, 7, true,  C.white);
+    txt(doc, fmtVES(data.salarioVES), px1, y + 9, 7, true,  C.inkMed);
     txt(doc, "SALARIO DIARIO",        px2, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.salarioDia), px2, y + 9, 7, true,  C.white);
+    txt(doc, fmtVES(data.salarioDia), px2, y + 9, 7, true,  C.inkMed);
     txt(doc, "DÍAS DE UTILIDADES",    px3, y + 4, 5, false, C.muted, "right");
-    txt(doc, `${data.diasUtilidades} días`, px3, y + 9, 8, true, [150,230,200] as RGB, "right");
+    txt(doc, `${data.diasUtilidades} días`, px3, y + 9, 8, true, C.emerald, "right");
 
     y += 17;
 
@@ -203,13 +208,16 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
     y += 13;
 
     // ── Concept row ───────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.header);
+    fill(doc, ML, y, W, 7, C.rowAlt);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("CONCEPTO",   ML + 4,        y + 4.5);
     doc.text("DÍAS",       ML + W * 0.68, y + 4.5, { align: "right" });
     doc.text("MONTO",      MR,            y + 4.5, { align: "right" });
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 7, ML + W, y + 7);
     y += 7;
 
     fill(doc, ML, y, W, 11, C.white);
@@ -221,13 +229,19 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
     y += 11 + 3;
 
     // ── Total ──────────────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 12, C.header);
+    fill(doc, ML, y, W, 12, C.white);
     fill(doc, ML, y, 3,  12, C.emBg);
+    doc.setDrawColor(C.emerald[0], C.emerald[1], C.emerald[2]);
+    doc.setLineWidth(0.8);
+    doc.line(ML, y, ML + W, y);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 12, ML + W, y + 12);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text(`TOTAL UTILIDADES  ·  ${data.diasUtilidades} DÍAS  ·  AÑO ${data.anioFiscal}`, ML + 7, y + 7.5);
-    doc.setTextColor(C.emBg[0], C.emBg[1], C.emBg[2]);
+    doc.setTextColor(C.emerald[0], C.emerald[1], C.emerald[2]);
     doc.setFontSize(10);
     doc.text(fmtVES(data.monto), MR, y + 8, { align: "right" });
 
@@ -271,11 +285,11 @@ export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPd
     fill(doc, 0, HDR_H - 2, PW, 2, C.amberBg);
     fill(doc, 0, 0, 4, HDR_H - 2, C.amber);
 
-    txt(doc, data.companyName.toUpperCase(),    ML + 2, 10,   11, true,  C.white);
-    txt(doc, "CONSTANCIA DE UTILIDADES FRACCIONADAS", ML + 2, 17, 6, false, [100,100,120] as RGB);
-    txt(doc, "Art. 175 LOTTT — Fracción proporcional al período trabajado", ML + 2, 23.5, 5.5, false, [80,80,100] as RGB);
-    txt(doc, "AÑO FISCAL",            MR, 12,   5,  false, [100,100,118] as RGB, "right");
-    txt(doc, String(data.anioFiscal), MR, 19,   11, true,  C.white, "right");
+    txt(doc, data.companyName.toUpperCase(),    ML + 2, 10,   11, true,  C.inkMed);
+    txt(doc, "CONSTANCIA DE UTILIDADES FRACCIONADAS", ML + 2, 17, 6, false, C.muted);
+    txt(doc, "Art. 175 LOTTT — Fracción proporcional al período trabajado", ML + 2, 23.5, 5.5, false, C.muted);
+    txt(doc, "AÑO FISCAL",            MR, 12,   5,  false, C.muted, "right");
+    txt(doc, String(data.anioFiscal), MR, 19,   11, true,  C.inkMed, "right");
     txt(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
         MR, 27, 5, false, [100,100,118] as RGB, "right",
@@ -298,16 +312,19 @@ export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPd
     y += 18;
 
     // ── Params strip ──────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 13, C.header);
+    fill(doc, ML, y, W, 13, C.rowAlt);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.rect(ML, y, W, 13, "D");
     const px1 = ML + 4, px2 = ML + W * 0.28, px3 = ML + W * 0.56, px4 = MR - 4;
     txt(doc, "INICIO PERÍODO",                px1, y + 4, 5, false, C.muted);
-    txt(doc, formatDateES(data.periodoInicio).toUpperCase(), px1, y + 9, 5.5, true, C.white);
+    txt(doc, formatDateES(data.periodoInicio).toUpperCase(), px1, y + 9, 5.5, true, C.inkMed);
     txt(doc, "FECHA DE CORTE",                px2, y + 4, 5, false, C.muted);
-    txt(doc, formatDateES(data.fechaCorte).toUpperCase(), px2, y + 9, 5.5, true, C.white);
+    txt(doc, formatDateES(data.fechaCorte).toUpperCase(), px2, y + 9, 5.5, true, C.inkMed);
     txt(doc, "MESES TRABAJADOS",              px3, y + 4, 5, false, C.muted);
-    txt(doc, `${data.mesesTrabajados} meses`, px3, y + 9, 7, true, [150,200,220] as RGB);
+    txt(doc, `${data.mesesTrabajados} meses`, px3, y + 9, 7, true, C.primary);
     txt(doc, "DÍAS UTILIDADES BASE",          px4, y + 4, 5, false, C.muted, "right");
-    txt(doc, `${data.diasUtilidades} días`,   px4, y + 9, 7, true,  C.white, "right");
+    txt(doc, `${data.diasUtilidades} días`,   px4, y + 9, 7, true,  C.inkMed, "right");
 
     y += 17;
 
@@ -324,13 +341,16 @@ export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPd
     y += 13;
 
     // ── Concept table header ───────────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.header);
+    fill(doc, ML, y, W, 7, C.rowAlt);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("CONCEPTO",   ML + 4,        y + 4.5);
     doc.text("DÍAS",       ML + W * 0.68, y + 4.5, { align: "right" });
     doc.text("MONTO",      MR,            y + 4.5, { align: "right" });
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 7, ML + W, y + 7);
     y += 7;
 
     fill(doc, ML, y, W, 11, C.white);
@@ -357,13 +377,19 @@ export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPd
     y += 15;
 
     // ── Total ──────────────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 12, C.header);
+    fill(doc, ML, y, W, 12, C.white);
     fill(doc, ML, y, 3,  12, C.amberBg);
+    doc.setDrawColor(C.amber[0], C.amber[1], C.amber[2]);
+    doc.setLineWidth(0.8);
+    doc.line(ML, y, ML + W, y);
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
+    doc.setLineWidth(0.2);
+    doc.line(ML, y + 12, ML + W, y + 12);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
+    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text(`TOTAL FRACCIONADO  ·  ${data.diasFraccionados} DÍAS  ·  AÑO ${data.anioFiscal}`, ML + 7, y + 7.5);
-    doc.setTextColor(C.amberBg[0], C.amberBg[1], C.amberBg[2]);
+    doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]);
     doc.setFontSize(10);
     doc.text(fmtVES(data.monto), MR, y + 8, { align: "right" });
 
