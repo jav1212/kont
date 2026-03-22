@@ -5,4 +5,6 @@ export interface IMovimientoRepository {
   findByEmpresa(empresaId: string, periodo?: string): Promise<Result<Movimiento[]>>;
   save(movimiento: Movimiento): Promise<Result<Movimiento>>;
   getKardex(empresaId: string, productoId: string): Promise<Result<KardexEntry[]>>;
+  delete(id: string): Promise<Result<void>>;
+  updateMeta(id: string, fecha: string, referencia: string, notas: string): Promise<Result<Movimiento>>;
 }

@@ -19,13 +19,13 @@ export class RpcReportePeriodoRepository implements IReportePeriodoRepository {
                     p_periodo:    periodo,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener reporte');
         }
     }
 
-    private mapToDomain(row: any): ReportePeriodoRow {
+    private mapToDomain(row: Record<string, unknown>): ReportePeriodoRow {
         const ivaTipo: IvaTipo = row.iva_tipo === 'exento' ? 'exento' : 'general';
         const ivaPorcentaje = ivaTipo === 'exento' ? 0 : 16;
         const costoActualBs = Number(row.costo_actual_bs ?? 0);
@@ -37,8 +37,6 @@ export class RpcReportePeriodoRepository implements IReportePeriodoRepository {
             proveedorNombre:     row.proveedor_nombre ?? '',
             ivaTipo,
             inventarioInicial:   Number(row.inventario_inicial ?? 0),
-            costoFactura:        Number(row.costo_factura ?? 0),
-            costoTotal:          Number(row.costo_total ?? 0),
             costoPromedio:       Number(row.costo_promedio ?? 0),
             entradas:            Number(row.entradas ?? 0),
             salidas:             Number(row.salidas ?? 0),

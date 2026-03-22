@@ -69,10 +69,12 @@ const MODULE_SUBNAV: Record<string, { href: string; label: string; group?: strin
         { href: "/inventory/proveedores",       label: "Proveedores",   group: "Catálogos" },
         { href: "/inventory/departamentos",     label: "Departamentos", group: "Catálogos" },
 
-        { href: "/inventory/entradas",          label: "Entradas",         group: "Operaciones" },
-        { href: "/inventory/salidas",           label: "Salidas",          group: "Operaciones" },
-        { href: "/inventory/produccion",        label: "Producción",       group: "Operaciones" },
-        { href: "/inventory/movimientos",       label: "Ajustes / Devol.", group: "Operaciones" },
+        { href: "/inventory/entradas",            label: "Entradas",      group: "Operaciones" },
+        { href: "/inventory/salidas",           label: "Salidas",       group: "Operaciones" },
+        { href: "/inventory/ajustes",           label: "Ajustes",       group: "Operaciones" },
+        { href: "/inventory/devoluciones",      label: "Devoluciones",  group: "Operaciones" },
+        { href: "/inventory/autoconsumo",       label: "Autoconsumo",   group: "Operaciones" },
+        { href: "/inventory/produccion",        label: "Producción",    group: "Operaciones" },
 
         { href: "/inventory/kardex",            label: "Kardex",                group: "Reportes" },
         { href: "/inventory/libro-entradas",    label: "Libro de Entradas",     group: "Reportes" },

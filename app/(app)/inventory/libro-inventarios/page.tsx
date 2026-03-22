@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { LibroInventariosRow } from "@/src/modules/inventory/backend/domain/libro-inventarios";
@@ -64,14 +64,14 @@ export default function LibroInventariosPage() {
     } = useInventory();
 
     const [anio, setAnio] = useState(new Date().getFullYear());
-    const [searched, setSearched] = useState(false);
+    const searchedRef = useRef(false);
 
     useEffect(() => {
-        if (companyId && !searched) {
+        if (companyId && !searchedRef.current) {
+            searchedRef.current = true;
             loadLibroInventarios(companyId, anio);
-            setSearched(true);
         }
-    }, [companyId, anio, loadLibroInventarios, searched]);
+    }, [companyId, anio, loadLibroInventarios]);
 
     function handleSearch() {
         if (!companyId) return;
@@ -100,7 +100,7 @@ export default function LibroInventariosPage() {
                             Libro de Inventarios Anual
                         </h1>
                         <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Código de Comercio Art. 36 · ISLR Art. 177
+                            Código de Comercio Art. 36 — Inventario anual al cierre del ejercicio
                         </p>
                     </div>
 
@@ -114,7 +114,7 @@ export default function LibroInventariosPage() {
                                 min={2000}
                                 max={2100}
                                 value={anio}
-                                onChange={(e) => { setAnio(Number(e.target.value)); setSearched(false); }}
+                                onChange={(e) => { searchedRef.current = false; setAnio(Number(e.target.value)); }}
                                 className="h-8 w-24 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>

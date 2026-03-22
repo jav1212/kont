@@ -125,6 +125,41 @@ export function useInventory() {
         }
     }, []);
 
+    const deleteMovimiento = useCallback(async (id: string): Promise<boolean> => {
+        setError(null);
+        try {
+            const res = await fetch(`/api/inventory/movimientos/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al eliminar movimiento'); return false; }
+            setMovimientos((prev) => prev.filter((m) => m.id !== id));
+            return true;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return false;
+        }
+    }, []);
+
+    const updateMovimientoMeta = useCallback(async (
+        id: string, fecha: string, referencia: string, notas: string,
+    ): Promise<Movimiento | null> => {
+        setError(null);
+        try {
+            const res = await fetch(`/api/inventory/movimientos/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha, referencia, notas }),
+            });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al actualizar movimiento'); return null; }
+            const updated: Movimiento = json.data;
+            setMovimientos((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+            return updated;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return null;
+        }
+    }, []);
+
     const saveMovimiento = useCallback(async (movimiento: Movimiento): Promise<Movimiento | null> => {
         setError(null);
         try {
@@ -616,7 +651,7 @@ export function useInventory() {
         error, setError,
         // actions
         loadProductos, saveProducto, deleteProducto,
-        loadMovimientos, saveMovimiento,
+        loadMovimientos, saveMovimiento, deleteMovimiento, updateMovimientoMeta,
         loadKardex,
         loadTransformaciones, saveTransformacion,
         loadCierres, saveCierre,

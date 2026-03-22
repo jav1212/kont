@@ -7,8 +7,6 @@ export interface ReportePeriodoRow {
   proveedorNombre: string;
   ivaTipo: IvaTipo;
   inventarioInicial: number;
-  costoFactura: number;
-  costoTotal: number;
   costoPromedio: number;
   entradas: number;
   salidas: number;

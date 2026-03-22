@@ -3,266 +3,375 @@
 import { useEffect, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { LibroComprasRow } from "@/src/modules/inventory/backend/domain/libro-compras";
+import type { Movimiento } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+const fmtN = (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const fmtDate = (d: string) => {
+    if (!d) return "—";
+    const [y, m, day] = d.split("T")[0].split("-");
+    return `${day}/${m}/${y}`;
+};
 
 function currentPeriod() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function fmtN(n: number) {
-    return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fieldCls = [
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "font-mono text-[13px] text-foreground",
+    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
+].join(" ");
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary mb-1.5 block";
+
+// ── EditModal ─────────────────────────────────────────────────────────────────
+
+function EditModal({
+    mov,
+    onSave,
+    onClose,
+    saving,
+}: {
+    mov: Movimiento;
+    onSave: (fecha: string, referencia: string, notas: string) => void;
+    onClose: () => void;
+    saving: boolean;
+}) {
+    const [fecha, setFecha] = useState(mov.fecha.split("T")[0]);
+    const [referencia, setReferencia] = useState(mov.referencia ?? "");
+    const [notas, setNotas] = useState(mov.notas ?? "");
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-surface-1 rounded-xl border border-border-medium shadow-2xl w-full max-w-md font-mono p-6">
+                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
+                    Editar movimiento
+                </h2>
+                <p className="text-[11px] text-text-tertiary uppercase tracking-[0.1em] mb-4">
+                    Solo se pueden editar fecha, referencia y notas sin afectar el saldo del inventario.
+                </p>
+                <div className="space-y-4">
+                    <div>
+                        <label className={labelCls}>Fecha *</label>
+                        <input
+                            type="date"
+                            className={fieldCls}
+                            value={fecha}
+                            onChange={(e) => setFecha(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Referencia</label>
+                        <input
+                            type="text"
+                            className={fieldCls}
+                            value={referencia}
+                            onChange={(e) => setReferencia(e.target.value)}
+                            placeholder="Referencia interna…"
+                        />
+                    </div>
+                    <div>
+                        <label className={labelCls}>Notas</label>
+                        <input
+                            type="text"
+                            className={fieldCls}
+                            value={notas}
+                            onChange={(e) => setNotas(e.target.value)}
+                            placeholder="Observaciones…"
+                        />
+                    </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 mt-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={saving}
+                        className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onSave(fecha, referencia, notas)}
+                        disabled={saving || !fecha}
+                        className="h-9 px-5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                    >
+                        {saving ? "Guardando…" : "Guardar"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 }
 
-function sum(rows: LibroComprasRow[], key: keyof LibroComprasRow): number {
-    return rows.reduce((acc, r) => acc + (r[key] as number), 0);
-}
+// ── DeleteConfirm ─────────────────────────────────────────────────────────────
 
-function exportCSV(rows: LibroComprasRow[], periodo: string) {
-    const headers = [
-        "Fecha", "N° Factura", "N° Control", "RIF Proveedor", "Proveedor",
-        "Base Exenta", "Base Gravada 8%", "IVA 8%", "Base Gravada 16%", "IVA 16%", "Total",
-    ];
-    const lines = [
-        headers.join(","),
-        ...rows.map((r) => [
-            r.fecha,
-            `"${r.numeroFactura}"`,
-            `"${r.numeroControl}"`,
-            `"${r.proveedorRif}"`,
-            `"${r.proveedorNombre}"`,
-            r.baseExenta,
-            r.baseGravada8,
-            r.iva8,
-            r.baseGravada16,
-            r.iva16,
-            r.total,
-        ].join(",")),
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `libro-compras-${periodo}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+function DeleteConfirm({
+    mov,
+    productoNombre,
+    onConfirm,
+    onClose,
+    deleting,
+}: {
+    mov: Movimiento;
+    productoNombre: string;
+    onConfirm: () => void;
+    onClose: () => void;
+    deleting: boolean;
+}) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-surface-1 rounded-xl border border-border-medium shadow-2xl w-full max-w-sm font-mono p-6">
+                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-3">
+                    Eliminar movimiento
+                </h2>
+                <p className="text-[13px] text-text-secondary mb-1">
+                    ¿Eliminar la entrada de <strong className="text-foreground">{productoNombre}</strong>?
+                </p>
+                <p className="text-[12px] text-text-tertiary mb-5">
+                    {fmtN(mov.cantidad)} unidades · {fmtDate(mov.fecha)} · Bs {fmtN(mov.costoTotal)}
+                </p>
+                <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] text-[11px] text-amber-600 mb-5">
+                    La existencia del producto se reducirá en {fmtN(mov.cantidad)} unidades.
+                </div>
+                <div className="flex items-center justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={deleting}
+                        className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={deleting}
+                        className="h-9 px-5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                    >
+                        {deleting ? "Eliminando…" : "Eliminar"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function LibroComprasPage() {
+export default function LibroEntradasPage() {
     const { companyId } = useCompany();
-    const { libroCompras, loadingLibroCompras, error, setError, loadLibroCompras } = useInventory();
+    const {
+        productos, movimientos,
+        loadingProductos, loadingMovimientos, error, setError,
+        loadProductos, loadMovimientos,
+        deleteMovimiento, updateMovimientoMeta,
+    } = useInventory();
 
     const [periodo, setPeriodo] = useState(currentPeriod());
-    const [searched, setSearched] = useState(false);
+    const [editingMov, setEditingMov] = useState<Movimiento | null>(null);
+    const [deletingMov, setDeletingMov] = useState<Movimiento | null>(null);
+    const [actionSaving, setActionSaving] = useState(false);
 
     useEffect(() => {
-        if (companyId && !searched) {
-            loadLibroCompras(companyId, periodo);
-            setSearched(true);
-        }
-    }, [companyId, periodo, loadLibroCompras, searched]);
-
-    function handleSearch() {
         if (!companyId) return;
-        setError(null);
-        loadLibroCompras(companyId, periodo);
-    }
+        loadProductos(companyId);
+        loadMovimientos(companyId, periodo);
+    }, [companyId, loadProductos, loadMovimientos, periodo]);
+
+    const entradas = useMemo(
+        () => movimientos.filter((m) => m.tipo === "entrada" || m.tipo === "devolucion_salida"),
+        [movimientos],
+    );
 
     const totales = useMemo(() => ({
-        baseExenta:    sum(libroCompras, "baseExenta"),
-        baseGravada8:  sum(libroCompras, "baseGravada8"),
-        iva8:          sum(libroCompras, "iva8"),
-        baseGravada16: sum(libroCompras, "baseGravada16"),
-        iva16:         sum(libroCompras, "iva16"),
-        total:         sum(libroCompras, "total"),
-    }), [libroCompras]);
+        cantidad:   entradas.reduce((acc, m) => acc + m.cantidad, 0),
+        costoTotal: entradas.reduce((acc, m) => acc + m.costoTotal, 0),
+    }), [entradas]);
+
+    const loading = loadingProductos || loadingMovimientos;
+
+    async function handleSaveEdit(fecha: string, referencia: string, notas: string) {
+        if (!editingMov) return;
+        setActionSaving(true);
+        const result = await updateMovimientoMeta(editingMov.id!, fecha, referencia, notas);
+        setActionSaving(false);
+        if (result) setEditingMov(null);
+    }
+
+    async function handleDelete() {
+        if (!deletingMov) return;
+        setActionSaving(true);
+        const ok = await deleteMovimiento(deletingMov.id!);
+        setActionSaving(false);
+        if (ok) setDeletingMov(null);
+    }
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
+            {/* Modals */}
+            {editingMov && (
+                <EditModal
+                    mov={editingMov}
+                    onSave={handleSaveEdit}
+                    onClose={() => { setEditingMov(null); setError(null); }}
+                    saving={actionSaving}
+                />
+            )}
+            {deletingMov && (
+                <DeleteConfirm
+                    mov={deletingMov}
+                    productoNombre={productos.find((p) => p.id === deletingMov.productoId)?.nombre ?? deletingMov.productoId}
+                    onConfirm={handleDelete}
+                    onClose={() => { setDeletingMov(null); setError(null); }}
+                    deleting={actionSaving}
+                />
+            )}
+
             {/* Header */}
             <div className="px-8 py-6 border-b border-border-light bg-surface-1">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Libro de Entradas IVA
+                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
+                            Libro de Entradas
                         </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Reglamento Ley IVA Art. 70–72
+                        <p className="text-[12px] text-text-tertiary uppercase tracking-[0.12em] mt-0.5">
+                            Movimientos de entradas por período
                         </p>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                Período
-                            </label>
-                            <input
-                                type="month"
-                                value={periodo}
-                                onChange={(e) => { setPeriodo(e.target.value); setSearched(false); }}
-                                className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={loadingLibroCompras}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            {loadingLibroCompras ? "Cargando…" : "Generar"}
-                        </button>
-                        {libroCompras.length > 0 && (
-                            <button
-                                onClick={() => exportCSV(libroCompras, periodo)}
-                                className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
-                                Exportar CSV
-                            </button>
-                        )}
+                    <div className="flex items-center gap-2">
+                        <label className="text-[11px] uppercase tracking-[0.12em] text-text-tertiary">Período</label>
+                        <input
+                            type="month"
+                            className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 text-[13px] text-foreground outline-none focus:border-primary-500/60"
+                            value={periodo}
+                            onChange={(e) => setPeriodo(e.target.value)}
+                        />
                     </div>
                 </div>
             </div>
 
-            <div className="px-8 py-6">
+            <div className="px-8 py-6 space-y-4">
                 {error && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/5 text-red-500 text-[13px]">
                         {error}
                     </div>
                 )}
 
-                {loadingLibroCompras ? (
-                    <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">Cargando libro de compras…</div>
-                ) : libroCompras.length === 0 ? (
-                    <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
-                        No hay facturas confirmadas para el período seleccionado.
+                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
+                        <p className="text-[12px] uppercase tracking-[0.14em] text-text-tertiary">
+                            Entradas del período
+                        </p>
+                        {entradas.length > 0 && (
+                            <p className="text-[11px] text-text-tertiary tabular-nums">
+                                {entradas.length} {entradas.length === 1 ? "movimiento" : "movimientos"}
+                            </p>
+                        )}
                     </div>
-                ) : (
-                    <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
+
+                    {loading ? (
+                        <div className="px-5 py-12 text-center text-[13px] text-text-tertiary">Cargando…</div>
+                    ) : entradas.length === 0 ? (
+                        <div className="px-5 py-12 text-center text-[13px] text-text-tertiary">
+                            No hay entradas para este período.
+                        </div>
+                    ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-[10px] whitespace-nowrap">
+                            <table className="w-full text-[13px] whitespace-nowrap">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2">
-                                        <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[90px]">
-                                            Fecha
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[120px]">
-                                            N° Factura
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[120px]">
-                                            N° Control
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[110px]">
-                                            RIF Proveedor
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[160px]">
-                                            Proveedor
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
-                                            Base Exenta
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
-                                            Base 8%
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[80px]">
-                                            IVA 8%
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[100px]">
-                                            Base 16%
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[80px]">
-                                            IVA 16%
-                                        </th>
-                                        <th className="px-3 py-2.5 text-right text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-normal min-w-[110px]">
-                                            Total
-                                        </th>
+                                        {[
+                                            { label: "Fecha",       align: "left"  },
+                                            { label: "Producto",    align: "left"  },
+                                            { label: "Tipo",        align: "left"  },
+                                            { label: "Cantidad",    align: "right" },
+                                            { label: "Costo unit.", align: "right" },
+                                            { label: "Costo total", align: "right" },
+                                            { label: "Saldo",       align: "right" },
+                                            { label: "Referencia",  align: "left"  },
+                                            { label: "",            align: "right" },
+                                        ].map((h, i) => (
+                                            <th
+                                                key={i}
+                                                className={`px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-text-tertiary font-normal text-${h.align}`}
+                                            >
+                                                {h.label}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {libroCompras.map((row) => (
-                                        <tr key={row.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                            <td className="px-3 py-2 text-[var(--text-secondary)]">{row.fecha}</td>
-                                            <td className="px-3 py-2 text-foreground">{row.numeroFactura || "—"}</td>
-                                            <td className="px-3 py-2 text-[var(--text-secondary)]">{row.numeroControl || "—"}</td>
-                                            <td className="px-3 py-2 text-[var(--text-secondary)]">{row.proveedorRif || "—"}</td>
-                                            <td className="px-3 py-2 text-foreground max-w-[180px] truncate" title={row.proveedorNombre}>
-                                                {row.proveedorNombre}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {row.baseExenta > 0 ? fmtN(row.baseExenta) : "—"}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {row.baseGravada8 > 0 ? fmtN(row.baseGravada8) : "—"}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-amber-600">
-                                                {row.iva8 > 0 ? fmtN(row.iva8) : "—"}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
-                                                {row.baseGravada16 > 0 ? fmtN(row.baseGravada16) : "—"}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
-                                                {row.iva16 > 0 ? fmtN(row.iva16) : "—"}
-                                            </td>
-                                            <td className="px-3 py-2 tabular-nums text-right font-medium text-foreground">
-                                                {fmtN(row.total)}
-                                            </td>
-                                        </tr>
-                                    ))}
-
-                                    {/* Totales mensuales */}
+                                    {entradas.map((m) => {
+                                        const prod = productos.find((p) => p.id === m.productoId);
+                                        const esDevolucion = m.tipo === "devolucion_salida";
+                                        return (
+                                            <tr key={m.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors group">
+                                                <td className="px-4 py-2.5 text-text-secondary tabular-nums">{fmtDate(m.fecha)}</td>
+                                                <td className="px-4 py-2.5 text-foreground font-medium max-w-[220px] truncate">
+                                                    {prod?.nombre ?? m.productoId}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    {esDevolucion ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-[0.08em] border border-amber-500/40 text-amber-500 bg-amber-500/[0.06]">
+                                                            Dev. salida
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-[0.08em] border border-primary-500/30 text-primary-500 bg-primary-500/[0.05]">
+                                                            Entrada
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-foreground">{fmtN(m.cantidad)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.costoUnitario)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right font-medium text-foreground">{fmtN(m.costoTotal)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.saldoCantidad)}</td>
+                                                <td className="px-4 py-2.5 text-text-secondary max-w-50 truncate">{m.referencia || m.notas || "—"}</td>
+                                                <td className="px-4 py-2.5">
+                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingMov(m)}
+                                                            className="h-7 px-2.5 rounded border border-border-light bg-surface-1 hover:bg-surface-2 text-[11px] uppercase tracking-[0.08em] text-text-secondary hover:text-foreground transition-colors"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDeletingMov(m)}
+                                                            className="h-7 px-2.5 rounded border border-red-500/20 bg-red-500/[0.04] hover:bg-red-500/[0.08] text-[11px] uppercase tracking-[0.08em] text-red-500 transition-colors"
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                                <tfoot>
                                     <tr className="border-t-2 border-primary-500/30 bg-primary-500/[0.04]">
-                                        <td className="px-3 py-2.5 text-[10px] uppercase tracking-[0.14em] font-bold text-foreground" colSpan={5}>
+                                        <td className="px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] font-bold text-foreground" colSpan={3}>
                                             Total del período
                                         </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.baseExenta)}
+                                        <td className="px-4 py-2.5 tabular-nums text-right text-[13px] font-bold text-foreground">
+                                            {fmtN(totales.cantidad)}
                                         </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.baseGravada8)}
+                                        <td />
+                                        <td className="px-4 py-2.5 tabular-nums text-right text-[13px] font-bold text-foreground">
+                                            {fmtN(totales.costoTotal)}
                                         </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-amber-600">
-                                            {fmtN(totales.iva8)}
-                                        </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.baseGravada16)}
-                                        </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.iva16)}
-                                        </td>
-                                        <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                            {fmtN(totales.total)}
-                                        </td>
+                                        <td colSpan={3} />
                                     </tr>
-                                </tbody>
+                                </tfoot>
                             </table>
                         </div>
-
-                        {/* Resumen crédito fiscal */}
-                        <div className="px-4 py-3 border-t border-border-light bg-surface-2 flex items-center gap-6 flex-wrap">
-                            <span className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] font-medium">
-                                Crédito fiscal del período:
-                            </span>
-                            <span className="text-[13px] font-bold tabular-nums text-primary-500">
-                                {fmtN(totales.iva8 + totales.iva16)} Bs.
-                            </span>
-                            {totales.iva8 > 0 && (
-                                <span className="text-[9px] text-amber-600 tabular-nums">
-                                    IVA 8%: {fmtN(totales.iva8)}
-                                </span>
-                            )}
-                            {totales.iva16 > 0 && (
-                                <span className="text-[9px] text-[var(--text-tertiary)] tabular-nums">
-                                    IVA 16%: {fmtN(totales.iva16)}
-                                </span>
-                            )}
-                            <span className="text-[9px] text-[var(--text-tertiary)]">
-                                ({libroCompras.length} {libroCompras.length === 1 ? "factura" : "facturas"} confirmadas)
-                            </span>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

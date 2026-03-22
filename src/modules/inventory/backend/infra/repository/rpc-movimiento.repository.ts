@@ -21,7 +21,7 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_movimientos_get', params);
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener movimientos');
         }
@@ -68,13 +68,44 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
                     p_producto_id: productoId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener kardex');
         }
     }
 
-    private mapToDomain(data: any): Movimiento {
+    async delete(id: string): Promise<Result<void>> {
+        try {
+            const { error } = await this.source.instance
+                .rpc('tenant_inventario_movimiento_delete', {
+                    p_user_id: this.userId,
+                    p_id:      id,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(undefined);
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error al eliminar movimiento');
+        }
+    }
+
+    async updateMeta(id: string, fecha: string, referencia: string, notas: string): Promise<Result<Movimiento>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_inventario_movimiento_update_meta', {
+                    p_user_id:    this.userId,
+                    p_id:         id,
+                    p_fecha:      fecha,
+                    p_referencia: referencia,
+                    p_notas:      notas,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(this.mapToDomain(data));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error al actualizar movimiento');
+        }
+    }
+
+    private mapToDomain(data: Record<string, unknown>): Movimiento {
         return {
             id:               data.id,
             empresaId:        data.empresa_id,

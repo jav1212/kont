@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Fragment } from "react";
+import { useEffect, useRef, useState, useMemo, Fragment } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { ReportePeriodoRow } from "@/src/modules/inventory/backend/domain/reporte-periodo";
@@ -34,7 +34,6 @@ function groupByDepartamento(rows: ReportePeriodoRow[]) {
 // Columnas numéricas del reporte
 const NUM_COLS: { key: keyof ReportePeriodoRow; label: string }[] = [
     { key: "inventarioInicial",  label: "Inv. Inicial"       },
-    { key: "costoFactura",       label: "Costo Factura"      },
     { key: "costoPromedio",      label: "Costo Prom."        },
     { key: "entradas",           label: "Entradas"           },
     { key: "salidas",            label: "Salidas"            },
@@ -98,14 +97,14 @@ export default function ReportePeriodoPage() {
     const { reportePeriodo, loadingReporte, error, setError, loadReportePeriodo } = useInventory();
 
     const [periodo, setPeriodo] = useState(currentPeriod());
-    const [searched, setSearched] = useState(false);
+    const searchedRef = useRef(false);
 
     useEffect(() => {
-        if (companyId && !searched) {
+        if (companyId && !searchedRef.current) {
+            searchedRef.current = true;
             loadReportePeriodo(companyId, periodo);
-            setSearched(true);
         }
-    }, [companyId, periodo, loadReportePeriodo, searched]);
+    }, [companyId, periodo, loadReportePeriodo]);
 
     function handleSearch() {
         if (!companyId) return;
@@ -141,7 +140,7 @@ export default function ReportePeriodoPage() {
                             <input
                                 type="month"
                                 value={periodo}
-                                onChange={(e) => { setPeriodo(e.target.value); setSearched(false); }}
+                                onChange={(e) => { searchedRef.current = false; setPeriodo(e.target.value); }}
                                 className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>
