@@ -1,4 +1,4 @@
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo, MonedaDefecto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
 import type { Departamento } from "@/src/modules/inventory/backend/domain/departamento";
 import type { Proveedor } from "@/src/modules/inventory/backend/domain/proveedor";
 
@@ -167,12 +167,12 @@ export function parseProveedoresCsv(raw: string): ProveedorCsvResult {
 
 const PROD_HEADERS = [
     "codigo", "nombre", "descripcion", "tipo", "unidad_medida",
-    "metodo_valuacion", "existencia_minima", "costo_promedio",
-    "iva_tipo", "activo", "departamento_nombre", "moneda_defecto",
+    "metodo_valuacion",
+    "iva_tipo", "activo", "departamento_nombre",
 ] as const;
 
 const TIPOS_VALIDOS: TipoProducto[]      = ["mercancia", "materia_prima", "producto_terminado"];
-const UNIDADES_VALIDAS: UnidadMedida[]   = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo"];
+const UNIDADES_VALIDAS: UnidadMedida[]   = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
 const METODOS_VALIDOS: MetodoValuacion[] = ["promedio_ponderado", "peps"];
 const IVA_VALIDOS: IvaTipo[]             = ["exento", "general"];
 
@@ -186,12 +186,9 @@ export function productosToCsv(productos: Producto[]): string {
             csvCell(p.tipo),
             csvCell(p.unidadMedida),
             csvCell(p.metodoValuacion),
-            csvCell(p.existenciaMinima),
-            csvCell(p.costoPromedio),
             csvCell(p.ivaTipo),
             csvCell(p.activo),
             csvCell(p.departamentoNombre ?? ""),
-            csvCell(p.monedaDefecto ?? "B"),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
@@ -204,12 +201,9 @@ export interface ProductoCsvRow {
     tipo:            TipoProducto;
     unidadMedida:    UnidadMedida;
     metodoValuacion: MetodoValuacion;
-    existenciaMinima: number;
-    costoPromedio:   number;
     ivaTipo:         IvaTipo;
     activo:          boolean;
     departamentoId?: string;
-    monedaDefecto:   MonedaDefecto;
 }
 
 export interface ProductoCsvResult {
@@ -235,8 +229,8 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
         const clean = cleanCols(splitCsvLine(lines[i]));
         const [
             codigo, nombre, descripcion, tipoRaw, unidadRaw,
-            metodoRaw, existMinRaw, costoRaw,
-            ivaRaw, activoRaw, deptNombre, monedaRaw,
+            metodoRaw,
+            ivaRaw, activoRaw, deptNombre,
         ] = clean;
 
         if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
@@ -261,9 +255,7 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
             errors.push(`Línea ${i + 1}: iva_tipo inválido "${ivaRaw}". Usa: exento o general.`); continue;
         }
 
-        const existenciaMinima = parseFloat(existMinRaw ?? "0") || 0;
-        const costoPromedio    = parseFloat(costoRaw ?? "0") || 0;
-        const activo           = activoRaw?.toLowerCase() !== "false";
+        const activo = activoRaw?.toLowerCase() !== "false";
 
         let departamentoId: string | undefined;
         if (deptNombre?.trim()) {
@@ -274,8 +266,6 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
             departamentoId = found;
         }
 
-        const monedaDefecto: MonedaDefecto = (monedaRaw?.toUpperCase() === "D" ? "D" : "B");
-
         productos.push({
             codigo:          codigo ?? "",
             nombre,
@@ -283,12 +273,9 @@ export function parseProductosCsv(raw: string, departamentos: Departamento[]): P
             tipo,
             unidadMedida,
             metodoValuacion,
-            existenciaMinima,
-            costoPromedio,
             ivaTipo,
             activo,
             departamentoId,
-            monedaDefecto,
         });
     }
 

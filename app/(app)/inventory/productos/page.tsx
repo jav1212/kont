@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo, MonedaDefecto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
 import {
     productosToCsv,
     parseProductosCsv,
@@ -38,8 +38,9 @@ const UNIDADES: { value: UnidadMedida; label: string }[] = [
     { value: "m2",     label: "m²"     },
     { value: "m3",     label: "m³"     },
     { value: "litro",  label: "Litro"  },
-    { value: "caja",   label: "Caja"   },
-    { value: "rollo",  label: "Rollo"  },
+    { value: "caja",    label: "Caja"    },
+    { value: "rollo",   label: "Rollo"   },
+    { value: "paquete", label: "Paquete" },
 ];
 
 const METODOS: { value: MetodoValuacion; label: string }[] = [
@@ -49,11 +50,6 @@ const METODOS: { value: MetodoValuacion; label: string }[] = [
 const IVA_TIPOS: { value: IvaTipo; label: string }[] = [
     { value: "general", label: "General (G - 16%)" },
     { value: "exento",  label: "Exento (E)"         },
-];
-
-const MONEDAS: { value: MonedaDefecto; label: string }[] = [
-    { value: "B", label: "Bolívares (Bs)" },
-    { value: "D", label: "Dólares (USD)"  },
 ];
 
 function empty(empresaId: string): Producto {
@@ -66,11 +62,9 @@ function empty(empresaId: string): Producto {
         unidadMedida:    "unidad",
         metodoValuacion: "promedio_ponderado",
         existenciaActual: 0,
-        existenciaMinima: 0,
         costoPromedio:   0,
         activo:          true,
         ivaTipo:         "general",
-        monedaDefecto:   "B" as MonedaDefecto,
         departamentoId:  undefined,
     };
 }
@@ -104,7 +98,13 @@ export default function ProductosPage() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [importResult, setImportResult] = useState<ProductoCsvResult | null>(null);
     const [importing, setImporting] = useState(false);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
+    const [search, setSearch] = useState("");
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
 
     useEffect(() => {
         if (companyId) {
@@ -144,6 +144,16 @@ export default function ProductosPage() {
         setConfirmDelete(null);
     }
 
+    async function handleBulkDelete() {
+        setBulkDeleting(true);
+        for (const id of selected) {
+            await deleteProducto(id);
+        }
+        setBulkDeleting(false);
+        setSelected(new Set());
+        setConfirmBulkDelete(false);
+    }
+
     const set = (k: keyof Producto, v: unknown) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
@@ -163,16 +173,34 @@ export default function ProductosPage() {
         e.target.value = "";
     }
 
+    function handlePasteParse() {
+        if (!pasteText.trim()) return;
+        const result = parseProductosCsv(pasteText, departamentos);
+        setImportResult(result);
+        setPasteOpen(false);
+        setPasteText("");
+    }
+
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
         for (const p of importResult.productos) {
-            await saveProducto({ ...p, empresaId: companyId, existenciaActual: 0 });
+            // If a product with this codigo already exists, update it (avoid duplicates)
+            const existing = p.codigo ? productos.find((x) => x.codigo === p.codigo) : undefined;
+            await saveProducto({
+                ...p,
+                id:               existing?.id,
+                empresaId:        companyId,
+                existenciaActual: existing?.existenciaActual ?? 0,
+                costoPromedio:    existing?.costoPromedio ?? 0,
+            });
         }
         setImporting(false);
         setImportResult(null);
         loadProductos(companyId);
     }
+
+    const filtered = productos.filter(p => [p.codigo, p.nombre, p.departamentoNombre ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -196,10 +224,18 @@ export default function ProductosPage() {
                             Exportar CSV
                         </button>
                         <button
-                            onClick={() => fileRef.current?.click()}
+                            onClick={() => { setPasteOpen((v) => !v); setError(null); }}
                             className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
-                            Importar CSV
+                            Pegar CSV
+                        </button>
+                        <button
+                            onClick={() => fileRef.current?.click()}
+                            disabled={loadingDepartamentos}
+                            title={loadingDepartamentos ? "Cargando departamentos…" : undefined}
+                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                        >
+                            Importar archivo
                         </button>
                         <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
                         <button
@@ -213,10 +249,91 @@ export default function ProductosPage() {
             </div>
 
             <div className="px-8 py-6 space-y-4">
+                {/* Search + bulk actions */}
+                <div className="flex items-center gap-3">
+                    <input
+                        type="text"
+                        placeholder="Buscar…"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
+                        className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-text-tertiary focus:border-primary-500/60 hover:border-border-medium transition-colors w-64"
+                    />
+                    {selected.size > 0 && (
+                        confirmBulkDelete ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[12px] text-foreground">¿Eliminar {selected.size} elemento(s)?</span>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    disabled={bulkDeleting}
+                                    className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    {bulkDeleting ? "Eliminando…" : "Confirmar"}
+                                </button>
+                                <button
+                                    onClick={() => setConfirmBulkDelete(false)}
+                                    disabled={bulkDeleting}
+                                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setConfirmBulkDelete(true)}
+                                className="h-9 px-4 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
+                            >
+                                Eliminar {selected.size} seleccionado(s)
+                            </button>
+                        )
+                    )}
+                </div>
+
                 {/* Error */}
                 {error && (
                     <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
                         {error}
+                    </div>
+                )}
+
+                {/* Paste CSV panel */}
+                {pasteOpen && (
+                    <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-3">
+                        <p className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground">
+                            Pegar CSV
+                        </p>
+                        <p className="text-[11px] text-text-tertiary">
+                            Formato esperado — primera fila debe ser el encabezado:
+                        </p>
+                        <pre className="text-[11px] text-text-secondary bg-surface-2 rounded-lg px-3 py-2 border border-border-light select-all overflow-x-auto">
+{`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","moneda_defecto"
+"P001","Harina de Trigo","","mercancia","kg","promedio_ponderado","general","true","PANADERÍA","B"`}
+                        </pre>
+                        <textarea
+                            className="w-full h-40 px-3 py-2 rounded-lg border border-border-light bg-surface-2 outline-none font-mono text-[12px] text-foreground focus:border-primary-500/60 hover:border-border-medium transition-colors resize-none"
+                            placeholder={`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","moneda_defecto"`}
+                            value={pasteText}
+                            onChange={(e) => setPasteText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-3 pt-1 border-t border-border-light">
+                            {loadingDepartamentos ? (
+                                <span className="text-[12px] text-text-tertiary">Cargando departamentos…</span>
+                            ) : (
+                                <span className="text-[12px] text-text-tertiary">{departamentos.length} departamento(s) disponible(s)</span>
+                            )}
+                            <button
+                                onClick={handlePasteParse}
+                                disabled={!pasteText.trim() || loadingDepartamentos}
+                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                            >
+                                Procesar
+                            </button>
+                            <button
+                                onClick={() => { setPasteOpen(false); setPasteText(""); }}
+                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -321,41 +438,15 @@ export default function ProductosPage() {
                                     {IVA_TIPOS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
                                 </select>
                             </div>
-                            <div>
-                                <label className={labelCls}>Moneda habitual</label>
-                                <select className={fieldCls} value={form.monedaDefecto ?? "B"} onChange={(e) => set("monedaDefecto", e.target.value as MonedaDefecto)}>
-                                    {MONEDAS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                </select>
-                            </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label className={labelCls}>Existencia mínima</label>
-                                <input
-                                    type="number" min="0" step="0.0001" className={fieldCls}
-                                    value={form.existenciaMinima}
-                                    onChange={(e) => set("existenciaMinima", parseFloat(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Costo promedio</label>
-                                <input
-                                    type="number" min="0" step="0.0001" className={fieldCls}
-                                    value={form.costoPromedio}
-                                    onChange={(e) => set("costoPromedio", parseFloat(e.target.value) || 0)}
-                                />
-                            </div>
-                            <div className="flex items-end pb-0.5">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                        type="checkbox" checked={form.activo}
-                                        onChange={(e) => set("activo", e.target.checked)}
-                                        className="w-4 h-4 rounded"
-                                    />
-                                    <span className="text-[14px] text-foreground">Activo</span>
-                                </label>
-                            </div>
+                        <div className="mb-4 flex items-center gap-2">
+                            <input
+                                type="checkbox" checked={form.activo}
+                                onChange={(e) => set("activo", e.target.checked)}
+                                className="w-4 h-4 rounded"
+                            />
+                            <span className="text-[14px] text-foreground">Activo</span>
                         </div>
 
                         <div className="flex items-center gap-3 pt-2 border-t border-border-light">
@@ -383,11 +474,24 @@ export default function ProductosPage() {
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay productos. Haz clic en "+ Nuevo producto" para crear uno.
                         </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="px-5 py-8 text-center text-[13px] text-text-tertiary">Sin resultados para &quot;{search}&quot;.</div>
                     ) : (
                         <table className="w-full text-[13px]">
                             <thead>
                                 <tr className="border-b border-border-light">
-                                    {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Costo Prom.", "Existencia", "Mínimo", "Estado", ""].map((h) => (
+                                    <th className="px-4 py-2.5 w-8">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded"
+                                            checked={filtered.length > 0 && filtered.every(item => selected.has(item.id!))}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelected(new Set(filtered.map(item => item.id!)));
+                                                else setSelected(new Set());
+                                            }}
+                                        />
+                                    </th>
+                                    {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Existencia", "Estado", ""].map((h) => (
                                         <th key={h} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
@@ -395,10 +499,21 @@ export default function ProductosPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {productos.map((p) => {
-                                    const bajoMin = p.activo && p.existenciaActual <= p.existenciaMinima;
-                                    return (
+                                {filtered.map((p) => (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                            <td className="px-4 py-2.5 w-8">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded"
+                                                    checked={selected.has(p.id!)}
+                                                    onChange={(e) => {
+                                                        const next = new Set(selected);
+                                                        if (e.target.checked) next.add(p.id!);
+                                                        else next.delete(p.id!);
+                                                        setSelected(next);
+                                                    }}
+                                                />
+                                            </td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.departamentoNombre || "—"}</td>
@@ -409,11 +524,9 @@ export default function ProductosPage() {
                                             </td>
                                             <td className="px-4 py-2.5"><TipoBadge tipo={p.tipo} /></td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.unidadMedida}</td>
-                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(p.costoPromedio)}</td>
-                                            <td className={`px-4 py-2.5 tabular-nums font-medium ${bajoMin ? "text-amber-500" : "text-foreground"}`}>
+                                            <td className="px-4 py-2.5 tabular-nums font-medium text-foreground">
                                                 {fmtN(p.existenciaActual)}
                                             </td>
-                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(p.existenciaMinima)}</td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo
                                                     ? <span className="text-text-success text-[11px] uppercase tracking-[0.10em]">Activo</span>
@@ -454,8 +567,7 @@ export default function ProductosPage() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    );
-                                })}
+                                ))}
                             </tbody>
                         </table>
                     )}

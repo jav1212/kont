@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { FacturaCompra, FacturaCompraItem } from "@/src/modules/inventory/backend/domain/factura-compra";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
-import type { TipoProducto, IvaTipo, MonedaDefecto } from "@/src/modules/inventory/backend/domain/producto";
+import type { TipoProducto, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
 
 const fmtTasa = (n: number | null) =>
     n == null ? "" : String(n);
@@ -43,6 +43,118 @@ function QuickModal({ title, onClose, children }: { title: string; onClose: () =
                 </div>
                 {children}
             </div>
+        </div>
+    );
+}
+
+// ── ProveedorCombobox ─────────────────────────────────────────────────────────
+
+interface ProveedorComboboxProps {
+    proveedorId: string;
+    proveedores: { id?: string; nombre: string; rif?: string; activo?: boolean }[];
+    onChange: (id: string) => void;
+    onRequestCreate: (search: string) => void;
+}
+
+function ProveedorCombobox({ proveedorId, proveedores, onChange, onRequestCreate }: ProveedorComboboxProps) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const [hiIdx, setHiIdx] = useState(0);
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLUListElement>(null);
+
+    const selected = proveedores.find((p) => p.id === proveedorId);
+
+    const filtered = proveedores
+        .filter(
+            (p) =>
+                p.activo !== false &&
+                (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+                    (p.rif ?? "").toLowerCase().includes(search.toLowerCase())),
+        )
+        .slice(0, 12);
+
+    useEffect(() => {
+        if (!listRef.current) return;
+        const el = listRef.current.children[hiIdx] as HTMLElement | undefined;
+        el?.scrollIntoView({ block: "nearest" });
+    }, [hiIdx]);
+
+    function openDropdown() { setSearch(""); setHiIdx(0); setOpen(true); }
+    function closeDropdown() { setOpen(false); setSearch(""); }
+    function selectItem(id: string) { onChange(id); closeDropdown(); }
+
+    function handleBlur(e: React.FocusEvent) {
+        if (!wrapRef.current?.contains(e.relatedTarget as Node)) closeDropdown();
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (open) {
+            if (e.key === "ArrowDown") { e.preventDefault(); setHiIdx((i) => Math.min(i + 1, filtered.length - 1)); return; }
+            if (e.key === "ArrowUp")   { e.preventDefault(); setHiIdx((i) => Math.max(i - 1, 0)); return; }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (filtered[hiIdx]) selectItem(filtered[hiIdx].id!);
+                return;
+            }
+            if (e.key === "Escape") { e.preventDefault(); closeDropdown(); return; }
+        }
+    }
+
+    const displayValue = open
+        ? search
+        : selected
+          ? [selected.rif, selected.nombre].filter(Boolean).join(" · ")
+          : "";
+
+    return (
+        <div ref={wrapRef} className="relative flex-1" onBlur={handleBlur}>
+            <input
+                className={fieldCls}
+                value={displayValue}
+                placeholder={open ? "Buscar proveedor…" : "Seleccionar proveedor…"}
+                onChange={(e) => { setSearch(e.target.value); setHiIdx(0); }}
+                onFocus={openDropdown}
+                onKeyDown={handleKeyDown}
+                autoComplete="off"
+                spellCheck={false}
+            />
+            {open && (
+                <div className="absolute left-0 top-full z-50 min-w-full mt-0.5 rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden">
+                    {filtered.length === 0 ? (
+                        <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Sin resultados</div>
+                    ) : (
+                        <ul ref={listRef} className="max-h-52 overflow-y-auto">
+                            {filtered.map((p, i) => (
+                                <li
+                                    key={p.id}
+                                    className={[
+                                        "px-3 py-2 cursor-pointer flex items-center gap-2 text-[13px]",
+                                        i === hiIdx ? "bg-primary-500/10 text-foreground" : "text-[var(--text-secondary)] hover:bg-surface-2",
+                                    ].join(" ")}
+                                    onMouseDown={(e) => { e.preventDefault(); selectItem(p.id!); }}
+                                    onMouseEnter={() => setHiIdx(i)}
+                                >
+                                    {p.rif && (
+                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[80px]">{p.rif}</span>
+                                    )}
+                                    <span className="truncate">{p.nombre}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    <button
+                        className="w-full px-3 py-2 text-left text-[12px] text-primary-500 hover:bg-primary-500/[0.06] border-t border-border-light/50 transition-colors"
+                        onMouseDown={(e) => {
+                            e.preventDefault();
+                            onRequestCreate(search);
+                            closeDropdown();
+                        }}
+                    >
+                        + Crear{search ? ` "${search}"` : ' nuevo proveedor'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -92,7 +204,7 @@ export default function NuevaFacturaPage() {
     const [qcProv, setQcProv] = useState({ nombre: '', rif: '' });
 
     // Quick create producto form
-    const [qcProd, setQcProd] = useState({ nombre: '', codigo: '', tipo: 'mercancia' as TipoProducto, ivaTipo: 'general' as IvaTipo, monedaDefecto: 'B' as MonedaDefecto, departamentoId: '' });
+    const [qcProd, setQcProd] = useState({ nombre: '', codigo: '', tipo: 'mercancia' as TipoProducto, ivaTipo: 'general' as IvaTipo, departamentoId: '' });
     // Quick create departamento (nested inside producto modal)
     const [qcDeptNombre, setQcDeptNombre] = useState('');
     const [qcDeptOpen, setQcDeptOpen] = useState(false);
@@ -243,17 +355,15 @@ export default function NuevaFacturaPage() {
             unidadMedida: 'unidad',
             metodoValuacion: 'promedio_ponderado',
             existenciaActual: 0,
-            existenciaMinima: 0,
             costoPromedio: 0,
             activo: true,
             ivaTipo: qcProd.ivaTipo,
-            monedaDefecto: qcProd.monedaDefecto,
             departamentoId: qcProd.departamentoId || undefined,
         });
         setQcSaving(false);
         if (saved) {
             setQcMode(null);
-            setQcProd({ nombre: '', codigo: '', tipo: 'mercancia', ivaTipo: 'general', monedaDefecto: 'B', departamentoId: '' });
+            setQcProd({ nombre: '', codigo: '', tipo: 'mercancia', ivaTipo: 'general', departamentoId: '' });
         }
     }
 
@@ -337,20 +447,20 @@ export default function NuevaFacturaPage() {
                                 <div>
                                     <label className={labelCls}>Proveedor *</label>
                                     <div className="flex gap-2">
-                                        <select
-                                            className={fieldCls}
-                                            value={proveedorId}
-                                            onChange={(e) => setProveedorId(e.target.value)}
-                                        >
-                                            <option value="">Seleccionar proveedor…</option>
-                                            {proveedores.filter((p) => p.activo).map((p) => (
-                                                <option key={p.id} value={p.id}>{p.nombre}</option>
-                                            ))}
-                                        </select>
+                                        <ProveedorCombobox
+                                            proveedorId={proveedorId}
+                                            proveedores={proveedores}
+                                            onChange={setProveedorId}
+                                            onRequestCreate={(search) => {
+                                                setQcProv(p => ({ ...p, nombre: search }));
+                                                setQcMode('proveedor');
+                                                setError(null);
+                                            }}
+                                        />
                                         <button
                                             type="button"
-                                            onClick={() => { setQcMode('proveedor'); setError(null); }}
-                                            className="h-9 px-3 flex-shrink-0 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-tertiary)] hover:text-foreground text-[16px] leading-none transition-colors"
+                                            onClick={() => { setQcProv({ nombre: '', rif: '' }); setQcMode('proveedor'); setError(null); }}
+                                            className="h-10 px-3 shrink-0 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-text-tertiary hover:text-foreground text-[16px] leading-none transition-colors"
                                             title="Crear nuevo proveedor"
                                         >
                                             +
@@ -676,18 +786,7 @@ export default function NuevaFacturaPage() {
                                 </select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelCls}>Moneda habitual</label>
-                                <select
-                                    className={fieldCls}
-                                    value={qcProd.monedaDefecto}
-                                    onChange={(e) => setQcProd(p => ({ ...p, monedaDefecto: e.target.value as MonedaDefecto }))}
-                                >
-                                    <option value="B">Bolívares (Bs)</option>
-                                    <option value="D">Dólares (USD)</option>
-                                </select>
-                            </div>
+                        <div className="grid grid-cols-1 gap-3">
                             <div>
                                 <label className={labelCls}>Departamento</label>
                                 <div className="flex gap-1">

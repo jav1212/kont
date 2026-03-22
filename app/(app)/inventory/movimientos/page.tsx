@@ -155,12 +155,11 @@ export default function MovimientosPage() {
         if (!form.productoId) return;
         const p = productos.find((x) => x.id === form.productoId);
         if (!p) return;
-        const moneda = p.monedaDefecto ?? 'B';
         setForm((f) => ({
             ...f,
-            moneda,
-            costoUnitario: moneda === 'B' ? p.costoPromedio : f.costoUnitario,
-            costoMoneda:   moneda === 'D' ? 0 : 0,
+            moneda: 'B',
+            costoUnitario: p.costoPromedio,
+            costoMoneda:   0,
             empresaId:     companyId ?? "",
         }));
     }, [form.productoId, productos, companyId]);
@@ -312,7 +311,6 @@ export default function MovimientosPage() {
                                     {productos.filter((p) => p.activo).map((p) => (
                                         <option key={p.id} value={p.id}>
                                             {p.codigo ? `[${p.codigo}] ` : ""}{p.nombre}
-                                            {p.monedaDefecto === 'D' ? ' (USD)' : ''}
                                         </option>
                                     ))}
                                 </select>

@@ -135,9 +135,6 @@ function ProductComboCell({ productoId, productos, onSelect, onNavigate, registe
                                         <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[48px]">{p.codigo}</span>
                                     )}
                                     <span className="truncate">{p.nombre}</span>
-                                    {p.monedaDefecto === "D" && (
-                                        <span className="ml-auto text-[11px] font-bold text-amber-500 uppercase tracking-wider">USD</span>
-                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -271,19 +268,9 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
                     if (item.ivaAlicuota === 'general_16') {
                         item.ivaAlicuota = producto.ivaTipo === 'exento' ? 'exenta' : 'general_16';
                     }
-                    // Auto-fill moneda from product's monedaDefecto
-                    const newMoneda: MonedaItem = producto.monedaDefecto === 'D' ? 'D' : 'B';
-                    item.moneda = newMoneda;
-                    if (newMoneda === 'D') {
-                        item.tasaDolar = tasaDolar ?? null;
-                        // Don't pre-fill costoMoneda — user will type it
-                        item.costoMoneda   = 0;
-                        item.costoUnitario = 0;
-                        item.costoTotal    = 0;
-                    } else {
-                        item.costoMoneda = null;
-                        item.tasaDolar   = null;
-                    }
+                    item.moneda     = 'B';
+                    item.costoMoneda = null;
+                    item.tasaDolar   = null;
                 }
             }
         }

@@ -36,12 +36,10 @@ export class RpcProductoRepository implements IProductoRepository {
                 unidad_medida:    producto.unidadMedida,
                 metodo_valuacion: producto.metodoValuacion,
                 existencia_actual: producto.existenciaActual,
-                existencia_minima: producto.existenciaMinima,
                 costo_promedio:   producto.costoPromedio,
                 activo:           producto.activo,
                 departamento_id:  producto.departamentoId ?? null,
                 iva_tipo:         producto.ivaTipo ?? 'general',
-                moneda_defecto:   producto.monedaDefecto ?? 'B',
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_productos_upsert', {
@@ -80,13 +78,11 @@ export class RpcProductoRepository implements IProductoRepository {
             unidadMedida:       data.unidad_medida,
             metodoValuacion:    data.metodo_valuacion,
             existenciaActual:   Number(data.existencia_actual ?? 0),
-            existenciaMinima:   Number(data.existencia_minima ?? 0),
             costoPromedio:      Number(data.costo_promedio ?? 0),
             activo:             Boolean(data.activo ?? true),
             departamentoId:     data.departamento_id ?? undefined,
             departamentoNombre: data.departamento_nombre ?? undefined,
             ivaTipo:            (data.iva_tipo === 'exento' ? 'exento' : 'general') as import('../../domain/producto').IvaTipo,
-            monedaDefecto:      (data.moneda_defecto === 'D' ? 'D' : 'B') as import('../../domain/producto').MonedaDefecto,
             createdAt:          data.created_at,
             updatedAt:          data.updated_at,
         };
