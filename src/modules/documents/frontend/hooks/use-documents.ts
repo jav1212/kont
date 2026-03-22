@@ -151,6 +151,17 @@ export function useDocuments(companyId?: string | null) {
         return json.data as string;
     }, []);
 
+    const replicateFolders = useCallback(async (tenantIds: string[], folderIds?: string[]): Promise<{ tenantId: string; foldersCreated: number; foldersExisting: number; error?: string }[]> => {
+        const res  = await apiFetch('/api/documents/folders/replicate', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ tenantIds, folderIds }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? 'Error al replicar plantilla');
+        return json.data.results;
+    }, []);
+
     return {
         folders,
         documents,
@@ -163,6 +174,7 @@ export function useDocuments(companyId?: string | null) {
         uploadDocument,
         deleteDocument,
         getDownloadUrl,
+        replicateFolders,
         reload: () => {
             loadFolders(null);
             loadDocuments(selectedFolderId);

@@ -42,10 +42,7 @@ export default function InventoryDashboard() {
         const salidas = movimientos.filter((m) =>
             ["salida_venta", "salida_produccion", "devolucion_venta", "ajuste_negativo"].includes(m.tipo)
         ).length;
-        const bajoMinimo = productos.filter(
-            (p) => p.activo && p.existenciaActual <= p.existenciaMinima
-        ).length;
-        return { activos, entradas, salidas, bajoMinimo };
+        return { activos, entradas, salidas };
     }, [productos, movimientos]);
 
     const loading = loadingProductos || loadingMovimientos;
@@ -82,12 +79,11 @@ export default function InventoryDashboard() {
 
             <div className="px-8 py-6 space-y-6">
                 {/* KPI cards */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                     {[
-                        { label: "Productos activos",   value: loading ? "…" : kpis.activos,    color: "text-primary-500" },
-                        { label: "Entradas del mes",     value: loading ? "…" : kpis.entradas,  color: "text-green-500"   },
-                        { label: "Salidas del mes",      value: loading ? "…" : kpis.salidas,   color: "text-red-500"     },
-                        { label: "Bajo mínimo",          value: loading ? "…" : kpis.bajoMinimo, color: kpis.bajoMinimo > 0 ? "text-amber-500" : "text-[var(--text-tertiary)]" },
+                        { label: "Productos activos",   value: loading ? "…" : kpis.activos,   color: "text-primary-500" },
+                        { label: "Entradas del mes",    value: loading ? "…" : kpis.entradas,  color: "text-green-500"   },
+                        { label: "Salidas del mes",     value: loading ? "…" : kpis.salidas,   color: "text-red-500"     },
                     ].map((kpi) => (
                         <div key={kpi.label} className="rounded-xl border border-border-light bg-surface-1 px-5 py-4">
                             <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-2">{kpi.label}</p>
@@ -123,7 +119,7 @@ export default function InventoryDashboard() {
                         <table className="w-full text-[13px]">
                             <thead>
                                 <tr className="border-b border-border-light">
-                                    {["Código", "Nombre", "Tipo", "Existencia", "Mínimo", "Estado"].map((h) => (
+                                    {["Código", "Nombre", "Tipo", "Existencia", "Estado"].map((h) => (
                                         <th key={h} className="px-4 py-2.5 text-left text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
                                             {h}
                                         </th>
@@ -131,20 +127,15 @@ export default function InventoryDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {productos.slice(0, 20).map((p) => {
-                                    const bajoMin = p.existenciaActual <= p.existenciaMinima;
-                                    return (
+                                {productos.slice(0, 20).map((p) => (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                             <td className="px-4 py-2.5">
                                                 <TipoBadge tipo={p.tipo} />
                                             </td>
-                                            <td className={`px-4 py-2.5 tabular-nums ${bajoMin ? "text-amber-500 font-bold" : "text-foreground"}`}>
+                                            <td className="px-4 py-2.5 tabular-nums text-foreground">
                                                 {fmtN(p.existenciaActual)} {p.unidadMedida}
-                                            </td>
-                                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">
-                                                {fmtN(p.existenciaMinima)}
                                             </td>
                                             <td className="px-4 py-2.5">
                                                 {p.activo ? (
@@ -154,8 +145,7 @@ export default function InventoryDashboard() {
                                                 )}
                                             </td>
                                         </tr>
-                                    );
-                                })}
+                                ))}
                             </tbody>
                         </table>
                     )}

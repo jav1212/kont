@@ -49,7 +49,13 @@ export default function ProveedoresPage() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [importResult, setImportResult] = useState<ProveedorCsvResult | null>(null);
     const [importing, setImporting] = useState(false);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
+    const [search, setSearch] = useState("");
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
 
     useEffect(() => {
         if (companyId) loadProveedores(companyId);
@@ -82,6 +88,16 @@ export default function ProveedoresPage() {
         setConfirmDelete(null);
     }
 
+    async function handleBulkDelete() {
+        setBulkDeleting(true);
+        for (const id of selected) {
+            await deleteProveedor(id);
+        }
+        setBulkDeleting(false);
+        setSelected(new Set());
+        setConfirmBulkDelete(false);
+    }
+
     const set = (k: keyof Proveedor, v: unknown) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
@@ -101,6 +117,14 @@ export default function ProveedoresPage() {
         e.target.value = "";
     }
 
+    function handlePasteParse() {
+        if (!pasteText.trim()) return;
+        const result = parseProveedoresCsv(pasteText);
+        setImportResult(result);
+        setPasteOpen(false);
+        setPasteText("");
+    }
+
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
@@ -111,6 +135,8 @@ export default function ProveedoresPage() {
         setImportResult(null);
         loadProveedores(companyId);
     }
+
+    const filtered = proveedores.filter(p => [p.rif, p.nombre, p.contacto ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -134,10 +160,16 @@ export default function ProveedoresPage() {
                             Exportar CSV
                         </button>
                         <button
+                            onClick={() => { setPasteOpen((v) => !v); setError(null); }}
+                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                        >
+                            Pegar CSV
+                        </button>
+                        <button
                             onClick={() => fileRef.current?.click()}
                             className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
-                            Importar CSV
+                            Importar archivo
                         </button>
                         <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
                         <button
@@ -151,10 +183,86 @@ export default function ProveedoresPage() {
             </div>
 
             <div className="px-8 py-6 space-y-4">
+                {/* Search + bulk actions */}
+                <div className="flex items-center gap-3">
+                    <input
+                        type="text"
+                        placeholder="Buscar…"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
+                        className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-text-tertiary focus:border-primary-500/60 hover:border-border-medium transition-colors w-64"
+                    />
+                    {selected.size > 0 && (
+                        confirmBulkDelete ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[12px] text-foreground">¿Eliminar {selected.size} elemento(s)?</span>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    disabled={bulkDeleting}
+                                    className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    {bulkDeleting ? "Eliminando…" : "Confirmar"}
+                                </button>
+                                <button
+                                    onClick={() => setConfirmBulkDelete(false)}
+                                    disabled={bulkDeleting}
+                                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => setConfirmBulkDelete(true)}
+                                className="h-9 px-4 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
+                            >
+                                Eliminar {selected.size} seleccionado(s)
+                            </button>
+                        )
+                    )}
+                </div>
+
                 {/* Error */}
                 {error && (
                     <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
                         {error}
+                    </div>
+                )}
+
+                {/* Paste CSV panel */}
+                {pasteOpen && (
+                    <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-3">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
+                            Pegar CSV
+                        </p>
+                        <p className="text-[10px] text-text-tertiary">
+                            Formato esperado — primera fila debe ser el encabezado:
+                        </p>
+                        <pre className="text-[10px] text-text-secondary bg-surface-2 rounded-lg px-3 py-2 border border-border-light select-all">
+{`"rif","nombre","contacto","telefono","email","direccion","notas","activo"
+"J-12345678-9","Distribuidora El Sol","Juan Pérez","0414-1234567","info@sol.com","Av. Principal","","true"`}
+                        </pre>
+                        <textarea
+                            className="w-full h-40 px-3 py-2 rounded-lg border border-border-light bg-surface-2 outline-none font-mono text-[11px] text-foreground focus:border-primary-500/60 hover:border-border-medium transition-colors resize-none"
+                            placeholder={`"rif","nombre","contacto","telefono","email","direccion","notas","activo"`}
+                            value={pasteText}
+                            onChange={(e) => setPasteText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-3 pt-1 border-t border-border-light">
+                            <button
+                                onClick={handlePasteParse}
+                                disabled={!pasteText.trim()}
+                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                Procesar
+                            </button>
+                            <button
+                                onClick={() => { setPasteOpen(false); setPasteText(""); }}
+                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -278,10 +386,23 @@ export default function ProveedoresPage() {
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay proveedores. Haz clic en &quot;+ Nuevo proveedor&quot; para crear uno.
                         </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="px-5 py-8 text-center text-[11px] text-text-tertiary">Sin resultados para &quot;{search}&quot;.</div>
                     ) : (
                         <table className="w-full text-[11px]">
                             <thead>
                                 <tr className="border-b border-border-light">
+                                    <th className="px-4 py-2.5 w-8">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded"
+                                            checked={filtered.length > 0 && filtered.every(item => selected.has(item.id!))}
+                                            onChange={(e) => {
+                                                if (e.target.checked) setSelected(new Set(filtered.map(item => item.id!)));
+                                                else setSelected(new Set());
+                                            }}
+                                        />
+                                    </th>
                                     {["RIF", "Nombre", "Contacto", "Teléfono", "Email", "Estado", ""].map((h) => (
                                         <th key={h} className="px-4 py-2.5 text-left text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
@@ -290,8 +411,21 @@ export default function ProveedoresPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {proveedores.map((p) => (
+                                {filtered.map((p) => (
                                     <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                        <td className="px-4 py-2.5 w-8">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded"
+                                                checked={selected.has(p.id!)}
+                                                onChange={(e) => {
+                                                    const next = new Set(selected);
+                                                    if (e.target.checked) next.add(p.id!);
+                                                    else next.delete(p.id!);
+                                                    setSelected(next);
+                                                }}
+                                            />
+                                        </td>
                                         <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.rif || "—"}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
                                         <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.contacto || "—"}</td>

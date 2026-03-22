@@ -171,10 +171,9 @@ export default function KardexPage() {
 
                     {/* Producto info */}
                     {producto && (
-                        <div className="mt-4 pt-4 border-t border-border-light grid grid-cols-4 gap-4">
+                        <div className="mt-4 pt-4 border-t border-border-light grid grid-cols-3 gap-4">
                             {[
                                 { label: "Existencia actual",  value: `${fmtN(producto.existenciaActual)} ${producto.unidadMedida}` },
-                                { label: "Existencia mínima",  value: `${fmtN(producto.existenciaMinima)} ${producto.unidadMedida}` },
                                 { label: "Costo promedio",     value: fmtN(producto.costoPromedio)       },
                                 { label: "Método valuación",   value: producto.metodoValuacion.replace("_"," ") },
                             ].map((i) => (

@@ -142,9 +142,9 @@ export default function ComprasPage() {
                         <table className="w-full text-[13px]">
                             <thead>
                                 <tr className="border-b border-border-light">
-                                    {["Fecha", "Proveedor", "Nº Factura", "Subtotal", "IVA", "Total", "Estado", "", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
-                                            {h}
+                                    {["Fecha", "Proveedor", "Nº Factura", "Subtotal", "IVA", "Total", "Estado", "Ver", ""].map((h, i) => (
+                                        <th key={i} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
+                                            {h === "Ver" ? "" : h}
                                         </th>
                                     ))}
                                 </tr>

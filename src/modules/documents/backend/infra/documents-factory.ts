@@ -11,6 +11,7 @@ import { DeleteDocumentUseCase }            from '../app/delete-document.use-cas
 import { GetUploadUrlUseCase }              from '../app/get-upload-url.use-case';
 import { GetDownloadUrlUseCase }            from '../app/get-download-url.use-case';
 import { FindDocumentByIdUseCase }          from '../app/find-document-by-id.use-case';
+import { ReplicateFoldersUseCase }          from '../app/replicate-folders.use-case';
 
 /**
  * @param ownerId — UUID del dueño del schema (puede diferir del usuario logueado
@@ -36,5 +37,9 @@ export function getDocumentsActions(ownerId: string) {
         getUploadUrl:     new GetUploadUrlUseCase(storageRepo),
         getDownloadUrl:   new GetDownloadUrlUseCase(documentRepo, storageRepo),
         findDocumentById: new FindDocumentByIdUseCase(documentRepo),
+        replicateFolders: new ReplicateFoldersUseCase(
+            folderRepo,
+            (tenantId) => new SupabaseDocumentFolderRepository(source, tenantId),
+        ),
     };
 }
