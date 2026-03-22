@@ -28,8 +28,8 @@ const TIPO_GROUPS = [
     {
         label: "Devoluciones",
         items: [
-            { value: "devolucion_compra", label: "Devolución compra" },
-            { value: "devolucion_venta",  label: "Devolución venta"  },
+            { value: "devolucion_entrada", label: "Devolución entrada" },
+            { value: "devolucion_salida",  label: "Devolución salida"  },
         ],
     },
     {
@@ -45,9 +45,9 @@ const TIPO_GROUPS = [
 // autoconsumo is excluded from the main form and has its own dedicated section
 
 function tipoBadgeClass(tipo: TipoMovimiento): string {
-    if (["entrada_compra","entrada_produccion","devolucion_venta"].includes(tipo))
+    if (["entrada","entrada_produccion","devolucion_salida"].includes(tipo))
         return "border badge-success";
-    if (["salida_venta","salida_produccion","devolucion_compra"].includes(tipo))
+    if (["salida","salida_produccion","devolucion_entrada"].includes(tipo))
         return "border badge-error";
     if (tipo === "autoconsumo") return "border border-amber-500/40 text-amber-500 bg-amber-500/[0.06]";
     if (tipo === "ajuste_positivo") return "border badge-warning";
@@ -81,7 +81,7 @@ export default function MovimientosPage() {
     const emptyForm = (): Omit<Movimiento, "saldoCantidad" | "costoTotal" | "periodo"> & { saldoCantidad: number; costoTotal: number; periodo: string; moneda: 'B' | 'D'; costoMoneda: number } => ({
         empresaId:    companyId ?? "",
         productoId:   "",
-        tipo:         "entrada_compra" as TipoMovimiento,
+        tipo:         "entrada" as TipoMovimiento,
         fecha:        isoToday(),
         periodo:      currentPeriod(),
         cantidad:     0,
@@ -241,7 +241,6 @@ export default function MovimientosPage() {
             saldoCantidad:    0,
             referencia:       "",
             notas:            acForm.notas,
-            ivaVentaMonto:    acProducto.ivaTipo === "general" ? Math.round(acCostoTotal * 0.16 * 100) / 100 : null,
             existenciaActual: acProducto.existenciaActual,
         };
         const saved = await saveMovimiento(mov);
@@ -262,7 +261,7 @@ export default function MovimientosPage() {
                     Ajustes y Devoluciones
                 </h1>
                 <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                    Correcciones de inventario y devoluciones — compras en Compras · ventas en Ventas
+                    Correcciones de inventario y devoluciones — entradas en Entradas · salidas en Salidas
                 </p>
             </div>
 

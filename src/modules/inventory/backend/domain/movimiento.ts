@@ -1,8 +1,8 @@
 export type TipoMovimiento =
-  | 'entrada_compra' | 'salida_venta'
+  | 'entrada' | 'salida'
   | 'entrada_produccion' | 'salida_produccion'
   | 'ajuste_positivo' | 'ajuste_negativo'
-  | 'devolucion_compra' | 'devolucion_venta'
+  | 'devolucion_entrada' | 'devolucion_salida'
   | 'autoconsumo';
 
 export interface Movimiento {
@@ -23,13 +23,6 @@ export interface Movimiento {
   moneda?: 'B' | 'D';
   costoMoneda?: number | null;
   tasaDolar?: number | null;
-  // Campos opcionales para salida_venta y autoconsumo
-  numeroFacturaVenta?: string | null;
-  clienteRif?: string | null;
-  clienteNombre?: string | null;
-  precioVentaUnitario?: number | null;
-  ivaVentaMonto?: number | null;
-  ivaVentaAlicuota?: 'general_16' | 'reducida_8' | 'exenta' | null;
   existenciaActual?: number; // solo para validación de stock, no se persiste
   createdAt?: string;
 }

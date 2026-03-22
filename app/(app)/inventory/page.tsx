@@ -37,10 +37,10 @@ export default function InventoryDashboard() {
     const kpis = useMemo(() => {
         const activos = productos.filter((p) => p.activo).length;
         const entradas = movimientos.filter((m) =>
-            ["entrada_compra", "entrada_produccion", "devolucion_compra", "ajuste_positivo"].includes(m.tipo)
+            ["entrada", "entrada_produccion", "devolucion_entrada", "ajuste_positivo"].includes(m.tipo)
         ).length;
         const salidas = movimientos.filter((m) =>
-            ["salida_venta", "salida_produccion", "devolucion_venta", "ajuste_negativo"].includes(m.tipo)
+            ["salida", "salida_produccion", "devolucion_salida", "ajuste_negativo"].includes(m.tipo)
         ).length;
         return { activos, entradas, salidas };
     }, [productos, movimientos]);
@@ -62,16 +62,16 @@ export default function InventoryDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Link
-                            href="/inventory/compras/nueva"
+                            href="/inventory/entradas/nueva"
                             className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
-                            + Compra
+                            + Entrada
                         </Link>
                         <Link
-                            href="/inventory/ventas"
+                            href="/inventory/salidas"
                             className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
-                            + Venta
+                            + Salida
                         </Link>
                     </div>
                 </div>

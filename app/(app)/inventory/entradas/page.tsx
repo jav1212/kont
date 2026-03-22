@@ -76,7 +76,7 @@ export default function ComprasPage() {
                         </p>
                     </div>
                     <Link
-                        href="/inventory/compras/nueva"
+                        href="/inventory/entradas/nueva"
                         className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
                     >
                         + Nueva factura
@@ -161,7 +161,7 @@ export default function ComprasPage() {
                                         <td className="px-4 py-2.5"><EstadoBadge estado={f.estado} /></td>
                                         <td className="px-4 py-2.5">
                                             <Link
-                                                href={`/inventory/compras/${f.id}`}
+                                                href={`/inventory/entradas/${f.id}`}
                                                 className="text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                                             >
                                                 Ver

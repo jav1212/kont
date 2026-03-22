@@ -386,7 +386,7 @@ export default function NuevaFacturaPage() {
                         </p>
                         <div className="flex items-center justify-center gap-3">
                             <button
-                                onClick={() => router.push("/inventory/compras")}
+                                onClick={() => router.push("/inventory/entradas")}
                                 className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver facturas

@@ -113,7 +113,7 @@ export default function LibroVentasPage() {
         const ok = await saveMovimiento({
             empresaId:     companyId,
             productoId:    devProductoId,
-            tipo:          "devolucion_venta",
+            tipo:          "devolucion_salida",
             fecha:         devFecha,
             periodo:       devFecha.slice(0, 7),
             cantidad:      Number(devCantidad),
@@ -160,7 +160,7 @@ export default function LibroVentasPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Libro de Ventas IVA
+                            Libro de Salidas IVA
                         </h1>
                         <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
                             Reglamento Ley IVA Art. 70–72 — Débito fiscal mensual
@@ -323,7 +323,7 @@ export default function LibroVentasPage() {
             <div className="px-8 py-6">
                 {devSuccess && (
                     <div className="mb-4 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px]">
-                        Devolución de venta registrada — movimiento devolucion_venta creado.
+                        Devolución de venta registrada — movimiento devolucion_salida creado.
                     </div>
                 )}
                 {error && (

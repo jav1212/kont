@@ -19,7 +19,7 @@ const fieldCls = [
 const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isEntrada(tipo: TipoMovimiento): boolean {
-    return ["entrada_compra","entrada_produccion","devolucion_compra","ajuste_positivo"].includes(tipo);
+    return ["entrada","entrada_produccion","devolucion_entrada","ajuste_positivo"].includes(tipo);
 }
 
 function tipoBadgeClass(tipo: TipoMovimiento): string {

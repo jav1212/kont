@@ -157,7 +157,7 @@ export default function FacturaDetailPage({ params }: { params: Promise<{ id: st
             const ok = await saveMovimiento({
                 empresaId:        factura.empresaId,
                 productoId:       item.productoId,
-                tipo:             "devolucion_compra",
+                tipo:             "devolucion_entrada",
                 fecha:            devFecha,
                 periodo:          devFecha.slice(0, 7),
                 cantidad:         item.cantDev,

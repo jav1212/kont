@@ -88,7 +88,7 @@ export default function LibroComprasPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Libro de Compras IVA
+                            Libro de Entradas IVA
                         </h1>
                         <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
                             Reglamento Ley IVA Art. 70–72

@@ -43,15 +43,9 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
                 referencia:            movimiento.referencia,
                 notas:                 movimiento.notas,
                 transformacion_id:     movimiento.transformacionId ?? null,
-                moneda:                movimiento.moneda ?? 'B',
-                costo_moneda:          movimiento.costoMoneda ?? null,
-                tasa_dolar:            movimiento.tasaDolar ?? null,
-                numero_factura_venta:  movimiento.numeroFacturaVenta ?? null,
-                cliente_rif:           movimiento.clienteRif ?? null,
-                cliente_nombre:        movimiento.clienteNombre ?? null,
-                precio_venta_unitario: movimiento.precioVentaUnitario ?? null,
-                iva_venta_monto:       movimiento.ivaVentaMonto ?? null,
-                iva_venta_alicuota:    movimiento.ivaVentaAlicuota ?? null,
+                moneda:       movimiento.moneda ?? 'B',
+                costo_moneda: movimiento.costoMoneda ?? null,
+                tasa_dolar:   movimiento.tasaDolar ?? null,
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_movimientos_save', {
@@ -96,15 +90,9 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
             notas:                data.notas ?? '',
             transformacionId:     data.transformacion_id ?? null,
             moneda:               (data.moneda === 'D' ? 'D' : 'B') as 'B' | 'D',
-            costoMoneda:          data.costo_moneda != null ? Number(data.costo_moneda) : null,
-            tasaDolar:            data.tasa_dolar   != null ? Number(data.tasa_dolar)   : null,
-            numeroFacturaVenta:   data.numero_factura_venta ?? null,
-            clienteRif:           data.cliente_rif ?? null,
-            clienteNombre:        data.cliente_nombre ?? null,
-            precioVentaUnitario:  data.precio_venta_unitario != null ? Number(data.precio_venta_unitario) : null,
-            ivaVentaMonto:        data.iva_venta_monto != null ? Number(data.iva_venta_monto) : null,
-            ivaVentaAlicuota:     (data.iva_venta_alicuota ?? null) as 'general_16' | 'reducida_8' | 'exenta' | null,
-            createdAt:            data.created_at,
+            costoMoneda:  data.costo_moneda != null ? Number(data.costo_moneda) : null,
+            tasaDolar:    data.tasa_dolar   != null ? Number(data.tasa_dolar)   : null,
+            createdAt:    data.created_at,
         };
     }
 }

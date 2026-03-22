@@ -313,7 +313,7 @@ export function useInventory() {
         setLoadingFacturas(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/compras?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/entradas?empresaId=${encodeURIComponent(empresaId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar facturas'); return; }
             setFacturas(json.data ?? []);
@@ -328,7 +328,7 @@ export function useInventory() {
         setLoadingFactura(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/compras/${encodeURIComponent(facturaId)}`);
+            const res = await fetch(`/api/inventory/entradas/${encodeURIComponent(facturaId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar factura'); return; }
             setCurrentFactura(json.data ?? null);
@@ -346,8 +346,8 @@ export function useInventory() {
         setError(null);
         try {
             const url = factura.id
-                ? `/api/inventory/compras/${factura.id}`
-                : '/api/inventory/compras';
+                ? `/api/inventory/entradas/${factura.id}`
+                : '/api/inventory/entradas';
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -373,7 +373,7 @@ export function useInventory() {
     const deleteFactura = useCallback(async (facturaId: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/compras/${facturaId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/inventory/entradas/${facturaId}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar factura'); return false; }
             setFacturas((prev) => prev.filter((f) => f.id !== facturaId));
@@ -387,7 +387,7 @@ export function useInventory() {
     const confirmarFactura = useCallback(async (facturaId: string): Promise<FacturaCompra | null> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/compras/${facturaId}/confirmar`, {
+            const res = await fetch(`/api/inventory/entradas/${facturaId}/confirmar`, {
                 method: 'POST',
             });
             const json = await res.json();
@@ -464,10 +464,10 @@ export function useInventory() {
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/libro-compras?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/libro-entradas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de compras'); return; }
+            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de entradas'); return; }
             setLibroCompras(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -502,10 +502,10 @@ export function useInventory() {
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/libro-ventas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/libro-salidas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de ventas'); return; }
+            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de salidas'); return; }
             setLibroVentas(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -516,21 +516,19 @@ export function useInventory() {
 
     const saveVenta = useCallback(async (payload: {
         empresaId: string;
-        numeroFactura: string;
-        clienteRif: string;
-        clienteNombre: string;
         fecha: string;
-        items: { productoId: string; cantidad: number; precioVentaUnitario: number; ivaTipo: 'general_16' | 'reducida_8' | 'exento'; existenciaActual?: number }[];
+        referencia?: string;
+        items: { productoId: string; cantidad: number; existenciaActual?: number }[];
     }): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/ventas', {
+            const res = await fetch('/api/inventory/salidas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al registrar venta'); return false; }
+            if (!res.ok) { setError(json.error ?? 'Error al registrar salida'); return false; }
             const saved = json.data as import('../../backend/domain/movimiento').Movimiento[];
             // Update product existencias
             setProductos((prev) =>

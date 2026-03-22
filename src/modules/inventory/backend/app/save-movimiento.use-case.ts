@@ -4,8 +4,8 @@ import { Movimiento, TipoMovimiento } from '../domain/movimiento';
 import { IMovimientoRepository } from '../domain/repository/movimiento.repository';
 
 const TIPOS_SALIDA: TipoMovimiento[] = [
-    'autoconsumo', 'salida_venta', 'salida_produccion',
-    'ajuste_negativo', 'devolucion_compra',
+    'autoconsumo', 'salida', 'salida_produccion',
+    'ajuste_negativo', 'devolucion_entrada',
 ];
 
 export class SaveMovimientoUseCase extends UseCase<Movimiento, Movimiento> {

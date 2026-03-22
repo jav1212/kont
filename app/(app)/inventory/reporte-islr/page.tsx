@@ -21,14 +21,14 @@ function fmtQ(n: number) {
 }
 
 const TIPO_LABEL: Record<string, string> = {
-    entrada_compra:    "Entrada / Compra",
+    entrada:    "Entrada / Compra",
     entrada_produccion:"Entrada / Producción",
-    salida_venta:      "Salida / Venta",
+    salida:      "Salida / Venta",
     salida_produccion: "Salida / Producción",
     ajuste_positivo:   "Ajuste Positivo",
     ajuste_negativo:   "Ajuste Negativo",
-    devolucion_compra: "Devolución / Compra",
-    devolucion_venta:  "Devolución / Venta",
+    devolucion_entrada: "Devolución / Compra",
+    devolucion_salida:  "Devolución / Venta",
     autoconsumo:       "Autoconsumo",
 };
 
