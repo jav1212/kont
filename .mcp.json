@@ -8,7 +8,7 @@
         "resend-mcp"
       ],
       "env": {
-        "RESEND_API_KEY": "re_MUqb5SFR_9ykrxDDaV2qnvf8eXQTkLLzP"
+        "RESEND_API_KEY": "${RESEND_API_KEY}"
       }
     }
   }
