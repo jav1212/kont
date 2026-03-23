@@ -9,11 +9,13 @@ import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 interface Member {
     id:         string;
-    memberId:   string;
+    memberId:   string | null;
     email:      string;
     role:       "owner" | "admin" | "contable";
     acceptedAt: string | null;
     createdAt:  string;
+    pending:    boolean;
+    expiresAt?: string;
 }
 
 // ── Role badge ────────────────────────────────────────────────────────────────
@@ -26,6 +28,14 @@ function RoleBadge({ role }: { role: Member["role"] }) {
                 : "bg-foreground/6 text-foreground/60"
         }`}>
             {role}
+        </span>
+    );
+}
+
+function PendingBadge() {
+    return (
+        <span className="inline-block font-mono text-xs px-2 py-0.5 rounded uppercase bg-yellow-500/10 text-yellow-500">
+            Pendiente
         </span>
     );
 }
@@ -79,6 +89,9 @@ export default function MembersPage() {
 
     if (tenantLoading || activeTenantRole === "contable") return null;
 
+    const accepted = members.filter((m) => !m.pending);
+    const pending  = members.filter((m) => m.pending);
+
     return (
         <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-h-full">
 
@@ -123,69 +136,32 @@ export default function MembersPage() {
             ) : members.length === 0 ? (
                 <p className="font-mono text-xs text-foreground/40 px-1">Sin miembros aún.</p>
             ) : (
-                <>
-                    {/* Mobile: card list */}
-                    <div className="sm:hidden space-y-2">
-                        {members.map((m) => (
-                            <div key={m.id} className="rounded-lg border border-border-light bg-surface-1 px-4 py-3 flex items-center gap-3">
-                                <div className="flex-1 min-w-0 space-y-1">
-                                    <p className="font-mono text-xs text-foreground truncate">{m.email}</p>
-                                    <div className="flex items-center gap-2">
-                                        <RoleBadge role={m.role} />
-                                        <span className="font-mono text-xs text-foreground/30">
-                                            {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
-                                        </span>
-                                    </div>
-                                </div>
-                                {m.role !== "owner" && canInvite && (
-                                    <button
-                                        onClick={() => handleRevoke(m.id)}
-                                        disabled={revoking === m.id}
-                                        className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors shrink-0 min-h-11 px-1"
-                                    >
-                                        {revoking === m.id ? "…" : "Revocar"}
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                <div className="space-y-6">
+                    {/* Accepted members */}
+                    {accepted.length > 0 && (
+                        <MembersTable
+                            members={accepted}
+                            canInvite={canInvite}
+                            revoking={revoking}
+                            onRevoke={handleRevoke}
+                        />
+                    )}
 
-                    {/* Desktop: table */}
-                    <div className="hidden sm:block rounded-lg border border-border-light overflow-hidden">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-border-light bg-surface-2">
-                                    <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Email</th>
-                                    <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Rol</th>
-                                    <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Desde</th>
-                                    <th className="px-4 py-2.5" />
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {members.map((m) => (
-                                    <tr key={m.id} className="border-b border-border-light last:border-0">
-                                        <td className="px-4 py-3 font-mono text-xs text-foreground">{m.email}</td>
-                                        <td className="px-4 py-3"><RoleBadge role={m.role} /></td>
-                                        <td className="px-4 py-3 font-mono text-xs text-foreground/40">
-                                            {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            {m.role !== "owner" && canInvite && (
-                                                <button
-                                                    onClick={() => handleRevoke(m.id)}
-                                                    disabled={revoking === m.id}
-                                                    className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors"
-                                                >
-                                                    {revoking === m.id ? "Revocando…" : "Revocar"}
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
+                    {/* Pending invitations */}
+                    {pending.length > 0 && (
+                        <div>
+                            <p className="font-mono text-xs text-foreground/40 mb-2 px-1">
+                                Invitaciones pendientes
+                            </p>
+                            <MembersTable
+                                members={pending}
+                                canInvite={canInvite}
+                                revoking={revoking}
+                                onRevoke={handleRevoke}
+                            />
+                        </div>
+                    )}
+                </div>
             )}
 
             {inviteOpen && (
@@ -196,6 +172,90 @@ export default function MembersPage() {
                 />
             )}
         </div>
+    );
+}
+
+// ── Members table (shared for accepted + pending) ─────────────────────────────
+
+function MembersTable({
+    members,
+    canInvite,
+    revoking,
+    onRevoke,
+}: {
+    members:  Member[];
+    canInvite: boolean;
+    revoking:  string | null;
+    onRevoke:  (id: string) => void;
+}) {
+    return (
+        <>
+            {/* Mobile: card list */}
+            <div className="sm:hidden space-y-2">
+                {members.map((m) => (
+                    <div key={m.id} className="rounded-lg border border-border-light bg-surface-1 px-4 py-3 flex items-center gap-3">
+                        <div className="flex-1 min-w-0 space-y-1">
+                            <p className="font-mono text-xs text-foreground truncate">{m.email}</p>
+                            <div className="flex items-center gap-2">
+                                {m.pending ? <PendingBadge /> : <RoleBadge role={m.role} />}
+                                {!m.pending && (
+                                    <span className="font-mono text-xs text-foreground/30">
+                                        {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        {m.role !== "owner" && canInvite && (
+                            <button
+                                onClick={() => onRevoke(m.id)}
+                                disabled={revoking === m.id}
+                                className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors shrink-0 min-h-11 px-1"
+                            >
+                                {revoking === m.id ? "…" : "Revocar"}
+                            </button>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden sm:block rounded-lg border border-border-light overflow-hidden">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-border-light bg-surface-2">
+                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Email</th>
+                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Rol</th>
+                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Desde</th>
+                            <th className="px-4 py-2.5" />
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {members.map((m) => (
+                            <tr key={m.id} className="border-b border-border-light last:border-0">
+                                <td className="px-4 py-3 font-mono text-xs text-foreground">{m.email}</td>
+                                <td className="px-4 py-3">
+                                    {m.pending ? <PendingBadge /> : <RoleBadge role={m.role} />}
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs text-foreground/40">
+                                    {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                    {m.role !== "owner" && canInvite && (
+                                        <button
+                                            onClick={() => onRevoke(m.id)}
+                                            disabled={revoking === m.id}
+                                            className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors"
+                                        >
+                                            {revoking === m.id ? "Revocando…" : "Revocar"}
+                                        </button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </>
     );
 }
 
@@ -210,11 +270,11 @@ function InviteModal({
     onClose:        () => void;
     onSuccess:      () => void;
 }) {
-    const [email,     setEmail]     = useState("");
-    const [role,      setRole]      = useState("contable");
-    const [loading,   setLoading]   = useState(false);
-    const [error,     setError]     = useState<string | null>(null);
-    const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
+    const [email,   setEmail]   = useState("");
+    const [role,    setRole]    = useState("contable");
+    const [loading, setLoading] = useState(false);
+    const [error,   setError]   = useState<string | null>(null);
+    const [sent,    setSent]    = useState(false);
 
     async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -228,7 +288,7 @@ function InviteModal({
         const json = await res.json();
         setLoading(false);
         if (!res.ok) { setError(json.error ?? "Error al invitar"); return; }
-        setAcceptUrl(json.data.acceptUrl);
+        setSent(true);
     }
 
     return (
@@ -236,22 +296,26 @@ function InviteModal({
             <div className="bg-surface-1 rounded-xl border border-border-light shadow-xl w-full max-w-sm p-6">
                 <h2 className="font-mono text-sm font-semibold text-foreground mb-4">Invitar miembro</h2>
 
-                {acceptUrl ? (
+                {sent ? (
                     <div className="space-y-4">
-                        <p className="font-mono text-xs text-foreground/60">
-                            Invitación creada. Comparte este enlace:
-                        </p>
-                        <div className="bg-surface-2 rounded-lg px-3 py-2 font-mono text-xs text-foreground break-all border border-border-light">
-                            {acceptUrl}
+                        <div className="flex flex-col items-center gap-3 py-4 text-center">
+                            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500" aria-hidden="true">
+                                    <path d="M3 9.5l4 4 8-8" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="font-mono text-sm font-semibold text-foreground">Invitación enviada</p>
+                                <p className="font-mono text-xs text-foreground/50 mt-1">
+                                    Le enviamos un email a <span className="text-foreground/80">{email}</span> con el enlace para unirse.
+                                </p>
+                            </div>
                         </div>
                         <button
-                            onClick={() => navigator.clipboard?.writeText(acceptUrl)}
+                            onClick={onSuccess}
                             className="w-full py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-xs transition-colors"
                         >
-                            Copiar enlace
-                        </button>
-                        <button onClick={onSuccess} className="w-full py-2.5 font-mono text-xs text-foreground/40 hover:text-foreground transition-colors">
-                            Cerrar
+                            Listo
                         </button>
                     </div>
                 ) : (
@@ -294,7 +358,7 @@ function InviteModal({
                                 disabled={loading}
                                 className="flex-1 py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white font-mono text-xs transition-colors"
                             >
-                                {loading ? "Enviando…" : "Invitar"}
+                                {loading ? "Enviando…" : "Enviar invitación"}
                             </button>
                         </div>
                     </form>

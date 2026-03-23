@@ -1,10 +1,11 @@
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
+import { sendInviteEmail } from "@/src/shared/backend/utils/send-invite-email";
 
 /**
  * POST /api/memberships/invite
  * Body: { email: string, role: 'admin' | 'contable' }
- * Crea una invitación. Owner puede invitar admin o contable; admin solo puede invitar contable.
+ * Crea una invitación y envía el email al invitado.
  */
 export const POST = withTenant(async (req, { userId, actingAs }) => {
     const tenantOwnerId = actingAs?.ownerId ?? userId;
@@ -23,7 +24,6 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     if (!["admin", "contable"].includes(role)) {
         return Response.json({ error: "role debe ser admin o contable" }, { status: 400 });
     }
-    // Admin solo puede invitar contables
     if (callerRole === "admin" && role !== "contable") {
         return Response.json({ error: "Admin solo puede invitar contables" }, { status: 403 });
     }
@@ -46,9 +46,29 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: error.message }, { status: 500 });
     }
 
-    // Construir el link de aceptación usando el origin del request
     const origin    = new URL(req.url).origin;
     const acceptUrl = `${origin}/accept-invite?token=${inv.token}`;
 
-    return Response.json({ data: { invitationId: inv.id, acceptUrl, expiresAt: inv.expires_at } });
+    // Obtener email del invitador y nombre del tenant para el email
+    const [{ data: inviterData }] = await Promise.all([
+        server.instance.auth.admin.getUserById(userId),
+        server.instance.from("tenants").select("id").eq("id", tenantOwnerId).single(),
+    ]);
+
+    // Obtener primera empresa del tenant como nombre representativo
+    const inviterEmail = inviterData?.user?.email ?? "Un usuario de kont";
+    const tenantName   = inviterEmail; // fallback al email del owner
+
+    // Enviar email (no bloquear la respuesta si falla)
+    sendInviteEmail({
+        to:           email.toLowerCase().trim(),
+        role:         role as "admin" | "contable",
+        tenantName,
+        inviterEmail,
+        acceptUrl,
+    }).catch((err) => {
+        console.error("[invite] Error enviando email:", err);
+    });
+
+    return Response.json({ data: { invitationId: inv.id, expiresAt: inv.expires_at } });
 });

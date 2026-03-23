@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { APP_MODULES } from "@/src/shared/frontend/navigation";
 import { useAuth }     from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
@@ -136,6 +136,10 @@ interface AppSidebarProps {
     onClose: () => void;
 }
 
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 400;
+const DEFAULT_WIDTH = 208; // xl:w-52
+
 export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const pathname         = usePathname();
     const router           = useRouter();
@@ -147,6 +151,54 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { activeTenantRole } = useActiveTenantContext();
     const companyDropdownRef = useRef<HTMLDivElement>(null);
     const isDesktop = useIsDesktop();
+
+    // ── Resizable sidebar (desktop only) ──────────────────────────────────────
+    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH);
+    const isResizing    = useRef(false);
+    const startX        = useRef(0);
+    const startWidth    = useRef(DEFAULT_WIDTH);
+    const widthRef      = useRef(DEFAULT_WIDTH);
+
+    useEffect(() => {
+        const saved = localStorage.getItem("sidebar-width");
+        if (saved) {
+            const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parseInt(saved, 10)));
+            setSidebarWidth(w);
+            widthRef.current = w;
+        }
+    }, []);
+
+    useEffect(() => { widthRef.current = sidebarWidth; }, [sidebarWidth]);
+
+    const handleResizeStart = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizing.current  = true;
+        startX.current      = e.clientX;
+        startWidth.current  = widthRef.current;
+        document.body.style.cursor     = "col-resize";
+        document.body.style.userSelect = "none";
+    }, []);
+
+    useEffect(() => {
+        function onMouseMove(e: MouseEvent) {
+            if (!isResizing.current) return;
+            const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + (e.clientX - startX.current)));
+            setSidebarWidth(newWidth);
+        }
+        function onMouseUp() {
+            if (!isResizing.current) return;
+            isResizing.current             = false;
+            document.body.style.cursor     = "";
+            document.body.style.userSelect = "";
+            localStorage.setItem("sidebar-width", String(widthRef.current));
+        }
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        return () => {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+        };
+    }, []);
 
     // Close drawer on route change (mobile navigation)
     useEffect(() => {
@@ -184,12 +236,13 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     return (
         <aside
             aria-label="Navegación principal"
+            style={isDesktop ? { width: sidebarWidth } : undefined}
             className={[
-                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border",
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border relative",
                 // Mobile/tablet: fixed drawer deslizable desde la izquierda
                 "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
                 open ? "translate-x-0" : "-translate-x-full",
-                // Desktop (xl+): estático en el flujo, ancho fijo, sin transformación
+                // Desktop (xl+): estático en el flujo, ancho fallback xl:w-52, sin transformación
                 "xl:static xl:inset-auto xl:z-auto xl:w-52 xl:translate-x-0 xl:transition-none",
             ].join(" ")}
         >
@@ -403,6 +456,16 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 </button>
             </div>
 
+            {/* ── Resize handle (desktop only) ────────────────────────── */}
+            {isDesktop && (
+                <div
+                    aria-hidden="true"
+                    onMouseDown={handleResizeStart}
+                    className="absolute inset-y-0 right-0 w-1 cursor-col-resize group z-10"
+                >
+                    <div className="absolute inset-y-0 right-0 w-px bg-sidebar-border transition-colors duration-150 group-hover:bg-primary-500/50 group-active:bg-primary-500" />
+                </div>
+            )}
         </aside>
     );
 }
