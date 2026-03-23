@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 interface SendInviteEmailOptions {
     to:         string;
     role:       "admin" | "contable";
@@ -17,6 +15,7 @@ export async function sendInviteEmail({
     inviterEmail,
     acceptUrl,
 }: SendInviteEmailOptions): Promise<void> {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const roleLabel = role === "admin" ? "Administrador" : "Contable";
 
     const html = `<!DOCTYPE html>
