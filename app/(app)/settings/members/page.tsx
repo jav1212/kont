@@ -49,8 +49,9 @@ export default function MembersPage() {
     const [members,    setMembers]    = useState<Member[]>([]);
     const [loading,    setLoading]    = useState(true);
     const [error,      setError]      = useState<string | null>(null);
-    const [inviteOpen, setInviteOpen] = useState(false);
-    const [revoking,   setRevoking]   = useState<string | null>(null);
+    const [inviteOpen,    setInviteOpen]    = useState(false);
+    const [revoking,      setRevoking]      = useState<string | null>(null);
+    const [revokeTarget,  setRevokeTarget]  = useState<Member | null>(null);
 
     // Redirect contables away
     useEffect(() => {
@@ -75,13 +76,19 @@ export default function MembersPage() {
         if (!tenantLoading) fetchMembers();
     }, [tenantLoading, fetchMembers]);
 
-    async function handleRevoke(memberRowId: string) {
-        if (!confirm("¿Revocar acceso a este miembro?")) return;
-        setRevoking(memberRowId);
-        const res  = await apiFetch(`/api/memberships/${memberRowId}`, { method: "DELETE" });
+    async function handleRevoke(member: Member) {
+        setRevokeTarget(member);
+    }
+
+    async function confirmRevoke() {
+        if (!revokeTarget) return;
+        const id = revokeTarget.id;
+        setRevoking(id);
+        setRevokeTarget(null);
+        const res  = await apiFetch(`/api/memberships/${id}`, { method: "DELETE" });
         const json = await res.json();
         setRevoking(null);
-        if (!res.ok) { alert(json.error ?? "Error al revocar"); return; }
+        if (!res.ok) { setError(json.error ?? "Error al revocar"); return; }
         fetchMembers();
     }
 
@@ -143,7 +150,7 @@ export default function MembersPage() {
                             members={accepted}
                             canInvite={canInvite}
                             revoking={revoking}
-                            onRevoke={handleRevoke}
+                            onRevoke={(m) => handleRevoke(m)}
                         />
                     )}
 
@@ -157,7 +164,7 @@ export default function MembersPage() {
                                 members={pending}
                                 canInvite={canInvite}
                                 revoking={revoking}
-                                onRevoke={handleRevoke}
+                                onRevoke={(m) => handleRevoke(m)}
                             />
                         </div>
                     )}
@@ -169,6 +176,14 @@ export default function MembersPage() {
                     canInviteAdmin={activeTenantRole === "owner"}
                     onClose={() => setInviteOpen(false)}
                     onSuccess={() => { setInviteOpen(false); fetchMembers(); }}
+                />
+            )}
+
+            {revokeTarget && (
+                <RevokeConfirmDialog
+                    member={revokeTarget}
+                    onCancel={() => setRevokeTarget(null)}
+                    onConfirm={confirmRevoke}
                 />
             )}
         </div>
@@ -186,7 +201,7 @@ function MembersTable({
     members:  Member[];
     canInvite: boolean;
     revoking:  string | null;
-    onRevoke:  (id: string) => void;
+    onRevoke:  (member: Member) => void;
 }) {
     return (
         <>
@@ -207,7 +222,7 @@ function MembersTable({
                         </div>
                         {m.role !== "owner" && canInvite && (
                             <button
-                                onClick={() => onRevoke(m.id)}
+                                onClick={() => onRevoke(m)}
                                 disabled={revoking === m.id}
                                 className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors shrink-0 min-h-11 px-1"
                             >
@@ -242,7 +257,7 @@ function MembersTable({
                                 <td className="px-4 py-3 text-right">
                                     {m.role !== "owner" && canInvite && (
                                         <button
-                                            onClick={() => onRevoke(m.id)}
+                                            onClick={() => onRevoke(m)}
                                             disabled={revoking === m.id}
                                             className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors"
                                         >
@@ -256,6 +271,50 @@ function MembersTable({
                 </table>
             </div>
         </>
+    );
+}
+
+// ── Revoke Confirm Dialog ─────────────────────────────────────────────────────
+
+function RevokeConfirmDialog({
+    member,
+    onCancel,
+    onConfirm,
+}: {
+    member:    Member;
+    onCancel:  () => void;
+    onConfirm: () => void;
+}) {
+    const label = member.pending ? "invitación" : "acceso";
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-surface-1 rounded-xl border border-border-light shadow-xl w-full max-w-sm p-6">
+                <h2 className="font-mono text-sm font-semibold text-foreground mb-1">
+                    {member.pending ? "Cancelar invitación" : "Revocar acceso"}
+                </h2>
+                <p className="font-mono text-xs text-foreground/50 mb-5">
+                    Se revocará el {label} de{" "}
+                    <span className="text-foreground/80">{member.email}</span>.
+                    Esta acción no se puede deshacer.
+                </p>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="flex-1 py-2.5 rounded-lg border border-border-light font-mono text-xs text-foreground/60 hover:text-foreground transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-mono text-xs transition-colors"
+                    >
+                        {member.pending ? "Cancelar invitación" : "Revocar"}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 

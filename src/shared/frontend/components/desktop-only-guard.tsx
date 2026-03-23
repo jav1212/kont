@@ -18,9 +18,6 @@ const MonitorIcon = () => (
 export function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
     const isDesktop = useIsDesktop();
 
-    // Hydrating — render nothing to avoid flash
-    if (isDesktop === null) return null;
-
     // Mobile / tablet — show aviso
     if (!isDesktop) {
         return (

@@ -26,7 +26,7 @@ export function MobileTopBar({ onMenuClick }: MobileTopBarProps) {
 
             {/* Logo — K. monogram */}
             <div className="flex items-end leading-none gap-0" aria-label="Konta">
-                <span className="text-white font-sans font-black text-[19px] leading-none tracking-[-0.02em]">K</span>
+                <span className="text-sidebar-fg font-sans font-black text-[19px] leading-none tracking-[-0.02em]">K</span>
                 <span className="font-black text-[19px] leading-none" style={{ color: '#FF4A18' }}>.</span>
             </div>
         </header>

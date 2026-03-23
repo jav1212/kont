@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSidebar }           from "@/src/shared/frontend/components/app-sidebar";
 import { MobileTopBar }         from "@/src/shared/frontend/components/mobile-topbar";
 import { CompanyProvider }      from "@/src/modules/companies/frontend/components/company-provider";
@@ -8,6 +8,16 @@ import { ActiveTenantProvider } from "@/src/modules/memberships/frontend/context
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Close drawer automatically when viewport enters desktop (xl) breakpoint
+    useEffect(() => {
+        const mq = window.matchMedia("(min-width: 1280px)");
+        function handleChange(e: MediaQueryListEvent) {
+            if (e.matches) setSidebarOpen(false);
+        }
+        mq.addEventListener("change", handleChange);
+        return () => mq.removeEventListener("change", handleChange);
+    }, []);
 
     return (
         <ActiveTenantProvider>

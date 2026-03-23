@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "resend": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "resend-mcp"
+      ],
+      "env": {
+        "RESEND_API_KEY": "re_MUqb5SFR_9ykrxDDaV2qnvf8eXQTkLLzP"
+      }
+    }
+  }
+}

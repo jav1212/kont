@@ -24,6 +24,12 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
             <path d="M4 5h5M4 7.5h3" />
         </svg>
     ),
+    employees: (
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="6.5" cy="4" r="2.5" />
+            <path d="M1.5 12c0-2.8 2.2-5 5-5s5 2.2 5 5" />
+        </svg>
+    ),
     companies: (
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="1" y="4" width="11" height="8" rx="1" />
@@ -55,13 +61,12 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
 
 const MODULE_SUBNAV: Record<string, { href: string; label: string; group?: string | null }[]> = {
     payroll: [
-        { href: "/payroll",                   label: "Calculadora"   },
-        { href: "/payroll/employees",         label: "Empleados"     },
-        { href: "/payroll/history",           label: "Historial"     },
-        { href: "/payroll/vacaciones",        label: "Vacaciones"    },
-        { href: "/payroll/utilidades",        label: "Utilidades"    },
-        { href: "/payroll/prestaciones",      label: "Prestaciones"  },
-        { href: "/payroll/liquidaciones",     label: "Liquidaciones" },
+        { href: "/payroll",               label: "Calculadora"   },
+        { href: "/payroll/history",        label: "Historial"     },
+        { href: "/payroll/vacaciones",     label: "Vacaciones"    },
+        { href: "/payroll/utilidades",     label: "Utilidades"    },
+        { href: "/payroll/prestaciones",   label: "Prestaciones"  },
+        { href: "/payroll/liquidaciones",  label: "Liquidaciones" },
     ],
     inventory: [
         { href: "/inventory", label: "Dashboard", group: null },
@@ -146,7 +151,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { signOut }      = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { companies, company, companyId, selectCompany, loading: companyLoading } = useCompany();
-    const [companyOpen, setCompanyOpen] = useState(false);
+    const [companyOpen,   setCompanyOpen]   = useState(false);
+    const [companySearch, setCompanySearch] = useState("");
     const { hasAccess: hasInventory } = useModuleAccess("inventory");
     const { activeTenantRole } = useActiveTenantContext();
     const companyDropdownRef = useRef<HTMLDivElement>(null);
@@ -212,6 +218,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         function handleOutsideClick(e: MouseEvent) {
             if (companyDropdownRef.current && !companyDropdownRef.current.contains(e.target as Node)) {
                 setCompanyOpen(false);
+                setCompanySearch("");
             }
         }
         document.addEventListener("mousedown", handleOutsideClick);
@@ -222,7 +229,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     useEffect(() => {
         if (!companyOpen) return;
         function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "Escape") setCompanyOpen(false);
+            if (e.key === "Escape") { setCompanyOpen(false); setCompanySearch(""); }
         }
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
@@ -238,12 +245,12 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             aria-label="Navegación principal"
             style={isDesktop ? { width: sidebarWidth } : undefined}
             className={[
-                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border relative",
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border",
                 // Mobile/tablet: fixed drawer deslizable desde la izquierda
                 "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
                 open ? "translate-x-0" : "-translate-x-full",
-                // Desktop (xl+): estático en el flujo, ancho fallback xl:w-52, sin transformación
-                "xl:static xl:inset-auto xl:z-auto xl:w-52 xl:translate-x-0 xl:transition-none",
+                // Desktop (xl+): en flujo, relative para contener el resize handle
+                "xl:relative xl:inset-auto xl:z-auto xl:w-52 xl:translate-x-0 xl:transition-none",
             ].join(" ")}
         >
 
@@ -293,37 +300,52 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         </button>
 
                         {companyOpen && (
-                            <ul
-                                role="listbox"
-                                aria-label="Empresas disponibles"
-                                className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-50 shadow-lg bg-sidebar-bg border border-sidebar-border"
-                            >
-                                {companies.map((c) => {
-                                    const isSelected = c.id === companyId;
-                                    return (
-                                        <li key={c.id} role="option" aria-selected={isSelected}>
-                                            <button
-                                                onClick={() => { selectCompany(c.id); setCompanyOpen(false); }}
-                                                className={[
-                                                    `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                                    isSelected
-                                                        ? "text-sidebar-active-fg bg-sidebar-active-bg"
-                                                        : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                                ].join(" ")}
-                                            >
-                                                <CompanyAvatar name={c.name} />
-                                                <span className="truncate">{c.name}</span>
-                                                {isSelected && (
-                                                    <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
-                                                        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                        <path d="M2 5.5l2.5 2.5 4-5" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
+                            <div className="absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden">
+                                {/* Search */}
+                                <div className="p-2 border-b border-sidebar-border">
+                                    <input
+                                        type="text"
+                                        value={companySearch}
+                                        onChange={(e) => setCompanySearch(e.target.value)}
+                                        placeholder="Buscar empresa…"
+                                        autoFocus
+                                        className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
+                                    />
+                                </div>
+                                <ul
+                                    role="listbox"
+                                    aria-label="Empresas disponibles"
+                                    className="max-h-48 overflow-y-auto"
+                                >
+                                    {companies
+                                        .filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+                                        .map((c) => {
+                                            const isSelected = c.id === companyId;
+                                            return (
+                                                <li key={c.id} role="option" aria-selected={isSelected}>
+                                                    <button
+                                                        onClick={() => { selectCompany(c.id); setCompanyOpen(false); setCompanySearch(""); }}
+                                                        className={[
+                                                            `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                                            isSelected
+                                                                ? "text-sidebar-active-fg bg-sidebar-active-bg"
+                                                                : "text-sidebar-fg hover:bg-sidebar-bg-hover",
+                                                        ].join(" ")}
+                                                    >
+                                                        <CompanyAvatar name={c.name} />
+                                                        <span className="truncate">{c.name}</span>
+                                                        {isSelected && (
+                                                            <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
+                                                                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                                <path d="M2 5.5l2.5 2.5 4-5" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                </ul>
+                            </div>
                         )}
                     </div>
                 )}

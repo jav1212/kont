@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
-import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { employeesToCsv, downloadCsv, parseCsv } from "@/src/modules/payroll/frontend/utils/employee-csv";
@@ -14,24 +14,24 @@ import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 type RowMode = "view" | "edit" | "new";
 
 interface RowState {
-    cedula:         string;
-    nombre:         string;
-    cargo:          string;
+    cedula: string;
+    nombre: string;
+    cargo: string;
     salarioMensual: string;
-    moneda:         EmployeeMoneda;
-    estado:         EmployeeEstado;
-    fechaIngreso:   string;
+    moneda: EmployeeMoneda;
+    estado: EmployeeEstado;
+    fechaIngreso: string;
 }
 
 function employeeToRow(e: Employee): RowState {
     return {
-        cedula:         e.cedula,
-        nombre:         e.nombre,
-        cargo:          e.cargo,
+        cedula: e.cedula,
+        nombre: e.nombre,
+        cargo: e.cargo,
         salarioMensual: String(e.salarioMensual),
-        moneda:         e.moneda ?? "VES",
-        estado:         e.estado,
-        fechaIngreso:   e.fechaIngreso ?? "",
+        moneda: e.moneda ?? "VES",
+        estado: e.estado,
+        fechaIngreso: e.fechaIngreso ?? "",
     };
 }
 
@@ -40,13 +40,13 @@ function employeeToRow(e: Employee): RowState {
 function calcAntiguedad(fechaIngreso: string | null | undefined): string {
     if (!fechaIngreso) return "—";
     const start = new Date(fechaIngreso);
-    const now   = new Date();
-    let years   = now.getFullYear() - start.getFullYear();
-    let months  = now.getMonth() - start.getMonth();
+    const now = new Date();
+    let years = now.getFullYear() - start.getFullYear();
+    let months = now.getMonth() - start.getMonth();
     if (months < 0) { years--; months += 12; }
     if (years === 0 && months === 0) return "< 1 mes";
     const parts: string[] = [];
-    if (years > 0)  parts.push(`${years}a`);
+    if (years > 0) parts.push(`${years}a`);
     if (months > 0) parts.push(`${months}m`);
     return parts.join(" ");
 }
@@ -58,7 +58,7 @@ function calcAntiguedad(fechaIngreso: string | null | undefined): string {
 const ESTADOS: EmployeeEstado[] = ["activo", "inactivo", "vacacion"];
 
 const ESTADO_CLS: Record<EmployeeEstado, string> = {
-    activo:   "border badge-success",
+    activo: "border badge-success",
     inactivo: "border badge-error",
     vacacion: "border badge-warning",
 };
@@ -121,17 +121,17 @@ function EmployeeRow({
     employee, mode, draft, saving, selected,
     onSelect, onDraftChange, onEdit, onSave, onCancel, onDelete, onShowHistory,
 }: {
-    employee:      Employee;
-    mode:          RowMode;
-    draft:         RowState;
-    saving:        boolean;
-    selected:      boolean;
-    onSelect:      (checked: boolean) => void;
+    employee: Employee;
+    mode: RowMode;
+    draft: RowState;
+    saving: boolean;
+    selected: boolean;
+    onSelect: (checked: boolean) => void;
     onDraftChange: (field: keyof RowState, value: string) => void;
-    onEdit:        () => void;
-    onSave:        () => void;
-    onCancel:      () => void;
-    onDelete:      () => void;
+    onEdit: () => void;
+    onSave: () => void;
+    onCancel: () => void;
+    onDelete: () => void;
     onShowHistory: () => void;
 }) {
     const isEditing = mode === "edit" || mode === "new";
@@ -265,7 +265,7 @@ function EmployeeRow({
                         <button onClick={onShowHistory} title="Historial de salario"
                             className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1.5"/>
+                                <circle cx="6" cy="6" r="5" /><path d="M6 3v3l2 1.5" />
                             </svg>
                         </button>
                         <button onClick={onEdit} title="Editar"
@@ -292,12 +292,12 @@ export default function EmployeesPage() {
     const { employees, loading, error, upsert, remove, reload, getSalaryHistory } = useEmployee(companyId);
     const { canAddEmployee, employeesRemaining } = useCapacity();
     const atEmployeeLimit = companyId ? !canAddEmployee(companyId) : false;
-    const empRemaining    = companyId ? employeesRemaining(companyId) : null;
+    const empRemaining = companyId ? employeesRemaining(companyId) : null;
 
     // ── Row state ──────────────────────────────────────────────────────────
-    const [modes,    setModes]    = useState<Record<string, RowMode>>({});
-    const [drafts,   setDrafts]   = useState<Record<string, RowState>>({});
-    const [saving,   setSaving]   = useState<Record<string, boolean>>({});
+    const [modes, setModes] = useState<Record<string, RowMode>>({});
+    const [drafts, setDrafts] = useState<Record<string, RowState>>({});
+    const [saving, setSaving] = useState<Record<string, boolean>>({});
     const [rowError, setRowError] = useState<Record<string, string>>({});
 
     // ── New rows ───────────────────────────────────────────────────────────
@@ -310,26 +310,26 @@ export default function EmployeesPage() {
 
     // ── Bulk actions state ─────────────────────────────────────────────────
     const [bulkDeleting, setBulkDeleting] = useState(false);
-    const [bulkError,    setBulkError]    = useState<string | null>(null);
+    const [bulkError, setBulkError] = useState<string | null>(null);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
     // ── CSV ───────────────────────────────────────────────────────────────
     const [csvLoading, setCsvLoading] = useState(false);
-    const [csvError,   setCsvError]   = useState<string | null>(null);
+    const [csvError, setCsvError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ── Paste modal state ──────────────────────────────────────────────────
-    const [pasteOpen,      setPasteOpen]      = useState(false);
-    const [pasteText,      setPasteText]      = useState("");
-    const [pasteErrors,    setPasteErrors]    = useState<string[]>([]);
-    const [pasteCount,     setPasteCount]     = useState<number | null>(null);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState("");
+    const [pasteErrors, setPasteErrors] = useState<string[]>([]);
+    const [pasteCount, setPasteCount] = useState<number | null>(null);
     const [pasteImporting, setPasteImporting] = useState(false);
 
     // ── Salary history modal ───────────────────────────────────────────────
     const [historyModal, setHistoryModal] = useState<{ cedula: string; nombre: string } | null>(null);
-    const [historyData,  setHistoryData]  = useState<SalaryHistoryEntry[]>([]);
+    const [historyData, setHistoryData] = useState<SalaryHistoryEntry[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
-    const [historyError,   setHistoryError]   = useState<string | null>(null);
+    const [historyError, setHistoryError] = useState<string | null>(null);
 
     const openHistory = useCallback(async (emp: Employee) => {
         if (!companyId) return;
@@ -338,7 +338,7 @@ export default function EmployeesPage() {
         const { history, error: err } = await getSalaryHistory(companyId, emp.cedula);
         setHistoryLoading(false);
         if (err) setHistoryError(err);
-        else     setHistoryData(history);
+        else setHistoryData(history);
     }, [companyId, getSalaryHistory]);
 
     // ── Search ─────────────────────────────────────────────────────────────
@@ -356,13 +356,13 @@ export default function EmployeesPage() {
     // ── Row actions ────────────────────────────────────────────────────────
 
     const startEdit = useCallback((emp: Employee) => {
-        setModes((m)  => ({ ...m, [emp.cedula]: "edit" }));
+        setModes((m) => ({ ...m, [emp.cedula]: "edit" }));
         setDrafts((d) => ({ ...d, [emp.cedula]: employeeToRow(emp) }));
         setRowError((e) => ({ ...e, [emp.cedula]: "" }));
     }, []);
 
     const cancelEdit = useCallback((cedula: string) => {
-        setModes((m)  => { const n = { ...m }; delete n[cedula]; return n; });
+        setModes((m) => { const n = { ...m }; delete n[cedula]; return n; });
         setDrafts((d) => { const n = { ...d }; delete n[cedula]; return n; });
     }, []);
 
@@ -372,18 +372,18 @@ export default function EmployeesPage() {
 
         setSaving((s) => ({ ...s, [cedula]: true }));
         const err = await upsert([{
-            cedula:         draft.cedula,
-            nombre:         draft.nombre.trim(),
-            cargo:          draft.cargo.trim(),
+            cedula: draft.cedula,
+            nombre: draft.nombre.trim(),
+            cargo: draft.cargo.trim(),
             salarioMensual: parseFloat(draft.salarioMensual) || 0,
-            moneda:         draft.moneda ?? "VES",
-            estado:         draft.estado,
-            fechaIngreso:   draft.fechaIngreso || null,
+            moneda: draft.moneda ?? "VES",
+            estado: draft.estado,
+            fechaIngreso: draft.fechaIngreso || null,
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
 
         if (err) setRowError((e) => ({ ...e, [cedula]: err }));
-        else     cancelEdit(cedula);
+        else cancelEdit(cedula);
     }, [drafts, upsert, cancelEdit]);
 
     const deleteOne = useCallback(async (id: string) => {
@@ -417,7 +417,7 @@ export default function EmployeesPage() {
         const { draft } = row;
 
         const cedula = draft.cedula.trim();
-        if (!cedula)           return;
+        if (!cedula) return;
         if (!draft.nombre.trim()) return;
 
         // Check duplicate cédula
@@ -436,12 +436,12 @@ export default function EmployeesPage() {
         setNewSaving((s) => ({ ...s, [id]: true }));
         const err = await upsert([{
             cedula,
-            nombre:         draft.nombre.trim(),
-            cargo:          draft.cargo.trim(),
+            nombre: draft.nombre.trim(),
+            cargo: draft.cargo.trim(),
             salarioMensual: salary,
-            moneda:         draft.moneda ?? "VES",
-            estado:         draft.estado,
-            fechaIngreso:   draft.fechaIngreso || null,
+            moneda: draft.moneda ?? "VES",
+            estado: draft.estado,
+            fechaIngreso: draft.fechaIngreso || null,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
 
@@ -458,7 +458,7 @@ export default function EmployeesPage() {
         setSelected((s) => {
             const n = new Set(s);
             if (checked) n.add(cedula);
-            else         n.delete(cedula);
+            else n.delete(cedula);
             return n;
         });
     }, []);
@@ -530,24 +530,22 @@ export default function EmployeesPage() {
     // ── Render ─────────────────────────────────────────────────────────────
 
     const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.cedula));
-    const anyEditing  = Object.values(modes).some((m) => m === "edit") || newRows.length > 0;
+    const anyEditing = Object.values(modes).some((m) => m === "edit") || newRows.length > 0;
 
     return (
-        <div className="min-h-full bg-surface-2 p-8 font-mono">
+        <div className="min-h-full bg-surface-2 p-4 sm:p-8 font-mono">
             <div className="max-w-[1100px] mx-auto space-y-5">
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
-                        Nómina / Empleados
-                    </nav>
-                    <div className="flex items-end justify-between gap-4">
+
+                    <div className="flex items-end justify-between gap-4 flex-wrap">
                         <div>
                             <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
                                 Empleados
                             </h1>
                             {company && (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
+                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                     {company.name} · {empRemaining !== null
                                         ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
                                         : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
@@ -555,7 +553,7 @@ export default function EmployeesPage() {
                                 </p>
                             )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <button onClick={handleExport} disabled={employees.length === 0} className={toolbarBtn}>
                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
@@ -649,24 +647,6 @@ export default function EmployeesPage() {
                     </div>
                 )}
 
-                {/* Search */}
-                <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre, cédula o cargo…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className={[
-                            "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                            "font-mono text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
-                            "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
-                        ].join(" ")}
-                    />
-                </div>
-
                 {/* Table */}
                 {loading ? (
                     <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
@@ -680,136 +660,158 @@ export default function EmployeesPage() {
                         <p className="font-mono text-[13px] text-red-500">{error}</p>
                     </div>
                 ) : (
-                    <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-border-light bg-surface-2">
-                                    <th className="px-3 py-2.5 w-10 text-center">
-                                        <input
-                                            type="checkbox"
-                                            checked={allSelected}
-                                            onChange={(e) => toggleAll(e.target.checked)}
-                                            disabled={anyEditing || filtered.length === 0}
-                                            className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30"
-                                        />
-                                    </th>
-                                    {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {/* New rows */}
-                                {newRows.map((row) => (
-                                    <React.Fragment key={row.id}>
-                                    <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
-                                        <td className="px-3 py-2.5 w-10 text-center">
-                                            <div className="w-3.5 h-3.5 rounded border border-border-medium opacity-30 mx-auto" />
-                                        </td>
-                                        <td className="px-3 py-2.5 w-28">
-                                            <input className={cellInput} placeholder="V-12345678"
-                                                value={row.draft.cedula}
-                                                onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)} />
-                                        </td>
-                                        <td className="px-3 py-2.5">
-                                            <input className={cellInput} placeholder="Nombre completo"
-                                                value={row.draft.nombre}
-                                                onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)} />
-                                        </td>
-                                        <td className="px-3 py-2.5 w-40">
-                                            <input className={cellInput} placeholder="Cargo"
-                                                value={row.draft.cargo}
-                                                onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)} />
-                                        </td>
-                                        <td className="px-3 py-2.5 w-52">
-                                            <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
-                                                <select
-                                                    className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
-                                                    value={row.draft.moneda}
-                                                    onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
-                                                    <option value="VES">VES</option>
-                                                    <option value="USD">USD</option>
-                                                </select>
-                                                <input
-                                                    className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
-                                                    type="number" step="0.01" min="0" placeholder="0.00"
-                                                    value={row.draft.salarioMensual}
-                                                    onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2.5 w-32">
-                                            <input className={cellInput} type="date"
-                                                value={row.draft.fechaIngreso}
-                                                onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)} />
-                                        </td>
-                                        <td className="px-3 py-2.5 w-28">
-                                            <select className={cellInput} value={row.draft.estado}
-                                                onChange={(e) => updateNewDraft(row.id, "estado", e.target.value)}>
-                                                {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </td>
-                                        <td className="px-3 py-2.5 w-24 text-right pr-4">
-                                            {newSaving[row.id] ? (
-                                                <div className="flex justify-end"><Spinner /></div>
-                                            ) : (
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => saveNewRow(row.id)} title="Guardar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
-                                                        <IconSave />
-                                                    </button>
-                                                    <button onClick={() => cancelNewRow(row.id)} title="Cancelar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
-                                                        <IconCancel />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                    {newRowError[row.id] && (
-                                        <tr className="bg-red-500/[0.04]">
-                                            <td colSpan={7} className="px-4 py-1.5">
-                                                <p className="font-mono text-[12px] text-red-400">{newRowError[row.id]}</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                    </React.Fragment>
-                                ))}
+                    <div className="space-y-4">
+                        {/* Search */}
+                        <div className="relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Buscar por nombre, cédula o cargo…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className={[
+                                    "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+                                    "font-mono text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
+                                    "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
+                                ].join(" ")}
+                            />
+                        </div>
 
-                                {/* Existing rows */}
-                                {filtered.length === 0 && newRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center font-mono text-[13px] text-[var(--text-disabled)] uppercase tracking-widest">
-                                            {employees.length === 0
-                                                ? "Sin empleados. Importa un CSV o agrega uno manualmente."
-                                                : "Sin resultados para la búsqueda."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filtered.map((emp) => (
-                                        <EmployeeRow
-                                            key={emp.cedula}
-                                            employee={emp}
-                                            mode={modes[emp.cedula] ?? "view"}
-                                            draft={drafts[emp.cedula] ?? employeeToRow(emp)}
-                                            saving={saving[emp.cedula] ?? false}
-                                            selected={selected.has(emp.cedula)}
-                                            onSelect={(checked) => toggleSelect(emp.cedula, checked)}
-                                            onDraftChange={(f, v) => setDrafts((d) => ({
-                                                ...d,
-                                                [emp.cedula]: { ...d[emp.cedula], [f]: v },
-                                            }))}
-                                            onEdit={() => startEdit(emp)}
-                                            onSave={() => saveRow(emp.cedula)}
-                                            onCancel={() => cancelEdit(emp.cedula)}
-                                            onDelete={() => deleteOne(emp.cedula)}
-                                            onShowHistory={() => openHistory(emp)}
-                                        />
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                        <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-border-light bg-surface-2">
+                                            <th className="px-3 py-2.5 w-10 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={allSelected}
+                                                    onChange={(e) => toggleAll(e.target.checked)}
+                                                    disabled={anyEditing || filtered.length === 0}
+                                                    className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30"
+                                                />
+                                            </th>
+                                            {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
+                                                <th key={h} className="px-3 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {/* New rows */}
+                                        {newRows.map((row) => (
+                                            <React.Fragment key={row.id}>
+                                                <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
+                                                    <td className="px-3 py-2.5 w-10 text-center">
+                                                        <div className="w-3.5 h-3.5 rounded border border-border-medium opacity-30 mx-auto" />
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-28">
+                                                        <input className={cellInput} placeholder="V-12345678"
+                                                            value={row.draft.cedula}
+                                                            onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)} />
+                                                    </td>
+                                                    <td className="px-3 py-2.5">
+                                                        <input className={cellInput} placeholder="Nombre completo"
+                                                            value={row.draft.nombre}
+                                                            onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)} />
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-40">
+                                                        <input className={cellInput} placeholder="Cargo"
+                                                            value={row.draft.cargo}
+                                                            onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)} />
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-52">
+                                                        <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
+                                                            <select
+                                                                className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                                                                value={row.draft.moneda}
+                                                                onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
+                                                                <option value="VES">VES</option>
+                                                                <option value="USD">USD</option>
+                                                            </select>
+                                                            <input
+                                                                className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
+                                                                type="number" step="0.01" min="0" placeholder="0.00"
+                                                                value={row.draft.salarioMensual}
+                                                                onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-32">
+                                                        <input className={cellInput} type="date"
+                                                            value={row.draft.fechaIngreso}
+                                                            onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)} />
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-28">
+                                                        <select className={cellInput} value={row.draft.estado}
+                                                            onChange={(e) => updateNewDraft(row.id, "estado", e.target.value)}>
+                                                            {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2.5 w-24 text-right pr-4">
+                                                        {newSaving[row.id] ? (
+                                                            <div className="flex justify-end"><Spinner /></div>
+                                                        ) : (
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button onClick={() => saveNewRow(row.id)} title="Guardar"
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                                                                    <IconSave />
+                                                                </button>
+                                                                <button onClick={() => cancelNewRow(row.id)} title="Cancelar"
+                                                                    className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
+                                                                    <IconCancel />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                                {newRowError[row.id] && (
+                                                    <tr className="bg-red-500/[0.04]">
+                                                        <td colSpan={7} className="px-4 py-1.5">
+                                                            <p className="font-mono text-[12px] text-red-400">{newRowError[row.id]}</p>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+
+                                        {/* Existing rows */}
+                                        {filtered.length === 0 && newRows.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="px-4 py-12 text-center font-mono text-[13px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                    {employees.length === 0
+                                                        ? "Sin empleados. Importa un CSV o agrega uno manualmente."
+                                                        : "Sin resultados para la búsqueda."}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filtered.map((emp) => (
+                                                <EmployeeRow
+                                                    key={emp.cedula}
+                                                    employee={emp}
+                                                    mode={modes[emp.cedula] ?? "view"}
+                                                    draft={drafts[emp.cedula] ?? employeeToRow(emp)}
+                                                    saving={saving[emp.cedula] ?? false}
+                                                    selected={selected.has(emp.cedula)}
+                                                    onSelect={(checked) => toggleSelect(emp.cedula, checked)}
+                                                    onDraftChange={(f, v) => setDrafts((d) => ({
+                                                        ...d,
+                                                        [emp.cedula]: { ...d[emp.cedula], [f]: v },
+                                                    }))}
+                                                    onEdit={() => startEdit(emp)}
+                                                    onSave={() => saveRow(emp.cedula)}
+                                                    onCancel={() => cancelEdit(emp.cedula)}
+                                                    onDelete={() => { toggleSelect(emp.cedula, true); setConfirmDelete(true); }}
+                                                    onShowHistory={() => openHistory(emp)}
+                                                />
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
 

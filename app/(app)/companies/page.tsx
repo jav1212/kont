@@ -69,34 +69,44 @@ export default function CompaniesPage() {
     const atCompanyLimit = !canAddCompany();
 
     // ── Edit state ────────────────────────────────────────────────────────
-    const [editingId,   setEditingId]   = useState<string | null>(null);
-    const [editName,    setEditName]    = useState("");
-    const [editSaving,  setEditSaving]  = useState(false);
-    const [editError,   setEditError]   = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editSaving, setEditSaving] = useState(false);
+    const [editError, setEditError] = useState<string | null>(null);
 
     // ── New row state ──────────────────────────────────────────────────────
-    const [showNew,   setShowNew]   = useState(false);
-    const [newRif,    setNewRif]    = useState("");
-    const [newName,   setNewName]   = useState("");
+    const [showNew, setShowNew] = useState(false);
+    const [newRif, setNewRif] = useState("");
+    const [newName, setNewName] = useState("");
     const [newSaving, setNewSaving] = useState(false);
-    const [newError,  setNewError]  = useState<string | null>(null);
+    const [newError, setNewError] = useState<string | null>(null);
 
     // ── Delete confirm state ───────────────────────────────────────────────
-    const [confirmId,   setConfirmId]   = useState<string | null>(null);
-    const [deleting,    setDeleting]    = useState(false);
+    const [confirmId, setConfirmId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
 
     // ── CSV state ──────────────────────────────────────────────────────────
-    const [csvLoading,  setCsvLoading]  = useState(false);
-    const [csvError,    setCsvError]    = useState<string | null>(null);
+    const [csvLoading, setCsvLoading] = useState(false);
+    const [csvError, setCsvError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ── Paste modal state ──────────────────────────────────────────────────
-    const [pasteOpen,   setPasteOpen]   = useState(false);
-    const [pasteText,   setPasteText]   = useState("");
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState("");
     const [pasteErrors, setPasteErrors] = useState<string[]>([]);
-    const [pasteCount,  setPasteCount]  = useState<number | null>(null);
+    const [pasteCount, setPasteCount] = useState<number | null>(null);
     const [pasteImporting, setPasteImporting] = useState(false);
+
+    // ── Search ─────────────────────────────────────────────────────────────
+    const [search, setSearch] = useState("");
+
+    // ── Filtered companies ─────────────────────────────────────────────────
+    const filtered = companies.filter((c) => {
+        if (!search) return true;
+        const q = search.toLowerCase();
+        return c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q);
+    });
 
     // ── Edit actions ───────────────────────────────────────────────────────
 
@@ -124,7 +134,7 @@ export default function CompaniesPage() {
     // ── New actions ────────────────────────────────────────────────────────
 
     const saveNew = useCallback(async () => {
-        if (!newRif.trim())  { setNewError("El RIF es obligatorio"); return; }
+        if (!newRif.trim()) { setNewError("El RIF es obligatorio"); return; }
         if (!newName.trim()) { setNewError("El nombre es obligatorio"); return; }
         setNewSaving(true);
         setNewError(null);
@@ -153,9 +163,9 @@ export default function CompaniesPage() {
     // ── CSV export ─────────────────────────────────────────────────────────
 
     const handleExport = useCallback(() => {
-        if (!companies.length) return;
-        downloadCsv(companiesToCsv(companies), `empresas_${new Date().toISOString().split("T")[0]}.csv`);
-    }, [companies]);
+        if (!filtered.length) return;
+        downloadCsv(companiesToCsv(filtered), `empresas_${new Date().toISOString().split("T")[0]}.csv`);
+    }, [filtered]);
 
     // ── CSV import (file) ──────────────────────────────────────────────────
 
@@ -232,13 +242,10 @@ export default function CompaniesPage() {
 
                 {/* Header */}
                 <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
-                        Empresas
-                    </nav>
                     <div className="flex items-end justify-between gap-4 flex-wrap">
                         <div>
                             <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
-                                Mis Empresas
+                                Empresas
                             </h1>
                             <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
                                 {capacity?.companies.max !== null && capacity
@@ -249,7 +256,7 @@ export default function CompaniesPage() {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             {/* Export */}
-                            <button onClick={handleExport} disabled={companies.length === 0} className={toolbarBtn}>
+                            <button onClick={handleExport} disabled={filtered.length === 0} className={toolbarBtn}>
                                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
                                 </svg>
@@ -309,196 +316,218 @@ export default function CompaniesPage() {
                         <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
                     </div>
                 ) : (
-                    <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-border-light bg-surface-2">
-                                    {["RIF", "Nombre", "Creada", ""].map((h) => (
-                                        <th key={h} className={[
-                                            "px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap",
-                                            h === "Creada" ? "hidden sm:table-cell" : "",
-                                        ].join(" ")}>
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <div className="space-y-4">
+                        {/* Search */}
+                        <div className="relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
+                            </svg>
+                            <input
+                                type="text"
+                                placeholder="Buscar por nombre o RIF…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className={[
+                                    "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+                                    "font-mono text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
+                                    "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
+                                ].join(" ")}
+                            />
+                        </div>
 
-                                {/* New row */}
-                                {showNew && (
-                                    <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
-                                        {/* RIF */}
-                                        <td className={tdCls + " w-40"}>
-                                            <input
-                                                autoFocus
-                                                className={cellInput}
-                                                placeholder="J-12345678-9"
-                                                value={newRif}
-                                                onChange={(e) => setNewRif(e.target.value)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === "Enter") saveNew();
-                                                    if (e.key === "Escape") cancelNew();
-                                                }}
-                                            />
-                                        </td>
-                                        {/* Nombre */}
-                                        <td className={tdCls}>
-                                            <div>
-                                                <input
-                                                    className={cellInput}
-                                                    placeholder="Razón social"
-                                                    value={newName}
-                                                    onChange={(e) => setNewName(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter") saveNew();
-                                                        if (e.key === "Escape") cancelNew();
-                                                    }}
-                                                />
-                                                {newError && (
-                                                    <p className="font-mono text-[9px] text-red-500 mt-1">{newError}</p>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className={tdCls}>
-                                            <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
-                                        </td>
-                                        <td className={tdCls + " text-right pr-4"}>
-                                            {newSaving ? (
-                                                <div className="flex justify-end"><Spinner /></div>
-                                            ) : (
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={saveNew} title="Guardar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
-                                                        <IconSave />
-                                                    </button>
-                                                    <button onClick={cancelNew} title="Cancelar"
-                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
-                                                        <IconCancel />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )}
+                        <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-border-light bg-surface-2">
+                                            {["RIF", "Nombre", "Creada", ""].map((h) => (
+                                                <th key={h} className={[
+                                                    "px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap",
+                                                    h === "Creada" ? "hidden sm:table-cell" : "",
+                                                ].join(" ")}>
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
 
-                                {/* Existing rows */}
-                                {companies.length === 0 && !showNew ? (
-                                    <tr>
-                                        <td colSpan={4} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
-                                            Sin empresas. Crea una para comenzar.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    companies.map((company) => {
-                                        const isEditing = editingId === company.id;
-                                        const isConfirm = confirmId === company.id;
-
-                                        return (
-                                            <tr key={company.id} className="transition-colors duration-100 group hover:bg-foreground/[0.02]">
-
+                                        {/* New row */}
+                                        {showNew && (
+                                            <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
                                                 {/* RIF */}
                                                 <td className={tdCls + " w-40"}>
-                                                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">
-                                                        {company.id}
-                                                    </span>
+                                                    <input
+                                                        autoFocus
+                                                        className={cellInput}
+                                                        placeholder="J-12345678-9"
+                                                        value={newRif}
+                                                        onChange={(e) => setNewRif(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") saveNew();
+                                                            if (e.key === "Escape") cancelNew();
+                                                        }}
+                                                    />
                                                 </td>
-
                                                 {/* Nombre */}
                                                 <td className={tdCls}>
-                                                    {isEditing ? (
-                                                        <div>
-                                                            <input
-                                                                autoFocus
-                                                                className={cellInput}
-                                                                value={editName}
-                                                                onChange={(e) => setEditName(e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === "Enter") saveEdit();
-                                                                    if (e.key === "Escape") cancelEdit();
-                                                                }}
-                                                            />
-                                                            {editError && (
-                                                                <p className="font-mono text-[9px] text-red-500 mt-1">{editError}</p>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 rounded-md bg-primary-500/10 flex items-center justify-center shrink-0">
-                                                                <span className="font-mono text-[9px] font-bold text-primary-500 uppercase">
-                                                                    {company.name[0]}
-                                                                </span>
-                                                            </div>
-                                                            <span className="font-mono text-[12px] font-medium text-foreground">
-                                                                {company.name}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                    <div>
+                                                        <input
+                                                            className={cellInput}
+                                                            placeholder="Razón social"
+                                                            value={newName}
+                                                            onChange={(e) => setNewName(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === "Enter") saveNew();
+                                                                if (e.key === "Escape") cancelNew();
+                                                            }}
+                                                        />
+                                                        {newError && (
+                                                            <p className="font-mono text-[9px] text-red-500 mt-1">{newError}</p>
+                                                        )}
+                                                    </div>
                                                 </td>
-
-                                                {/* Creada */}
-                                                <td className={tdCls + " hidden sm:table-cell"}>
-                                                    <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                                                        {formatDate(company.createdAt)}
-                                                    </span>
+                                                <td className={tdCls}>
+                                                    <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
                                                 </td>
-
-                                                {/* Actions */}
-                                                <td className={tdCls + " w-36 text-right pr-4"}>
-                                                    {isConfirm ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <span className="font-mono text-[9px] text-red-500">¿Eliminar?</span>
-                                                            <button
-                                                                onClick={() => handleDelete(company.id)}
-                                                                disabled={deleting}
-                                                                className="h-6 px-2 rounded-md bg-red-500 text-white font-mono text-[9px] uppercase hover:bg-red-600 disabled:opacity-50 transition-colors"
-                                                            >
-                                                                {deleting ? "…" : "Sí"}
-                                                            </button>
-                                                            <button
-                                                                onClick={() => setConfirmId(null)}
-                                                                className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                                                            >
-                                                                No
-                                                            </button>
-                                                        </div>
-                                                    ) : editSaving && isEditing ? (
+                                                <td className={tdCls + " text-right pr-4"}>
+                                                    {newSaving ? (
                                                         <div className="flex justify-end"><Spinner /></div>
-                                                    ) : isEditing ? (
+                                                    ) : (
                                                         <div className="flex items-center justify-end gap-1">
-                                                            <button onClick={saveEdit} title="Guardar"
+                                                            <button onClick={saveNew} title="Guardar"
                                                                 className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
                                                                 <IconSave />
                                                             </button>
-                                                            <button onClick={cancelEdit} title="Cancelar"
+                                                            <button onClick={cancelNew} title="Cancelar"
                                                                 className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
                                                                 <IconCancel />
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEdit(company)} title="Editar"
-                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
-                                                                <IconEdit />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => { setConfirmId(company.id); setDeleteError(null); }}
-                                                                title="Eliminar"
-                                                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
-                                                            >
-                                                                <IconTrash />
                                                             </button>
                                                         </div>
                                                     )}
                                                 </td>
                                             </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                        )}
+
+                                        {/* Existing rows */}
+                                        {filtered.length === 0 && !showNew ? (
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                    {companies.length === 0
+                                                        ? "Sin empresas. Crea una para comenzar."
+                                                        : "Sin resultados para la búsqueda."}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filtered.map((company) => {
+                                                const isEditing = editingId === company.id;
+                                                const isConfirm = confirmId === company.id;
+
+                                                return (
+                                                    <tr key={company.id} className="transition-colors duration-100 group hover:bg-foreground/[0.02]">
+
+                                                        {/* RIF */}
+                                                        <td className={tdCls + " w-40"}>
+                                                            <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-wider">
+                                                                {company.id}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Nombre */}
+                                                        <td className={tdCls}>
+                                                            {isEditing ? (
+                                                                <div>
+                                                                    <input
+                                                                        autoFocus
+                                                                        className={cellInput}
+                                                                        value={editName}
+                                                                        onChange={(e) => setEditName(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") saveEdit();
+                                                                            if (e.key === "Escape") cancelEdit();
+                                                                        }}
+                                                                    />
+                                                                    {editError && (
+                                                                        <p className="font-mono text-[9px] text-red-500 mt-1">{editError}</p>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded-md bg-primary-500/10 flex items-center justify-center shrink-0">
+                                                                        <span className="font-mono text-[9px] font-bold text-primary-500 uppercase">
+                                                                            {company.name[0]}
+                                                                        </span>
+                                                                    </div>
+                                                                    <span className="font-mono text-[12px] font-medium text-foreground">
+                                                                        {company.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Creada */}
+                                                        <td className={tdCls + " hidden sm:table-cell"}>
+                                                            <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                                                                {formatDate(company.createdAt)}
+                                                            </span>
+                                                        </td>
+
+                                                        {/* Actions */}
+                                                        <td className={tdCls + " w-36 text-right pr-4"}>
+                                                            {isConfirm ? (
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <span className="font-mono text-[9px] text-red-500">¿Eliminar?</span>
+                                                                    <button
+                                                                        onClick={() => handleDelete(company.id)}
+                                                                        disabled={deleting}
+                                                                        className="h-6 px-2 rounded-md bg-red-500 text-white font-mono text-[9px] uppercase hover:bg-red-600 disabled:opacity-50 transition-colors"
+                                                                    >
+                                                                        {deleting ? "…" : "Sí"}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setConfirmId(null)}
+                                                                        className="h-6 px-2 rounded-md border border-border-light font-mono text-[9px] uppercase text-[var(--text-tertiary)] hover:text-foreground transition-colors"
+                                                                    >
+                                                                        No
+                                                                    </button>
+                                                                </div>
+                                                            ) : editSaving && isEditing ? (
+                                                                <div className="flex justify-end"><Spinner /></div>
+                                                            ) : isEditing ? (
+                                                                <div className="flex items-center justify-end gap-1">
+                                                                    <button onClick={saveEdit} title="Guardar"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                                                                        <IconSave />
+                                                                    </button>
+                                                                    <button onClick={cancelEdit} title="Cancelar"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
+                                                                        <IconCancel />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                                                    <button onClick={() => startEdit(company)} title="Editar"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                                                        <IconEdit />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => { setConfirmId(company.id); setDeleteError(null); }}
+                                                                        title="Eliminar"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
+                                                                    >
+                                                                        <IconTrash />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
 

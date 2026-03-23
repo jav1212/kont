@@ -19,7 +19,7 @@ export interface CompanyCsvParseResult {
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export function companiesToCsv(companies: { id: string; name: string }[]): string {
-    const header = HEADERS.map(csvCell).join(",");
+    const header = HEADERS.join(",");
     const rows = companies.map((c) => [csvCell(c.id), csvCell(c.name)].join(","));
     return [header, ...rows].join("\r\n");
 }

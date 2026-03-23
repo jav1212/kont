@@ -19,8 +19,8 @@ export const DELETE = withTenant(async (req, { userId, actingAs }) => {
 
     const server = new ServerSupabaseSource();
 
-    // Fetch the membership to check its role
-    const { data: membership, error: fetchErr } = await server.instance
+    // Try accepted membership first
+    const { data: membership } = await server.instance
         .from("tenant_memberships")
         .select("id, role, member_id")
         .eq("id", memberId)
@@ -28,27 +28,53 @@ export const DELETE = withTenant(async (req, { userId, actingAs }) => {
         .is("revoked_at", null)
         .single();
 
-    if (fetchErr || !membership) {
+    if (membership) {
+        // Admin no puede revocar owners
+        if (callerRole === "admin" && membership.role === "owner") {
+            return Response.json({ error: "No puedes remover al owner" }, { status: 403 });
+        }
+
+        // No se puede revocar al owner del tenant
+        if (membership.role === "owner" && membership.member_id === tenantOwnerId) {
+            return Response.json({ error: "No se puede remover al owner del tenant" }, { status: 403 });
+        }
+
+        const { error } = await server.instance
+            .from("tenant_memberships")
+            .update({ revoked_at: new Date().toISOString() })
+            .eq("id", memberId);
+
+        if (error) {
+            return Response.json({ error: error.message }, { status: 500 });
+        }
+
+        return Response.json({ data: { success: true } });
+    }
+
+    // Try pending invitation
+    const { data: invitation } = await server.instance
+        .from("tenant_invitations")
+        .select("id, role")
+        .eq("id", memberId)
+        .eq("tenant_id", tenantOwnerId)
+        .is("accepted_at", null)
+        .single();
+
+    if (!invitation) {
         return Response.json({ error: "Membresía no encontrada" }, { status: 404 });
     }
 
-    // Admin no puede revocar owners
-    if (callerRole === "admin" && membership.role === "owner") {
+    if (callerRole === "admin" && invitation.role === "owner") {
         return Response.json({ error: "No puedes remover al owner" }, { status: 403 });
     }
 
-    // No se puede revocar al owner del tenant
-    if (membership.role === "owner" && membership.member_id === tenantOwnerId) {
-        return Response.json({ error: "No se puede remover al owner del tenant" }, { status: 403 });
-    }
-
-    const { error } = await server.instance
-        .from("tenant_memberships")
-        .update({ revoked_at: new Date().toISOString() })
+    const { error: delErr } = await server.instance
+        .from("tenant_invitations")
+        .delete()
         .eq("id", memberId);
 
-    if (error) {
-        return Response.json({ error: error.message }, { status: 500 });
+    if (delErr) {
+        return Response.json({ error: delErr.message }, { status: 500 });
     }
 
     return Response.json({ data: { success: true } });

@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 
 /**
  * Returns true when the viewport is ≥ 1280px (xl breakpoint = desktop).
- * Returns null during SSR / before hydration to avoid flash of wrong content.
+ * Defaults to true on SSR/hydration so layouts don't flash an empty state.
  */
-export function useIsDesktop(): boolean | null {
-    const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+export function useIsDesktop(): boolean {
+    const [isDesktop, setIsDesktop] = useState<boolean>(true);
 
     useEffect(() => {
         const mq = window.matchMedia("(min-width: 1280px)");
