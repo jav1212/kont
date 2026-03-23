@@ -60,23 +60,12 @@ export default function AdminSignInPage() {
 
                 <div className="mb-10">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-8 h-8 rounded-[6px] bg-red-600 flex items-center justify-center">
-                            <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-                                <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                                <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                                <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                                <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                            </svg>
+                    <div className="flex flex-col gap-1 mb-8">
+                        <div className="flex items-end leading-none gap-0" aria-label="Konta">
+                            <span className="font-sans font-black text-[20px] leading-none tracking-[-0.03em] text-foreground">Konta</span>
+                            <span className="font-black text-[20px] leading-none" style={{ color: '#FF4A18' }}>.</span>
                         </div>
-                        <div>
-                            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground block">
-                                Kont
-                            </span>
-                            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-red-500/70 block">
-                                Administración
-                            </span>
-                        </div>
+                        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-red-500/70">Administración</span>
                     </div>
 
                     <h1 className="font-mono text-[26px] font-black uppercase tracking-tighter text-foreground leading-none">

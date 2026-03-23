@@ -4,13 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 
-const PERKS = [
-    { code: "01", text: "Cálculo LOTTT automático" },
-    { code: "02", text: "Tasa BCV en tiempo real"  },
-    { code: "03", text: "Auditoría línea a línea"  },
-    { code: "04", text: "Nómina por lotes"         },
-] as const;
-
 const INPUT_CLS = [
     "w-full h-10 px-3 rounded-lg",
     "bg-foreground/[0.04] border border-foreground/10",
@@ -73,9 +66,8 @@ export default function SignUpPage() {
 
     return (
         <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-8 py-16">
-            <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+            <div className="w-full max-w-sm">
 
-                {/* ── LEFT: Form ───────────────────────────────────────── */}
                 <div>
                     <div className="mb-10">
                         <div className="flex items-center gap-3 mb-6">
@@ -88,7 +80,7 @@ export default function SignUpPage() {
                             Crear<br />cuenta
                         </h1>
                         <p className="font-mono text-[14px] text-text-tertiary mt-3 leading-relaxed">
-                            Acceso completo al sistema de gestión de nómina.
+                            Acceso completo al sistema de gestión contable.
                         </p>
                     </div>
 
@@ -268,43 +260,6 @@ export default function SignUpPage() {
                             Inicia sesión
                         </Link>
                     </p>
-                </div>
-
-                {/* ── RIGHT: Feature list ───────────────────────────────── */}
-                <div className="hidden md:flex flex-col justify-center">
-                    <p className="font-mono text-[12px] uppercase tracking-[0.24em] text-text-disabled mb-6">
-                        Incluido en tu cuenta
-                    </p>
-                    <div className="border border-border-light rounded-xl overflow-hidden">
-                        {PERKS.map((p, i) => (
-                            <div
-                                key={p.code}
-                                className={[
-                                    "flex items-center gap-4 px-5 py-4",
-                                    "hover:bg-foreground/[0.02] transition-colors duration-150",
-                                    i < PERKS.length - 1 ? "border-b border-border-light" : "",
-                                ].join(" ")}
-                            >
-                                <span className="font-mono text-[12px] text-text-link tracking-widest w-4 flex-shrink-0">
-                                    {p.code}
-                                </span>
-                                <div className="w-4 h-4 rounded-full border border-primary-500/30 bg-primary-500/10 flex items-center justify-center flex-shrink-0">
-                                    <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
-                                        stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                        className="text-primary-400">
-                                        <path d="M1 3.5l1.8 1.8L6 1.5" />
-                                    </svg>
-                                </div>
-                                <span className="font-mono text-[13px] text-text-tertiary">{p.text}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-6 px-5 py-4 border border-primary-500/10 rounded-xl bg-primary-500/[0.03]">
-                        <p className="font-mono text-[13px] text-text-tertiary leading-relaxed">
-                            Sin límite de empleados.<br />
-                            Sin costo por período de nómina.
-                        </p>
-                    </div>
                 </div>
 
             </div>

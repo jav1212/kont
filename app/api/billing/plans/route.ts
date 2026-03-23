@@ -21,7 +21,7 @@ export async function GET() {
 
     const { data, error } = await supabase
         .from('plans')
-        .select('*')
+        .select('*, products(slug)')
         .eq('is_active', true)
         .order('price_monthly_usd', { ascending: true });
 
@@ -33,6 +33,7 @@ export async function GET() {
         data: (data ?? []).map((p) => ({
             id:                     p.id,
             name:                   p.name,
+            moduleSlug:             (p as Record<string, unknown> & { products?: { slug: string } | null }).products?.slug ?? null,
             maxCompanies:           p.max_companies,
             maxEmployeesPerCompany: p.max_employees_per_company,
             priceMonthlyUsd:        p.price_monthly_usd,

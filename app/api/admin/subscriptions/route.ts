@@ -103,11 +103,19 @@ export async function POST(req: Request) {
 
         const { data, error } = await supabase
             .from('tenant_subscriptions')
-            .insert(insert)
+            .upsert(insert, { onConflict: 'tenant_id,product_id' })
             .select()
             .single();
 
         if (error) return Response.json({ error: error.message }, { status: 500 });
+
+        // Sync tenant status when creating an active subscription
+        if (status === 'active') {
+            await supabase
+                .from('tenants')
+                .update({ status: 'active', updated_at: new Date().toISOString() })
+                .eq('id', tenantId);
+        }
 
         return Response.json({ data }, { status: 201 });
     } catch {

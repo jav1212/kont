@@ -1,11 +1,13 @@
 'use client';
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ModuleCarousel } from "@/src/shared/frontend/components/module-carousel";
 
 interface Plan {
     id:                     string;
     name:                   string;
+    moduleSlug:             string | null;
     maxCompanies:           number | null;
     maxEmployeesPerCompany: number | null;
     priceMonthlyUsd:        number;
@@ -15,47 +17,76 @@ interface Plan {
 
 type Cycle = "monthly" | "quarterly" | "annual";
 
-const FEATURES = [
-    {
-        code: "01",
-        label: "Cálculo LOTTT",
-        desc: "Tasas SSO, RPE y FAOV aplicadas sobre base semanal o mensual según la ley.",
-    },
-    {
-        code: "02",
-        label: "Indexación BCV",
-        desc: "Bonos y montos en USD convertidos automáticamente con la tasa del día.",
-    },
-    {
-        code: "03",
-        label: "Nómina por lotes",
-        desc: "Fórmulas globales con sobrescritura por empleado. Extras individuales.",
-    },
-    {
-        code: "04",
-        label: "Auditoría en línea",
-        desc: "Cada cálculo descompuesto en su fórmula. Sin cajas negras.",
-    },
-] as const;
+// Modules that can have billing plans — order determines tab order.
+const BILLABLE_MODULES: { slug: string; label: string }[] = [
+    { slug: "payroll",   label: "Nómina"      },
+    { slug: "inventory", label: "Inventario"  },
+    { slug: "documents", label: "Documentos"  },
+];
 
-const STATS = [
-    { value: "LOTTT", label: "Marco legal" },
-    { value: "BCV", label: "Tasa de cambio" },
-    { value: "≥0", label: "Empleados" },
-    { value: "0.00 %", label: "Margen de error" },
-] as const;
+// Features to display when a module has no paid plans (i.e. it's free).
+const FREE_MODULE_FEATURES: Record<string, string[]> = {
+    documents: [
+        "Carga y organización de archivos",
+        "Carpetas por empresa",
+        "Descarga desde cualquier dispositivo",
+        "Sin límite de documentos",
+    ],
+};
+
+const FREE_MODULE_FEATURES_FALLBACK = ["Sin costo adicional"];
+
+const PANEL_ID = "pricing-panel";
+
 
 export default function LandingPage() {
 
-    const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(null);
-    const [plans,  setPlans]  = useState<Plan[]>([]);
-    const [cycle,  setCycle]  = useState<Cycle>("monthly");
+    const [systemMessage,   setSystemMessage]   = useState<{ type: 'error' | 'info', text: string } | null>(null);
+    const [plans,           setPlans]           = useState<Plan[]>([]);
+    const [plansLoading,    setPlansLoading]    = useState<boolean>(true);
+    const [plansError,      setPlansError]      = useState<boolean>(false);
+    const [cycle,           setCycle]           = useState<Cycle>("monthly");
+    const [activeModule,    setActiveModule]    = useState<string>("payroll");
+    const [tabTransitioning, setTabTransitioning] = useState<boolean>(false);
 
     useEffect(() => {
         fetch("/api/billing/plans")
             .then((r) => r.json())
-            .then((r) => { if (r.data) setPlans(r.data); });
+            .then((r) => {
+                if (r.data) setPlans(r.data);
+                else setPlansError(true);
+            })
+            .catch(() => setPlansError(true))
+            .finally(() => setPlansLoading(false));
     }, []);
+
+    const visiblePlans = useMemo(() => {
+        return plans.filter((p) => p.moduleSlug === activeModule || p.moduleSlug === null);
+    }, [plans, activeModule]);
+
+    const activeModuleIsFree = !plansLoading && !plansError && visiblePlans.length === 0;
+
+    // Compute average savings across all plans for the cycle toggle hints.
+    const avgSavings = useMemo(() => {
+        const withQuarterly = plans.filter((p) => p.priceQuarterlyUsd);
+        const withAnnual    = plans.filter((p) => p.priceAnnualUsd);
+        const quarterly = withQuarterly.length
+            ? Math.round(withQuarterly.reduce((acc, p) => acc + (1 - p.priceQuarterlyUsd! / (p.priceMonthlyUsd * 3)), 0) / withQuarterly.length * 100)
+            : null;
+        const annual = withAnnual.length
+            ? Math.round(withAnnual.reduce((acc, p) => acc + (1 - p.priceAnnualUsd! / (p.priceMonthlyUsd * 12)), 0) / withAnnual.length * 100)
+            : null;
+        return { quarterly, annual };
+    }, [plans]);
+
+    function changeTab(slug: string) {
+        if (slug === activeModule) return;
+        setTabTransitioning(true);
+        setTimeout(() => {
+            setActiveModule(slug);
+            setTabTransitioning(false);
+        }, 80);
+    }
 
     function planPrice(p: Plan): number {
         if (cycle === "quarterly" && p.priceQuarterlyUsd) return p.priceQuarterlyUsd;
@@ -127,7 +158,7 @@ export default function LandingPage() {
                     className="font-mono font-black uppercase leading-[0.92] tracking-tighter text-foreground"
                     style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
                 >
-                    Nómina<br />
+                    Gestión<br />
                     <span className="text-[var(--text-disabled)]">precisa.</span><br />
                     <span
                         className="text-transparent"
@@ -138,8 +169,8 @@ export default function LandingPage() {
                 </h1>
 
                 <p className="mt-10 max-w-lg font-mono text-[15px] leading-relaxed text-text-tertiary tracking-wide">
-                    Cálculo de nómina venezolana con base legal LOTTT, indexación BCV
-                    en tiempo real y auditoría línea a línea. Sin errores, sin hojas de cálculo sueltas.
+                    Gestión contable, inventario y documentos en una sola plataforma. Indexación BCV
+                    en tiempo real. Sin errores, sin hojas de cálculo sueltas.
                 </p>
 
                 <div className="flex items-center gap-4 mt-12">
@@ -172,46 +203,8 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ── STAT STRIP ────────────────────────────────────────────── */}
-            <section className="border-y border-border-light px-8 py-6">
-                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {STATS.map((s) => (
-                        <div key={s.label} className="flex flex-col gap-1">
-                            <span className="font-mono text-[22px] font-black text-foreground tabular-nums tracking-tight">
-                                {s.value}
-                            </span>
-                            <span className="font-mono text-[12px] uppercase tracking-[0.22em] text-text-tertiary">
-                                {s.label}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ── FEATURE GRID ──────────────────────────────────────────── */}
-            <section className="px-8 py-20 max-w-5xl mx-auto w-full">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-border-light border border-border-light rounded-xl overflow-hidden">
-                    {FEATURES.map((f) => (
-                        <div
-                            key={f.code}
-                            className="bg-surface-1 p-8 hover:bg-surface-2 transition-colors duration-200 group"
-                        >
-                            <div className="flex items-start justify-between mb-5">
-                                <span className="font-mono text-[12px] uppercase tracking-[0.22em] text-text-link">
-                                    {f.code}
-                                </span>
-                                <div className="w-px h-4 bg-foreground/10 group-hover:bg-primary-500/30 transition-colors" />
-                            </div>
-                            <h3 className="font-mono text-[15px] font-bold uppercase tracking-[0.1em] text-foreground mb-3">
-                                {f.label}
-                            </h3>
-                            <p className="font-mono text-[13px] leading-relaxed text-text-tertiary">
-                                {f.desc}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            </section>
+            {/* ── MODULE CAROUSEL ───────────────────────────────────────── */}
+            <ModuleCarousel />
 
             {/* ── PRICING ───────────────────────────────────────────────── */}
             <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
@@ -223,7 +216,7 @@ export default function LandingPage() {
                         Planes
                     </span>
                 </div>
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
                     <h2 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
                         Sin sorpresas.<br />
                         <span className="text-[var(--text-disabled)]">Precio fijo.</span>
@@ -232,157 +225,289 @@ export default function LandingPage() {
                     {/* Cycle toggle */}
                     <div className="flex items-center gap-1 p-1 rounded-lg border border-border-light bg-foreground/[0.03]">
                         {([
-                            { key: "monthly",   label: "Mensual"     },
-                            { key: "quarterly", label: "Trimestral"  },
-                            { key: "annual",    label: "Anual"       },
-                        ] as { key: Cycle; label: string }[]).map(({ key, label }) => (
+                            { key: "monthly",   label: "Mensual",    savings: null                   },
+                            { key: "quarterly", label: "Trimestral", savings: avgSavings.quarterly   },
+                            { key: "annual",    label: "Anual",      savings: avgSavings.annual      },
+                        ] as { key: Cycle; label: string; savings: number | null }[]).map(({ key, label, savings }) => (
                             <button
                                 key={key}
                                 onClick={() => setCycle(key)}
                                 className={[
-                                    "px-3 py-1.5 rounded-md font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                    "relative px-3 py-1.5 rounded-md font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
                                     cycle === key
                                         ? "bg-primary-500 text-white"
                                         : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]",
                                 ].join(" ")}
                             >
                                 {label}
+                                {savings !== null && savings > 0 && cycle !== key && (
+                                    <span className="ml-1.5 font-mono text-[10px] text-emerald-500 normal-case tracking-normal">
+                                        -{savings}%
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Cards */}
-                {plans.length === 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        {[...Array(4)].map((_, i) => (
-                            <div key={i} className="h-64 rounded-xl border border-border-light bg-surface-2 animate-pulse" />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        {plans.map((plan, idx) => {
-                            const highlighted = idx === 1;
-                            const price       = planPrice(plan);
-                            const savings     = planSavings(plan);
+                {/* Module selector tabs */}
+                <div
+                    role="tablist"
+                    aria-label="Módulo de precios"
+                    className="flex items-center gap-1 p-1 mb-8 rounded-xl border border-border-light bg-foreground/[0.02] w-fit"
+                >
+                    {BILLABLE_MODULES.map((tab) => (
+                        <button
+                            key={tab.slug}
+                            role="tab"
+                            id={`tab-${tab.slug}`}
+                            aria-selected={activeModule === tab.slug}
+                            aria-controls={PANEL_ID}
+                            onClick={() => changeTab(tab.slug)}
+                            className={[
+                                "px-4 py-2 rounded-lg font-mono text-[12px] uppercase tracking-[0.18em] transition-all duration-150",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
+                                activeModule === tab.slug
+                                    ? "bg-surface-2 text-foreground border border-border-light shadow-sm"
+                                    : "text-foreground/40 hover:text-foreground/70 border border-transparent",
+                            ].join(" ")}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
 
-                            return (
-                                <div
-                                    key={plan.id}
+                {/* Cards */}
+                <div
+                    id={PANEL_ID}
+                    role="tabpanel"
+                    aria-labelledby={`tab-${activeModule}`}
+                    className="transition-opacity duration-[80ms]"
+                    style={{ opacity: tabTransitioning ? 0 : 1 }}
+                >
+                    {plansLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-64 rounded-xl border border-border-light bg-surface-2 animate-pulse" />
+                            ))}
+                        </div>
+                    ) : plansError ? (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <p className="font-mono text-[13px] text-[var(--text-tertiary)] uppercase tracking-[0.18em]">
+                                No pudimos cargar los planes
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setPlansError(false);
+                                    setPlansLoading(true);
+                                    fetch("/api/billing/plans")
+                                        .then((r) => r.json())
+                                        .then((r) => {
+                                            if (r.data) setPlans(r.data);
+                                            else setPlansError(true);
+                                        })
+                                        .catch(() => setPlansError(true))
+                                        .finally(() => setPlansLoading(false));
+                                }}
+                                className={[
+                                    "font-mono text-[12px] uppercase tracking-[0.18em] px-4 py-2 rounded-lg",
+                                    "border border-border-light hover:border-border-medium text-[var(--text-secondary)]",
+                                    "transition-colors duration-150",
+                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
+                                ].join(" ")}
+                            >
+                                Reintentar
+                            </button>
+                        </div>
+                    ) : activeModuleIsFree ? (
+                        <div className="flex justify-center">
+                            <div className="relative flex flex-col rounded-xl border border-border-light bg-surface-1 p-6 w-full max-w-xs">
+                                {/* Plan name */}
+                                <p className="font-mono text-[12px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-4">
+                                    Gratuito
+                                </p>
+
+                                {/* Price */}
+                                <div className="mb-1">
+                                    <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
+                                        $0
+                                    </span>
+                                    <span className="font-mono text-[12px] text-[var(--text-tertiary)] ml-1">
+                                        USD
+                                    </span>
+                                </div>
+                                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-4">
+                                    Sin costo adicional
+                                </p>
+
+                                {/* Divider */}
+                                <div className="h-px bg-border-light mb-5" />
+
+                                {/* Features */}
+                                <ul className="space-y-2.5 flex-1">
+                                    {(FREE_MODULE_FEATURES[activeModule] ?? FREE_MODULE_FEATURES_FALLBACK).map((feature) => (
+                                        <li key={feature} className="flex items-start gap-2">
+                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <path d="M2 5.5l2 2 4-4" />
+                                            </svg>
+                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
+                                                {feature}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                {/* CTA */}
+                                <Link
+                                    href="/sign-up"
+                                    aria-label="Comenzar gratis con Documentos"
                                     className={[
-                                        "relative flex flex-col rounded-xl border p-6 transition-colors duration-200",
-                                        highlighted
-                                            ? "border-primary-500/40 bg-primary-500/[0.06]"
-                                            : "border-border-light bg-surface-1 hover:bg-surface-2",
+                                        "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
+                                        "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                        "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
                                     ].join(" ")}
                                 >
-                                    {highlighted && (
-                                        <div className="absolute -top-px left-6 right-6 h-px bg-primary-500/60" />
-                                    )}
-                                    {highlighted && (
-                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary-500 font-mono text-[11px] uppercase tracking-[0.2em] text-white whitespace-nowrap">
-                                            Popular
-                                        </span>
-                                    )}
+                                    Comenzar gratis
+                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M2 5h6M5 2l3 3-3 3" />
+                                    </svg>
+                                </Link>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            {visiblePlans.map((plan, idx) => {
+                                const highlighted = idx === Math.floor(visiblePlans.length / 2);
+                                const price       = planPrice(plan);
+                                const savings     = planSavings(plan);
 
-                                    {/* Plan name */}
-                                    <p className={[
-                                        "font-mono text-[12px] uppercase tracking-[0.22em] mb-4",
-                                        highlighted ? "text-primary-400" : "text-[var(--text-tertiary)]",
-                                    ].join(" ")}>
-                                        {plan.name}
-                                    </p>
-
-                                    {/* Price */}
-                                    <div className="mb-1">
-                                        <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
-                                            ${price}
-                                        </span>
-                                        <span className="font-mono text-[12px] text-[var(--text-tertiary)] ml-1">
-                                            USD
-                                        </span>
-                                    </div>
-                                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
-                                        {cycle === "monthly"   && "por mes"}
-                                        {cycle === "quarterly" && "por trimestre"}
-                                        {cycle === "annual"    && "por año"}
-                                    </p>
-                                    {savings && (
-                                        <span className="inline-flex items-center font-mono text-[11px] text-emerald-500 mb-4">
-                                            {savings} vs mensual
-                                        </span>
-                                    )}
-                                    {!savings && <div className="mb-4" />}
-
-                                    {/* Divider */}
-                                    <div className="h-px bg-border-light mb-5" />
-
-                                    {/* Features */}
-                                    <ul className="space-y-2.5 flex-1">
-                                        <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M2 5.5l2 2 4-4" />
-                                            </svg>
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                {plan.maxCompanies === null
-                                                    ? "Empresas ilimitadas"
-                                                    : `${plan.maxCompanies} empresa${plan.maxCompanies !== 1 ? "s" : ""}`}
-                                            </span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M2 5.5l2 2 4-4" />
-                                            </svg>
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                {plan.maxEmployeesPerCompany === null
-                                                    ? "Empleados ilimitados"
-                                                    : `Hasta ${plan.maxEmployeesPerCompany} empleados / empresa`}
-                                            </span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M2 5.5l2 2 4-4" />
-                                            </svg>
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                Cálculo LOTTT + BCV
-                                            </span>
-                                        </li>
-                                        <li className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M2 5.5l2 2 4-4" />
-                                            </svg>
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                Recibos de nómina
-                                            </span>
-                                        </li>
-                                    </ul>
-
-                                    {/* CTA */}
-                                    <Link
-                                        href="/sign-up"
+                                return (
+                                    <div
+                                        key={plan.id}
                                         className={[
-                                            "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
-                                            "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                            "relative flex flex-col rounded-xl border p-6 transition-colors duration-200",
                                             highlighted
-                                                ? "bg-primary-500 hover:bg-primary-400 text-white"
-                                                : "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                                                ? "border-primary-500/40 bg-primary-500/[0.06]"
+                                                : "border-border-light bg-surface-1 hover:bg-surface-2",
                                         ].join(" ")}
                                     >
-                                        Comenzar
-                                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M2 5h6M5 2l3 3-3 3" />
-                                        </svg>
-                                    </Link>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                        {highlighted && (
+                                            <div className="absolute -top-px left-6 right-6 h-px bg-primary-500/60" />
+                                        )}
+                                        {highlighted && (
+                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary-500 font-mono text-[11px] uppercase tracking-[0.2em] text-white whitespace-nowrap">
+                                                Popular
+                                            </span>
+                                        )}
+
+                                        {/* Plan name */}
+                                        <p className={[
+                                            "font-mono text-[12px] uppercase tracking-[0.22em] mb-4",
+                                            highlighted ? "text-primary-400" : "text-[var(--text-tertiary)]",
+                                        ].join(" ")}>
+                                            {plan.name}
+                                        </p>
+
+                                        {/* Price */}
+                                        <div className="mb-1">
+                                            <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
+                                                ${price}
+                                            </span>
+                                            <span className="font-mono text-[12px] text-[var(--text-tertiary)] ml-1">
+                                                USD
+                                            </span>
+                                        </div>
+                                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
+                                            {cycle === "monthly"   && "por mes"}
+                                            {cycle === "quarterly" && "por trimestre"}
+                                            {cycle === "annual"    && "por año"}
+                                        </p>
+                                        {savings && (
+                                            <span className="inline-flex items-center font-mono text-[11px] text-emerald-500 mb-4">
+                                                Ahorra {savings} vs mensual
+                                            </span>
+                                        )}
+                                        {!savings && <div className="mb-4" />}
+
+                                        {/* Divider */}
+                                        <div className="h-px bg-border-light mb-5" />
+
+                                        {/* Features */}
+                                        <ul className="space-y-2.5 flex-1">
+                                            <li className="flex items-start gap-2">
+                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <path d="M2 5.5l2 2 4-4" />
+                                                </svg>
+                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
+                                                    {plan.maxCompanies === null
+                                                        ? "Empresas ilimitadas"
+                                                        : `${plan.maxCompanies} empresa${plan.maxCompanies !== 1 ? "s" : ""}`}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <path d="M2 5.5l2 2 4-4" />
+                                                </svg>
+                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
+                                                    {plan.maxEmployeesPerCompany === null
+                                                        ? "Empleados ilimitados"
+                                                        : `Hasta ${plan.maxEmployeesPerCompany} empleados / empresa`}
+                                                </span>
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <path d="M2 5.5l2 2 4-4" />
+                                                </svg>
+                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
+                                                    Recibos y reportes
+                                                </span>
+                                            </li>
+                                            <li className="flex items-start gap-2">
+                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <path d="M2 5.5l2 2 4-4" />
+                                                </svg>
+                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
+                                                    Indexación BCV
+                                                </span>
+                                            </li>
+                                        </ul>
+
+                                        {/* CTA */}
+                                        <Link
+                                            href="/sign-up"
+                                            aria-label={`Elegir plan ${plan.name}`}
+                                            className={[
+                                                "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
+                                                "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
+                                                highlighted
+                                                    ? "bg-primary-500 hover:bg-primary-400 text-white"
+                                                    : "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
+                                            ].join(" ")}
+                                        >
+                                            Elegir plan
+                                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                <path d="M2 5h6M5 2l3 3-3 3" />
+                                            </svg>
+                                        </Link>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
 
                 {/* Payment note */}
-                <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                    Pago por transferencia · Zelle · Binance · PayPal — Activación manual por el equipo
-                </p>
+                <div className="mt-6 flex flex-col items-center gap-1">
+                    <p className="text-center font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
+                        Pago por transferencia · Zelle · Binance · PayPal
+                    </p>
+                    <p className="text-center font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                        Activación manual por el equipo · Sin acceso inmediato
+                    </p>
+                </div>
             </section>
 
             {/* ── BOTTOM CTA STRIP ──────────────────────────────────────── */}
@@ -393,7 +518,7 @@ export default function LandingPage() {
                             ¿Listo para empezar?
                         </p>
                         <p className="font-mono text-[15px] text-[var(--text-secondary)]">
-                            Configura tu primera nómina en menos de 5 minutos.
+                            Configura tu primera empresa en menos de 5 minutos.
                         </p>
                     </div>
                     <Link

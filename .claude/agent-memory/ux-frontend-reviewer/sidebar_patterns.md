@@ -4,6 +4,25 @@ description: Established patterns for the AppSidebar component — hover states,
 type: project
 ---
 
+## Sidebar is now theme-adaptive (changed 2026-03-23)
+
+The sidebar is NO LONGER always-dark. In light mode it uses a white/surface-based palette; in dark mode it uses `#111315`. The `:root` block in `globals.css` now defines light-mode sidebar values:
+
+| Token | Light value | Contrast |
+|---|---|---|
+| `--sidebar-bg` | `#FFFFFF` | surface-1 |
+| `--sidebar-border` | `#D1D5E8` | border-light |
+| `--sidebar-fg` | `#464D66` | 8.35:1 on white |
+| `--sidebar-fg-hover` | `#111525` | full contrast |
+| `--sidebar-bg-hover` | `#EEF0F7` | neutral-100 |
+| `--sidebar-active-bg` | `#FFE5DB` | primary-100 warm tint |
+| `--sidebar-active-fg` | `#B22C0B` | 6.05:1 on white — WCAG AA ✓ |
+| `--sidebar-active-border` | `#FFC9B5` | primary-200 |
+
+The `.dark` block retains the dark treatment (`#111315` background, rgba white text). Do not revert `:root` sidebar tokens back to dark-always values.
+
+**Logo in sidebar:** `<LogoFull>` must use `className="text-sidebar-fg"` (not `text-foreground`) so it reads correctly against both the light-white and dark backgrounds of the sidebar.
+
 ## Sidebar CSS tokens are usable as Tailwind classes
 
 `globals.css` maps all `--sidebar-*` vars to `--color-sidebar-*`, so they resolve as Tailwind utilities:

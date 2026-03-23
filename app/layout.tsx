@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Darker_Grotesque, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const darkerGrotesque = Darker_Grotesque({
+  variable: "--font-darker-grotesque",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 const geistMono = Geist_Mono({
@@ -21,18 +22,30 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)",  color: "#0f0f0f" },
+    { media: "(prefers-color-scheme: dark)",  color: "#0B0C14" },
   ],
 };
 
 export const metadata: Metadata = {
-  title: "Kont",
+  title: "Konta",
   description: "Sistema de gestión empresarial — Venezuela",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/icons/icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Kont",
+    title: "Konta",
+  },
+  openGraph: {
+    title: "Konta",
+    description: "Sistema de gestión empresarial — Venezuela",
+    type: "website",
+    locale: "es_VE",
   },
   formatDetection: {
     telephone: false,
@@ -58,7 +71,7 @@ export default function RootLayout({
           } catch(e) {}
         `}} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${darkerGrotesque.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           {children}
         </Providers>

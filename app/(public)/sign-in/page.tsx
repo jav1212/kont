@@ -142,7 +142,7 @@ export default function SignInPage() {
                         Iniciar<br />sesión
                     </h1>
                     <p className="font-mono text-[14px] text-text-tertiary mt-3 leading-relaxed">
-                        Ingresa tus credenciales para acceder al sistema de nómina.
+                        Ingresa tus credenciales para acceder al sistema de gestión contable.
                     </p>
                 </div>
 

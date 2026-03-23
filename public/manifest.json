@@ -1,12 +1,12 @@
 {
-  "name": "Kont",
-  "short_name": "Kont",
+  "name": "Konta",
+  "short_name": "Konta",
   "description": "Sistema de gestión empresarial — Venezuela",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#ffffff",
-  "theme_color": "#0891b2",
+  "background_color": "#0B0C14",
+  "theme_color": "#FF4A18",
   "lang": "es",
   "categories": ["business", "finance", "productivity"],
   "icons": [

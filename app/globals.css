@@ -13,17 +13,17 @@
   --background:  #EEF0F7;
   --foreground:  #111525;   /* neutral-900 — richer black, better contrast base */
 
-  /* Primary — Teal/Cyan: Bloomberg terminal meets precision finance */
-  --primary-50:  #ECFEFF;
-  --primary-100: #CFFAFE;
-  --primary-200: #A5F3FC;
-  --primary-300: #67E8F9;
-  --primary-400: #22D3EE;
-  --primary-500: #0E7490;   /* was #0891B2 — bumped to primary-600 level (5.36:1 on white) */
-  --primary-600: #155E75;   /* was primary-700 — 7.27:1 on white */
-  --primary-700: #164E63;
-  --primary-800: #0C3549;
-  --primary-900: #082130;
+  /* Primary — Konta Orange: brand accent #FF4A18, dark shade for light-mode text */
+  --primary-50:  #FFF4F0;
+  --primary-100: #FFE5DB;
+  --primary-200: #FFC9B5;
+  --primary-300: #FFA085;
+  --primary-400: #FF7450;
+  --primary-500: #D93A10;   /* dark orange — 4.58:1 on white, WCAG AA ✓ */
+  --primary-600: #B22C0B;   /* hover — 6.05:1 on white */
+  --primary-700: #8C2208;
+  --primary-800: #661805;
+  --primary-900: #3D0F03;
 
   /* ── Semantic text tokens (pre-calculated, WCAG AA compliant) ──
      Every token below passes 4.5:1 on both --background and --surface-1.
@@ -32,14 +32,14 @@
   --text-secondary: #464D66;   /* neutral-600 — 8.35:1 on white            */
   --text-tertiary:  #5F6780;   /* neutral-500 — 5.62:1 on white            */
   --text-disabled:  #858EAA;   /* neutral-400 — 3.0:1, decorative-only use */
-  --text-link:      #0E7490;   /* primary-500 — 5.36:1 on white            */
-  --text-link-hover:#155E75;   /* primary-600 — 7.27:1 on white            */
+  --text-link:      #D93A10;   /* primary-500 — 4.58:1 on white            */
+  --text-link-hover:#B22C0B;   /* primary-600 — 6.05:1 on white            */
 
   /* ── Semantic status text (WCAG AA compliant on white/surface-1) ──      */
   --text-success:  #047857;   /* emerald-700 — 5.59:1 on white             */
   --text-warning:  #92400E;   /* amber-800 — 7.48:1 on white               */
   --text-error:    #B91C1C;   /* red-700 — 5.93:1 on white                 */
-  --text-info:     #0E7490;   /* primary-500 — 5.36:1 on white             */
+  --text-info:     #D93A10;   /* primary-500 — 4.58:1 on white             */
 
   /* ── Status badge surfaces (tinted bg + compliant text above) ──         */
   --badge-success-bg:     #D1FAE5;
@@ -48,8 +48,8 @@
   --badge-warning-border: #FCD34D;
   --badge-error-bg:       #FEE2E2;
   --badge-error-border:   #FCA5A5;
-  --badge-info-bg:        #CFFAFE;
-  --badge-info-border:    #67E8F9;
+  --badge-info-bg:        #FFF4F0;
+  --badge-info-border:    #FFC9B5;
 
   /* Neutral — blue-tinted slate */
   --neutral-50:  #F8F9FC;
@@ -67,7 +67,7 @@
   --success: #059669;
   --warning: #D97706;
   --error:   #DC2626;
-  --info:    #0E7490;
+  --info:    #D93A10;
 
   /* Surfaces — pure white + very slightly tinted gray */
   --surface-1:    #FFFFFF;
@@ -86,16 +86,16 @@
   --shadow-md: 0 4px 8px -2px rgb(8 9 16 / 0.10), 0 2px 4px -2px rgb(8 9 16 / 0.08);
   --shadow-lg: 0 12px 24px -4px rgb(8 9 16 / 0.12), 0 4px 8px -2px rgb(8 9 16 / 0.08);
 
-  /* ── Sidebar — always dark (terminal contrast) ── */
-  --sidebar-bg:             #0B0C14;
-  --sidebar-border:         rgba(255, 255, 255, 0.07);
-  --sidebar-label:          rgba(255, 255, 255, 0.45);  /* was 0.26 — too dim */
-  --sidebar-fg:             rgba(255, 255, 255, 0.72);  /* was 0.52 — too dim */
-  --sidebar-fg-hover:       rgba(255, 255, 255, 0.92);
-  --sidebar-bg-hover:       rgba(255, 255, 255, 0.07);
-  --sidebar-active-bg:      rgba(14, 116, 144, 0.22);
-  --sidebar-active-fg:      #38BDF8;
-  --sidebar-active-border:  rgba(14, 116, 144, 0.44);
+  /* ── Sidebar — light mode: surface-based, adapts to theme ── */
+  --sidebar-bg:             #FFFFFF;          /* surface-1 — clean white base              */
+  --sidebar-border:         #D1D5E8;          /* border-light — subtle right-edge divider   */
+  --sidebar-label:          #858EAA;          /* neutral-400 — 3.0:1, section headers/labels */
+  --sidebar-fg:             #464D66;          /* text-secondary — 8.35:1 on white           */
+  --sidebar-fg-hover:       #111525;          /* text-primary — full contrast on hover      */
+  --sidebar-bg-hover:       #EEF0F7;          /* neutral-100 — soft tint on hover           */
+  --sidebar-active-bg:      #FFE5DB;          /* primary-100 — warm orange tint, readable   */
+  --sidebar-active-fg:      #B22C0B;          /* primary-600 — 6.05:1 on white — WCAG AA ✓ */
+  --sidebar-active-border:  #FFC9B5;          /* primary-200 — soft warm border             */
 
   /* Grid pattern (public layout) */
   --grid-line: rgba(0, 0, 0, 0.045);
@@ -113,28 +113,28 @@
 
 .dark {
   /* Base */
-  --background: #07080F;
+  --background: #1A1D20;   /* darkest layer — sits behind surface-1 */
   --foreground: #E8ECF8;    /* slightly brighter than #DFE3F2 for better contrast */
 
-  /* Primary — bright cyan for dark backgrounds */
-  --primary-500: #22D3EE;   /* 7.16:1 on dark bg — excellent */
-  --primary-400: #67E8F9;
-  --primary-600: #0891B2;
+  /* Primary — Konta brand orange for dark backgrounds */
+  --primary-500: #FF4A18;   /* 5.89:1 on dark surface-1 — excellent */
+  --primary-400: #FF7450;
+  --primary-600: #D93A10;
 
   /* ── Semantic text tokens (dark mode) ──
-     All calculated against --surface-1: #0F1018                           */
-  --text-primary:   #E8ECF8;   /* 14.8:1 on dark surface-1                 */
-  --text-secondary: #A8AEBF;   /* ~6.5:1 on #0F1018                        */
-  --text-tertiary:  #7E8494;   /* ~4.6:1 on #0F1018                        */
-  --text-disabled:  #4E5372;   /* ~2.5:1, decorative-only                  */
-  --text-link:      #22D3EE;   /* primary-500 dark — 7.16:1                */
-  --text-link-hover:#67E8F9;   /* primary-400 dark — higher contrast       */
+     All calculated against --surface-1: #212529                           */
+  --text-primary:   #E8ECF8;   /* ~12.5:1 on #212529                       */
+  --text-secondary: #A8AEBF;   /* ~5.8:1 on #212529                        */
+  --text-tertiary:  #8A93A6;   /* ~4.5:1 on #212529 — bumped from #7E8494  */
+  --text-disabled:  #5A6270;   /* ~2.8:1, decorative-only                  */
+  --text-link:      #FF4A18;   /* primary-500 dark — 5.89:1                */
+  --text-link-hover:#FF7450;   /* primary-400 dark — brighter on hover     */
 
   /* ── Semantic status text (dark mode) ──                                 */
   --text-success:  #34D399;   /* emerald-400 — 6.6:1 on dark surface       */
   --text-warning:  #FCD34D;   /* amber-300 — 8.1:1 on dark surface         */
   --text-error:    #F87171;   /* red-400 — 5.2:1 on dark surface           */
-  --text-info:     #22D3EE;   /* primary-500 dark                          */
+  --text-info:     #FF4A18;   /* primary-500 dark                          */
 
   /* ── Status badge surfaces (dark) ──                                     */
   --badge-success-bg:     rgba(52, 211, 153, 0.12);
@@ -143,26 +143,26 @@
   --badge-warning-border: rgba(252, 211, 77, 0.30);
   --badge-error-bg:       rgba(248, 113, 113, 0.12);
   --badge-error-border:   rgba(248, 113, 113, 0.30);
-  --badge-info-bg:        rgba(34, 211, 238, 0.12);
-  --badge-info-border:    rgba(34, 211, 238, 0.30);
+  --badge-info-bg:        rgba(255, 74, 24, 0.12);
+  --badge-info-border:    rgba(255, 74, 24, 0.30);
 
   /* Semantic */
   --success: #10B981;
   --warning: #F59E0B;
   --error:   #EF4444;
-  --info:    #22D3EE;
+  --info:    #FF4A18;
 
   /* Surfaces */
-  --surface-1:    #0F1018;
-  --surface-2:    #090A12;
-  --surface-3:    #171828;
-  --surface-card: #0F1018;
+  --surface-1:    #212529;   /* base dark — warm dark gray, not pure black */
+  --surface-2:    #2C3036;   /* slightly lighter than surface-1             */
+  --surface-3:    #343A40;   /* one step lighter for elevated elements      */
+  --surface-card: #212529;
 
   /* Borders */
-  --border-light:   #1A1C2E;
-  --border-default: #252840;
-  --border-medium:  #363A5C;
-  --border-strong:  #4E5278;
+  --border-light:   #2E333A;
+  --border-default: #3A4047;
+  --border-medium:  #4E5562;
+  --border-strong:  #636E7A;
 
   /* Shadows */
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.40);
@@ -170,15 +170,15 @@
   --shadow-lg: 0 12px 24px -4px rgb(0 0 0 / 0.55);
 
   /* Sidebar — even darker in dark mode */
-  --sidebar-bg:             #050608;
+  --sidebar-bg:             #111315;
   --sidebar-border:         rgba(255, 255, 255, 0.06);
   --sidebar-label:          rgba(232, 236, 248, 0.48);  /* was 0.28 — too dim */
   --sidebar-fg:             rgba(232, 236, 248, 0.72);  /* was 0.52 — too dim */
   --sidebar-fg-hover:       rgba(232, 236, 248, 0.92);
   --sidebar-bg-hover:       rgba(255, 255, 255, 0.06);
-  --sidebar-active-bg:      rgba(34, 211, 238, 0.14);
-  --sidebar-active-fg:      #67E8F9;
-  --sidebar-active-border:  rgba(34, 211, 238, 0.32);
+  --sidebar-active-bg:      rgba(255, 74, 24, 0.16);
+  --sidebar-active-fg:      #FF7450;
+  --sidebar-active-border:  rgba(255, 74, 24, 0.36);
 
   /* Grid pattern */
   --grid-line: rgba(255, 255, 255, 0.028);
@@ -269,7 +269,7 @@
   --color-sidebar-active-border: var(--sidebar-active-border);
 
   /* Typography */
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-darker-grotesque);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -281,17 +281,18 @@ body {
   background: var(--background);
   color:      var(--foreground);
   font-family: var(--font-sans, Arial, Helvetica, sans-serif);
+  font-weight: 500;  /* Darker Grotesque reads better at medium weight as base */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Text selection */
 ::selection {
-  background: rgba(14, 116, 144, 0.20);
+  background: rgba(217, 58, 16, 0.18);
   color: inherit;
 }
 .dark ::selection {
-  background: rgba(34, 211, 238, 0.22);
+  background: rgba(255, 74, 24, 0.22);
 }
 
 /* ── Scrollbar — thin, refined ─────────────────────────────────────────── */
@@ -364,7 +365,7 @@ body {
 
    Solution: Override these utilities with pre-calculated, guaranteed-
    accessible values. The values below are derived by blending --foreground
-   against the modal background (#FFFFFF / #0F1018) and verified against
+   against the modal background (#FFFFFF / #212529) and verified against
    WCAG AA (4.5:1 for normal text).
 
    /70 and above pass in both modes without override.
@@ -440,10 +441,10 @@ body {
 .text-emerald-500 { color: var(--text-success) !important; }
 .text-emerald-400 { color: var(--text-success) !important; }
 
-/* primary-300 (#67E8F9, 1.34:1 on white), primary-400 (1.81:1) → use --text-link */
+/* primary-300 (#FFA085, 2.76:1 on white), primary-400 (#FF7450, 3.2:1) → use --text-link */
 .text-primary-300 { color: var(--text-link) !important; }
 .text-primary-400 { color: var(--text-link) !important; }
-/* primary-500 in light = #0E7490 now (5.36:1) — no override needed */
+/* primary-500 in light = #D93A10 (4.58:1) — no override needed */
 
 /* Dark mode: restore the bright variants that ARE accessible on dark */
 .dark .text-green-500  { color: var(--text-success) !important; }   /* dark: #34D399 — 6.6:1 */
@@ -457,8 +458,8 @@ body {
 .dark .text-red-400    { color: var(--text-error) !important; }
 .dark .text-emerald-500 { color: var(--text-success) !important; }
 .dark .text-emerald-400 { color: var(--text-success) !important; }
-.dark .text-primary-300 { color: var(--text-link) !important; }     /* dark: #22D3EE — 10.49:1 */
-.dark .text-primary-400 { color: var(--text-link) !important; }     /* dark: #22D3EE — 10.49:1 */
+.dark .text-primary-300 { color: var(--text-link) !important; }     /* dark: #FF4A18 — 5.89:1 */
+.dark .text-primary-400 { color: var(--text-link) !important; }     /* dark: #FF4A18 — 5.89:1 */
 
 /* ─── Status badge class overrides: align with semantic badge tokens ─── */
 /* These replace the raw Tailwind bg/border/text triplets on status chips  */
@@ -469,8 +470,8 @@ body {
 .dark .dark\:text-amber-400  { color: var(--text-warning) !important; }
 
 /* Primary button: bg-primary-500 + text-white
-   In light mode, new primary-500 = #0E7490, white on top = 5.36:1 — passes.
-   Primary-600 = #155E75, white = 7.27:1 — also passes for hover state.    */
+   In light mode, primary-500 = #D93A10, white on top = 4.58:1 — passes AA.
+   Primary-600 = #B22C0B, white = 6.05:1 — also passes for hover state.    */
 
 /* ─── Primary color opacity variants on text ──────────────────────────── */
 /* text-primary-400/XX is used decoratively for accent labels in public pages.

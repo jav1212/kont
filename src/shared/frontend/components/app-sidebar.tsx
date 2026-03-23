@@ -13,6 +13,7 @@ import { useActiveTenantContext } from "@/src/modules/memberships/frontend/conte
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
 import { TenantSwitcher } from "@/src/modules/memberships/frontend/components/tenant-switcher";
+import { LogoFull } from "@/src/shared/frontend/components/logo";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -194,35 +195,15 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         >
 
             {/* ── Logo ──────────────────────────────────────────────────── */}
-            <div className="px-5 py-5 border-b border-sidebar-border">
-                <div className="flex items-center gap-3">
-                    <div
-                        className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0 bg-primary-500"
-                        aria-hidden="true"
-                    >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
-                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
-                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                        </svg>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className={`font-mono ${APP_SIZES.nav.logoWordmark} font-bold uppercase text-sidebar-fg-hover`}>
-                            Kont
-                        </span>
-                        <span className={`font-mono ${APP_SIZES.nav.logoSubtitle} uppercase text-sidebar-label`}>
-                            Nómina
-                        </span>
-                    </div>
-                </div>
+            <div className="px-5 py-[18px] border-b border-sidebar-border">
+                <LogoFull size={24} className="text-sidebar-fg" />
             </div>
 
             {/* ── Tenant switcher (solo visible si hay más de un tenant) ── */}
             <TenantSwitcher />
 
             {/* ── Company selector ──────────────────────────────────────── */}
-            <div className="px-3 py-3 border-b border-sidebar-border">
+            <div className="px-3 py-3 border-b border-sidebar-border overflow-visible">
                 <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
                     Empresa
                 </p>
@@ -263,7 +244,6 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                                 role="listbox"
                                 aria-label="Empresas disponibles"
                                 className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-50 shadow-lg bg-sidebar-bg border border-sidebar-border"
-                                style={{ boxShadow: "var(--shadow-lg)" }}
                             >
                                 {companies.map((c) => {
                                     const isSelected = c.id === companyId;
@@ -331,8 +311,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                             {/* Sub-nav */}
                             {subnavOpen && (
                                 <div
-                                    className="pl-4 mt-0.5 border-l border-sidebar-border"
-                                    style={{ marginLeft: "1.125rem" }}
+                                    className="pl-4 mt-0.5 ml-[1.125rem] border-l border-sidebar-border"
                                 >
                                     {(() => {
                                         const seenGroups = new Set<string>();
@@ -420,7 +399,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />
                     </svg>
-                    Salir
+                    Cerrar sesión
                 </button>
             </div>
 

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { LogoFull } from "@/src/shared/frontend/components/logo";
 
 export const metadata: Metadata = {
-    title:       "Nómina · Acceso",
-    description: "Sistema de gestión de nómina — Venezuela",
+    title:       "Konta · Acceso",
+    description: "Sistema de gestión contable — Venezuela",
 };
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +30,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 style={{
                     top: "-20%", left: "-10%",
                     width: "60vw", height: "60vw",
-                    background: "radial-gradient(circle, rgba(8,145,178,0.10) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(255,74,24,0.08) 0%, transparent 70%)",
                 }}
             />
 
@@ -40,25 +41,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
                 style={{
                     bottom: "-20%", right: "-10%",
                     width: "50vw", height: "50vw",
-                    background: "radial-gradient(circle, rgba(8,145,178,0.06) 0%, transparent 70%)",
+                    background: "radial-gradient(circle, rgba(255,74,24,0.05) 0%, transparent 70%)",
                 }}
             />
 
             {/* ── Top bar ───────────────────────────────────────────────── */}
             <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-foreground/[0.07]">
-                <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-[5px] bg-primary-500 flex items-center justify-center flex-shrink-0">
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                        </svg>
-                    </div>
-                    <span className="font-mono text-[13px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-                        Kont
-                    </span>
-                </div>
+                <LogoFull size={40} className="text-foreground" />
 
                 <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -76,7 +65,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             {/* ── Footer ───────────────────────────────────────────────── */}
             <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
                 <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                    © {new Date().getFullYear()} Kont
+                    © {new Date().getFullYear()} Konta
                 </span>
                 <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                     v2.2 · LOTTT

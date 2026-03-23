@@ -118,6 +118,38 @@ Updated HeroUI theme config to use:
 - `app/(app)/inventory/kardex/page.tsx` — tipoBadgeClass, table cell colors
 - `app/(app)/inventory/proveedores/page.tsx` — activo/inactivo text
 
+### 5. Dark mode surface lightening (2026-03-23)
+
+The near-black dark surfaces were replaced with a warmer, lighter dark scale based on Bootstrap's dark gray as the anchor for `surface-1`.
+
+**New dark mode scale:**
+```
+--background:   #1A1D20   (darkest layer, sits behind surface-1)
+--surface-1:    #212529   (base dark — Bootstrap dark anchor, not pure black)
+--surface-2:    #2C3036   (slightly lighter)
+--surface-3:    #343A40   (elevated elements)
+--surface-card: #212529
+--sidebar-bg:   #111315   (intentionally darker than surface-1)
+```
+
+**Border scale adjusted to match (dark mode):**
+```
+--border-light:   #2E333A
+--border-default: #3A4047
+--border-medium:  #4E5562
+--border-strong:  #636E7A
+```
+
+**Text tertiary bumped for new background:**
+```
+--text-tertiary: #8A93A6   (was #7E8494 — bumped to maintain ~4.5:1 on #212529)
+--text-disabled: #5A6270   (was #4E5372)
+```
+
+WCAG note: The contrast ratios in the color_system_refactor note for dark mode were calculated against the old `#0F1018` surface. The new `#212529` surface is lighter, so the same foreground tokens may yield slightly lower (but still passing) ratios for primary/secondary text. `--text-tertiary` was explicitly adjusted upward to preserve AA compliance.
+
+**Why:** Pure black dark mode (#07080F → #0F1018) caused harsh visual contrast and eye fatigue. The warmer `#212529` is easier on the eyes without sacrificing legibility.
+
 ### 4. Full sweep — opacity-based text classes replaced (March 2026)
 
 All remaining `text-foreground/XX`, `text-primary-NUMBER/NUMBER`, `text-primary/XX` classes were

@@ -140,6 +140,7 @@ export default function AdminPage() {
     // Tenant status override
     const [tenantActionId,     setTenantActionId]     = useState<string | null>(null);
     const [tenantActionStatus, setTenantActionStatus] = useState("");
+    const [tenantActionPlanId, setTenantActionPlanId] = useState("");
     const [tenantActioning,    setTenantActioning]    = useState(false);
 
     // Plans
@@ -159,11 +160,13 @@ export default function AdminPage() {
     const [subsLoaded,          setSubsLoaded]          = useState(false);
     const [subActionId,         setSubActionId]         = useState<string | null>(null);
     const [subActionStatus,     setSubActionStatus]     = useState("");
+    const [subActionPlanId,     setSubActionPlanId]     = useState("");
     const [subActioning,        setSubActioning]        = useState(false);
     const [subActionError,      setSubActionError]      = useState<string | null>(null);
     const [newSubTenantId,      setNewSubTenantId]      = useState("");
     const [newSubProductSlug,   setNewSubProductSlug]   = useState("inventory");
     const [newSubStatus,        setNewSubStatus]        = useState("trial");
+    const [newSubPlanId,        setNewSubPlanId]        = useState("");
     const [newSubSaving,        setNewSubSaving]        = useState(false);
     const [newSubError,         setNewSubError]         = useState<string | null>(null);
     const [newSubOk,            setNewSubOk]            = useState(false);
@@ -238,7 +241,7 @@ export default function AdminPage() {
     }, []);
 
     useEffect(() => {
-        if (tab === "plans" && !plansLoaded) loadPlans();
+        if ((tab === "plans" || tab === "subscriptions" || tab === "tenants") && !plansLoaded) loadPlans();
     }, [tab, plansLoaded, loadPlans]);
 
     // ── Save plan edits ────────────────────────────────────────────────────
@@ -312,7 +315,10 @@ export default function AdminPage() {
         const res = await fetch(`/api/admin/subscriptions/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: subActionStatus }),
+            body: JSON.stringify({
+                status: subActionStatus,
+                ...(subActionPlanId ? { planId: subActionPlanId } : {}),
+            }),
         });
         const json = await res.json();
         setSubActioning(false);
@@ -321,10 +327,11 @@ export default function AdminPage() {
         } else {
             setSubActionId(null);
             setSubActionStatus("");
+            setSubActionPlanId("");
             setSubActionError(null);
             await loadSubscriptions();
         }
-    }, [subActionStatus, loadSubscriptions]);
+    }, [subActionStatus, subActionPlanId, loadSubscriptions]);
 
     // ── Create subscription ───────────────────────────────────────────────
     const handleNewSub = useCallback(async () => {
@@ -338,6 +345,7 @@ export default function AdminPage() {
                 tenantId:    newSubTenantId.trim(),
                 productSlug: newSubProductSlug,
                 status:      newSubStatus,
+                ...(newSubPlanId ? { planId: newSubPlanId } : {}),
             }),
         });
         const json = await res.json();
@@ -347,10 +355,11 @@ export default function AdminPage() {
         } else {
             setNewSubOk(true);
             setNewSubTenantId("");
+            setNewSubPlanId("");
             await loadSubscriptions();
             setTimeout(() => setNewSubOk(false), 3000);
         }
-    }, [newSubTenantId, newSubProductSlug, newSubStatus, loadSubscriptions]);
+    }, [newSubTenantId, newSubProductSlug, newSubStatus, newSubPlanId, loadSubscriptions]);
 
     // ── Load admins (lazy, solo cuando se abre la pestaña) ───────────────
     const loadAdmins = useCallback(async () => {
@@ -404,16 +413,19 @@ export default function AdminPage() {
     const handleTenantStatus = useCallback(async (id: string) => {
         if (!tenantActionStatus) return;
         setTenantActioning(true);
+        const body: Record<string, string> = { status: tenantActionStatus };
+        if (tenantActionPlanId) body.planId = tenantActionPlanId;
         await fetch(`/api/admin/tenants/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: tenantActionStatus }),
+            body: JSON.stringify(body),
         });
         setTenantActioning(false);
         setTenantActionId(null);
         setTenantActionStatus("");
+        setTenantActionPlanId("");
         await loadAll();
-    }, [tenantActionStatus, loadAll]);
+    }, [tenantActionStatus, tenantActionPlanId, loadAll]);
 
     // ── Styles ─────────────────────────────────────────────────────────────
     const inputCls = [
@@ -703,7 +715,7 @@ export default function AdminPage() {
                                                         </td>
                                                         <td className="px-3 py-3 text-right">
                                                             <button
-                                                                onClick={() => { setTenantActionId(isEditing ? null : t.tenant_id); setTenantActionStatus(t.status); }}
+                                                                onClick={() => { setTenantActionId(isEditing ? null : t.tenant_id); setTenantActionStatus(t.status); setTenantActionPlanId(""); }}
                                                                 className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
                                                             >
                                                                 {isEditing ? "Cerrar" : "Editar"}
@@ -714,7 +726,7 @@ export default function AdminPage() {
                                                     {isEditing && (
                                                         <tr key={t.tenant_id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
                                                             <td colSpan={8} className="px-4 py-3">
-                                                                <div className="flex items-end gap-3">
+                                                                <div className="flex items-end gap-3 flex-wrap">
                                                                     <div>
                                                                         <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
                                                                             Estado
@@ -729,6 +741,21 @@ export default function AdminPage() {
                                                                             <option value="trial">Prueba</option>
                                                                         </select>
                                                                     </div>
+                                                                    <div>
+                                                                        <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
+                                                                            Plan base
+                                                                        </label>
+                                                                        <select
+                                                                            value={tenantActionPlanId}
+                                                                            onChange={(e) => setTenantActionPlanId(e.target.value)}
+                                                                            className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
+                                                                        >
+                                                                            <option value="">— Sin cambio —</option>
+                                                                            {plans.map((p) => (
+                                                                                <option key={p.id} value={p.id}>{p.name} · ${p.priceMonthlyUsd}/mes</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
                                                                     <button
                                                                         onClick={() => handleTenantStatus(t.tenant_id)}
                                                                         disabled={tenantActioning}
@@ -738,7 +765,7 @@ export default function AdminPage() {
                                                                         Guardar
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => { setTenantActionId(null); setTenantActionStatus(""); }}
+                                                                        onClick={() => { setTenantActionId(null); setTenantActionStatus(""); setTenantActionPlanId(""); }}
                                                                         className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                                     >
                                                                         Cancelar
@@ -1239,6 +1266,15 @@ export default function AdminPage() {
                                                 </select>
                                             </div>
                                             <div>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Plan</label>
+                                                <select value={newSubPlanId} onChange={(e) => setNewSubPlanId(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
+                                                    <option value="">Sin plan</option>
+                                                    {plans.filter((p) => p.productSlug === newSubProductSlug && p.isActive).map((p) => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
                                                 <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado inicial</label>
                                                 <select value={newSubStatus} onChange={(e) => setNewSubStatus(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
                                                     <option value="trial">Prueba</option>
@@ -1325,7 +1361,7 @@ export default function AdminPage() {
                                                                 </td>
                                                                 <td className="px-3 py-3 text-right">
                                                                     <button
-                                                                        onClick={() => { setSubActionId(isEditing ? null : sub.id); setSubActionStatus(sub.status); setSubActionError(null); }}
+                                                                        onClick={() => { setSubActionId(isEditing ? null : sub.id); setSubActionStatus(sub.status); setSubActionPlanId(sub.plan?.id ?? ""); setSubActionError(null); }}
                                                                         className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
                                                                     >
                                                                         {isEditing ? "Cerrar" : "Editar"}
@@ -1337,6 +1373,19 @@ export default function AdminPage() {
                                                                 <tr key={sub.id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
                                                                     <td colSpan={7} className="px-4 py-3">
                                                                         <div className="flex items-end gap-3">
+                                                                            <div>
+                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Plan</label>
+                                                                                <select
+                                                                                    value={subActionPlanId}
+                                                                                    onChange={(e) => setSubActionPlanId(e.target.value)}
+                                                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
+                                                                                >
+                                                                                    <option value="">Sin plan</option>
+                                                                                    {plans.filter((p) => p.productSlug === sub.product?.slug && p.isActive).map((p) => (
+                                                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
                                                                             <div>
                                                                                 <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado</label>
                                                                                 <select

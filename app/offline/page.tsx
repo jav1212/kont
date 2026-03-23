@@ -1,5 +1,7 @@
 "use client";
 
+import { LogoFull } from "@/src/shared/frontend/components/logo";
+
 export default function OfflinePage() {
     return (
         <div className="min-h-dvh bg-surface-2 flex flex-col items-center justify-center px-8 py-16 text-center gap-6 font-mono">
@@ -41,17 +43,7 @@ export default function OfflinePage() {
             </button>
 
             {/* Logo */}
-            <div className="absolute bottom-8 flex items-center gap-2.5 opacity-40">
-                <div className="w-5 h-5 rounded-[4px] bg-primary-500 flex items-center justify-center" aria-hidden="true">
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                        <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                        <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                        <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                        <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                    </svg>
-                </div>
-                <span className="text-[11px] uppercase tracking-widest text-foreground">Kont</span>
-            </div>
+            <LogoFull size={13} className="absolute bottom-8 text-foreground opacity-40" />
 
         </div>
     );

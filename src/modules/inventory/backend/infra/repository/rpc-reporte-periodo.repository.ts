@@ -31,10 +31,10 @@ export class RpcReportePeriodoRepository implements IReportePeriodoRepository {
         const costoActualBs = Number(row.costo_actual_bs ?? 0);
         const totalIvaBs = costoActualBs * (ivaPorcentaje / 100);
         return {
-            codigo:              row.codigo ?? '',
-            nombre:              row.nombre ?? '',
-            departamentoNombre:  row.departamento_nombre ?? '',
-            proveedorNombre:     row.proveedor_nombre ?? '',
+            codigo:              (row.codigo as string | null | undefined) ?? '',
+            nombre:              (row.nombre as string | null | undefined) ?? '',
+            departamentoNombre:  (row.departamento_nombre as string | null | undefined) ?? '',
+            proveedorNombre:     (row.proveedor_nombre as string | null | undefined) ?? '',
             ivaTipo,
             inventarioInicial:   Number(row.inventario_inicial ?? 0),
             costoPromedio:       Number(row.costo_promedio ?? 0),

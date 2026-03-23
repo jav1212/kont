@@ -10,22 +10,42 @@ export default function Icon() {
                 style={{
                     width: 512,
                     height: 512,
-                    borderRadius: 96,
-                    background: "#0891b2",
+                    borderRadius: 88,
+                    background: "#0B0C14",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    flexWrap: "wrap",
-                    gap: 20,
-                    padding: 80,
+                    position: "relative",
+                    overflow: "hidden",
                 }}
             >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 20, width: "100%" }}>
-                    <div style={{ width: 156, height: 156, borderRadius: 16, background: "rgba(255,255,255,0.95)" }} />
-                    <div style={{ width: 156, height: 156, borderRadius: 16, background: "rgba(255,255,255,0.45)" }} />
-                    <div style={{ width: 156, height: 156, borderRadius: 16, background: "rgba(255,255,255,0.45)" }} />
-                    <div style={{ width: 156, height: 156, borderRadius: 16, background: "rgba(255,255,255,0.95)" }} />
-                </div>
+                {/* K letter */}
+                <span
+                    style={{
+                        fontFamily: "'Arial Black', 'Helvetica Neue', Arial, sans-serif",
+                        fontWeight: 900,
+                        fontSize: 340,
+                        color: "white",
+                        lineHeight: 1,
+                        letterSpacing: "-10px",
+                        marginLeft: "-40px",
+                        marginTop: "10px",
+                    }}
+                >
+                    K
+                </span>
+                {/* Orange dot */}
+                <div
+                    style={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: 48,
+                        background: "#FF4A18",
+                        position: "absolute",
+                        bottom: 60,
+                        right: 56,
+                    }}
+                />
             </div>
         ),
         { ...size }

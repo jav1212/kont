@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
+import { LogoFull } from "@/src/shared/frontend/components/logo";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router   = useRouter();
@@ -22,17 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Top bar */}
             <header className="h-12 flex items-center justify-between px-6 border-b border-border-light bg-surface-1 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-[4px] bg-red-600 flex items-center justify-center">
-                        <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                            <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                            <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.4" />
-                            <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.9" />
-                        </svg>
-                    </div>
-                    <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground">
-                        Kont
-                    </span>
+                    <LogoFull size={30} className="text-foreground" />
                     <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-red-500/60 border border-red-500/20 px-1.5 py-0.5 rounded">
                         Admin
                     </span>

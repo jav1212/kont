@@ -35,7 +35,7 @@ export interface LiquidacionOptions {
     bcvRate?:    number;
 }
 
-// ── Palette (teal/cyan — unificada con payroll-pdf) ───────────────────────────
+// ── Palette (Konta orange — unificada con payroll-pdf) ────────────────────────
 
 type RGB = [number, number, number];
 
@@ -48,12 +48,12 @@ const C = {
     bg:        [255, 255, 255] as RGB,   // blanco para impresión
     rowAlt:    [228, 233, 244] as RGB,
     white:     [255, 255, 255] as RGB,
-    // Primary — teal #0891B2
-    primary:   [8,   145, 178] as RGB,
-    primaryLt: [207, 250, 254] as RGB,
-    primaryBd: [103, 232, 249] as RGB,
-    // Accent — bright cyan for dark backgrounds
-    accent:    [34,  211, 238] as RGB,
+    // Primary — Konta orange
+    primary:   [217, 58,  16]  as RGB,   // #D93A10
+    primaryLt: [255, 244, 240] as RGB,   // #FFF4F0
+    primaryBd: [255, 160, 133] as RGB,   // #FFA085
+    // Accent — brand orange for dark backgrounds
+    accent:    [255, 74,  24]  as RGB,   // #FF4A18
     // Success — emerald
     green:     [5,   150, 105] as RGB,
     greenLt:   [236, 253, 245] as RGB,

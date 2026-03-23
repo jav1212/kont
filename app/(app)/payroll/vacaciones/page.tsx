@@ -261,7 +261,7 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
         <div className="max-w-2xl mx-auto space-y-3">
             <div className="flex justify-end">
                 <button onClick={handlePdf}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-[#0891b2] hover:bg-[#0e7490] text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
+                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                         <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
                     </svg>
@@ -274,8 +274,8 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
 
                 {/* ── HEADER ── */}
                 <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
-                    <div className="absolute left-0 top-0 w-1 bottom-0.5 bg-[#0891b2]" />
-                    <div className="absolute left-1 right-0 bottom-0 h-0.5 bg-[#22d3ee]" />
+                    <div className="absolute left-0 top-0 w-1 bottom-0.5 bg-[#FF4A18]" />
+                    <div className="absolute left-1 right-0 bottom-0 h-0.5 bg-[#FF7450]" />
                     <div className="pl-3 flex items-start justify-between gap-4">
                         <div>
                             <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
@@ -293,7 +293,7 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
 
                 {/* ── EMPLOYEE CARD ── */}
                 <div className="mx-6 mt-5 bg-white border border-[#dadae2] rounded relative overflow-hidden">
-                    <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#0891b2]" />
+                    <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#FF4A18]" />
                     <div className="pl-5 pr-5 py-3 flex items-start justify-between">
                         <div>
                             <p className="font-mono text-[14px] font-black uppercase text-[#32323c] tracking-tight">{employeeName || "—"}</p>
@@ -341,7 +341,7 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
                         </div>
                         <div className="flex items-center gap-10 text-right shrink-0">
                             <p className="font-mono text-[11px] tabular-nums text-[#787884]">{calc.diasDisfrute} d</p>
-                            <p className="font-mono text-[13px] font-black tabular-nums text-[#0891b2]">Bs. {fmtN(calc.montoDisfrute)}</p>
+                            <p className="font-mono text-[13px] font-black tabular-nums text-[#D93A10]">Bs. {fmtN(calc.montoDisfrute)}</p>
                         </div>
                     </div>
                     {/* Row 2: Bono */}
@@ -359,11 +359,11 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
                     </div>
                     {/* Total bar */}
                     <div className="bg-[#12121a] px-5 py-3 flex items-center justify-between relative">
-                        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#22d3ee]" />
+                        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-[#FF4A18]" />
                         <p className="pl-3 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#787884]">
                             Total · {calc.diasDisfrute + calc.diasBono} días
                         </p>
-                        <p className="font-mono text-[16px] font-black tabular-nums text-[#22d3ee]">
+                        <p className="font-mono text-[16px] font-black tabular-nums text-[#FF4A18]">
                             Bs. {fmtN(calc.total)}
                         </p>
                     </div>
@@ -394,7 +394,7 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
 
                 {/* ── FOOTER ── */}
                 <div className="bg-[#12121a] px-8 py-2.5 relative">
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#22d3ee]" />
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#FF4A18]" />
                     <p className="font-mono text-[7px] text-[#505064] text-center uppercase tracking-[0.2em]">
                         {companyName.toUpperCase()} · Constancia de Vacaciones · Documento Confidencial
                     </p>

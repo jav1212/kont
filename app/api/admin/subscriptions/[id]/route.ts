@@ -34,6 +34,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
 
         const supabase = serviceClient();
+
+        // Fetch current subscription to get tenant_id before updating
+        const { data: existing, error: fetchErr } = await supabase
+            .from('tenant_subscriptions')
+            .select('tenant_id')
+            .eq('id', id)
+            .single();
+
+        if (fetchErr || !existing) return Response.json({ error: 'Suscripción no encontrada' }, { status: 404 });
+
         const { data, error } = await supabase
             .from('tenant_subscriptions')
             .update(update)
@@ -42,6 +52,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             .single();
 
         if (error) return Response.json({ error: error.message }, { status: 500 });
+
+        // Sync tenant status when a subscription is activated
+        if (body.status === 'active') {
+            const tenantUpdate: Record<string, unknown> = {
+                status:     'active',
+                updated_at: new Date().toISOString(),
+            };
+            if (body.periodStart) tenantUpdate.current_period_start = body.periodStart;
+            if (body.periodEnd)   tenantUpdate.current_period_end   = body.periodEnd;
+            if (body.billingCycle) tenantUpdate.billing_cycle       = body.billingCycle;
+
+            await supabase
+                .from('tenants')
+                .update(tenantUpdate)
+                .eq('id', existing.tenant_id);
+        }
 
         return Response.json({ data });
     } catch {

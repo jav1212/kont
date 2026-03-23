@@ -34,7 +34,7 @@ export function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
                         Disponible solo en escritorio
                     </p>
                     <p className="font-mono text-[13px] text-foreground/50 leading-relaxed">
-                        Este módulo está optimizado para pantallas grandes. Abre Kont desde tu computadora para acceder.
+                        Este módulo está optimizado para pantallas grandes. Abre Konta desde tu computadora para acceder.
                     </p>
                 </div>
 

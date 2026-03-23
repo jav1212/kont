@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { IMovimientoRepository } from '../../domain/repository/movimiento.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { Movimiento, KardexEntry } from '../../domain/movimiento';
+import { Movimiento, KardexEntry, TipoMovimiento } from '../../domain/movimiento';
 
 export class RpcMovimientoRepository implements IMovimientoRepository {
     constructor(
@@ -107,23 +107,23 @@ export class RpcMovimientoRepository implements IMovimientoRepository {
 
     private mapToDomain(data: Record<string, unknown>): Movimiento {
         return {
-            id:               data.id,
-            empresaId:        data.empresa_id,
-            productoId:       data.producto_id,
-            tipo:             data.tipo,
-            fecha:            data.fecha,
-            periodo:          data.periodo,
+            id:               data.id as string | undefined,
+            empresaId:        data.empresa_id as string,
+            productoId:       data.producto_id as string,
+            tipo:             data.tipo as TipoMovimiento,
+            fecha:            data.fecha as string,
+            periodo:          data.periodo as string,
             cantidad:         Number(data.cantidad ?? 0),
             costoUnitario:    Number(data.costo_unitario ?? 0),
             costoTotal:       Number(data.costo_total ?? 0),
             saldoCantidad:    Number(data.saldo_cantidad ?? 0),
-            referencia:           data.referencia ?? '',
-            notas:                data.notas ?? '',
-            transformacionId:     data.transformacion_id ?? null,
+            referencia:           (data.referencia as string | null | undefined) ?? '',
+            notas:                (data.notas as string | null | undefined) ?? '',
+            transformacionId:     (data.transformacion_id as string | null | undefined) ?? null,
             moneda:               (data.moneda === 'D' ? 'D' : 'B') as 'B' | 'D',
             costoMoneda:  data.costo_moneda != null ? Number(data.costo_moneda) : null,
             tasaDolar:    data.tasa_dolar   != null ? Number(data.tasa_dolar)   : null,
-            createdAt:    data.created_at,
+            createdAt:    data.created_at as string | undefined,
         };
     }
 }

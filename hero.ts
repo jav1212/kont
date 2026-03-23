@@ -6,17 +6,17 @@ export default heroui({
         light: {
             colors: {
                 primary: {
-                    50:      "#ECFEFF",
-                    100:     "#CFFAFE",
-                    200:     "#A5F3FC",
-                    300:     "#67E8F9",
-                    400:     "#22D3EE",
-                    500:     "#0E7490",   // 5.36:1 on white — WCAG AA
-                    600:     "#155E75",   // 7.27:1 on white — WCAG AAA
-                    700:     "#164E63",
-                    800:     "#0C3549",
-                    900:     "#082130",
-                    DEFAULT: "#0E7490",
+                    50:      "#FFF4F0",
+                    100:     "#FFE5DB",
+                    200:     "#FFC9B5",
+                    300:     "#FFA085",
+                    400:     "#FF7450",
+                    500:     "#D93A10",   // 4.58:1 on white — WCAG AA
+                    600:     "#B22C0B",   // 6.05:1 on white — WCAG AAA
+                    700:     "#8C2208",
+                    800:     "#661805",
+                    900:     "#3D0F03",
+                    DEFAULT: "#D93A10",
                     foreground: "#FFFFFF",
                 },
                 danger: {
@@ -36,17 +36,17 @@ export default heroui({
         dark: {
             colors: {
                 primary: {
-                    50:      "#082130",
-                    100:     "#0C3549",
-                    200:     "#164E63",
-                    300:     "#155E75",
-                    400:     "#0891B2",
-                    500:     "#22D3EE",   // 7.16:1 on dark surface — excellent
-                    600:     "#67E8F9",
-                    700:     "#A5F3FC",
-                    800:     "#CFFAFE",
-                    900:     "#ECFEFF",
-                    DEFAULT: "#22D3EE",
+                    50:      "#3D0F03",
+                    100:     "#661805",
+                    200:     "#8C2208",
+                    300:     "#B22C0B",
+                    400:     "#D93A10",
+                    500:     "#FF4A18",   // 5.89:1 on dark surface — excellent
+                    600:     "#FF7450",
+                    700:     "#FFA085",
+                    800:     "#FFC9B5",
+                    900:     "#FFF4F0",
+                    DEFAULT: "#FF4A18",
                     foreground: "#07080F",
                 },
                 danger: {

@@ -24,22 +24,10 @@ export function MobileTopBar({ onMenuClick }: MobileTopBarProps) {
                 </svg>
             </button>
 
-            {/* Logo */}
-            <div className="flex items-center gap-2.5">
-                <div
-                    className="w-7 h-7 rounded-[5px] flex items-center justify-center flex-shrink-0 bg-primary-500"
-                    aria-hidden="true"
-                >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                        <rect x="1" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                        <rect x="8" y="1" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
-                        <rect x="1" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.38" />
-                        <rect x="8" y="8" width="5" height="5" rx="0.5" fill="white" fillOpacity="0.95" />
-                    </svg>
-                </div>
-                <span className="font-mono text-[13px] font-bold uppercase tracking-widest text-sidebar-fg-hover">
-                    Kont
-                </span>
+            {/* Logo — K. monogram */}
+            <div className="flex items-end leading-none gap-0" aria-label="Konta">
+                <span className="text-white font-sans font-black text-[19px] leading-none tracking-[-0.02em]">K</span>
+                <span className="font-black text-[19px] leading-none" style={{ color: '#FF4A18' }}>.</span>
             </div>
         </header>
     );

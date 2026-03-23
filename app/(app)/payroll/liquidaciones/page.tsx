@@ -172,8 +172,8 @@ function ConstanciaLiquidacion({ r, companyName, egreso, motivo, diasUtil, diasB
     const motivoLabel = motivo === "renuncia" ? "Renuncia voluntaria"
         : motivo === "despido_justificado" ? "Despido justificado"
         : "Despido injustificado";
-    const accent      = motivo === "despido_injustificado" ? "#dc2626" : "#0891b2";
-    const accentLight = motivo === "despido_injustificado" ? "#fca5a5" : "#22d3ee";
+    const accent      = motivo === "despido_injustificado" ? "#dc2626" : "#FF4A18";
+    const accentLight = motivo === "despido_injustificado" ? "#fca5a5" : "#FF7450";
     const emitido     = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
     const diasVacBase = Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1));
 

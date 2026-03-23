@@ -63,12 +63,12 @@ const C = {
     bgStripe: [240, 240, 245] as RGB,   // #f0f0f5 — row alt
     bgPage:   [255, 255, 255] as RGB,   // blanco para impresión
     white:    [255, 255, 255] as RGB,
-    primary:  [8,   145, 178] as RGB,   // #0891b2
-    accent:   [34,  211, 238] as RGB,   // #22d3ee
+    primary:  [217, 58,  16]  as RGB,   // #D93A10 — Konta orange (dark)
+    accent:   [255, 74,  24]  as RGB,   // #FF4A18 — Konta brand accent
     amber:    [180, 120, 10]  as RGB,   // #b4780a
     amberAcc: [253, 230, 138] as RGB,   // #fde68a
     header:   [255, 255, 255] as RGB,
-    accentBg: [150, 200, 220] as RGB,   // light cyan for reintegro / meses
+    accentBg: [255, 220, 210] as RGB,   // light orange for reintegro / meses
 };
 
 // ── Primitives ────────────────────────────────────────────────────────────────
