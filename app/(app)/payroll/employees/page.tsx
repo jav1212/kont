@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -683,7 +684,7 @@ export default function EmployeesPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-border-light bg-surface-2">
+                                        <tr className="border-b border-border-light">
                                             <th className="px-3 py-2.5 w-10 text-center">
                                                 <input
                                                     type="checkbox"
@@ -694,7 +695,10 @@ export default function EmployeesPage() {
                                                 />
                                             </th>
                                             {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                                <th key={h} className={[
+                                                    "px-3 py-2.5 text-left font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap",
+                                                    APP_SIZES.text.tableHeader
+                                                ].join(" ")}>
                                                     {h}
                                                 </th>
                                             ))}

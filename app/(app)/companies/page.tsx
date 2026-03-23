@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
@@ -339,10 +340,11 @@ export default function CompaniesPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-border-light bg-surface-2">
+                                        <tr className="border-b border-border-light">
                                             {["RIF", "Nombre", "Creada", ""].map((h) => (
                                                 <th key={h} className={[
-                                                    "px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap",
+                                                    "px-4 py-2.5 text-left font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap",
+                                                    APP_SIZES.text.tableHeader,
                                                     h === "Creada" ? "hidden sm:table-cell" : "",
                                                 ].join(" ")}>
                                                     {h}

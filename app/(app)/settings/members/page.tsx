@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
+import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -137,11 +138,11 @@ export default function MembersPage() {
             {loading ? (
                 <div className="space-y-2">
                     {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-16 rounded-lg bg-foreground/4 animate-pulse" />
+                        <div key={i} className="h-16 rounded-xl bg-surface-1 border border-border-light animate-pulse" />
                     ))}
                 </div>
             ) : members.length === 0 ? (
-                <p className="font-mono text-xs text-foreground/40 px-1">Sin miembros aún.</p>
+                <p className="font-mono text-xs text-[var(--text-tertiary)] px-1">Sin miembros aún.</p>
             ) : (
                 <div className="space-y-6">
                     {/* Accepted members */}
@@ -234,20 +235,21 @@ function MembersTable({
             </div>
 
             {/* Desktop: table */}
-            <div className="hidden sm:block rounded-lg border border-border-light overflow-hidden">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-border-light bg-surface-2">
-                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Email</th>
-                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Rol</th>
-                            <th className="text-left px-4 py-2.5 font-mono text-xs text-foreground/40 font-medium">Desde</th>
-                            <th className="px-4 py-2.5" />
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {members.map((m) => (
-                            <tr key={m.id} className="border-b border-border-light last:border-0">
-                                <td className="px-4 py-3 font-mono text-xs text-foreground">{m.email}</td>
+            <div className="hidden sm:block rounded-xl border border-border-light overflow-hidden bg-surface-1">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="border-b border-border-light">
+                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Email</th>
+                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Rol</th>
+                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Desde</th>
+                                <th className="px-4 py-3" />
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {members.map((m) => (
+                                <tr key={m.id} className="border-b border-border-light last:border-0 hover:bg-foreground/[0.02] transition-colors">
+                                    <td className="px-4 py-3 font-mono text-xs text-foreground">{m.email}</td>
                                 <td className="px-4 py-3">
                                     {m.pending ? <PendingBadge /> : <RoleBadge role={m.role} />}
                                 </td>
@@ -269,6 +271,7 @@ function MembersTable({
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
         </>
     );
