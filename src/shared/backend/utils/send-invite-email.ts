@@ -92,9 +92,9 @@ export async function sendInviteEmail({
 </html>`;
 
     await resend.emails.send({
-        from:    "kont <noreply@kont.app>",
+        from:    "konta <onboarding@resend.dev>",
         to,
-        subject: `Invitación a kont — ${tenantName}`,
+        subject: `Invitación a konta — ${tenantName}`,
         html,
     });
 }

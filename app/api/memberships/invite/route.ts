@@ -46,7 +46,9 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: error.message }, { status: 500 });
     }
 
-    const origin    = new URL(req.url).origin;
+    const host   = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? new URL(req.url).hostname;
+    const proto  = req.headers.get("x-forwarded-proto") ?? "https";
+    const origin = `${proto}://${host}`;
     const acceptUrl = `${origin}/accept-invite?token=${inv.token}`;
 
     // Obtener email del invitador y nombre del tenant para el email
