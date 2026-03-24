@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+import { invalidateModuleAccessCache } from "@/src/modules/billing/frontend/hooks/use-module-access";
 
 const STORAGE_KEY = "kont-active-tenant-id";
 
@@ -83,6 +84,7 @@ export function useActiveTenant(): UseActiveTenantResult {
         if (typeof window !== "undefined") {
             localStorage.setItem(STORAGE_KEY, tenantId);
         }
+        invalidateModuleAccessCache();
     }, []);
 
     const clearActiveTenant = useCallback(() => {

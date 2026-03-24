@@ -154,6 +154,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const [companyOpen,   setCompanyOpen]   = useState(false);
     const [companySearch, setCompanySearch] = useState("");
     const { hasAccess: hasInventory } = useModuleAccess("inventory");
+    const { hasAccess: hasPayroll   } = useModuleAccess("payroll");
+    const paidModuleAccess: Record<string, boolean> = { payroll: hasPayroll, inventory: hasInventory };
     const { activeTenantRole } = useActiveTenantContext();
     const companyDropdownRef = useRef<HTMLDivElement>(null);
     const isDesktop = useIsDesktop();
@@ -278,7 +280,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     </p>
                 ) : companies.length === 1 ? (
                     <div className="px-2 py-1.5 flex items-center gap-2">
-                        <CompanyAvatar name={company?.name} />
+                        <CompanyAvatar name={company?.name} logoUrl={company?.logoUrl} />
                         <span className={`font-mono ${APP_SIZES.nav.companyName} truncate text-sidebar-fg`}>
                             {company?.name}
                         </span>
@@ -292,7 +294,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                             aria-label={`Empresa seleccionada: ${company?.name ?? "Ninguna"}. Cambiar empresa`}
                             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
                         >
-                            <CompanyAvatar name={company?.name} />
+                            <CompanyAvatar name={company?.name} logoUrl={company?.logoUrl} />
                             <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
                                 {company?.name ?? "Seleccionar…"}
                             </span>
@@ -332,7 +334,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                                                                 : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                                         ].join(" ")}
                                                     >
-                                                        <CompanyAvatar name={c.name} />
+                                                        <CompanyAvatar name={c.name} logoUrl={c.logoUrl} />
                                                         <span className="truncate">{c.name}</span>
                                                         {isSelected && (
                                                             <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
@@ -358,7 +360,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 </p>
 
                 {APP_MODULES.filter((mod) => {
-                    if (mod.id === "inventory" && !hasInventory) return false;
+                    if (mod.paid && !paidModuleAccess[mod.id]) return false;
+                    if ('parentId' in mod && paidModuleAccess[mod.parentId as string] === false) return false;
                     if (mod.desktopOnly && !isDesktop) return false;
                     return true;
                 }).map((mod) => {
@@ -433,6 +436,22 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             {/* ── Bottom actions ─────────────────────────────────────────── */}
             <div className="px-3 py-4 space-y-1 border-t border-sidebar-border">
 
+                {/* Profile */}
+                <Link
+                    href="/settings/profile"
+                    aria-current={pathname.startsWith("/settings/profile") ? "page" : undefined}
+                    className={[
+                        NAV_ITEM_BASE,
+                        pathname.startsWith("/settings/profile") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE,
+                    ].join(" ")}
+                >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <circle cx="6.5" cy="4" r="2.5" />
+                        <path d="M1.5 12c0-2.8 2.2-5 5-5s5 2.2 5 5" />
+                    </svg>
+                    Perfil
+                </Link>
+
                 {/* Members settings — hidden only for contables acting on behalf */}
                 {activeTenantRole !== "contable" && (
                     <Link
@@ -494,15 +513,24 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
 // ── Shared sub-component ──────────────────────────────────────────────────────
 
-function CompanyAvatar({ name }: { name?: string }) {
+function CompanyAvatar({ name, logoUrl }: { name?: string; logoUrl?: string }) {
     return (
         <div
             aria-hidden="true"
-            className="w-5 h-5 rounded-md bg-primary-500/20 flex items-center justify-center flex-shrink-0"
+            className="w-5 h-5 rounded-md bg-primary-500/20 overflow-hidden flex items-center justify-center flex-shrink-0"
         >
-            <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
-                {name?.[0] ?? "?"}
-            </span>
+            {logoUrl ? (
+                <img
+                    src={logoUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+            ) : (
+                <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
+                    {name?.[0] ?? "?"}
+                </span>
+            )}
         </div>
     );
 }

@@ -4,8 +4,8 @@ import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
 export const PATCH = withTenant(async (req, { userId }) => {
     try {
-        const { id, name, rif } = await req.json();
-        const result = await getCompanyActions(userId).update.execute({ id, data: { name, rif } });
+        const { id, name, rif, phone, address, logoUrl } = await req.json();
+        const result = await getCompanyActions(userId).update.execute({ id, data: { name, rif, phone, address, logoUrl } });
         return handleResult(result);
     } catch {
         return Response.json({ error: "Formato JSON inválido" }, { status: 400 });

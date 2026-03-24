@@ -332,11 +332,12 @@ function InviteModal({
     onClose:        () => void;
     onSuccess:      () => void;
 }) {
-    const [email,   setEmail]   = useState("");
-    const [role,    setRole]    = useState("contable");
-    const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
-    const [sent,    setSent]    = useState(false);
+    const [email,     setEmail]     = useState("");
+    const [role,      setRole]      = useState("contable");
+    const [loading,   setLoading]   = useState(false);
+    const [error,     setError]     = useState<string | null>(null);
+    const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
+    const [copied,    setCopied]    = useState(false);
 
     async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -350,7 +351,14 @@ function InviteModal({
         const json = await res.json();
         setLoading(false);
         if (!res.ok) { setError(json.error ?? "Error al invitar"); return; }
-        setSent(true);
+        setAcceptUrl(json.data?.acceptUrl ?? null);
+    }
+
+    async function handleCopy() {
+        if (!acceptUrl) return;
+        await navigator.clipboard.writeText(acceptUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     }
 
     return (
@@ -358,21 +366,44 @@ function InviteModal({
             <div className="bg-surface-1 rounded-xl border border-border-light shadow-xl w-full max-w-sm p-6">
                 <h2 className="font-mono text-sm font-semibold text-foreground mb-4">Invitar miembro</h2>
 
-                {sent ? (
+                {acceptUrl ? (
                     <div className="space-y-4">
-                        <div className="flex flex-col items-center gap-3 py-4 text-center">
+                        <div className="flex flex-col items-center gap-3 py-2 text-center">
                             <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
                                 <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500" aria-hidden="true">
                                     <path d="M3 9.5l4 4 8-8" />
                                 </svg>
                             </div>
                             <div>
-                                <p className="font-mono text-sm font-semibold text-foreground">Invitación enviada</p>
+                                <p className="font-mono text-sm font-semibold text-foreground">Invitación creada</p>
                                 <p className="font-mono text-xs text-foreground/50 mt-1">
-                                    Le enviamos un email a <span className="text-foreground/80">{email}</span> con el enlace para unirse.
+                                    Comparte este enlace con <span className="text-foreground/80">{email}</span>
                                 </p>
                             </div>
                         </div>
+
+                        {/* Link copiable */}
+                        <div className="rounded-lg border border-border-light bg-surface-2 p-3 space-y-2">
+                            <p className="font-mono text-[10px] text-foreground/30 uppercase tracking-widest">Enlace de invitación</p>
+                            <p className="font-mono text-[10px] text-foreground/70 break-all leading-relaxed">{acceptUrl}</p>
+                            <button
+                                onClick={handleCopy}
+                                className="flex items-center gap-1.5 font-mono text-[10px] text-primary-400 hover:text-primary-300 transition-colors"
+                            >
+                                {copied ? (
+                                    <>
+                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 6.5l3 3 5-6"/></svg>
+                                        Copiado
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V2a1 1 0 0 1 1-1h6"/></svg>
+                                        Copiar enlace
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
                         <button
                             onClick={onSuccess}
                             className="w-full py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-xs transition-colors"

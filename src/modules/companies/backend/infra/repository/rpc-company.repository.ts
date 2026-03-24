@@ -41,7 +41,10 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_id:       company.id,
                     p_owner_id: company.ownerId,
                     p_name:     company.name,
-                    p_rif:      company.rif ?? null,
+                    p_rif:      company.rif      ?? null,
+                    p_phone:    company.phone    ?? null,
+                    p_address:  company.address  ?? null,
+                    p_logo_url: company.logoUrl  ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success();
@@ -54,10 +57,13 @@ export class RpcCompanyRepository implements ICompanyRepository {
         try {
             const { data, error } = await this.source.instance
                 .rpc('tenant_company_update', {
-                    p_user_id: this.userId,
-                    p_id:      id,
-                    p_name:    company.name,
-                    p_rif:     company.rif ?? null,
+                    p_user_id:  this.userId,
+                    p_id:       id,
+                    p_name:     company.name,
+                    p_rif:      company.rif      ?? null,
+                    p_phone:    company.phone    ?? null,
+                    p_address:  company.address  ?? null,
+                    p_logo_url: company.logoUrl  ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
@@ -82,7 +88,10 @@ export class RpcCompanyRepository implements ICompanyRepository {
             id:        data.id,
             ownerId:   data.owner_id,
             name:      data.name,
-            rif:       data.rif ?? undefined,
+            rif:       data.rif       ?? undefined,
+            phone:     data.phone     ?? undefined,
+            address:   data.address   ?? undefined,
+            logoUrl:   data.logo_url  ?? undefined,
             createdAt: data.created_at ? new Date(data.created_at) : undefined,
             updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
         };

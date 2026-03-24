@@ -17,7 +17,9 @@ const isAppRoute    = (p: string) =>
     p.startsWith('/payroll') ||
     p.startsWith('/inventory') ||
     p.startsWith('/companies') ||
-    p.startsWith('/billing');
+    p.startsWith('/billing') ||
+    p.startsWith('/documents') ||
+    p.startsWith('/settings');
 const isAdminRoute  = (p: string) => p.startsWith('/admin');
 const isAdminPublic = (p: string) =>
     p === '/admin/sign-in' ||
@@ -57,7 +59,7 @@ export async function middleware(request: NextRequest) {
             // Cliente con sesión activa intentando ver páginas públicas de admin → app
             // Excepto reset-password: necesita la sesión de Supabase para cambiar contraseña
             if (user && pathname !== '/admin/reset-password') {
-                return NextResponse.redirect(new URL('/payroll', request.url));
+                return NextResponse.redirect(new URL('/documents', request.url));
             }
             return response;
         }
@@ -120,6 +122,8 @@ export const config = {
         '/inventory/:path*',
         '/companies/:path*',
         '/billing/:path*',
+        '/documents/:path*',
+        '/settings/:path*',
         '/admin',
         '/admin/:path*',
     ],

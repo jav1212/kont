@@ -12,6 +12,9 @@ export interface Company {
     ownerId: string;
     name: string;
     rif?: string;
+    phone?: string;
+    address?: string;
+    logoUrl?: string;
     configFiscal?: Partial<ConfigFiscal>;
     createdAt?: Date;
     updatedAt?: Date;

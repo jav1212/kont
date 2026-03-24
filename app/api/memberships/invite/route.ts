@@ -72,5 +72,5 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         console.error("[invite] Error enviando email:", err);
     });
 
-    return Response.json({ data: { invitationId: inv.id, expiresAt: inv.expires_at } });
+    return Response.json({ data: { invitationId: inv.id, expiresAt: inv.expires_at, acceptUrl } });
 });

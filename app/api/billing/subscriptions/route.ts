@@ -1,30 +1,18 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { withTenant } from '@/src/shared/backend/utils/require-tenant';
+import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 
 /**
  * GET /api/billing/subscriptions
- * Returns all module subscriptions for the current tenant.
+ * Devuelve las suscripciones del tenant activo.
+ * Si el usuario actúa en nombre de otro tenant (admin/contable),
+ * devuelve las suscripciones de ese tenant, no las del usuario logueado.
  */
-export async function GET() {
-    const cookieStore = await cookies();
+export const GET = withTenant(async (_req, { userId, actingAs }) => {
+    const tenantId = actingAs?.ownerId ?? userId;
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
+    const server = new ServerSupabaseSource();
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return Response.json({ error: 'No autenticado' }, { status: 401 });
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await server.instance
         .from('tenant_subscriptions')
         .select(`
             id, status, billing_cycle,
@@ -33,7 +21,7 @@ export async function GET() {
             plans ( id, name, price_monthly_usd, price_quarterly_usd, price_annual_usd,
                     max_companies, max_employees_per_company )
         `)
-        .eq('tenant_id', user.id);
+        .eq('tenant_id', tenantId);
 
     if (error) {
         return Response.json({ error: 'Error al cargar suscripciones' }, { status: 500 });
@@ -68,4 +56,4 @@ export async function GET() {
     });
 
     return Response.json({ data: subscriptions });
-}
+});

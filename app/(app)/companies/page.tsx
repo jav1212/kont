@@ -6,6 +6,8 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 
 // ============================================================================
 // CONSTANTS
@@ -35,28 +37,34 @@ const Spinner = () => (
     </svg>
 );
 const IconSave = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 7l3.5 3.5L11 3" />
     </svg>
 );
 const IconCancel = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 2l9 9M11 2l-9 9" />
     </svg>
 );
 const IconEdit = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 1.5l2.5 2.5L4 11.5H1.5V9L9 1.5z" />
     </svg>
 );
 const IconTrash = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 6v4M8 6v4M3 3.5l.5 7h6l.5-7" />
     </svg>
 );
 const IconPlus = () => (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <path d="M6 1v10M1 6h10" />
+    </svg>
+);
+const IconCamera = () => (
+    <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M1 4.5a1 1 0 0 1 1-1h1l1-1.5h4l1 1.5h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-5z" />
+        <circle cx="6" cy="7" r="1.5" />
     </svg>
 );
 
@@ -67,13 +75,20 @@ const IconPlus = () => (
 export default function CompaniesPage() {
     const { companies, loading, error, save, update, remove, reload } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
+    const { user } = useAuth();
     const atCompanyLimit = !canAddCompany();
 
     // ── Edit state ────────────────────────────────────────────────────────
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editName, setEditName] = useState("");
-    const [editSaving, setEditSaving] = useState(false);
-    const [editError, setEditError] = useState<string | null>(null);
+    const [editingId,      setEditingId]      = useState<string | null>(null);
+    const [editName,       setEditName]       = useState("");
+    const [editPhone,      setEditPhone]      = useState("");
+    const [editAddress,    setEditAddress]    = useState("");
+    const [editLogoUrl,    setEditLogoUrl]    = useState<string | undefined>(undefined);
+    const [logoUploading,       setLogoUploading]       = useState(false);
+    const [logoUploadSuccess,   setLogoUploadSuccess]   = useState(false);
+    const [editSaving,          setEditSaving]          = useState(false);
+    const [editError,      setEditError]      = useState<string | null>(null);
+    const logoInputRef = useRef<HTMLInputElement>(null);
 
     // ── New row state ──────────────────────────────────────────────────────
     const [showNew, setShowNew] = useState(false);
@@ -114,23 +129,70 @@ export default function CompaniesPage() {
     const startEdit = useCallback((company: Company) => {
         setEditingId(company.id);
         setEditName(company.name);
+        setEditPhone(company.phone ?? "");
+        setEditAddress(company.address ?? "");
+        setEditLogoUrl(company.logoUrl);
         setEditError(null);
     }, []);
 
     const cancelEdit = useCallback(() => {
         setEditingId(null);
         setEditName("");
+        setEditPhone("");
+        setEditAddress("");
+        setEditLogoUrl(undefined);
         setEditError(null);
+        setLogoUploadSuccess(false);
     }, []);
 
     const saveEdit = useCallback(async () => {
         if (!editingId || !editName.trim()) return;
         setEditSaving(true);
         setEditError(null);
-        const err = await update(editingId, editName.trim());
+        const err = await update(editingId, {
+            name:    editName.trim(),
+            phone:   editPhone.trim()   || undefined,
+            address: editAddress.trim() || undefined,
+            logoUrl: editLogoUrl,
+        });
         setEditSaving(false);
         if (err) { setEditError(err); } else { cancelEdit(); }
-    }, [editingId, editName, update, cancelEdit]);
+    }, [editingId, editName, editPhone, editAddress, editLogoUrl, update, cancelEdit]);
+
+    const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user || !editingId) return;
+
+        const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+        if (file.size > MAX_BYTES) {
+            setEditError("El logo debe ser menor a 2 MB.");
+            if (logoInputRef.current) logoInputRef.current.value = "";
+            return;
+        }
+
+        setLogoUploading(true);
+        setLogoUploadSuccess(false);
+        // Keep any existing editError visible until the new attempt resolves
+        const ext  = file.name.split(".").pop();
+        const path = `${user.id}/${editingId}/logo.${ext}`;
+        const { error: uploadErr } = await getSupabaseBrowser().storage
+            .from("logos")
+            .upload(path, file, { upsert: true });
+        if (uploadErr) {
+            console.error("[logo-upload]", uploadErr);
+            setEditError("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
+            setLogoUploading(false);
+            if (logoInputRef.current) logoInputRef.current.value = "";
+            return;
+        }
+        const { data: { publicUrl } } = getSupabaseBrowser().storage.from("logos").getPublicUrl(path);
+        setEditLogoUrl(publicUrl);
+        setEditError(null); // clear only after confirmed success
+        setLogoUploading(false);
+        setLogoUploadSuccess(true);
+        setTimeout(() => setLogoUploadSuccess(false), 1800);
+        if (logoInputRef.current) logoInputRef.current.value = "";
+    }, [user, editingId]);
 
     // ── New actions ────────────────────────────────────────────────────────
 
@@ -341,11 +403,11 @@ export default function CompaniesPage() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border-light">
-                                            {["RIF", "Nombre", "Creada", ""].map((h) => (
+                                            {["RIF", "Nombre", "Teléfono", "Dirección", "Creada", ""].map((h) => (
                                                 <th key={h} className={[
                                                     "px-4 py-2.5 text-left font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap",
                                                     APP_SIZES.text.tableHeader,
-                                                    h === "Creada" ? "hidden sm:table-cell" : "",
+                                                    (h === "Creada" || h === "Teléfono" || h === "Dirección") ? "hidden sm:table-cell" : "",
                                                 ].join(" ")}>
                                                     {h}
                                                 </th>
@@ -389,6 +451,13 @@ export default function CompaniesPage() {
                                                         )}
                                                     </div>
                                                 </td>
+                                                {/* Teléfono / Dirección — empty on new row */}
+                                                <td className={tdCls + " hidden sm:table-cell"}>
+                                                    <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
+                                                </td>
+                                                <td className={tdCls + " hidden sm:table-cell"}>
+                                                    <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
+                                                </td>
                                                 <td className={tdCls}>
                                                     <span className="font-mono text-[10px] text-[var(--text-disabled)]">—</span>
                                                 </td>
@@ -414,7 +483,7 @@ export default function CompaniesPage() {
                                         {/* Existing rows */}
                                         {filtered.length === 0 && !showNew ? (
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                <td colSpan={6} className="px-4 py-12 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                                     {companies.length === 0
                                                         ? "Sin empresas. Crea una para comenzar."
                                                         : "Sin resultados para la búsqueda."}
@@ -438,32 +507,155 @@ export default function CompaniesPage() {
                                                         {/* Nombre */}
                                                         <td className={tdCls}>
                                                             {isEditing ? (
-                                                                <div>
-                                                                    <input
-                                                                        autoFocus
-                                                                        className={cellInput}
-                                                                        value={editName}
-                                                                        onChange={(e) => setEditName(e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === "Enter") saveEdit();
-                                                                            if (e.key === "Escape") cancelEdit();
-                                                                        }}
-                                                                    />
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {/* Logo clickable en modo edición */}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => logoInputRef.current?.click()}
+                                                                            disabled={logoUploading}
+                                                                            title={logoUploading ? "Subiendo…" : "Cambiar logo"}
+                                                                            aria-label={logoUploading ? "Subiendo logo…" : "Cambiar logo de la empresa"}
+                                                                            className={[
+                                                                                "relative w-7 h-7 rounded-md overflow-hidden bg-primary-500/10 flex items-center justify-center shrink-0",
+                                                                                "border transition-colors duration-150 disabled:cursor-not-allowed",
+                                                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 focus-visible:ring-offset-1",
+                                                                                logoUploadSuccess
+                                                                                    ? "border-green-500/60 ring-2 ring-green-500/20"
+                                                                                    : "border-border-light hover:border-primary-500/50",
+                                                                            ].join(" ")}
+                                                                        >
+                                                                            {/* Image or initial — kept visible at reduced opacity while uploading */}
+                                                                            {editLogoUrl ? (
+                                                                                <img
+                                                                                    src={editLogoUrl}
+                                                                                    alt={`Logo de ${editName || "la empresa"}`}
+                                                                                    className={["w-full h-full object-cover transition-opacity duration-150", logoUploading ? "opacity-40" : "opacity-100"].join(" ")}
+                                                                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                                                                />
+                                                                            ) : (
+                                                                                <span className={["font-mono text-[9px] font-bold text-primary-500 uppercase transition-opacity duration-150", logoUploading ? "opacity-40" : "opacity-100"].join(" ")}>
+                                                                                    {editName[0] ?? "?"}
+                                                                                </span>
+                                                                            )}
+                                                                            {/* Spinner overlay during upload */}
+                                                                            {logoUploading && (
+                                                                                <span className="absolute inset-0 flex items-center justify-center bg-surface-1/60">
+                                                                                    <Spinner />
+                                                                                </span>
+                                                                            )}
+                                                                            {/* Camera icon overlay — always visible, signals the button is interactive */}
+                                                                            {!logoUploading && (
+                                                                                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-surface-1 rounded-tl-sm flex items-center justify-center text-primary-500 pointer-events-none">
+                                                                                    <IconCamera />
+                                                                                </span>
+                                                                            )}
+                                                                        </button>
+                                                                        <input
+                                                                            autoFocus
+                                                                            className={cellInput}
+                                                                            value={editName}
+                                                                            onChange={(e) => setEditName(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") saveEdit();
+                                                                                if (e.key === "Escape") cancelEdit();
+                                                                            }}
+                                                                        />
+                                                                    </div>
                                                                     {editError && (
-                                                                        <p className="font-mono text-[9px] text-red-500 mt-1">{editError}</p>
+                                                                        <p className="font-mono text-[9px] text-red-500">{editError}</p>
                                                                     )}
+                                                                    {/* Phone + Address — visible only on mobile (hidden on sm+ where they have their own columns) */}
+                                                                    <div className="sm:hidden space-y-1.5">
+                                                                        <input
+                                                                            className={cellInput}
+                                                                            placeholder="0212-000-0000"
+                                                                            value={editPhone}
+                                                                            onChange={(e) => setEditPhone(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") saveEdit();
+                                                                                if (e.key === "Escape") cancelEdit();
+                                                                            }}
+                                                                        />
+                                                                        <input
+                                                                            className={cellInput}
+                                                                            placeholder="Av. Principal, Caracas"
+                                                                            value={editAddress}
+                                                                            onChange={(e) => setEditAddress(e.target.value)}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") saveEdit();
+                                                                                if (e.key === "Escape") cancelEdit();
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <input
+                                                                        ref={logoInputRef}
+                                                                        type="file"
+                                                                        accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                                                                        className="sr-only"
+                                                                        onChange={handleLogoUpload}
+                                                                    />
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-2">
-                                                                    <div className="w-6 h-6 rounded-md bg-primary-500/10 flex items-center justify-center shrink-0">
-                                                                        <span className="font-mono text-[9px] font-bold text-primary-500 uppercase">
-                                                                            {company.name[0]}
-                                                                        </span>
+                                                                    <div className="w-7 h-7 rounded-md overflow-hidden bg-primary-500/10 flex items-center justify-center shrink-0 border border-border-light/40">
+                                                                        {company.logoUrl ? (
+                                                                            <img
+                                                                                src={company.logoUrl}
+                                                                                alt={`Logo de ${company.name}`}
+                                                                                className="w-full h-full object-cover"
+                                                                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="font-mono text-[9px] font-bold text-primary-500 uppercase">
+                                                                                {company.name[0]}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <span className="font-mono text-[12px] font-medium text-foreground">
                                                                         {company.name}
                                                                     </span>
                                                                 </div>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Teléfono */}
+                                                        <td className={tdCls + " hidden sm:table-cell"}>
+                                                            {isEditing ? (
+                                                                <input
+                                                                    className={cellInput}
+                                                                    placeholder="0212-000-0000"
+                                                                    value={editPhone}
+                                                                    onChange={(e) => setEditPhone(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") saveEdit();
+                                                                        if (e.key === "Escape") cancelEdit();
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                                                                    {company.phone ?? "—"}
+                                                                </span>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Dirección */}
+                                                        <td className={tdCls + " hidden sm:table-cell"}>
+                                                            {isEditing ? (
+                                                                <input
+                                                                    className={cellInput}
+                                                                    placeholder="Av. Principal, Caracas"
+                                                                    value={editAddress}
+                                                                    onChange={(e) => setEditAddress(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") saveEdit();
+                                                                        if (e.key === "Escape") cancelEdit();
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                                                                    {company.address ?? "—"}
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -497,25 +689,26 @@ export default function CompaniesPage() {
                                                                 <div className="flex justify-end"><Spinner /></div>
                                                             ) : isEditing ? (
                                                                 <div className="flex items-center justify-end gap-1">
-                                                                    <button onClick={saveEdit} title="Guardar"
-                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                                                                    <button onClick={saveEdit} title="Guardar" aria-label="Guardar cambios"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500/40 transition-colors">
                                                                         <IconSave />
                                                                     </button>
-                                                                    <button onClick={cancelEdit} title="Cancelar"
-                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
+                                                                    <button onClick={cancelEdit} title="Cancelar" aria-label="Cancelar edición"
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-medium transition-colors">
                                                                         <IconCancel />
                                                                     </button>
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center justify-end gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                                    <button onClick={() => startEdit(company)} title="Editar"
-                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                                                                    <button onClick={() => startEdit(company)} title="Editar" aria-label={`Editar ${company.name}`}
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-medium transition-colors">
                                                                         <IconEdit />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => { setConfirmId(company.id); setDeleteError(null); }}
                                                                         title="Eliminar"
-                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors"
+                                                                        aria-label={`Eliminar ${company.name}`}
+                                                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 transition-colors"
                                                                     >
                                                                         <IconTrash />
                                                                     </button>

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
         const { error } = await source.instance.auth.exchangeCodeForSession(code);
         
         if (!error) {
-            return NextResponse.redirect(`${origin}/payroll`);
+            return NextResponse.redirect(`${origin}/documents`);
         }
 
         // Si hay error (ej. código expirado), redirigir al sign-in con mensaje

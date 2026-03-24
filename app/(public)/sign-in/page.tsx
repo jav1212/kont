@@ -46,7 +46,7 @@ function SignInFormContent() {
 
         if (err) { setError(err); return; }
 
-        const redirectTo = searchParams.get("redirectTo") ?? "/payroll";
+        const redirectTo = searchParams.get("redirectTo") ?? "/documents";
         router.replace(redirectTo);
     }
 

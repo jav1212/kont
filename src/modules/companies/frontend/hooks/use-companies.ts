@@ -20,8 +20,19 @@ export interface Company {
     ownerId:    string;
     name:       string;
     rif?:       string;
+    phone?:     string;
+    address?:   string;
+    logoUrl?:   string;
     createdAt?: string;
     updatedAt?: string;
+}
+
+export interface CompanyUpdateData {
+    name?:    string;
+    rif?:     string;
+    phone?:   string;
+    address?: string;
+    logoUrl?: string;
 }
 
 export interface UseCompanyResult {
@@ -32,9 +43,9 @@ export interface UseCompanyResult {
     error:         string | null;
     reload:        () => Promise<void>;
     selectCompany: (id: string) => void;
-    save:          (data: { id: string; name: string }) => Promise<string | null>;
-    update:        (id: string, name: string)           => Promise<string | null>;
-    remove:        (id: string)                         => Promise<string | null>;
+    save:          (data: { id: string; name: string; rif?: string }) => Promise<string | null>;
+    update:        (id: string, data: CompanyUpdateData)              => Promise<string | null>;
+    remove:        (id: string)                                       => Promise<string | null>;
 }
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
@@ -121,11 +132,11 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         return null;
     }, [user?.id, reload]);
 
-    const update = useCallback(async (id: string, name: string, rif?: string): Promise<string | null> => {
+    const update = useCallback(async (id: string, data: CompanyUpdateData): Promise<string | null> => {
         const { ok, json } = await apiFetch("/api/companies/update", {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id, name, rif }),
+            body:    JSON.stringify({ id, ...data }),
         });
         if (!ok) return json.error ?? "Error al actualizar";
         await reload();
