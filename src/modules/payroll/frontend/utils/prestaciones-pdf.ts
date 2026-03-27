@@ -3,6 +3,7 @@
 // ============================================================================
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 export interface PrestacionesPdfData {
     companyName:            string;
@@ -35,6 +36,8 @@ export interface PrestacionesPdfData {
     saldoFavor:             number;   // montoFinal − anticipo − intereses
     porcentajeAnticipo?:    number;   // e.g. 75
     tasaIntereses?:         number;   // e.g. 3
+    logoUrl?:               string;
+    showLogoInPdf?:         boolean;
 }
 
 type RGB = [number, number, number];
@@ -147,12 +150,16 @@ function detailRow(
 // Module-level ref for MR (set per call)
 let MR_DOC = 0;
 
-export function generatePrestacionesPdf(data: PrestacionesPdfData): void {
+export async function generatePrestacionesPdf(data: PrestacionesPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
     MR_DOC = MR;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     drawBg(doc, PW, PH);
 
@@ -173,6 +180,10 @@ export function generatePrestacionesPdf(data: PrestacionesPdfData): void {
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──────────────────────────────────────────────────────────
     fill(doc, ML, y, W, 14, C.white);
@@ -457,12 +468,16 @@ export function generatePrestacionesPdf(data: PrestacionesPdfData): void {
 // SIMPLIFIED PDF — Intereses y Anticipo (Art. 143 / 144 LOTTT)
 // ============================================================================
 
-export function generateInteresesAnticipoPdf(data: PrestacionesPdfData): void {
+export async function generateInteresesAnticipoPdf(data: PrestacionesPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
     MR_DOC = MR;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     drawBg(doc, PW, PH);
 
@@ -483,6 +498,10 @@ export function generateInteresesAnticipoPdf(data: PrestacionesPdfData): void {
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──────────────────────────────────────────────────────────
     fill(doc, ML, y, W, 14, C.white);

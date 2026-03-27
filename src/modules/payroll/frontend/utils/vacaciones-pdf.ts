@@ -5,6 +5,7 @@
 // ============================================================================
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,8 @@ export interface VacCompletasPdfData {
     montoDisfrute:     number;
     montoBono:         number;
     total:             number;
+    logoUrl?:          string;
+    showLogoInPdf?:    boolean;
 }
 
 export interface VacFraccionadasPdfData {
@@ -49,6 +52,8 @@ export interface VacFraccionadasPdfData {
     montoDisfrute:      number;
     montoBono:          number;
     total:              number;
+    logoUrl?:           string;
+    showLogoInPdf?:     boolean;
 }
 
 // ── Colors (matching the card design) ─────────────────────────────────────────
@@ -300,11 +305,15 @@ function drawFooter(
 // GENERATE — Vacaciones Completas
 // ============================================================================
 
-export function generateVacComplletasPdf(data: VacCompletasPdfData): void {
+export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     // Page background
     fill(doc, 0, 0, PW, PH, C.bgPage);
@@ -320,6 +329,10 @@ export function generateVacComplletasPdf(data: VacCompletasPdfData): void {
         formatDateES(data.fechaInicio),
         `al ${formatDateES(data.fechaCulminacion)}`,
     );
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──
     y = drawEmployeeCard(
@@ -385,11 +398,15 @@ export function generateVacComplletasPdf(data: VacCompletasPdfData): void {
 // GENERATE — Vacaciones Fraccionadas
 // ============================================================================
 
-export function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): void {
+export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     // Page background
     fill(doc, 0, 0, PW, PH, C.bgPage);
@@ -404,6 +421,10 @@ export function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): void {
         "Fecha de Egreso",
         formatDateES(data.fechaEgreso),
     );
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──
     y = drawEmployeeCard(

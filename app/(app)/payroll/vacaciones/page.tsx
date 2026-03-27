@@ -242,9 +242,10 @@ function Hr() { return <div className="border-t border-border-light my-2" />; }
 // ============================================================================
 
 function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
-    companyName, fechaInicio, fechaCulminacion, fechaReintegro }: {
+    companyName, companyLogoUrl, showLogoInPdf, fechaInicio, fechaCulminacion, fechaReintegro }: {
     calc: VacCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
+    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+    fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
 }) {
     const handlePdf = () => generateVacComplletasPdf({
         companyName, employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo, anios: calc.anios },
@@ -253,6 +254,7 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
         diasCalendario: calc.diasCalendario, diasHabiles: calc.diasHabiles, diasDescanso: calc.diasDescanso,
         diasDisfrute: calc.diasDisfrute, diasBono: calc.diasBono,
         montoDisfrute: calc.montoDisfrute, montoBono: calc.montoBono, total: calc.total,
+        logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
@@ -410,9 +412,10 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
 // ============================================================================
 
 function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCargo,
-    companyName, fechaIngreso, fechaEgreso }: {
+    companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaEgreso }: {
     calc: VacFracCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; fechaIngreso: string; fechaEgreso: string;
+    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+    fechaIngreso: string; fechaEgreso: string;
 }) {
     const handlePdf = () => generateVacFraccionadasPdf({
         companyName, employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
@@ -422,6 +425,7 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
         salarioVES: calc.salarioVES, salarioDia: calc.salarioDia,
         fraccionDisfrute: calc.fraccionDisfrute, fraccionBono: calc.fraccionBono,
         montoDisfrute: calc.montoDisfrute, montoBono: calc.montoBono, total: calc.total,
+        logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
@@ -1024,6 +1028,8 @@ export default function VacacionesPage() {
                             employeeCedula={selectedEmp?.cedula ?? "—"}
                             employeeCargo={selectedEmp?.cargo}
                             companyName={company?.name ?? "La Empresa"}
+                            companyLogoUrl={company?.logoUrl}
+                            showLogoInPdf={company?.showLogoInPdf}
                             fechaInicio={fechaInicio}
                             fechaCulminacion={fechaCulminacion}
                             fechaReintegro={fechaReintegro}
@@ -1044,6 +1050,8 @@ export default function VacacionesPage() {
                             employeeCedula={selectedEmp?.cedula ?? "—"}
                             employeeCargo={selectedEmp?.cargo}
                             companyName={company?.name ?? "La Empresa"}
+                            companyLogoUrl={company?.logoUrl}
+                            showLogoInPdf={company?.showLogoInPdf}
                             fechaIngreso={fechaIngreso}
                             fechaEgreso={fechaEgreso}
                         />

@@ -4,6 +4,7 @@
 // Requiere: npm install jspdf
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -43,6 +44,8 @@ export interface PdfPayrollOptions {
     mondaysInMonth: number;
     receiptSerial?: string;   // "NOM-2026-03-Q1"
     salaryMode?:    "mensual" | "integral";  // qué salario mostrar en la tarjeta del empleado
+    logoUrl?:       string;
+    showLogoInPdf?: boolean;
 }
 
 // Genera el serial de nómina a partir del período
@@ -241,7 +244,7 @@ function drawSection(doc: Doc, x: number, y: number, w: number, opts: SectionOpt
 
 // ── Receipt ───────────────────────────────────────────────────────────────────
 
-function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, isFirst: boolean, empIdx = 0) {
+function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, isFirst: boolean, empIdx = 0, logoBase64?: string | null) {
     if (!isFirst) doc.addPage();
 
     const PW = doc.internal.pageSize.getWidth();
@@ -282,6 +285,10 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
     const CARD_H = opts.salaryMode === "integral" ? 42 : 30;
@@ -492,7 +499,7 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function generatePayrollPdf(employees: PdfEmployeeResult[], opts: PdfPayrollOptions): void {
+export async function generatePayrollPdf(employees: PdfEmployeeResult[], opts: PdfPayrollOptions): Promise<void> {
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
 
@@ -502,7 +509,11 @@ export function generatePayrollPdf(employees: PdfEmployeeResult[], opts: PdfPayr
         receiptSerial: opts.receiptSerial ?? makePayrollSerial(opts.periodStart ?? opts.payrollDate),
     };
 
+    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
+        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
+        : null;
+
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    active.forEach((emp, i) => drawReceipt(doc, emp, optsWithSerial, i === 0, i));
+    active.forEach((emp, i) => drawReceipt(doc, emp, optsWithSerial, i === 0, i, logoBase64));
     doc.save(`nomina_${opts.payrollDate.replaceAll("-", "")}.pdf`);
 }

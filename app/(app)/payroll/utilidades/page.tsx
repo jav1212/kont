@@ -162,10 +162,10 @@ function Hr() { return <div className="border-t border-border-light my-2" />; }
 // RIGHT PANEL — Constancia Completas
 // ============================================================================
 
-function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo, companyName }: {
+function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo, companyName, companyLogoUrl, showLogoInPdf }: {
     calc: UtilidadesCompletas;
     employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string;
+    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
 }) {
     const handlePdf = () => generateUtilidadesCompletasPdf({
         companyName,
@@ -175,6 +175,7 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
         salarioDia:     calc.salarioDia,
         diasUtilidades: calc.diasUtilidades,
         monto:          calc.monto,
+        logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     return (
@@ -275,10 +276,11 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
 // ============================================================================
 
 function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCargo,
-    companyName, fechaIngreso, fechaCorte }: {
+    companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaCorte }: {
     calc: UtilidadesFraccionadas;
     employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; fechaIngreso: string; fechaCorte: string;
+    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+    fechaIngreso: string; fechaCorte: string;
 }) {
     const handlePdf = () => generateUtilidadesFraccionadasPdf({
         companyName,
@@ -294,6 +296,7 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
         salarioVES:       calc.salarioVES,
         salarioDia:       calc.salarioDia,
         monto:            calc.monto,
+        logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     return (

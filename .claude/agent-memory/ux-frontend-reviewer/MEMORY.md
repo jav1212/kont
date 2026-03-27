@@ -15,6 +15,7 @@
 - [sidebar_patterns.md](./sidebar_patterns.md) — Sidebar nav item classes, active state logic, dropdown ARIA, SVG aria-hidden convention
 - [documents_module_patterns.md](./documents_module_patterns.md) — Documents module UX patterns: dashed button style, modal anti-patterns, Replicar plantilla bugs found 2026-03-22
 - [landing_page_patterns.md](./landing_page_patterns.md) — Landing page section order, copy tone, ModuleCarousel implementation details
+- [inline_edit_patterns.md](./inline_edit_patterns.md) — Inline table row edit: logo upload button design, upload state machine, mobile field fallback, aria-label + focus-visible conventions
 
 ## Brand
 - [brand_konta.md](./brand_konta.md) — Konta rebrand spec: logo treatment pattern, color tokens, admin area exception, document shell exception

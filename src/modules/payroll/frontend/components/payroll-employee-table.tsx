@@ -556,6 +556,8 @@ export interface PayrollEmployeeTableProps {
     salarioMinimo?:           number;  // para tope SSO (10 SM)
     companyName:              string;
     companyId?:               string;
+    companyLogoUrl?:          string;
+    showLogoInPdf?:           boolean;
     payrollDate:              string;
     periodStart?:             string;
     periodLabel?:             string;
@@ -568,7 +570,8 @@ export const PayrollEmployeeTable = ({
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     diasUtilidades, diasBonoVacacional,
     bonoNocturnoEnabled = false, diasNocturnosQuincena = 0, salarioMinimo = 0,
-    companyName, companyId, payrollDate, periodStart, periodLabel,
+    companyName, companyId, companyLogoUrl, showLogoInPdf,
+    payrollDate, periodStart, periodLabel,
     periodAlreadyConfirmed, salaryMode,
 }: PayrollEmployeeTableProps) => {
 
@@ -602,9 +605,9 @@ export const PayrollEmployeeTable = ({
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);
 
-    const handleExportPdf = useCallback(() => {
+    const handleExportPdf = useCallback(async () => {
         if (!results.length) return;
-        generatePayrollPdf(
+        await generatePayrollPdf(
             results.map((r) => ({
                 cedula: r.cedula, nombre: r.nombre, cargo: r.cargo, salarioMensual: r.salarioMensual, estado: r.estado,
                 earningLines: r.earningLines, bonusLines: r.bonusLines, deductionLines: r.deductionLines,
@@ -612,9 +615,10 @@ export const PayrollEmployeeTable = ({
                 gross: r.gross, net: r.net, netUSD: r.netUSD,
                 alicuotaUtil: r.alicuotaUtil, alicuotaBono: r.alicuotaBono, salarioIntegral: r.salarioIntegral,
             })),
-            { companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode }
+            { companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode,
+              logoUrl: companyLogoUrl, showLogoInPdf }
         );
-    }, [results, companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode]);
+    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode]);
 
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;

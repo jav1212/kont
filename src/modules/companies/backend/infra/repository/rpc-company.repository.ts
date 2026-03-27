@@ -57,13 +57,14 @@ export class RpcCompanyRepository implements ICompanyRepository {
         try {
             const { data, error } = await this.source.instance
                 .rpc('tenant_company_update', {
-                    p_user_id:  this.userId,
-                    p_id:       id,
-                    p_name:     company.name,
-                    p_rif:      company.rif      ?? null,
-                    p_phone:    company.phone    ?? null,
-                    p_address:  company.address  ?? null,
-                    p_logo_url: company.logoUrl  ?? null,
+                    p_user_id:           this.userId,
+                    p_id:                id,
+                    p_name:              company.name,
+                    p_rif:               company.rif             ?? null,
+                    p_phone:             company.phone           ?? null,
+                    p_address:           company.address         ?? null,
+                    p_logo_url:          company.logoUrl         ?? null,
+                    p_show_logo_in_pdf:  company.showLogoInPdf   ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
@@ -85,15 +86,16 @@ export class RpcCompanyRepository implements ICompanyRepository {
 
     private mapToDomain(data: any): Company {
         return {
-            id:        data.id,
-            ownerId:   data.owner_id,
-            name:      data.name,
-            rif:       data.rif       ?? undefined,
-            phone:     data.phone     ?? undefined,
-            address:   data.address   ?? undefined,
-            logoUrl:   data.logo_url  ?? undefined,
-            createdAt: data.created_at ? new Date(data.created_at) : undefined,
-            updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
+            id:             data.id,
+            ownerId:        data.owner_id,
+            name:           data.name,
+            rif:            data.rif              ?? undefined,
+            phone:          data.phone            ?? undefined,
+            address:        data.address          ?? undefined,
+            logoUrl:        data.logo_url         ?? undefined,
+            showLogoInPdf:  data.show_logo_in_pdf ?? false,
+            createdAt:      data.created_at ? new Date(data.created_at) : undefined,
+            updatedAt:      data.updated_at ? new Date(data.updated_at) : undefined,
         };
     }
 }

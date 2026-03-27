@@ -16,23 +16,25 @@ import { apiFetch as tenantApiFetch } from "@/src/shared/frontend/utils/api-fetc
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Company {
-    id:         string;
-    ownerId:    string;
-    name:       string;
-    rif?:       string;
-    phone?:     string;
-    address?:   string;
-    logoUrl?:   string;
-    createdAt?: string;
-    updatedAt?: string;
+    id:              string;
+    ownerId:         string;
+    name:            string;
+    rif?:            string;
+    phone?:          string;
+    address?:        string;
+    logoUrl?:        string;
+    showLogoInPdf?:  boolean;
+    createdAt?:      string;
+    updatedAt?:      string;
 }
 
 export interface CompanyUpdateData {
-    name?:    string;
-    rif?:     string;
-    phone?:   string;
-    address?: string;
-    logoUrl?: string;
+    name?:           string;
+    rif?:            string;
+    phone?:          string;
+    address?:        string;
+    logoUrl?:        string;
+    showLogoInPdf?:  boolean;
 }
 
 export interface UseCompanyResult {

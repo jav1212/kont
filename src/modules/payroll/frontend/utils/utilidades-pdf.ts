@@ -4,6 +4,7 @@
 // ============================================================================
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,8 @@ export interface UtilidadesCompletasPdfData {
     salarioDia:     number;
     diasUtilidades: number;
     monto:          number;
+    logoUrl?:       string;
+    showLogoInPdf?: boolean;
 }
 
 export interface UtilidadesFraccionadasPdfData {
@@ -37,6 +40,8 @@ export interface UtilidadesFraccionadasPdfData {
     salarioVES:       number;
     salarioDia:       number;
     monto:            number;
+    logoUrl?:         string;
+    showLogoInPdf?:   boolean;
 }
 
 // ── Colors ────────────────────────────────────────────────────────────────────
@@ -143,11 +148,15 @@ function drawSignatures(doc: jsPDF, ML: number, W: number, y: number): number {
 // GENERATE — Utilidades Completas
 // ============================================================================
 
-export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData): void {
+export async function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     drawBg(doc, PW, PH);
 
@@ -168,6 +177,10 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──────────────────────────────────────────────────────────
     fill(doc, ML, y, W, 14, C.white);
@@ -271,11 +284,15 @@ export function generateUtilidadesCompletasPdf(data: UtilidadesCompletasPdfData)
 // GENERATE — Utilidades Fraccionadas
 // ============================================================================
 
-export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPdfData): void {
+export async function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
     const ML = 13, MR = PW - 13, W = MR - ML;
+
+    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
+        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
+        : null;
 
     drawBg(doc, PW, PH);
 
@@ -296,6 +313,10 @@ export function generateUtilidadesFraccionadasPdf(data: UtilidadesFraccionadasPd
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Employee card ──────────────────────────────────────────────────────────
     fill(doc, ML, y, W, 14, C.white);

@@ -10,6 +10,7 @@ const IDLE   = "text-foreground/60 border-transparent hover:text-foreground hove
 
 const NAV_LINKS = [
     { href: "/settings/profile", label: "Perfil" },
+    { href: "/settings/company", label: "Empresa" },
     { href: "/settings/members", label: "Miembros" },
 ];
 

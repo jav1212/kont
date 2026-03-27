@@ -3,6 +3,7 @@
 // al documento legal venezolano (LOTTT Arts. 131, 142, 190, 192).
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,11 +32,13 @@ export interface FinDeAnoEmployee {
 }
 
 export interface FinDeAnoOptions {
-    companyName:   string;
-    periodStart:   string;   // DD/MM/YYYY
-    periodEnd:     string;   // DD/MM/YYYY
-    ciudad:        string;
-    fechaDoc:      string;   // e.g. "14 de noviembre de 2025"
+    companyName:    string;
+    periodStart:    string;   // DD/MM/YYYY
+    periodEnd:      string;   // DD/MM/YYYY
+    ciudad:         string;
+    fechaDoc:       string;   // e.g. "14 de noviembre de 2025"
+    logoUrl?:       string;
+    showLogoInPdf?: boolean;
 }
 
 // ── Number to words (Bolívares, Spanish) ────────────────────────────────────
@@ -144,7 +147,7 @@ function hline(doc: Doc, x: number, y: number, w: number, lw = 0.25, c: RGB = C.
 
 // ── Receipt renderer ─────────────────────────────────────────────────────────
 
-function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isFirst: boolean) {
+function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isFirst: boolean, logoBase64?: string | null) {
     if (!isFirst) doc.addPage();
 
     const PW  = doc.internal.pageSize.getWidth();
@@ -170,6 +173,10 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
         MR, 24, 5.5, false, "right", [100, 100, 118] as RGB);
 
     let y = HDR_H + 8;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── Intro paragraph ────────────────────────────────────────────────────
     const totalStr  = montoEnLetras(emp.totalRecibido);
@@ -394,9 +401,14 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function generateFinDeAnoPdf(employees: FinDeAnoEmployee[], opts: FinDeAnoOptions): void {
+export async function generateFinDeAnoPdf(employees: FinDeAnoEmployee[], opts: FinDeAnoOptions): Promise<void> {
     if (employees.length === 0) return;
+
+    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
+        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
+        : null;
+
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0));
+    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, logoBase64));
     doc.save(`bonificacion_fin_de_ano_${opts.periodEnd.replaceAll("/", "")}.pdf`);
 }

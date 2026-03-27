@@ -3,6 +3,7 @@
 // Paleta visual unificada con payroll-pdf.ts
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,10 +30,12 @@ export interface LiquidacionEmployee {
 }
 
 export interface LiquidacionOptions {
-    companyName: string;
-    companyId?:  string;
-    fechaDoc:    string;   // ISO YYYY-MM-DD
-    bcvRate?:    number;
+    companyName:    string;
+    companyId?:     string;
+    fechaDoc:       string;   // ISO YYYY-MM-DD
+    bcvRate?:       number;
+    logoUrl?:       string;
+    showLogoInPdf?: boolean;
 }
 
 // ── Palette (Konta orange — unificada con payroll-pdf) ────────────────────────
@@ -141,7 +144,7 @@ const MOTIVO_LABEL: Record<string, string> = {
 
 // ── Receipt renderer ──────────────────────────────────────────────────────────
 
-function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOptions, isFirst: boolean) {
+function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOptions, isFirst: boolean, logoBase64?: string | null) {
     if (!isFirst) doc.addPage();
 
     const PW = doc.internal.pageSize.getWidth();
@@ -174,6 +177,10 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
     );
 
     let y = HDR_H + 5;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
     const CARD_H = 28;
@@ -331,10 +338,15 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function generateLiquidacionPdf(employees: LiquidacionEmployee[], opts: LiquidacionOptions): void {
+export async function generateLiquidacionPdf(employees: LiquidacionEmployee[], opts: LiquidacionOptions): Promise<void> {
     if (employees.length === 0) return;
+
+    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
+        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
+        : null;
+
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0));
+    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, logoBase64));
     const slug = opts.fechaDoc.replaceAll("-", "");
     doc.save(`liquidaciones_${slug}.pdf`);
 }

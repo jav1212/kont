@@ -894,6 +894,8 @@ export default function PayrollCalculator() {
                         salarioMinimo={salarioMinimo}
                         companyName={company?.name ?? ""}
                         companyId={company?.id ?? ""}
+                        companyLogoUrl={company?.logoUrl}
+                        showLogoInPdf={company?.showLogoInPdf}
                         payrollDate={quincenaInfo.endDate}
                         periodStart={quincenaInfo.startDate}
                         periodLabel={quincenaInfo.label}

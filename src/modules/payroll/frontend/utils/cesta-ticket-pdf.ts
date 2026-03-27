@@ -4,6 +4,7 @@
 // ============================================================================
 
 import jsPDF from "jspdf";
+import { loadImageAsBase64 } from "./pdf-image-helper";
 
 export interface CestaTicketEmployee {
     cedula:  string;
@@ -19,6 +20,8 @@ export interface CestaTicketOptions {
     payrollDate:  string;   // ISO date for filename
     montoUSD:     number;   // monto por empleado (default 40)
     bcvRate:      number;   // tasa BCV para conversión a VES
+    logoUrl?:     string;
+    showLogoInPdf?: boolean;
 }
 
 type RGB = [number, number, number];
@@ -110,12 +113,16 @@ function drawFooter(doc: jsPDF, PW: number, PH: number, opts: CestaTicketOptions
     );
 }
 
-export function generateCestaTicketPdf(
+export async function generateCestaTicketPdf(
     employees: CestaTicketEmployee[],
     opts: CestaTicketOptions,
-): void {
+): Promise<void> {
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
+
+    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
+        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
+        : null;
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
@@ -143,6 +150,10 @@ export function generateCestaTicketPdf(
     );
 
     let y = HDR_H + 6;
+
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    }
 
     // ── PARAMS CARD ───────────────────────────────────────────────────────
     const montoVES = opts.montoUSD * opts.bcvRate;

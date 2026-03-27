@@ -244,17 +244,19 @@ export default function PayrollHistoryPage() {
 
     const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
 
-    const handleDownloadPdf = useCallback(() => {
+    const handleDownloadPdf = useCallback(async () => {
         if (!selectedRun || !receipts.length) return;
         const employees = buildPdfEmployees(receipts);
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
-        generatePayrollPdf(employees, {
+        await generatePayrollPdf(employees, {
             companyName:    company?.name ?? "Empresa",
             payrollDate:    selectedRun.periodEnd,
             periodStart:    selectedRun.periodStart,
             periodLabel,
             bcvRate:        selectedRun.exchangeRate,
             mondaysInMonth: receipts[0]?.calculationData?.mondaysInMonth ?? 4,
+            logoUrl:        company?.logoUrl,
+            showLogoInPdf:  company?.showLogoInPdf,
         });
     }, [selectedRun, receipts, company]);
 

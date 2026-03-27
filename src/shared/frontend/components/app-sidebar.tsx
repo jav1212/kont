@@ -14,6 +14,7 @@ import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
 import { TenantSwitcher } from "@/src/modules/memberships/frontend/components/tenant-switcher";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
+import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 
 // ── Module icons ──────────────────────────────────────────────────────────────
 
@@ -136,6 +137,18 @@ const NAV_ITEM_ACTIVE =
 // COMPONENT
 // ============================================================================
 
+function UserAvatar({ avatarUrl, email, size = 18 }: { avatarUrl?: string | null; email?: string | null; size?: number }) {
+    const initial = (email?.[0] ?? "?").toUpperCase();
+    return (
+        <div aria-hidden="true" style={{ width: size, height: size }}
+            className="rounded-full bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0">
+            {avatarUrl
+                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                : <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">{initial}</span>}
+        </div>
+    );
+}
+
 interface AppSidebarProps {
     open: boolean;
     onClose: () => void;
@@ -157,6 +170,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { hasAccess: hasPayroll   } = useModuleAccess("payroll");
     const paidModuleAccess: Record<string, boolean> = { payroll: hasPayroll, inventory: hasInventory };
     const { activeTenantRole } = useActiveTenantContext();
+    const { profile, email: userEmail } = useProfile();
     const companyDropdownRef = useRef<HTMLDivElement>(null);
     const isDesktop = useIsDesktop();
 
@@ -445,11 +459,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         pathname.startsWith("/settings/profile") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE,
                     ].join(" ")}
                 >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <circle cx="6.5" cy="4" r="2.5" />
-                        <path d="M1.5 12c0-2.8 2.2-5 5-5s5 2.2 5 5" />
-                    </svg>
-                    Perfil
+                    <UserAvatar avatarUrl={profile.avatarUrl} email={userEmail} size={18} />
+                    <span className="truncate flex-1 text-left">
+                        {profile.name ?? userEmail?.split("@")[0] ?? "Perfil"}
+                    </span>
                 </Link>
 
                 {/* Members settings — hidden only for contables acting on behalf */}

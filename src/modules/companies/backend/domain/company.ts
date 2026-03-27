@@ -15,6 +15,7 @@ export interface Company {
     phone?: string;
     address?: string;
     logoUrl?: string;
+    showLogoInPdf?: boolean;
     configFiscal?: Partial<ConfigFiscal>;
     createdAt?: Date;
     updatedAt?: Date;
