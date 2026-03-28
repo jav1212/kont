@@ -1,10 +1,9 @@
+// use-case.ts — abstract base class for all application use cases.
+// Role: core application primitive — every use case extends this and implements execute().
+// @template I - Input type for the use case.
+// @template O - Output type wrapped inside Result<O>.
 import { Result } from "@/src/core/domain/result";
 
-/**
- * Interface para Casos de Uso.
- * @template I Input del caso de uso
- * @template O Output del caso de uso (dentro del Result)
- */
 export abstract class UseCase<I, O> {
     abstract execute(input: I): Promise<Result<O>>;
 }

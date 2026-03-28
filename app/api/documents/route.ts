@@ -1,6 +1,6 @@
 import { withTenant } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult } from '@/src/shared/backend/utils/handle-result';
-import { getDocumentsActions } from '@/src/modules/documents/backend/infra/documents-factory';
+import { getDocumentsActions } from '@/src/modules/documents/backend/infrastructure/documents-factory';
 
 export const GET = withTenant(async (req, { userId, actingAs }) => {
     const ownerId = actingAs?.ownerId ?? userId;

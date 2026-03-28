@@ -1,9 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+// API route — POST /api/auth/forgot-password
+// Delegates to ResetPasswordUseCase. Always returns success to avoid email enumeration.
+import { getAuthActions } from "@/src/modules/auth/backend/infrastructure/auth-factory";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
-/**
- * POST /api/auth/forgot-password
- * Envía un email de recuperación de contraseña al usuario.
- */
 export async function POST(req: Request) {
     let email: string;
     try {
@@ -12,26 +11,12 @@ export async function POST(req: Request) {
         return Response.json({ error: 'Formato JSON inválido.' }, { status: 400 });
     }
 
-    if (!email?.trim()) {
-        return Response.json({ error: 'El correo es requerido.' }, { status: 400 });
-    }
-
     const { origin } = new URL(req.url);
 
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const result = await getAuthActions().resetPassword.execute({
+        email,
         redirectTo: `${origin}/reset-password`,
     });
 
-    if (error) {
-        return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    // Siempre responde con éxito para no revelar si el correo existe
-    return Response.json({ data: { ok: true } });
+    return handleResult(result, 200);
 }

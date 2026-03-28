@@ -1,3 +1,6 @@
+// result.ts — railway-oriented error handling primitive.
+// Role: core domain — wraps every use-case output in a typed success/failure envelope.
+// Invariant: Result instances are frozen value objects; never mutate after construction.
 export class Result<T> {
   public readonly isSuccess: boolean;
   public readonly isFailure: boolean;
@@ -10,19 +13,19 @@ export class Result<T> {
     this._error = error;
     this._value = value;
 
-    Object.freeze(this); // Inmutabilidad para DDD
+    Object.freeze(this); // Enforce immutability — Result instances are value objects.
   }
 
   public getValue(): T {
     if (!this.isSuccess) {
-      throw new Error("No se puede obtener el valor de un resultado fallido.");
+      throw new Error("Cannot get value from a failed result.");
     }
     return this._value as T;
   }
 
   public getError(): string {
     if (this.isSuccess) {
-      throw new Error("No se puede obtener el error de un resultado exitoso.");
+      throw new Error("Cannot get error from a successful result.");
     }
     return this._error as string;
   }

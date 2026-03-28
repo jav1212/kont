@@ -1,28 +1,27 @@
 // documents-factory — assembles the documents module dependency graph.
 // Role: infrastructure entry point — constructs repositories and wires all use cases.
 // Invariant: callers must not instantiate use cases directly; always go through this factory.
-/**
- * @param ownerId — UUID del dueño del schema (puede diferir del usuario logueado
- *                  cuando un contable actúa en nombre de un cliente).
- *
- * Usa ServerSupabaseSource + RPC functions en public schema (mismo patrón
- * que inventory), ya que PostgREST no expone los schemas tenant directamente.
- */
+//
+// ownerId — UUID of the schema owner (may differ from the logged-in user
+//           when an accountant acts on behalf of a client).
+//
+// Uses ServerSupabaseSource + RPC functions in the public schema (same pattern
+// as inventory), since PostgREST does not expose tenant schemas directly.
 import { ServerSupabaseSource }             from '@/src/shared/backend/source/infra/server-supabase';
 import { LocalEventBus }                    from '@/src/shared/backend/infra/local-event-bus';
 import { SupabaseDocumentFolderRepository } from './repository/supabase-document-folder.repository';
 import { SupabaseDocumentRepository }       from './repository/supabase-document.repository';
 import { SupabaseDocumentStorageRepository } from './repository/supabase-document-storage.repository';
-import { CreateFolderUseCase }              from '../app/commands/create-folder.use-case';
-import { DeleteFolderUseCase }              from '../app/commands/delete-folder.use-case';
-import { RegisterDocumentUseCase }          from '../app/commands/register-document.use-case';
-import { DeleteDocumentUseCase }            from '../app/commands/delete-document.use-case';
-import { GetFoldersUseCase }                from '../app/queries/get-folders.use-case';
-import { GetDocumentsUseCase }              from '../app/queries/get-documents.use-case';
-import { GetUploadUrlUseCase }              from '../app/queries/get-upload-url.use-case';
-import { GetDownloadUrlUseCase }            from '../app/queries/get-download-url.use-case';
-import { FindDocumentByIdUseCase }          from '../app/queries/find-document-by-id.use-case';
-import { ReplicateFoldersUseCase }          from '../app/queries/replicate-folders.use-case';
+import { CreateFolderUseCase }              from '../application/commands/create-folder.use-case';
+import { DeleteFolderUseCase }              from '../application/commands/delete-folder.use-case';
+import { RegisterDocumentUseCase }          from '../application/commands/register-document.use-case';
+import { DeleteDocumentUseCase }            from '../application/commands/delete-document.use-case';
+import { GetFoldersUseCase }                from '../application/queries/get-folders.use-case';
+import { GetDocumentsUseCase }              from '../application/queries/get-documents.use-case';
+import { GetUploadUrlUseCase }              from '../application/queries/get-upload-url.use-case';
+import { GetDownloadUrlUseCase }            from '../application/queries/get-download-url.use-case';
+import { FindDocumentByIdUseCase }          from '../application/queries/find-document-by-id.use-case';
+import { ReplicateFoldersUseCase }          from '../application/queries/replicate-folders.use-case';
 
 export function getDocumentsActions(ownerId: string) {
     const source   = new ServerSupabaseSource();

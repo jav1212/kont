@@ -6,4 +6,5 @@ export interface IAuthRepository {
     signUp(email: string, pass: string, emailRedirectTo?: string): Promise<Result<Auth>>;
     signOut(): Promise<Result<void>>;
     getCurrentUser(): Promise<Result<Auth | null>>;
+    resetPassword(email: string, redirectTo?: string): Promise<Result<void>>;
 }
