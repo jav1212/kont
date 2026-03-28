@@ -6,8 +6,8 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Movimiento } from "@/src/modules/inventory/backend/domain/movimiento";
-import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,12 +78,12 @@ function computeCostos(item: AutoconsumoItem, tasaDolar: number | null, ivaMode:
 
 function ProductCombo({
     value,
-    productos,
+    products,
     onChange,
 }: {
     value: string;
-    productos: Producto[];
-    onChange: (id: string, nombre: string, ivaTasa: number) => void;
+    products: Product[];
+    onChange: (id: string, name: string, vatRate: number) => void;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -91,9 +91,9 @@ function ProductCombo({
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = productos.find((p) => p.id === value);
-    const filtered = productos
-        .filter((p) => p.activo !== false && p.nombre.toLowerCase().includes(search.toLowerCase()))
+    const selected = products.find((p) => p.id === value);
+    const filtered = products
+        .filter((p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()))
         .slice(0, 12);
 
     useEffect(() => {
@@ -101,8 +101,8 @@ function ProductCombo({
         el?.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
-    function select(p: Producto) {
-        onChange(p.id!, p.nombre, p.ivaTipo === "general" ? 0.16 : 0);
+    function select(p: Product) {
+        onChange(p.id!, p.name, p.vatType === "general" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }
@@ -119,7 +119,7 @@ function ProductCombo({
         if (!wrapRef.current?.contains(e.relatedTarget as Node)) { setOpen(false); setSearch(""); }
     }
 
-    const displayValue = open ? search : (selected?.nombre ?? "");
+    const displayValue = open ? search : (selected?.name ?? "");
 
     return (
         <div ref={wrapRef} className="relative w-full" onBlur={handleBlur}>
@@ -136,11 +136,11 @@ function ProductCombo({
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        selected.ivaTipo === "general"
+                        selected.vatType === "general"
                             ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                             : "bg-surface-2 text-[var(--text-tertiary)] border border-border-light"
                     }`}>
-                        {selected.ivaTipo === "general" ? "16%" : "EX"}
+                        {selected.vatType === "general" ? "16%" : "EX"}
                     </span>
                 )}
             </div>
@@ -160,15 +160,15 @@ function ProductCombo({
                                     onMouseDown={(e) => { e.preventDefault(); select(p); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.codigo && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.codigo}</span>}
-                                    <span className="flex-1">{p.nombre}</span>
+                                    {p.code && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.code}</span>}
+                                    <span className="flex-1">{p.name}</span>
                                     <span className="text-[11px] text-[var(--text-tertiary)]">
-                                        ({fmtN(p.existenciaActual)} {p.unidadMedida})
+                                        ({fmtN(p.currentStock)} {p.measureUnit})
                                     </span>
                                     <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-                                        p.ivaTipo === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
+                                        p.vatType === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
                                     }`}>
-                                        {p.ivaTipo === "general" ? "IVA 16%" : "Exento"}
+                                        {p.vatType === "general" ? "IVA 16%" : "Exento"}
                                     </span>
                                 </li>
                             ))}
@@ -185,7 +185,7 @@ function ProductCombo({
 export default function NuevoAutoconsumoPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { productos, loadProductos, saveMovimiento, error, setError } = useInventory();
+    const { products, loadProducts, saveMovement, error, setError } = useInventory();
 
     const [fecha, setFecha] = useState(todayStr());
     const [destino, setDestino] = useState("");
@@ -200,8 +200,8 @@ export default function NuevoAutoconsumoPage() {
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     useEffect(() => {
         if (!fecha) return;
@@ -235,7 +235,7 @@ export default function NuevoAutoconsumoPage() {
     function addRow() { setItems((prev) => [...prev, emptyAutoconsumoItem()]); }
     function removeRow(index: number) { setItems((prev) => prev.filter((_, i) => i !== index)); }
 
-    function getProducto(id: string) { return productos.find((p) => p.id === id); }
+    function getProduct(id: string) { return products.find((p) => p.id === id); }
 
     function validate(): boolean {
         if (!companyId) { setError("Sin empresa seleccionada"); return false; }
@@ -249,9 +249,9 @@ export default function NuevoAutoconsumoPage() {
                 setError("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
-            const prod = getProducto(item.productoId);
-            if (prod && item.cantidad > prod.existenciaActual) {
-                setError(`Stock insuficiente para "${prod.nombre}": disponible ${fmtN(prod.existenciaActual)}`);
+            const prod = getProduct(item.productoId);
+            if (prod && item.cantidad > prod.currentStock) {
+                setError(`Stock insuficiente para "${prod.name}": disponible ${fmtN(prod.currentStock)}`);
                 return false;
             }
         }
@@ -265,23 +265,23 @@ export default function NuevoAutoconsumoPage() {
         let allOk = true;
         for (const item of items) {
             const { costoUnitario, costoTotal, costoBaseMoneda } = computeCostos(item, tasaDolar, ivaMode);
-            const mov: Movimiento = {
-                empresaId: companyId!,
-                productoId: item.productoId,
-                tipo: "autoconsumo",
-                fecha,
-                periodo: fecha.slice(0, 7),
-                cantidad: item.cantidad,
-                costoUnitario,
-                costoTotal,
-                saldoCantidad: 0,
-                referencia: "Autoconsumo",
-                notas: destino + (notas ? ` — ${notas}` : ""),
-                moneda: item.moneda,
-                costoMoneda: costoBaseMoneda,
-                tasaDolar: item.moneda === "D" ? tasaDolar : null,
+            const mov: Movement = {
+                companyId: companyId!,
+                productId: item.productoId,
+                type: "autoconsumo",
+                date: fecha,
+                period: fecha.slice(0, 7),
+                quantity: item.cantidad,
+                unitCost: costoUnitario,
+                totalCost: costoTotal,
+                balanceQuantity: 0,
+                reference: "Autoconsumo",
+                notes: destino + (notas ? ` — ${notas}` : ""),
+                currency: item.moneda,
+                currencyCost: costoBaseMoneda,
+                dollarRate: item.moneda === "D" ? tasaDolar : null,
             };
-            const result = await saveMovimiento(mov);
+            const result = await saveMovement(mov);
             if (!result) { allOk = false; break; }
         }
         setSaving(false);
@@ -478,17 +478,17 @@ export default function NuevoAutoconsumoPage() {
                     {/* Rows */}
                     <div className="divide-y divide-border-light/50">
                         {items.map((item, idx) => {
-                            const prod = getProducto(item.productoId);
-                            const stockOk = !prod || item.cantidad <= prod.existenciaActual;
-                            const saldoTras = prod ? prod.existenciaActual - item.cantidad : null;
+                            const prod = getProduct(item.productoId);
+                            const stockOk = !prod || item.cantidad <= prod.currentStock;
+                            const saldoTras = prod ? prod.currentStock - item.cantidad : null;
 
                             return (
                                 <div key={idx} className="grid grid-cols-[1fr_120px_160px_90px_160px_36px] gap-2 px-4 py-2 items-center">
                                     {/* Producto */}
                                     <ProductCombo
                                         value={item.productoId}
-                                        productos={productos}
-                                        onChange={(id, nombre, ivaTasa) => updateItem(idx, { productoId: id, productoNombre: nombre, ivaTasa })}
+                                        products={products}
+                                        onChange={(id, name, vatRate) => updateItem(idx, { productoId: id, productoNombre: name, ivaTasa: vatRate })}
                                     />
 
                                     {/* Cantidad */}
@@ -549,7 +549,7 @@ export default function NuevoAutoconsumoPage() {
                                                 <div className="flex justify-between text-[12px]">
                                                     <span className="text-[var(--text-tertiary)]">Disponible</span>
                                                     <span className={`tabular-nums font-medium ${!stockOk ? "text-red-500" : "text-foreground"}`}>
-                                                        {fmtN(prod.existenciaActual)}
+                                                        {fmtN(prod.currentStock)}
                                                     </span>
                                                 </div>
                                                 {item.cantidad > 0 && (

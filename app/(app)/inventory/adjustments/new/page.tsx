@@ -107,7 +107,7 @@ function ProductCombo({
     }, [hiIdx]);
 
     function select(p: Product) {
-        onChange(p.id!, p.name, p.vatType === "general_16" ? 0.16 : 0);
+        onChange(p.id!, p.name, p.vatType === "general" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }

@@ -108,7 +108,7 @@ function ProductCombo({
     }, [hiIdx]);
 
     function select(p: Product) {
-        onChange(p.id!, p.name, p.vatType === "general_16" ? 0.16 : 0);
+        onChange(p.id!, p.name, p.vatType === "general" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }
@@ -145,11 +145,11 @@ function ProductCombo({
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        selected.vatType === "general_16"
+                        selected.vatType === "general"
                             ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                             : "bg-surface-2 text-[var(--text-tertiary)] border border-border-light"
                     }`}>
-                        {selected.vatType === "general_16" ? "16%" : "EX"}
+                        {selected.vatType === "general" ? "16%" : "EX"}
                     </span>
                 )}
             </div>
@@ -175,9 +175,9 @@ function ProductCombo({
                                         ({fmtN(p.currentStock)} {p.measureUnit})
                                     </span>
                                     <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-                                        p.vatType === "general_16" ? "text-amber-600" : "text-[var(--text-tertiary)]"
+                                        p.vatType === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
                                     }`}>
-                                        {p.vatType === "general_16" ? "IVA 16%" : "Exento"}
+                                        {p.vatType === "general" ? "IVA 16%" : "Exento"}
                                     </span>
                                 </li>
                             ))}
