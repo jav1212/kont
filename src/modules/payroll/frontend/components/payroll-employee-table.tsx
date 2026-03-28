@@ -18,6 +18,7 @@ import {
 import type { EarningRow, DeductionRow, BonusRow, HorasExtrasRow } from "../types/payroll-types";
 import { HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 import { generatePayrollPdf } from "../utils/payroll-pdf";
+import type { PdfVisibility, OvertimeDefaults } from "../../backend/domain/payroll-settings";
 import { computeAportes, downloadAportesCsv } from "../utils/aportes-patronales";
 import { Employee, EmployeeEstado } from "../hooks/use-employee";
 
@@ -71,6 +72,8 @@ function computeEmployee(
     diasNocturnosQuincena:  number,
     salarioMinimo:          number,
     salaryMode:             "mensual" | "integral" = "mensual",
+    // quincena is used to apply period-specific deduction rules (e.g. FAOV second-half rule)
+    quincena:               1 | 2 = 1,
 ): EmployeeResult {
     // Sprint 3: convertir USD → VES para todos los cálculos
     const salarioVES = emp.moneda === "USD"
@@ -90,9 +93,15 @@ function computeEmployee(
     const weekly     = (salarioBase * 12) / 52;
     const weeklyBase = weekly * mondaysInMonth;
 
-    const allEarnings   = [...earningRows, ...overrides.extraEarnings];
-    const allDeductions = [...deductRows,  ...overrides.extraDeductions];
-    const allBonuses    = [...bonusRows,   ...overrides.extraBonuses];
+    const allEarnings = [...earningRows, ...overrides.extraEarnings];
+    const allBonuses  = [...bonusRows,   ...overrides.extraBonuses];
+
+    // Apply period-specific rules: rows with quincenaRule "second-half" are excluded in Q1.
+    // Extra deduction overrides per employee are never period-filtered.
+    const periodFilteredDeductions = deductRows.filter(
+        (r) => !(r.quincenaRule === "second-half" && quincena === 1),
+    );
+    const allDeductions = [...periodFilteredDeductions, ...overrides.extraDeductions];
 
     const hourlyRate = salarioVES / 30 / 8;
 
@@ -183,7 +192,19 @@ function computeEmployee(
 
 let _seq = 0;
 const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
-const EMPTY_OVERRIDE = (): EmployeeOverride => ({ extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [] });
+
+// Derive the stable key for an employee override map entry.
+const getEmployeeKey = (emp: Employee) => emp.cedula;
+
+// Build an initial override, pre-seeding overtime rows from company-level defaults.
+// Rows start with hours="0" so calculations are unaffected until the user edits them.
+function buildDefaultOverride(overtime?: OvertimeDefaults): EmployeeOverride {
+    const extraHorasExtras: HorasExtrasRow[] = [];
+    if (overtime?.dayOvertimeEnabled)   extraHorasExtras.push({ id: uid("xh"), tipo: "diurna",   hours: "0" });
+    if (overtime?.nightOvertimeEnabled) extraHorasExtras.push({ id: uid("xh"), tipo: "nocturna", hours: "0" });
+    return { extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras };
+}
+
 const fmt = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const toolbarBtnBase = [
@@ -563,6 +584,12 @@ export interface PayrollEmployeeTableProps {
     periodLabel?:             string;
     periodAlreadyConfirmed?:  boolean;
     salaryMode?:              "mensual" | "integral";
+    // REQ-005: period for FAOV/quincena rule application
+    quincena?:                1 | 2;
+    // REQ-005: per-company PDF segment visibility
+    pdfVisibility?:           PdfVisibility;
+    // REQ-008: pre-seed overtime rows from company-level defaults
+    overtimeDefaults?:        OvertimeDefaults;
 }
 
 export const PayrollEmployeeTable = ({
@@ -573,6 +600,7 @@ export const PayrollEmployeeTable = ({
     companyName, companyId, companyLogoUrl, showLogoInPdf,
     payrollDate, periodStart, periodLabel,
     periodAlreadyConfirmed, salaryMode,
+    quincena = 1, pdfVisibility, overtimeDefaults,
 }: PayrollEmployeeTableProps) => {
 
     const [expandedId,       setExpandedId]       = useState<string | null>(null);
@@ -584,12 +612,13 @@ export const PayrollEmployeeTable = ({
     const [includeVacaciones, setIncludeVacaciones] = useState(true);
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
-    const getOverride = useCallback((id: string) => overrides.get(id) ?? EMPTY_OVERRIDE(), [overrides]);
+    const getOverride = useCallback(
+        (id: string) => overrides.get(id) ?? buildDefaultOverride(overtimeDefaults),
+        [overrides, overtimeDefaults],
+    );
     const setOverride = useCallback((id: string, updated: EmployeeOverride) => {
         setOverrides((prev) => { const next = new Map(prev); next.set(id, updated); return next; });
     }, []);
-
-    const getKey = (emp: Employee) => emp.cedula;
 
     // Inactivos excluidos siempre; vacaciones según toggle
     const activeEmployees = useMemo(
@@ -598,9 +627,14 @@ export const PayrollEmployeeTable = ({
     );
 
     const results = useMemo<EmployeeResult[]>(() =>
-        activeEmployees.map((emp) => computeEmployee(emp, earningRows, deductionRows, bonusRows, getOverride(getKey(emp)), mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo, salaryMode)),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo, salaryMode, overrides]
+        activeEmployees.map((emp) => computeEmployee(
+            emp, earningRows, deductionRows, bonusRows,
+            getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate,
+            diasUtilidades, diasBonoVacacional,
+            bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo,
+            salaryMode, quincena,
+        )),
+        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo, salaryMode, quincena, getOverride]
     );
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);
@@ -615,10 +649,12 @@ export const PayrollEmployeeTable = ({
                 gross: r.gross, net: r.net, netUSD: r.netUSD,
                 alicuotaUtil: r.alicuotaUtil, alicuotaBono: r.alicuotaBono, salarioIntegral: r.salarioIntegral,
             })),
-            { companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode,
-              logoUrl: companyLogoUrl, showLogoInPdf }
+            {
+                companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode,
+                logoUrl: companyLogoUrl, showLogoInPdf, pdfVisibility,
+            }
         );
-    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode]);
+    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility]);
 
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
@@ -944,11 +980,11 @@ export const PayrollEmployeeTable = ({
                             if (expandedId !== result.cedula) return null;
                             return (
                                 <ExpandedPanel
-                                    result={result} override={getOverride(getKey(result))}
+                                    result={result} override={getOverride(getEmployeeKey(result))}
                                     mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
                                     diasUtilidades={diasUtilidades} diasBonoVacacional={diasBonoVacacional}
                                     salarioMinimo={salarioMinimo}
-                                    onChange={(updated) => setOverride(getKey(result), updated)}
+                                    onChange={(updated) => setOverride(getEmployeeKey(result), updated)}
                                 />
                             );
                         }}

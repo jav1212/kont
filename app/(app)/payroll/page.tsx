@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -8,10 +8,19 @@ import { EarningsSection, DeductionsSection, BonusesSection } from "@/src/module
 import { PayrollEmployeeTable } from "@/src/modules/payroll/frontend/components/payroll-employee-table";
 import type { EmployeeResult }  from "@/src/modules/payroll/frontend/components/payroll-employee-table";
 import { EarningRow, DeductionRow, BonusRow, EarningValue, DeductionValue, BonusValue } from "@/src/modules/payroll/frontend/types/payroll-types";
-import { useCompany }        from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useEmployee }       from "@/src/modules/payroll/frontend/hooks/use-employee";
-import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
+import { useCompany }          from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useEmployee }         from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { usePayrollHistory }   from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
+import { usePayrollSettings }  from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
+import type {
+    PdfVisibility,
+    OvertimeDefaults,
+    PayrollEarningRowDef,
+    PayrollDeductionRowDef,
+    PayrollBonusRowDef,
+    PayrollSettings,
+} from "@/src/modules/payroll/backend/domain/payroll-settings";
 
 // ============================================================================
 // QUINCENA UTILS
@@ -74,34 +83,92 @@ function getQuincenaInfo(year: number, month: number, q: Quincena): QuincenaInfo
 }
 
 // ============================================================================
-// DEFAULT ROWS
+// ROW BUILDERS — settings-aware
 // ============================================================================
 
 let _seq = 0;
 const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 
-const makeDefaultEarnings = (wd: number, sat: number, sun: number, hol = 0): EarningRow[] => {
-    const rows: EarningRow[] = [
-        { id: uid("e"), label: "Días Normales",        quantity: String(wd),  multiplier: "1.0", useDaily: true },
-        { id: uid("e"), label: "Sábados",              quantity: String(sat), multiplier: "1.0", useDaily: true },
-        { id: uid("e"), label: "Domingos",             quantity: String(sun), multiplier: "1.5", useDaily: true },
-    ];
-    if (hol > 0) {
-        rows.push({ id: uid("e"), label: "Feriados Nacionales", quantity: String(hol), multiplier: "1.0", useDaily: true });
-    }
-    return rows;
+// Known calendar-based labels → quantity comes from quincena calendar.
+const CALENDAR_QUANTITY: Record<string, (wd: number, sat: number, sun: number, hol: number) => number> = {
+    "Días Normales":      (wd) => wd,
+    "Sábados":            (_, sat) => sat,
+    "Domingos":           (_, __, sun) => sun,
+    "Feriados Nacionales": (_, __, ___, hol) => hol,
 };
 
-const DEFAULT_DEDUCTIONS: DeductionRow[] = [
-    { id: uid("d"), label: "S.S.O",   rate: "4",   base: "weekly-capped", mode: "rate" },
-    { id: uid("d"), label: "R.P.E",   rate: "0.5", base: "weekly",        mode: "rate" },
-    { id: uid("d"), label: "F.A.O.V", rate: "1",   base: "monthly",       mode: "rate" },
-];
+// Build EarningRow[] from saved defs + current quincena calendar values.
+function makeEarningsFromDefs(
+    defs: PayrollEarningRowDef[],
+    wd: number, sat: number, sun: number, hol = 0,
+): EarningRow[] {
+    return defs
+        .map((def): EarningRow => {
+            let qty: string;
+            if (!def.useDaily) {
+                qty = def.quantity ?? "0";
+            } else {
+                const calFn = CALENDAR_QUANTITY[def.label];
+                qty = calFn ? String(calFn(wd, sat, sun, hol)) : "0";
+            }
+            return { id: uid("e"), label: def.label, quantity: qty, multiplier: def.multiplier, useDaily: def.useDaily };
+        })
+        // Drop calendar-based rows whose quantity is "0" (e.g. no Saturdays in period)
+        .filter((row) => !(!Object.prototype.hasOwnProperty.call(CALENDAR_QUANTITY, row.label) === false && row.useDaily && row.quantity === "0"));
+}
 
-const DEFAULT_BONUSES: BonusRow[] = [
-    { id: uid("b"), label: "Bono Alimentación", amount: "40.00" },
-    { id: uid("b"), label: "Bono Transporte",   amount: "20.00" },
-];
+// Extract defs from current earning rows (strip quantities for calendar-based rows).
+function extractEarningDefs(rows: EarningRow[]): PayrollEarningRowDef[] {
+    return rows.map((r) => ({
+        label:      r.label,
+        multiplier: r.multiplier,
+        useDaily:   r.useDaily,
+        ...(r.useDaily ? {} : { quantity: r.quantity }),
+    }));
+}
+
+function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): DeductionRow[] {
+    return defs.map((d) => ({
+        id: uid("d"), label: d.label, rate: d.rate, base: d.base,
+        mode: d.mode, quincenaRule: d.quincenaRule,
+    }));
+}
+
+function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
+    return defs.map((b) => ({ id: uid("b"), label: b.label, amount: b.amount }));
+}
+
+// Build a PayrollSettings snapshot from current page state.
+function buildSettings(
+    earningRows:      EarningRow[],
+    deductionRows:    DeductionRow[],
+    bonusRows:        BonusRow[],
+    diasUtilidades:   number,
+    diasBono:         number,
+    salaryMode:       "mensual" | "integral",
+    cestaTicketUSD:   number,
+    bonoNocturno:     boolean,
+    salarioMinimo:    number,
+    overtimeDefaults: OvertimeDefaults,
+    pdfVisibility:    PdfVisibility,
+): PayrollSettings {
+    return {
+        earningRowDefs:      extractEarningDefs(earningRows),
+        deductionRowDefs:    deductionRows.map((r) => ({
+            label: r.label, rate: r.rate, base: r.base,
+            mode: r.mode ?? "rate", quincenaRule: r.quincenaRule ?? "always",
+        })),
+        bonusRowDefs:        bonusRows.map((r) => ({ label: r.label, amount: r.amount })),
+        diasUtilidades,
+        diasBonoVacacional:  diasBono,
+        salaryMode,
+        cestaTicketUSD,
+        bonoNocturnoEnabled: bonoNocturno,
+        salarioMinimoRef:    salarioMinimo,
+        overtimeDefaults,
+        pdfVisibility,
+    };
+}
 
 // ============================================================================
 // LEFT PANEL — collapsible section
@@ -173,6 +240,7 @@ export default function PayrollCalculator() {
     const { companyId, company } = useCompany();
     const { employees, loading: empLoading, error: empError } = useEmployee(companyId);
     const { confirm, runs } = usePayrollHistory(companyId);
+    const { settings: savedSettings, loading: settingsLoading, loadedAt: settingsLoadedAt, save: saveSettings } = usePayrollSettings(companyId);
 
     // ── Quincena ───────────────────────────────────────────────────────────
     const now = new Date();
@@ -190,9 +258,9 @@ export default function PayrollCalculator() {
     const [monthlySalary, setMonthlySalary] = useState("130.00");
 
     // ── BCV fetch ──────────────────────────────────────────────────────────
-    const [bcvDate,      setBcvDate]      = useState(() => new Date().toISOString().split("T")[0]);
-    const [bcvLoading,   setBcvLoading]   = useState(false);
-    const [bcvFetchError, setBcvFetchError] = useState<string | null>(null);
+    const [bcvDate,        setBcvDate]        = useState(() => new Date().toISOString().split("T")[0]);
+    const [bcvLoading,     setBcvLoading]     = useState(false);
+    const [bcvFetchError,  setBcvFetchError]  = useState<string | null>(null);
     const [bcvFetchedDate, setBcvFetchedDate] = useState<string | null>(null);
 
     const fetchBcvRate = useCallback(async () => {
@@ -214,51 +282,136 @@ export default function PayrollCalculator() {
 
     // ── Row lists ──────────────────────────────────────────────────────────
     const [earningRows,   setEarningRows]   = useState<EarningRow[]>(() =>
-        makeDefaultEarnings(quincenaInfo.weekdays, quincenaInfo.saturdays, quincenaInfo.sundays, quincenaInfo.holidays)
+        makeEarningsFromDefs(savedSettings.earningRowDefs, quincenaInfo.weekdays, quincenaInfo.saturdays, quincenaInfo.sundays, quincenaInfo.holidays)
     );
-    const [deductionRows, setDeductionRows] = useState<DeductionRow[]>(DEFAULT_DEDUCTIONS);
-    const [bonusRows,     setBonusRows]     = useState<BonusRow[]>(DEFAULT_BONUSES);
+    const [deductionRows, setDeductionRows] = useState<DeductionRow[]>(() => makeDeductionsFromDefs(savedSettings.deductionRowDefs));
+    const [bonusRows,     setBonusRows]     = useState<BonusRow[]>(() => makeBonusesFromDefs(savedSettings.bonusRowDefs));
 
     // ── Alícuotas ──────────────────────────────────────────────────────────
-    const [diasUtilidades,     setDiasUtilidades]     = useState("15");
-    const [diasBonoVacacional, setDiasBonoVacacional] = useState("15");
+    const [diasUtilidades,     setDiasUtilidades]     = useState(String(savedSettings.diasUtilidades));
+    const [diasBonoVacacional, setDiasBonoVacacional] = useState(String(savedSettings.diasBonoVacacional));
 
     // ── Salary mode ────────────────────────────────────────────────────────
-    const [salaryMode, setSalaryMode] = useState<"mensual" | "integral">("mensual");
+    const [salaryMode, setSalaryMode] = useState<"mensual" | "integral">(savedSettings.salaryMode);
 
     // ── Cesta Ticket ───────────────────────────────────────────────────────
-    const [cestaTicketUSD, setCestaTicketUSD] = useState("40.00");
+    const [cestaTicketUSD, setCestaTicketUSD] = useState(String(savedSettings.cestaTicketUSD));
 
     // ── Bono nocturno ──────────────────────────────────────────────────────
-    const [bonoNocturnoEnabled,   setBonoNocturnoEnabled]   = useState(false);
-    const [diasNocturnosInput,    setDiasNocturnosInput]    = useState("");
+    const [bonoNocturnoEnabled, setBonoNocturnoEnabled] = useState(savedSettings.bonoNocturnoEnabled);
+    const [diasNocturnosInput,  setDiasNocturnosInput]  = useState("");
+
+    // ── Overtime defaults (REQ-008) ─────────────────────────────────────────
+    const [overtimeDefaults, setOvertimeDefaults] = useState<OvertimeDefaults>(savedSettings.overtimeDefaults);
 
     // ── Salario mínimo (para tope SSO) ─────────────────────────────────────
-    const [salarioMinimoInput, setSalarioMinimoInput] = useState("");
+    const [salarioMinimoInput, setSalarioMinimoInput] = useState(
+        savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : ""
+    );
+
+    // ── PDF visibility ─────────────────────────────────────────────────────
+    const [pdfVisibility, setPdfVisibility] = useState<PdfVisibility>(savedSettings.pdfVisibility);
+
+    // ── Mounted guard — prevents SSR/client disabled-attribute mismatch ────
+    // companyId is read from localStorage on the client but is null during SSR,
+    // so any button disabled={!companyId} would diverge. Gate on mounted instead.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    // ── Settings save state ────────────────────────────────────────────────
+    const [saveLoading, setSaveLoading] = useState(false);
+    const [saveMsg,     setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+
+    // ── Apply loaded settings when company or tenant changes ───────────────
+    // Use settingsLoadedAt as the gate: each successful fetch or save increments
+    // it, so switching A→B→A correctly re-applies Company A settings (REQ-008).
+    // We also guard against applying while a fetch is still in flight.
+    const appliedLoadRef = useRef(0);
+
+    useEffect(() => {
+        if (settingsLoading) return;
+        if (settingsLoadedAt === 0) return;                     // no successful fetch yet
+        if (settingsLoadedAt === appliedLoadRef.current) return; // already applied this load
+        appliedLoadRef.current = settingsLoadedAt;
+
+        setDiasUtilidades(String(savedSettings.diasUtilidades));
+        setDiasBonoVacacional(String(savedSettings.diasBonoVacacional));
+        setSalaryMode(savedSettings.salaryMode);
+        setCestaTicketUSD(String(savedSettings.cestaTicketUSD));
+        setBonoNocturnoEnabled(savedSettings.bonoNocturnoEnabled);
+        setSalarioMinimoInput(savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : "");
+        setOvertimeDefaults(savedSettings.overtimeDefaults);
+        setPdfVisibility(savedSettings.pdfVisibility);
+        setDeductionRows(makeDeductionsFromDefs(savedSettings.deductionRowDefs));
+        setBonusRows(makeBonusesFromDefs(savedSettings.bonusRowDefs));
+        setEarningRows(makeEarningsFromDefs(
+            savedSettings.earningRowDefs,
+            quincenaInfo.weekdays, quincenaInfo.saturdays,
+            quincenaInfo.sundays, quincenaInfo.holidays,
+        ));
+    }, [settingsLoadedAt, settingsLoading, savedSettings, quincenaInfo]);
 
     // ── Left panel sections open/closed ────────────────────────────────────
     const [openSections, setOpenSections] = useState({
-        nocturno:   false,
-        alicuotas:  true,
-        earnings:   true,
-        deductions: true,
-        bonuses:    true,
+        nocturno:      false,
+        alicuotas:     true,
+        earnings:      true,
+        deductions:    true,
+        bonuses:       true,
+        pdfVisibility: false,
     });
     const toggleSection = (key: keyof typeof openSections) =>
         setOpenSections((s) => ({ ...s, [key]: !s[key] }));
 
     // ── Auto-fill days when quincena changes ───────────────────────────────
+    // Rebuilds earning rows from current defs + new calendar values.
+    const earningRowsRef = useRef(earningRows);
+    earningRowsRef.current = earningRows;
+
     const handleAutoFill = useCallback(() => {
-        setEarningRows(() => makeDefaultEarnings(
-            quincenaInfo.weekdays,
-            quincenaInfo.saturdays,
-            quincenaInfo.sundays,
-            quincenaInfo.holidays,
+        setEarningRows(makeEarningsFromDefs(
+            extractEarningDefs(earningRowsRef.current),
+            quincenaInfo.weekdays, quincenaInfo.saturdays,
+            quincenaInfo.sundays,  quincenaInfo.holidays,
         ));
     }, [quincenaInfo]);
 
-    useEffect(() => { handleAutoFill(); }, [selYear, selMonth, selQuincena]); // eslint-disable-line
-    useEffect(() => { fetchBcvRate(); }, []); // eslint-disable-line
+    // handleAutoFill updates whenever quincenaInfo (selYear/Month/Quincena) changes,
+    // so depending on the callback is equivalent and satisfies exhaustive-deps.
+    useEffect(() => { handleAutoFill(); }, [handleAutoFill]);
+
+    // Fetch BCV rate once on mount. A ref guards against re-runs when fetchBcvRate
+    // changes (e.g. when bcvDate state changes), so the manual refresh button stays
+    // the only trigger for subsequent fetches.
+    const didInitialBcvFetch = useRef(false);
+    useEffect(() => {
+        if (didInitialBcvFetch.current) return;
+        didInitialBcvFetch.current = true;
+        void fetchBcvRate();
+    }, [fetchBcvRate]);
+
+    // ── Save settings handler ──────────────────────────────────────────────
+    const handleSaveSettings = useCallback(async () => {
+        if (!companyId) return;
+        setSaveLoading(true);
+        setSaveMsg(null);
+        const diasUtilNum = Math.max(0, parseFloat(diasUtilidades) || 15);
+        const diasBonoNum = Math.max(0, parseFloat(diasBonoVacacional) || 15);
+        const err = await saveSettings(buildSettings(
+            earningRows, deductionRows, bonusRows,
+            diasUtilNum, diasBonoNum, salaryMode,
+            parseFloat(cestaTicketUSD) || 40,
+            bonoNocturnoEnabled,
+            Math.max(0, parseFloat(salarioMinimoInput) || 0),
+            overtimeDefaults,
+            pdfVisibility,
+        ));
+        setSaveLoading(false);
+        setSaveMsg(err ? { ok: false, text: err } : { ok: true, text: "Configuración guardada" });
+        setTimeout(() => setSaveMsg(null), 3000);
+    }, [companyId, earningRows, deductionRows, bonusRows, diasUtilidades, diasBonoVacacional,
+        salaryMode, cestaTicketUSD, bonoNocturnoEnabled, salarioMinimoInput, overtimeDefaults,
+        pdfVisibility, saveSettings]);
 
     // ── Derived ────────────────────────────────────────────────────────────
     const mondaysInMonth = quincenaInfo.mondays;
@@ -293,14 +446,17 @@ export default function PayrollCalculator() {
         })), [earningRows, dailyRate]);
 
     const deductionValues = useMemo<DeductionValue[]>(() =>
-        deductionRows.map((r) => {
+        deductionRows
+            // FAOV rule: exclude "second-half" rows in first quincena
+            .filter((r) => !(r.quincenaRule === "second-half" && selQuincena === 1))
+            .map((r) => {
             if (r.mode === "fixed") return { ...r, computed: parseFloat(r.rate) || 0 };
             const base = r.base === "weekly-capped" ? cappedWeeklyBase
                        : r.base === "weekly"        ? weeklyBase
                        : r.base === "integral"      ? integralBase
                        : refSalary;
             return { ...r, computed: base * ((parseFloat(r.rate) || 0) / 100) };
-        }), [deductionRows, weeklyBase, cappedWeeklyBase, integralBase, refSalary]);
+        }), [deductionRows, selQuincena, weeklyBase, cappedWeeklyBase, integralBase, refSalary]);
 
     const bonusValues = useMemo<BonusValue[]>(() =>
         bonusRows.map((r) => ({
@@ -396,9 +552,26 @@ export default function PayrollCalculator() {
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">
                         Nómina · Calculadora
                     </p>
-                    <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">
-                        Configuración
-                    </p>
+                    <div className="flex items-center justify-between">
+                        <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">
+                            Configuración
+                        </p>
+                        <button
+                            onClick={handleSaveSettings}
+                            disabled={!mounted || saveLoading || !companyId}
+                            className={[
+                                "h-7 px-2.5 rounded-md border font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150 flex items-center gap-1.5",
+                                saveMsg?.ok
+                                    ? "border-green-500/40 bg-green-500/10 text-green-500"
+                                    : saveMsg?.ok === false
+                                        ? "border-red-500/40 bg-red-500/10 text-red-500"
+                                        : "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.16]",
+                                "disabled:opacity-40 disabled:cursor-not-allowed",
+                            ].join(" ")}
+                        >
+                            {saveLoading ? "…" : saveMsg ? saveMsg.text : "Guardar"}
+                        </button>
+                    </div>
                 </div>
 
                 {/* ── Period selector ─────────────────────────────────── */}
@@ -655,6 +828,34 @@ export default function PayrollCalculator() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Overtime defaults — company-level (REQ-008) */}
+                        <div className="pt-3 border-t border-border-light space-y-2">
+                            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                                Horas extras por defecto
+                            </p>
+                            {(
+                                [
+                                    ["dayOvertimeEnabled",   "H.E. Diurnas"] ,
+                                    ["nightOvertimeEnabled", "H.E. Nocturnas"],
+                                ] as [keyof OvertimeDefaults, string][]
+                            ).map(([key, label]) => (
+                                <div key={key} className="flex items-center justify-between">
+                                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">{label}</span>
+                                    <button
+                                        onClick={() => setOvertimeDefaults((prev) => ({ ...prev, [key]: !prev[key] }))}
+                                        className={[
+                                            "h-7 px-3 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150",
+                                            overtimeDefaults[key]
+                                                ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
+                                                : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
+                                        ].join(" ")}
+                                    >
+                                        {overtimeDefaults[key] ? "Activo" : "Inactivo"}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </ConfigSection>
 
                     {/* Alícuotas */}
@@ -808,6 +1009,46 @@ export default function PayrollCalculator() {
                             onUpdate={updateBonus} onRemove={removeBonus} onAdd={addBonus}
                         />
                     </ConfigSection>
+
+                    {/* PDF Visibility */}
+                    <ConfigSection
+                        title="Visibilidad PDF"
+                        badge={Object.values(pdfVisibility).some((v) => !v) ? "personalizado" : undefined}
+                        open={openSections.pdfVisibility}
+                        onToggle={() => toggleSection("pdfVisibility")}
+                    >
+                        <div className="py-3 space-y-2">
+                            <p className="font-mono text-[12px] text-[var(--text-tertiary)] leading-relaxed">
+                                Controla qué secciones aparecen en el PDF generado.
+                                La visibilidad no afecta los cálculos ni los totales.
+                            </p>
+                            {(
+                                [
+                                    ["showEarnings",          "Asignaciones"],
+                                    ["showDeductions",        "Deducciones"],
+                                    ["showBonuses",           "Bonificaciones"],
+                                    ["showOvertime",          "Horas Extras"],
+                                    ["showNightShiftBonus",   "Bono Nocturno"],
+                                    ["showAlicuotaBreakdown", "Desglose Salario Integral"],
+                                ] as [keyof PdfVisibility, string][]
+                            ).map(([key, label]) => (
+                                <div key={key} className="flex items-center justify-between py-1">
+                                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">{label}</span>
+                                    <button
+                                        onClick={() => setPdfVisibility((v) => ({ ...v, [key]: !v[key] }))}
+                                        className={[
+                                            "h-6 px-2.5 rounded border font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-150",
+                                            pdfVisibility[key]
+                                                ? "border-green-500/40 bg-green-500/10 text-green-500"
+                                                : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
+                                        ].join(" ")}
+                                    >
+                                        {pdfVisibility[key] ? "Visible" : "Oculto"}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </ConfigSection>
                 </div>
 
             </aside>
@@ -901,6 +1142,9 @@ export default function PayrollCalculator() {
                         periodLabel={quincenaInfo.label}
                         periodAlreadyConfirmed={periodAlreadyConfirmed}
                         salaryMode={salaryMode}
+                        quincena={selQuincena}
+                        pdfVisibility={pdfVisibility}
+                        overtimeDefaults={overtimeDefaults}
                     />
                 </div>
 
