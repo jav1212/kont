@@ -4,9 +4,9 @@
 import { ServerSupabaseSource }          from '@/src/shared/backend/source/infra/server-supabase';
 import { LocalEventBus }                 from '@/src/shared/backend/infra/local-event-bus';
 import { RpcPayrollRunRepository }        from './repository/rpc-payroll-run.repository';
-import { ConfirmPayrollRunUseCase }       from '../app/confirm-payroll-run.case';
-import { GetPayrollRunsUseCase }          from '../app/get-payroll-runs.case';
-import { GetPayrollReceiptsUseCase }      from '../app/get-payroll-receipts.case';
+import { ConfirmPayrollRunUseCase }  from '../app/commands/confirm-payroll-run.case';
+import { GetPayrollRunsUseCase }     from '../app/queries/get-payroll-runs.case';
+import { GetPayrollReceiptsUseCase } from '../app/queries/get-payroll-receipts.case';
 
 export function getPayrollRunActions(userId: string) {
     const source     = new ServerSupabaseSource();

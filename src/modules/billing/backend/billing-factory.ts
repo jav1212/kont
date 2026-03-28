@@ -5,12 +5,12 @@
 import { ServerSupabaseSource }          from "@/src/shared/backend/source/infra/server-supabase";
 import { LocalEventBus }                 from "@/src/shared/backend/infra/local-event-bus";
 import { SupabaseBillingRepository }     from "./infrastructure/repositories/supabase-billing.repository";
-import { GetTenantUseCase }              from "./application/use-cases/get-tenant.use-case";
-import { GetTenantSubscriptionsUseCase } from "./application/use-cases/get-tenant-subscriptions.use-case";
-import { GetPlansUseCase }               from "./application/use-cases/get-plans.use-case";
-import { GetTenantCapacityUseCase }      from "./application/use-cases/get-tenant-capacity.use-case";
-import { GetPaymentRequestsUseCase }     from "./application/use-cases/get-payment-requests.use-case";
-import { CreatePaymentRequestUseCase }   from "./application/use-cases/create-payment-request.use-case";
+import { CreatePaymentRequestUseCase }   from "./application/commands/create-payment-request.use-case";
+import { GetTenantUseCase }              from "./application/queries/get-tenant.use-case";
+import { GetTenantSubscriptionsUseCase } from "./application/queries/get-tenant-subscriptions.use-case";
+import { GetPlansUseCase }               from "./application/queries/get-plans.use-case";
+import { GetTenantCapacityUseCase }      from "./application/queries/get-tenant-capacity.use-case";
+import { GetPaymentRequestsUseCase }     from "./application/queries/get-payment-requests.use-case";
 
 export function getBillingActions() {
     const repo     = new SupabaseBillingRepository(new ServerSupabaseSource());

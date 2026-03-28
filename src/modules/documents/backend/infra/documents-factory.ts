@@ -13,20 +13,20 @@ import { LocalEventBus }                    from '@/src/shared/backend/infra/loc
 import { SupabaseDocumentFolderRepository } from './repository/supabase-document-folder.repository';
 import { SupabaseDocumentRepository }       from './repository/supabase-document.repository';
 import { SupabaseDocumentStorageRepository } from './repository/supabase-document-storage.repository';
-import { GetFoldersUseCase }                from '../app/get-folders.use-case';
-import { CreateFolderUseCase }              from '../app/create-folder.use-case';
-import { DeleteFolderUseCase }              from '../app/delete-folder.use-case';
-import { GetDocumentsUseCase }              from '../app/get-documents.use-case';
-import { RegisterDocumentUseCase }          from '../app/register-document.use-case';
-import { DeleteDocumentUseCase }            from '../app/delete-document.use-case';
-import { GetUploadUrlUseCase }              from '../app/get-upload-url.use-case';
-import { GetDownloadUrlUseCase }            from '../app/get-download-url.use-case';
-import { FindDocumentByIdUseCase }          from '../app/find-document-by-id.use-case';
-import { ReplicateFoldersUseCase }          from '../app/replicate-folders.use-case';
+import { CreateFolderUseCase }              from '../app/commands/create-folder.use-case';
+import { DeleteFolderUseCase }              from '../app/commands/delete-folder.use-case';
+import { RegisterDocumentUseCase }          from '../app/commands/register-document.use-case';
+import { DeleteDocumentUseCase }            from '../app/commands/delete-document.use-case';
+import { GetFoldersUseCase }                from '../app/queries/get-folders.use-case';
+import { GetDocumentsUseCase }              from '../app/queries/get-documents.use-case';
+import { GetUploadUrlUseCase }              from '../app/queries/get-upload-url.use-case';
+import { GetDownloadUrlUseCase }            from '../app/queries/get-download-url.use-case';
+import { FindDocumentByIdUseCase }          from '../app/queries/find-document-by-id.use-case';
+import { ReplicateFoldersUseCase }          from '../app/queries/replicate-folders.use-case';
 
 export function getDocumentsActions(ownerId: string) {
-    const source    = new ServerSupabaseSource();
-    const eventBus  = new LocalEventBus();
+    const source   = new ServerSupabaseSource();
+    const eventBus = new LocalEventBus();
 
     const folderRepo   = new SupabaseDocumentFolderRepository(source, ownerId);
     const documentRepo = new SupabaseDocumentRepository(source, ownerId);

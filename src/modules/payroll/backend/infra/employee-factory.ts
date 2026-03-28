@@ -4,9 +4,9 @@
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 import { LocalEventBus }        from '@/src/shared/backend/infra/local-event-bus';
 import { RpcEmployeeRepository } from './repository/rpc-employee.repository';
-import { GetEmployeesByCompanyUseCase } from '../app/get-employees-by-company.case';
-import { UpsertEmployeesUseCase }       from '../app/upsert-employees.case';
-import { DeleteEmployeesUseCase }       from '../app/delete-employees.case';
+import { UpsertEmployeesUseCase }       from '../app/commands/upsert-employees.case';
+import { DeleteEmployeesUseCase }       from '../app/commands/delete-employees.case';
+import { GetEmployeesByCompanyUseCase } from '../app/queries/get-employees-by-company.case';
 
 export function getEmployeeActions(userId: string) {
     const source     = new ServerSupabaseSource();
