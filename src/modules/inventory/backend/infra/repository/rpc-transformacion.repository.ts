@@ -18,7 +18,7 @@ export class RpcTransformacionRepository implements ITransformacionRepository {
                     p_empresa_id: empresaId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener transformaciones');
         }
@@ -54,17 +54,17 @@ export class RpcTransformacionRepository implements ITransformacionRepository {
         }
     }
 
-    private mapToDomain(data: any): Transformacion {
+    private mapToDomain(data: Record<string, unknown>): Transformacion {
         return {
-            id:                   data.id,
-            empresaId:            data.empresa_id,
-            descripcion:          data.descripcion ?? '',
-            fecha:                data.fecha,
-            periodo:              data.periodo,
-            productoTerminadoId:  data.producto_terminado_id ?? null,
-            cantidadProducida:    Number(data.cantidad_producida ?? 0),
-            notas:                data.notas ?? '',
-            createdAt:            data.created_at,
+            id:                  data.id as string | undefined,
+            empresaId:           data.empresa_id as string,
+            descripcion:         (data.descripcion as string | null) ?? '',
+            fecha:               data.fecha as string,
+            periodo:             data.periodo as string,
+            productoTerminadoId: (data.producto_terminado_id as string | null) ?? null,
+            cantidadProducida:   Number(data.cantidad_producida ?? 0),
+            notas:               (data.notas as string | null) ?? '',
+            createdAt:           data.created_at as string | undefined,
         };
     }
 }

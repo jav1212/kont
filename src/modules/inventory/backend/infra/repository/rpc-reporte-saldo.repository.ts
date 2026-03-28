@@ -19,15 +19,15 @@ export class RpcReporteSaldoRepository implements IReporteSaldoRepository {
                     p_periodo:    periodo,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener reporte SALDO');
         }
     }
 
-    private mapToDomain(row: any): ReporteSaldoRow {
+    private mapToDomain(row: Record<string, unknown>): ReporteSaldoRow {
         return {
-            departamentoNombre: row.departamento_nombre ?? '',
+            departamentoNombre: (row.departamento_nombre as string | null) ?? '',
             unidadesInicial:    Number(row.unidades_inicial ?? 0),
             costoInicial:       Number(row.costo_inicial ?? 0),
             unidadesEntradas:   Number(row.unidades_entradas ?? 0),

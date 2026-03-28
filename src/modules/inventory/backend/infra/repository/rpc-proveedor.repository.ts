@@ -18,7 +18,7 @@ export class RpcProveedorRepository implements IProveedorRepository {
                     p_empresa_id: empresaId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener proveedores');
         }
@@ -64,20 +64,20 @@ export class RpcProveedorRepository implements IProveedorRepository {
         }
     }
 
-    private mapToDomain(data: any): Proveedor {
+    private mapToDomain(data: Record<string, unknown>): Proveedor {
         return {
-            id:        data.id,
-            empresaId: data.empresa_id,
-            rif:       data.rif ?? '',
-            nombre:    data.nombre,
-            contacto:  data.contacto ?? '',
-            telefono:  data.telefono ?? '',
-            email:     data.email ?? '',
-            direccion: data.direccion ?? '',
-            notas:     data.notas ?? '',
+            id:        data.id as string | undefined,
+            empresaId: data.empresa_id as string,
+            rif:       (data.rif as string | null) ?? '',
+            nombre:    data.nombre as string,
+            contacto:  (data.contacto as string | null) ?? '',
+            telefono:  (data.telefono as string | null) ?? '',
+            email:     (data.email as string | null) ?? '',
+            direccion: (data.direccion as string | null) ?? '',
+            notas:     (data.notas as string | null) ?? '',
             activo:    Boolean(data.activo ?? true),
-            createdAt: data.created_at,
-            updatedAt: data.updated_at,
+            createdAt: data.created_at as string | undefined,
+            updatedAt: data.updated_at as string | undefined,
         };
     }
 }

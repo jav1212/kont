@@ -18,7 +18,7 @@ export class RpcProductoRepository implements IProductoRepository {
                     p_empresa_id: empresaId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener productos');
         }
@@ -67,24 +67,24 @@ export class RpcProductoRepository implements IProductoRepository {
         }
     }
 
-    private mapToDomain(data: any): Producto {
+    private mapToDomain(data: Record<string, unknown>): Producto {
         return {
-            id:                 data.id,
-            empresaId:          data.empresa_id,
-            codigo:             data.codigo ?? '',
-            nombre:             data.nombre,
-            descripcion:        data.descripcion ?? '',
-            tipo:               data.tipo,
-            unidadMedida:       data.unidad_medida,
-            metodoValuacion:    data.metodo_valuacion,
+            id:                 data.id as string | undefined,
+            empresaId:          data.empresa_id as string,
+            codigo:             (data.codigo as string | null) ?? '',
+            nombre:             data.nombre as string,
+            descripcion:        (data.descripcion as string | null) ?? '',
+            tipo:               data.tipo as import('../../domain/producto').TipoProducto,
+            unidadMedida:       data.unidad_medida as import('../../domain/producto').UnidadMedida,
+            metodoValuacion:    data.metodo_valuacion as import('../../domain/producto').MetodoValuacion,
             existenciaActual:   Number(data.existencia_actual ?? 0),
             costoPromedio:      Number(data.costo_promedio ?? 0),
             activo:             Boolean(data.activo ?? true),
-            departamentoId:     data.departamento_id ?? undefined,
-            departamentoNombre: data.departamento_nombre ?? undefined,
+            departamentoId:     data.departamento_id != null ? String(data.departamento_id) : undefined,
+            departamentoNombre: data.departamento_nombre != null ? String(data.departamento_nombre) : undefined,
             ivaTipo:            (data.iva_tipo === 'exento' ? 'exento' : 'general') as import('../../domain/producto').IvaTipo,
-            createdAt:          data.created_at,
-            updatedAt:          data.updated_at,
+            createdAt:          data.created_at as string | undefined,
+            updatedAt:          data.updated_at as string | undefined,
         };
     }
 }

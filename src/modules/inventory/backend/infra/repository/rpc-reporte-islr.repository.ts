@@ -19,24 +19,27 @@ export class RpcReporteISLRRepository implements IReporteISLRRepository {
                     p_periodo:    periodo,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener reporte ISLR');
         }
     }
 
-    private mapToDomain(row: any): ReporteISLRProducto {
+    private mapToDomain(row: Record<string, unknown>): ReporteISLRProducto {
+        const movimientos = Array.isArray(row.movimientos)
+            ? (row.movimientos as Record<string, unknown>[])
+            : [];
         return {
-            productoId:       row.producto_id ?? '',
-            productoCodigo:   row.producto_codigo ?? '',
-            productoNombre:   row.producto_nombre ?? '',
+            productoId:       (row.producto_id as string | null) ?? '',
+            productoCodigo:   (row.producto_codigo as string | null) ?? '',
+            productoNombre:   (row.producto_nombre as string | null) ?? '',
             aperturaCantidad: Number(row.apertura_cantidad ?? 0),
             aperturaCosto:    Number(row.apertura_costo ?? 0),
-            movimientos:      (row.movimientos as any[] ?? []).map((m: any): ReporteISLRMovimiento => ({
-                id:            m.id ?? '',
-                fecha:         m.fecha ?? '',
-                referencia:    m.referencia ?? '',
-                tipo:          m.tipo ?? '',
+            movimientos:      movimientos.map((m): ReporteISLRMovimiento => ({
+                id:            (m.id as string | null) ?? '',
+                fecha:         (m.fecha as string | null) ?? '',
+                referencia:    (m.referencia as string | null) ?? '',
+                tipo:          (m.tipo as string | null) ?? '',
                 cantEntrada:   Number(m.cant_entrada ?? 0),
                 cantSalida:    Number(m.cant_salida ?? 0),
                 saldoCantidad: Number(m.saldo_cantidad ?? 0),

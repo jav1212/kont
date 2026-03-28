@@ -19,19 +19,19 @@ export class RpcLibroInventariosRepository implements ILibroInventariosRepositor
                     p_anio:       anio,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener libro de inventarios');
         }
     }
 
-    private mapToDomain(row: any): LibroInventariosRow {
+    private mapToDomain(row: Record<string, unknown>): LibroInventariosRow {
         return {
-            id:            row.id ?? '',
-            codigo:        row.codigo ?? '',
-            nombre:        row.nombre ?? '',
-            tipo:          row.tipo ?? '',
-            unidadMedida:  row.unidad_medida ?? '',
+            id:            (row.id as string | null) ?? '',
+            codigo:        (row.codigo as string | null) ?? '',
+            nombre:        (row.nombre as string | null) ?? '',
+            tipo:          (row.tipo as string | null) ?? '',
+            unidadMedida:  (row.unidad_medida as string | null) ?? '',
             cantInicial:   Number(row.cant_inicial   ?? 0),
             valorInicial:  Number(row.valor_inicial  ?? 0),
             cantEntradas:  Number(row.cant_entradas  ?? 0),

@@ -19,20 +19,20 @@ export class RpcLibroComprasRepository implements ILibroComprasRepository {
                     p_periodo:    periodo,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener libro de compras');
         }
     }
 
-    private mapToDomain(row: any): LibroComprasRow {
+    private mapToDomain(row: Record<string, unknown>): LibroComprasRow {
         return {
-            id:               row.id ?? '',
-            fecha:            row.fecha ?? '',
-            numeroFactura:    row.numero_factura ?? '',
-            numeroControl:    row.numero_control ?? '',
-            proveedorRif:     row.proveedor_rif ?? '',
-            proveedorNombre:  row.proveedor_nombre ?? '',
+            id:               (row.id as string | null) ?? '',
+            fecha:            (row.fecha as string | null) ?? '',
+            numeroFactura:    (row.numero_factura as string | null) ?? '',
+            numeroControl:    (row.numero_control as string | null) ?? '',
+            proveedorRif:     (row.proveedor_rif as string | null) ?? '',
+            proveedorNombre:  (row.proveedor_nombre as string | null) ?? '',
             baseExenta:       Number(row.base_exenta    ?? 0),
             baseGravada8:     Number(row.base_gravada_8 ?? 0),
             iva8:             Number(row.iva_8          ?? 0),

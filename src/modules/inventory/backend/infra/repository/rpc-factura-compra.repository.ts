@@ -18,7 +18,7 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
                     p_empresa_id: empresaId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener facturas');
         }
@@ -102,42 +102,41 @@ export class RpcFacturaCompraRepository implements IFacturaCompraRepository {
         }
     }
 
-    private mapToDomain(data: any): FacturaCompra {
-        const items: FacturaCompraItem[] | undefined = data.items
-            ? (data.items as any[]).map((i: any) => ({
-                  id:             i.id,
-                  facturaId:      i.factura_id,
-                  productoId:     i.producto_id,
-                  productoNombre: i.producto_nombre,
-                  cantidad:       Number(i.cantidad ?? 0),
-                  costoUnitario:  Number(i.costo_unitario ?? 0),
-                  costoTotal:     Number(i.costo_total ?? 0),
-                  ivaAlicuota:    (i.iva_alicuota ?? 'general_16') as IvaAlicuota,
-                  moneda:         (i.moneda === 'D' ? 'D' : 'B') as import('../../domain/factura-compra').MonedaItem,
-                  costoMoneda:    i.costo_moneda != null ? Number(i.costo_moneda) : null,
-                  tasaDolar:      i.tasa_dolar   != null ? Number(i.tasa_dolar)   : null,
-              }))
-            : undefined;
+    private mapToDomain(data: Record<string, unknown>): FacturaCompra {
+        const rawItems = Array.isArray(data.items) ? (data.items as Record<string, unknown>[]) : undefined;
+        const items: FacturaCompraItem[] | undefined = rawItems?.map((i) => ({
+            id:             i.id as string,
+            facturaId:      i.factura_id as string,
+            productoId:     i.producto_id as string,
+            productoNombre: i.producto_nombre as string,
+            cantidad:       Number(i.cantidad ?? 0),
+            costoUnitario:  Number(i.costo_unitario ?? 0),
+            costoTotal:     Number(i.costo_total ?? 0),
+            ivaAlicuota:    ((i.iva_alicuota as string | null) ?? 'general_16') as IvaAlicuota,
+            moneda:         (i.moneda === 'D' ? 'D' : 'B') as import('../../domain/factura-compra').MonedaItem,
+            costoMoneda:    i.costo_moneda != null ? Number(i.costo_moneda) : null,
+            tasaDolar:      i.tasa_dolar   != null ? Number(i.tasa_dolar)   : null,
+        }));
 
         return {
-            id:              data.id,
-            empresaId:       data.empresa_id,
-            proveedorId:     data.proveedor_id,
-            proveedorNombre: data.proveedor_nombre,
-            numeroFactura:   data.numero_factura ?? '',
-            numeroControl:   data.numero_control ?? '',
-            fecha:           data.fecha,
-            periodo:         data.periodo,
-            estado:          (data.estado ?? 'borrador') as EstadoFactura,
+            id:              data.id as string | undefined,
+            empresaId:       data.empresa_id as string,
+            proveedorId:     data.proveedor_id as string,
+            proveedorNombre: data.proveedor_nombre as string,
+            numeroFactura:   (data.numero_factura as string | null) ?? '',
+            numeroControl:   (data.numero_control as string | null) ?? '',
+            fecha:           data.fecha as string,
+            periodo:         data.periodo as string,
+            estado:          ((data.estado as string | null) ?? 'borrador') as EstadoFactura,
             subtotal:        Number(data.subtotal ?? 0),
             ivaPorcentaje:   Number(data.iva_porcentaje ?? 16),
             ivaMonto:        Number(data.iva_monto ?? 0),
             total:           Number(data.total ?? 0),
-            notas:           data.notas ?? '',
-            confirmadaAt:    data.confirmada_at ?? null,
+            notas:           (data.notas as string | null) ?? '',
+            confirmadaAt:    (data.confirmada_at as string | null) ?? null,
             items,
-            createdAt:       data.created_at,
-            updatedAt:       data.updated_at,
+            createdAt:       data.created_at as string | undefined,
+            updatedAt:       data.updated_at as string | undefined,
         };
     }
 }

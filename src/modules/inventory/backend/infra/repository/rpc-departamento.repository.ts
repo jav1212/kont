@@ -18,7 +18,7 @@ export class RpcDepartamentoRepository implements IDepartamentoRepository {
                     p_empresa_id: empresaId,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success((data as any[] ?? []).map(this.mapToDomain));
+            return Result.success((data as Record<string, unknown>[] ?? []).map(this.mapToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error al obtener departamentos');
         }
@@ -59,14 +59,14 @@ export class RpcDepartamentoRepository implements IDepartamentoRepository {
         }
     }
 
-    private mapToDomain(data: any): Departamento {
+    private mapToDomain(data: Record<string, unknown>): Departamento {
         return {
-            id:          data.id,
-            empresaId:   data.empresa_id,
-            nombre:      data.nombre,
-            descripcion: data.descripcion ?? '',
+            id:          data.id as string | undefined,
+            empresaId:   data.empresa_id as string,
+            nombre:      data.nombre as string,
+            descripcion: (data.descripcion as string | null) ?? '',
             activo:      Boolean(data.activo ?? true),
-            createdAt:   data.created_at,
+            createdAt:   data.created_at as string | undefined,
         };
     }
 }
