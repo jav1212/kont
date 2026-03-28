@@ -65,13 +65,13 @@ export default function InventoryDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Link
-                            href="/inventory/entradas/nueva"
+                            href="/inventory/purchases/new"
                             className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
                             + Entrada
                         </Link>
                         <Link
-                            href="/inventory/salidas"
+                            href="/inventory/sales"
                             className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
                         >
                             + Salida
@@ -102,7 +102,7 @@ export default function InventoryDashboard() {
                             Productos
                         </p>
                         <Link
-                            href="/inventory/productos"
+                            href="/inventory/products"
                             className="text-[13px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                         >
                             Ver todos →
@@ -114,7 +114,7 @@ export default function InventoryDashboard() {
                     ) : products.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay productos.{" "}
-                            <Link href="/inventory/productos" className="text-primary-500 underline">
+                            <Link href="/inventory/products" className="text-primary-500 underline">
                                 Crear uno
                             </Link>
                         </div>
@@ -157,8 +157,8 @@ export default function InventoryDashboard() {
                 {/* Quick links */}
                 <div className="grid grid-cols-3 gap-4">
                     {[
-                        { href: "/inventory/produccion",  label: "Producción",      desc: "Transformaciones y lotes"       },
-                        { href: "/inventory/movimientos", label: "Ajustes / Devol.", desc: "Correcciones y devoluciones"   },
+                        { href: "/inventory/production",  label: "Producción",      desc: "Transformaciones y lotes"       },
+                        { href: "/inventory/movements", label: "Ajustes / Devol.", desc: "Correcciones y devoluciones"   },
                         { href: "/inventory/kardex",      label: "Kardex",           desc: "Historial por producto"        },
                     ].map((q) => (
                         <Link
