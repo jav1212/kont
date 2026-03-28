@@ -27,19 +27,19 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
         const { tenantOwnerId, invitedBy, email, role, callerRole, origin } = input;
 
         if (!email || !role) {
-            return Result.fail("email y role son requeridos");
+            return Result.fail("email and role are required");
         }
 
         if (!["admin", "contable"].includes(role)) {
-            return Result.fail("role debe ser admin o contable");
+            return Result.fail("role must be admin or contable");
         }
 
         if (callerRole === "contable") {
-            return Result.fail("Sin permiso para invitar");
+            return Result.fail("Insufficient permissions to invite");
         }
 
         if (callerRole === "admin" && role !== "contable") {
-            return Result.fail("Admin solo puede invitar contables");
+            return Result.fail("Admins can only invite contable members");
         }
 
         const result = await this.repo.sendInvitation({

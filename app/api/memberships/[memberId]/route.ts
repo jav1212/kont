@@ -19,7 +19,7 @@ export const DELETE = withTenant(async (req, { userId, actingAs }) => {
 
     if (result.isFailure) {
         const err    = result.getError();
-        const status = err === "Membresía no encontrada" ? 404 : 403;
+        const status = err === "Membership not found" ? 404 : 403;
         return Response.json({ error: err }, { status });
     }
 

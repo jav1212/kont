@@ -4,6 +4,17 @@ import { DocumentFolder } from '../../domain/document-folder';
 import { Result } from '@/src/core/domain/result';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 
+// Raw DB row shape returned by tenant_documents_folders_* RPCs — never exported beyond this file.
+interface RawDocumentFolderRow {
+    id:         string;
+    parent_id:  string | null;
+    name:       string;
+    company_id: string | null;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+}
+
 export class SupabaseDocumentFolderRepository implements IDocumentFolderRepository {
     constructor(
         private readonly source: ISource<SupabaseClient>,
@@ -19,10 +30,9 @@ export class SupabaseDocumentFolderRepository implements IDocumentFolderReposito
                     p_company_id: companyId ?? null,
                 });
             if (error) return Result.fail(error.message);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return Result.success(((data as any[]) ?? []).map(this.mapToDomain));
+            return Result.success(((data as RawDocumentFolderRow[]) ?? []).map(this.mapToDomain));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al obtener carpetas');
+            return Result.fail(err instanceof Error ? err.message : 'Error fetching folders');
         }
     }
 
@@ -38,10 +48,10 @@ export class SupabaseDocumentFolderRepository implements IDocumentFolderReposito
                 });
             if (error) return Result.fail(error.message);
             const row = Array.isArray(data) ? data[0] : data;
-            if (!row) return Result.fail('No se pudo crear la carpeta');
+            if (!row) return Result.fail('Could not create folder');
             return Result.success(this.mapToDomain(row));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al crear carpeta');
+            return Result.fail(err instanceof Error ? err.message : 'Error creating folder');
         }
     }
 
@@ -55,12 +65,11 @@ export class SupabaseDocumentFolderRepository implements IDocumentFolderReposito
             if (error) return Result.fail(error.message);
             return Result.success();
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al eliminar carpeta');
+            return Result.fail(err instanceof Error ? err.message : 'Error deleting folder');
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private mapToDomain(row: any): DocumentFolder {
+    private mapToDomain(row: RawDocumentFolderRow): DocumentFolder {
         return {
             id:        row.id,
             parentId:  row.parent_id ?? null,

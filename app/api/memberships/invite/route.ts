@@ -29,7 +29,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
 
     if (result.isFailure) {
         const err = result.getError();
-        const status = err === "Sin permiso para invitar" || err === "Admin solo puede invitar contables" ? 403 : 400;
+        const status = err === "Insufficient permissions to invite" || err === "Admins can only invite contable members" ? 403 : 400;
         return Response.json({ error: err }, { status });
     }
 

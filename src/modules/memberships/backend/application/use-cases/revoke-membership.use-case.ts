@@ -19,7 +19,7 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
 
     async execute({ tenantOwnerId, memberId, callerRole }: Input): Promise<Result<void>> {
         if (callerRole === "contable") {
-            return Result.fail("Sin permiso");
+            return Result.fail("Insufficient permissions");
         }
 
         // Attempt to revoke an accepted membership first.
@@ -29,11 +29,11 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
             const { memberRole, isTenantOwner } = memberResult.getValue();
 
             if (callerRole === "admin" && memberRole === "owner") {
-                return Result.fail("No puedes remover al owner");
+                return Result.fail("Cannot remove the owner");
             }
 
             if (isTenantOwner) {
-                return Result.fail("No se puede remover al owner del tenant");
+                return Result.fail("Cannot remove the tenant owner");
             }
 
             return Result.success(undefined);
@@ -43,7 +43,7 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
         const invResult = await this.repo.revokeInvitation(tenantOwnerId, memberId);
 
         if (invResult.isFailure) {
-            return Result.fail("Membresía no encontrada");
+            return Result.fail("Membership not found");
         }
 
         return Result.success(undefined);

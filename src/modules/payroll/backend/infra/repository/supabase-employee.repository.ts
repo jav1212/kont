@@ -1,8 +1,29 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ISource } from "@/src/shared/backend/source/domain/repository/source.repository";
 import { IEmployeeRepository } from "../../domain/repository/employee.repository";
-import { Employee, SalaryHistoryEntry } from "../../domain/employee";
+import { Employee, SalaryHistoryEntry, EmployeeMoneda, EmployeeEstado } from "../../domain/employee";
 import { Result } from "@/src/core/domain/result";
+
+// Raw DB row shapes for the employees and salary_history tables — never exported beyond this file.
+interface RawEmployeeRow {
+    id:              string;
+    company_id:      string;
+    cedula:          string;
+    nombre:          string;
+    cargo:           string;
+    salario_mensual: number;
+    moneda:          string | null;
+    estado:          string;
+    fecha_ingreso:   string | null;
+}
+
+interface RawSalaryHistoryRow {
+    id:              string;
+    salario_mensual: number;
+    moneda:          string;
+    fecha_desde:     string;
+    created_at:      string;
+}
 
 export class SupabaseEmployeeRepository implements IEmployeeRepository {
     private readonly TABLE         = "employees";
@@ -76,10 +97,10 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
                 .order("fecha_desde", { ascending: false });
 
             if (error) return Result.fail(error.message);
-            return Result.success((data ?? []).map((r: any) => ({
+            return Result.success(((data ?? []) as RawSalaryHistoryRow[]).map((r): SalaryHistoryEntry => ({
                 id:             r.id,
                 salarioMensual: r.salario_mensual,
-                moneda:         r.moneda,
+                moneda:         r.moneda as EmployeeMoneda,
                 fechaDesde:     r.fecha_desde,
                 createdAt:      r.created_at,
             })));
@@ -88,17 +109,17 @@ export class SupabaseEmployeeRepository implements IEmployeeRepository {
         }
     }
 
-    private mapToDomain(data: any): Employee {
+    private mapToDomain(row: RawEmployeeRow): Employee {
         return {
-            id:             data.id,
-            companyId:      data.company_id,
-            cedula:         data.cedula,
-            nombre:         data.nombre,
-            cargo:          data.cargo,
-            salarioMensual: data.salario_mensual,
-            moneda:         data.moneda ?? "VES",
-            estado:         data.estado,
-            fechaIngreso:   data.fecha_ingreso ?? null,
+            id:             row.id,
+            companyId:      row.company_id,
+            cedula:         row.cedula,
+            nombre:         row.nombre,
+            cargo:          row.cargo,
+            salarioMensual: row.salario_mensual,
+            moneda:         (row.moneda ?? "VES") as EmployeeMoneda,
+            estado:         row.estado as EmployeeEstado,
+            fechaIngreso:   row.fecha_ingreso ?? null,
         };
     }
 }

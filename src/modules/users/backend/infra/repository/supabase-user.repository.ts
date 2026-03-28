@@ -4,6 +4,16 @@ import { ISource } from '@/src/shared/backend/source/domain/repository/source.re
 import { Result } from "@/src/core/domain/result";
 import { User } from '../../domain/user';
 
+// Raw DB row shape for the profiles table — never exported beyond this file.
+interface RawUserRow {
+    id:         string;
+    email:      string;
+    name:       string | null;
+    avatar_url: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
 export class SupabaseUserRepository implements IUserRepository {
     private readonly TABLE = 'profiles';
 
@@ -110,14 +120,14 @@ export class SupabaseUserRepository implements IUserRepository {
         }
     }
 
-    private mapToDomain(data: any): User {
+    private mapToDomain(row: RawUserRow): User {
         return {
-            id:        data.id,
-            email:     data.email,
-            name:      data.name      ?? undefined,
-            avatarUrl: data.avatar_url ?? undefined,
-            createdAt: data.created_at ? new Date(data.created_at) : undefined,
-            updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
+            id:        row.id,
+            email:     row.email,
+            name:      row.name      ?? undefined,
+            avatarUrl: row.avatar_url ?? undefined,
+            createdAt: row.created_at ? new Date(row.created_at) : undefined,
+            updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
         };
     }
 }

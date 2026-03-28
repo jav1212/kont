@@ -1,4 +1,5 @@
-import { getUserActions, handleUserResult } from "@/src/modules/users/backend/infra/user-factory";
+import { getUserActions } from "@/src/modules/users/backend/infra/user-factory";
+import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -9,5 +10,5 @@ export async function GET(req: Request) {
     const { getById } = getUserActions();
     // Ejecuta GetUserByIdUseCase
     const result = await getById.execute(id);
-    return handleUserResult(result);
+    return handleResult(result);
 }

@@ -2,8 +2,37 @@ import { SupabaseClient }          from "@supabase/supabase-js";
 import { ISource }                  from "@/src/shared/backend/source/domain/repository/source.repository";
 import { IPayrollRunRepository, SavePayrollRunInput } from "../../domain/repository/payroll-run.repository";
 import { PayrollRun }               from "../../domain/payroll-run";
-import { PayrollReceipt }           from "../../domain/payroll-receipt";
+import { PayrollReceipt, ReceiptCalculationData } from "../../domain/payroll-receipt";
 import { Result }                   from "@/src/core/domain/result";
+
+// Raw DB row shapes for direct Supabase queries — never exported beyond this file.
+interface RawPayrollRunRow {
+    id:            string;
+    company_id:    string;
+    period_start:  string;
+    period_end:    string;
+    exchange_rate: number;
+    status:        string;
+    confirmed_at:  string;
+    created_at:    string;
+}
+
+interface RawPayrollReceiptRow {
+    id:               string;
+    run_id:           string;
+    company_id:       string;
+    employee_id:      string;
+    employee_cedula:  string;
+    employee_nombre:  string;
+    employee_cargo:   string;
+    monthly_salary:   number;
+    total_earnings:   number;
+    total_deductions: number;
+    total_bonuses:    number;
+    net_pay:          number;
+    calculation_data: ReceiptCalculationData | null;
+    created_at:       string;
+}
 
 export class SupabasePayrollRunRepository implements IPayrollRunRepository {
     private readonly RUNS_TABLE     = "payroll_runs";
@@ -55,7 +84,7 @@ export class SupabasePayrollRunRepository implements IPayrollRunRepository {
 
             return Result.success(runId);
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : "Error al guardar nómina");
+            return Result.fail(err instanceof Error ? err.message : "Error saving payroll");
         }
     }
 
@@ -70,7 +99,7 @@ export class SupabasePayrollRunRepository implements IPayrollRunRepository {
             if (error) return Result.fail(error.message);
             return Result.success((data ?? []).map(this.mapRunToDomain));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : "Error al obtener historial");
+            return Result.fail(err instanceof Error ? err.message : "Error fetching history");
         }
     }
 
@@ -85,39 +114,39 @@ export class SupabasePayrollRunRepository implements IPayrollRunRepository {
             if (error) return Result.fail(error.message);
             return Result.success((data ?? []).map(this.mapReceiptToDomain));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : "Error al obtener recibos");
+            return Result.fail(err instanceof Error ? err.message : "Error fetching receipts");
         }
     }
 
-    private mapRunToDomain(data: any): PayrollRun {
+    private mapRunToDomain(row: RawPayrollRunRow): PayrollRun {
         return {
-            id:           data.id,
-            companyId:    data.company_id,
-            periodStart:  data.period_start,
-            periodEnd:    data.period_end,
-            exchangeRate: data.exchange_rate,
-            status:       data.status,
-            confirmedAt:  data.confirmed_at,
-            createdAt:    data.created_at,
+            id:           row.id,
+            companyId:    row.company_id,
+            periodStart:  row.period_start,
+            periodEnd:    row.period_end,
+            exchangeRate: row.exchange_rate,
+            status:       row.status,
+            confirmedAt:  row.confirmed_at,
+            createdAt:    row.created_at,
         };
     }
 
-    private mapReceiptToDomain(data: any): PayrollReceipt {
+    private mapReceiptToDomain(row: RawPayrollReceiptRow): PayrollReceipt {
         return {
-            id:              data.id,
-            runId:           data.run_id,
-            companyId:       data.company_id,
-            employeeId:      data.employee_id,
-            employeeCedula:  data.employee_cedula,
-            employeeNombre:  data.employee_nombre,
-            employeeCargo:   data.employee_cargo,
-            monthlySalary:   data.monthly_salary,
-            totalEarnings:   data.total_earnings,
-            totalDeductions: data.total_deductions,
-            totalBonuses:    data.total_bonuses,
-            netPay:          data.net_pay,
-            calculationData: data.calculation_data ?? { gross: 0, netUsd: 0, mondaysInMonth: 0 },
-            createdAt:       data.created_at,
+            id:              row.id,
+            runId:           row.run_id,
+            companyId:       row.company_id,
+            employeeId:      row.employee_id,
+            employeeCedula:  row.employee_cedula,
+            employeeNombre:  row.employee_nombre,
+            employeeCargo:   row.employee_cargo,
+            monthlySalary:   row.monthly_salary,
+            totalEarnings:   row.total_earnings,
+            totalDeductions: row.total_deductions,
+            totalBonuses:    row.total_bonuses,
+            netPay:          row.net_pay,
+            calculationData: row.calculation_data ?? { gross: 0, netUsd: 0, mondaysInMonth: 0 },
+            createdAt:       row.created_at,
         };
     }
 }

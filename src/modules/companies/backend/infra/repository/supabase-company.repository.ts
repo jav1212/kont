@@ -4,6 +4,15 @@ import { ISource } from '@/src/shared/backend/source/domain/repository/source.re
 import { Result } from "@/src/core/domain/result";
 import { Company } from '../../domain/company';
 
+// Raw DB row shape for the companies table — never exported beyond this file.
+interface RawCompanyRow {
+    id:         string;
+    owner_id:   string;
+    name:       string;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
 export class SupabaseCompanyRepository implements ICompanyRepository {
     private readonly TABLE = 'companies';
 
@@ -93,13 +102,13 @@ export class SupabaseCompanyRepository implements ICompanyRepository {
         }
     }
 
-    private mapToDomain(data: any): Company {
+    private mapToDomain(row: RawCompanyRow): Company {
         return {
-            id: data.id,
-            ownerId: data.owner_id,
-            name: data.name,
-            createdAt: data.created_at ? new Date(data.created_at) : undefined,
-            updatedAt: data.updated_at ? new Date(data.updated_at) : undefined,
+            id:        row.id,
+            ownerId:   row.owner_id,
+            name:      row.name,
+            createdAt: row.created_at ? new Date(row.created_at) : undefined,
+            updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,
         };
     }
 }

@@ -13,7 +13,7 @@ export async function GET() {
         const tenant = await requireTenant();
         userId = tenant.userId;
     } catch {
-        return Response.json({ error: "No autenticado" }, { status: 401 });
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const result = await getMembershipsActions().getUserMemberships.execute({ userId });

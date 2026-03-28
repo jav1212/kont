@@ -142,12 +142,12 @@ export class SupabaseBillingRepository implements IBillingRepository {
             .eq("id", userId)
             .single();
 
-        if (error || !data) return Result.fail("Tenant no encontrado");
+        if (error || !data) return Result.fail("Tenant not found");
 
         const raw  = data as unknown as RawTenantRow;
         const plan = Array.isArray(raw.plans) ? raw.plans[0] : raw.plans;
 
-        if (!plan) return Result.fail("Plan no encontrado");
+        if (!plan) return Result.fail("Plan not found");
 
         return Result.success({
             id:                 raw.id,

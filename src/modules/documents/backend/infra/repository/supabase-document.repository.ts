@@ -4,6 +4,20 @@ import { Document } from '../../domain/document';
 import { Result } from '@/src/core/domain/result';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 
+// Raw DB row shape returned by tenant_documents_* RPCs — never exported beyond this file.
+interface RawDocumentRow {
+    id:           string;
+    folder_id:    string | null;
+    company_id:   string | null;
+    name:         string;
+    storage_path: string;
+    mime_type:    string | null;
+    size_bytes:   number | string | null;
+    uploaded_by:  string;
+    created_at:   string;
+    updated_at:   string;
+}
+
 export class SupabaseDocumentRepository implements IDocumentRepository {
     constructor(
         private readonly source: ISource<SupabaseClient>,
@@ -19,10 +33,9 @@ export class SupabaseDocumentRepository implements IDocumentRepository {
                     p_company_id: companyId ?? null,
                 });
             if (error) return Result.fail(error.message);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return Result.success(((data as any[]) ?? []).map(this.mapToDomain));
+            return Result.success(((data as RawDocumentRow[]) ?? []).map(this.mapToDomain));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al obtener documentos');
+            return Result.fail(err instanceof Error ? err.message : 'Error fetching documents');
         }
     }
 
@@ -35,10 +48,10 @@ export class SupabaseDocumentRepository implements IDocumentRepository {
                 });
             if (error) return Result.fail(error.message);
             const row = Array.isArray(data) ? data[0] : data;
-            if (!row) return Result.fail('Documento no encontrado');
+            if (!row) return Result.fail('Document not found');
             return Result.success(this.mapToDomain(row));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al obtener documento');
+            return Result.fail(err instanceof Error ? err.message : 'Error fetching document');
         }
     }
 
@@ -57,10 +70,10 @@ export class SupabaseDocumentRepository implements IDocumentRepository {
                 });
             if (error) return Result.fail(error.message);
             const row = Array.isArray(data) ? data[0] : data;
-            if (!row) return Result.fail('No se pudo registrar el documento');
+            if (!row) return Result.fail('Could not register document');
             return Result.success(this.mapToDomain(row));
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al registrar documento');
+            return Result.fail(err instanceof Error ? err.message : 'Error registering document');
         }
     }
 
@@ -74,12 +87,11 @@ export class SupabaseDocumentRepository implements IDocumentRepository {
             if (error) return Result.fail(error.message);
             return Result.success();
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al eliminar documento');
+            return Result.fail(err instanceof Error ? err.message : 'Error deleting document');
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private mapToDomain(row: any): Document {
+    private mapToDomain(row: RawDocumentRow): Document {
         return {
             id:          row.id,
             folderId:    row.folder_id ?? null,

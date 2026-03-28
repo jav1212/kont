@@ -15,7 +15,7 @@ export class SupabaseDocumentStorageRepository implements IDocumentStorageReposi
             if (error) return Result.fail(error.message);
             return Result.success({ signedUrl: data.signedUrl, path: data.path });
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al generar URL de subida');
+            return Result.fail(err instanceof Error ? err.message : 'Error generating upload URL');
         }
     }
 
@@ -27,7 +27,7 @@ export class SupabaseDocumentStorageRepository implements IDocumentStorageReposi
             if (error) return Result.fail(error.message);
             return Result.success(data.signedUrl);
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al generar URL de descarga');
+            return Result.fail(err instanceof Error ? err.message : 'Error generating download URL');
         }
     }
 
@@ -39,7 +39,7 @@ export class SupabaseDocumentStorageRepository implements IDocumentStorageReposi
             if (error) return Result.fail(error.message);
             return Result.success();
         } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Error al eliminar archivo');
+            return Result.fail(err instanceof Error ? err.message : 'Error deleting file');
         }
     }
 }

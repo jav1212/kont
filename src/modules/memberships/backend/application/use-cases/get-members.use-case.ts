@@ -19,7 +19,7 @@ export class GetMembersUseCase extends UseCase<Input, Membership[]> {
 
     async execute({ tenantOwnerId, callerRole }: Input): Promise<Result<Membership[]>> {
         if (callerRole === "contable") {
-            return Result.fail("Sin permiso");
+            return Result.fail("Insufficient permissions");
         }
 
         return this.repo.getMembers(tenantOwnerId);

@@ -25,7 +25,7 @@ export class CreatePaymentRequestUseCase extends UseCase<Input, PaymentRequest> 
         const { tenantId, ...rest } = input;
 
         if (!rest.planId || !rest.billingCycle || !rest.amountUsd || !rest.paymentMethod) {
-            return Result.fail("planId, billingCycle, amountUsd y paymentMethod son requeridos");
+            return Result.fail("planId, billingCycle, amountUsd and paymentMethod are required");
         }
 
         const payload: CreatePaymentRequestInput = {
