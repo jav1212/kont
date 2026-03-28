@@ -1,44 +1,12 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { withTenant } from '@/src/shared/backend/utils/require-tenant';
+import { getBillingActions } from '@/src/modules/billing/backend/billing-factory';
+import { handleResult } from '@/src/shared/backend/utils/handle-result';
 
 /**
  * GET /api/billing/plans
- * Devuelve todos los planes activos.
+ * Returns all active plans with their associated module slugs.
  */
-export async function GET() {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll: () => cookieStore.getAll(),
-                setAll: () => {},
-            },
-        }
-    );
-
-    const { data, error } = await supabase
-        .from('plans')
-        .select('*, products(slug)')
-        .eq('is_active', true)
-        .order('price_monthly_usd', { ascending: true });
-
-    if (error) {
-        return Response.json({ error: error.message }, { status: 500 });
-    }
-
-    return Response.json({
-        data: (data ?? []).map((p) => ({
-            id:                     p.id,
-            name:                   p.name,
-            moduleSlug:             (p as Record<string, unknown> & { products?: { slug: string } | null }).products?.slug ?? null,
-            maxCompanies:           p.max_companies,
-            maxEmployeesPerCompany: p.max_employees_per_company,
-            priceMonthlyUsd:        p.price_monthly_usd,
-            priceQuarterlyUsd:      p.price_quarterly_usd,
-            priceAnnualUsd:         p.price_annual_usd,
-        })),
-    });
-}
+export const GET = withTenant(async () => {
+    const result = await getBillingActions().getPlans.execute();
+    return handleResult(result);
+});

@@ -8,6 +8,11 @@ export interface Plan {
     priceAnnualUsd:            number;
 }
 
+// Plan returned by the public plans listing — includes the associated module slug.
+export interface PlanWithModule extends Plan {
+    moduleSlug: string | null;
+}
+
 export type TenantStatus   = 'trial' | 'active' | 'suspended';
 export type BillingCycle   = 'monthly' | 'quarterly' | 'annual';
 export type PaymentMethod  = 'transfer' | 'cash';
