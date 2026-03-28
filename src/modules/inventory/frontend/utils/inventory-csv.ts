@@ -1,6 +1,11 @@
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
-import type { Departamento } from "@/src/modules/inventory/backend/domain/departamento";
-import type { Proveedor } from "@/src/modules/inventory/backend/domain/proveedor";
+// CSV import/export utilities for the inventory module.
+// Architectural role: pure data transformation helpers — no side effects except downloadCsv.
+// CSV column headers are kept in Spanish for backward compatibility with user-facing data contracts.
+// All TypeScript identifiers use English domain types.
+
+import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { Department } from "@/src/modules/inventory/backend/domain/department";
+import type { Supplier } from "@/src/modules/inventory/backend/domain/supplier";
 
 // ── shared helpers ─────────────────────────────────────────────────────────────
 
@@ -59,225 +64,229 @@ function parseHeader(line: string): string[] {
     );
 }
 
-// ── Departamentos ──────────────────────────────────────────────────────────────
+// ── Departments ────────────────────────────────────────────────────────────────
 
+// Spanish column names kept for user-facing CSV backward compatibility.
 const DEPT_HEADERS = ["nombre", "descripcion", "activo"] as const;
 
-export function departamentosToCsv(departamentos: Departamento[]): string {
+export function departmentsToCsv(departments: Department[]): string {
     const header = DEPT_HEADERS.map(csvCell).join(",");
-    const rows   = departamentos.map((d) =>
-        [csvCell(d.nombre), csvCell(d.descripcion ?? ""), csvCell(d.activo)].join(",")
+    const rows   = departments.map((d) =>
+        [csvCell(d.name), csvCell(d.description ?? ""), csvCell(d.active)].join(",")
     );
     return [header, ...rows].join("\r\n");
 }
 
-export interface DepartamentoCsvResult {
-    departamentos: Omit<Departamento, "id" | "empresaId" | "createdAt">[];
-    errors:        string[];
+export interface DepartmentCsvResult {
+    departments: Omit<Department, "id" | "companyId" | "createdAt">[];
+    errors:      string[];
 }
 
-export function parseDepartamentosCsv(raw: string): DepartamentoCsvResult {
+export function parseDepartmentsCsv(raw: string): DepartmentCsvResult {
     const lines = normalizeRaw(raw);
     const errors: string[] = [];
-    const departamentos: DepartamentoCsvResult["departamentos"] = [];
+    const departments: DepartmentCsvResult["departments"] = [];
 
-    if (lines.length < 2) return { departamentos: [], errors: ["El CSV está vacío o no tiene datos."] };
+    if (lines.length < 2) return { departments: [], errors: ["El CSV está vacío o no tiene datos."] };
 
     const header = parseHeader(lines[0]).join(",");
     if (header !== DEPT_HEADERS.join(",")) {
-        return { departamentos: [], errors: [`Encabezado inválido. Se esperaba: ${DEPT_HEADERS.join(",")}`] };
+        return { departments: [], errors: [`Encabezado inválido. Se esperaba: ${DEPT_HEADERS.join(",")}`] };
     }
 
     for (let i = 1; i < lines.length; i++) {
         const clean = cleanCols(splitCsvLine(lines[i]));
-        const [nombre, descripcion, activoRaw] = clean;
+        const [name, description, activeRaw] = clean;
 
-        if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
+        if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
 
-        const activo = activoRaw?.toLowerCase() !== "false";
+        const active = activeRaw?.toLowerCase() !== "false";
 
-        departamentos.push({ nombre: nombre.toUpperCase(), descripcion: descripcion ?? "", activo });
+        departments.push({ name: name.toUpperCase(), description: description ?? "", active });
     }
 
-    return { departamentos, errors };
+    return { departments, errors };
 }
 
-// ── Proveedores ────────────────────────────────────────────────────────────────
+// ── Suppliers ──────────────────────────────────────────────────────────────────
 
+// Spanish column names kept for user-facing CSV backward compatibility.
 const PROV_HEADERS = ["rif", "nombre", "contacto", "telefono", "email", "direccion", "notas", "activo"] as const;
 
-export function proveedoresToCsv(proveedores: Proveedor[]): string {
+export function suppliersToCsv(suppliers: Supplier[]): string {
     const header = PROV_HEADERS.map(csvCell).join(",");
-    const rows   = proveedores.map((p) =>
+    const rows   = suppliers.map((s) =>
         [
-            csvCell(p.rif),
-            csvCell(p.nombre),
-            csvCell(p.contacto),
-            csvCell(p.telefono),
-            csvCell(p.email),
-            csvCell(p.direccion),
-            csvCell(p.notas),
-            csvCell(p.activo),
+            csvCell(s.rif),
+            csvCell(s.name),
+            csvCell(s.contact),
+            csvCell(s.phone),
+            csvCell(s.email),
+            csvCell(s.address),
+            csvCell(s.notes),
+            csvCell(s.active),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
 }
 
-export interface ProveedorCsvResult {
-    proveedores: Omit<Proveedor, "id" | "empresaId" | "createdAt" | "updatedAt">[];
-    errors:      string[];
+export interface SupplierCsvResult {
+    suppliers: Omit<Supplier, "id" | "companyId" | "createdAt" | "updatedAt">[];
+    errors:    string[];
 }
 
-export function parseProveedoresCsv(raw: string): ProveedorCsvResult {
+export function parseSuppliersCsv(raw: string): SupplierCsvResult {
     const lines = normalizeRaw(raw);
     const errors: string[] = [];
-    const proveedores: ProveedorCsvResult["proveedores"] = [];
+    const suppliers: SupplierCsvResult["suppliers"] = [];
 
-    if (lines.length < 2) return { proveedores: [], errors: ["El CSV está vacío o no tiene datos."] };
+    if (lines.length < 2) return { suppliers: [], errors: ["El CSV está vacío o no tiene datos."] };
 
     const header = parseHeader(lines[0]).join(",");
     if (header !== PROV_HEADERS.join(",")) {
-        return { proveedores: [], errors: [`Encabezado inválido. Se esperaba: ${PROV_HEADERS.join(",")}`] };
+        return { suppliers: [], errors: [`Encabezado inválido. Se esperaba: ${PROV_HEADERS.join(",")}`] };
     }
 
     for (let i = 1; i < lines.length; i++) {
         const clean = cleanCols(splitCsvLine(lines[i]));
-        const [rif, nombre, contacto, telefono, email, direccion, notas, activoRaw] = clean;
+        const [rif, name, contact, phone, email, address, notes, activeRaw] = clean;
 
-        if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
+        if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
 
-        const activo = activoRaw?.toLowerCase() !== "false";
+        const active = activeRaw?.toLowerCase() !== "false";
 
-        proveedores.push({
-            rif:       rif ?? "",
-            nombre,
-            contacto:  contacto ?? "",
-            telefono:  telefono ?? "",
-            email:     email ?? "",
-            direccion: direccion ?? "",
-            notas:     notas ?? "",
-            activo,
+        suppliers.push({
+            rif:     rif ?? "",
+            name,
+            contact: contact ?? "",
+            phone:   phone ?? "",
+            email:   email ?? "",
+            address: address ?? "",
+            notes:   notes ?? "",
+            active,
         });
     }
 
-    return { proveedores, errors };
+    return { suppliers, errors };
 }
 
-// ── Productos ──────────────────────────────────────────────────────────────────
+// ── Products ───────────────────────────────────────────────────────────────────
 
+// Spanish column names kept for user-facing CSV backward compatibility.
 const PROD_HEADERS = [
     "codigo", "nombre", "descripcion", "tipo", "unidad_medida",
     "metodo_valuacion",
     "iva_tipo", "activo", "departamento_nombre",
 ] as const;
 
-const TIPOS_VALIDOS: TipoProducto[]      = ["mercancia", "materia_prima", "producto_terminado"];
-const UNIDADES_VALIDAS: UnidadMedida[]   = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
-const METODOS_VALIDOS: MetodoValuacion[] = ["promedio_ponderado", "peps"];
-const IVA_VALIDOS: IvaTipo[]             = ["exento", "general"];
+const VALID_TYPES: ProductType[]          = ["mercancia", "materia_prima", "producto_terminado"];
+const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
+const VALID_METHODS: ValuationMethod[]    = ["promedio_ponderado", "peps"];
+const VALID_VAT_TYPES: VatType[]          = ["exento", "general"];
 
-export function productosToCsv(productos: Producto[]): string {
+export function productsToCsv(products: Product[]): string {
     const header = PROD_HEADERS.map(csvCell).join(",");
-    const rows   = productos.map((p) =>
+    const rows   = products.map((p) =>
         [
-            csvCell(p.codigo),
-            csvCell(p.nombre),
-            csvCell(p.descripcion),
-            csvCell(p.tipo),
-            csvCell(p.unidadMedida),
-            csvCell(p.metodoValuacion),
-            csvCell(p.ivaTipo),
-            csvCell(p.activo),
-            csvCell(p.departamentoNombre ?? ""),
+            csvCell(p.code),
+            csvCell(p.name),
+            csvCell(p.description),
+            csvCell(p.type),
+            csvCell(p.measureUnit),
+            csvCell(p.valuationMethod),
+            csvCell(p.vatType),
+            csvCell(p.active),
+            csvCell(p.departmentName ?? ""),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
 }
 
-export interface ProductoCsvRow {
-    codigo:          string;
-    nombre:          string;
-    descripcion:     string;
-    tipo:            TipoProducto;
-    unidadMedida:    UnidadMedida;
-    metodoValuacion: MetodoValuacion;
-    ivaTipo:         IvaTipo;
-    activo:          boolean;
-    departamentoId?: string;
+export interface ProductCsvRow {
+    code:            string;
+    name:            string;
+    description:     string;
+    type:            ProductType;
+    measureUnit:     MeasureUnit;
+    valuationMethod: ValuationMethod;
+    vatType:         VatType;
+    active:          boolean;
+    departmentId?:   string;
 }
 
-export interface ProductoCsvResult {
-    productos: ProductoCsvRow[];
-    errors:    string[];
+export interface ProductCsvResult {
+    products: ProductCsvRow[];
+    errors:   string[];
 }
 
-export function parseProductosCsv(raw: string, departamentos: Departamento[]): ProductoCsvResult {
+export function parseProductsCsv(raw: string, departments: Department[]): ProductCsvResult {
     const lines = normalizeRaw(raw);
     const errors: string[] = [];
-    const productos: ProductoCsvRow[] = [];
+    const products: ProductCsvRow[] = [];
 
-    if (lines.length < 2) return { productos: [], errors: ["El CSV está vacío o no tiene datos."] };
+    if (lines.length < 2) return { products: [], errors: ["El CSV está vacío o no tiene datos."] };
 
     const header = parseHeader(lines[0]).join(",");
     if (header !== PROD_HEADERS.join(",")) {
-        return { productos: [], errors: [`Encabezado inválido. Se esperaba: ${PROD_HEADERS.join(",")}`] };
+        return { products: [], errors: [`Encabezado inválido. Se esperaba: ${PROD_HEADERS.join(",")}`] };
     }
 
-    const deptMap = new Map(departamentos.map((d) => [d.nombre.toUpperCase(), d.id]));
+    // Build lookup map using the English `name` property from Department.
+    const deptMap = new Map(departments.map((d) => [d.name.toUpperCase(), d.id]));
 
     for (let i = 1; i < lines.length; i++) {
         const clean = cleanCols(splitCsvLine(lines[i]));
         const [
-            codigo, nombre, descripcion, tipoRaw, unidadRaw,
-            metodoRaw,
-            ivaRaw, activoRaw, deptNombre,
+            code, name, description, typeRaw, unitRaw,
+            methodRaw,
+            vatRaw, activeRaw, deptName,
         ] = clean;
 
-        if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
+        if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
 
-        const tipo = (tipoRaw ?? "").toLowerCase() as TipoProducto;
-        if (!TIPOS_VALIDOS.includes(tipo)) {
-            errors.push(`Línea ${i + 1}: tipo inválido "${tipoRaw}". Usa: ${TIPOS_VALIDOS.join(", ")}.`); continue;
+        const type = (typeRaw ?? "").toLowerCase() as ProductType;
+        if (!VALID_TYPES.includes(type)) {
+            errors.push(`Línea ${i + 1}: tipo inválido "${typeRaw}". Usa: ${VALID_TYPES.join(", ")}.`); continue;
         }
 
-        const unidadMedida = (unidadRaw ?? "").toLowerCase() as UnidadMedida;
-        if (!UNIDADES_VALIDAS.includes(unidadMedida)) {
-            errors.push(`Línea ${i + 1}: unidad_medida inválida "${unidadRaw}". Usa: ${UNIDADES_VALIDAS.join(", ")}.`); continue;
+        const measureUnit = (unitRaw ?? "").toLowerCase() as MeasureUnit;
+        if (!VALID_UNITS.includes(measureUnit)) {
+            errors.push(`Línea ${i + 1}: unidad_medida inválida "${unitRaw}". Usa: ${VALID_UNITS.join(", ")}.`); continue;
         }
 
-        const metodoValuacion = (metodoRaw ?? "").toLowerCase() as MetodoValuacion;
-        if (!METODOS_VALIDOS.includes(metodoValuacion)) {
-            errors.push(`Línea ${i + 1}: metodo_valuacion inválido "${metodoRaw}". Usa: ${METODOS_VALIDOS.join(", ")}.`); continue;
+        const valuationMethod = (methodRaw ?? "").toLowerCase() as ValuationMethod;
+        if (!VALID_METHODS.includes(valuationMethod)) {
+            errors.push(`Línea ${i + 1}: metodo_valuacion inválido "${methodRaw}". Usa: ${VALID_METHODS.join(", ")}.`); continue;
         }
 
-        const ivaTipo = (ivaRaw ?? "general").toLowerCase() as IvaTipo;
-        if (!IVA_VALIDOS.includes(ivaTipo)) {
-            errors.push(`Línea ${i + 1}: iva_tipo inválido "${ivaRaw}". Usa: exento o general.`); continue;
+        const vatType = (vatRaw ?? "general").toLowerCase() as VatType;
+        if (!VALID_VAT_TYPES.includes(vatType)) {
+            errors.push(`Línea ${i + 1}: iva_tipo inválido "${vatRaw}". Usa: exento o general.`); continue;
         }
 
-        const activo = activoRaw?.toLowerCase() !== "false";
+        const active = activeRaw?.toLowerCase() !== "false";
 
-        let departamentoId: string | undefined;
-        if (deptNombre?.trim()) {
-            const found = deptMap.get(deptNombre.trim().toUpperCase());
+        let departmentId: string | undefined;
+        if (deptName?.trim()) {
+            const found = deptMap.get(deptName.trim().toUpperCase());
             if (!found) {
-                errors.push(`Línea ${i + 1}: departamento "${deptNombre}" no encontrado.`); continue;
+                errors.push(`Línea ${i + 1}: departamento "${deptName}" no encontrado.`); continue;
             }
-            departamentoId = found;
+            departmentId = found;
         }
 
-        productos.push({
-            codigo:          codigo ?? "",
-            nombre,
-            descripcion:     descripcion ?? "",
-            tipo,
-            unidadMedida,
-            metodoValuacion,
-            ivaTipo,
-            activo,
-            departamentoId,
+        products.push({
+            code:            code ?? "",
+            name,
+            description:     description ?? "",
+            type,
+            measureUnit,
+            valuationMethod,
+            vatType,
+            active,
+            departmentId,
         });
     }
 
-    return { productos, errors };
+    return { products, errors };
 }

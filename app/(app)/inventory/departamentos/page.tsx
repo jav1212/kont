@@ -1,14 +1,17 @@
 "use client";
 
+// Departments catalog page — CRUD, CSV import/export, bulk delete.
+// Uses English domain types (Department) and English useInventory() API.
+
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Departamento } from "@/src/modules/inventory/backend/domain/departamento";
+import type { Department } from "@/src/modules/inventory/backend/domain/department";
 import {
-    departamentosToCsv,
-    parseDepartamentosCsv,
+    departmentsToCsv,
+    parseDepartmentsCsv,
     downloadCsv,
-    type DepartamentoCsvResult,
+    type DepartmentCsvResult,
 } from "@/src/modules/inventory/frontend/utils/inventory-csv";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -21,8 +24,8 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function empty(empresaId: string): Departamento {
-    return { empresaId, nombre: "", descripcion: "", activo: true };
+function emptyDepartment(companyId: string): Department {
+    return { companyId, name: "", description: "", active: true };
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -30,14 +33,14 @@ function empty(empresaId: string): Departamento {
 export default function DepartamentosPage() {
     const { companyId } = useCompany();
     const {
-        departamentos, loadingDepartamentos, error, setError,
-        loadDepartamentos, saveDepartamento, deleteDepartamento,
+        departments, loadingDepartments, error, setError,
+        loadDepartments, saveDepartment, deleteDepartment,
     } = useInventory();
 
-    const [form, setForm] = useState<Departamento | null>(null);
+    const [form, setForm] = useState<Department | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-    const [importResult, setImportResult] = useState<DepartamentoCsvResult | null>(null);
+    const [importResult, setImportResult] = useState<DepartmentCsvResult | null>(null);
     const [importing, setImporting] = useState(false);
     const [pasteOpen, setPasteOpen] = useState(false);
     const [pasteText, setPasteText] = useState("");
@@ -48,16 +51,16 @@ export default function DepartamentosPage() {
     const [bulkDeleting, setBulkDeleting] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadDepartamentos(companyId);
-    }, [companyId, loadDepartamentos]);
+        if (companyId) loadDepartments(companyId);
+    }, [companyId, loadDepartments]);
 
     function openNew() {
         if (!companyId) return;
-        setForm(empty(companyId));
+        setForm(emptyDepartment(companyId));
         setError(null);
     }
 
-    function openEdit(d: Departamento) {
+    function openEdit(d: Department) {
         setForm({ ...d });
         setError(null);
     }
@@ -66,33 +69,33 @@ export default function DepartamentosPage() {
 
     async function handleSave() {
         if (!form) return;
-        if (!form.nombre.trim()) { setError("El nombre es requerido"); return; }
+        if (!form.name.trim()) { setError("El nombre es requerido"); return; }
         setSaving(true);
-        const saved = await saveDepartamento(form);
+        const saved = await saveDepartment(form);
         setSaving(false);
         if (saved) closeForm();
     }
 
     async function handleDelete(id: string) {
-        await deleteDepartamento(id);
+        await deleteDepartment(id);
         setConfirmDelete(null);
     }
 
     async function handleBulkDelete() {
         setBulkDeleting(true);
         for (const id of selected) {
-            await deleteDepartamento(id);
+            await deleteDepartment(id);
         }
         setBulkDeleting(false);
         setSelected(new Set());
         setConfirmBulkDelete(false);
     }
 
-    const set = (k: keyof Departamento, v: unknown) =>
+    const set = (k: keyof Department, v: string | boolean) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
     function handleExport() {
-        downloadCsv(departamentosToCsv(departamentos), "departamentos.csv");
+        downloadCsv(departmentsToCsv(departments), "departamentos.csv");
     }
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -100,7 +103,7 @@ export default function DepartamentosPage() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const result = parseDepartamentosCsv(ev.target?.result as string);
+            const result = parseDepartmentsCsv(ev.target?.result as string);
             setImportResult(result);
         };
         reader.readAsText(file, "utf-8");
@@ -109,7 +112,7 @@ export default function DepartamentosPage() {
 
     function handlePasteParse() {
         if (!pasteText.trim()) return;
-        const result = parseDepartamentosCsv(pasteText);
+        const result = parseDepartmentsCsv(pasteText);
         setImportResult(result);
         setPasteOpen(false);
         setPasteText("");
@@ -118,15 +121,15 @@ export default function DepartamentosPage() {
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
-        for (const d of importResult.departamentos) {
-            await saveDepartamento({ ...d, empresaId: companyId });
+        for (const d of importResult.departments) {
+            await saveDepartment({ ...d, companyId });
         }
         setImporting(false);
         setImportResult(null);
-        loadDepartamentos(companyId);
+        loadDepartments(companyId);
     }
 
-    const filtered = departamentos.filter(d => [d.nombre, d.descripcion ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
+    const filtered = departments.filter(d => [d.name, d.description ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -144,7 +147,7 @@ export default function DepartamentosPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleExport}
-                            disabled={departamentos.length === 0}
+                            disabled={departments.length === 0}
                             className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
                             Exportar CSV
@@ -270,18 +273,18 @@ export default function DepartamentosPage() {
                                 ))}
                             </ul>
                         )}
-                        {importResult.departamentos.length > 0 && (
+                        {importResult.departments.length > 0 && (
                             <p className="text-[11px] text-[var(--text-secondary)]">
-                                {importResult.departamentos.length} departamento(s) listos para importar.
+                                {importResult.departments.length} departamento(s) listos para importar.
                             </p>
                         )}
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
                             <button
                                 onClick={handleImport}
-                                disabled={importing || importResult.departamentos.length === 0}
+                                disabled={importing || importResult.departments.length === 0}
                                 className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
-                                {importing ? "Importando…" : `Importar ${importResult.departamentos.length}`}
+                                {importing ? "Importando…" : `Importar ${importResult.departments.length}`}
                             </button>
                             <button
                                 onClick={() => setImportResult(null)}
@@ -305,8 +308,8 @@ export default function DepartamentosPage() {
                                 <label className={labelCls}>Nombre *</label>
                                 <input
                                     className={fieldCls}
-                                    value={form.nombre}
-                                    onChange={(e) => set("nombre", e.target.value.toUpperCase())}
+                                    value={form.name}
+                                    onChange={(e) => set("name", e.target.value.toUpperCase())}
                                     placeholder="Ej: PANADERÍA"
                                 />
                             </div>
@@ -314,16 +317,16 @@ export default function DepartamentosPage() {
                                 <label className={labelCls}>Descripción</label>
                                 <input
                                     className={fieldCls}
-                                    value={form.descripcion ?? ""}
-                                    onChange={(e) => set("descripcion", e.target.value)}
+                                    value={form.description ?? ""}
+                                    onChange={(e) => set("description", e.target.value)}
                                 />
                             </div>
                         </div>
 
                         <div className="mb-4 flex items-center gap-2">
                             <input
-                                type="checkbox" checked={form.activo}
-                                onChange={(e) => set("activo", e.target.checked)}
+                                type="checkbox" checked={form.active}
+                                onChange={(e) => set("active", e.target.checked)}
                                 className="w-4 h-4 rounded"
                             />
                             <span className="text-[11px] text-foreground">Activo</span>
@@ -348,9 +351,9 @@ export default function DepartamentosPage() {
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    {loadingDepartamentos ? (
+                    {loadingDepartments ? (
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
-                    ) : departamentos.length === 0 ? (
+                    ) : departments.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay departamentos. Haz clic en "+ Nuevo departamento" para crear uno.
                         </div>
@@ -394,10 +397,10 @@ export default function DepartamentosPage() {
                                                 }}
                                             />
                                         </td>
-                                        <td className="px-4 py-2.5 text-foreground font-medium">{d.nombre}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{d.descripcion || "—"}</td>
+                                        <td className="px-4 py-2.5 text-foreground font-medium">{d.name}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{d.description || "—"}</td>
                                         <td className="px-4 py-2.5">
-                                            {d.activo
+                                            {d.active
                                                 ? <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
                                                 : <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
                                             }

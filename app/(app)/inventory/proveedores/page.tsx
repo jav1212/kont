@@ -1,14 +1,17 @@
 "use client";
 
+// Suppliers catalog page — CRUD, CSV import/export, bulk delete.
+// Uses English domain types (Supplier) and English useInventory() API.
+
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Proveedor } from "@/src/modules/inventory/backend/domain/proveedor";
+import type { Supplier } from "@/src/modules/inventory/backend/domain/supplier";
 import {
-    proveedoresToCsv,
-    parseProveedoresCsv,
+    suppliersToCsv,
+    parseSuppliersCsv,
     downloadCsv,
-    type ProveedorCsvResult,
+    type SupplierCsvResult,
 } from "@/src/modules/inventory/frontend/utils/inventory-csv";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -21,17 +24,17 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function emptyProveedor(empresaId: string): Proveedor {
+function emptySupplier(companyId: string): Supplier {
     return {
-        empresaId,
-        rif:       "",
-        nombre:    "",
-        contacto:  "",
-        telefono:  "",
-        email:     "",
-        direccion: "",
-        notas:     "",
-        activo:    true,
+        companyId,
+        rif:     "",
+        name:    "",
+        contact: "",
+        phone:   "",
+        email:   "",
+        address: "",
+        notes:   "",
+        active:  true,
     };
 }
 
@@ -40,14 +43,14 @@ function emptyProveedor(empresaId: string): Proveedor {
 export default function ProveedoresPage() {
     const { companyId } = useCompany();
     const {
-        proveedores, loadingProveedores, error, setError,
-        loadProveedores, saveProveedor, deleteProveedor,
+        suppliers, loadingSuppliers, error, setError,
+        loadSuppliers, saveSupplier, deleteSupplier,
     } = useInventory();
 
-    const [form, setForm] = useState<Proveedor | null>(null);
+    const [form, setForm] = useState<Supplier | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-    const [importResult, setImportResult] = useState<ProveedorCsvResult | null>(null);
+    const [importResult, setImportResult] = useState<SupplierCsvResult | null>(null);
     const [importing, setImporting] = useState(false);
     const [pasteOpen, setPasteOpen] = useState(false);
     const [pasteText, setPasteText] = useState("");
@@ -58,17 +61,17 @@ export default function ProveedoresPage() {
     const [bulkDeleting, setBulkDeleting] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProveedores(companyId);
-    }, [companyId, loadProveedores]);
+        if (companyId) loadSuppliers(companyId);
+    }, [companyId, loadSuppliers]);
 
     function openNew() {
         if (!companyId) return;
-        setForm(emptyProveedor(companyId));
+        setForm(emptySupplier(companyId));
         setError(null);
     }
 
-    function openEdit(p: Proveedor) {
-        setForm({ ...p });
+    function openEdit(s: Supplier) {
+        setForm({ ...s });
         setError(null);
     }
 
@@ -76,33 +79,33 @@ export default function ProveedoresPage() {
 
     async function handleSave() {
         if (!form) return;
-        if (!form.nombre.trim()) { setError("El nombre es requerido"); return; }
+        if (!form.name.trim()) { setError("El nombre es requerido"); return; }
         setSaving(true);
-        const saved = await saveProveedor(form);
+        const saved = await saveSupplier(form);
         setSaving(false);
         if (saved) closeForm();
     }
 
     async function handleDelete(id: string) {
-        await deleteProveedor(id);
+        await deleteSupplier(id);
         setConfirmDelete(null);
     }
 
     async function handleBulkDelete() {
         setBulkDeleting(true);
         for (const id of selected) {
-            await deleteProveedor(id);
+            await deleteSupplier(id);
         }
         setBulkDeleting(false);
         setSelected(new Set());
         setConfirmBulkDelete(false);
     }
 
-    const set = (k: keyof Proveedor, v: unknown) =>
+    const set = (k: keyof Supplier, v: string | boolean) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
     function handleExport() {
-        downloadCsv(proveedoresToCsv(proveedores), "proveedores.csv");
+        downloadCsv(suppliersToCsv(suppliers), "proveedores.csv");
     }
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -110,7 +113,7 @@ export default function ProveedoresPage() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const result = parseProveedoresCsv(ev.target?.result as string);
+            const result = parseSuppliersCsv(ev.target?.result as string);
             setImportResult(result);
         };
         reader.readAsText(file, "utf-8");
@@ -119,7 +122,7 @@ export default function ProveedoresPage() {
 
     function handlePasteParse() {
         if (!pasteText.trim()) return;
-        const result = parseProveedoresCsv(pasteText);
+        const result = parseSuppliersCsv(pasteText);
         setImportResult(result);
         setPasteOpen(false);
         setPasteText("");
@@ -128,15 +131,15 @@ export default function ProveedoresPage() {
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
-        for (const p of importResult.proveedores) {
-            await saveProveedor({ ...p, empresaId: companyId });
+        for (const s of importResult.suppliers) {
+            await saveSupplier({ ...s, companyId });
         }
         setImporting(false);
         setImportResult(null);
-        loadProveedores(companyId);
+        loadSuppliers(companyId);
     }
 
-    const filtered = proveedores.filter(p => [p.rif, p.nombre, p.contacto ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
+    const filtered = suppliers.filter(s => [s.rif, s.name, s.contact ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -154,7 +157,7 @@ export default function ProveedoresPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleExport}
-                            disabled={proveedores.length === 0}
+                            disabled={suppliers.length === 0}
                             className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
                             Exportar CSV
@@ -279,18 +282,18 @@ export default function ProveedoresPage() {
                                 ))}
                             </ul>
                         )}
-                        {importResult.proveedores.length > 0 && (
+                        {importResult.suppliers.length > 0 && (
                             <p className="text-[11px] text-[var(--text-secondary)]">
-                                {importResult.proveedores.length} proveedor(es) listos para importar.
+                                {importResult.suppliers.length} proveedor(es) listos para importar.
                             </p>
                         )}
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
                             <button
                                 onClick={handleImport}
-                                disabled={importing || importResult.proveedores.length === 0}
+                                disabled={importing || importResult.suppliers.length === 0}
                                 className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
-                                {importing ? "Importando…" : `Importar ${importResult.proveedores.length}`}
+                                {importing ? "Importando…" : `Importar ${importResult.suppliers.length}`}
                             </button>
                             <button
                                 onClick={() => setImportResult(null)}
@@ -316,18 +319,18 @@ export default function ProveedoresPage() {
                             </div>
                             <div className="col-span-2">
                                 <label className={labelCls}>Nombre *</label>
-                                <input className={fieldCls} value={form.nombre} onChange={(e) => set("nombre", e.target.value)} />
+                                <input className={fieldCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label className={labelCls}>Contacto</label>
-                                <input className={fieldCls} value={form.contacto} onChange={(e) => set("contacto", e.target.value)} />
+                                <input className={fieldCls} value={form.contact} onChange={(e) => set("contact", e.target.value)} />
                             </div>
                             <div>
                                 <label className={labelCls}>Teléfono</label>
-                                <input className={fieldCls} value={form.telefono} onChange={(e) => set("telefono", e.target.value)} />
+                                <input className={fieldCls} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
                             </div>
                             <div>
                                 <label className={labelCls}>Email</label>
@@ -337,7 +340,7 @@ export default function ProveedoresPage() {
 
                         <div className="mb-4">
                             <label className={labelCls}>Dirección</label>
-                            <input className={fieldCls} value={form.direccion} onChange={(e) => set("direccion", e.target.value)} />
+                            <input className={fieldCls} value={form.address} onChange={(e) => set("address", e.target.value)} />
                         </div>
 
                         <div className="mb-4">
@@ -345,16 +348,16 @@ export default function ProveedoresPage() {
                             <textarea
                                 className={`${fieldCls} h-auto py-2`}
                                 rows={2}
-                                value={form.notas}
-                                onChange={(e) => set("notas", e.target.value)}
+                                value={form.notes}
+                                onChange={(e) => set("notes", e.target.value)}
                             />
                         </div>
 
                         <div className="flex items-center gap-4 mb-5">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
-                                    type="checkbox" checked={form.activo}
-                                    onChange={(e) => set("activo", e.target.checked)}
+                                    type="checkbox" checked={form.active}
+                                    onChange={(e) => set("active", e.target.checked)}
                                     className="w-4 h-4 rounded"
                                 />
                                 <span className="text-[11px] text-foreground">Activo</span>
@@ -380,9 +383,9 @@ export default function ProveedoresPage() {
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    {loadingProveedores ? (
+                    {loadingSuppliers ? (
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
-                    ) : proveedores.length === 0 ? (
+                    ) : suppliers.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                             No hay proveedores. Haz clic en &quot;+ Nuevo proveedor&quot; para crear uno.
                         </div>
@@ -411,28 +414,28 @@ export default function ProveedoresPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((p) => (
-                                    <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                {filtered.map((s) => (
+                                    <tr key={s.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                         <td className="px-4 py-2.5 w-8">
                                             <input
                                                 type="checkbox"
                                                 className="w-4 h-4 rounded"
-                                                checked={selected.has(p.id!)}
+                                                checked={selected.has(s.id!)}
                                                 onChange={(e) => {
                                                     const next = new Set(selected);
-                                                    if (e.target.checked) next.add(p.id!);
-                                                    else next.delete(p.id!);
+                                                    if (e.target.checked) next.add(s.id!);
+                                                    else next.delete(s.id!);
                                                     setSelected(next);
                                                 }}
                                             />
                                         </td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.rif || "—"}</td>
-                                        <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.contacto || "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.telefono || "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.email || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{s.rif || "—"}</td>
+                                        <td className="px-4 py-2.5 text-foreground font-medium">{s.name}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{s.contact || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{s.phone || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{s.email || "—"}</td>
                                         <td className="px-4 py-2.5">
-                                            {p.activo
+                                            {s.active
                                                 ? <span className="text-text-success text-[9px] uppercase tracking-[0.14em]">Activo</span>
                                                 : <span className="text-text-tertiary text-[9px] uppercase tracking-[0.14em]">Inactivo</span>
                                             }
@@ -440,15 +443,15 @@ export default function ProveedoresPage() {
                                         <td className="px-4 py-2.5">
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={() => openEdit(p)}
+                                                    onClick={() => openEdit(s)}
                                                     className="text-[9px] uppercase tracking-[0.12em] text-primary-500 hover:text-primary-600 transition-colors"
                                                 >
                                                     Editar
                                                 </button>
-                                                {confirmDelete === p.id ? (
+                                                {confirmDelete === s.id ? (
                                                     <>
                                                         <button
-                                                            onClick={() => handleDelete(p.id!)}
+                                                            onClick={() => handleDelete(s.id!)}
                                                             className="text-[9px] uppercase tracking-[0.12em] text-red-500 hover:text-red-600 transition-colors"
                                                         >
                                                             Confirmar
@@ -462,7 +465,7 @@ export default function ProveedoresPage() {
                                                     </>
                                                 ) : (
                                                     <button
-                                                        onClick={() => setConfirmDelete(p.id!)}
+                                                        onClick={() => setConfirmDelete(s.id!)}
                                                         className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                                     >
                                                         Eliminar

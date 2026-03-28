@@ -1,9 +1,12 @@
 "use client";
 
+// Kardex page: displays the full movement history for a selected product.
+// Supports PDF export of the kardex table.
+
 import { useEffect, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { TipoMovimiento } from "@/src/modules/inventory/backend/domain/movimiento";
+import type { MovementType } from "@/src/modules/inventory/backend/domain/movement";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,11 +21,11 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function isEntrada(tipo: TipoMovimiento): boolean {
+function isEntrada(tipo: MovementType): boolean {
     return ["entrada","entrada_produccion","devolucion_entrada","ajuste_positivo"].includes(tipo);
 }
 
-function tipoBadgeClass(tipo: TipoMovimiento): string {
+function tipoBadgeClass(tipo: MovementType): string {
     return isEntrada(tipo)
         ? "border badge-success"
         : "border badge-error";
@@ -33,47 +36,47 @@ function tipoBadgeClass(tipo: TipoMovimiento): string {
 export default function KardexPage() {
     const { companyId } = useCompany();
     const {
-        productos, kardex,
-        loadingProductos, loadingKardex,
-        loadProductos, loadKardex,
+        products, kardex,
+        loadingProducts, loadingKardex,
+        loadProducts, loadKardex,
     } = useInventory();
 
-    const [selectedProductoId, setSelectedProductoId] = useState("");
+    const [selectedProductId, setSelectedProductId] = useState("");
     const [searched, setSearched] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     async function handleSearch() {
-        if (!companyId || !selectedProductoId) return;
-        await loadKardex(companyId, selectedProductoId);
+        if (!companyId || !selectedProductId) return;
+        await loadKardex(companyId, selectedProductId);
         setSearched(true);
     }
 
-    const producto = productos.find((p) => p.id === selectedProductoId);
+    const product = products.find((p) => p.id === selectedProductId);
 
     const totalEntradas = kardex
-        .filter((e) => isEntrada(e.tipo as TipoMovimiento))
-        .reduce((s, e) => s + e.cantidad, 0);
+        .filter((e) => isEntrada(e.type))
+        .reduce((s, e) => s + e.quantity, 0);
     const totalSalidas = kardex
-        .filter((e) => !isEntrada(e.tipo as TipoMovimiento))
-        .reduce((s, e) => s + e.cantidad, 0);
+        .filter((e) => !isEntrada(e.type))
+        .reduce((s, e) => s + e.quantity, 0);
 
     function exportPdf() {
-        if (!producto) return;
+        if (!product) return;
         const rows = kardex.map((e) => {
-            const entrada = isEntrada(e.tipo as TipoMovimiento) ? fmtN(e.cantidad) : "";
-            const salida  = !isEntrada(e.tipo as TipoMovimiento) ? fmtN(e.cantidad) : "";
+            const entrada = isEntrada(e.type) ? fmtN(e.quantity) : "";
+            const salida  = !isEntrada(e.type) ? fmtN(e.quantity) : "";
             return `<tr>
-                <td>${e.fecha}</td>
-                <td>${e.referencia || "—"}</td>
-                <td>${e.tipo.replace(/_/g," ")}</td>
+                <td>${e.date}</td>
+                <td>${e.reference || "—"}</td>
+                <td>${e.type.replace(/_/g," ")}</td>
                 <td style="text-align:right">${entrada}</td>
                 <td style="text-align:right">${salida}</td>
-                <td style="text-align:right">${fmtN(e.saldoCantidad)}</td>
-                <td style="text-align:right">${fmtN(e.costoUnitario)}</td>
-                <td style="text-align:right">${fmtN(e.costoTotal)}</td>
+                <td style="text-align:right">${fmtN(e.balanceQuantity)}</td>
+                <td style="text-align:right">${fmtN(e.unitCost)}</td>
+                <td style="text-align:right">${fmtN(e.totalCost)}</td>
             </tr>`;
         }).join("");
 
@@ -88,7 +91,7 @@ export default function KardexPage() {
             tfoot td { font-weight: bold; background: #f9f9f9; }
         </style>
         </head><body>
-        <h1>Kardex — ${producto.nombre}</h1>
+        <h1>Kardex — ${product.name}</h1>
         <p class="sub">Exportado el ${new Date().toLocaleDateString("es-VE")}</p>
         <table>
             <thead><tr>
@@ -126,7 +129,7 @@ export default function KardexPage() {
                             Historial de movimientos por producto
                         </p>
                     </div>
-                    {searched && kardex.length > 0 && producto && (
+                    {searched && kardex.length > 0 && product && (
                         <button
                             onClick={exportPdf}
                             className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
@@ -145,16 +148,16 @@ export default function KardexPage() {
                             <label className={labelCls}>Producto</label>
                             <select
                                 className={fieldCls}
-                                value={selectedProductoId}
-                                onChange={(e) => { setSelectedProductoId(e.target.value); setSearched(false); }}
+                                value={selectedProductId}
+                                onChange={(e) => { setSelectedProductId(e.target.value); setSearched(false); }}
                             >
                                 <option value="">Seleccionar producto…</option>
-                                {loadingProductos ? (
+                                {loadingProducts ? (
                                     <option disabled>Cargando…</option>
                                 ) : (
-                                    productos.map((p) => (
+                                    products.map((p) => (
                                         <option key={p.id} value={p.id}>
-                                            {p.codigo ? `[${p.codigo}] ` : ""}{p.nombre}
+                                            {p.code ? `[${p.code}] ` : ""}{p.name}
                                         </option>
                                     ))
                                 )}
@@ -162,20 +165,20 @@ export default function KardexPage() {
                         </div>
                         <button
                             onClick={handleSearch}
-                            disabled={!selectedProductoId || loadingKardex}
+                            disabled={!selectedProductId || loadingKardex}
                             className="h-9 px-5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
                             {loadingKardex ? "Cargando…" : "Ver kardex"}
                         </button>
                     </div>
 
-                    {/* Producto info */}
-                    {producto && (
+                    {/* Product info */}
+                    {product && (
                         <div className="mt-4 pt-4 border-t border-border-light grid grid-cols-3 gap-4">
                             {[
-                                { label: "Existencia actual",  value: `${fmtN(producto.existenciaActual)} ${producto.unidadMedida}` },
-                                { label: "Costo promedio",     value: fmtN(producto.costoPromedio)       },
-                                { label: "Método valuación",   value: producto.metodoValuacion.replace("_"," ") },
+                                { label: "Existencia actual",  value: `${fmtN(product.currentStock)} ${product.measureUnit}` },
+                                { label: "Costo promedio",     value: fmtN(product.averageCost)       },
+                                { label: "Método valuación",   value: product.valuationMethod.replace("_"," ") },
                             ].map((i) => (
                                 <div key={i.label}>
                                     <p className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">{i.label}</p>
@@ -206,25 +209,25 @@ export default function KardexPage() {
                                 </thead>
                                 <tbody>
                                     {kardex.map((e) => {
-                                        const entrada = isEntrada(e.tipo as TipoMovimiento);
+                                        const entrada = isEntrada(e.type);
                                         return (
                                             <tr key={e.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{e.fecha}</td>
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[100px] truncate">{e.referencia || "—"}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{e.date}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[100px] truncate">{e.reference || "—"}</td>
                                                 <td className="px-4 py-2.5">
-                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${tipoBadgeClass(e.tipo as TipoMovimiento)}`}>
-                                                        {e.tipo.replace(/_/g," ")}
+                                                    <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${tipoBadgeClass(e.type)}`}>
+                                                        {e.type.replace(/_/g," ")}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums text-text-success font-medium">
-                                                    {entrada ? fmtN(e.cantidad) : ""}
+                                                    {entrada ? fmtN(e.quantity) : ""}
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums text-text-error font-medium">
-                                                    {!entrada ? fmtN(e.cantidad) : ""}
+                                                    {!entrada ? fmtN(e.quantity) : ""}
                                                 </td>
-                                                <td className="px-4 py-2.5 tabular-nums text-foreground font-medium">{fmtN(e.saldoCantidad)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(e.costoUnitario)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(e.costoTotal)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-foreground font-medium">{fmtN(e.balanceQuantity)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(e.unitCost)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(e.totalCost)}</td>
                                             </tr>
                                         );
                                     })}

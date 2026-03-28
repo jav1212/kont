@@ -5,17 +5,17 @@
 //   - inventory-productos-factory   (products, departments)
 //   - inventory-movimientos-factory (movements, transformations, kardex)
 //   - inventory-proveedores-factory (suppliers, purchase invoices)
-//   - inventory-reportes-factory    (period report, books, ISLR, saldo)
-import { getInventoryProductosActions }   from './inventory-productos-factory';
-import { getInventoryMovimientosActions } from './inventory-movimientos-factory';
-import { getInventoryProveedoresActions } from './inventory-proveedores-factory';
-import { getInventoryReportesActions }    from './inventory-reportes-factory';
+//   - inventory-reportes-factory    (period report, ledgers, ISLR, balance)
+import { getInventoryProductsActions }  from './inventory-products-factory';
+import { getInventoryMovementsActions } from './inventory-movements-factory';
+import { getInventorySuppliersActions } from './inventory-suppliers-factory';
+import { getInventoryReportsActions }   from './inventory-reports-factory';
 
 export function getInventoryActions(userId: string) {
     return {
-        ...getInventoryProductosActions(userId),
-        ...getInventoryMovimientosActions(userId),
-        ...getInventoryProveedoresActions(userId),
-        ...getInventoryReportesActions(userId),
+        ...getInventoryProductsActions(userId),
+        ...getInventoryMovementsActions(userId),
+        ...getInventorySuppliersActions(userId),
+        ...getInventoryReportsActions(userId),
     };
 }

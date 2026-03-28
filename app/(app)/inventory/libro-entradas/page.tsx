@@ -1,9 +1,13 @@
 "use client";
 
+// Page: Libro de Entradas (inventory entry ledger for a given period).
+// Architectural role: route-level page component; composes domain types and
+// the useInventory hook — no business logic lives here.
+
 import { useEffect, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Movimiento } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +33,7 @@ const fieldCls = [
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary mb-1.5 block";
 
 // ── EditModal ─────────────────────────────────────────────────────────────────
+// Allows editing date, reference, and notes without affecting inventory balance.
 
 function EditModal({
     mov,
@@ -36,14 +41,14 @@ function EditModal({
     onClose,
     saving,
 }: {
-    mov: Movimiento;
-    onSave: (fecha: string, referencia: string, notas: string) => void;
+    mov: Movement;
+    onSave: (date: string, reference: string, notes: string) => void;
     onClose: () => void;
     saving: boolean;
 }) {
-    const [fecha, setFecha] = useState(mov.fecha.split("T")[0]);
-    const [referencia, setReferencia] = useState(mov.referencia ?? "");
-    const [notas, setNotas] = useState(mov.notas ?? "");
+    const [date, setDate] = useState(mov.date.split("T")[0]);
+    const [reference, setReference] = useState(mov.reference ?? "");
+    const [notes, setNotes] = useState(mov.notes ?? "");
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -60,8 +65,8 @@ function EditModal({
                         <input
                             type="date"
                             className={fieldCls}
-                            value={fecha}
-                            onChange={(e) => setFecha(e.target.value)}
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
                         />
                     </div>
                     <div>
@@ -69,8 +74,8 @@ function EditModal({
                         <input
                             type="text"
                             className={fieldCls}
-                            value={referencia}
-                            onChange={(e) => setReferencia(e.target.value)}
+                            value={reference}
+                            onChange={(e) => setReference(e.target.value)}
                             placeholder="Referencia interna…"
                         />
                     </div>
@@ -79,8 +84,8 @@ function EditModal({
                         <input
                             type="text"
                             className={fieldCls}
-                            value={notas}
-                            onChange={(e) => setNotas(e.target.value)}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
                             placeholder="Observaciones…"
                         />
                     </div>
@@ -96,8 +101,8 @@ function EditModal({
                     </button>
                     <button
                         type="button"
-                        onClick={() => onSave(fecha, referencia, notas)}
-                        disabled={saving || !fecha}
+                        onClick={() => onSave(date, reference, notes)}
+                        disabled={saving || !date}
                         className="h-9 px-5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                     >
                         {saving ? "Guardando…" : "Guardar"}
@@ -112,13 +117,13 @@ function EditModal({
 
 function DeleteConfirm({
     mov,
-    productoNombre,
+    productName,
     onConfirm,
     onClose,
     deleting,
 }: {
-    mov: Movimiento;
-    productoNombre: string;
+    mov: Movement;
+    productName: string;
     onConfirm: () => void;
     onClose: () => void;
     deleting: boolean;
@@ -130,13 +135,13 @@ function DeleteConfirm({
                     Eliminar movimiento
                 </h2>
                 <p className="text-[13px] text-text-secondary mb-1">
-                    ¿Eliminar la entrada de <strong className="text-foreground">{productoNombre}</strong>?
+                    ¿Eliminar la entrada de <strong className="text-foreground">{productName}</strong>?
                 </p>
                 <p className="text-[12px] text-text-tertiary mb-5">
-                    {fmtN(mov.cantidad)} unidades · {fmtDate(mov.fecha)} · Bs {fmtN(mov.costoTotal)}
+                    {fmtN(mov.quantity)} unidades · {fmtDate(mov.date)} · Bs {fmtN(mov.totalCost)}
                 </p>
                 <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] text-[11px] text-amber-600 mb-5">
-                    La existencia del producto se reducirá en {fmtN(mov.cantidad)} unidades.
+                    La existencia del producto se reducirá en {fmtN(mov.quantity)} unidades.
                 </div>
                 <div className="flex items-center justify-end gap-3">
                     <button
@@ -166,39 +171,39 @@ function DeleteConfirm({
 export default function LibroEntradasPage() {
     const { companyId } = useCompany();
     const {
-        productos, movimientos,
-        loadingProductos, loadingMovimientos, error, setError,
-        loadProductos, loadMovimientos,
-        deleteMovimiento, updateMovimientoMeta,
+        products, movements,
+        loadingProducts, loadingMovements, error, setError,
+        loadProducts, loadMovements,
+        deleteMovement, updateMovementMeta,
     } = useInventory();
 
-    const [periodo, setPeriodo] = useState(currentPeriod());
-    const [editingMov, setEditingMov] = useState<Movimiento | null>(null);
-    const [deletingMov, setDeletingMov] = useState<Movimiento | null>(null);
+    const [period, setPeriod] = useState(currentPeriod());
+    const [editingMov, setEditingMov] = useState<Movement | null>(null);
+    const [deletingMov, setDeletingMov] = useState<Movement | null>(null);
     const [actionSaving, setActionSaving] = useState(false);
 
     useEffect(() => {
         if (!companyId) return;
-        loadProductos(companyId);
-        loadMovimientos(companyId, periodo);
-    }, [companyId, loadProductos, loadMovimientos, periodo]);
+        loadProducts(companyId);
+        loadMovements(companyId, period);
+    }, [companyId, loadProducts, loadMovements, period]);
 
     const entradas = useMemo(
-        () => movimientos.filter((m) => m.tipo === "entrada" || m.tipo === "devolucion_salida"),
-        [movimientos],
+        () => movements.filter((m) => m.type === "entrada" || m.type === "devolucion_salida"),
+        [movements],
     );
 
-    const totales = useMemo(() => ({
-        cantidad:   entradas.reduce((acc, m) => acc + m.cantidad, 0),
-        costoTotal: entradas.reduce((acc, m) => acc + m.costoTotal, 0),
+    const totals = useMemo(() => ({
+        quantity:  entradas.reduce((acc, m) => acc + m.quantity, 0),
+        totalCost: entradas.reduce((acc, m) => acc + m.totalCost, 0),
     }), [entradas]);
 
-    const loading = loadingProductos || loadingMovimientos;
+    const loading = loadingProducts || loadingMovements;
 
-    async function handleSaveEdit(fecha: string, referencia: string, notas: string) {
+    async function handleSaveEdit(date: string, reference: string, notes: string) {
         if (!editingMov) return;
         setActionSaving(true);
-        const result = await updateMovimientoMeta(editingMov.id!, fecha, referencia, notas);
+        const result = await updateMovementMeta(editingMov.id!, date, reference, notes);
         setActionSaving(false);
         if (result) setEditingMov(null);
     }
@@ -206,7 +211,7 @@ export default function LibroEntradasPage() {
     async function handleDelete() {
         if (!deletingMov) return;
         setActionSaving(true);
-        const ok = await deleteMovimiento(deletingMov.id!);
+        const ok = await deleteMovement(deletingMov.id!);
         setActionSaving(false);
         if (ok) setDeletingMov(null);
     }
@@ -225,7 +230,7 @@ export default function LibroEntradasPage() {
             {deletingMov && (
                 <DeleteConfirm
                     mov={deletingMov}
-                    productoNombre={productos.find((p) => p.id === deletingMov.productoId)?.nombre ?? deletingMov.productoId}
+                    productName={products.find((p) => p.id === deletingMov.productId)?.name ?? deletingMov.productId}
                     onConfirm={handleDelete}
                     onClose={() => { setDeletingMov(null); setError(null); }}
                     deleting={actionSaving}
@@ -248,8 +253,8 @@ export default function LibroEntradasPage() {
                         <input
                             type="month"
                             className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 text-[13px] text-foreground outline-none focus:border-primary-500/60"
-                            value={periodo}
-                            onChange={(e) => setPeriodo(e.target.value)}
+                            value={period}
+                            onChange={(e) => setPeriod(e.target.value)}
                         />
                     </div>
                 </div>
@@ -307,16 +312,16 @@ export default function LibroEntradasPage() {
                                 </thead>
                                 <tbody>
                                     {entradas.map((m) => {
-                                        const prod = productos.find((p) => p.id === m.productoId);
-                                        const esDevolucion = m.tipo === "devolucion_salida";
+                                        const prod = products.find((p) => p.id === m.productId);
+                                        const isReturn = m.type === "devolucion_salida";
                                         return (
                                             <tr key={m.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors group">
-                                                <td className="px-4 py-2.5 text-text-secondary tabular-nums">{fmtDate(m.fecha)}</td>
+                                                <td className="px-4 py-2.5 text-text-secondary tabular-nums">{fmtDate(m.date)}</td>
                                                 <td className="px-4 py-2.5 text-foreground font-medium max-w-[220px] truncate">
-                                                    {prod?.nombre ?? m.productoId}
+                                                    {prod?.name ?? m.productId}
                                                 </td>
                                                 <td className="px-4 py-2.5">
-                                                    {esDevolucion ? (
+                                                    {isReturn ? (
                                                         <span className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-[0.08em] border border-amber-500/40 text-amber-500 bg-amber-500/[0.06]">
                                                             Dev. salida
                                                         </span>
@@ -326,11 +331,11 @@ export default function LibroEntradasPage() {
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-2.5 tabular-nums text-right text-foreground">{fmtN(m.cantidad)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.costoUnitario)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-right font-medium text-foreground">{fmtN(m.costoTotal)}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.saldoCantidad)}</td>
-                                                <td className="px-4 py-2.5 text-text-secondary max-w-50 truncate">{m.referencia || m.notas || "—"}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-foreground">{fmtN(m.quantity)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.unitCost)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right font-medium text-foreground">{fmtN(m.totalCost)}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-right text-text-secondary">{fmtN(m.balanceQuantity)}</td>
+                                                <td className="px-4 py-2.5 text-text-secondary max-w-50 truncate">{m.reference || m.notes || "—"}</td>
                                                 <td className="px-4 py-2.5">
                                                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
@@ -359,11 +364,11 @@ export default function LibroEntradasPage() {
                                             Total del período
                                         </td>
                                         <td className="px-4 py-2.5 tabular-nums text-right text-[13px] font-bold text-foreground">
-                                            {fmtN(totales.cantidad)}
+                                            {fmtN(totals.quantity)}
                                         </td>
                                         <td />
                                         <td className="px-4 py-2.5 tabular-nums text-right text-[13px] font-bold text-foreground">
-                                            {fmtN(totales.costoTotal)}
+                                            {fmtN(totals.totalCost)}
                                         </td>
                                         <td colSpan={3} />
                                     </tr>

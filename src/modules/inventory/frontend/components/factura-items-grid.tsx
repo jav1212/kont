@@ -1,34 +1,39 @@
 "use client";
 
+// Component: FacturaItemsGrid
+// Purpose: Editable grid for purchase invoice line items.
+// Architectural role: Feature component in the inventory module frontend.
+// Constraints: Export name kept as FacturaItemsGrid for backward compatibility with existing pages.
+
 import { useState, useRef, useEffect } from "react";
-import type { FacturaCompraItem, IvaAlicuota, MonedaItem } from "@/src/modules/inventory/backend/domain/factura-compra";
-import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
+import type { PurchaseInvoiceItem, VatRate, ItemCurrency } from "@/src/modules/inventory/backend/domain/purchase-invoice";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
-type ColIdx = 0 | 1 | 2; // 0=producto, 1=cantidad, 2=costo
+type ColIdx = 0 | 1 | 2; // 0=product, 1=quantity, 2=cost
 type NavDir = "tab" | "shift-tab" | "enter" | "down" | "up";
 
-const ALICUOTA_LABELS: Record<IvaAlicuota, string> = {
+const VAT_RATE_LABELS: Record<VatRate, string> = {
     exenta:      'Exenta (0%)',
     reducida_8:  'Red. (8%)',
     general_16:  'Gen. (16%)',
 };
-void ALICUOTA_LABELS; // suppress unused warning
+void VAT_RATE_LABELS;
 
 interface Props {
-    items: FacturaCompraItem[];
-    productos: Producto[];
-    onChange: (items: FacturaCompraItem[]) => void;
+    items: PurchaseInvoiceItem[];
+    products: Product[];
+    onChange: (items: PurchaseInvoiceItem[]) => void;
     readOnly?: boolean;
-    tasaDolar?: number | null; // tasa BCV del período — para conversión USD→Bs
-    onRequestCreateProducto?: (search: string) => void;
+    dollarRate?: number | null; // BCV rate for the period — used for USD→Bs conversion
+    onRequestCreateProduct?: (search: string) => void;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-export function emptyItem(): FacturaCompraItem {
-    return { productoId: "", cantidad: 1, costoUnitario: 0, costoTotal: 0, ivaAlicuota: "general_16", moneda: "B" };
+export function emptyItem(): PurchaseInvoiceItem {
+    return { productId: "", quantity: 1, unitCost: 0, totalCost: 0, vatRate: "general_16", currency: "B" };
 }
 
 const fmtN = (n: number) =>
@@ -40,29 +45,29 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // ── ProductComboCell ──────────────────────────────────────────────────────────
 
 interface ProductCellProps {
-    productoId: string;
-    productos: Producto[];
+    productId: string;
+    products: Product[];
     onSelect: (id: string) => void;
     onNavigate: (dir: NavDir) => void;
     registerRef: (el: HTMLInputElement | null) => void;
     onRequestCreate?: (search: string) => void;
 }
 
-function ProductComboCell({ productoId, productos, onSelect, onNavigate, registerRef, onRequestCreate }: ProductCellProps) {
+function ProductComboCell({ productId, products, onSelect, onNavigate, registerRef, onRequestCreate }: ProductCellProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [hiIdx, setHiIdx] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = productos.find((p) => p.id === productoId);
+    const selected = products.find((p) => p.id === productId);
 
-    const filtered = productos
+    const filtered = products
         .filter(
             (p) =>
-                p.activo &&
-                (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                    p.codigo.toLowerCase().includes(search.toLowerCase())),
+                p.active &&
+                (p.name.toLowerCase().includes(search.toLowerCase()) ||
+                    p.code.toLowerCase().includes(search.toLowerCase())),
         )
         .slice(0, 12);
 
@@ -99,7 +104,7 @@ function ProductComboCell({ productoId, productos, onSelect, onNavigate, registe
     const displayValue = open
         ? search
         : selected
-          ? [selected.codigo, selected.nombre].filter(Boolean).join(" · ")
+          ? [selected.code, selected.name].filter(Boolean).join(" · ")
           : "";
 
     return (
@@ -131,10 +136,10 @@ function ProductComboCell({ productoId, productos, onSelect, onNavigate, registe
                                     onMouseDown={(e) => { e.preventDefault(); selectItem(p.id!); onNavigate("tab"); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.codigo && (
-                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[48px]">{p.codigo}</span>
+                                    {p.code && (
+                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[48px]">{p.code}</span>
                                     )}
-                                    <span className="truncate">{p.nombre}</span>
+                                    <span className="truncate">{p.name}</span>
                                 </li>
                             ))}
                         </ul>
@@ -207,7 +212,7 @@ function NumberCell({ value, onChange, onNavigate, registerRef }: NumberCellProp
 
 // ── FacturaItemsGrid ──────────────────────────────────────────────────────────
 
-export function FacturaItemsGrid({ items, productos, onChange, readOnly = false, tasaDolar, onRequestCreateProducto }: Props) {
+export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, onRequestCreateProduct }: Props) {
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
 
     function refKey(row: number, col: ColIdx) { return `${row}-${col}`; }
@@ -223,54 +228,63 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
         setTimeout(() => { refs.current.get(refKey(row, col))?.focus(); }, 0);
     }
 
-    function updateItem(idx: number, field: keyof FacturaCompraItem | 'costoMonedaInput', val: unknown) {
+    // updateItem: handles each field explicitly to avoid unsafe casts.
+    // 'currencyCostInput' is a virtual field — triggers USD cost recomputation.
+    function updateItem(idx: number, field: keyof PurchaseInvoiceItem | 'currencyCostInput', val: string | number | boolean | null) {
         const next = [...items];
-        let item = { ...next[idx] } as FacturaCompraItem & { costoMoneda?: number | null; tasaDolar?: number | null };
+        const item: PurchaseInvoiceItem = { ...next[idx] };
 
-        if (field === 'costoMonedaInput') {
-            // User edited the USD cost — recompute costoUnitario (Bs)
-            const costoUsd = Number(val) || 0;
-            const tasa = tasaDolar ?? item.tasaDolar ?? 1;
-            item.costoMoneda = costoUsd;
-            item.tasaDolar   = tasa;
-            item.costoUnitario = round4(costoUsd * tasa);
-            item.costoTotal  = round2(item.cantidad * item.costoUnitario);
-        } else if (field === 'moneda') {
-            item.moneda = val as MonedaItem;
+        if (field === 'currencyCostInput') {
+            // User edited the USD cost — recompute unitCost (Bs)
+            const currencyCostVal = Number(val) || 0;
+            const rate = dollarRate ?? item.dollarRate ?? 1;
+            item.currencyCost = currencyCostVal;
+            item.dollarRate   = rate;
+            item.unitCost     = round4(currencyCostVal * rate);
+            item.totalCost    = round2(item.quantity * item.unitCost);
+        } else if (field === 'currency') {
+            item.currency = val as ItemCurrency;
             if (val === 'D') {
-                // Switch to USD: use existing costoUnitario as costoMoneda if no costoMoneda yet
-                const tasa = tasaDolar ?? 1;
-                item.tasaDolar = tasa;
-                if (!item.costoMoneda) {
-                    // Try to back-compute costoMoneda from costoUnitario
-                    item.costoMoneda = tasa > 0 ? round4(item.costoUnitario / tasa) : 0;
+                // Switch to USD: derive currencyCost from existing unitCost if not set
+                const rate = dollarRate ?? 1;
+                item.dollarRate = rate;
+                if (!item.currencyCost) {
+                    // Back-compute currencyCost from unitCost
+                    item.currencyCost = rate > 0 ? round4(item.unitCost / rate) : 0;
                 }
-                item.costoUnitario = round4((item.costoMoneda ?? 0) * tasa);
-                item.costoTotal    = round2(item.cantidad * item.costoUnitario);
+                item.unitCost  = round4((item.currencyCost ?? 0) * rate);
+                item.totalCost = round2(item.quantity * item.unitCost);
             } else {
-                item.costoMoneda = null;
-                item.tasaDolar   = null;
-                // costoUnitario stays as-is (already in Bs)
-                item.costoTotal  = round2(item.cantidad * item.costoUnitario);
+                item.currencyCost = null;
+                item.dollarRate   = null;
+                // unitCost stays as-is (already in Bs)
+                item.totalCost = round2(item.quantity * item.unitCost);
             }
         } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (item as any)[field] = val;
-            if (field === 'cantidad' || field === 'costoUnitario') {
-                item.costoTotal = round2(Number(item.cantidad) * Number(item.costoUnitario));
-                // Keep costoMoneda in sync when Bs cost changes directly (moneda='B')
-                if (item.moneda !== 'D') item.costoMoneda = null;
+            if (field === 'quantity') item.quantity = Number(val) || 0;
+            else if (field === 'unitCost') item.unitCost = Number(val) || 0;
+            else if (field === 'vatRate') item.vatRate = val as VatRate;
+            else if (field === 'productId') item.productId = String(val ?? '');
+            else if (field === 'productName') item.productName = val != null ? String(val) : undefined;
+            else if (field === 'totalCost') item.totalCost = Number(val) || 0;
+            else if (field === 'currencyCost') item.currencyCost = val != null ? Number(val) : null;
+            else if (field === 'dollarRate') item.dollarRate = val != null ? Number(val) : null;
+
+            if (field === 'quantity' || field === 'unitCost') {
+                item.totalCost = round2(Number(item.quantity) * Number(item.unitCost));
+                // Clear currencyCost when Bs cost changes directly (currency='B')
+                if (item.currency !== 'D') item.currencyCost = null;
             }
-            if (field === 'productoId') {
-                const producto = productos.find((p) => p.id === val);
-                if (producto) {
-                    // Auto-fill IVA from product
-                    if (item.ivaAlicuota === 'general_16') {
-                        item.ivaAlicuota = producto.ivaTipo === 'exento' ? 'exenta' : 'general_16';
+            if (field === 'productId') {
+                const product = products.find((p) => p.id === val);
+                if (product) {
+                    // Auto-fill VAT rate from product
+                    if (item.vatRate === 'general_16') {
+                        item.vatRate = product.vatType === 'exento' ? 'exenta' : 'general_16';
                     }
-                    item.moneda     = 'B';
-                    item.costoMoneda = null;
-                    item.tasaDolar   = null;
+                    item.currency     = 'B';
+                    item.currencyCost = null;
+                    item.dollarRate   = null;
                 }
             }
         }
@@ -297,34 +311,34 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
         const LAST_COL = 2 as ColIdx;
 
         if (dir === "tab") {
-            if (col < LAST_COL)   { focusCell(row, (col + 1) as ColIdx); }
+            if (col < LAST_COL)    { focusCell(row, (col + 1) as ColIdx); }
             else if (row < lastRow) { focusCell(row + 1, 0); }
             else                    { addRow(row + 1); }
         } else if (dir === "shift-tab") {
-            if (col > 0)          { focusCell(row, (col - 1) as ColIdx); }
-            else if (row > 0)     { focusCell(row - 1, LAST_COL); }
+            if (col > 0)           { focusCell(row, (col - 1) as ColIdx); }
+            else if (row > 0)      { focusCell(row - 1, LAST_COL); }
         } else if (dir === "enter") {
-            if (row < lastRow)    { focusCell(row + 1, col); }
-            else                  { addRow(row + 1); }
+            if (row < lastRow)     { focusCell(row + 1, col); }
+            else                   { addRow(row + 1); }
         } else if (dir === "down") {
-            if (row < lastRow)    { focusCell(row + 1, col); }
+            if (row < lastRow)     { focusCell(row + 1, col); }
         } else if (dir === "up") {
-            if (row > 0)          { focusCell(row - 1, col); }
+            if (row > 0)           { focusCell(row - 1, col); }
         }
     }
 
-    const hasTasaDolar = !!tasaDolar;
-    const anyUsd = items.some((i) => i.moneda === 'D');
+    const hasDollarRate = !!dollarRate;
+    const anyUsd = items.some((i) => i.currency === 'D');
 
     return (
         <div className="overflow-x-auto">
-            {/* Tasa hint */}
+            {/* Dollar rate hint shown when any item uses USD */}
             {anyUsd && (
                 <div className="mb-3 flex items-center gap-2 text-[12px]">
                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Tasa BCV</span>
-                    {hasTasaDolar ? (
+                    {hasDollarRate ? (
                         <span className="font-mono tabular-nums text-amber-600 font-medium">
-                            {tasaDolar!.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs/USD
+                            {dollarRate!.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs/USD
                         </span>
                     ) : (
                         <span className="text-red-500 font-medium">No definida — configura la tasa en Cierres</span>
@@ -363,43 +377,43 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
                 </thead>
                 <tbody>
                     {items.map((item, idx) => {
-                        const isUsd = item.moneda === 'D';
+                        const isUsd = item.currency === 'D';
                         return (
                             <tr
                                 key={idx}
                                 className="border-b border-border-light/30 hover:bg-surface-2/40 group"
                             >
-                                {/* Producto */}
+                                {/* Product */}
                                 <td className="px-1 py-0.5">
                                     {readOnly ? (
-                                        <span className="px-2 text-foreground text-[11px]">{item.productoNombre ?? item.productoId}</span>
+                                        <span className="px-2 text-foreground text-[11px]">{item.productName ?? item.productId}</span>
                                     ) : (
                                         <ProductComboCell
-                                            productoId={item.productoId}
-                                            productos={productos}
-                                            onSelect={(id) => updateItem(idx, "productoId", id)}
+                                            productId={item.productId}
+                                            products={products}
+                                            onSelect={(id) => updateItem(idx, "productId", id)}
                                             onNavigate={(dir) => handleNavigate(idx, 0, dir)}
                                             registerRef={registerRef(idx, 0)}
-                                            onRequestCreate={onRequestCreateProducto}
+                                            onRequestCreate={onRequestCreateProduct}
                                         />
                                     )}
                                 </td>
 
-                                {/* Cantidad */}
+                                {/* Quantity */}
                                 <td className="px-1 py-0.5">
                                     {readOnly ? (
-                                        <span className="px-2 tabular-nums text-right block text-[var(--text-primary)] text-[13px]">{item.cantidad}</span>
+                                        <span className="px-2 tabular-nums text-right block text-[var(--text-primary)] text-[13px]">{item.quantity}</span>
                                     ) : (
                                         <NumberCell
-                                            value={item.cantidad}
-                                            onChange={(v) => updateItem(idx, "cantidad", v)}
+                                            value={item.quantity}
+                                            onChange={(v) => updateItem(idx, "quantity", v)}
                                             onNavigate={(dir) => handleNavigate(idx, 1, dir)}
                                             registerRef={registerRef(idx, 1)}
                                         />
                                     )}
                                 </td>
 
-                                {/* Moneda selector */}
+                                {/* Currency selector */}
                                 <td className="px-1 py-0.5 text-center">
                                     {readOnly ? (
                                         <span className={[
@@ -411,8 +425,8 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
                                     ) : (
                                         <select
                                             tabIndex={-1}
-                                            value={item.moneda ?? "B"}
-                                            onChange={(e) => updateItem(idx, "moneda", e.target.value as MonedaItem)}
+                                            value={item.currency ?? "B"}
+                                            onChange={(e) => updateItem(idx, "currency", e.target.value as ItemCurrency)}
                                             className={[
                                                 "w-full h-8 px-1 outline-none bg-transparent text-[12px] font-mono font-bold",
                                                 "focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer",
@@ -425,58 +439,58 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
                                     )}
                                 </td>
 
-                                {/* Costo (USD input cuando D, Bs cuando B) */}
+                                {/* Cost (USD input when currency=D, Bs otherwise) */}
                                 <td className="px-1 py-0.5">
                                     {readOnly ? (
                                         <span className="px-2 tabular-nums text-right block text-[var(--text-primary)] text-[13px]">
-                                            {isUsd && item.costoMoneda != null
-                                                ? `$${fmtN(item.costoMoneda)}`
-                                                : fmtN(item.costoUnitario)}
+                                            {isUsd && item.currencyCost != null
+                                                ? `$${fmtN(item.currencyCost)}`
+                                                : fmtN(item.unitCost)}
                                         </span>
                                     ) : isUsd ? (
                                         <NumberCell
-                                            value={item.costoMoneda ?? 0}
-                                            onChange={(v) => updateItem(idx, "costoMonedaInput", v)}
+                                            value={item.currencyCost ?? 0}
+                                            onChange={(v) => updateItem(idx, "currencyCostInput", v)}
                                             onNavigate={(dir) => handleNavigate(idx, 2, dir)}
                                             registerRef={registerRef(idx, 2)}
                                         />
                                     ) : (
                                         <NumberCell
-                                            value={item.costoUnitario}
-                                            onChange={(v) => updateItem(idx, "costoUnitario", v)}
+                                            value={item.unitCost}
+                                            onChange={(v) => updateItem(idx, "unitCost", v)}
                                             onNavigate={(dir) => handleNavigate(idx, 2, dir)}
                                             registerRef={registerRef(idx, 2)}
                                         />
                                     )}
                                 </td>
 
-                                {/* Costo Bs (readonly, solo cuando hay items USD) */}
+                                {/* Bs cost column (read-only, shown only when any item uses USD) */}
                                 {anyUsd && (
                                     <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-secondary)] text-[13px]">
                                         {isUsd
-                                            ? (item.costoUnitario > 0 ? fmtN(item.costoUnitario) : "—")
+                                            ? (item.unitCost > 0 ? fmtN(item.unitCost) : "—")
                                             : <span className="text-[var(--text-tertiary)]">—</span>}
                                     </td>
                                 )}
 
-                                {/* Alícuota IVA */}
+                                {/* VAT rate selector */}
                                 <td className="px-1 py-0.5">
                                     {readOnly ? (
                                         <span className={[
                                             "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium",
-                                            item.ivaAlicuota === "exenta"
+                                            item.vatRate === "exenta"
                                                 ? "bg-surface-2 text-[var(--text-tertiary)]"
-                                                : item.ivaAlicuota === "reducida_8"
+                                                : item.vatRate === "reducida_8"
                                                   ? "bg-amber-500/10 text-amber-600"
                                                   : "bg-primary-500/10 text-primary-500",
                                         ].join(" ")}>
-                                            {item.ivaAlicuota === "exenta" ? "Exenta" : item.ivaAlicuota === "reducida_8" ? "8%" : "16%"}
+                                            {item.vatRate === "exenta" ? "Exenta" : item.vatRate === "reducida_8" ? "8%" : "16%"}
                                         </span>
                                     ) : (
                                         <select
                                             tabIndex={-1}
-                                            value={item.ivaAlicuota ?? "general_16"}
-                                            onChange={(e) => updateItem(idx, "ivaAlicuota", e.target.value as IvaAlicuota)}
+                                            value={item.vatRate ?? "general_16"}
+                                            onChange={(e) => updateItem(idx, "vatRate", e.target.value as VatRate)}
                                             className="w-full h-8 px-1.5 outline-none bg-transparent text-[12px] text-foreground font-mono focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer"
                                         >
                                             <option value="exenta">Exenta (0%)</option>
@@ -486,12 +500,12 @@ export function FacturaItemsGrid({ items, productos, onChange, readOnly = false,
                                     )}
                                 </td>
 
-                                {/* Costo total Bs (always readonly) */}
+                                {/* Total Bs (always read-only) */}
                                 <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-primary)]">
-                                    {item.costoTotal > 0 ? fmtN(item.costoTotal) : "—"}
+                                    {item.totalCost > 0 ? fmtN(item.totalCost) : "—"}
                                 </td>
 
-                                {/* Remove */}
+                                {/* Remove row button */}
                                 {!readOnly && (
                                     <td className="px-1 py-0.5 text-center">
                                         <button

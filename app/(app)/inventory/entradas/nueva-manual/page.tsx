@@ -1,11 +1,16 @@
 "use client";
 
+// Page: NuevaEntradaManualPage
+// Purpose: Create a manual inventory entry (without a purchase invoice).
+// Architectural role: Page-level composition using inventory hook and English domain types.
+// All identifiers use English; JSX user-facing text remains in Spanish.
+
 import { useEffect, useState, useCallback, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Movimiento } from "@/src/modules/inventory/backend/domain/movimiento";
-import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -26,51 +31,51 @@ type IvaMode = "agregado" | "incluido";
 // ── ManualItem ────────────────────────────────────────────────────────────────
 
 interface ManualItem {
-    productoId: string;
-    productoNombre: string;
-    cantidad: number;
-    moneda: "B" | "D";
-    costoMoneda: number; // precio ingresado en la moneda elegida (base o c/IVA según ivaMode)
-    ivaTasa: number;     // 0 o 0.16, derivado del producto
+    productId: string;
+    productName: string;
+    quantity: number;
+    currency: "B" | "D";
+    currencyCost: number; // price entered in the chosen currency (base or incl. VAT depending on ivaMode)
+    vatRate: number;      // 0 or 0.16, derived from product
 }
 
 function emptyManualItem(): ManualItem {
-    return { productoId: "", productoNombre: "", cantidad: 1, moneda: "B", costoMoneda: 0, ivaTasa: 0 };
+    return { productId: "", productName: "", quantity: 1, currency: "B", currencyCost: 0, vatRate: 0 };
 }
 
-function computeCostos(item: ManualItem, tasaDolar: number | null, ivaMode: IvaMode) {
-    const precioIngresadoBs = item.moneda === "D"
-        ? (tasaDolar ? round2(item.costoMoneda * tasaDolar) : 0)
-        : item.costoMoneda;
+function computeCosts(item: ManualItem, dollarRate: number | null, ivaMode: IvaMode) {
+    const enteredPriceBs = item.currency === "D"
+        ? (dollarRate ? round2(item.currencyCost * dollarRate) : 0)
+        : item.currencyCost;
 
-    let costoBaseBs: number;
-    let ivaUnitarioBs: number;
+    let baseCostBs: number;
+    let vatUnitBs: number;
 
-    if (item.ivaTasa === 0) {
-        costoBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = 0;
+    if (item.vatRate === 0) {
+        baseCostBs = enteredPriceBs;
+        vatUnitBs = 0;
     } else if (ivaMode === "agregado") {
-        costoBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = round2(precioIngresadoBs * item.ivaTasa);
+        baseCostBs = enteredPriceBs;
+        vatUnitBs = round2(enteredPriceBs * item.vatRate);
     } else {
-        // incluido: el precio ya trae IVA → extraer base
-        costoBaseBs = round2(precioIngresadoBs / (1 + item.ivaTasa));
-        ivaUnitarioBs = round2(precioIngresadoBs - costoBaseBs);
+        // incluido: price already includes VAT — extract base
+        baseCostBs = round2(enteredPriceBs / (1 + item.vatRate));
+        vatUnitBs = round2(enteredPriceBs - baseCostBs);
     }
 
-    // Para USD: costoMoneda guardado = precio base en USD (sin IVA)
-    const costoBaseMoneda = item.moneda === "D"
-        ? (ivaMode === "incluido" && item.ivaTasa > 0
-            ? round2(item.costoMoneda / (1 + item.ivaTasa))
-            : item.costoMoneda)
+    // For USD: currencyCost stored = base price in USD (without VAT)
+    const baseCurrencyCost = item.currency === "D"
+        ? (ivaMode === "incluido" && item.vatRate > 0
+            ? round2(item.currencyCost / (1 + item.vatRate))
+            : item.currencyCost)
         : null;
 
     return {
-        costoUnitario: costoBaseBs,                                           // base sin IVA → se guarda
-        costoTotal: round2(costoBaseBs * item.cantidad),                      // base total → se guarda
-        ivaMontoTotal: round2(ivaUnitarioBs * item.cantidad),                 // display
-        totalConIva: round2((costoBaseBs + ivaUnitarioBs) * item.cantidad),  // display
-        costoBaseMoneda,
+        unitCost: baseCostBs,                                        // base without VAT — stored
+        totalCost: round2(baseCostBs * item.quantity),               // base total — stored
+        vatTotalAmount: round2(vatUnitBs * item.quantity),           // display
+        totalWithVat: round2((baseCostBs + vatUnitBs) * item.quantity), // display
+        baseCurrencyCost,
     };
 }
 
@@ -78,12 +83,12 @@ function computeCostos(item: ManualItem, tasaDolar: number | null, ivaMode: IvaM
 
 function ProductCombo({
     value,
-    productos,
+    products,
     onChange,
 }: {
     value: string;
-    productos: Producto[];
-    onChange: (id: string, nombre: string, ivaTasa: number) => void;
+    products: Product[];
+    onChange: (id: string, name: string, vatRate: number) => void;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -91,9 +96,9 @@ function ProductCombo({
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = productos.find((p) => p.id === value);
-    const filtered = productos
-        .filter((p) => p.activo !== false && p.nombre.toLowerCase().includes(search.toLowerCase()))
+    const selected = products.find((p) => p.id === value);
+    const filtered = products
+        .filter((p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()))
         .slice(0, 12);
 
     useEffect(() => {
@@ -101,8 +106,8 @@ function ProductCombo({
         el?.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
-    function select(p: Producto) {
-        onChange(p.id!, p.nombre, p.ivaTipo === "general" ? 0.16 : 0);
+    function select(p: Product) {
+        onChange(p.id!, p.name, p.vatType === "general" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }
@@ -119,7 +124,7 @@ function ProductCombo({
         if (!wrapRef.current?.contains(e.relatedTarget as Node)) { setOpen(false); setSearch(""); }
     }
 
-    const displayValue = open ? search : (selected?.nombre ?? "");
+    const displayValue = open ? search : (selected?.name ?? "");
 
     return (
         <div ref={wrapRef} className="relative w-full" onBlur={handleBlur}>
@@ -136,11 +141,11 @@ function ProductCombo({
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        selected.ivaTipo === "general"
+                        selected.vatType === "general"
                             ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                             : "bg-surface-2 text-[var(--text-tertiary)] border border-border-light"
                     }`}>
-                        {selected.ivaTipo === "general" ? "16%" : "EX"}
+                        {selected.vatType === "general" ? "16%" : "EX"}
                     </span>
                 )}
             </div>
@@ -160,14 +165,14 @@ function ProductCombo({
                                     onMouseDown={(e) => { e.preventDefault(); select(p); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.codigo && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.codigo}</span>}
-                                    <span className="flex-1">{p.nombre}</span>
+                                    {p.code && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.code}</span>}
+                                    <span className="flex-1">{p.name}</span>
                                     <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-                                        p.ivaTipo === "general"
+                                        p.vatType === "general"
                                             ? "text-amber-600"
                                             : "text-[var(--text-tertiary)]"
                                     }`}>
-                                        {p.ivaTipo === "general" ? "IVA 16%" : "Exento"}
+                                        {p.vatType === "general" ? "IVA 16%" : "Exento"}
                                     </span>
                                 </li>
                             ))}
@@ -179,53 +184,52 @@ function ProductCombo({
     );
 }
 
-// Fix typo alias
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function NuevaEntradaManualPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { productos, loadProductos, saveMovimiento, error, setError } = useInventory();
+    const { products, loadProducts, saveMovement, error, setError } = useInventory();
 
-    const [fecha, setFecha] = useState(todayStr());
-    const [notas, setNotas] = useState("");
+    const [date, setDate] = useState(todayStr());
+    const [notes, setNotes] = useState("");
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
-    const [tasaDolar, setTasaDolar] = useState<number | null>(null);
-    const [tasaFechaBcv, setTasaFechaBcv] = useState<string | null>(null);
-    const [tasaLoading, setTasaLoading] = useState(false);
-    const [tasaError, setTasaError] = useState<string | null>(null);
+    const [dollarRate, setDollarRate] = useState<number | null>(null);
+    const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
+    const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
     const [items, setItems] = useState<ManualItem[]>([emptyManualItem()]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     useEffect(() => {
-        if (!fecha) return;
+        if (!date) return;
         let cancelled = false;
         startTransition(() => {
-            setTasaLoading(true);
-            setTasaError(null);
-            setTasaFechaBcv(null);
+            setRateLoading(true);
+            setRateError(null);
+            setRateDateBcv(null);
         });
-        fetch(`/api/bcv/rate?date=${fecha}&code=USD`)
+        fetch(`/api/bcv/rate?date=${date}&code=USD`)
             .then((r) => r.json())
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setTasaDolar(json.rate);
-                    setTasaFechaBcv(json.date);
-                    setTasaError(null);
+                    setDollarRate(json.rate);
+                    setRateDateBcv(json.date);
+                    setRateError(null);
                 } else {
-                    setTasaError(json.error ?? "Sin datos BCV para esta fecha");
+                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
                 }
             })
-            .catch(() => { if (!cancelled) setTasaError("Error al consultar BCV"); })
-            .finally(() => { if (!cancelled) setTasaLoading(false); });
+            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
+            .finally(() => { if (!cancelled) setRateLoading(false); });
         return () => { cancelled = true; };
-    }, [fecha]);
+    }, [date]);
 
     const updateItem = useCallback((index: number, patch: Partial<ManualItem>) => {
         setItems((prev) => prev.map((item, i) => i !== index ? item : { ...item, ...patch }));
@@ -238,10 +242,10 @@ export default function NuevaEntradaManualPage() {
         if (!companyId) { setError("Sin empresa seleccionada"); return false; }
         if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productoId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
-            if (item.costoMoneda < 0) { setError("El costo no puede ser negativo"); return false; }
-            if (item.moneda === "D" && !tasaDolar) {
+            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (item.currencyCost < 0) { setError("El costo no puede ser negativo"); return false; }
+            if (item.currency === "D" && !dollarRate) {
                 setError("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
@@ -255,24 +259,24 @@ export default function NuevaEntradaManualPage() {
         setError(null);
         let allOk = true;
         for (const item of items) {
-            const { costoUnitario, costoTotal, costoBaseMoneda } = computeCostos(item, tasaDolar, ivaMode);
-            const mov: Movimiento = {
-                empresaId: companyId!,
-                productoId: item.productoId,
-                tipo: "entrada",
-                fecha,
-                periodo: fecha.slice(0, 7),
-                cantidad: item.cantidad,
-                costoUnitario,
-                costoTotal,
-                saldoCantidad: 0,
-                referencia: "Entrada manual",
-                notas,
-                moneda: item.moneda,
-                costoMoneda: costoBaseMoneda,
-                tasaDolar: item.moneda === "D" ? tasaDolar : null,
+            const { unitCost, totalCost, baseCurrencyCost } = computeCosts(item, dollarRate, ivaMode);
+            const movement: Movement = {
+                companyId: companyId!,
+                productId: item.productId,
+                type: "entrada",
+                date,
+                period: date.slice(0, 7),
+                quantity: item.quantity,
+                unitCost,
+                totalCost,
+                balanceQuantity: 0,
+                reference: "Entrada manual",
+                notes,
+                currency: item.currency,
+                currencyCost: baseCurrencyCost,
+                dollarRate: item.currency === "D" ? dollarRate : null,
             };
-            const result = await saveMovimiento(mov);
+            const result = await saveMovement(movement);
             if (!result) { allOk = false; break; }
         }
         setSaving(false);
@@ -281,16 +285,16 @@ export default function NuevaEntradaManualPage() {
 
     const totals = items.reduce(
         (acc, item) => {
-            const { costoTotal, ivaMontoTotal, totalConIva } = computeCostos(item, tasaDolar, ivaMode);
-            return { subtotal: acc.subtotal + costoTotal, iva: acc.iva + ivaMontoTotal, total: acc.total + totalConIva };
+            const { totalCost, vatTotalAmount, totalWithVat } = computeCosts(item, dollarRate, ivaMode);
+            return { subtotal: acc.subtotal + totalCost, vat: acc.vat + vatTotalAmount, total: acc.total + totalWithVat };
         },
-        { subtotal: 0, iva: 0, total: 0 },
+        { subtotal: 0, vat: 0, total: 0 },
     );
-    const hasIva = items.some((i) => i.ivaTasa > 0);
-    const precioLabel = ivaMode === "agregado" ? "Precio base" : "Precio c/IVA";
+    const hasVat = items.some((i) => i.vatRate > 0);
+    const priceLabel = ivaMode === "agregado" ? "Precio base" : "Precio c/IVA";
 
     if (saved) {
-        const periodo = fecha.slice(0, 7);
+        const period = date.slice(0, 7);
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6 border-b border-border-light bg-surface-1">
@@ -310,7 +314,7 @@ export default function NuevaEntradaManualPage() {
                                 Ver entradas
                             </button>
                             <button
-                                onClick={() => router.push(`/inventory/movimientos?periodo=${periodo}`)}
+                                onClick={() => router.push(`/inventory/movimientos?periodo=${period}`)}
                                 className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
@@ -363,8 +367,8 @@ export default function NuevaEntradaManualPage() {
                             <input
                                 type="date"
                                 className={fieldCls}
-                                value={fecha}
-                                onChange={(e) => setFecha(e.target.value)}
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
                             />
                         </div>
 
@@ -375,19 +379,19 @@ export default function NuevaEntradaManualPage() {
                                 <input
                                     type="number"
                                     className={fieldCls}
-                                    value={tasaDolar ?? ""}
-                                    onChange={(e) => setTasaDolar(e.target.value ? Number(e.target.value) : null)}
+                                    value={dollarRate ?? ""}
+                                    onChange={(e) => setDollarRate(e.target.value ? Number(e.target.value) : null)}
                                     placeholder="0.00"
                                     step="0.01"
                                 />
-                                {tasaLoading && (
+                                {rateLoading && (
                                     <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
                                 )}
-                                {!tasaLoading && tasaFechaBcv && (
-                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {tasaFechaBcv}</span>
+                                {!rateLoading && rateDateBcv && (
+                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {rateDateBcv}</span>
                                 )}
-                                {!tasaLoading && !tasaFechaBcv && tasaError && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{tasaError}</span>
+                                {!rateLoading && !rateDateBcv && rateError && (
+                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{rateError}</span>
                                 )}
                             </div>
                         </div>
@@ -436,8 +440,8 @@ export default function NuevaEntradaManualPage() {
                             <input
                                 type="text"
                                 className={fieldCls}
-                                value={notas}
-                                onChange={(e) => setNotas(e.target.value)}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Motivo, referencia interna, etc."
                             />
                         </div>
@@ -461,7 +465,7 @@ export default function NuevaEntradaManualPage() {
 
                     {/* Column headers */}
                     <div className="grid grid-cols-[1fr_120px_160px_90px_36px] gap-2 px-4 py-2 border-b border-border-light bg-surface-2">
-                        {["Producto", "Cantidad", precioLabel, "Moneda", ""].map((h, i) => (
+                        {["Producto", "Cantidad", priceLabel, "Moneda", ""].map((h, i) => (
                             <span key={i} className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{h}</span>
                         ))}
                     </div>
@@ -470,49 +474,49 @@ export default function NuevaEntradaManualPage() {
                     <div className="divide-y divide-border-light/50">
                         {items.map((item, idx) => (
                             <div key={idx} className="grid grid-cols-[1fr_120px_160px_90px_36px] gap-2 px-4 py-2 items-center">
-                                {/* Producto + badge IVA */}
+                                {/* Product + VAT badge */}
                                 <ProductCombo
-                                    value={item.productoId}
-                                    productos={productos}
-                                    onChange={(id, nombre, ivaTasa) => updateItem(idx, { productoId: id, productoNombre: nombre, ivaTasa })}
+                                    value={item.productId}
+                                    products={products}
+                                    onChange={(id, name, vatRate) => updateItem(idx, { productId: id, productName: name, vatRate })}
                                 />
 
-                                {/* Cantidad */}
+                                {/* Quantity */}
                                 <input
                                     type="number"
                                     className={fieldCls + " text-right"}
-                                    value={item.cantidad || ""}
-                                    onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) || 0 })}
+                                    value={item.quantity || ""}
+                                    onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
                                     placeholder="0"
                                     min="0"
                                     step="1"
                                 />
 
-                                {/* Precio */}
+                                {/* Price */}
                                 <div className="relative">
                                     <input
                                         type="number"
                                         className={fieldCls + " text-right pr-10"}
-                                        value={item.costoMoneda || ""}
-                                        onChange={(e) => updateItem(idx, { costoMoneda: Number(e.target.value) || 0 })}
+                                        value={item.currencyCost || ""}
+                                        onChange={(e) => updateItem(idx, { currencyCost: Number(e.target.value) || 0 })}
                                         placeholder="0.00"
                                         min="0"
                                         step="0.01"
                                     />
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] pointer-events-none">
-                                        {item.moneda === "D" ? "USD" : "Bs"}
+                                        {item.currency === "D" ? "USD" : "Bs"}
                                     </span>
                                 </div>
 
-                                {/* Moneda toggle */}
+                                {/* Currency toggle */}
                                 <div className="flex rounded-lg border border-border-light overflow-hidden h-10 text-[12px]">
                                     <button
                                         type="button"
                                         className={[
                                             "flex-1 transition-colors",
-                                            item.moneda === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                            item.currency === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                         ].join(" ")}
-                                        onClick={() => updateItem(idx, { moneda: "B" })}
+                                        onClick={() => updateItem(idx, { currency: "B" })}
                                     >
                                         Bs
                                     </button>
@@ -520,15 +524,15 @@ export default function NuevaEntradaManualPage() {
                                         type="button"
                                         className={[
                                             "flex-1 transition-colors",
-                                            item.moneda === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                            item.currency === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                         ].join(" ")}
-                                        onClick={() => updateItem(idx, { moneda: "D" })}
+                                        onClick={() => updateItem(idx, { currency: "D" })}
                                     >
                                         USD
                                     </button>
                                 </div>
 
-                                {/* Eliminar */}
+                                {/* Delete */}
                                 <button
                                     type="button"
                                     onClick={() => removeRow(idx)}
@@ -548,18 +552,18 @@ export default function NuevaEntradaManualPage() {
                                 {items.length} {items.length === 1 ? "producto" : "productos"}
                             </span>
                             <div className="flex items-center gap-6">
-                                {items.some((i) => i.moneda === "D") && tasaDolar && (
+                                {items.some((i) => i.currency === "D") && dollarRate && (
                                     <span className="text-[12px] text-[var(--text-tertiary)]">
-                                        Tasa: {fmtN(tasaDolar)} Bs/USD
+                                        Tasa: {fmtN(dollarRate)} Bs/USD
                                     </span>
                                 )}
-                                {hasIva ? (
+                                {hasVat ? (
                                     <div className="flex items-center gap-4 text-[12px] tabular-nums">
                                         <span className="text-[var(--text-tertiary)]">
                                             Base <span className="text-foreground font-medium">Bs {fmtN(totals.subtotal)}</span>
                                         </span>
                                         <span className="text-[var(--text-tertiary)]">
-                                            IVA <span className="text-amber-600 font-medium">Bs {fmtN(totals.iva)}</span>
+                                            IVA <span className="text-amber-600 font-medium">Bs {fmtN(totals.vat)}</span>
                                         </span>
                                         <span className="text-[13px] font-bold text-foreground">
                                             Total Bs {fmtN(totals.total)}
@@ -575,7 +579,7 @@ export default function NuevaEntradaManualPage() {
                     </div>
                 </div>
 
-                {/* Nota informativa */}
+                {/* Info note */}
                 <div className="px-4 py-3 rounded-lg border border-border-light bg-surface-1 text-[12px] text-[var(--text-tertiary)]">
                     Esta entrada se registra directamente en el inventario sin asociarse a una factura de proveedor.
                     Si tienes una factura, usa <strong className="text-foreground">Nueva factura</strong> para incluir datos de IVA y proveedor.

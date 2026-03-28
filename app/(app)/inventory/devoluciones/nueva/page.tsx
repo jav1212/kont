@@ -1,11 +1,15 @@
 "use client";
 
+// Page: Nueva Devolución
+// Role: Form to register devolucion_entrada (return to supplier) or devolucion_salida (return from customer) movements.
+// Constraint: All TypeScript identifiers in English. JSX user-facing text stays in Spanish.
+
 import { useEffect, useState, useCallback, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Movimiento } from "@/src/modules/inventory/backend/domain/movimiento";
-import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,55 +25,56 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
-type TipoDevolucion = "devolucion_entrada" | "devolucion_salida";
+// DevolutionType avoids collision with the built-in TypeScript `ReturnType` utility.
+type DevolutionType = "devolucion_entrada" | "devolucion_salida";
 type IvaMode = "agregado" | "incluido";
 
-// ── DevolucionItem ────────────────────────────────────────────────────────────
+// ── ReturnItem ────────────────────────────────────────────────────────────────
 
-interface DevolucionItem {
-    productoId: string;
-    productoNombre: string;
-    cantidad: number;
-    moneda: "B" | "D";
-    costoMoneda: number;
-    ivaTasa: number;
+interface ReturnItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    currency: "B" | "D";
+    currencyCost: number;
+    vatRate: number;
 }
 
-function emptyDevolucionItem(): DevolucionItem {
-    return { productoId: "", productoNombre: "", cantidad: 1, moneda: "B", costoMoneda: 0, ivaTasa: 0 };
+function emptyReturnItem(): ReturnItem {
+    return { productId: "", productName: "", quantity: 1, currency: "B", currencyCost: 0, vatRate: 0 };
 }
 
-function computeCostos(item: DevolucionItem, tasaDolar: number | null, ivaMode: IvaMode) {
-    const precioIngresadoBs = item.moneda === "D"
-        ? (tasaDolar ? round2(item.costoMoneda * tasaDolar) : 0)
-        : item.costoMoneda;
+function computeCosts(item: ReturnItem, dollarRate: number | null, ivaMode: IvaMode) {
+    const enteredPriceBs = item.currency === "D"
+        ? (dollarRate ? round2(item.currencyCost * dollarRate) : 0)
+        : item.currencyCost;
 
-    let costoBaseBs: number;
-    let ivaUnitarioBs: number;
+    let baseCostBs: number;
+    let vatUnitBs: number;
 
-    if (item.ivaTasa === 0) {
-        costoBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = 0;
+    if (item.vatRate === 0) {
+        baseCostBs = enteredPriceBs;
+        vatUnitBs = 0;
     } else if (ivaMode === "agregado") {
-        costoBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = round2(precioIngresadoBs * item.ivaTasa);
+        baseCostBs = enteredPriceBs;
+        vatUnitBs = round2(enteredPriceBs * item.vatRate);
     } else {
-        costoBaseBs = round2(precioIngresadoBs / (1 + item.ivaTasa));
-        ivaUnitarioBs = round2(precioIngresadoBs - costoBaseBs);
+        baseCostBs = round2(enteredPriceBs / (1 + item.vatRate));
+        vatUnitBs = round2(enteredPriceBs - baseCostBs);
     }
 
-    const costoBaseMoneda = item.moneda === "D"
-        ? (ivaMode === "incluido" && item.ivaTasa > 0
-            ? round2(item.costoMoneda / (1 + item.ivaTasa))
-            : item.costoMoneda)
+    const baseCurrencyCost = item.currency === "D"
+        ? (ivaMode === "incluido" && item.vatRate > 0
+            ? round2(item.currencyCost / (1 + item.vatRate))
+            : item.currencyCost)
         : null;
 
     return {
-        costoUnitario: costoBaseBs,
-        costoTotal: round2(costoBaseBs * item.cantidad),
-        ivaMontoTotal: round2(ivaUnitarioBs * item.cantidad),
-        totalConIva: round2((costoBaseBs + ivaUnitarioBs) * item.cantidad),
-        costoBaseMoneda,
+        unitCost: baseCostBs,
+        totalCost: round2(baseCostBs * item.quantity),
+        vatAmountTotal: round2(vatUnitBs * item.quantity),
+        totalWithVat: round2((baseCostBs + vatUnitBs) * item.quantity),
+        baseCurrencyCost,
     };
 }
 
@@ -77,12 +82,12 @@ function computeCostos(item: DevolucionItem, tasaDolar: number | null, ivaMode: 
 
 function ProductCombo({
     value,
-    productos,
+    products,
     onChange,
 }: {
     value: string;
-    productos: Producto[];
-    onChange: (id: string, nombre: string, ivaTasa: number) => void;
+    products: Product[];
+    onChange: (id: string, name: string, vatRate: number) => void;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -90,18 +95,18 @@ function ProductCombo({
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = productos.find((p) => p.id === value);
-    const filtered = productos
-        .filter((p) => p.activo !== false && p.nombre.toLowerCase().includes(search.toLowerCase()))
+    const selected = products.find((p) => p.id === value);
+    const filtered = products
+        .filter((p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()))
         .slice(0, 12);
 
     useEffect(() => {
-        const el = listRef.current?.children[hiIdx] as HTMLElement | undefined;
-        el?.scrollIntoView({ block: "nearest" });
+        const el = listRef.current?.children[hiIdx];
+        if (el instanceof HTMLElement) el.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
-    function select(p: Producto) {
-        onChange(p.id!, p.nombre, p.ivaTipo === "general" ? 0.16 : 0);
+    function select(p: Product) {
+        onChange(p.id!, p.name, p.vatType === "general_16" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }
@@ -115,10 +120,13 @@ function ProductCombo({
     }
 
     function handleBlur(e: React.FocusEvent) {
-        if (!wrapRef.current?.contains(e.relatedTarget as Node)) { setOpen(false); setSearch(""); }
+        const related = e.relatedTarget;
+        if (related instanceof Node && wrapRef.current?.contains(related)) return;
+        setOpen(false);
+        setSearch("");
     }
 
-    const displayValue = open ? search : (selected?.nombre ?? "");
+    const displayValue = open ? search : (selected?.name ?? "");
 
     return (
         <div ref={wrapRef} className="relative w-full" onBlur={handleBlur}>
@@ -135,11 +143,11 @@ function ProductCombo({
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        selected.ivaTipo === "general"
+                        selected.vatType === "general_16"
                             ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                             : "bg-surface-2 text-[var(--text-tertiary)] border border-border-light"
                     }`}>
-                        {selected.ivaTipo === "general" ? "16%" : "EX"}
+                        {selected.vatType === "general_16" ? "16%" : "EX"}
                     </span>
                 )}
             </div>
@@ -159,15 +167,15 @@ function ProductCombo({
                                     onMouseDown={(e) => { e.preventDefault(); select(p); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.codigo && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.codigo}</span>}
-                                    <span className="flex-1">{p.nombre}</span>
+                                    {p.code && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.code}</span>}
+                                    <span className="flex-1">{p.name}</span>
                                     <span className="text-[11px] text-[var(--text-tertiary)]">
-                                        ({fmtN(p.existenciaActual)} {p.unidadMedida})
+                                        ({fmtN(p.currentStock)} {p.measureUnit})
                                     </span>
                                     <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-                                        p.ivaTipo === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
+                                        p.vatType === "general_16" ? "text-amber-600" : "text-[var(--text-tertiary)]"
                                     }`}>
-                                        {p.ivaTipo === "general" ? "IVA 16%" : "Exento"}
+                                        {p.vatType === "general_16" ? "IVA 16%" : "Exento"}
                                     </span>
                                 </li>
                             ))}
@@ -184,77 +192,77 @@ function ProductCombo({
 export default function NuevaDevolucionPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { productos, loadProductos, saveMovimiento, error, setError } = useInventory();
+    const { products, loadProducts, saveMovement, error, setError } = useInventory();
 
-    const [tipo, setTipo] = useState<TipoDevolucion>("devolucion_entrada");
-    const [fecha, setFecha] = useState(todayStr());
-    const [referencia, setReferencia] = useState("");
-    const [notas, setNotas] = useState("");
+    const [returnType, setReturnType] = useState<DevolutionType>("devolucion_entrada");
+    const [date, setDate] = useState(todayStr());
+    const [reference, setReference] = useState("");
+    const [notes, setNotes] = useState("");
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
-    const [tasaDolar, setTasaDolar] = useState<number | null>(null);
-    const [tasaFechaBcv, setTasaFechaBcv] = useState<string | null>(null);
-    const [tasaLoading, setTasaLoading] = useState(false);
-    const [tasaError, setTasaError] = useState<string | null>(null);
-    const [items, setItems] = useState<DevolucionItem[]>([emptyDevolucionItem()]);
+    const [dollarRate, setDollarRate] = useState<number | null>(null);
+    const [bcvRateDate, setBcvRateDate] = useState<string | null>(null);
+    const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
+    const [items, setItems] = useState<ReturnItem[]>([emptyReturnItem()]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     useEffect(() => {
-        if (!fecha) return;
+        if (!date) return;
         let cancelled = false;
         startTransition(() => {
-            setTasaLoading(true);
-            setTasaError(null);
-            setTasaFechaBcv(null);
+            setRateLoading(true);
+            setRateError(null);
+            setBcvRateDate(null);
         });
-        fetch(`/api/bcv/rate?date=${fecha}&code=USD`)
+        fetch(`/api/bcv/rate?date=${date}&code=USD`)
             .then((r) => r.json())
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setTasaDolar(json.rate);
-                    setTasaFechaBcv(json.date);
-                    setTasaError(null);
+                    setDollarRate(json.rate);
+                    setBcvRateDate(json.date);
+                    setRateError(null);
                 } else {
-                    setTasaError(json.error ?? "Sin datos BCV para esta fecha");
+                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
                 }
             })
-            .catch(() => { if (!cancelled) setTasaError("Error al consultar BCV"); })
-            .finally(() => { if (!cancelled) setTasaLoading(false); });
+            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
+            .finally(() => { if (!cancelled) setRateLoading(false); });
         return () => { cancelled = true; };
-    }, [fecha]);
+    }, [date]);
 
-    const updateItem = useCallback((index: number, patch: Partial<DevolucionItem>) => {
+    const updateItem = useCallback((index: number, patch: Partial<ReturnItem>) => {
         setItems((prev) => prev.map((item, i) => i !== index ? item : { ...item, ...patch }));
     }, []);
 
-    function addRow() { setItems((prev) => [...prev, emptyDevolucionItem()]); }
+    function addRow() { setItems((prev) => [...prev, emptyReturnItem()]); }
     function removeRow(index: number) { setItems((prev) => prev.filter((_, i) => i !== index)); }
 
-    function getProducto(id: string) { return productos.find((p) => p.id === id); }
+    function getProduct(id: string) { return products.find((p) => p.id === id); }
 
-    // devolucion_entrada baja el stock (devolver al proveedor)
-    const bajaSaldo = tipo === "devolucion_entrada";
+    // devolucion_entrada reduces stock (returning to supplier)
+    const reducesStock = returnType === "devolucion_entrada";
 
     function validate(): boolean {
         if (!companyId) { setError("Sin empresa seleccionada"); return false; }
         if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productoId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
-            if (item.costoMoneda < 0) { setError("El costo no puede ser negativo"); return false; }
-            if (item.moneda === "D" && !tasaDolar) {
+            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (item.currencyCost < 0) { setError("El costo no puede ser negativo"); return false; }
+            if (item.currency === "D" && !dollarRate) {
                 setError("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
-            if (bajaSaldo) {
-                const prod = getProducto(item.productoId);
-                if (prod && item.cantidad > prod.existenciaActual) {
-                    setError(`Stock insuficiente para "${prod.nombre}": disponible ${fmtN(prod.existenciaActual)}`);
+            if (reducesStock) {
+                const prod = getProduct(item.productId);
+                if (prod && item.quantity > prod.currentStock) {
+                    setError(`Stock insuficiente para "${prod.name}": disponible ${fmtN(prod.currentStock)}`);
                     return false;
                 }
             }
@@ -268,24 +276,24 @@ export default function NuevaDevolucionPage() {
         setError(null);
         let allOk = true;
         for (const item of items) {
-            const { costoUnitario, costoTotal, costoBaseMoneda } = computeCostos(item, tasaDolar, ivaMode);
-            const mov: Movimiento = {
-                empresaId: companyId!,
-                productoId: item.productoId,
-                tipo,
-                fecha,
-                periodo: fecha.slice(0, 7),
-                cantidad: item.cantidad,
-                costoUnitario,
-                costoTotal,
-                saldoCantidad: 0,
-                referencia: referencia || (tipo === "devolucion_entrada" ? "Devolución a proveedor" : "Devolución de cliente"),
-                notas,
-                moneda: item.moneda,
-                costoMoneda: costoBaseMoneda,
-                tasaDolar: item.moneda === "D" ? tasaDolar : null,
+            const { unitCost, totalCost, baseCurrencyCost } = computeCosts(item, dollarRate, ivaMode);
+            const mov: Movement = {
+                companyId: companyId!,
+                productId: item.productId,
+                type: returnType,
+                date,
+                period: date.slice(0, 7),
+                quantity: item.quantity,
+                unitCost,
+                totalCost,
+                balanceQuantity: 0,
+                reference: reference || (returnType === "devolucion_entrada" ? "Devolución a proveedor" : "Devolución de cliente"),
+                notes,
+                currency: item.currency,
+                currencyCost: baseCurrencyCost,
+                dollarRate: item.currency === "D" ? dollarRate : null,
             };
-            const result = await saveMovimiento(mov);
+            const result = await saveMovement(mov);
             if (!result) { allOk = false; break; }
         }
         setSaving(false);
@@ -294,16 +302,16 @@ export default function NuevaDevolucionPage() {
 
     const totals = items.reduce(
         (acc, item) => {
-            const { costoTotal, ivaMontoTotal, totalConIva } = computeCostos(item, tasaDolar, ivaMode);
-            return { subtotal: acc.subtotal + costoTotal, iva: acc.iva + ivaMontoTotal, total: acc.total + totalConIva };
+            const { totalCost, vatAmountTotal, totalWithVat } = computeCosts(item, dollarRate, ivaMode);
+            return { subtotal: acc.subtotal + totalCost, iva: acc.iva + vatAmountTotal, total: acc.total + totalWithVat };
         },
         { subtotal: 0, iva: 0, total: 0 },
     );
-    const hasIva = items.some((i) => i.ivaTasa > 0);
-    const costoLabel = ivaMode === "agregado" ? "Costo base" : "Costo c/IVA";
+    const hasIva = items.some((i) => i.vatRate > 0);
+    const costLabel = ivaMode === "agregado" ? "Costo base" : "Costo c/IVA";
 
     if (saved) {
-        const periodo = fecha.slice(0, 7);
+        const period = date.slice(0, 7);
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6 border-b border-border-light bg-surface-1">
@@ -323,7 +331,7 @@ export default function NuevaDevolucionPage() {
                                 Ver devoluciones
                             </button>
                             <button
-                                onClick={() => router.push(`/inventory/movimientos?periodo=${periodo}`)}
+                                onClick={() => router.push(`/inventory/movimientos?periodo=${period}`)}
                                 className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
@@ -378,11 +386,11 @@ export default function NuevaDevolucionPage() {
                                     type="button"
                                     className={[
                                         "flex-1 px-4 transition-colors",
-                                        tipo === "devolucion_entrada"
+                                        returnType === "devolucion_entrada"
                                             ? "bg-primary-500 text-white"
                                             : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                     ].join(" ")}
-                                    onClick={() => setTipo("devolucion_entrada")}
+                                    onClick={() => setReturnType("devolucion_entrada")}
                                 >
                                     Devol. a proveedor
                                 </button>
@@ -390,17 +398,17 @@ export default function NuevaDevolucionPage() {
                                     type="button"
                                     className={[
                                         "flex-1 px-4 transition-colors",
-                                        tipo === "devolucion_salida"
+                                        returnType === "devolucion_salida"
                                             ? "bg-primary-500 text-white"
                                             : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                     ].join(" ")}
-                                    onClick={() => setTipo("devolucion_salida")}
+                                    onClick={() => setReturnType("devolucion_salida")}
                                 >
                                     Devol. de cliente
                                 </button>
                             </div>
                             <p className="text-[11px] text-[var(--text-tertiary)] mt-1.5">
-                                {tipo === "devolucion_entrada"
+                                {returnType === "devolucion_entrada"
                                     ? "Mercancía que regresa al proveedor — reduce las existencias."
                                     : "Mercancía que regresa de un cliente — aumenta las existencias."}
                             </p>
@@ -412,8 +420,8 @@ export default function NuevaDevolucionPage() {
                             <input
                                 type="date"
                                 className={fieldCls}
-                                value={fecha}
-                                onChange={(e) => setFecha(e.target.value)}
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
                             />
                         </div>
 
@@ -424,19 +432,19 @@ export default function NuevaDevolucionPage() {
                                 <input
                                     type="number"
                                     className={fieldCls}
-                                    value={tasaDolar ?? ""}
-                                    onChange={(e) => setTasaDolar(e.target.value ? Number(e.target.value) : null)}
+                                    value={dollarRate ?? ""}
+                                    onChange={(e) => setDollarRate(e.target.value ? Number(e.target.value) : null)}
                                     placeholder="0.00"
                                     step="0.01"
                                 />
-                                {tasaLoading && (
+                                {rateLoading && (
                                     <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
                                 )}
-                                {!tasaLoading && tasaFechaBcv && (
-                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {tasaFechaBcv}</span>
+                                {!rateLoading && bcvRateDate && (
+                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {bcvRateDate}</span>
                                 )}
-                                {!tasaLoading && !tasaFechaBcv && tasaError && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{tasaError}</span>
+                                {!rateLoading && !bcvRateDate && rateError && (
+                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{rateError}</span>
                                 )}
                             </div>
                         </div>
@@ -485,8 +493,8 @@ export default function NuevaDevolucionPage() {
                             <input
                                 type="text"
                                 className={fieldCls}
-                                value={referencia}
-                                onChange={(e) => setReferencia(e.target.value)}
+                                value={reference}
+                                onChange={(e) => setReference(e.target.value)}
                                 placeholder="Nro. factura, guía de despacho…"
                             />
                         </div>
@@ -497,8 +505,8 @@ export default function NuevaDevolucionPage() {
                             <input
                                 type="text"
                                 className={fieldCls}
-                                value={notas}
-                                onChange={(e) => setNotas(e.target.value)}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Motivo, observaciones…"
                             />
                         </div>
@@ -521,10 +529,10 @@ export default function NuevaDevolucionPage() {
                     </div>
 
                     {/* Column headers */}
-                    <div className={`grid gap-2 px-4 py-2 border-b border-border-light bg-surface-2 ${bajaSaldo ? "grid-cols-[1fr_120px_160px_90px_160px_36px]" : "grid-cols-[1fr_120px_160px_90px_36px]"}`}>
-                        {(bajaSaldo
-                            ? ["Producto", "Cantidad", costoLabel, "Moneda", "Existencia", ""]
-                            : ["Producto", "Cantidad", costoLabel, "Moneda", ""]
+                    <div className={`grid gap-2 px-4 py-2 border-b border-border-light bg-surface-2 ${reducesStock ? "grid-cols-[1fr_120px_160px_90px_160px_36px]" : "grid-cols-[1fr_120px_160px_90px_36px]"}`}>
+                        {(reducesStock
+                            ? ["Producto", "Cantidad", costLabel, "Moneda", "Existencia", ""]
+                            : ["Producto", "Cantidad", costLabel, "Moneda", ""]
                         ).map((h, i) => (
                             <span key={i} className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{h}</span>
                         ))}
@@ -533,28 +541,28 @@ export default function NuevaDevolucionPage() {
                     {/* Rows */}
                     <div className="divide-y divide-border-light/50">
                         {items.map((item, idx) => {
-                            const prod = getProducto(item.productoId);
-                            const stockOk = !prod || !bajaSaldo || item.cantidad <= prod.existenciaActual;
-                            const saldoTras = prod && bajaSaldo ? prod.existenciaActual - item.cantidad : null;
+                            const prod = getProduct(item.productId);
+                            const stockOk = !prod || !reducesStock || item.quantity <= prod.currentStock;
+                            const balanceAfter = prod && reducesStock ? prod.currentStock - item.quantity : null;
 
                             return (
                                 <div
                                     key={idx}
-                                    className={`grid gap-2 px-4 py-2 items-center ${bajaSaldo ? "grid-cols-[1fr_120px_160px_90px_160px_36px]" : "grid-cols-[1fr_120px_160px_90px_36px]"}`}
+                                    className={`grid gap-2 px-4 py-2 items-center ${reducesStock ? "grid-cols-[1fr_120px_160px_90px_160px_36px]" : "grid-cols-[1fr_120px_160px_90px_36px]"}`}
                                 >
                                     {/* Producto */}
                                     <ProductCombo
-                                        value={item.productoId}
-                                        productos={productos}
-                                        onChange={(id, nombre, ivaTasa) => updateItem(idx, { productoId: id, productoNombre: nombre, ivaTasa })}
+                                        value={item.productId}
+                                        products={products}
+                                        onChange={(id, name, vatRate) => updateItem(idx, { productId: id, productName: name, vatRate })}
                                     />
 
                                     {/* Cantidad */}
                                     <input
                                         type="number"
                                         className={fieldCls + (stockOk ? "" : " border-red-500/40 focus:border-red-500/60") + " text-right"}
-                                        value={item.cantidad || ""}
-                                        onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) || 0 })}
+                                        value={item.quantity || ""}
+                                        onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
                                         placeholder="0"
                                         min="0.0001"
                                         step="0.0001"
@@ -565,14 +573,14 @@ export default function NuevaDevolucionPage() {
                                         <input
                                             type="number"
                                             className={fieldCls + " text-right pr-10"}
-                                            value={item.costoMoneda || ""}
-                                            onChange={(e) => updateItem(idx, { costoMoneda: Number(e.target.value) || 0 })}
+                                            value={item.currencyCost || ""}
+                                            onChange={(e) => updateItem(idx, { currencyCost: Number(e.target.value) || 0 })}
                                             placeholder="0.00"
                                             min="0"
                                             step="0.01"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] pointer-events-none">
-                                            {item.moneda === "D" ? "USD" : "Bs"}
+                                            {item.currency === "D" ? "USD" : "Bs"}
                                         </span>
                                     </div>
 
@@ -582,9 +590,9 @@ export default function NuevaDevolucionPage() {
                                             type="button"
                                             className={[
                                                 "flex-1 transition-colors",
-                                                item.moneda === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                item.currency === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                             ].join(" ")}
-                                            onClick={() => updateItem(idx, { moneda: "B" })}
+                                            onClick={() => updateItem(idx, { currency: "B" })}
                                         >
                                             Bs
                                         </button>
@@ -592,30 +600,30 @@ export default function NuevaDevolucionPage() {
                                             type="button"
                                             className={[
                                                 "flex-1 transition-colors",
-                                                item.moneda === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                item.currency === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                             ].join(" ")}
-                                            onClick={() => updateItem(idx, { moneda: "D" })}
+                                            onClick={() => updateItem(idx, { currency: "D" })}
                                         >
                                             USD
                                         </button>
                                     </div>
 
                                     {/* Existencia (solo devolucion_entrada) */}
-                                    {bajaSaldo && (
+                                    {reducesStock && (
                                         <div className="px-1 space-y-0.5">
                                             {prod ? (
                                                 <>
                                                     <div className="flex justify-between text-[12px]">
                                                         <span className="text-[var(--text-tertiary)]">Disponible</span>
                                                         <span className={`tabular-nums font-medium ${!stockOk ? "text-red-500" : "text-foreground"}`}>
-                                                            {fmtN(prod.existenciaActual)}
+                                                            {fmtN(prod.currentStock)}
                                                         </span>
                                                     </div>
-                                                    {item.cantidad > 0 && (
+                                                    {item.quantity > 0 && (
                                                         <div className="flex justify-between text-[12px]">
                                                             <span className="text-[var(--text-tertiary)]">Tras devol.</span>
                                                             <span className={`tabular-nums font-medium ${!stockOk ? "text-red-500" : "text-[var(--text-secondary)]"}`}>
-                                                                {fmtN(saldoTras!)}
+                                                                {fmtN(balanceAfter!)}
                                                             </span>
                                                         </div>
                                                     )}
@@ -647,9 +655,9 @@ export default function NuevaDevolucionPage() {
                                 {items.length} {items.length === 1 ? "producto" : "productos"}
                             </span>
                             <div className="flex items-center gap-6">
-                                {items.some((i) => i.moneda === "D") && tasaDolar && (
+                                {items.some((i) => i.currency === "D") && dollarRate && (
                                     <span className="text-[12px] text-[var(--text-tertiary)]">
-                                        Tasa: {fmtN(tasaDolar)} Bs/USD
+                                        Tasa: {fmtN(dollarRate)} Bs/USD
                                     </span>
                                 )}
                                 {hasIva ? (
@@ -676,7 +684,7 @@ export default function NuevaDevolucionPage() {
 
                 {/* Nota informativa */}
                 <div className="px-4 py-3 rounded-lg border border-border-light bg-surface-1 text-[12px] text-[var(--text-tertiary)]">
-                    {tipo === "devolucion_entrada"
+                    {returnType === "devolucion_entrada"
                         ? "Devolución a proveedor: reduce las existencias. Asegúrate de tener la nota de crédito o guía de devolución correspondiente."
                         : "Devolución de cliente: aumenta las existencias. Registra la nota de crédito emitida al cliente."}
                 </div>

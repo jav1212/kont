@@ -1,5 +1,8 @@
 "use client";
 
+// Inventory dashboard page.
+// Shows KPI cards and a product snapshot for the current period.
+
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -21,31 +24,31 @@ function currentPeriod() {
 export default function InventoryDashboard() {
     const { companyId } = useCompany();
     const {
-        productos, movimientos,
-        loadingProductos, loadingMovimientos,
-        loadProductos, loadMovimientos,
+        products, movements,
+        loadingProducts, loadingMovements,
+        loadProducts, loadMovements,
     } = useInventory();
 
     const periodo = currentPeriod();
 
     useEffect(() => {
         if (!companyId) return;
-        loadProductos(companyId);
-        loadMovimientos(companyId, periodo);
-    }, [companyId, periodo, loadProductos, loadMovimientos]);
+        loadProducts(companyId);
+        loadMovements(companyId, periodo);
+    }, [companyId, periodo, loadProducts, loadMovements]);
 
     const kpis = useMemo(() => {
-        const activos = productos.filter((p) => p.activo).length;
-        const entradas = movimientos.filter((m) =>
-            ["entrada", "entrada_produccion", "devolucion_entrada", "ajuste_positivo"].includes(m.tipo)
+        const activos = products.filter((p) => p.active).length;
+        const entradas = movements.filter((m) =>
+            ["entrada", "entrada_produccion", "devolucion_entrada", "ajuste_positivo"].includes(m.type)
         ).length;
-        const salidas = movimientos.filter((m) =>
-            ["salida", "salida_produccion", "devolucion_salida", "ajuste_negativo"].includes(m.tipo)
+        const salidas = movements.filter((m) =>
+            ["salida", "salida_produccion", "devolucion_salida", "ajuste_negativo"].includes(m.type)
         ).length;
         return { activos, entradas, salidas };
-    }, [productos, movimientos]);
+    }, [products, movements]);
 
-    const loading = loadingProductos || loadingMovimientos;
+    const loading = loadingProducts || loadingMovements;
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -92,7 +95,7 @@ export default function InventoryDashboard() {
                     ))}
                 </div>
 
-                {/* Productos table */}
+                {/* Products table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
                         <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
@@ -108,7 +111,7 @@ export default function InventoryDashboard() {
 
                     {loading ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
-                    ) : productos.length === 0 ? (
+                    ) : products.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay productos.{" "}
                             <Link href="/inventory/productos" className="text-primary-500 underline">
@@ -127,18 +130,18 @@ export default function InventoryDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {productos.slice(0, 20).map((p) => (
+                                {products.slice(0, 20).map((p) => (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
-                                            <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.code || "—"}</td>
+                                            <td className="px-4 py-2.5 text-foreground font-medium">{p.name}</td>
                                             <td className="px-4 py-2.5">
-                                                <TipoBadge tipo={p.tipo} />
+                                                <TipoBadge tipo={p.type} />
                                             </td>
                                             <td className="px-4 py-2.5 tabular-nums text-foreground">
-                                                {fmtN(p.existenciaActual)} {p.unidadMedida}
+                                                {fmtN(p.currentStock)} {p.measureUnit}
                                             </td>
                                             <td className="px-4 py-2.5">
-                                                {p.activo ? (
+                                                {p.active ? (
                                                     <span className="text-text-success text-[12px] uppercase tracking-[0.10em]">Activo</span>
                                                 ) : (
                                                     <span className="text-text-tertiary text-[12px] uppercase tracking-[0.10em]">Inactivo</span>

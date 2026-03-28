@@ -1,85 +1,90 @@
-"use client";
+'use client';
+
+// Frontend hook: useInventory
+// Provides all inventory state and async actions for the inventory module.
+// Architectural role: application-layer adapter between UI components and inventory API routes.
+// All state variables, loading flags, and functions use English identifiers aligned with English domain types.
 
 import { useState, useCallback, useMemo } from 'react';
-import type { Producto } from '../../backend/domain/producto';
-import type { Movimiento, KardexEntry } from '../../backend/domain/movimiento';
-import type { Transformacion, Cierre } from '../../backend/domain/transformacion';
-import type { Proveedor } from '../../backend/domain/proveedor';
-import type { FacturaCompra, FacturaCompraItem } from '../../backend/domain/factura-compra';
-import type { Departamento } from '../../backend/domain/departamento';
-import type { ReportePeriodoRow } from '../../backend/domain/reporte-periodo';
-import type { LibroComprasRow } from '../../backend/domain/libro-compras';
-import type { ReporteISLRProducto, ReporteISLRMovimiento } from '../../backend/domain/reporte-islr';
-import type { LibroVentasRow } from '../../backend/domain/libro-ventas';
-import type { LibroInventariosRow } from '../../backend/domain/libro-inventarios';
-import type { ReporteSaldoRow } from '../../backend/domain/reporte-saldo';
+import type { Product } from '../../backend/domain/product';
+import type { Movement, KardexEntry } from '../../backend/domain/movement';
+import type { Transformation, PeriodClose } from '../../backend/domain/transformation';
+import type { Supplier } from '../../backend/domain/supplier';
+import type { PurchaseInvoice, PurchaseInvoiceItem } from '../../backend/domain/purchase-invoice';
+import type { Department } from '../../backend/domain/department';
+import type { PeriodReportRow } from '../../backend/domain/period-report';
+import type { PurchaseLedgerRow } from '../../backend/domain/purchase-ledger';
+import type { IslrProduct } from '../../backend/domain/islr-report';
+import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
+import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
+import type { BalanceReportRow } from '../../backend/domain/balance-report';
 
-export type { Producto, Movimiento, KardexEntry, Transformacion, Cierre, Proveedor, FacturaCompra, FacturaCompraItem, Departamento, ReportePeriodoRow, LibroComprasRow, ReporteISLRProducto, ReporteISLRMovimiento, LibroVentasRow, LibroInventariosRow, ReporteSaldoRow };
+export type { Product, Movement, KardexEntry, Transformation, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow };
 
 export function useInventory() {
-    const [productos, setProductos]             = useState<Producto[]>([]);
-    const [movimientos, setMovimientos]         = useState<Movimiento[]>([]);
-    const [kardex, setKardex]                   = useState<KardexEntry[]>([]);
-    const [transformaciones, setTransformaciones] = useState<Transformacion[]>([]);
-    const [cierres, setCierres]                 = useState<Cierre[]>([]);
-    const [proveedores, setProveedores]         = useState<Proveedor[]>([]);
-    const [facturas, setFacturas]               = useState<FacturaCompra[]>([]);
-    const [currentFactura, setCurrentFactura]   = useState<FacturaCompra | null>(null);
-    const [departamentos, setDepartamentos]     = useState<Departamento[]>([]);
-    const [reportePeriodo, setReportePeriodo]   = useState<ReportePeriodoRow[]>([]);
-    const [libroCompras, setLibroCompras]       = useState<LibroComprasRow[]>([]);
-    const [reporteISLR, setReporteISLR]         = useState<ReporteISLRProducto[]>([]);
-    const [libroVentas, setLibroVentas]             = useState<LibroVentasRow[]>([]);
-    const [libroInventarios, setLibroInventarios]   = useState<LibroInventariosRow[]>([]);
-    const [reporteSaldo, setReporteSaldo]           = useState<ReporteSaldoRow[]>([]);
+    const [products, setProducts]                       = useState<Product[]>([]);
+    const [movements, setMovements]                     = useState<Movement[]>([]);
+    const [kardex, setKardex]                           = useState<KardexEntry[]>([]);
+    const [transformations, setTransformations]         = useState<Transformation[]>([]);
+    const [periodCloses, setPeriodCloses]               = useState<PeriodClose[]>([]);
+    const [suppliers, setSuppliers]                     = useState<Supplier[]>([]);
+    const [purchaseInvoices, setPurchaseInvoices]       = useState<PurchaseInvoice[]>([]);
+    const [currentPurchaseInvoice, setCurrentPurchaseInvoice] = useState<PurchaseInvoice | null>(null);
+    const [departments, setDepartments]                 = useState<Department[]>([]);
+    const [periodReport, setPeriodReport]               = useState<PeriodReportRow[]>([]);
+    const [purchaseLedger, setPurchaseLedger]           = useState<PurchaseLedgerRow[]>([]);
+    const [islrReport, setIslrReport]                   = useState<IslrProduct[]>([]);
+    const [salesLedger, setSalesLedger]                 = useState<SalesLedgerRow[]>([]);
+    const [inventoryLedger, setInventoryLedger]         = useState<InventoryLedgerRow[]>([]);
+    const [balanceReport, setBalanceReport]             = useState<BalanceReportRow[]>([]);
 
-    const [loadingProductos, setLoadingProductos]         = useState(false);
-    const [loadingMovimientos, setLoadingMovimientos]     = useState(false);
-    const [loadingKardex, setLoadingKardex]               = useState(false);
-    const [loadingTransformaciones, setLoadingTransformaciones] = useState(false);
-    const [loadingCierres, setLoadingCierres]             = useState(false);
-    const [loadingProveedores, setLoadingProveedores]     = useState(false);
-    const [loadingFacturas, setLoadingFacturas]           = useState(false);
-    const [loadingFactura, setLoadingFactura]             = useState(false);
-    const [loadingDepartamentos, setLoadingDepartamentos] = useState(false);
-    const [loadingReporte, setLoadingReporte]             = useState(false);
-    const [loadingLibroCompras, setLoadingLibroCompras]   = useState(false);
-    const [loadingReporteISLR, setLoadingReporteISLR]     = useState(false);
-    const [loadingLibroVentas, setLoadingLibroVentas]         = useState(false);
-    const [loadingLibroInventarios, setLoadingLibroInventarios] = useState(false);
-    const [loadingReporteSaldo, setLoadingReporteSaldo]         = useState(false);
+    const [loadingProducts, setLoadingProducts]               = useState(false);
+    const [loadingMovements, setLoadingMovements]             = useState(false);
+    const [loadingKardex, setLoadingKardex]                   = useState(false);
+    const [loadingTransformations, setLoadingTransformations] = useState(false);
+    const [loadingPeriodCloses, setLoadingPeriodCloses]       = useState(false);
+    const [loadingSuppliers, setLoadingSuppliers]             = useState(false);
+    const [loadingPurchaseInvoices, setLoadingPurchaseInvoices] = useState(false);
+    const [loadingPurchaseInvoice, setLoadingPurchaseInvoice] = useState(false);
+    const [loadingDepartments, setLoadingDepartments]         = useState(false);
+    const [loadingPeriodReport, setLoadingPeriodReport]       = useState(false);
+    const [loadingPurchaseLedger, setLoadingPurchaseLedger]   = useState(false);
+    const [loadingIslrReport, setLoadingIslrReport]           = useState(false);
+    const [loadingSalesLedger, setLoadingSalesLedger]         = useState(false);
+    const [loadingInventoryLedger, setLoadingInventoryLedger] = useState(false);
+    const [loadingBalanceReport, setLoadingBalanceReport]     = useState(false);
 
     const [error, setError] = useState<string | null>(null);
 
-    // ── Productos ──────────────────────────────────────────────────────────────
+    // ── Products ───────────────────────────────────────────────────────────────
 
-    const loadProductos = useCallback(async (empresaId: string) => {
-        setLoadingProductos(true);
+    const loadProducts = useCallback(async (companyId: string) => {
+        setLoadingProducts(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/productos?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/productos?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar productos'); return; }
-            setProductos(json.data ?? []);
+            setProducts(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingProductos(false);
+            setLoadingProducts(false);
         }
     }, []);
 
-    const saveProducto = useCallback(async (producto: Producto): Promise<Producto | null> => {
+    const saveProduct = useCallback(async (product: Product): Promise<Product | null> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/productos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(producto),
+                body: JSON.stringify(product),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar producto'); return null; }
-            const saved: Producto = json.data;
-            setProductos((prev) => {
+            const saved: Product = json.data;
+            setProducts((prev) => {
                 const idx = prev.findIndex((p) => p.id === saved.id);
                 return idx >= 0
                     ? prev.map((p) => (p.id === saved.id ? saved : p))
@@ -92,13 +97,13 @@ export function useInventory() {
         }
     }, []);
 
-    const deleteProducto = useCallback(async (id: string): Promise<boolean> => {
+    const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch(`/api/inventory/productos/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar producto'); return false; }
-            setProductos((prev) => prev.filter((p) => p.id !== id));
+            setProducts((prev) => prev.filter((p) => p.id !== id));
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -106,32 +111,32 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Movimientos ────────────────────────────────────────────────────────────
+    // ── Movements ──────────────────────────────────────────────────────────────
 
-    const loadMovimientos = useCallback(async (empresaId: string, periodo?: string) => {
-        setLoadingMovimientos(true);
+    const loadMovements = useCallback(async (companyId: string, period?: string) => {
+        setLoadingMovements(true);
         setError(null);
         try {
-            const params = new URLSearchParams({ empresaId });
-            if (periodo) params.set('periodo', periodo);
+            const params = new URLSearchParams({ companyId });
+            if (period) params.set('period', period);
             const res = await fetch(`/api/inventory/movimientos?${params}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar movimientos'); return; }
-            setMovimientos(json.data ?? []);
+            setMovements(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingMovimientos(false);
+            setLoadingMovements(false);
         }
     }, []);
 
-    const deleteMovimiento = useCallback(async (id: string): Promise<boolean> => {
+    const deleteMovement = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch(`/api/inventory/movimientos/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar movimiento'); return false; }
-            setMovimientos((prev) => prev.filter((m) => m.id !== id));
+            setMovements((prev) => prev.filter((m) => m.id !== id));
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -139,20 +144,20 @@ export function useInventory() {
         }
     }, []);
 
-    const updateMovimientoMeta = useCallback(async (
-        id: string, fecha: string, referencia: string, notas: string,
-    ): Promise<Movimiento | null> => {
+    const updateMovementMeta = useCallback(async (
+        id: string, date: string, reference: string, notes: string,
+    ): Promise<Movement | null> => {
         setError(null);
         try {
             const res = await fetch(`/api/inventory/movimientos/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fecha, referencia, notas }),
+                body: JSON.stringify({ date, reference, notes }),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al actualizar movimiento'); return null; }
-            const updated: Movimiento = json.data;
-            setMovimientos((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+            const updated: Movement = json.data;
+            setMovements((prev) => prev.map((m) => m.id === updated.id ? updated : m));
             return updated;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -160,23 +165,23 @@ export function useInventory() {
         }
     }, []);
 
-    const saveMovimiento = useCallback(async (movimiento: Movimiento): Promise<Movimiento | null> => {
+    const saveMovement = useCallback(async (movement: Movement): Promise<Movement | null> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/movimientos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(movimiento),
+                body: JSON.stringify(movement),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar movimiento'); return null; }
-            const saved: Movimiento = json.data;
-            setMovimientos((prev) => [saved, ...prev]);
-            // Refresh producto existencia
-            setProductos((prev) =>
+            const saved: Movement = json.data;
+            setMovements((prev) => [saved, ...prev]);
+            // Update product current stock from saved movement balance
+            setProducts((prev) =>
                 prev.map((p) =>
-                    p.id === saved.productoId
-                        ? { ...p, existenciaActual: saved.saldoCantidad }
+                    p.id === saved.productId
+                        ? { ...p, currentStock: saved.balanceQuantity }
                         : p
                 )
             );
@@ -189,12 +194,12 @@ export function useInventory() {
 
     // ── Kardex ─────────────────────────────────────────────────────────────────
 
-    const loadKardex = useCallback(async (empresaId: string, productoId: string) => {
+    const loadKardex = useCallback(async (companyId: string, productId: string) => {
         setLoadingKardex(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/kardex?empresaId=${encodeURIComponent(empresaId)}&productoId=${encodeURIComponent(productoId)}`
+                `/api/inventory/kardex?companyId=${encodeURIComponent(companyId)}&productId=${encodeURIComponent(productId)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar kardex'); return; }
@@ -206,35 +211,35 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Transformaciones ───────────────────────────────────────────────────────
+    // ── Transformations ────────────────────────────────────────────────────────
 
-    const loadTransformaciones = useCallback(async (empresaId: string) => {
-        setLoadingTransformaciones(true);
+    const loadTransformations = useCallback(async (companyId: string) => {
+        setLoadingTransformations(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/transformaciones?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/transformaciones?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar transformaciones'); return; }
-            setTransformaciones(json.data ?? []);
+            setTransformations(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingTransformaciones(false);
+            setLoadingTransformations(false);
         }
     }, []);
 
-    const saveTransformacion = useCallback(async (transformacion: Transformacion): Promise<Transformacion | null> => {
+    const saveTransformation = useCallback(async (transformation: Transformation): Promise<Transformation | null> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/transformaciones', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transformacion),
+                body: JSON.stringify(transformation),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar transformación'); return null; }
-            const saved: Transformacion = json.data;
-            setTransformaciones((prev) => [saved, ...prev]);
+            const saved: Transformation = json.data;
+            setTransformations((prev) => [saved, ...prev]);
             return saved;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -242,44 +247,45 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Cierres ────────────────────────────────────────────────────────────────
+    // ── Period Closes ──────────────────────────────────────────────────────────
 
-    const loadCierres = useCallback(async (empresaId: string) => {
-        setLoadingCierres(true);
+    const loadPeriodCloses = useCallback(async (companyId: string) => {
+        setLoadingPeriodCloses(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/cierres?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/cierres?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar cierres'); return; }
-            setCierres(json.data ?? []);
+            setPeriodCloses(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingCierres(false);
+            setLoadingPeriodCloses(false);
         }
     }, []);
 
-    const tasaDolarActual = useMemo(
-        () => cierres.find((c) => c.tasaDolar != null)?.tasaDolar ?? null,
-        [cierres],
+    // Derived: dollar rate from most recent period close that has one set.
+    const currentDollarRate = useMemo(
+        () => periodCloses.find((c) => c.dollarRate != null)?.dollarRate ?? null,
+        [periodCloses],
     );
 
-    const saveCierre = useCallback(async (
-        empresaId: string,
-        periodo: string,
-        notas?: string,
-        tasaDolar?: number | null,
+    const savePeriodClose = useCallback(async (
+        companyId: string,
+        period: string,
+        notes?: string,
+        dollarRate?: number | null,
     ): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/cierres', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ empresaId, periodo, notas: notas ?? '', tasaDolar: tasaDolar ?? null }),
+                body: JSON.stringify({ companyId, period, notes: notes ?? '', dollarRate: dollarRate ?? null }),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cerrar período'); return false; }
-            if (json.data) setCierres((prev) => [json.data, ...prev]);
+            if (json.data) setPeriodCloses((prev) => [json.data, ...prev]);
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -287,38 +293,38 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Proveedores ────────────────────────────────────────────────────────────
+    // ── Suppliers ──────────────────────────────────────────────────────────────
 
-    const loadProveedores = useCallback(async (empresaId: string) => {
-        setLoadingProveedores(true);
+    const loadSuppliers = useCallback(async (companyId: string) => {
+        setLoadingSuppliers(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/proveedores?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/proveedores?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar proveedores'); return; }
-            setProveedores(json.data ?? []);
+            setSuppliers(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingProveedores(false);
+            setLoadingSuppliers(false);
         }
     }, []);
 
-    const saveProveedor = useCallback(async (proveedor: Proveedor): Promise<Proveedor | null> => {
+    const saveSupplier = useCallback(async (supplier: Supplier): Promise<Supplier | null> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/proveedores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(proveedor),
+                body: JSON.stringify(supplier),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar proveedor'); return null; }
-            const saved: Proveedor = json.data;
-            setProveedores((prev) => {
-                const idx = prev.findIndex((p) => p.id === saved.id);
+            const saved: Supplier = json.data;
+            setSuppliers((prev) => {
+                const idx = prev.findIndex((s) => s.id === saved.id);
                 return idx >= 0
-                    ? prev.map((p) => (p.id === saved.id ? saved : p))
+                    ? prev.map((s) => (s.id === saved.id ? saved : s))
                     : [...prev, saved];
             });
             return saved;
@@ -328,13 +334,13 @@ export function useInventory() {
         }
     }, []);
 
-    const deleteProveedor = useCallback(async (id: string): Promise<boolean> => {
+    const deleteSupplier = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch(`/api/inventory/proveedores/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar proveedor'); return false; }
-            setProveedores((prev) => prev.filter((p) => p.id !== id));
+            setSuppliers((prev) => prev.filter((s) => s.id !== id));
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -342,62 +348,62 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Facturas de Compra ─────────────────────────────────────────────────────
+    // ── Purchase Invoices ──────────────────────────────────────────────────────
 
-    const loadFacturas = useCallback(async (empresaId: string) => {
-        setLoadingFacturas(true);
+    const loadPurchaseInvoices = useCallback(async (companyId: string) => {
+        setLoadingPurchaseInvoices(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/entradas?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/entradas?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar facturas'); return; }
-            setFacturas(json.data ?? []);
+            setPurchaseInvoices(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingFacturas(false);
+            setLoadingPurchaseInvoices(false);
         }
     }, []);
 
-    const loadFactura = useCallback(async (facturaId: string) => {
-        setLoadingFactura(true);
+    const loadPurchaseInvoice = useCallback(async (invoiceId: string) => {
+        setLoadingPurchaseInvoice(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/entradas/${encodeURIComponent(facturaId)}`);
+            const res = await fetch(`/api/inventory/entradas/${encodeURIComponent(invoiceId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar factura'); return; }
-            setCurrentFactura(json.data ?? null);
+            setCurrentPurchaseInvoice(json.data ?? null);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingFactura(false);
+            setLoadingPurchaseInvoice(false);
         }
     }, []);
 
-    const saveFactura = useCallback(async (
-        factura: FacturaCompra,
-        items: FacturaCompraItem[],
-    ): Promise<FacturaCompra | null> => {
+    const savePurchaseInvoice = useCallback(async (
+        invoice: PurchaseInvoice,
+        items: PurchaseInvoiceItem[],
+    ): Promise<PurchaseInvoice | null> => {
         setError(null);
         try {
-            const url = factura.id
-                ? `/api/inventory/entradas/${factura.id}`
+            const url = invoice.id
+                ? `/api/inventory/entradas/${invoice.id}`
                 : '/api/inventory/entradas';
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ factura, items }),
+                body: JSON.stringify({ invoice, items }),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar factura'); return null; }
-            const saved: FacturaCompra = json.data;
-            setFacturas((prev) => {
+            const saved: PurchaseInvoice = json.data;
+            setPurchaseInvoices((prev) => {
                 const idx = prev.findIndex((f) => f.id === saved.id);
                 return idx >= 0
                     ? prev.map((f) => (f.id === saved.id ? saved : f))
                     : [saved, ...prev];
             });
-            setCurrentFactura(saved);
+            setCurrentPurchaseInvoice(saved);
             return saved;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -405,13 +411,13 @@ export function useInventory() {
         }
     }, []);
 
-    const deleteFactura = useCallback(async (facturaId: string): Promise<boolean> => {
+    const deletePurchaseInvoice = useCallback(async (invoiceId: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/entradas/${facturaId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/inventory/entradas/${invoiceId}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar factura'); return false; }
-            setFacturas((prev) => prev.filter((f) => f.id !== facturaId));
+            setPurchaseInvoices((prev) => prev.filter((f) => f.id !== invoiceId));
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -419,17 +425,17 @@ export function useInventory() {
         }
     }, []);
 
-    const confirmarFactura = useCallback(async (facturaId: string): Promise<FacturaCompra | null> => {
+    const confirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/entradas/${facturaId}/confirmar`, {
+            const res = await fetch(`/api/inventory/entradas/${invoiceId}/confirmar`, {
                 method: 'POST',
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al confirmar factura'); return null; }
-            const confirmed: FacturaCompra = json.data;
-            setFacturas((prev) => prev.map((f) => (f.id === confirmed.id ? confirmed : f)));
-            setCurrentFactura(confirmed);
+            const confirmed: PurchaseInvoice = json.data;
+            setPurchaseInvoices((prev) => prev.map((f) => (f.id === confirmed.id ? confirmed : f)));
+            setCurrentPurchaseInvoice(confirmed);
             return confirmed;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -437,35 +443,35 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Departamentos ─────────────────────────────────────────────────────────
+    // ── Departments ────────────────────────────────────────────────────────────
 
-    const loadDepartamentos = useCallback(async (empresaId: string) => {
-        setLoadingDepartamentos(true);
+    const loadDepartments = useCallback(async (companyId: string) => {
+        setLoadingDepartments(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/departamentos?empresaId=${encodeURIComponent(empresaId)}`);
+            const res = await fetch(`/api/inventory/departamentos?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar departamentos'); return; }
-            setDepartamentos(json.data ?? []);
+            setDepartments(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingDepartamentos(false);
+            setLoadingDepartments(false);
         }
     }, []);
 
-    const saveDepartamento = useCallback(async (departamento: Departamento): Promise<Departamento | null> => {
+    const saveDepartment = useCallback(async (department: Department): Promise<Department | null> => {
         setError(null);
         try {
             const res = await fetch('/api/inventory/departamentos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(departamento),
+                body: JSON.stringify(department),
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al guardar departamento'); return null; }
-            const saved: Departamento = json.data;
-            setDepartamentos((prev) => {
+            const saved: Department = json.data;
+            setDepartments((prev) => {
                 const idx = prev.findIndex((d) => d.id === saved.id);
                 return idx >= 0
                     ? prev.map((d) => (d.id === saved.id ? saved : d))
@@ -478,13 +484,13 @@ export function useInventory() {
         }
     }, []);
 
-    const deleteDepartamento = useCallback(async (id: string): Promise<boolean> => {
+    const deleteDepartment = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
             const res = await fetch(`/api/inventory/departamentos/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar departamento'); return false; }
-            setDepartamentos((prev) => prev.filter((d) => d.id !== id));
+            setDepartments((prev) => prev.filter((d) => d.id !== id));
             return true;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -492,68 +498,68 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Libro de Compras ──────────────────────────────────────────────────────
+    // ── Purchase Ledger ────────────────────────────────────────────────────────
 
-    const loadLibroCompras = useCallback(async (empresaId: string, periodo: string) => {
-        setLoadingLibroCompras(true);
+    const loadPurchaseLedger = useCallback(async (companyId: string, period: string) => {
+        setLoadingPurchaseLedger(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/libro-entradas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/libro-entradas?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar libro de entradas'); return; }
-            setLibroCompras(json.data ?? []);
+            setPurchaseLedger(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingLibroCompras(false);
+            setLoadingPurchaseLedger(false);
         }
     }, []);
 
-    // ── Reporte ISLR Art. 177 ─────────────────────────────────────────────────
+    // ── ISLR Report ────────────────────────────────────────────────────────────
 
-    const loadReporteISLR = useCallback(async (empresaId: string, periodo: string) => {
-        setLoadingReporteISLR(true);
+    const loadIslrReport = useCallback(async (companyId: string, period: string) => {
+        setLoadingIslrReport(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/reporte-islr?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/reporte-islr?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar reporte ISLR'); return; }
-            setReporteISLR(json.data ?? []);
+            setIslrReport(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingReporteISLR(false);
+            setLoadingIslrReport(false);
         }
     }, []);
 
-    // ── Libro de Ventas ───────────────────────────────────────────────────────
+    // ── Sales Ledger ───────────────────────────────────────────────────────────
 
-    const loadLibroVentas = useCallback(async (empresaId: string, periodo: string) => {
-        setLoadingLibroVentas(true);
+    const loadSalesLedger = useCallback(async (companyId: string, period: string) => {
+        setLoadingSalesLedger(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/libro-salidas?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/libro-salidas?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar libro de salidas'); return; }
-            setLibroVentas(json.data ?? []);
+            setSalesLedger(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingLibroVentas(false);
+            setLoadingSalesLedger(false);
         }
     }, []);
 
-    const saveVenta = useCallback(async (payload: {
-        empresaId: string;
-        fecha: string;
-        referencia?: string;
-        items: { productoId: string; cantidad: number; existenciaActual?: number }[];
+    const saveOutbound = useCallback(async (payload: {
+        companyId: string;
+        date: string;
+        reference?: string;
+        items: { productId: string; quantity: number; currentStock?: number }[];
     }): Promise<boolean> => {
         setError(null);
         try {
@@ -564,12 +570,12 @@ export function useInventory() {
             });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al registrar salida'); return false; }
-            const saved = json.data as import('../../backend/domain/movimiento').Movimiento[];
-            // Update product existencias
-            setProductos((prev) =>
+            const saved = json.data as Movement[];
+            // Update product current stock from the last outbound movement per product
+            setProducts((prev) =>
                 prev.map((p) => {
-                    const lastMov = saved.filter((m) => m.productoId === p.id).at(-1);
-                    return lastMov ? { ...p, existenciaActual: lastMov.saldoCantidad } : p;
+                    const lastMov = saved.filter((m) => m.productId === p.id).at(-1);
+                    return lastMov ? { ...p, currentStock: lastMov.balanceQuantity } : p;
                 })
             );
             return true;
@@ -579,90 +585,90 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Libro de Inventarios ──────────────────────────────────────────────────
+    // ── Inventory Ledger ───────────────────────────────────────────────────────
 
-    const loadLibroInventarios = useCallback(async (empresaId: string, anio: number) => {
-        setLoadingLibroInventarios(true);
+    const loadInventoryLedger = useCallback(async (companyId: string, year: number) => {
+        setLoadingInventoryLedger(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/libro-inventarios?empresaId=${encodeURIComponent(empresaId)}&anio=${anio}`
+                `/api/inventory/libro-inventarios?companyId=${encodeURIComponent(companyId)}&year=${year}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar libro de inventarios'); return; }
-            setLibroInventarios(json.data ?? []);
+            setInventoryLedger(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingLibroInventarios(false);
+            setLoadingInventoryLedger(false);
         }
     }, []);
 
-    // ── Reporte SALDO por Departamento ────────────────────────────────────────
+    // ── Balance Report ─────────────────────────────────────────────────────────
 
-    const loadReporteSaldo = useCallback(async (empresaId: string, periodo: string) => {
-        setLoadingReporteSaldo(true);
+    const loadBalanceReport = useCallback(async (companyId: string, period: string) => {
+        setLoadingBalanceReport(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/reporte-saldo?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/reporte-saldo?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar reporte SALDO'); return; }
-            setReporteSaldo(json.data ?? []);
+            setBalanceReport(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingReporteSaldo(false);
+            setLoadingBalanceReport(false);
         }
     }, []);
 
-    // ── Reporte de Período ────────────────────────────────────────────────────
+    // ── Period Report ──────────────────────────────────────────────────────────
 
-    const loadReportePeriodo = useCallback(async (empresaId: string, periodo: string) => {
-        setLoadingReporte(true);
+    const loadPeriodReport = useCallback(async (companyId: string, period: string) => {
+        setLoadingPeriodReport(true);
         setError(null);
         try {
             const res = await fetch(
-                `/api/inventory/reporte?empresaId=${encodeURIComponent(empresaId)}&periodo=${encodeURIComponent(periodo)}`
+                `/api/inventory/reporte?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar reporte'); return; }
-            setReportePeriodo(json.data ?? []);
+            setPeriodReport(json.data ?? []);
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
         } finally {
-            setLoadingReporte(false);
+            setLoadingPeriodReport(false);
         }
     }, []);
 
     return {
         // state
-        productos, movimientos, kardex, transformaciones, cierres,
-        proveedores, facturas, currentFactura,
-        departamentos, reportePeriodo, libroCompras, reporteISLR, libroVentas, libroInventarios, reporteSaldo,
-        tasaDolarActual,
+        products, movements, kardex, transformations, periodCloses,
+        suppliers, purchaseInvoices, currentPurchaseInvoice,
+        departments, periodReport, purchaseLedger, islrReport, salesLedger, inventoryLedger, balanceReport,
+        currentDollarRate,
         // loading
-        loadingProductos, loadingMovimientos, loadingKardex,
-        loadingTransformaciones, loadingCierres,
-        loadingProveedores, loadingFacturas, loadingFactura,
-        loadingDepartamentos, loadingReporte, loadingLibroCompras, loadingReporteISLR, loadingLibroVentas, loadingLibroInventarios, loadingReporteSaldo,
+        loadingProducts, loadingMovements, loadingKardex,
+        loadingTransformations, loadingPeriodCloses,
+        loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice,
+        loadingDepartments, loadingPeriodReport, loadingPurchaseLedger, loadingIslrReport, loadingSalesLedger, loadingInventoryLedger, loadingBalanceReport,
         // error
         error, setError,
         // actions
-        loadProductos, saveProducto, deleteProducto,
-        loadMovimientos, saveMovimiento, deleteMovimiento, updateMovimientoMeta,
+        loadProducts, saveProduct, deleteProduct,
+        loadMovements, saveMovement, deleteMovement, updateMovementMeta,
         loadKardex,
-        loadTransformaciones, saveTransformacion,
-        loadCierres, saveCierre,
-        loadProveedores, saveProveedor, deleteProveedor,
-        loadFacturas, loadFactura, saveFactura, confirmarFactura, deleteFactura,
-        loadDepartamentos, saveDepartamento, deleteDepartamento,
-        loadReportePeriodo,
-        loadLibroCompras,
-        loadReporteISLR,
-        loadLibroVentas, saveVenta,
-        loadLibroInventarios,
-        loadReporteSaldo,
+        loadTransformations, saveTransformation,
+        loadPeriodCloses, savePeriodClose,
+        loadSuppliers, saveSupplier, deleteSupplier,
+        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, deletePurchaseInvoice,
+        loadDepartments, saveDepartment, deleteDepartment,
+        loadPeriodReport,
+        loadPurchaseLedger,
+        loadIslrReport,
+        loadSalesLedger, saveOutbound,
+        loadInventoryLedger,
+        loadBalanceReport,
     };
 }

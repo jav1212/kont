@@ -1,9 +1,12 @@
 "use client";
 
+// ISLR Art. 177 report page.
+// Shows per-product movement history for the monthly ISLR inventory registry.
+
 import { useEffect, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { ReporteISLRProducto, ReporteISLRMovimiento } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import type { IslrProduct, IslrMovement } from "@/src/modules/inventory/backend/domain/islr-report";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -32,7 +35,7 @@ const TIPO_LABEL: Record<string, string> = {
     autoconsumo:       "Autoconsumo",
 };
 
-function exportCSV(productos: ReporteISLRProducto[], periodo: string) {
+function exportCSV(products: IslrProduct[], period: string) {
     const lines: string[] = [];
     const sep = ",";
 
@@ -42,25 +45,25 @@ function exportCSV(productos: ReporteISLRProducto[], periodo: string) {
     ];
     lines.push(headers.join(sep));
 
-    for (const p of productos) {
+    for (const p of products) {
         // Opening balance row
         lines.push([
-            `"${p.productoNombre}"`, `"${p.productoCodigo}"`,
+            `"${p.productName}"`, `"${p.productCode}"`,
             "", `"Saldo Inicial"`, "",
-            "", "", fmtQ(p.aperturaCantidad),
-            "", "", fmtN(p.aperturaCosto),
+            "", "", fmtQ(p.openingQuantity),
+            "", "", fmtN(p.openingCost),
         ].join(sep));
 
-        for (const m of p.movimientos) {
+        for (const m of p.movements) {
             lines.push([
-                `"${p.productoNombre}"`, `"${p.productoCodigo}"`,
-                m.fecha, `"${m.referencia}"`, `"${TIPO_LABEL[m.tipo] ?? m.tipo}"`,
-                m.cantEntrada > 0 ? fmtQ(m.cantEntrada) : "",
-                m.cantSalida  > 0 ? fmtQ(m.cantSalida)  : "",
-                fmtQ(m.saldoCantidad),
-                m.costoEntrada > 0 ? fmtN(m.costoEntrada) : "",
-                m.costoSalida  > 0 ? fmtN(m.costoSalida)  : "",
-                fmtN(m.saldoCosto),
+                `"${p.productName}"`, `"${p.productCode}"`,
+                m.date, `"${m.reference}"`, `"${TIPO_LABEL[m.type] ?? m.type}"`,
+                m.inboundQuantity > 0 ? fmtQ(m.inboundQuantity) : "",
+                m.outboundQuantity > 0 ? fmtQ(m.outboundQuantity) : "",
+                fmtQ(m.balanceQuantity),
+                m.inboundCost > 0 ? fmtN(m.inboundCost) : "",
+                m.outboundCost > 0 ? fmtN(m.outboundCost) : "",
+                fmtN(m.balanceCost),
             ].join(sep));
         }
     }
@@ -69,29 +72,29 @@ function exportCSV(productos: ReporteISLRProducto[], periodo: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte-islr-art177-${periodo}.csv`;
+    a.download = `reporte-islr-art177-${period}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
 // ── sub-component: ProductTable ───────────────────────────────────────────────
 
-function ProductTable({ producto }: { producto: ReporteISLRProducto }) {
-    const totalEntrada  = producto.movimientos.reduce((s, m) => s + m.cantEntrada, 0);
-    const totalSalida   = producto.movimientos.reduce((s, m) => s + m.cantSalida, 0);
-    const totalCostoEnt = producto.movimientos.reduce((s, m) => s + m.costoEntrada, 0);
-    const totalCostoSal = producto.movimientos.reduce((s, m) => s + m.costoSalida, 0);
-    const last          = producto.movimientos[producto.movimientos.length - 1];
+function ProductTable({ product }: { product: IslrProduct }) {
+    const totalInbound     = product.movements.reduce((s, m) => s + m.inboundQuantity, 0);
+    const totalOutbound    = product.movements.reduce((s, m) => s + m.outboundQuantity, 0);
+    const totalInboundCost = product.movements.reduce((s, m) => s + m.inboundCost, 0);
+    const totalOutboundCost = product.movements.reduce((s, m) => s + m.outboundCost, 0);
+    const last             = product.movements[product.movements.length - 1];
 
     return (
         <div className="mb-6 rounded-xl border border-border-light bg-surface-1 overflow-hidden">
             {/* Product header */}
             <div className="px-4 py-2.5 border-b border-border-light bg-surface-2 flex items-center gap-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground">
-                    {producto.productoCodigo}
+                    {product.productCode}
                 </span>
                 <span className="text-[11px] text-[var(--text-secondary)]">
-                    {producto.productoNombre}
+                    {product.productName}
                 </span>
             </div>
 
@@ -118,34 +121,34 @@ function ProductTable({ producto }: { producto: ReporteISLRProducto }) {
                             <td className="px-3 py-2 text-[var(--text-tertiary)]">—</td>
                             <td className="px-3 py-2 text-right tabular-nums text-[var(--text-tertiary)]">—</td>
                             <td className="px-3 py-2 text-right tabular-nums text-[var(--text-tertiary)]">—</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtQ(producto.aperturaCantidad)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtQ(product.openingQuantity)}</td>
                             <td className="px-3 py-2 text-right tabular-nums text-[var(--text-tertiary)]">—</td>
                             <td className="px-3 py-2 text-right tabular-nums text-[var(--text-tertiary)]">—</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtN(producto.aperturaCosto)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-foreground">{fmtN(product.openingCost)}</td>
                         </tr>
 
                         {/* Movement rows */}
-                        {producto.movimientos.map((m) => (
+                        {product.movements.map((m: IslrMovement) => (
                             <tr key={m.id} className="border-b border-border-light/40 hover:bg-surface-2 transition-colors">
-                                <td className="px-3 py-2 text-[var(--text-secondary)]">{m.fecha}</td>
-                                <td className="px-3 py-2 text-[var(--text-secondary)] max-w-[130px] truncate" title={m.referencia}>
-                                    {m.referencia || "—"}
+                                <td className="px-3 py-2 text-[var(--text-secondary)]">{m.date}</td>
+                                <td className="px-3 py-2 text-[var(--text-secondary)] max-w-[130px] truncate" title={m.reference}>
+                                    {m.reference || "—"}
                                 </td>
-                                <td className="px-3 py-2 text-[var(--text-secondary)]">{TIPO_LABEL[m.tipo] ?? m.tipo}</td>
+                                <td className="px-3 py-2 text-[var(--text-secondary)]">{TIPO_LABEL[m.type] ?? m.type}</td>
                                 <td className="px-3 py-2 text-right tabular-nums text-foreground">
-                                    {m.cantEntrada > 0 ? fmtQ(m.cantEntrada) : <span className="text-[var(--text-tertiary)]">—</span>}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums text-foreground">
-                                    {m.cantSalida > 0 ? fmtQ(m.cantSalida) : <span className="text-[var(--text-tertiary)]">—</span>}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums font-medium text-foreground">{fmtQ(m.saldoCantidad)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums text-foreground">
-                                    {m.costoEntrada > 0 ? fmtN(m.costoEntrada) : <span className="text-[var(--text-tertiary)]">—</span>}
+                                    {m.inboundQuantity > 0 ? fmtQ(m.inboundQuantity) : <span className="text-[var(--text-tertiary)]">—</span>}
                                 </td>
                                 <td className="px-3 py-2 text-right tabular-nums text-foreground">
-                                    {m.costoSalida > 0 ? fmtN(m.costoSalida) : <span className="text-[var(--text-tertiary)]">—</span>}
+                                    {m.outboundQuantity > 0 ? fmtQ(m.outboundQuantity) : <span className="text-[var(--text-tertiary)]">—</span>}
                                 </td>
-                                <td className="px-3 py-2 text-right tabular-nums font-medium text-foreground">{fmtN(m.saldoCosto)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums font-medium text-foreground">{fmtQ(m.balanceQuantity)}</td>
+                                <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                                    {m.inboundCost > 0 ? fmtN(m.inboundCost) : <span className="text-[var(--text-tertiary)]">—</span>}
+                                </td>
+                                <td className="px-3 py-2 text-right tabular-nums text-foreground">
+                                    {m.outboundCost > 0 ? fmtN(m.outboundCost) : <span className="text-[var(--text-tertiary)]">—</span>}
+                                </td>
+                                <td className="px-3 py-2 text-right tabular-nums font-medium text-foreground">{fmtN(m.balanceCost)}</td>
                             </tr>
                         ))}
 
@@ -154,15 +157,15 @@ function ProductTable({ producto }: { producto: ReporteISLRProducto }) {
                             <td className="px-3 py-2.5 text-[9px] uppercase tracking-[0.14em] font-bold text-foreground" colSpan={3}>
                                 Subtotal
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtQ(totalEntrada)}</td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtQ(totalSalida)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtQ(totalInbound)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtQ(totalOutbound)}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">
-                                {last ? fmtQ(last.saldoCantidad) : fmtQ(producto.aperturaCantidad)}
+                                {last ? fmtQ(last.balanceQuantity) : fmtQ(product.openingQuantity)}
                             </td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtN(totalCostoEnt)}</td>
-                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtN(totalCostoSal)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtN(totalInboundCost)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">{fmtN(totalOutboundCost)}</td>
                             <td className="px-3 py-2.5 text-right tabular-nums text-[10px] font-bold text-foreground">
-                                {last ? fmtN(last.saldoCosto) : fmtN(producto.aperturaCosto)}
+                                {last ? fmtN(last.balanceCost) : fmtN(product.openingCost)}
                             </td>
                         </tr>
                     </tbody>
@@ -174,40 +177,40 @@ function ProductTable({ producto }: { producto: ReporteISLRProducto }) {
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function ReporteISLRPage() {
+export default function IslrReportPage() {
     const { companyId } = useCompany();
-    const { reporteISLR, loadingReporteISLR, error, setError, loadReporteISLR } = useInventory();
+    const { islrReport, loadingIslrReport, error, setError, loadIslrReport } = useInventory();
 
-    const [periodo, setPeriodo] = useState(currentPeriod());
+    const [period, setPeriod] = useState(currentPeriod());
     const [searched, setSearched] = useState(false);
 
     useEffect(() => {
         if (companyId && !searched) {
-            loadReporteISLR(companyId, periodo);
+            loadIslrReport(companyId, period);
             setSearched(true);
         }
-    }, [companyId, periodo, loadReporteISLR, searched]);
+    }, [companyId, period, loadIslrReport, searched]);
 
     function handleSearch() {
         if (!companyId) return;
         setError(null);
-        loadReporteISLR(companyId, periodo);
+        loadIslrReport(companyId, period);
     }
 
     const grandTotal = useMemo(() => {
-        let cantEntrada = 0, cantSalida = 0, costoEntrada = 0, costoSalida = 0;
-        let saldoCantidad = 0, saldoCosto = 0;
-        for (const p of reporteISLR) {
-            cantEntrada  += p.movimientos.reduce((s, m) => s + m.cantEntrada, 0);
-            cantSalida   += p.movimientos.reduce((s, m) => s + m.cantSalida, 0);
-            costoEntrada += p.movimientos.reduce((s, m) => s + m.costoEntrada, 0);
-            costoSalida  += p.movimientos.reduce((s, m) => s + m.costoSalida, 0);
-            const last = p.movimientos[p.movimientos.length - 1];
-            saldoCantidad += last ? last.saldoCantidad : p.aperturaCantidad;
-            saldoCosto    += last ? last.saldoCosto    : p.aperturaCosto;
+        let inboundQty = 0, outboundQty = 0, inboundCost = 0, outboundCost = 0;
+        let balanceQty = 0, balanceCost = 0;
+        for (const p of islrReport) {
+            inboundQty   += p.movements.reduce((s, m) => s + m.inboundQuantity, 0);
+            outboundQty  += p.movements.reduce((s, m) => s + m.outboundQuantity, 0);
+            inboundCost  += p.movements.reduce((s, m) => s + m.inboundCost, 0);
+            outboundCost += p.movements.reduce((s, m) => s + m.outboundCost, 0);
+            const last = p.movements[p.movements.length - 1];
+            balanceQty  += last ? last.balanceQuantity : p.openingQuantity;
+            balanceCost += last ? last.balanceCost     : p.openingCost;
         }
-        return { cantEntrada, cantSalida, costoEntrada, costoSalida, saldoCantidad, saldoCosto };
-    }, [reporteISLR]);
+        return { inboundQty, outboundQty, inboundCost, outboundCost, balanceQty, balanceCost };
+    }, [islrReport]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -230,22 +233,22 @@ export default function ReporteISLRPage() {
                             </label>
                             <input
                                 type="month"
-                                value={periodo}
-                                onChange={(e) => { setPeriodo(e.target.value); setSearched(false); }}
+                                value={period}
+                                onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
                                 className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>
                         <button
                             onClick={handleSearch}
-                            disabled={loadingReporteISLR}
+                            disabled={loadingIslrReport}
                             className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
-                            {loadingReporteISLR ? "Cargando…" : "Generar"}
+                            {loadingIslrReport ? "Cargando…" : "Generar"}
                         </button>
-                        {reporteISLR.length > 0 && (
+                        {islrReport.length > 0 && (
                             <>
                                 <button
-                                    onClick={() => exportCSV(reporteISLR, periodo)}
+                                    onClick={() => exportCSV(islrReport, period)}
                                     className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                                 >
                                     Exportar CSV
@@ -269,19 +272,19 @@ export default function ReporteISLRPage() {
                     </div>
                 )}
 
-                {loadingReporteISLR ? (
+                {loadingIslrReport ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
                         Cargando reporte ISLR…
                     </div>
-                ) : reporteISLR.length === 0 ? (
+                ) : islrReport.length === 0 ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
                         No hay movimientos para el período seleccionado.
                     </div>
                 ) : (
                     <>
                         {/* Per-product tables */}
-                        {reporteISLR.map((p) => (
-                            <ProductTable key={p.productoId} producto={p} />
+                        {islrReport.map((p) => (
+                            <ProductTable key={p.productId} product={p} />
                         ))}
 
                         {/* Grand total */}
@@ -291,25 +294,25 @@ export default function ReporteISLRPage() {
                                     <tbody>
                                         <tr className="bg-primary-500/[0.06]">
                                             <td className="px-4 py-3 text-[10px] uppercase tracking-[0.18em] font-bold text-foreground" colSpan={3}>
-                                                Gran Total ({reporteISLR.length} producto{reporteISLR.length !== 1 ? "s" : ""})
+                                                Gran Total ({islrReport.length} producto{islrReport.length !== 1 ? "s" : ""})
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-foreground min-w-[90px]">
-                                                {fmtQ(grandTotal.cantEntrada)}
+                                                {fmtQ(grandTotal.inboundQty)}
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-foreground min-w-[90px]">
-                                                {fmtQ(grandTotal.cantSalida)}
+                                                {fmtQ(grandTotal.outboundQty)}
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-foreground min-w-[90px]">
-                                                {fmtQ(grandTotal.saldoCantidad)}
+                                                {fmtQ(grandTotal.balanceQty)}
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-foreground min-w-[110px]">
-                                                {fmtN(grandTotal.costoEntrada)}
+                                                {fmtN(grandTotal.inboundCost)}
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-foreground min-w-[110px]">
-                                                {fmtN(grandTotal.costoSalida)}
+                                                {fmtN(grandTotal.outboundCost)}
                                             </td>
                                             <td className="px-4 py-3 text-right tabular-nums text-[11px] font-bold text-primary-500 min-w-[110px]">
-                                                {fmtN(grandTotal.saldoCosto)} Bs.
+                                                {fmtN(grandTotal.balanceCost)} Bs.
                                             </td>
                                         </tr>
                                     </tbody>

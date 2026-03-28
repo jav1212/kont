@@ -1,9 +1,12 @@
 "use client";
 
+// Annual inventory ledger page (Libro de Inventarios).
+// Displays annual inventory movements per product and computes ISLR Art. 177 cost of sales.
+
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { LibroInventariosRow } from "@/src/modules/inventory/backend/domain/libro-inventarios";
+import type { InventoryLedgerRow } from "@/src/modules/inventory/backend/domain/inventory-ledger";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -15,11 +18,11 @@ function fmtQ(n: number) {
     return n.toLocaleString("es-VE", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 }
 
-function sum(rows: LibroInventariosRow[], key: keyof LibroInventariosRow): number {
-    return rows.reduce((acc, r) => acc + (r[key] as number), 0);
+function sum(rows: InventoryLedgerRow[], key: keyof InventoryLedgerRow): number {
+    return rows.reduce((acc, r) => acc + Number(r[key]), 0);
 }
 
-function exportCSV(rows: LibroInventariosRow[], anio: number) {
+function exportCSV(rows: InventoryLedgerRow[], year: number) {
     const headers = [
         "Código", "Producto", "Tipo", "Unidad",
         "Cant. Inicial", "Valor Inicial",
@@ -31,26 +34,26 @@ function exportCSV(rows: LibroInventariosRow[], anio: number) {
     const lines = [
         headers.join(","),
         ...rows.map((r) => [
-            `"${r.codigo}"`,
-            `"${r.nombre}"`,
-            `"${r.tipo}"`,
-            `"${r.unidadMedida}"`,
-            r.cantInicial,
-            r.valorInicial,
-            r.cantEntradas,
-            r.valorEntradas,
-            r.cantSalidas,
-            r.valorSalidas,
-            r.cantFinal,
-            r.valorFinal,
-            r.valorCompras,
+            `"${r.code}"`,
+            `"${r.name}"`,
+            `"${r.type}"`,
+            `"${r.measureUnit}"`,
+            r.openingQuantity,
+            r.openingValue,
+            r.inboundQuantity,
+            r.inboundValue,
+            r.outboundQuantity,
+            r.outboundValue,
+            r.closingQuantity,
+            r.closingValue,
+            r.purchasesValue,
         ].join(",")),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `libro-inventarios-${anio}.csv`;
+    a.download = `libro-inventarios-${year}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -60,35 +63,35 @@ function exportCSV(rows: LibroInventariosRow[], anio: number) {
 export default function LibroInventariosPage() {
     const { companyId } = useCompany();
     const {
-        libroInventarios, loadingLibroInventarios, error, setError, loadLibroInventarios,
+        inventoryLedger, loadingInventoryLedger, error, setError, loadInventoryLedger,
     } = useInventory();
 
-    const [anio, setAnio] = useState(new Date().getFullYear());
+    const [year, setYear] = useState(new Date().getFullYear());
     const searchedRef = useRef(false);
 
     useEffect(() => {
         if (companyId && !searchedRef.current) {
             searchedRef.current = true;
-            loadLibroInventarios(companyId, anio);
+            loadInventoryLedger(companyId, year);
         }
-    }, [companyId, anio, loadLibroInventarios]);
+    }, [companyId, year, loadInventoryLedger]);
 
     function handleSearch() {
         if (!companyId) return;
         setError(null);
-        loadLibroInventarios(companyId, anio);
+        loadInventoryLedger(companyId, year);
     }
 
-    const totales = useMemo(() => ({
-        valorInicial:  sum(libroInventarios, "valorInicial"),
-        valorEntradas: sum(libroInventarios, "valorEntradas"),
-        valorSalidas:  sum(libroInventarios, "valorSalidas"),
-        valorFinal:    sum(libroInventarios, "valorFinal"),
-        valorCompras:  sum(libroInventarios, "valorCompras"),
-    }), [libroInventarios]);
+    const totals = useMemo(() => ({
+        openingValue:  sum(inventoryLedger, "openingValue"),
+        inboundValue:  sum(inventoryLedger, "inboundValue"),
+        outboundValue: sum(inventoryLedger, "outboundValue"),
+        closingValue:  sum(inventoryLedger, "closingValue"),
+        purchasesValue: sum(inventoryLedger, "purchasesValue"),
+    }), [inventoryLedger]);
 
     // ISLR Art. 177 formula: Costo Ventas = Inv. Inicial + Compras − Inv. Final
-    const costoVentas = totales.valorInicial + totales.valorCompras - totales.valorFinal;
+    const costoVentas = totals.openingValue + totals.purchasesValue - totals.closingValue;
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -113,27 +116,27 @@ export default function LibroInventariosPage() {
                                 type="number"
                                 min={2000}
                                 max={2100}
-                                value={anio}
-                                onChange={(e) => { searchedRef.current = false; setAnio(Number(e.target.value)); }}
+                                value={year}
+                                onChange={(e) => { searchedRef.current = false; setYear(Number(e.target.value)); }}
                                 className="h-8 w-24 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>
                         <button
                             onClick={handleSearch}
-                            disabled={loadingLibroInventarios}
+                            disabled={loadingInventoryLedger}
                             className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
-                            {loadingLibroInventarios ? "Cargando…" : "Generar"}
+                            {loadingInventoryLedger ? "Cargando…" : "Generar"}
                         </button>
-                        {libroInventarios.length > 0 && (
+                        {inventoryLedger.length > 0 && (
                             <button
-                                onClick={() => exportCSV(libroInventarios, anio)}
+                                onClick={() => exportCSV(inventoryLedger, year)}
                                 className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
                                 Exportar CSV
                             </button>
                         )}
-                        {libroInventarios.length > 0 && (
+                        {inventoryLedger.length > 0 && (
                             <button
                                 onClick={() => window.print()}
                                 className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
@@ -152,9 +155,9 @@ export default function LibroInventariosPage() {
                     </div>
                 )}
 
-                {loadingLibroInventarios ? (
+                {loadingInventoryLedger ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">Cargando libro de inventarios…</div>
-                ) : libroInventarios.length === 0 ? (
+                ) : inventoryLedger.length === 0 ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
                         No hay movimientos de inventario para el año seleccionado.
                     </div>
@@ -181,35 +184,35 @@ export default function LibroInventariosPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {libroInventarios.map((row) => (
+                                        {inventoryLedger.map((row) => (
                                             <tr key={row.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                <td className="px-3 py-2 text-[var(--text-secondary)]">{row.codigo || "—"}</td>
-                                                <td className="px-3 py-2 text-foreground max-w-[200px] truncate" title={row.nombre}>{row.nombre}</td>
-                                                <td className="px-3 py-2 text-[var(--text-secondary)] capitalize">{row.tipo}</td>
-                                                <td className="px-3 py-2 text-[var(--text-secondary)]">{row.unidadMedida}</td>
+                                                <td className="px-3 py-2 text-[var(--text-secondary)]">{row.code || "—"}</td>
+                                                <td className="px-3 py-2 text-foreground max-w-[200px] truncate" title={row.name}>{row.name}</td>
+                                                <td className="px-3 py-2 text-[var(--text-secondary)] capitalize">{row.type}</td>
+                                                <td className="px-3 py-2 text-[var(--text-secondary)]">{row.measureUnit}</td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.cantInicial > 0 ? fmtQ(row.cantInicial) : "—"}
+                                                    {row.openingQuantity > 0 ? fmtQ(row.openingQuantity) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.valorInicial > 0 ? fmtN(row.valorInicial) : "—"}
+                                                    {row.openingValue > 0 ? fmtN(row.openingValue) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.cantEntradas > 0 ? fmtQ(row.cantEntradas) : "—"}
+                                                    {row.inboundQuantity > 0 ? fmtQ(row.inboundQuantity) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.valorEntradas > 0 ? fmtN(row.valorEntradas) : "—"}
+                                                    {row.inboundValue > 0 ? fmtN(row.inboundValue) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.cantSalidas > 0 ? fmtQ(row.cantSalidas) : "—"}
+                                                    {row.outboundQuantity > 0 ? fmtQ(row.outboundQuantity) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {row.valorSalidas > 0 ? fmtN(row.valorSalidas) : "—"}
+                                                    {row.outboundValue > 0 ? fmtN(row.outboundValue) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right text-[var(--text-secondary)]">
-                                                    {fmtQ(row.cantFinal)}
+                                                    {fmtQ(row.closingQuantity)}
                                                 </td>
                                                 <td className="px-3 py-2 tabular-nums text-right font-medium text-foreground">
-                                                    {fmtN(row.valorFinal)}
+                                                    {fmtN(row.closingValue)}
                                                 </td>
                                             </tr>
                                         ))}
@@ -221,19 +224,19 @@ export default function LibroInventariosPage() {
                                             </td>
                                             <td className="px-3 py-2.5" />
                                             <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                                {fmtN(totales.valorInicial)}
+                                                {fmtN(totals.openingValue)}
                                             </td>
                                             <td className="px-3 py-2.5" />
                                             <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                                {fmtN(totales.valorEntradas)}
+                                                {fmtN(totals.inboundValue)}
                                             </td>
                                             <td className="px-3 py-2.5" />
                                             <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                                {fmtN(totales.valorSalidas)}
+                                                {fmtN(totals.outboundValue)}
                                             </td>
                                             <td className="px-3 py-2.5" />
                                             <td className="px-3 py-2.5 tabular-nums text-right text-[11px] font-bold text-foreground">
-                                                {fmtN(totales.valorFinal)}
+                                                {fmtN(totals.closingValue)}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -251,10 +254,10 @@ export default function LibroInventariosPage() {
                             <div className="px-5 py-4 flex flex-col gap-2 text-[11px]">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[10px]">
-                                        Inventario inicial (01/01/{anio})
+                                        Inventario inicial (01/01/{year})
                                     </span>
                                     <span className="tabular-nums font-medium text-foreground">
-                                        {fmtN(totales.valorInicial)} Bs.
+                                        {fmtN(totals.openingValue)} Bs.
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
@@ -262,15 +265,15 @@ export default function LibroInventariosPage() {
                                         + Compras del año
                                     </span>
                                     <span className="tabular-nums font-medium text-foreground">
-                                        {fmtN(totales.valorCompras)} Bs.
+                                        {fmtN(totals.purchasesValue)} Bs.
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[10px]">
-                                        − Inventario final (31/12/{anio})
+                                        − Inventario final (31/12/{year})
                                     </span>
                                     <span className="tabular-nums font-medium text-foreground">
-                                        {fmtN(totales.valorFinal)} Bs.
+                                        {fmtN(totals.closingValue)} Bs.
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between pt-2 border-t border-border-light">
@@ -282,7 +285,7 @@ export default function LibroInventariosPage() {
                                     </span>
                                 </div>
                                 <p className="text-[9px] text-[var(--text-tertiary)] mt-1">
-                                    ({libroInventarios.length} {libroInventarios.length === 1 ? "producto" : "productos"} con movimientos en {anio})
+                                    ({inventoryLedger.length} {inventoryLedger.length === 1 ? "producto" : "productos"} con movimientos en {year})
                                 </p>
                             </div>
                         </div>

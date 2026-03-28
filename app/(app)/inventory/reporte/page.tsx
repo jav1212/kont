@@ -1,9 +1,12 @@
 "use client";
 
+// Inventory period report page.
+// Displays a monthly inventory report grouped by department with cost and VAT breakdown.
+
 import { useEffect, useRef, useState, useMemo, Fragment } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { ReportePeriodoRow } from "@/src/modules/inventory/backend/domain/reporte-periodo";
+import type { PeriodReportRow } from "@/src/modules/inventory/backend/domain/period-report";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -16,40 +19,40 @@ function fmtN(n: number, dec = 2) {
     return n.toLocaleString("es-VE", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-function sumField(rows: ReportePeriodoRow[], key: keyof ReportePeriodoRow): number {
-    return rows.reduce((acc, r) => acc + (r[key] as number), 0);
+function sumField(rows: PeriodReportRow[], key: keyof PeriodReportRow): number {
+    return rows.reduce((acc, r) => acc + Number(r[key]), 0);
 }
 
-// Agrupar por departamento
-function groupByDepartamento(rows: ReportePeriodoRow[]) {
-    const map = new Map<string, ReportePeriodoRow[]>();
+// Group rows by department
+function groupByDepartment(rows: PeriodReportRow[]) {
+    const map = new Map<string, PeriodReportRow[]>();
     for (const row of rows) {
-        const dep = row.departamentoNombre || "Sin departamento";
+        const dep = row.departmentName || "Sin departamento";
         if (!map.has(dep)) map.set(dep, []);
         map.get(dep)!.push(row);
     }
     return Array.from(map.entries());
 }
 
-// Columnas numéricas del reporte
-const NUM_COLS: { key: keyof ReportePeriodoRow; label: string }[] = [
-    { key: "inventarioInicial",  label: "Inv. Inicial"       },
-    { key: "costoPromedio",      label: "Costo Prom."        },
-    { key: "entradas",           label: "Entradas"           },
-    { key: "salidas",            label: "Salidas"            },
-    { key: "existenciaActual",   label: "Exist. Actual"      },
-    { key: "costoEntradasBs",    label: "Entradas Bs"        },
-    { key: "totalSalidasSIvaBs", label: "Salidas S/IVA Bs"   },
-    { key: "costoSalidasBs",     label: "Costo Salidas Bs"   },
-    { key: "costoAutoconsumo",   label: "Autoconsumo Bs"     },
-    { key: "costoActualBs",      label: "Costo Actual Bs"    },
-    { key: "ivaPorcentaje",      label: "IVA %"              },
-    { key: "totalIvaBs",         label: "IVA Bs"             },
-    { key: "totalConIvaBs",      label: "Total c/IVA Bs"     },
+// Numeric columns for the report table
+const NUM_COLS: { key: keyof PeriodReportRow; label: string }[] = [
+    { key: "openingInventory",      label: "Inv. Inicial"       },
+    { key: "averageCost",           label: "Costo Prom."        },
+    { key: "inbound",               label: "Entradas"           },
+    { key: "outbound",              label: "Salidas"            },
+    { key: "currentStock",          label: "Exist. Actual"      },
+    { key: "inboundCostBs",         label: "Entradas Bs"        },
+    { key: "totalOutboundNoVatBs",  label: "Salidas S/IVA Bs"   },
+    { key: "outboundCostBs",        label: "Costo Salidas Bs"   },
+    { key: "selfConsumptionCost",   label: "Autoconsumo Bs"     },
+    { key: "currentCostBs",         label: "Costo Actual Bs"    },
+    { key: "vatPercentage",         label: "IVA %"              },
+    { key: "totalVatBs",            label: "IVA Bs"             },
+    { key: "totalWithVatBs",        label: "Total c/IVA Bs"     },
 ];
 
 // CSV export
-function exportCSV(rows: ReportePeriodoRow[], periodo: string) {
+function exportCSV(rows: PeriodReportRow[], period: string) {
     const headers = [
         "Código", "Nombre", "Departamento", "Proveedor", "IVA Tipo",
         ...NUM_COLS.map((c) => c.label),
@@ -57,11 +60,11 @@ function exportCSV(rows: ReportePeriodoRow[], periodo: string) {
     const lines = [
         headers.join(","),
         ...rows.map((r) => [
-            r.codigo,
-            `"${r.nombre}"`,
-            `"${r.departamentoNombre}"`,
-            `"${r.proveedorNombre}"`,
-            r.ivaTipo,
+            r.code,
+            `"${r.name}"`,
+            `"${r.departmentName}"`,
+            `"${r.supplierName}"`,
+            r.vatType,
             ...NUM_COLS.map((c) => String(r[c.key])),
         ].join(",")),
     ];
@@ -69,13 +72,13 @@ function exportCSV(rows: ReportePeriodoRow[], periodo: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte-inventario-${periodo}.csv`;
+    a.download = `reporte-inventario-${period}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
-// Sub-total row
-function SubtotalRow({ label, rows }: { label: string; rows: ReportePeriodoRow[] }) {
+// Sub-total row component
+function SubtotalRow({ label, rows }: { label: string; rows: PeriodReportRow[] }) {
     return (
         <tr className="bg-surface-2/60 border-b border-border-light">
             <td className="px-3 py-1.5 text-[9px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium" colSpan={5}>
@@ -92,31 +95,31 @@ function SubtotalRow({ label, rows }: { label: string; rows: ReportePeriodoRow[]
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function ReportePeriodoPage() {
+export default function PeriodReportPage() {
     const { companyId } = useCompany();
-    const { reportePeriodo, loadingReporte, error, setError, loadReportePeriodo } = useInventory();
+    const { periodReport, loadingPeriodReport, error, setError, loadPeriodReport } = useInventory();
 
-    const [periodo, setPeriodo] = useState(currentPeriod());
+    const [period, setPeriod] = useState(currentPeriod());
     const searchedRef = useRef(false);
 
     useEffect(() => {
         if (companyId && !searchedRef.current) {
             searchedRef.current = true;
-            loadReportePeriodo(companyId, periodo);
+            loadPeriodReport(companyId, period);
         }
-    }, [companyId, periodo, loadReportePeriodo]);
+    }, [companyId, period, loadPeriodReport]);
 
     function handleSearch() {
         if (!companyId) return;
         setError(null);
-        loadReportePeriodo(companyId, periodo);
+        loadPeriodReport(companyId, period);
     }
 
-    const groups = useMemo(() => groupByDepartamento(reportePeriodo), [reportePeriodo]);
+    const groups = useMemo(() => groupByDepartment(periodReport), [periodReport]);
 
     const totals = useMemo(() =>
-        NUM_COLS.map((c) => sumField(reportePeriodo, c.key)),
-    [reportePeriodo]);
+        NUM_COLS.map((c) => sumField(periodReport, c.key)),
+    [periodReport]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -139,21 +142,21 @@ export default function ReportePeriodoPage() {
                             </label>
                             <input
                                 type="month"
-                                value={periodo}
-                                onChange={(e) => { searchedRef.current = false; setPeriodo(e.target.value); }}
+                                value={period}
+                                onChange={(e) => { searchedRef.current = false; setPeriod(e.target.value); }}
                                 className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>
                         <button
                             onClick={handleSearch}
-                            disabled={loadingReporte}
+                            disabled={loadingPeriodReport}
                             className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
-                            {loadingReporte ? "Cargando…" : "Generar"}
+                            {loadingPeriodReport ? "Cargando…" : "Generar"}
                         </button>
-                        {reportePeriodo.length > 0 && (
+                        {periodReport.length > 0 && (
                             <button
-                                onClick={() => exportCSV(reportePeriodo, periodo)}
+                                onClick={() => exportCSV(periodReport, period)}
                                 className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
                                 Exportar CSV
@@ -171,9 +174,9 @@ export default function ReportePeriodoPage() {
                     </div>
                 )}
 
-                {loadingReporte ? (
+                {loadingPeriodReport ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">Cargando reporte…</div>
-                ) : reportePeriodo.length === 0 ? (
+                ) : periodReport.length === 0 ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
                         No hay datos para el período seleccionado.
                     </div>
@@ -219,25 +222,25 @@ export default function ReportePeriodoPage() {
                                             </tr>
 
                                             {rows.map((r) => (
-                                                <tr key={r.codigo} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                                <tr key={r.code} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                                     <td className="px-3 py-2 text-[var(--text-secondary)] sticky left-0 bg-surface-1 group-hover:bg-surface-2">
-                                                        {r.codigo || "—"}
+                                                        {r.code || "—"}
                                                     </td>
-                                                    <td className="px-3 py-2 text-foreground max-w-[180px] truncate" title={r.nombre}>
-                                                        {r.nombre}
+                                                    <td className="px-3 py-2 text-foreground max-w-[180px] truncate" title={r.name}>
+                                                        {r.name}
                                                     </td>
-                                                    <td className="px-3 py-2 text-[var(--text-secondary)]">{r.departamentoNombre || "—"}</td>
-                                                    <td className="px-3 py-2 text-[var(--text-secondary)] max-w-[140px] truncate" title={r.proveedorNombre}>
-                                                        {r.proveedorNombre || "—"}
+                                                    <td className="px-3 py-2 text-[var(--text-secondary)]">{r.departmentName || "—"}</td>
+                                                    <td className="px-3 py-2 text-[var(--text-secondary)] max-w-[140px] truncate" title={r.supplierName}>
+                                                        {r.supplierName || "—"}
                                                     </td>
                                                     <td className="px-3 py-2">
-                                                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${r.ivaTipo === "exento" ? "border badge-info" : "border badge-warning"}`}>
-                                                            {r.ivaTipo === "exento" ? "E" : "G"}
+                                                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.10em] font-medium ${r.vatType === "exento" ? "border badge-info" : "border badge-warning"}`}>
+                                                            {r.vatType === "exento" ? "E" : "G"}
                                                         </span>
                                                     </td>
                                                     {NUM_COLS.map((c) => (
                                                         <td key={c.key} className="px-3 py-2 tabular-nums text-right text-[var(--text-primary)]">
-                                                            {fmtN(r[c.key] as number)}
+                                                            {fmtN(Number(r[c.key]))}
                                                         </td>
                                                     ))}
                                                 </tr>

@@ -1,10 +1,13 @@
 "use client";
 
+// Purchase invoices list page (Facturas de Compra).
+// Lists all purchase invoices with status and allows deletion.
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { EstadoFactura } from "@/src/modules/inventory/backend/domain/factura-compra";
+import type { InvoiceStatus } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -17,8 +20,8 @@ const fmtDate = (d: string) => {
     return `${day}/${m}/${y}`;
 };
 
-function EstadoBadge({ estado }: { estado: EstadoFactura }) {
-    if (estado === "confirmada") {
+function StatusBadge({ status }: { status: InvoiceStatus }) {
+    if (status === "confirmada") {
         return (
             <span className="inline-flex px-1.5 py-0.5 rounded border text-[11px] uppercase tracking-[0.08em] font-medium badge-success">
                 Confirmada
@@ -34,20 +37,20 @@ function EstadoBadge({ estado }: { estado: EstadoFactura }) {
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function FacturasCompraPage() {
+export default function PurchaseInvoicesPage() {
     const { companyId } = useCompany();
-    const { facturas, loadingFacturas, error, setError, loadFacturas, deleteFactura } = useInventory();
+    const { purchaseInvoices, loadingPurchaseInvoices, error, setError, loadPurchaseInvoices, deletePurchaseInvoice } = useInventory();
 
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [confirmDeleteConfirmada, setConfirmDeleteConfirmada] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadFacturas(companyId);
-    }, [companyId, loadFacturas]);
+        if (companyId) loadPurchaseInvoices(companyId);
+    }, [companyId, loadPurchaseInvoices]);
 
-    function requestDelete(id: string, estado: string) {
-        if (estado === "confirmada") {
+    function requestDelete(id: string, status: string) {
+        if (status === "confirmada") {
             setConfirmDeleteConfirmada(id);
         } else {
             setConfirmDelete(id);
@@ -56,7 +59,7 @@ export default function FacturasCompraPage() {
 
     async function handleDelete(id: string) {
         setDeleting(true);
-        await deleteFactura(id);
+        await deletePurchaseInvoice(id);
         setDeleting(false);
         setConfirmDelete(null);
         setConfirmDeleteConfirmada(null);
@@ -92,7 +95,7 @@ export default function FacturasCompraPage() {
                 </div>
             </div>
 
-            {/* Modal de advertencia para eliminar factura confirmada */}
+            {/* Warning modal for deleting a confirmed invoice */}
             {confirmDeleteConfirmada && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
                     <div className="bg-surface-1 border border-yellow-500/20 rounded-xl shadow-xl w-full max-w-lg mx-4">
@@ -140,9 +143,9 @@ export default function FacturasCompraPage() {
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    {loadingFacturas ? (
+                    {loadingPurchaseInvoices ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
-                    ) : facturas.length === 0 ? (
+                    ) : purchaseInvoices.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay facturas. Haz clic en &quot;+ Nueva factura&quot; para crear una.
                         </div>
@@ -158,15 +161,15 @@ export default function FacturasCompraPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {facturas.map((f) => (
+                                {purchaseInvoices.map((f) => (
                                     <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{fmtDate(f.fecha)}</td>
-                                        <td className="px-4 py-2.5 text-foreground font-medium">{f.proveedorNombre ?? "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{f.numeroFactura || "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{fmtDate(f.date)}</td>
+                                        <td className="px-4 py-2.5 text-foreground font-medium">{f.supplierName ?? "—"}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)]">{f.invoiceNumber || "—"}</td>
                                         <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(f.subtotal)}</td>
-                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(f.ivaMonto)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(f.vatAmount)}</td>
                                         <td className="px-4 py-2.5 tabular-nums font-medium text-foreground">{fmtN(f.total)}</td>
-                                        <td className="px-4 py-2.5"><EstadoBadge estado={f.estado} /></td>
+                                        <td className="px-4 py-2.5"><StatusBadge status={f.status} /></td>
                                         <td className="px-4 py-2.5">
                                             <Link
                                                 href={`/inventory/entradas/${f.id}`}
@@ -195,7 +198,7 @@ export default function FacturasCompraPage() {
                                                 </div>
                                             ) : (
                                                 <button
-                                                    onClick={() => requestDelete(f.id!, f.estado)}
+                                                    onClick={() => requestDelete(f.id!, f.status)}
                                                     className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
                                                 >
                                                     Eliminar

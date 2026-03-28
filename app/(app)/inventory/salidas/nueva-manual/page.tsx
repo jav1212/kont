@@ -1,11 +1,15 @@
 "use client";
 
+// Page: Nueva Salida Manual (manual outbound movement)
+// Architectural role: inventory page — creates 'salida' type Movement records one at a time.
+// All identifiers are in English; GUI text remains in Spanish per product requirements.
+
 import { useEffect, useState, useCallback, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Movimiento } from "@/src/modules/inventory/backend/domain/movimiento";
-import type { Producto } from "@/src/modules/inventory/backend/domain/producto";
+import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -23,54 +27,54 @@ const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--
 
 type IvaMode = "agregado" | "incluido";
 
-// ── SalidaItem ────────────────────────────────────────────────────────────────
+// ── OutboundItem ──────────────────────────────────────────────────────────────
 
-interface SalidaItem {
-    productoId: string;
-    productoNombre: string;
-    cantidad: number;
-    moneda: "B" | "D";
-    precioMoneda: number; // precio ingresado en la moneda elegida (base o c/IVA según ivaMode)
-    ivaTasa: number;      // 0 o 0.16, derivado del producto
+interface OutboundItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    currency: "B" | "D";
+    currencyPrice: number; // price entered in the chosen currency (base or incl. VAT per ivaMode)
+    vatRate: number;       // 0 or 0.16, derived from the product
 }
 
-function emptySalidaItem(): SalidaItem {
-    return { productoId: "", productoNombre: "", cantidad: 1, moneda: "B", precioMoneda: 0, ivaTasa: 0 };
+function emptyOutboundItem(): OutboundItem {
+    return { productId: "", productName: "", quantity: 1, currency: "B", currencyPrice: 0, vatRate: 0 };
 }
 
-function computePrecios(item: SalidaItem, tasaDolar: number | null, ivaMode: IvaMode) {
-    const precioIngresadoBs = item.moneda === "D"
-        ? (tasaDolar ? round2(item.precioMoneda * tasaDolar) : 0)
-        : item.precioMoneda;
+function computePrices(item: OutboundItem, dollarRate: number | null, ivaMode: IvaMode) {
+    const enteredPriceVes = item.currency === "D"
+        ? (dollarRate ? round2(item.currencyPrice * dollarRate) : 0)
+        : item.currencyPrice;
 
-    let precioBaseBs: number;
-    let ivaUnitarioBs: number;
+    let basePriceVes: number;
+    let vatUnitVes: number;
 
-    if (item.ivaTasa === 0) {
-        precioBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = 0;
+    if (item.vatRate === 0) {
+        basePriceVes = enteredPriceVes;
+        vatUnitVes = 0;
     } else if (ivaMode === "agregado") {
-        precioBaseBs = precioIngresadoBs;
-        ivaUnitarioBs = round2(precioIngresadoBs * item.ivaTasa);
+        basePriceVes = enteredPriceVes;
+        vatUnitVes = round2(enteredPriceVes * item.vatRate);
     } else {
-        // incluido: el precio ya trae IVA → extraer base
-        precioBaseBs = round2(precioIngresadoBs / (1 + item.ivaTasa));
-        ivaUnitarioBs = round2(precioIngresadoBs - precioBaseBs);
+        // incluido: entered price already contains VAT — extract base
+        basePriceVes = round2(enteredPriceVes / (1 + item.vatRate));
+        vatUnitVes = round2(enteredPriceVes - basePriceVes);
     }
 
-    // Para USD: precioMoneda guardado = precio base en USD (sin IVA)
-    const precioBaseMoneda = item.moneda === "D"
-        ? (ivaMode === "incluido" && item.ivaTasa > 0
-            ? round2(item.precioMoneda / (1 + item.ivaTasa))
-            : item.precioMoneda)
+    // For USD: currencyPrice stored = base price in USD (excl. VAT)
+    const basePriceCurrency = item.currency === "D"
+        ? (ivaMode === "incluido" && item.vatRate > 0
+            ? round2(item.currencyPrice / (1 + item.vatRate))
+            : item.currencyPrice)
         : null;
 
     return {
-        precioUnitario: precioBaseBs,                                             // base sin IVA → se guarda
-        precioTotal: round2(precioBaseBs * item.cantidad),                        // base total → se guarda
-        ivaMontoTotal: round2(ivaUnitarioBs * item.cantidad),                     // display
-        totalConIva: round2((precioBaseBs + ivaUnitarioBs) * item.cantidad),     // display
-        precioBaseMoneda,
+        unitPrice: basePriceVes,                                              // base excl. VAT — persisted
+        totalPrice: round2(basePriceVes * item.quantity),                     // base total — persisted
+        vatTotalAmount: round2(vatUnitVes * item.quantity),                   // display
+        totalWithVat: round2((basePriceVes + vatUnitVes) * item.quantity),    // display
+        basePriceCurrency,
     };
 }
 
@@ -78,12 +82,12 @@ function computePrecios(item: SalidaItem, tasaDolar: number | null, ivaMode: Iva
 
 function ProductCombo({
     value,
-    productos,
+    products,
     onChange,
 }: {
     value: string;
-    productos: Producto[];
-    onChange: (id: string, nombre: string, ivaTasa: number) => void;
+    products: Product[];
+    onChange: (id: string, name: string, vatRate: number) => void;
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -91,9 +95,9 @@ function ProductCombo({
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = productos.find((p) => p.id === value);
-    const filtered = productos
-        .filter((p) => p.activo !== false && p.nombre.toLowerCase().includes(search.toLowerCase()))
+    const selected = products.find((p) => p.id === value);
+    const filtered = products
+        .filter((p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()))
         .slice(0, 12);
 
     useEffect(() => {
@@ -101,8 +105,8 @@ function ProductCombo({
         el?.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
-    function select(p: Producto) {
-        onChange(p.id!, p.nombre, p.ivaTipo === "general" ? 0.16 : 0);
+    function select(p: Product) {
+        onChange(p.id!, p.name, p.vatType === "general" ? 0.16 : 0);
         setOpen(false);
         setSearch("");
     }
@@ -119,7 +123,7 @@ function ProductCombo({
         if (!wrapRef.current?.contains(e.relatedTarget as Node)) { setOpen(false); setSearch(""); }
     }
 
-    const displayValue = open ? search : (selected?.nombre ?? "");
+    const displayValue = open ? search : (selected?.name ?? "");
 
     return (
         <div ref={wrapRef} className="relative w-full" onBlur={handleBlur}>
@@ -136,11 +140,11 @@ function ProductCombo({
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        selected.ivaTipo === "general"
+                        selected.vatType === "general"
                             ? "bg-amber-500/10 text-amber-600 border border-amber-500/20"
                             : "bg-surface-2 text-[var(--text-tertiary)] border border-border-light"
                     }`}>
-                        {selected.ivaTipo === "general" ? "16%" : "EX"}
+                        {selected.vatType === "general" ? "16%" : "EX"}
                     </span>
                 )}
             </div>
@@ -160,15 +164,15 @@ function ProductCombo({
                                     onMouseDown={(e) => { e.preventDefault(); select(p); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.codigo && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.codigo}</span>}
-                                    <span className="flex-1">{p.nombre}</span>
+                                    {p.code && <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{p.code}</span>}
+                                    <span className="flex-1">{p.name}</span>
                                     <span className="text-[11px] text-[var(--text-tertiary)]">
-                                        ({fmtN(p.existenciaActual)} {p.unidadMedida})
+                                        ({fmtN(p.currentStock)} {p.measureUnit})
                                     </span>
                                     <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
-                                        p.ivaTipo === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
+                                        p.vatType === "general" ? "text-amber-600" : "text-[var(--text-tertiary)]"
                                     }`}>
-                                        {p.ivaTipo === "general" ? "IVA 16%" : "Exento"}
+                                        {p.vatType === "general" ? "IVA 16%" : "Exento"}
                                     </span>
                                 </li>
                             ))}
@@ -185,71 +189,71 @@ function ProductCombo({
 export default function NuevaSalidaManualPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { productos, loadProductos, saveMovimiento, error, setError } = useInventory();
+    const { products, loadProducts, saveMovement, error, setError } = useInventory();
 
-    const [fecha, setFecha] = useState(todayStr());
-    const [notas, setNotas] = useState("");
+    const [date, setDate] = useState(todayStr());
+    const [notes, setNotes] = useState("");
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
-    const [tasaDolar, setTasaDolar] = useState<number | null>(null);
-    const [tasaFechaBcv, setTasaFechaBcv] = useState<string | null>(null);
-    const [tasaLoading, setTasaLoading] = useState(false);
-    const [tasaError, setTasaError] = useState<string | null>(null);
-    const [items, setItems] = useState<SalidaItem[]>([emptySalidaItem()]);
+    const [dollarRate, setDollarRate] = useState<number | null>(null);
+    const [bcvRateDate, setBcvRateDate] = useState<string | null>(null);
+    const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
+    const [items, setItems] = useState<OutboundItem[]>([emptyOutboundItem()]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
-        if (companyId) loadProductos(companyId);
-    }, [companyId, loadProductos]);
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     useEffect(() => {
-        if (!fecha) return;
+        if (!date) return;
         let cancelled = false;
         startTransition(() => {
-            setTasaLoading(true);
-            setTasaError(null);
-            setTasaFechaBcv(null);
+            setRateLoading(true);
+            setRateError(null);
+            setBcvRateDate(null);
         });
-        fetch(`/api/bcv/rate?date=${fecha}&code=USD`)
+        fetch(`/api/bcv/rate?date=${date}&code=USD`)
             .then((r) => r.json())
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setTasaDolar(json.rate);
-                    setTasaFechaBcv(json.date);
-                    setTasaError(null);
+                    setDollarRate(json.rate);
+                    setBcvRateDate(json.date);
+                    setRateError(null);
                 } else {
-                    setTasaError(json.error ?? "Sin datos BCV para esta fecha");
+                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
                 }
             })
-            .catch(() => { if (!cancelled) setTasaError("Error al consultar BCV"); })
-            .finally(() => { if (!cancelled) setTasaLoading(false); });
+            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
+            .finally(() => { if (!cancelled) setRateLoading(false); });
         return () => { cancelled = true; };
-    }, [fecha]);
+    }, [date]);
 
-    const updateItem = useCallback((index: number, patch: Partial<SalidaItem>) => {
+    const updateItem = useCallback((index: number, patch: Partial<OutboundItem>) => {
         setItems((prev) => prev.map((item, i) => i !== index ? item : { ...item, ...patch }));
     }, []);
 
-    function addRow() { setItems((prev) => [...prev, emptySalidaItem()]); }
+    function addRow() { setItems((prev) => [...prev, emptyOutboundItem()]); }
     function removeRow(index: number) { setItems((prev) => prev.filter((_, i) => i !== index)); }
 
-    function getProducto(id: string) { return productos.find((p) => p.id === id); }
+    function getProduct(id: string) { return products.find((p) => p.id === id); }
 
     function validate(): boolean {
         if (!companyId) { setError("Sin empresa seleccionada"); return false; }
         if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productoId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
-            if (item.precioMoneda < 0) { setError("El precio no puede ser negativo"); return false; }
-            if (item.moneda === "D" && !tasaDolar) {
+            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (item.currencyPrice < 0) { setError("El precio no puede ser negativo"); return false; }
+            if (item.currency === "D" && !dollarRate) {
                 setError("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
-            const prod = getProducto(item.productoId);
-            if (prod && item.cantidad > prod.existenciaActual) {
-                setError(`Stock insuficiente para "${prod.nombre}": disponible ${fmtN(prod.existenciaActual)}`);
+            const prod = getProduct(item.productId);
+            if (prod && item.quantity > prod.currentStock) {
+                setError(`Stock insuficiente para "${prod.name}": disponible ${fmtN(prod.currentStock)}`);
                 return false;
             }
         }
@@ -262,24 +266,24 @@ export default function NuevaSalidaManualPage() {
         setError(null);
         let allOk = true;
         for (const item of items) {
-            const { precioUnitario, precioTotal, precioBaseMoneda } = computePrecios(item, tasaDolar, ivaMode);
-            const mov: Movimiento = {
-                empresaId: companyId!,
-                productoId: item.productoId,
-                tipo: "salida",
-                fecha,
-                periodo: fecha.slice(0, 7),
-                cantidad: item.cantidad,
-                costoUnitario: precioUnitario,
-                costoTotal: precioTotal,
-                saldoCantidad: 0,
-                referencia: "Salida manual",
-                notas,
-                moneda: item.moneda,
-                costoMoneda: precioBaseMoneda,
-                tasaDolar: item.moneda === "D" ? tasaDolar : null,
+            const { unitPrice, totalPrice, basePriceCurrency } = computePrices(item, dollarRate, ivaMode);
+            const movement: Movement = {
+                companyId: companyId!,
+                productId: item.productId,
+                type: "salida",
+                date,
+                period: date.slice(0, 7),
+                quantity: item.quantity,
+                unitCost: unitPrice,
+                totalCost: totalPrice,
+                balanceQuantity: 0,
+                reference: "Salida manual",
+                notes,
+                currency: item.currency,
+                currencyCost: basePriceCurrency,
+                dollarRate: item.currency === "D" ? dollarRate : null,
             };
-            const result = await saveMovimiento(mov);
+            const result = await saveMovement(movement);
             if (!result) { allOk = false; break; }
         }
         setSaving(false);
@@ -288,16 +292,16 @@ export default function NuevaSalidaManualPage() {
 
     const totals = items.reduce(
         (acc, item) => {
-            const { precioTotal, ivaMontoTotal, totalConIva } = computePrecios(item, tasaDolar, ivaMode);
-            return { subtotal: acc.subtotal + precioTotal, iva: acc.iva + ivaMontoTotal, total: acc.total + totalConIva };
+            const { totalPrice, vatTotalAmount, totalWithVat } = computePrices(item, dollarRate, ivaMode);
+            return { subtotal: acc.subtotal + totalPrice, iva: acc.iva + vatTotalAmount, total: acc.total + totalWithVat };
         },
         { subtotal: 0, iva: 0, total: 0 },
     );
-    const hasIva = items.some((i) => i.ivaTasa > 0);
-    const precioLabel = ivaMode === "agregado" ? "Precio base" : "Precio c/IVA";
+    const hasVat = items.some((i) => i.vatRate > 0);
+    const priceLabel = ivaMode === "agregado" ? "Precio base" : "Precio c/IVA";
 
     if (saved) {
-        const periodo = fecha.slice(0, 7);
+        const period = date.slice(0, 7);
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6 border-b border-border-light bg-surface-1">
@@ -317,7 +321,7 @@ export default function NuevaSalidaManualPage() {
                                 Ver salidas
                             </button>
                             <button
-                                onClick={() => router.push(`/inventory/movimientos?periodo=${periodo}`)}
+                                onClick={() => router.push(`/inventory/movimientos?periodo=${period}`)}
                                 className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
@@ -370,8 +374,8 @@ export default function NuevaSalidaManualPage() {
                             <input
                                 type="date"
                                 className={fieldCls}
-                                value={fecha}
-                                onChange={(e) => setFecha(e.target.value)}
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
                             />
                         </div>
 
@@ -382,19 +386,19 @@ export default function NuevaSalidaManualPage() {
                                 <input
                                     type="number"
                                     className={fieldCls}
-                                    value={tasaDolar ?? ""}
-                                    onChange={(e) => setTasaDolar(e.target.value ? Number(e.target.value) : null)}
+                                    value={dollarRate ?? ""}
+                                    onChange={(e) => setDollarRate(e.target.value ? Number(e.target.value) : null)}
                                     placeholder="0.00"
                                     step="0.01"
                                 />
-                                {tasaLoading && (
+                                {rateLoading && (
                                     <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
                                 )}
-                                {!tasaLoading && tasaFechaBcv && (
-                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {tasaFechaBcv}</span>
+                                {!rateLoading && bcvRateDate && (
+                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {bcvRateDate}</span>
                                 )}
-                                {!tasaLoading && !tasaFechaBcv && tasaError && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{tasaError}</span>
+                                {!rateLoading && !bcvRateDate && rateError && (
+                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{rateError}</span>
                                 )}
                             </div>
                         </div>
@@ -443,8 +447,8 @@ export default function NuevaSalidaManualPage() {
                             <input
                                 type="text"
                                 className={fieldCls}
-                                value={notas}
-                                onChange={(e) => setNotas(e.target.value)}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Motivo, referencia interna, etc."
                             />
                         </div>
@@ -468,7 +472,7 @@ export default function NuevaSalidaManualPage() {
 
                     {/* Column headers */}
                     <div className="grid grid-cols-[1fr_120px_160px_90px_160px_36px] gap-2 px-4 py-2 border-b border-border-light bg-surface-2">
-                        {["Producto", "Cantidad", precioLabel, "Moneda", "Existencia", ""].map((h, i) => (
+                        {["Producto", "Cantidad", priceLabel, "Moneda", "Existencia", ""].map((h, i) => (
                             <span key={i} className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{h}</span>
                         ))}
                     </div>
@@ -476,25 +480,25 @@ export default function NuevaSalidaManualPage() {
                     {/* Rows */}
                     <div className="divide-y divide-border-light/50">
                         {items.map((item, idx) => {
-                            const prod = getProducto(item.productoId);
-                            const stockOk = !prod || item.cantidad <= prod.existenciaActual;
-                            const saldoTras = prod ? prod.existenciaActual - item.cantidad : null;
+                            const prod = getProduct(item.productId);
+                            const stockOk = !prod || item.quantity <= prod.currentStock;
+                            const remainingStock = prod ? prod.currentStock - item.quantity : null;
 
                             return (
                                 <div key={idx} className="grid grid-cols-[1fr_120px_160px_90px_160px_36px] gap-2 px-4 py-2 items-center">
                                     {/* Producto + badge IVA */}
                                     <ProductCombo
-                                        value={item.productoId}
-                                        productos={productos}
-                                        onChange={(id, nombre, ivaTasa) => updateItem(idx, { productoId: id, productoNombre: nombre, ivaTasa })}
+                                        value={item.productId}
+                                        products={products}
+                                        onChange={(id, name, vatRate) => updateItem(idx, { productId: id, productName: name, vatRate })}
                                     />
 
                                     {/* Cantidad */}
                                     <input
                                         type="number"
                                         className={fieldCls + (stockOk ? "" : " border-red-500/40 focus:border-red-500/60") + " text-right"}
-                                        value={item.cantidad || ""}
-                                        onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) || 0 })}
+                                        value={item.quantity || ""}
+                                        onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
                                         placeholder="0"
                                         min="0.0001"
                                         step="0.0001"
@@ -505,14 +509,14 @@ export default function NuevaSalidaManualPage() {
                                         <input
                                             type="number"
                                             className={fieldCls + " text-right pr-10"}
-                                            value={item.precioMoneda || ""}
-                                            onChange={(e) => updateItem(idx, { precioMoneda: Number(e.target.value) || 0 })}
+                                            value={item.currencyPrice || ""}
+                                            onChange={(e) => updateItem(idx, { currencyPrice: Number(e.target.value) || 0 })}
                                             placeholder="0.00"
                                             min="0"
                                             step="0.01"
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] pointer-events-none">
-                                            {item.moneda === "D" ? "USD" : "Bs"}
+                                            {item.currency === "D" ? "USD" : "Bs"}
                                         </span>
                                     </div>
 
@@ -522,9 +526,9 @@ export default function NuevaSalidaManualPage() {
                                             type="button"
                                             className={[
                                                 "flex-1 transition-colors",
-                                                item.moneda === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                item.currency === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                             ].join(" ")}
-                                            onClick={() => updateItem(idx, { moneda: "B" })}
+                                            onClick={() => updateItem(idx, { currency: "B" })}
                                         >
                                             Bs
                                         </button>
@@ -532,9 +536,9 @@ export default function NuevaSalidaManualPage() {
                                             type="button"
                                             className={[
                                                 "flex-1 transition-colors",
-                                                item.moneda === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                item.currency === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
                                             ].join(" ")}
-                                            onClick={() => updateItem(idx, { moneda: "D" })}
+                                            onClick={() => updateItem(idx, { currency: "D" })}
                                         >
                                             USD
                                         </button>
@@ -547,14 +551,14 @@ export default function NuevaSalidaManualPage() {
                                                 <div className="flex justify-between text-[12px]">
                                                     <span className="text-[var(--text-tertiary)]">Disponible</span>
                                                     <span className={`tabular-nums font-medium ${!stockOk ? "text-red-500" : "text-foreground"}`}>
-                                                        {fmtN(prod.existenciaActual)}
+                                                        {fmtN(prod.currentStock)}
                                                     </span>
                                                 </div>
-                                                {item.cantidad > 0 && (
+                                                {item.quantity > 0 && (
                                                     <div className="flex justify-between text-[12px]">
                                                         <span className="text-[var(--text-tertiary)]">Tras salida</span>
                                                         <span className={`tabular-nums font-medium ${!stockOk ? "text-red-500" : "text-[var(--text-secondary)]"}`}>
-                                                            {fmtN(saldoTras!)}
+                                                            {fmtN(remainingStock!)}
                                                         </span>
                                                     </div>
                                                 )}
@@ -585,12 +589,12 @@ export default function NuevaSalidaManualPage() {
                                 {items.length} {items.length === 1 ? "producto" : "productos"}
                             </span>
                             <div className="flex items-center gap-6">
-                                {items.some((i) => i.moneda === "D") && tasaDolar && (
+                                {items.some((i) => i.currency === "D") && dollarRate && (
                                     <span className="text-[12px] text-[var(--text-tertiary)]">
-                                        Tasa: {fmtN(tasaDolar)} Bs/USD
+                                        Tasa: {fmtN(dollarRate)} Bs/USD
                                     </span>
                                 )}
-                                {hasIva ? (
+                                {hasVat ? (
                                     <div className="flex items-center gap-4 text-[12px] tabular-nums">
                                         <span className="text-[var(--text-tertiary)]">
                                             Base <span className="text-foreground font-medium">Bs {fmtN(totals.subtotal)}</span>

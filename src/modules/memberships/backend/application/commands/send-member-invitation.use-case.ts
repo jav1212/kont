@@ -68,7 +68,7 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
             tenantName:   invitedBy,
             inviterEmail: invitedBy,
             acceptUrl,
-        }).catch((err: unknown) => {
+        }).catch((err) => {
             console.error("[SendMemberInvitation] Error sending invite email:", err);
         });
 

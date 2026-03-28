@@ -1,12 +1,17 @@
 "use client";
 
+// Page: NuevaFacturaPage
+// Purpose: Create a new purchase invoice (factura de compra) with line items.
+// Architectural role: Page-level composition using inventory hook and shared domain types.
+// All identifiers use English domain types; JSX user-facing text remains in Spanish.
+
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { FacturaCompra, FacturaCompraItem } from "@/src/modules/inventory/backend/domain/factura-compra";
+import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
-import type { TipoProducto, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
+import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
 
 const fmtTasa = (n: number | null) =>
     n == null ? "" : String(n);
@@ -47,30 +52,30 @@ function QuickModal({ title, onClose, children }: { title: string; onClose: () =
     );
 }
 
-// ── ProveedorCombobox ─────────────────────────────────────────────────────────
+// ── SupplierCombobox ──────────────────────────────────────────────────────────
 
-interface ProveedorComboboxProps {
-    proveedorId: string;
-    proveedores: { id?: string; nombre: string; rif?: string; activo?: boolean }[];
+interface SupplierComboboxProps {
+    supplierId: string;
+    suppliers: { id?: string; name: string; rif?: string; active?: boolean }[];
     onChange: (id: string) => void;
     onRequestCreate: (search: string) => void;
 }
 
-function ProveedorCombobox({ proveedorId, proveedores, onChange, onRequestCreate }: ProveedorComboboxProps) {
+function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: SupplierComboboxProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [hiIdx, setHiIdx] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
 
-    const selected = proveedores.find((p) => p.id === proveedorId);
+    const selected = suppliers.find((s) => s.id === supplierId);
 
-    const filtered = proveedores
+    const filtered = suppliers
         .filter(
-            (p) =>
-                p.activo !== false &&
-                (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                    (p.rif ?? "").toLowerCase().includes(search.toLowerCase())),
+            (s) =>
+                s.active !== false &&
+                (s.name.toLowerCase().includes(search.toLowerCase()) ||
+                    (s.rif ?? "").toLowerCase().includes(search.toLowerCase())),
         )
         .slice(0, 12);
 
@@ -104,7 +109,7 @@ function ProveedorCombobox({ proveedorId, proveedores, onChange, onRequestCreate
     const displayValue = open
         ? search
         : selected
-          ? [selected.rif, selected.nombre].filter(Boolean).join(" · ")
+          ? [selected.rif, selected.name].filter(Boolean).join(" · ")
           : "";
 
     return (
@@ -125,20 +130,20 @@ function ProveedorCombobox({ proveedorId, proveedores, onChange, onRequestCreate
                         <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Sin resultados</div>
                     ) : (
                         <ul ref={listRef} className="max-h-52 overflow-y-auto">
-                            {filtered.map((p, i) => (
+                            {filtered.map((s, i) => (
                                 <li
-                                    key={p.id}
+                                    key={s.id}
                                     className={[
                                         "px-3 py-2 cursor-pointer flex items-center gap-2 text-[13px]",
                                         i === hiIdx ? "bg-primary-500/10 text-foreground" : "text-[var(--text-secondary)] hover:bg-surface-2",
                                     ].join(" ")}
-                                    onMouseDown={(e) => { e.preventDefault(); selectItem(p.id!); }}
+                                    onMouseDown={(e) => { e.preventDefault(); selectItem(s.id!); }}
                                     onMouseEnter={() => setHiIdx(i)}
                                 >
-                                    {p.rif && (
-                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[80px]">{p.rif}</span>
+                                    {s.rif && (
+                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] min-w-[80px]">{s.rif}</span>
                                     )}
-                                    <span className="truncate">{p.nombre}</span>
+                                    <span className="truncate">{s.name}</span>
                                 </li>
                             ))}
                         </ul>
@@ -165,31 +170,29 @@ export default function NuevaFacturaPage() {
     const router = useRouter();
     const { companyId } = useCompany();
     const {
-        productos, loadProductos,
-        proveedores, loadProveedores,
-        cierres, loadCierres,
-        tasaDolarActual,
+        products, loadProducts,
+        suppliers, loadSuppliers,
+        periodCloses, loadPeriodCloses,
+        currentDollarRate,
         error, setError,
-        saveFactura, confirmarFactura,
-        saveProveedor,
-        saveProducto,
-        departamentos, loadDepartamentos,
-        saveDepartamento,
+        savePurchaseInvoice, confirmPurchaseInvoice,
+        saveSupplier,
+        saveProduct,
+        departments, loadDepartments,
+        saveDepartment,
     } = useInventory();
 
     // Form state
-    const [proveedorId, setProveedorId] = useState("");
-    const [numeroFactura, setNumeroFactura] = useState("");
-    const [numeroControl, setNumeroControl] = useState("");
-    const [fecha, setFecha] = useState(todayStr());
-    const [notas, setNotas] = useState("");
-    const [tasaDolar, setTasaDolar] = useState<string>("");
-    const [tasaFechaBcv, setTasaFechaBcv] = useState<string | null>(null);
-    const [tasaLoading, setTasaLoading] = useState(false);
-    const [tasaError, setTasaError] = useState<string | null>(null);
-    const [items, setItems] = useState<FacturaCompraItem[]>([emptyItem()]);
-
-    // ivaPorcentaje removed — IVA is now computed per-item from ivaAlicuota
+    const [supplierId, setSupplierId] = useState("");
+    const [invoiceNumber, setInvoiceNumber] = useState("");
+    const [controlNumber, setControlNumber] = useState("");
+    const [date, setDate] = useState(todayStr());
+    const [notes, setNotes] = useState("");
+    const [dollarRate, setDollarRate] = useState<string>("");
+    const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
+    const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
+    const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -197,95 +200,95 @@ export default function NuevaFacturaPage() {
     const [confirmed, setConfirmed] = useState(false);
 
     // Quick-create state
-    const [qcMode, setQcMode] = useState<'proveedor' | 'producto' | null>(null);
+    const [qcMode, setQcMode] = useState<'supplier' | 'product' | null>(null);
     const [qcSaving, setQcSaving] = useState(false);
 
-    // Quick create proveedor form
-    const [qcProv, setQcProv] = useState({ nombre: '', rif: '' });
+    // Quick create supplier form
+    const [qcSupplier, setQcSupplier] = useState({ name: '', rif: '' });
 
-    // Quick create producto form
-    const [qcProd, setQcProd] = useState({ nombre: '', codigo: '', tipo: 'mercancia' as TipoProducto, ivaTipo: 'general' as IvaTipo, departamentoId: '' });
-    // Quick create departamento (nested inside producto modal)
-    const [qcDeptNombre, setQcDeptNombre] = useState('');
+    // Quick create product form
+    const [qcProduct, setQcProduct] = useState({ name: '', code: '', type: 'mercancia' as ProductType, vatType: 'general' as VatType, departmentId: '' });
+    // Quick create department (nested inside product modal)
+    const [qcDeptName, setQcDeptName] = useState('');
     const [qcDeptOpen, setQcDeptOpen] = useState(false);
     const [qcDeptSaving, setQcDeptSaving] = useState(false);
 
     useEffect(() => {
         if (companyId) {
-            loadProductos(companyId);
-            loadProveedores(companyId);
-            loadCierres(companyId);
-            loadDepartamentos(companyId);
+            loadProducts(companyId);
+            loadSuppliers(companyId);
+            loadPeriodCloses(companyId);
+            loadDepartments(companyId);
         }
-    }, [companyId, loadProductos, loadProveedores, loadCierres, loadDepartamentos]);
+    }, [companyId, loadProducts, loadSuppliers, loadPeriodCloses, loadDepartments]);
 
-    // Pre-fill tasa from last cierre when cierres load (only if BCV hasn't filled it)
+    // Pre-fill rate from last period close when closes load (only if BCV hasn't filled it)
     useEffect(() => {
-        if (tasaDolarActual != null && tasaDolar === "" && !tasaLoading) {
-            setTasaDolar(fmtTasa(tasaDolarActual));
+        if (currentDollarRate != null && dollarRate === "" && !rateLoading) {
+            setDollarRate(fmtTasa(currentDollarRate));
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tasaDolarActual]);
+    }, [currentDollarRate]);
 
     // Auto-fetch BCV rate when date changes
     useEffect(() => {
-        if (!fecha) return;
+        if (!date) return;
         let cancelled = false;
-        setTasaLoading(true);
-        setTasaError(null);
-        fetch(`/api/bcv/rate?date=${fecha}&code=USD`)
+        setRateLoading(true);
+        setRateError(null);
+        fetch(`/api/bcv/rate?date=${date}&code=USD`)
             .then((r) => r.json())
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setTasaDolar(String(json.rate));
-                    setTasaFechaBcv(json.date);
+                    setDollarRate(String(json.rate));
+                    setRateDateBcv(json.date);
                 } else {
-                    setTasaError(json.error ?? "Sin datos BCV para esta fecha");
-                    setTasaFechaBcv(null);
+                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
+                    setRateDateBcv(null);
                 }
             })
             .catch(() => {
                 if (!cancelled) {
-                    setTasaError("Error al consultar BCV");
-                    setTasaFechaBcv(null);
+                    setRateError("Error al consultar BCV");
+                    setRateDateBcv(null);
                 }
             })
-            .finally(() => { if (!cancelled) setTasaLoading(false); });
+            .finally(() => { if (!cancelled) setRateLoading(false); });
         return () => { cancelled = true; };
-    }, [fecha]);
+    }, [date]);
 
-    // Derived totals — computed per-item from ivaAlicuota
-    const subtotal      = items.reduce((acc, i) => acc + (i.costoTotal ?? 0), 0);
-    const baseExenta    = items.filter(i => (i.ivaAlicuota ?? "general_16") === "exenta").reduce((acc, i) => acc + i.costoTotal, 0);
-    const baseGravada8  = items.filter(i => (i.ivaAlicuota ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.costoTotal, 0);
-    const baseGravada16 = items.filter(i => (i.ivaAlicuota ?? "general_16") === "general_16").reduce((acc, i) => acc + i.costoTotal, 0);
-    const iva8          = Math.round(baseGravada8  * 8  / 100 * 100) / 100;
-    const iva16         = Math.round(baseGravada16 * 16 / 100 * 100) / 100;
-    const ivaMonto      = iva8 + iva16;
-    const total         = subtotal + ivaMonto;
+    // Derived totals — computed per-item from vatRate
+    const subtotal      = items.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
+    const baseExempt    = items.filter(i => (i.vatRate ?? "general_16") === "exenta").reduce((acc, i) => acc + i.totalCost, 0);
+    const baseTaxed8    = items.filter(i => (i.vatRate ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.totalCost, 0);
+    const baseTaxed16   = items.filter(i => (i.vatRate ?? "general_16") === "general_16").reduce((acc, i) => acc + i.totalCost, 0);
+    const vat8          = Math.round(baseTaxed8  * 8  / 100 * 100) / 100;
+    const vat16         = Math.round(baseTaxed16 * 16 / 100 * 100) / 100;
+    const vatAmount     = vat8 + vat16;
+    const total         = subtotal + vatAmount;
 
-    const buildFactura = useCallback((): FacturaCompra => ({
-        empresaId:     companyId!,
-        proveedorId,
-        numeroFactura,
-        numeroControl,
-        fecha,
-        periodo:       fecha.slice(0, 7),
-        estado:        "borrador",
+    const buildInvoice = useCallback((): PurchaseInvoice => ({
+        companyId:     companyId!,
+        supplierId,
+        invoiceNumber,
+        controlNumber,
+        date,
+        period:        date.slice(0, 7),
+        status:        "borrador",
         subtotal,
-        ivaPorcentaje: 0,
-        ivaMonto,
+        vatPercentage: 0,
+        vatAmount,
         total,
-        notas,
-    }), [companyId, proveedorId, numeroFactura, numeroControl, fecha, subtotal, ivaMonto, total, notas]);
+        notes,
+    }), [companyId, supplierId, invoiceNumber, controlNumber, date, subtotal, vatAmount, total, notes]);
 
     function validate(): boolean {
-        if (!proveedorId) { setError("Selecciona un proveedor"); return false; }
+        if (!supplierId) { setError("Selecciona un proveedor"); return false; }
         if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productoId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.cantidad <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
         }
         return true;
     }
@@ -294,9 +297,9 @@ export default function NuevaFacturaPage() {
         if (!validate()) return;
         setSaving(true);
         setError(null);
-        const factura = buildFactura();
-        if (savedId) factura.id = savedId;
-        const saved = await saveFactura(factura, items);
+        const invoice = buildInvoice();
+        if (savedId) invoice.id = savedId;
+        const saved = await savePurchaseInvoice(invoice, items);
         setSaving(false);
         if (saved?.id) setSavedId(saved.id);
     }
@@ -306,69 +309,69 @@ export default function NuevaFacturaPage() {
         setConfirming(true);
         setError(null);
         // First save draft (or update existing)
-        const factura = buildFactura();
-        if (savedId) factura.id = savedId;
-        const saved = await saveFactura(factura, items);
+        const invoice = buildInvoice();
+        if (savedId) invoice.id = savedId;
+        const saved = await savePurchaseInvoice(invoice, items);
         if (!saved) { setConfirming(false); return; }
         // Then confirm
-        const confirmed = await confirmarFactura(saved.id!);
+        const confirmedInvoice = await confirmPurchaseInvoice(saved.id!);
         setConfirming(false);
-        if (confirmed) {
+        if (confirmedInvoice) {
             setConfirmed(true);
-            setSavedId(confirmed.id!);
+            setSavedId(confirmedInvoice.id!);
         }
     }
 
-    async function handleQcProveedor() {
-        if (!qcProv.nombre.trim()) { setError('El nombre es requerido'); return; }
+    async function handleQcSupplier() {
+        if (!qcSupplier.name.trim()) { setError('El nombre es requerido'); return; }
         setQcSaving(true);
-        const saved = await saveProveedor({ empresaId: companyId!, nombre: qcProv.nombre.trim(), rif: qcProv.rif.trim(), contacto: '', telefono: '', email: '', direccion: '', notas: '', activo: true });
+        const saved = await saveSupplier({ companyId: companyId!, name: qcSupplier.name.trim(), rif: qcSupplier.rif.trim(), contact: '', phone: '', email: '', address: '', notes: '', active: true });
         setQcSaving(false);
         if (saved) {
-            setProveedorId(saved.id!);
+            setSupplierId(saved.id!);
             setQcMode(null);
-            setQcProv({ nombre: '', rif: '' });
+            setQcSupplier({ name: '', rif: '' });
         }
     }
 
-    async function handleQcDepartamento() {
-        if (!qcDeptNombre.trim()) return;
+    async function handleQcDepartment() {
+        if (!qcDeptName.trim()) return;
         setQcDeptSaving(true);
-        const saved = await saveDepartamento({ empresaId: companyId!, nombre: qcDeptNombre.trim(), descripcion: '', activo: true });
+        const saved = await saveDepartment({ companyId: companyId!, name: qcDeptName.trim(), description: '', active: true });
         setQcDeptSaving(false);
         if (saved) {
-            setQcProd(p => ({ ...p, departamentoId: saved.id! }));
-            setQcDeptNombre('');
+            setQcProduct(p => ({ ...p, departmentId: saved.id! }));
+            setQcDeptName('');
             setQcDeptOpen(false);
         }
     }
 
-    async function handleQcProducto() {
-        if (!qcProd.nombre.trim()) { setError('El nombre del producto es requerido'); return; }
+    async function handleQcProduct() {
+        if (!qcProduct.name.trim()) { setError('El nombre del producto es requerido'); return; }
         setQcSaving(true);
-        const saved = await saveProducto({
-            empresaId: companyId!,
-            nombre: qcProd.nombre.trim(),
-            codigo: qcProd.codigo.trim(),
-            descripcion: '',
-            tipo: qcProd.tipo,
-            unidadMedida: 'unidad',
-            metodoValuacion: 'promedio_ponderado',
-            existenciaActual: 0,
-            costoPromedio: 0,
-            activo: true,
-            ivaTipo: qcProd.ivaTipo,
-            departamentoId: qcProd.departamentoId || undefined,
+        const saved = await saveProduct({
+            companyId: companyId!,
+            name: qcProduct.name.trim(),
+            code: qcProduct.code.trim(),
+            description: '',
+            type: qcProduct.type,
+            measureUnit: 'unidad',
+            valuationMethod: 'promedio_ponderado',
+            currentStock: 0,
+            averageCost: 0,
+            active: true,
+            vatType: qcProduct.vatType,
+            departmentId: qcProduct.departmentId || undefined,
         });
         setQcSaving(false);
         if (saved) {
             setQcMode(null);
-            setQcProd({ nombre: '', codigo: '', tipo: 'mercancia', ivaTipo: 'general', departamentoId: '' });
+            setQcProduct({ name: '', code: '', type: 'mercancia', vatType: 'general', departmentId: '' });
         }
     }
 
     if (confirmed && savedId) {
-        const periodo = fecha.slice(0, 7);
+        const period = date.slice(0, 7);
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6 border-b border-border-light bg-surface-1">
@@ -392,7 +395,7 @@ export default function NuevaFacturaPage() {
                                 Ver facturas
                             </button>
                             <button
-                                onClick={() => router.push(`/inventory/movimientos?periodo=${periodo}`)}
+                                onClick={() => router.push(`/inventory/movimientos?periodo=${period}`)}
                                 className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
@@ -447,19 +450,19 @@ export default function NuevaFacturaPage() {
                                 <div>
                                     <label className={labelCls}>Proveedor *</label>
                                     <div className="flex gap-2">
-                                        <ProveedorCombobox
-                                            proveedorId={proveedorId}
-                                            proveedores={proveedores}
-                                            onChange={setProveedorId}
+                                        <SupplierCombobox
+                                            supplierId={supplierId}
+                                            suppliers={suppliers}
+                                            onChange={setSupplierId}
                                             onRequestCreate={(search) => {
-                                                setQcProv(p => ({ ...p, nombre: search }));
-                                                setQcMode('proveedor');
+                                                setQcSupplier(s => ({ ...s, name: search }));
+                                                setQcMode('supplier');
                                                 setError(null);
                                             }}
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => { setQcProv({ nombre: '', rif: '' }); setQcMode('proveedor'); setError(null); }}
+                                            onClick={() => { setQcSupplier({ name: '', rif: '' }); setQcMode('supplier'); setError(null); }}
                                             className="h-10 px-3 shrink-0 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-text-tertiary hover:text-foreground text-[16px] leading-none transition-colors"
                                             title="Crear nuevo proveedor"
                                         >
@@ -471,8 +474,8 @@ export default function NuevaFacturaPage() {
                                     <label className={labelCls}>Nº Factura</label>
                                     <input
                                         className={fieldCls}
-                                        value={numeroFactura}
-                                        onChange={(e) => setNumeroFactura(e.target.value)}
+                                        value={invoiceNumber}
+                                        onChange={(e) => setInvoiceNumber(e.target.value)}
                                         placeholder="Ej. 0001-00123456"
                                     />
                                 </div>
@@ -483,8 +486,8 @@ export default function NuevaFacturaPage() {
                                     <label className={labelCls}>Nº Control</label>
                                     <input
                                         className={fieldCls}
-                                        value={numeroControl}
-                                        onChange={(e) => setNumeroControl(e.target.value)}
+                                        value={controlNumber}
+                                        onChange={(e) => setControlNumber(e.target.value)}
                                         placeholder="Ej. 00-00123456"
                                     />
                                 </div>
@@ -493,8 +496,8 @@ export default function NuevaFacturaPage() {
                                     <input
                                         type="date"
                                         className={fieldCls}
-                                        value={fecha}
-                                        onChange={(e) => setFecha(e.target.value)}
+                                        value={date}
+                                        onChange={(e) => setDate(e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -508,25 +511,25 @@ export default function NuevaFacturaPage() {
                                             min="0"
                                             step="0.0001"
                                             className={`${fieldCls} pr-8`}
-                                            value={tasaDolar}
-                                            onChange={(e) => { setTasaDolar(e.target.value); setTasaFechaBcv(null); }}
-                                            placeholder={tasaLoading ? "Consultando BCV…" : "Ej. 46.50"}
-                                            disabled={tasaLoading}
+                                            value={dollarRate}
+                                            onChange={(e) => { setDollarRate(e.target.value); setRateDateBcv(null); }}
+                                            placeholder={rateLoading ? "Consultando BCV…" : "Ej. 46.50"}
+                                            disabled={rateLoading}
                                         />
-                                        {tasaLoading && (
+                                        {rateLoading && (
                                             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] animate-pulse">
                                                 ···
                                             </span>
                                         )}
                                     </div>
-                                    {tasaFechaBcv && !tasaLoading && (
+                                    {rateDateBcv && !rateLoading && (
                                         <p className="mt-1 text-[11px] text-green-500 uppercase tracking-[0.12em]">
-                                            BCV {tasaFechaBcv}
+                                            BCV {rateDateBcv}
                                         </p>
                                     )}
-                                    {tasaError && !tasaLoading && (
+                                    {rateError && !rateLoading && (
                                         <p className="mt-1 text-[11px] text-amber-500 uppercase tracking-[0.10em]">
-                                            {tasaError} — ingresa manualmente
+                                            {rateError} — ingresa manualmente
                                         </p>
                                     )}
                                 </div>
@@ -537,8 +540,8 @@ export default function NuevaFacturaPage() {
                                 <textarea
                                     className={`${fieldCls} h-auto py-2`}
                                     rows={2}
-                                    value={notas}
-                                    onChange={(e) => setNotas(e.target.value)}
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -551,7 +554,7 @@ export default function NuevaFacturaPage() {
                                 </h2>
                                 <button
                                     type="button"
-                                    onClick={() => { setQcMode('producto'); setError(null); }}
+                                    onClick={() => { setQcMode('product'); setError(null); }}
                                     className="h-8 px-3 text-[11px] uppercase tracking-[0.12em] rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                 >
                                     + Nuevo producto
@@ -560,12 +563,12 @@ export default function NuevaFacturaPage() {
 
                             <FacturaItemsGrid
                                 items={items}
-                                productos={productos}
+                                products={products}
                                 onChange={setItems}
-                                tasaDolar={tasaDolar ? parseFloat(tasaDolar.replace(",", ".")) || null : null}
-                                onRequestCreateProducto={(search) => {
-                                    setQcProd(p => ({ ...p, nombre: search }));
-                                    setQcMode('producto');
+                                dollarRate={dollarRate ? parseFloat(dollarRate.replace(",", ".")) || null : null}
+                                onRequestCreateProduct={(search) => {
+                                    setQcProduct(p => ({ ...p, name: search }));
+                                    setQcMode('product');
                                     setError(null);
                                 }}
                             />
@@ -576,40 +579,40 @@ export default function NuevaFacturaPage() {
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
                                     <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">{fmtN(subtotal)}</span>
                                 </div>
-                                {baseExenta > 0 && (
+                                {baseExempt > 0 && (
                                     <div className="flex gap-8 items-center">
                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base exenta</span>
-                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseExenta)}</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseExempt)}</span>
                                     </div>
                                 )}
-                                {baseGravada8 > 0 && (
+                                {baseTaxed8 > 0 && (
                                     <>
                                         <div className="flex gap-8 items-center">
                                             <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 8%</span>
-                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseGravada8)}</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseTaxed8)}</span>
                                         </div>
                                         <div className="flex gap-8 items-center">
                                             <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 8%</span>
-                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(iva8)}</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(vat8)}</span>
                                         </div>
                                     </>
                                 )}
-                                {baseGravada16 > 0 && (
+                                {baseTaxed16 > 0 && (
                                     <>
                                         <div className="flex gap-8 items-center">
                                             <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 16%</span>
-                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseGravada16)}</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(baseTaxed16)}</span>
                                         </div>
                                         <div className="flex gap-8 items-center">
                                             <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 16%</span>
-                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(iva16)}</span>
+                                            <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(vat16)}</span>
                                         </div>
                                     </>
                                 )}
-                                {ivaMonto > 0 && (
+                                {vatAmount > 0 && (
                                     <div className="flex gap-8 items-center">
                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Total IVA</span>
-                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(ivaMonto)}</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(vatAmount)}</span>
                                     </div>
                                 )}
                                 <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
@@ -653,18 +656,18 @@ export default function NuevaFacturaPage() {
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Proveedor</span>
                                     <span className="text-foreground font-medium truncate ml-4 text-right">
-                                        {proveedorId
-                                            ? proveedores.find((p) => p.id === proveedorId)?.nombre ?? "—"
+                                        {supplierId
+                                            ? suppliers.find((s) => s.id === supplierId)?.name ?? "—"
                                             : "—"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Fecha</span>
-                                    <span className="text-foreground tabular-nums">{fecha || "—"}</span>
+                                    <span className="text-foreground tabular-nums">{date || "—"}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Ítems</span>
-                                    <span className="text-foreground tabular-nums">{items.filter((i) => i.productoId).length}</span>
+                                    <span className="text-foreground tabular-nums">{items.filter((i) => i.productId).length}</span>
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
@@ -672,16 +675,16 @@ export default function NuevaFacturaPage() {
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
                                     <span className="tabular-nums text-[var(--text-primary)]">{fmtN(subtotal)}</span>
                                 </div>
-                                {iva8 > 0 && (
+                                {vat8 > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 8%</span>
-                                        <span className="tabular-nums text-amber-600">{fmtN(iva8)}</span>
+                                        <span className="tabular-nums text-amber-600">{fmtN(vat8)}</span>
                                     </div>
                                 )}
-                                {iva16 > 0 && (
+                                {vat16 > 0 && (
                                     <div className="flex justify-between">
                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 16%</span>
-                                        <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(iva16)}</span>
+                                        <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(vat16)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between font-bold">
@@ -694,8 +697,8 @@ export default function NuevaFacturaPage() {
                 </div>
             </div>
 
-            {/* Quick-create: Proveedor */}
-            {qcMode === 'proveedor' && (
+            {/* Quick-create: Supplier */}
+            {qcMode === 'supplier' && (
                 <QuickModal title="Nuevo Proveedor" onClose={() => setQcMode(null)}>
                     <div className="space-y-3">
                         <div>
@@ -703,18 +706,18 @@ export default function NuevaFacturaPage() {
                             <input
                                 autoFocus
                                 className={fieldCls}
-                                value={qcProv.nombre}
-                                onChange={(e) => setQcProv(p => ({ ...p, nombre: e.target.value }))}
+                                value={qcSupplier.name}
+                                onChange={(e) => setQcSupplier(s => ({ ...s, name: e.target.value }))}
                                 placeholder="Nombre del proveedor"
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleQcProveedor(); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleQcSupplier(); }}
                             />
                         </div>
                         <div>
                             <label className={labelCls}>RIF</label>
                             <input
                                 className={fieldCls}
-                                value={qcProv.rif}
-                                onChange={(e) => setQcProv(p => ({ ...p, rif: e.target.value }))}
+                                value={qcSupplier.rif}
+                                onChange={(e) => setQcSupplier(s => ({ ...s, rif: e.target.value }))}
                                 placeholder="J-12345678-9"
                             />
                         </div>
@@ -727,7 +730,7 @@ export default function NuevaFacturaPage() {
                                 Cancelar
                             </button>
                             <button
-                                onClick={handleQcProveedor}
+                                onClick={handleQcSupplier}
                                 disabled={qcSaving}
                                 className="flex-1 h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
@@ -738,8 +741,8 @@ export default function NuevaFacturaPage() {
                 </QuickModal>
             )}
 
-            {/* Quick-create: Producto */}
-            {qcMode === 'producto' && (
+            {/* Quick-create: Product */}
+            {qcMode === 'product' && (
                 <QuickModal title="Nuevo Producto" onClose={() => setQcMode(null)}>
                     <div className="space-y-3">
                         <div>
@@ -747,8 +750,8 @@ export default function NuevaFacturaPage() {
                             <input
                                 autoFocus
                                 className={fieldCls}
-                                value={qcProd.nombre}
-                                onChange={(e) => setQcProd(p => ({ ...p, nombre: e.target.value }))}
+                                value={qcProduct.name}
+                                onChange={(e) => setQcProduct(p => ({ ...p, name: e.target.value }))}
                                 placeholder="Nombre del producto"
                             />
                         </div>
@@ -756,8 +759,8 @@ export default function NuevaFacturaPage() {
                             <label className={labelCls}>Código</label>
                             <input
                                 className={fieldCls}
-                                value={qcProd.codigo}
-                                onChange={(e) => setQcProd(p => ({ ...p, codigo: e.target.value }))}
+                                value={qcProduct.code}
+                                onChange={(e) => setQcProduct(p => ({ ...p, code: e.target.value }))}
                                 placeholder="Ej. 001"
                             />
                         </div>
@@ -766,8 +769,8 @@ export default function NuevaFacturaPage() {
                                 <label className={labelCls}>Tipo</label>
                                 <select
                                     className={fieldCls}
-                                    value={qcProd.tipo}
-                                    onChange={(e) => setQcProd(p => ({ ...p, tipo: e.target.value as TipoProducto }))}
+                                    value={qcProduct.type}
+                                    onChange={(e) => setQcProduct(p => ({ ...p, type: e.target.value as ProductType }))}
                                 >
                                     <option value="mercancia">Mercancía</option>
                                     <option value="materia_prima">Materia Prima</option>
@@ -778,8 +781,8 @@ export default function NuevaFacturaPage() {
                                 <label className={labelCls}>IVA</label>
                                 <select
                                     className={fieldCls}
-                                    value={qcProd.ivaTipo}
-                                    onChange={(e) => setQcProd(p => ({ ...p, ivaTipo: e.target.value as IvaTipo }))}
+                                    value={qcProduct.vatType}
+                                    onChange={(e) => setQcProduct(p => ({ ...p, vatType: e.target.value as VatType }))}
                                 >
                                     <option value="general">General (16%)</option>
                                     <option value="exento">Exento</option>
@@ -792,12 +795,12 @@ export default function NuevaFacturaPage() {
                                 <div className="flex gap-1">
                                     <select
                                         className={fieldCls}
-                                        value={qcProd.departamentoId}
-                                        onChange={(e) => setQcProd(p => ({ ...p, departamentoId: e.target.value }))}
+                                        value={qcProduct.departmentId}
+                                        onChange={(e) => setQcProduct(p => ({ ...p, departmentId: e.target.value }))}
                                     >
                                         <option value="">Sin departamento</option>
-                                        {departamentos.filter(d => d.activo).map(d => (
-                                            <option key={d.id} value={d.id}>{d.nombre}</option>
+                                        {departments.filter(d => d.active).map(d => (
+                                            <option key={d.id} value={d.id}>{d.name}</option>
                                         ))}
                                     </select>
                                     <button
@@ -817,14 +820,14 @@ export default function NuevaFacturaPage() {
                                 <input
                                     autoFocus
                                     className="flex-1 h-8 px-2 rounded-md border border-border-light bg-surface-1 outline-none font-mono text-[12px] text-foreground focus:border-primary-500/60"
-                                    value={qcDeptNombre}
-                                    onChange={(e) => setQcDeptNombre(e.target.value)}
+                                    value={qcDeptName}
+                                    onChange={(e) => setQcDeptName(e.target.value)}
                                     placeholder="Nombre del departamento"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleQcDepartamento(); if (e.key === 'Escape') setQcDeptOpen(false); }}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleQcDepartment(); if (e.key === 'Escape') setQcDeptOpen(false); }}
                                 />
                                 <button
-                                    onClick={handleQcDepartamento}
-                                    disabled={qcDeptSaving || !qcDeptNombre.trim()}
+                                    onClick={handleQcDepartment}
+                                    disabled={qcDeptSaving || !qcDeptName.trim()}
                                     className="h-8 px-4 flex-shrink-0 rounded-md bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.12em] transition-colors"
                                 >
                                     {qcDeptSaving ? '…' : 'Crear'}
@@ -846,7 +849,7 @@ export default function NuevaFacturaPage() {
                                 Cancelar
                             </button>
                             <button
-                                onClick={handleQcProducto}
+                                onClick={handleQcProduct}
                                 disabled={qcSaving}
                                 className="flex-1 h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >

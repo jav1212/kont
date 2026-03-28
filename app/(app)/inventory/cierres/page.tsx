@@ -1,5 +1,8 @@
 "use client";
 
+// Period close management page.
+// Allows closing accounting periods and lists all closed periods.
+
 import { useEffect, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -20,8 +23,8 @@ function fmtDate(iso: string) {
 export default function CierresPage() {
     const { companyId } = useCompany();
     const {
-        cierres, loadingCierres, error, setError,
-        loadCierres, saveCierre,
+        periodCloses, loadingPeriodCloses, error,
+        loadPeriodCloses, savePeriodClose,
     } = useInventory();
 
     const [closingPeriod, setClosingPeriod] = useState(currentPeriod());
@@ -35,8 +38,8 @@ export default function CierresPage() {
     const [tasaBcvError, setTasaBcvError]     = useState<string | null>(null);
 
     useEffect(() => {
-        if (companyId) loadCierres(companyId);
-    }, [companyId, loadCierres]);
+        if (companyId) loadPeriodCloses(companyId);
+    }, [companyId, loadPeriodCloses]);
 
     useEffect(() => {
         // last day of closing period
@@ -63,13 +66,14 @@ export default function CierresPage() {
         return () => { cancelled = true; };
     }, [closingPeriod]);
 
-    const isClosed = cierres.some((c) => c.periodo === closingPeriod);
+    const isClosed = periodCloses.some((c) => c.period === closingPeriod);
 
     async function handleClose() {
         if (!companyId) return;
         setSaving(true);
         const tasa = closingTasa ? parseFloat(closingTasa.replace(',', '.')) : null;
-        const ok = await saveCierre(companyId, closingPeriod, closingNotas, isNaN(tasa as number) ? null : tasa);
+        const tasaFinal = (tasa !== null && !isNaN(tasa)) ? tasa : null;
+        const ok = await savePeriodClose(companyId, closingPeriod, closingNotas, tasaFinal);
         setSaving(false);
         setConfirm(false);
         if (ok) {
@@ -210,9 +214,9 @@ export default function CierresPage() {
                             </p>
                         </div>
 
-                        {loadingCierres ? (
+                        {loadingPeriodCloses ? (
                             <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
-                        ) : cierres.length === 0 ? (
+                        ) : periodCloses.length === 0 ? (
                             <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                                 No hay períodos cerrados.
                             </div>
@@ -228,22 +232,22 @@ export default function CierresPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cierres.map((c) => (
-                                        <tr key={c.id ?? c.periodo} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                    {periodCloses.map((c) => (
+                                        <tr key={c.id ?? c.period} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-2.5">
                                                 <span className="inline-flex px-2 py-0.5 rounded bg-surface-2 border border-border-light text-foreground font-medium text-[12px]">
-                                                    {c.periodo}
+                                                    {c.period}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
-                                                {c.cerradoAt ? fmtDate(c.cerradoAt) : "—"}
+                                                {c.closedAt ? fmtDate(c.closedAt) : "—"}
                                             </td>
                                             <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">
-                                                {c.tasaDolar != null
-                                                    ? c.tasaDolar.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                                                {c.dollarRate != null
+                                                    ? c.dollarRate.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })
                                                     : "—"}
                                             </td>
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{c.notas || "—"}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{c.notes || "—"}</td>
                                         </tr>
                                     ))}
                                 </tbody>

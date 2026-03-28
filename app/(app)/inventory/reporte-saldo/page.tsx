@@ -1,9 +1,12 @@
 "use client";
 
+// Balance report page (Reporte Saldo).
+// Shows a monthly inventory summary grouped by department.
+
 import { useEffect, useState, useMemo } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { ReporteSaldoRow } from "@/src/modules/inventory/backend/domain/reporte-saldo";
+import type { BalanceReportRow } from "@/src/modules/inventory/backend/domain/balance-report";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,11 +23,11 @@ function fmtMoney(n: number) {
     return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function sum(rows: ReporteSaldoRow[], key: keyof ReporteSaldoRow): number {
-    return rows.reduce((acc, r) => acc + (r[key] as number), 0);
+function sum(rows: BalanceReportRow[], key: keyof BalanceReportRow): number {
+    return rows.reduce((acc, r) => acc + Number(r[key]), 0);
 }
 
-function exportCSV(rows: ReporteSaldoRow[], periodo: string) {
+function exportCSV(rows: BalanceReportRow[], period: string) {
     const headers = [
         "Departamento",
         "Inv. Inicial (unid.)",
@@ -40,71 +43,71 @@ function exportCSV(rows: ReporteSaldoRow[], periodo: string) {
         headers.join(","),
         ...rows.map((r) =>
             [
-                `"${r.departamentoNombre}"`,
-                r.unidadesInicial,
-                r.costoInicial.toFixed(2),
-                r.unidadesEntradas,
-                r.costoEntradas.toFixed(2),
-                r.unidadesSalidas,
-                r.costoSalidas.toFixed(2),
-                r.unidadesExistencia,
-                r.costoExistencia.toFixed(2),
+                `"${r.departmentName}"`,
+                r.openingUnits,
+                r.openingCost.toFixed(2),
+                r.inboundUnits,
+                r.inboundCost.toFixed(2),
+                r.outboundUnits,
+                r.outboundCost.toFixed(2),
+                r.closingUnits,
+                r.closingCost.toFixed(2),
             ].join(",")
         ),
         // Total row
         [
             "TOTAL",
-            sum(rows, "unidadesInicial"),
-            sum(rows, "costoInicial").toFixed(2),
-            sum(rows, "unidadesEntradas"),
-            sum(rows, "costoEntradas").toFixed(2),
-            sum(rows, "unidadesSalidas"),
-            sum(rows, "costoSalidas").toFixed(2),
-            sum(rows, "unidadesExistencia"),
-            sum(rows, "costoExistencia").toFixed(2),
+            sum(rows, "openingUnits"),
+            sum(rows, "openingCost").toFixed(2),
+            sum(rows, "inboundUnits"),
+            sum(rows, "inboundCost").toFixed(2),
+            sum(rows, "outboundUnits"),
+            sum(rows, "outboundCost").toFixed(2),
+            sum(rows, "closingUnits"),
+            sum(rows, "closingCost").toFixed(2),
         ].join(","),
     ];
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte-saldo-${periodo}.csv`;
+    a.download = `reporte-saldo-${period}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function ReporteSaldoPage() {
+export default function BalanceReportPage() {
     const { companyId } = useCompany();
-    const { reporteSaldo, loadingReporteSaldo, error, setError, loadReporteSaldo } = useInventory();
+    const { balanceReport, loadingBalanceReport, error, setError, loadBalanceReport } = useInventory();
 
-    const [periodo, setPeriodo] = useState(currentPeriod());
+    const [period, setPeriod] = useState(currentPeriod());
     const [searched, setSearched] = useState(false);
 
     useEffect(() => {
         if (companyId && !searched) {
-            loadReporteSaldo(companyId, periodo);
+            loadBalanceReport(companyId, period);
             setSearched(true);
         }
-    }, [companyId, periodo, loadReporteSaldo, searched]);
+    }, [companyId, period, loadBalanceReport, searched]);
 
     function handleSearch() {
         if (!companyId) return;
         setError(null);
-        loadReporteSaldo(companyId, periodo);
+        loadBalanceReport(companyId, period);
     }
 
     const totals = useMemo(() => ({
-        unidadesInicial:    sum(reporteSaldo, "unidadesInicial"),
-        costoInicial:       sum(reporteSaldo, "costoInicial"),
-        unidadesEntradas:   sum(reporteSaldo, "unidadesEntradas"),
-        costoEntradas:      sum(reporteSaldo, "costoEntradas"),
-        unidadesSalidas:    sum(reporteSaldo, "unidadesSalidas"),
-        costoSalidas:       sum(reporteSaldo, "costoSalidas"),
-        unidadesExistencia: sum(reporteSaldo, "unidadesExistencia"),
-        costoExistencia:    sum(reporteSaldo, "costoExistencia"),
-    }), [reporteSaldo]);
+        openingUnits:  sum(balanceReport, "openingUnits"),
+        openingCost:   sum(balanceReport, "openingCost"),
+        inboundUnits:  sum(balanceReport, "inboundUnits"),
+        inboundCost:   sum(balanceReport, "inboundCost"),
+        outboundUnits: sum(balanceReport, "outboundUnits"),
+        outboundCost:  sum(balanceReport, "outboundCost"),
+        closingUnits:  sum(balanceReport, "closingUnits"),
+        closingCost:   sum(balanceReport, "closingCost"),
+    }), [balanceReport]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -127,22 +130,22 @@ export default function ReporteSaldoPage() {
                             </label>
                             <input
                                 type="month"
-                                value={periodo}
-                                onChange={(e) => { setPeriodo(e.target.value); setSearched(false); }}
+                                value={period}
+                                onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
                                 className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                             />
                         </div>
                         <button
                             onClick={handleSearch}
-                            disabled={loadingReporteSaldo}
+                            disabled={loadingBalanceReport}
                             className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                         >
-                            {loadingReporteSaldo ? "Cargando…" : "Generar"}
+                            {loadingBalanceReport ? "Cargando…" : "Generar"}
                         </button>
-                        {reporteSaldo.length > 0 && (
+                        {balanceReport.length > 0 && (
                             <>
                                 <button
-                                    onClick={() => exportCSV(reporteSaldo, periodo)}
+                                    onClick={() => exportCSV(balanceReport, period)}
                                     className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                                 >
                                     Exportar CSV
@@ -166,9 +169,9 @@ export default function ReporteSaldoPage() {
                     </div>
                 )}
 
-                {loadingReporteSaldo ? (
+                {loadingBalanceReport ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">Cargando reporte…</div>
-                ) : reporteSaldo.length === 0 ? (
+                ) : balanceReport.length === 0 ? (
                     <div className="py-16 text-center text-[11px] text-[var(--text-tertiary)]">
                         No hay datos para el período seleccionado.
                     </div>
@@ -204,34 +207,34 @@ export default function ReporteSaldoPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {reporteSaldo.map((row) => (
-                                        <tr key={row.departamentoNombre} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                    {balanceReport.map((row) => (
+                                        <tr key={row.departmentName} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-3 font-medium text-foreground uppercase tracking-[0.12em]">
-                                                {row.departamentoNombre}
+                                                {row.departmentName}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {fmtN(row.unidadesInicial)}
+                                                {fmtN(row.openingUnits)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtMoney(row.costoInicial)}
+                                                {fmtMoney(row.openingCost)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {fmtN(row.unidadesEntradas)}
+                                                {fmtN(row.inboundUnits)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtMoney(row.costoEntradas)}
+                                                {fmtMoney(row.inboundCost)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {fmtN(row.unidadesSalidas)}
+                                                {fmtN(row.outboundUnits)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtMoney(row.costoSalidas)}
+                                                {fmtMoney(row.outboundCost)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-secondary)]">
-                                                {fmtN(row.unidadesExistencia)}
+                                                {fmtN(row.closingUnits)}
                                             </td>
                                             <td className="px-4 py-3 tabular-nums text-right text-[var(--text-primary)]">
-                                                {fmtMoney(row.costoExistencia)}
+                                                {fmtMoney(row.closingCost)}
                                             </td>
                                         </tr>
                                     ))}
@@ -242,28 +245,28 @@ export default function ReporteSaldoPage() {
                                             Total
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtN(totals.unidadesInicial)}
+                                            {fmtN(totals.openingUnits)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtMoney(totals.costoInicial)}
+                                            {fmtMoney(totals.openingCost)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtN(totals.unidadesEntradas)}
+                                            {fmtN(totals.inboundUnits)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtMoney(totals.costoEntradas)}
+                                            {fmtMoney(totals.inboundCost)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtN(totals.unidadesSalidas)}
+                                            {fmtN(totals.outboundUnits)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtMoney(totals.costoSalidas)}
+                                            {fmtMoney(totals.outboundCost)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtN(totals.unidadesExistencia)}
+                                            {fmtN(totals.closingUnits)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
-                                            {fmtMoney(totals.costoExistencia)}
+                                            {fmtMoney(totals.closingCost)}
                                         </td>
                                     </tr>
                                 </tbody>

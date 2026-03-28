@@ -1,14 +1,17 @@
 "use client";
 
+// Products catalog page — CRUD, CSV import/export, bulk delete.
+// Uses English domain types (Product) and English useInventory() API.
+
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Producto, TipoProducto, UnidadMedida, MetodoValuacion, IvaTipo } from "@/src/modules/inventory/backend/domain/producto";
+import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
-    productosToCsv,
-    parseProductosCsv,
+    productsToCsv,
+    parseProductsCsv,
     downloadCsv,
-    type ProductoCsvResult,
+    type ProductCsvResult,
 } from "@/src/modules/inventory/frontend/utils/inventory-csv";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -24,13 +27,13 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
-const TIPOS: { value: TipoProducto; label: string }[] = [
+const TIPOS: { value: ProductType; label: string }[] = [
     { value: "mercancia",          label: "Mercancía"         },
     { value: "materia_prima",      label: "Materia Prima"     },
     { value: "producto_terminado", label: "Producto Terminado"},
 ];
 
-const UNIDADES: { value: UnidadMedida; label: string }[] = [
+const UNIDADES: { value: MeasureUnit; label: string }[] = [
     { value: "unidad", label: "Unidad" },
     { value: "kg",     label: "Kg"     },
     { value: "g",      label: "g"      },
@@ -43,29 +46,29 @@ const UNIDADES: { value: UnidadMedida; label: string }[] = [
     { value: "paquete", label: "Paquete" },
 ];
 
-const METODOS: { value: MetodoValuacion; label: string }[] = [
+const METODOS: { value: ValuationMethod; label: string }[] = [
     { value: "promedio_ponderado", label: "Promedio Ponderado" },
 ];
 
-const IVA_TIPOS: { value: IvaTipo; label: string }[] = [
+const IVA_TIPOS: { value: VatType; label: string }[] = [
     { value: "general", label: "General (G - 16%)" },
     { value: "exento",  label: "Exento (E)"         },
 ];
 
-function empty(empresaId: string): Producto {
+function empty(companyId: string): Product {
     return {
-        empresaId,
-        codigo:          "",
-        nombre:          "",
-        descripcion:     "",
-        tipo:            "mercancia",
-        unidadMedida:    "unidad",
-        metodoValuacion: "promedio_ponderado",
-        existenciaActual: 0,
-        costoPromedio:   0,
-        activo:          true,
-        ivaTipo:         "general",
-        departamentoId:  undefined,
+        companyId,
+        code:            "",
+        name:            "",
+        description:     "",
+        type:            "mercancia",
+        measureUnit:     "unidad",
+        valuationMethod: "promedio_ponderado",
+        currentStock:    0,
+        averageCost:     0,
+        active:          true,
+        vatType:         "general",
+        departmentId:    undefined,
     };
 }
 
@@ -88,15 +91,15 @@ function TipoBadge({ tipo }: { tipo: string }) {
 export default function ProductosPage() {
     const { companyId } = useCompany();
     const {
-        productos, loadingProductos, error, setError,
-        loadProductos, saveProducto, deleteProducto,
-        departamentos, loadingDepartamentos, loadDepartamentos,
+        products, loadingProducts, error, setError,
+        loadProducts, saveProduct, deleteProduct,
+        departments, loadingDepartments, loadDepartments,
     } = useInventory();
 
-    const [form, setForm] = useState<Producto | null>(null);
+    const [form, setForm] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-    const [importResult, setImportResult] = useState<ProductoCsvResult | null>(null);
+    const [importResult, setImportResult] = useState<ProductCsvResult | null>(null);
     const [importing, setImporting] = useState(false);
     const [pasteOpen, setPasteOpen] = useState(false);
     const [pasteText, setPasteText] = useState("");
@@ -108,10 +111,10 @@ export default function ProductosPage() {
 
     useEffect(() => {
         if (companyId) {
-            loadProductos(companyId);
-            loadDepartamentos(companyId);
+            loadProducts(companyId);
+            loadDepartments(companyId);
         }
-    }, [companyId, loadProductos, loadDepartamentos]);
+    }, [companyId, loadProducts, loadDepartments]);
 
     function openNew() {
         if (!companyId) return;
@@ -119,11 +122,11 @@ export default function ProductosPage() {
         setError(null);
     }
 
-    function openEdit(p: Producto) {
+    function openEdit(p: Product) {
         setForm({
             ...p,
             // peps is no longer supported; treat it as promedio_ponderado
-            metodoValuacion: p.metodoValuacion === "peps" ? "promedio_ponderado" : p.metodoValuacion,
+            valuationMethod: p.valuationMethod === "peps" ? "promedio_ponderado" : p.valuationMethod,
         });
         setError(null);
     }
@@ -132,33 +135,33 @@ export default function ProductosPage() {
 
     async function handleSave() {
         if (!form) return;
-        if (!form.nombre.trim()) { setError("El nombre es requerido"); return; }
+        if (!form.name.trim()) { setError("El nombre es requerido"); return; }
         setSaving(true);
-        const saved = await saveProducto(form);
+        const saved = await saveProduct(form);
         setSaving(false);
         if (saved) closeForm();
     }
 
     async function handleDelete(id: string) {
-        await deleteProducto(id);
+        await deleteProduct(id);
         setConfirmDelete(null);
     }
 
     async function handleBulkDelete() {
         setBulkDeleting(true);
         for (const id of selected) {
-            await deleteProducto(id);
+            await deleteProduct(id);
         }
         setBulkDeleting(false);
         setSelected(new Set());
         setConfirmBulkDelete(false);
     }
 
-    const set = (k: keyof Producto, v: unknown) =>
+    const set = (k: keyof Product, v: string | number | boolean | null) =>
         setForm((f) => f ? { ...f, [k]: v } : f);
 
     function handleExport() {
-        downloadCsv(productosToCsv(productos), "productos.csv");
+        downloadCsv(productsToCsv(products), "productos.csv");
     }
 
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,7 +169,7 @@ export default function ProductosPage() {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const result = parseProductosCsv(ev.target?.result as string, departamentos);
+            const result = parseProductsCsv(ev.target?.result as string, departments);
             setImportResult(result);
         };
         reader.readAsText(file, "utf-8");
@@ -175,7 +178,7 @@ export default function ProductosPage() {
 
     function handlePasteParse() {
         if (!pasteText.trim()) return;
-        const result = parseProductosCsv(pasteText, departamentos);
+        const result = parseProductsCsv(pasteText, departments);
         setImportResult(result);
         setPasteOpen(false);
         setPasteText("");
@@ -184,23 +187,23 @@ export default function ProductosPage() {
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
-        for (const p of importResult.productos) {
-            // If a product with this codigo already exists, update it (avoid duplicates)
-            const existing = p.codigo ? productos.find((x) => x.codigo === p.codigo) : undefined;
-            await saveProducto({
+        for (const p of importResult.products) {
+            // If a product with this code already exists, update it (avoid duplicates)
+            const existing = p.code ? products.find((x) => x.code === p.code) : undefined;
+            await saveProduct({
                 ...p,
-                id:               existing?.id,
-                empresaId:        companyId,
-                existenciaActual: existing?.existenciaActual ?? 0,
-                costoPromedio:    existing?.costoPromedio ?? 0,
+                id:           existing?.id,
+                companyId,
+                currentStock: existing?.currentStock ?? 0,
+                averageCost:  existing?.averageCost ?? 0,
             });
         }
         setImporting(false);
         setImportResult(null);
-        loadProductos(companyId);
+        loadProducts(companyId);
     }
 
-    const filtered = productos.filter(p => [p.codigo, p.nombre, p.departamentoNombre ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
+    const filtered = products.filter(p => [p.code, p.name, p.departmentName ?? ""].join(" ").toLowerCase().includes(search.toLowerCase()));
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -218,7 +221,7 @@ export default function ProductosPage() {
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleExport}
-                            disabled={productos.length === 0}
+                            disabled={products.length === 0}
                             className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
                             Exportar CSV
@@ -231,8 +234,8 @@ export default function ProductosPage() {
                         </button>
                         <button
                             onClick={() => fileRef.current?.click()}
-                            disabled={loadingDepartamentos}
-                            title={loadingDepartamentos ? "Cargando departamentos…" : undefined}
+                            disabled={loadingDepartments}
+                            title={loadingDepartments ? "Cargando departamentos…" : undefined}
                             className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                         >
                             Importar archivo
@@ -315,14 +318,14 @@ export default function ProductosPage() {
                             onChange={(e) => setPasteText(e.target.value)}
                         />
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
-                            {loadingDepartamentos ? (
+                            {loadingDepartments ? (
                                 <span className="text-[12px] text-text-tertiary">Cargando departamentos…</span>
                             ) : (
-                                <span className="text-[12px] text-text-tertiary">{departamentos.length} departamento(s) disponible(s)</span>
+                                <span className="text-[12px] text-text-tertiary">{departments.length} departamento(s) disponible(s)</span>
                             )}
                             <button
                                 onClick={handlePasteParse}
-                                disabled={!pasteText.trim() || loadingDepartamentos}
+                                disabled={!pasteText.trim() || loadingDepartments}
                                 className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Procesar
@@ -350,18 +353,18 @@ export default function ProductosPage() {
                                 ))}
                             </ul>
                         )}
-                        {importResult.productos.length > 0 && (
+                        {importResult.products.length > 0 && (
                             <p className="text-[13px] text-[var(--text-secondary)]">
-                                {importResult.productos.length} producto(s) listos para importar.
+                                {importResult.products.length} producto(s) listos para importar.
                             </p>
                         )}
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
                             <button
                                 onClick={handleImport}
-                                disabled={importing || importResult.productos.length === 0}
+                                disabled={importing || importResult.products.length === 0}
                                 className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
-                                {importing ? "Importando…" : `Importar ${importResult.productos.length}`}
+                                {importing ? "Importando…" : `Importar ${importResult.products.length}`}
                             </button>
                             <button
                                 onClick={() => setImportResult(null)}
@@ -383,35 +386,35 @@ export default function ProductosPage() {
                         <div className="grid grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label className={labelCls}>Código</label>
-                                <input className={fieldCls} value={form.codigo} onChange={(e) => set("codigo", e.target.value)} />
+                                <input className={fieldCls} value={form.code} onChange={(e) => set("code", e.target.value)} />
                             </div>
                             <div className="col-span-2">
                                 <label className={labelCls}>Nombre *</label>
-                                <input className={fieldCls} value={form.nombre} onChange={(e) => set("nombre", e.target.value)} />
+                                <input className={fieldCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
                             </div>
                         </div>
 
                         <div className="mb-4">
                             <label className={labelCls}>Descripción</label>
-                            <input className={fieldCls} value={form.descripcion} onChange={(e) => set("descripcion", e.target.value)} />
+                            <input className={fieldCls} value={form.description} onChange={(e) => set("description", e.target.value)} />
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label className={labelCls}>Tipo</label>
-                                <select className={fieldCls} value={form.tipo} onChange={(e) => set("tipo", e.target.value as TipoProducto)}>
+                                <select className={fieldCls} value={form.type} onChange={(e) => set("type", e.target.value as ProductType)}>
                                     {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className={labelCls}>Unidad de medida</label>
-                                <select className={fieldCls} value={form.unidadMedida} onChange={(e) => set("unidadMedida", e.target.value as UnidadMedida)}>
+                                <select className={fieldCls} value={form.measureUnit} onChange={(e) => set("measureUnit", e.target.value as MeasureUnit)}>
                                     {UNIDADES.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className={labelCls}>Método de valuación</label>
-                                <select className={fieldCls} value={form.metodoValuacion} onChange={(e) => set("metodoValuacion", e.target.value as MetodoValuacion)}>
+                                <select className={fieldCls} value={form.valuationMethod} onChange={(e) => set("valuationMethod", e.target.value as ValuationMethod)}>
                                     {METODOS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                                 </select>
                             </div>
@@ -422,19 +425,19 @@ export default function ProductosPage() {
                                 <label className={labelCls}>Departamento</label>
                                 <select
                                     className={fieldCls}
-                                    value={form.departamentoId ?? ""}
-                                    onChange={(e) => set("departamentoId", e.target.value || undefined)}
-                                    disabled={loadingDepartamentos}
+                                    value={form.departmentId ?? ""}
+                                    onChange={(e) => set("departmentId", e.target.value || null)}
+                                    disabled={loadingDepartments}
                                 >
                                     <option value="">Sin departamento</option>
-                                    {departamentos.filter((d) => d.activo).map((d) => (
-                                        <option key={d.id} value={d.id}>{d.nombre}</option>
+                                    {departments.filter((d) => d.active).map((d) => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
                                 <label className={labelCls}>IVA</label>
-                                <select className={fieldCls} value={form.ivaTipo ?? "general"} onChange={(e) => set("ivaTipo", e.target.value as IvaTipo)}>
+                                <select className={fieldCls} value={form.vatType ?? "general"} onChange={(e) => set("vatType", e.target.value as VatType)}>
                                     {IVA_TIPOS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
                                 </select>
                             </div>
@@ -442,8 +445,8 @@ export default function ProductosPage() {
 
                         <div className="mb-4 flex items-center gap-2">
                             <input
-                                type="checkbox" checked={form.activo}
-                                onChange={(e) => set("activo", e.target.checked)}
+                                type="checkbox" checked={form.active}
+                                onChange={(e) => set("active", e.target.checked)}
                                 className="w-4 h-4 rounded"
                             />
                             <span className="text-[14px] text-foreground">Activo</span>
@@ -468,9 +471,9 @@ export default function ProductosPage() {
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    {loadingProductos ? (
+                    {loadingProducts ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
-                    ) : productos.length === 0 ? (
+                    ) : products.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
                             No hay productos. Haz clic en "+ Nuevo producto" para crear uno.
                         </div>
@@ -514,21 +517,21 @@ export default function ProductosPage() {
                                                     }}
                                                 />
                                             </td>
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.codigo || "—"}</td>
-                                            <td className="px-4 py-2.5 text-foreground font-medium">{p.nombre}</td>
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.departamentoNombre || "—"}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.code || "—"}</td>
+                                            <td className="px-4 py-2.5 text-foreground font-medium">{p.name}</td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.departmentName || "—"}</td>
                                             <td className="px-4 py-2.5">
-                                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${p.ivaTipo === "exento" ? "border badge-info" : "border badge-warning"}`}>
-                                                    {p.ivaTipo === "exento" ? "E" : "G 16%"}
+                                                <span className={`inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium ${p.vatType === "exento" ? "border badge-info" : "border badge-warning"}`}>
+                                                    {p.vatType === "exento" ? "E" : "G 16%"}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-2.5"><TipoBadge tipo={p.tipo} /></td>
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.unidadMedida}</td>
+                                            <td className="px-4 py-2.5"><TipoBadge tipo={p.type} /></td>
+                                            <td className="px-4 py-2.5 text-[var(--text-secondary)]">{p.measureUnit}</td>
                                             <td className="px-4 py-2.5 tabular-nums font-medium text-foreground">
-                                                {fmtN(p.existenciaActual)}
+                                                {fmtN(p.currentStock)}
                                             </td>
                                             <td className="px-4 py-2.5">
-                                                {p.activo
+                                                {p.active
                                                     ? <span className="text-text-success text-[11px] uppercase tracking-[0.10em]">Activo</span>
                                                     : <span className="text-text-tertiary text-[11px] uppercase tracking-[0.10em]">Inactivo</span>
                                                 }

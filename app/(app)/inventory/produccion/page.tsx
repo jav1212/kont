@@ -1,9 +1,12 @@
 "use client";
 
+// Production (Produccion) page.
+// Allows recording transformation batches: consumes raw materials to produce finished products.
+
 import { useEffect, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
-import type { Transformacion, TransformacionConsumo } from "@/src/modules/inventory/backend/domain/transformacion";
+import type { Transformation, TransformationInput } from "@/src/modules/inventory/backend/domain/transformation";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,63 +29,63 @@ const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--t
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-export default function ProduccionPage() {
+export default function ProductionPage() {
     const { companyId } = useCompany();
     const {
-        productos, transformaciones,
-        loadingProductos, loadingTransformaciones, error, setError,
-        loadProductos, loadTransformaciones, saveTransformacion,
+        products, transformations,
+        loadingProducts, loadingTransformations, error, setError,
+        loadProducts, loadTransformations, saveTransformation,
     } = useInventory();
 
     const [saving, setSaving] = useState(false);
 
-    const [form, setForm] = useState<Omit<Transformacion, "id" | "createdAt">>({
-        empresaId:          "",
-        descripcion:        "",
-        fecha:              isoToday(),
-        periodo:            currentPeriod(),
-        productoTerminadoId: null,
-        cantidadProducida:  0,
-        notas:              "",
-        consumos:           [],
+    const [form, setForm] = useState<Omit<Transformation, "id" | "createdAt">>({
+        companyId:         "",
+        description:       "",
+        date:              isoToday(),
+        period:            currentPeriod(),
+        finishedProductId: null,
+        producedQuantity:  0,
+        notes:             "",
+        inputs:            [],
     });
 
-    const [consumos, setConsumos] = useState<TransformacionConsumo[]>([
-        { productoId: "", cantidad: 0, costoUnitario: 0 },
+    const [inputs, setInputs] = useState<TransformationInput[]>([
+        { productId: "", quantity: 0, unitCost: 0 },
     ]);
 
     useEffect(() => {
         if (!companyId) return;
-        loadProductos(companyId);
-        loadTransformaciones(companyId);
-    }, [companyId, loadProductos, loadTransformaciones]);
+        loadProducts(companyId);
+        loadTransformations(companyId);
+    }, [companyId, loadProducts, loadTransformations]);
 
-    const materiasPrimas = productos.filter((p) => p.activo && p.tipo === "materia_prima");
-    const productosTerminados = productos.filter((p) => p.activo && p.tipo === "producto_terminado");
+    const rawMaterials    = products.filter((p) => p.active && p.type === "materia_prima");
+    const finishedProducts = products.filter((p) => p.active && p.type === "producto_terminado");
 
-    const costoLote = consumos.reduce((s, c) => s + (c.cantidad * c.costoUnitario), 0);
+    const batchCost = inputs.reduce((s, c) => s + (c.quantity * c.unitCost), 0);
 
     function setF<K extends keyof typeof form>(k: K, v: typeof form[K]) {
         setForm((f) => ({ ...f, [k]: v }));
     }
 
-    function addConsumo() {
-        setConsumos((c) => [...c, { productoId: "", cantidad: 0, costoUnitario: 0 }]);
+    function addInput() {
+        setInputs((c) => [...c, { productId: "", quantity: 0, unitCost: 0 }]);
     }
 
-    function removeConsumo(idx: number) {
-        setConsumos((c) => c.filter((_, i) => i !== idx));
+    function removeInput(idx: number) {
+        setInputs((c) => c.filter((_, i) => i !== idx));
     }
 
-    function setConsumo(idx: number, k: keyof TransformacionConsumo, v: string | number) {
-        setConsumos((cs) =>
+    function setInput(idx: number, k: keyof TransformationInput, v: string | number) {
+        setInputs((cs) =>
             cs.map((c, i) => {
                 if (i !== idx) return c;
                 const updated = { ...c, [k]: v };
-                // Auto-fill costo unitario from product
-                if (k === "productoId") {
-                    const p = productos.find((x) => x.id === v);
-                    if (p) updated.costoUnitario = p.costoPromedio;
+                // Auto-fill unit cost from product average cost
+                if (k === "productId") {
+                    const p = products.find((x) => x.id === v);
+                    if (p) updated.unitCost = p.averageCost;
                 }
                 return updated;
             })
@@ -91,29 +94,29 @@ export default function ProduccionPage() {
 
     async function handleSave() {
         if (!companyId) return;
-        if (!form.descripcion.trim()) { setError("La descripción es requerida"); return; }
+        if (!form.description.trim()) { setError("La descripción es requerida"); return; }
         setSaving(true);
-        const transformacion: Transformacion = {
+        const transformation: Transformation = {
             ...form,
-            empresaId:  companyId,
-            periodo:    form.fecha.slice(0, 7),
-            consumos:   consumos.filter((c) => c.productoId && c.cantidad > 0),
+            companyId: companyId,
+            period:    form.date.slice(0, 7),
+            inputs:    inputs.filter((c) => c.productId && c.quantity > 0),
         };
-        const saved = await saveTransformacion(transformacion);
+        const saved = await saveTransformation(transformation);
         setSaving(false);
         if (saved) {
             setForm({
-                empresaId:          companyId,
-                descripcion:        "",
-                fecha:              isoToday(),
-                periodo:            currentPeriod(),
-                productoTerminadoId: null,
-                cantidadProducida:  0,
-                notas:              "",
-                consumos:           [],
+                companyId:         companyId,
+                description:       "",
+                date:              isoToday(),
+                period:            currentPeriod(),
+                finishedProductId: null,
+                producedQuantity:  0,
+                notes:             "",
+                inputs:            [],
             });
-            setConsumos([{ productoId: "", cantidad: 0, costoUnitario: 0 }]);
-            loadProductos(companyId); // refresh stock
+            setInputs([{ productId: "", quantity: 0, unitCost: 0 }]);
+            loadProducts(companyId); // refresh stock
         }
     }
 
@@ -146,20 +149,20 @@ export default function ProduccionPage() {
                         <div className="space-y-3">
                             <div>
                                 <label className={labelCls}>Descripción *</label>
-                                <input className={fieldCls} value={form.descripcion} onChange={(e) => setF("descripcion", e.target.value)} placeholder="Ej: Lote producción 001" />
+                                <input className={fieldCls} value={form.description} onChange={(e) => setF("description", e.target.value)} placeholder="Ej: Lote producción 001" />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Fecha</label>
-                                <input type="date" className={fieldCls} value={form.fecha} onChange={(e) => setF("fecha", e.target.value)} />
+                                <input type="date" className={fieldCls} value={form.date} onChange={(e) => setF("date", e.target.value)} />
                             </div>
 
                             <div>
                                 <label className={labelCls}>Producto terminado</label>
-                                <select className={fieldCls} value={form.productoTerminadoId ?? ""} onChange={(e) => setF("productoTerminadoId", e.target.value || null)}>
+                                <select className={fieldCls} value={form.finishedProductId ?? ""} onChange={(e) => setF("finishedProductId", e.target.value || null)}>
                                     <option value="">— ninguno —</option>
-                                    {productosTerminados.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.nombre}</option>
+                                    {finishedProducts.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -168,50 +171,50 @@ export default function ProduccionPage() {
                                 <label className={labelCls}>Cantidad producida</label>
                                 <input
                                     type="number" min="0" step="0.0001" className={fieldCls}
-                                    value={form.cantidadProducida || ""}
-                                    onChange={(e) => setF("cantidadProducida", parseFloat(e.target.value) || 0)}
+                                    value={form.producedQuantity || ""}
+                                    onChange={(e) => setF("producedQuantity", parseFloat(e.target.value) || 0)}
                                 />
                             </div>
 
-                            {/* Consumos */}
+                            {/* Inputs (raw material consumption) */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className={labelCls + " mb-0"}>Consumos de materias primas</label>
-                                    <button onClick={addConsumo} className="text-[9px] uppercase tracking-[0.12em] text-primary-500 hover:text-primary-600 transition-colors">
+                                    <button onClick={addInput} className="text-[9px] uppercase tracking-[0.12em] text-primary-500 hover:text-primary-600 transition-colors">
                                         + Agregar
                                     </button>
                                 </div>
 
                                 <div className="space-y-2">
-                                    {consumos.map((c, idx) => (
+                                    {inputs.map((c, idx) => (
                                         <div key={idx} className="flex items-center gap-2">
                                             <select
                                                 className="flex-1 h-8 px-2 rounded border border-border-light bg-surface-1 text-[11px] text-foreground outline-none"
-                                                value={c.productoId}
-                                                onChange={(e) => setConsumo(idx, "productoId", e.target.value)}
+                                                value={c.productId}
+                                                onChange={(e) => setInput(idx, "productId", e.target.value)}
                                             >
                                                 <option value="">Materia prima…</option>
-                                                {materiasPrimas.map((p) => (
-                                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                                {rawMaterials.map((p) => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
                                                 ))}
                                                 {/* Also allow any active product */}
-                                                {productos.filter((p) => p.activo && p.tipo !== "materia_prima").map((p) => (
-                                                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                                                {products.filter((p) => p.active && p.type !== "materia_prima").map((p) => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
                                                 ))}
                                             </select>
                                             <input
                                                 type="number" min="0.0001" step="0.0001" placeholder="Cant."
                                                 className="w-20 h-8 px-2 rounded border border-border-light bg-surface-1 text-[11px] text-foreground tabular-nums outline-none"
-                                                value={c.cantidad || ""}
-                                                onChange={(e) => setConsumo(idx, "cantidad", parseFloat(e.target.value) || 0)}
+                                                value={c.quantity || ""}
+                                                onChange={(e) => setInput(idx, "quantity", parseFloat(e.target.value) || 0)}
                                             />
                                             <input
                                                 type="number" min="0" step="0.0001" placeholder="Costo U."
                                                 className="w-24 h-8 px-2 rounded border border-border-light bg-surface-1 text-[11px] text-foreground tabular-nums outline-none"
-                                                value={c.costoUnitario || ""}
-                                                onChange={(e) => setConsumo(idx, "costoUnitario", parseFloat(e.target.value) || 0)}
+                                                value={c.unitCost || ""}
+                                                onChange={(e) => setInput(idx, "unitCost", parseFloat(e.target.value) || 0)}
                                             />
-                                            <button onClick={() => removeConsumo(idx)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors text-[13px]">
+                                            <button onClick={() => removeInput(idx)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors text-[13px]">
                                                 ×
                                             </button>
                                         </div>
@@ -219,17 +222,17 @@ export default function ProduccionPage() {
                                 </div>
                             </div>
 
-                            {/* Costo total lote */}
+                            {/* Batch total cost */}
                             <div className="pt-2 border-t border-border-light">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Costo total del lote</span>
-                                    <span className="text-[14px] font-bold tabular-nums text-foreground">{fmtN(costoLote)}</span>
+                                    <span className="text-[14px] font-bold tabular-nums text-foreground">{fmtN(batchCost)}</span>
                                 </div>
                             </div>
 
                             <div>
                                 <label className={labelCls}>Notas</label>
-                                <input className={fieldCls} value={form.notas} onChange={(e) => setF("notas", e.target.value)} />
+                                <input className={fieldCls} value={form.notes} onChange={(e) => setF("notes", e.target.value)} />
                             </div>
                         </div>
 
@@ -244,7 +247,7 @@ export default function ProduccionPage() {
                     </div>
                 </div>
 
-                {/* Right: transformaciones list */}
+                {/* Right: transformations list */}
                 <div className="col-span-3">
                     <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light">
@@ -253,9 +256,9 @@ export default function ProduccionPage() {
                             </p>
                         </div>
 
-                        {loadingTransformaciones ? (
+                        {loadingTransformations ? (
                             <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
-                        ) : transformaciones.length === 0 ? (
+                        ) : transformations.length === 0 ? (
                             <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
                                 No hay lotes registrados.
                             </div>
@@ -271,16 +274,16 @@ export default function ProduccionPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {transformaciones.map((t) => {
-                                        const prod = productos.find((p) => p.id === t.productoTerminadoId);
+                                    {transformations.map((t) => {
+                                        const prod = products.find((p) => p.id === t.finishedProductId);
                                         return (
                                             <tr key={t.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{t.fecha}</td>
-                                                <td className="px-4 py-2.5 text-foreground font-medium">{t.descripcion}</td>
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{prod?.nombre ?? "—"}</td>
-                                                <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(t.cantidadProducida)}</td>
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{t.periodo}</td>
-                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[120px] truncate">{t.notas || "—"}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{t.date}</td>
+                                                <td className="px-4 py-2.5 text-foreground font-medium">{t.description}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{prod?.name ?? "—"}</td>
+                                                <td className="px-4 py-2.5 tabular-nums text-foreground">{fmtN(t.producedQuantity)}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)]">{t.period}</td>
+                                                <td className="px-4 py-2.5 text-[var(--text-secondary)] max-w-[120px] truncate">{t.notes || "—"}</td>
                                             </tr>
                                         );
                                     })}
