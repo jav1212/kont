@@ -1,4 +1,4 @@
-import { getUserActions } from "@/src/modules/users/backend/infra/user-factory";
+import { getUserActions } from "@/src/modules/users/backend/infrastructure/user-factory";
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function GET(req: Request) {
@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     if (!id) return Response.json({ error: "ID is required" }, { status: 400 });
 
     const { getById } = getUserActions();
-    // Ejecuta GetUserByIdUseCase
+    // Executes GetUserByIdUseCase
     const result = await getById.execute(id);
     return handleResult(result);
 }

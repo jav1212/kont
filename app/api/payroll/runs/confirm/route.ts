@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getPayrollRunActions } from "@/src/modules/payroll/backend/infra/payroll-run-factory";
+import { getPayrollRunActions } from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
 const CalculationDataSchema = z.object({

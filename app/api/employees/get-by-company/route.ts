@@ -1,4 +1,4 @@
-import { getEmployeeActions } from "@/src/modules/payroll/backend/infra/employee-factory";
+import { getEmployeeActions } from "@/src/modules/payroll/backend/infrastructure/employee-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
 export const GET = withTenant(async (req, { userId, actingAs }) => {

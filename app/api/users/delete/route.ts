@@ -1,4 +1,4 @@
-import { getUserActions } from "@/src/modules/users/backend/infra/user-factory";
+import { getUserActions } from "@/src/modules/users/backend/infrastructure/user-factory";
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function DELETE(req: Request) {
@@ -6,7 +6,7 @@ export async function DELETE(req: Request) {
     const id = searchParams.get('id');
 
     const { delete: deleteUser } = getUserActions();
-    // Ejecuta DeleteUserUseCase
+    // Executes DeleteUserUseCase
     const result = await deleteUser.execute(id!); 
     return handleResult(result);
 }

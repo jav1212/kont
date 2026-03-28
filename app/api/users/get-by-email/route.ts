@@ -1,4 +1,4 @@
-import { getUserActions } from "@/src/modules/users/backend/infra/user-factory";
+import { getUserActions } from "@/src/modules/users/backend/infrastructure/user-factory";
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 
 export async function GET(req: Request) {
@@ -8,7 +8,7 @@ export async function GET(req: Request) {
     if (!email) return Response.json({ error: "Email is required" }, { status: 400 });
 
     const { getByEmail } = getUserActions();
-    // Ejecuta GetUserByEmailUseCase (valida formato '@')
+    // Executes GetUserByEmailUseCase (validates '@' format)
     const result = await getByEmail.execute(email);
     return handleResult(result);
 }
