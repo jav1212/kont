@@ -171,7 +171,7 @@ function DayStat({ label, value, muted }: { label: string; value: number; muted?
 
 export default function PayrollCalculator() {
     const { companyId, company } = useCompany();
-    const { employees, loading: empLoading, error: empError, upsert } = useEmployee(companyId);
+    const { employees, loading: empLoading, error: empError } = useEmployee(companyId);
     const { confirm, runs } = usePayrollHistory(companyId);
 
     // ── Quincena ───────────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ export default function PayrollCalculator() {
                 },
             })),
         });
-    }, [companyId, quincenaInfo, bcvRate, mondaysInMonth, confirm]);
+    }, [companyId, quincenaInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum, confirm]);
 
     // ── Quincena buttons ───────────────────────────────────────────────────
     const qBtnCls = (active: boolean) => [
@@ -746,7 +746,7 @@ export default function PayrollCalculator() {
                     >
                         <EarningsSection
                             rows={earningRows}   values={earningValues} total={totalEarnings}
-                            dailyRate={dailyRate} weeklyRate={weeklyRate} mondaysInMonth={mondaysInMonth}
+                            dailyRate={dailyRate}
                             onUpdate={updateEarning} onRemove={removeEarning} onAdd={addEarning}
                         />
                     </ConfigSection>

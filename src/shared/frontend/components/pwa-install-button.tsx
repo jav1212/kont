@@ -101,6 +101,7 @@ export function PWAInstallButton({ navItemBase, navItemIdle }: {
     const [installed, setInstalled]     = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- window.navigator is browser-only
         setPlatform(detectPlatform());
 
         function handlePrompt(e: Event) {

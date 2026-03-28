@@ -53,11 +53,6 @@ function inicioDeAnio(anio: number): string {
     return `${anio}-01-01`;
 }
 
-/** ISO date for Dec 31 of a given year */
-function finDeAnio(anio: number): string {
-    return `${anio}-12-31`;
-}
-
 /** Later of two ISO dates */
 function maxDate(a: string, b: string): string {
     return a > b ? a : b;
@@ -452,8 +447,13 @@ export default function UtilidadesPage() {
             .finally(() => setBcvLoading(false));
     }, []);
 
-    // Auto-populate salary from employee
-    useEffect(() => {
+    // Salary field auto-populated from employee data, overridable by user.
+    // Uses render-phase state update (React-approved pattern) to avoid
+    // setState-in-effect cascading renders.
+    const [salarioSourceKey, setSalarioSourceKey] = useState("");
+    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    if (salarioSourceKey !== currentSalarioKey) {
+        setSalarioSourceKey(currentSalarioKey);
         if (selectedEmp) {
             const ves = selectedEmp.moneda === "USD"
                 ? selectedEmp.salarioMensual * bcvRate
@@ -462,7 +462,7 @@ export default function UtilidadesPage() {
         } else {
             setSalarioOverride("");
         }
-    }, [selectedEmp, bcvRate]);
+    }
 
     // ── Shared derived ────────────────────────────────────────────────────────
     const salarioVES  = parseFloat(salarioOverride) || 0;

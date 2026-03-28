@@ -13,7 +13,7 @@ export interface SelectItemData {
     name: string;
     avatar?: string;
     subtitle?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface BaseSelectProps<T extends SelectItemData> {

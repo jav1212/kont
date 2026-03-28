@@ -35,9 +35,13 @@ export default function CierresPage() {
     const [saving, setSaving]               = useState(false);
     const [confirm, setConfirm]             = useState(false);
 
-    const [tasaBcvLoading, setTasaBcvLoading] = useState(false);
-    const [tasaBcvFecha, setTasaBcvFecha]     = useState<string | null>(null);
-    const [tasaBcvError, setTasaBcvError]     = useState<string | null>(null);
+    // BCV fetch state — combined into one object so a single setState call
+    // resets all fields, avoiding multiple synchronous setState in effect.
+    type BcvState = { loading: boolean; fecha: string | null; error: string | null };
+    const [bcvState, setBcvState] = useState<BcvState>({ loading: false, fecha: null, error: null });
+    const tasaBcvLoading = bcvState.loading;
+    const tasaBcvFecha   = bcvState.fecha;
+    const tasaBcvError   = bcvState.error;
 
     useEffect(() => {
         if (companyId) loadPeriodCloses(companyId);
@@ -49,22 +53,22 @@ export default function CierresPage() {
         const lastDay = new Date(y, m, 0); // day 0 = last day of prev month
         const dateStr = lastDay.toISOString().split('T')[0];
         let cancelled = false;
-        setTasaBcvLoading(true);
-        setTasaBcvFecha(null);
-        setTasaBcvError(null);
+        // Single setState call resets all three fields before the fetch.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional pre-fetch reset
+        setBcvState({ loading: true, fecha: null, error: null });
         fetch(`/api/bcv/rate?date=${dateStr}&code=USD`)
             .then(r => r.json())
             .then(json => {
                 if (cancelled) return;
                 if (json.rate) {
                     setClosingTasa(String(json.rate));
-                    setTasaBcvFecha(json.date);
+                    setBcvState(prev => ({ ...prev, fecha: json.date }));
                 } else {
-                    setTasaBcvError(json.error ?? 'Sin datos BCV');
+                    setBcvState(prev => ({ ...prev, error: json.error ?? 'Sin datos BCV' }));
                 }
             })
-            .catch(() => { if (!cancelled) setTasaBcvError('Error al consultar BCV'); })
-            .finally(() => { if (!cancelled) setTasaBcvLoading(false); });
+            .catch(() => { if (!cancelled) setBcvState(prev => ({ ...prev, error: 'Error al consultar BCV' })); })
+            .finally(() => { if (!cancelled) setBcvState(prev => ({ ...prev, loading: false })); });
         return () => { cancelled = true; };
     }, [closingPeriod]);
 

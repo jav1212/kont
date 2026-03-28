@@ -43,7 +43,7 @@ function reducer(state: AuthState, action: AuthAction): AuthState {
 // ── Module-level singleton ────────────────────────────────────────────────────
 
 let _state:     AuthState       = { user: null, status: "loading", error: null };
-let _listeners: Set<() => void> = new Set();
+const _listeners: Set<() => void> = new Set();
 
 function setState(next: AuthState) {
     _state = next;
@@ -156,9 +156,9 @@ export function useAuth() {
         error:           _state.error,
         isLoading:       _state.status === "loading",
         isAuthenticated: _state.status === "authenticated",
-        signIn:          useCallback(signIn, []),
-        signUp:          useCallback(signUp, []),
-        signOut:         useCallback(signOut, []),
-        resetPassword:   useCallback(resetPassword, []),
+        signIn:          useCallback((email: string, password: string) => signIn(email, password), []),
+        signUp:          useCallback((email: string, password: string, name?: string) => signUp(email, password, name), []),
+        signOut:         useCallback(() => signOut(), []),
+        resetPassword:   useCallback((email: string) => resetPassword(email), []),
     };
 }

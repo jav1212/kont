@@ -35,7 +35,7 @@ export default function ProductionPage() {
     const { companyId } = useCompany();
     const {
         products, transformations,
-        loadingProducts, loadingTransformations, error, setError,
+        loadingTransformations, error, setError,
         loadProducts, loadTransformations, saveTransformation,
     } = useInventory();
 

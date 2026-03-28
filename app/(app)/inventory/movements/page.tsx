@@ -96,7 +96,7 @@ export default function MovementsPage() {
     const { companyId } = useCompany();
     const {
         products, movements,
-        loadingProducts, loadingMovements, error, setError,
+        loadingMovements, error, setError,
         loadProducts, loadMovements, saveMovement,
         loadPeriodCloses, currentDollarRate,
     } = useInventory();

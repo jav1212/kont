@@ -3,7 +3,7 @@
 // ISLR Art. 177 report page.
 // Shows per-product movement history for the monthly ISLR inventory registry.
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -184,14 +184,15 @@ export default function IslrReportPage() {
     const { islrReport, loadingIslrReport, error, setError, loadIslrReport } = useInventory();
 
     const [period, setPeriod] = useState(currentPeriod());
-    const [searched, setSearched] = useState(false);
+    // Ref instead of state — prevents setState-in-effect lint error
+    const fetchedRef = useRef(false);
 
     useEffect(() => {
-        if (companyId && !searched) {
+        if (companyId && !fetchedRef.current) {
+            fetchedRef.current = true;
             loadIslrReport(companyId, period);
-            setSearched(true);
         }
-    }, [companyId, period, loadIslrReport, searched]);
+    }, [companyId, period, loadIslrReport]);
 
     function handleSearch() {
         if (!companyId) return;
@@ -224,7 +225,7 @@ export default function IslrReportPage() {
                     <input
                         type="month"
                         value={period}
-                        onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
+                        onChange={(e) => { fetchedRef.current = false; setPeriod(e.target.value); }}
                         className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
                     />
                 </div>

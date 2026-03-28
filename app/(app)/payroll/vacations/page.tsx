@@ -101,7 +101,7 @@ function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
     while (cur <= end) {
         const wd = cur.getDay();
         const iso = cur.toISOString().split("T")[0];
-        (wd === 0 || wd === 6 || holSet.has(iso)) ? descanso++ : habiles++;
+        if (wd === 0 || wd === 6 || holSet.has(iso)) { descanso++; } else { habiles++; }
         cur.setDate(cur.getDate() + 1);
     }
     return { habiles, descanso, feriadoList: holidays.map(h => h.name) };
@@ -704,8 +704,13 @@ export default function VacacionesPage() {
             .finally(() => setBcvLoading(false));
     }, []);
 
-    // Auto-populate salarioOverride from employee (overridable by user)
-    useEffect(() => {
+    // Salary field auto-populated from employee data, overridable by user.
+    // Uses render-phase state update (React-approved pattern) to avoid
+    // setState-in-effect cascading renders.
+    const [salarioSourceKey, setSalarioSourceKey] = useState("");
+    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    if (salarioSourceKey !== currentSalarioKey) {
+        setSalarioSourceKey(currentSalarioKey);
         if (selectedEmp) {
             const ves = selectedEmp.moneda === "USD"
                 ? selectedEmp.salarioMensual * bcvRate
@@ -714,7 +719,7 @@ export default function VacacionesPage() {
         } else {
             setSalarioOverride("");
         }
-    }, [selectedEmp, bcvRate]);
+    }
 
     // ── Derived ─────────────────────────────────────────────────────────────
     const salarioVES = parseFloat(salarioOverride) || 0;
@@ -734,12 +739,17 @@ export default function VacacionesPage() {
         return 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
     }, [fechaIngreso, fechaInicio]);
 
-    useEffect(() => {
-        if (userEditedCulm) return;
+    // Derive fechaCulminacion and fechaReintegro from fechaInicio + diasLegal
+    // unless the user has manually edited them. Render-phase state update
+    // avoids setState-in-effect cascading renders.
+    const [culmSourceKey, setCulmSourceKey] = useState("");
+    const currentCulmKey = `${fechaInicio}|${diasLegal}`;
+    if (!userEditedCulm && culmSourceKey !== currentCulmKey) {
+        setCulmSourceKey(currentCulmKey);
         const culm = calculateCulminacion(fechaInicio, diasLegal);
         setFechaCulminacion(culm);
         if (!userEditedReint) setFechaReintegro(nextWorkingDay(culm));
-    }, [fechaInicio, diasLegal, userEditedCulm, userEditedReint]);
+    }
 
     const handleInicioChange = (val: string) => {
         setFechaInicio(val);

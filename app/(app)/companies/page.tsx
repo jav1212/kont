@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -72,7 +72,7 @@ const IconCamera = () => (
 // ============================================================================
 
 export default function CompaniesPage() {
-    const { companies, loading, error, save, update, remove, reload } = useCompany();
+    const { companies, loading, error, save, update, remove } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
     const { user } = useAuth();
     const atCompanyLimit = !canAddCompany();

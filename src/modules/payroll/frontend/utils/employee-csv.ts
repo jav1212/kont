@@ -55,7 +55,6 @@ export function parseCsv(raw: string): CsvParseResult {
     const headerCols   = splitCsvLine(lines[0]).map((h) =>
         h.toLowerCase().replace(/\s/g, "").replace(/^"|"$/g, "").replace(/""/g, "")
     );
-    const isNewFormat  = headerCols.includes("moneda");
     const isOldFormat  = headerCols.join(",") === "cedula,nombre,cargo,salario_mensual_ves,estado";
     const isNewFull    = headerCols.join(",") === HEADERS.join(",");
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
-import Link from "next/link";
 
 // ============================================================================
 // TYPES

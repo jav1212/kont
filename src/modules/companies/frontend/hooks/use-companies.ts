@@ -50,15 +50,18 @@ export interface UseCompanyResult {
     remove:        (id: string)                                       => Promise<string | null>;
 }
 
-// ── Fetch helper ──────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseJsonSafe(text: string, fallbackError: string): ApiJsonResult {
+    try { return JSON.parse(text) as ApiJsonResult; }
+    catch { return { error: fallbackError }; }
+}
 
 // Uses raw fetch (not tenant-aware) — company CRUD routes rely on auth session only.
 async function apiFetch(path: string, options?: RequestInit): Promise<{ ok: boolean; json: ApiJsonResult }> {
     const res  = await fetch(path, options);
     const text = await res.text();
-    let json: ApiJsonResult;
-    try { json = JSON.parse(text) as ApiJsonResult; }
-    catch { json = { error: `Error del servidor (${res.status})` }; }
+    const json = parseJsonSafe(text, `Error del servidor (${res.status})`);
     return { ok: res.ok, json };
 }
 
@@ -88,11 +91,10 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
 
         // When acting on behalf, fetch companies of the active tenant owner
         const ownerId = activeTenantId ?? user.id;
-        const res = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
+        const res  = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
         const text = await res.text();
-        let json: ApiJsonResult;
-        try { json = JSON.parse(text) as ApiJsonResult; } catch { json = { error: `Error del servidor (${res.status})` }; }
-        const { ok } = { ok: res.ok };
+        const json: ApiJsonResult = parseJsonSafe(text, `Error del servidor (${res.status})`);
+        const ok = res.ok;
 
         if (!ok) {
             setError(json.error ?? "Error al cargar empresas");
@@ -109,17 +111,26 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         }
 
         setLoading(false);
-    }, [user?.id, activeTenantId]);
+    }, [user, activeTenantId]);
 
-    useEffect(() => {
-        if (isAuthenticated && user?.id) {
-            reload();
-        } else {
-            // Clear stale company selection on sign-out
+    // Clear companies on render when user signs out (render-phase update avoids
+    // multiple synchronous setState calls inside an effect body).
+    const [lastAuthKey, setLastAuthKey] = useState(`${isAuthenticated}|${user?.id ?? ""}`);
+    const currentAuthKey = `${isAuthenticated}|${user?.id ?? ""}`;
+    if (lastAuthKey !== currentAuthKey) {
+        setLastAuthKey(currentAuthKey);
+        if (!isAuthenticated || !user?.id) {
             if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
             setCompanies([]);
             setSelectedCompanyId(null);
             setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (isAuthenticated && user?.id) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
+            reload();
         }
     }, [isAuthenticated, user?.id, activeTenantId, reload]);
 
@@ -133,7 +144,7 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         if (!ok) return json.error ?? "Error al guardar";
         await reload();
         return null;
-    }, [user?.id, reload]);
+    }, [user, reload]);
 
     const update = useCallback(async (id: string, data: CompanyUpdateData): Promise<string | null> => {
         const { ok, json } = await apiFetch("/api/companies/update", {

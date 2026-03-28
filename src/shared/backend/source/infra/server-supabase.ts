@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ISource } from '../domain/repository/source.repository';
 
-/** Cliente Supabase server-side con service role key (sin persistencia de sesión) */
+/** Server-side Supabase client with service role key (no session persistence) */
 export class ServerSupabaseSource implements ISource<SupabaseClient> {
     private _client: SupabaseClient | null = null;
 

@@ -20,17 +20,17 @@ import { APP_SIZES } from "@/src/shared/frontend/sizes";
 // TYPES & INTERFACES
 // ============================================================================
 
-export interface Column<T = any> {
+export interface Column<T extends object = object> {
     key: keyof T | string;
     label: string;
     align?: "start" | "center" | "end";
     width?: number;
     sortable?: boolean;
     searchable?: boolean;
-    render?: (value: any, item: T, index: number) => React.ReactNode;
+    render?: (value: unknown, item: T, index: number) => React.ReactNode;
 }
 
-export interface BaseTableProps<T = any>
+export interface BaseTableProps<T extends object = object>
     extends Omit<HeroUITableProps, "children"> {
     columns: Column<T>[];
     data: T[];
@@ -75,7 +75,7 @@ export interface BaseTableProps<T = any>
 // HOOKS
 // ============================================================================
 
-export const useSort = <T extends Record<string, any>>(
+export const useSort = <T extends object>(
     initialColumn?: keyof T,
     initialDirection: "ascending" | "descending" = "ascending"
 ) => {
@@ -89,11 +89,12 @@ export const useSort = <T extends Record<string, any>>(
             if (!sortDescriptor.column) return data;
             return [...data].sort((a, b) => {
                 const col = sortDescriptor.column as keyof T;
-                const f = a[col];
-                const s = b[col];
+                // Cast to comparable primitives — values come from user data rows
+                const f = a[col] as string | number | boolean | null | undefined;
+                const s = b[col] as string | number | boolean | null | undefined;
                 let cmp = 0;
                 if (typeof f === typeof s) {
-                    cmp = f < s ? -1 : f > s ? 1 : 0;
+                    cmp = (f as string) < (s as string) ? -1 : (f as string) > (s as string) ? 1 : 0;
                 } else {
                     cmp = String(f) < String(s) ? -1 : String(f) > String(s) ? 1 : 0;
                 }
@@ -106,7 +107,7 @@ export const useSort = <T extends Record<string, any>>(
     return { sortDescriptor, setSortDescriptor, sortedData };
 };
 
-export const usePagination = <T extends Record<string, any>>(itemsPerPage = 10) => {
+export const usePagination = <T extends object>(itemsPerPage = 10) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(itemsPerPage);
 
@@ -472,8 +473,8 @@ const PaginationFooter = ({
 // CELL RENDERER
 // ============================================================================
 
-const renderCellValue = <T extends Record<string, any>>(
-    value: any,
+const renderCellValue = <T extends object>(
+    value: unknown,
     item: T,
     index: number,
     column: Column<T>
@@ -514,7 +515,7 @@ const renderCellValue = <T extends Record<string, any>>(
 // FILTER HELPER
 // ============================================================================
 
-const filterData = <T extends Record<string, any>>(
+const filterData = <T extends object>(
     data: T[],
     term: string,
     colKeys: string[],
@@ -535,7 +536,7 @@ const filterData = <T extends Record<string, any>>(
 // MAIN COMPONENT
 // ============================================================================
 
-export const RenderTable = <T extends Record<string, any>>({
+export const RenderTable = <T extends object>({
     columns,
     data,
     keyExtractor,

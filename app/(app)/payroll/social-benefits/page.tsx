@@ -317,8 +317,13 @@ export default function PrestacionesPage() {
             .finally(() => setBcvLoading(false));
     }, []);
 
-    // Auto-populate salary from employee
-    useEffect(() => {
+    // Salary field auto-populated from employee data, overridable by user.
+    // Uses render-phase state update (React-approved pattern) to avoid
+    // setState-in-effect cascading renders.
+    const [salarioSourceKey, setSalarioSourceKey] = useState("");
+    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    if (salarioSourceKey !== currentSalarioKey) {
+        setSalarioSourceKey(currentSalarioKey);
         if (selectedEmp) {
             const ves = selectedEmp.moneda === "USD"
                 ? selectedEmp.salarioMensual * bcvRate
@@ -327,7 +332,7 @@ export default function PrestacionesPage() {
         } else {
             setSalarioOverride("");
         }
-    }, [selectedEmp, bcvRate]);
+    }
 
     // ── Derived ───────────────────────────────────────────────────────────────
     const salarioVES   = parseFloat(salarioOverride) || 0;

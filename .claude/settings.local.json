@@ -1,11 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(pnpm lint:*)"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "resend"
-  ],
-  "enableAllProjectMcpServers": true
+  ]
 }

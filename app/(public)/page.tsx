@@ -41,7 +41,14 @@ const PANEL_ID = "pricing-panel";
 
 export default function LandingPage() {
 
-    const [systemMessage,   setSystemMessage]   = useState<{ type: 'error' | 'info', text: string } | null>(null);
+    // Lazy init reads URL hash/query params once — avoids setState-in-effect pattern
+    const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
+        if (typeof window === "undefined") return null;
+        const hashParams  = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        const msg = hashParams.get('error_description') ?? queryParams.get('error_description');
+        return msg ? { type: 'error', text: msg.replace(/\+/g, ' ') } : null;
+    });
     const [plans,           setPlans]           = useState<Plan[]>([]);
     const [plansLoading,    setPlansLoading]    = useState<boolean>(true);
     const [plansError,      setPlansError]      = useState<boolean>(false);
@@ -106,21 +113,6 @@ export default function LandingPage() {
         return null;
     }
 
-    useEffect(() => {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const errorMsg = hashParams.get('error_description');
-
-        const queryParams = new URLSearchParams(window.location.search);
-        const queryError = queryParams.get('error_description');
-
-        if (errorMsg || queryError) {
-            const message = errorMsg || queryError;
-            setSystemMessage({
-                type: 'error',
-                text: message?.replace(/\+/g, ' ') || "Error de sistema"
-            });
-        }
-    }, []);
 
     return (
         <div className="flex flex-col">

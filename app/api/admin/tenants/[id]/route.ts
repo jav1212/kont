@@ -21,7 +21,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     try {
         const { id } = await params;
         const body = await req.json();
-        const allowed = ['status', 'plan_id', 'billing_cycle', 'current_period_start', 'current_period_end'];
         const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
         if (body.status)             update.status              = body.status;

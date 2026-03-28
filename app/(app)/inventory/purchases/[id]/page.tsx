@@ -93,27 +93,28 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         if (id) loadPurchaseInvoice(id);
     }, [id, loadPurchaseInvoice]);
 
-    // Populate form when invoice loads
-    useEffect(() => {
-        if (currentPurchaseInvoice && currentPurchaseInvoice.id === id) {
-            setSupplierId(currentPurchaseInvoice.supplierId);
-            setInvoiceNumber(currentPurchaseInvoice.invoiceNumber);
-            setControlNumber(currentPurchaseInvoice.controlNumber ?? '');
-            setDate(fmtDate(currentPurchaseInvoice.date));
-            setNotes(currentPurchaseInvoice.notes);
-            setItems(
-                currentPurchaseInvoice.items && currentPurchaseInvoice.items.length > 0
-                    ? currentPurchaseInvoice.items.map((i) => ({ ...i }))
-                    : [emptyItem()]
-            );
-        }
-    }, [currentPurchaseInvoice, id]);
+    // Populate form when invoice loads — render-phase state update to avoid
+    // setState-in-effect cascading renders. React batches all these setters
+    // into a single re-render.
+    const [formSourceId, setFormSourceId] = useState<string | null>(null);
+    if (currentPurchaseInvoice?.id === id && formSourceId !== id) {
+        setFormSourceId(id ?? null);
+        setSupplierId(currentPurchaseInvoice.supplierId);
+        setInvoiceNumber(currentPurchaseInvoice.invoiceNumber);
+        setControlNumber(currentPurchaseInvoice.controlNumber ?? '');
+        setDate(fmtDate(currentPurchaseInvoice.date));
+        setNotes(currentPurchaseInvoice.notes);
+        setItems(
+            currentPurchaseInvoice.items && currentPurchaseInvoice.items.length > 0
+                ? currentPurchaseInvoice.items.map((i) => ({ ...i }))
+                : [emptyItem()]
+        );
+    }
 
     const isDraft = currentPurchaseInvoice?.status === "borrador";
 
     // Derived totals — computed per-item from vatRate
     const subtotal      = items.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
-    const baseExempt    = items.filter(i => (i.vatRate ?? "general_16") === "exenta").reduce((acc, i) => acc + i.totalCost, 0);
     const baseTaxed8    = items.filter(i => (i.vatRate ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.totalCost, 0);
     const baseTaxed16   = items.filter(i => (i.vatRate ?? "general_16") === "general_16").reduce((acc, i) => acc + i.totalCost, 0);
     const vat8          = Math.round(baseTaxed8  * 8  / 100 * 100) / 100;

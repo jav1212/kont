@@ -93,14 +93,14 @@ export function PayrollTableView() {
     const { sortDescriptor, setSortDescriptor, sortedData } = BaseTable.useSort<Employee>("nombre");
 
     const columns: Column<Employee>[] = useMemo(() => [
-        { key: "cedula", label: "Cédula", sortable: true, searchable: true, width: 148, render: (val) => <span className="font-mono text-[12px] text-neutral-500 dark:text-neutral-400 tabular-nums tracking-wide">{val}</span> },
+        { key: "cedula", label: "Cédula", sortable: true, searchable: true, width: 148, render: (val) => <span className="font-mono text-[12px] text-neutral-500 dark:text-neutral-400 tabular-nums tracking-wide">{String(val)}</span> },
         { key: "nombre", label: "Empleado", sortable: true, searchable: true, render: (val, item) => (
             <div className="flex flex-col min-w-0">
-                <span className="font-mono text-[12px] font-semibold text-foreground truncate leading-none">{val}</span>
+                <span className="font-mono text-[12px] font-semibold text-foreground truncate leading-none">{String(val)}</span>
                 <span className="font-mono text-[11px] text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mt-[3px]">{item.cargo}</span>
             </div>
         )},
-        { key: "periodo", label: "Período", width: 100, render: (val) => <span className="font-mono text-[11px] text-neutral-500 dark:text-neutral-400">{val}</span> },
+        { key: "periodo", label: "Período", width: 100, render: (val) => <span className="font-mono text-[11px] text-neutral-500 dark:text-neutral-400">{String(val)}</span> },
         { key: "totalAsignaciones", label: "Asignaciones", align: "end", sortable: true, render: (val) => <span className="font-mono text-[12px] text-neutral-600 dark:text-neutral-400 tabular-nums">Bs. {fmt(Number(val))}</span> },
         { key: "deducciones", label: "Deducciones", align: "end", sortable: true, render: (val) => <span className="font-mono text-[12px] text-error/70 tabular-nums">− {fmt(Number(val))}</span> },
         { key: "netoPagar", label: "Neto a pagar", align: "end", sortable: true, render: (val) => <span className="font-mono text-[13px] font-bold text-foreground tabular-nums">Bs. {fmt(Number(val))}</span> },

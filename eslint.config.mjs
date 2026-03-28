@@ -12,7 +12,20 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated service worker — not editable source
+    "public/sw.js",
+    "public/workbox-*.js",
   ]),
+  {
+    rules: {
+      // Honor _ prefix convention: _name signals intentionally unused
+      "@typescript-eslint/no-unused-vars": ["warn", {
+        varsIgnorePattern: "^_",
+        argsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+      }],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -1,6 +1,5 @@
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { getMembershipsActions } from "@/src/modules/memberships/backend/memberships-factory";
-import { handleResult } from "@/src/shared/backend/utils/handle-result";
 import { MemberRole } from "@/src/modules/memberships/backend/domain/membership";
 
 /**

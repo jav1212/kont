@@ -26,7 +26,7 @@ interface BaseButtonProps extends Omit<ButtonProps, "variant" | "color" | "size"
 }
 
 // ============================================================================
-// STYLE MAP — canon: border-light, rounded-lg, mono, sobrio
+// STYLE MAP — canon: border-light, rounded-lg, mono, minimal
 // ============================================================================
 
 const VARIANT_STYLES: Record<ButtonVariant, string> = {
@@ -109,98 +109,101 @@ const Spinner = ({ variant }: { variant: ButtonVariant }) => {
 // COMPONENT
 // ============================================================================
 
-export abstract class BaseButton {
+// Namespace-style export — keeps BaseButton.Root / BaseButton.Icon call
+// sites unchanged while removing the abstract-class anti-pattern.
+const ButtonRoot = ({
+    children,
+    variant   = "primary",
+    size      = "md",
+    leftIcon,
+    rightIcon,
+    loading   = false,
+    fullWidth = false,
+    className = "",
+    isDisabled,
+    ...props
+}: BaseButtonProps) => {
+    const disabled = isDisabled || loading;
 
-    /** Standard button */
-    static Root = ({
-        children,
-        variant   = "primary",
-        size      = "md",
-        leftIcon,
-        rightIcon,
-        loading   = false,
-        fullWidth = false,
-        className = "",
-        isDisabled,
-        ...props
-    }: BaseButtonProps) => {
-        const disabled = isDisabled || loading;
+    return (
+        <Button
+            isDisabled={disabled}
+            disableRipple
+            className={[
+                // base
+                "inline-flex items-center justify-center",
+                "font-mono uppercase tracking-[0.1em] font-medium",
+                "rounded-lg",
+                "transition-colors duration-150",
+                "select-none outline-none",
+                "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                // size
+                SIZE_STYLES[size],
+                // variant
+                VARIANT_STYLES[variant],
+                // width
+                fullWidth ? "w-full" : "",
+                className,
+            ].join(" ")}
+            {...props}
+        >
+            {loading
+                ? <Spinner variant={variant} />
+                : leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
+            }
+            {children && (
+                <span className={loading ? "opacity-50" : ""}>{children}</span>
+            )}
+            {!loading && rightIcon && (
+                <span className="flex-shrink-0">{rightIcon}</span>
+            )}
+        </Button>
+    );
+};
 
-        return (
-            <Button
-                isDisabled={disabled}
-                disableRipple
-                className={[
-                    // base
-                    "inline-flex items-center justify-center",
-                    "font-mono uppercase tracking-[0.1em] font-medium",
-                    "rounded-lg",
-                    "transition-colors duration-150",
-                    "select-none outline-none",
-                    "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    // size
-                    SIZE_STYLES[size],
-                    // variant
-                    VARIANT_STYLES[variant],
-                    // width
-                    fullWidth ? "w-full" : "",
-                    className,
-                ].join(" ")}
-                {...props}
-            >
-                {loading
-                    ? <Spinner variant={variant} />
-                    : leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
-                }
-                {children && (
-                    <span className={loading ? "opacity-50" : ""}>{children}</span>
-                )}
-                {!loading && rightIcon && (
-                    <span className="flex-shrink-0">{rightIcon}</span>
-                )}
-            </Button>
-        );
+/** Icon-only button */
+const ButtonIcon = ({
+    children,
+    variant   = "ghost",
+    size      = "md",
+    loading   = false,
+    className = "",
+    isDisabled,
+    ...props
+}: Omit<BaseButtonProps, "leftIcon" | "rightIcon" | "fullWidth">) => {
+    const disabled = isDisabled || loading;
+
+    const iconSize: Record<ButtonSize, string> = {
+        sm: APP_SIZES.iconButton.sm,
+        md: APP_SIZES.iconButton.md,
+        lg: APP_SIZES.iconButton.lg,
     };
 
-    /** Icon-only button */
-    static Icon = ({
-        children,
-        variant   = "ghost",
-        size      = "md",
-        loading   = false,
-        className = "",
-        isDisabled,
-        ...props
-    }: Omit<BaseButtonProps, "leftIcon" | "rightIcon" | "fullWidth">) => {
-        const disabled = isDisabled || loading;
+    return (
+        <Button
+            isDisabled={disabled}
+            disableRipple
+            isIconOnly
+            className={[
+                "inline-flex items-center justify-center flex-shrink-0",
+                "rounded-lg",
+                "transition-colors duration-150",
+                "select-none outline-none",
+                "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                iconSize[size],
+                VARIANT_STYLES[variant],
+                className,
+            ].join(" ")}
+            {...props}
+        >
+            {loading ? <Spinner variant={variant} /> : children}
+        </Button>
+    );
+};
 
-        const iconSize: Record<ButtonSize, string> = {
-            sm: APP_SIZES.iconButton.sm,
-            md: APP_SIZES.iconButton.md,
-            lg: APP_SIZES.iconButton.lg,
-        };
-
-        return (
-            <Button
-                isDisabled={disabled}
-                disableRipple
-                isIconOnly
-                className={[
-                    "inline-flex items-center justify-center flex-shrink-0",
-                    "rounded-lg",
-                    "transition-colors duration-150",
-                    "select-none outline-none",
-                    "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    iconSize[size],
-                    VARIANT_STYLES[variant],
-                    className,
-                ].join(" ")}
-                {...props}
-            >
-                {loading ? <Spinner variant={variant} /> : children}
-            </Button>
-        );
-    };
-}
+export const BaseButton = {
+    Root: ButtonRoot,
+    Icon: ButtonIcon,
+} as const;

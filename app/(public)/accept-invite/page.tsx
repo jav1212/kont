@@ -1,23 +1,32 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+
+// Error messages keyed by API error code
+const ERROR_MESSAGES: Record<string, string> = {
+    invalid:        "La invitación es inválida o ya fue usada.",
+    expired:        "La invitación ha expirado.",
+    email_mismatch: "El email de la invitación no coincide con tu cuenta.",
+    server:         "Ocurrió un error en el servidor. Intenta de nuevo.",
+};
 
 // ── Inner component (uses useSearchParams) ────────────────────────────────────
 
 function AcceptInviteInner() {
     const searchParams = useSearchParams();
     const router       = useRouter();
-    const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+    const { isLoading: authLoading, isAuthenticated } = useAuth();
 
-    const token       = searchParams.get("token");
-    const errorParam  = searchParams.get("error");
+    const token        = searchParams.get("token");
+    const errorParam   = searchParams.get("error");
     const switchTenant = searchParams.get("switchTenant");
 
-    const [status,   setStatus]   = useState<"idle" | "accepting" | "error">("idle");
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // Derive initial status and message directly from URL params — no effect needed
+    const [status]   = useState<"idle" | "accepting" | "error">(errorParam ? "error" : "idle");
+    const errorMsg   = errorParam ? (ERROR_MESSAGES[errorParam] ?? "Invitación inválida.") : null;
 
     // Handle switchTenant param after redirect from accept endpoint
     useEffect(() => {
@@ -29,24 +38,11 @@ function AcceptInviteInner() {
         }
     }, [switchTenant, isAuthenticated, router]);
 
-    // Handle error from API redirect
+    // Auto-accept if authenticated and token present — ref prevents double-fire
+    const acceptingRef = useRef(false);
     useEffect(() => {
-        if (errorParam) {
-            const msgs: Record<string, string> = {
-                invalid:        "La invitación es inválida o ya fue usada.",
-                expired:        "La invitación ha expirado.",
-                email_mismatch: "El email de la invitación no coincide con tu cuenta.",
-                server:         "Ocurrió un error en el servidor. Intenta de nuevo.",
-            };
-            setErrorMsg(msgs[errorParam] ?? "Invitación inválida.");
-            setStatus("error");
-        }
-    }, [errorParam]);
-
-    // Auto-accept if authenticated and token present
-    useEffect(() => {
-        if (authLoading || !token || !isAuthenticated || status !== "idle") return;
-        setStatus("accepting");
+        if (authLoading || !token || !isAuthenticated || status !== "idle" || acceptingRef.current) return;
+        acceptingRef.current = true;
         router.replace(`/api/memberships/accept?token=${token}`);
     }, [authLoading, token, isAuthenticated, status, router]);
 

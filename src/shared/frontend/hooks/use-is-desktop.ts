@@ -1,25 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+// Media query for the xl breakpoint (≥ 1280px = desktop).
+const DESKTOP_MQ = "(min-width: 1280px)";
+
+function subscribe(callback: () => void): () => void {
+    const mq = window.matchMedia(DESKTOP_MQ);
+    mq.addEventListener("change", callback);
+    return () => mq.removeEventListener("change", callback);
+}
+
+function getSnapshot(): boolean {
+    return window.matchMedia(DESKTOP_MQ).matches;
+}
+
+// SSR fallback — default to true so layouts don't flash an empty state.
+function getServerSnapshot(): boolean {
+    return true;
+}
 
 /**
  * Returns true when the viewport is ≥ 1280px (xl breakpoint = desktop).
- * Defaults to true on SSR/hydration so layouts don't flash an empty state.
+ * Uses useSyncExternalStore to avoid setState-in-effect patterns.
  */
 export function useIsDesktop(): boolean {
-    const [isDesktop, setIsDesktop] = useState<boolean>(true);
-
-    useEffect(() => {
-        const mq = window.matchMedia("(min-width: 1280px)");
-        setIsDesktop(mq.matches);
-
-        function handleChange(e: MediaQueryListEvent) {
-            setIsDesktop(e.matches);
-        }
-
-        mq.addEventListener("change", handleChange);
-        return () => mq.removeEventListener("change", handleChange);
-    }, []);
-
-    return isDesktop;
+    return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

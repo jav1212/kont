@@ -156,7 +156,6 @@ const fmtNum = (n: number): string => {
 };
 
 const fmtVES = (n: number) => "Bs. " + fmtNum(n);
-const fmtUSD = (n: number) => "$ "   + fmtNum(n);
 
 const fmtDate = (iso: string) => {
     const [y, m, d] = iso.split("-").map(Number);

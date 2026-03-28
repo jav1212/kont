@@ -31,9 +31,16 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         setLoading(false);
     }, [companyId]);
 
+    // Clear employees on render when companyId is removed (render-phase update).
+    const [lastCompanyId, setLastCompanyId] = useState(companyId);
+    if (lastCompanyId !== companyId) {
+        setLastCompanyId(companyId);
+        if (!companyId) setEmployees([]);
+    }
+
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
         if (companyId) reload();
-        else setEmployees([]);
     }, [companyId, reload]);
 
     const upsert = useCallback(async (rows: Omit<Employee, "id" | "companyId">[]): Promise<string | null> => {

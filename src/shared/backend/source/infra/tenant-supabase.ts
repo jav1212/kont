@@ -4,13 +4,14 @@ import { ISource } from '../domain/repository/source.repository';
 /**
  * TenantSupabaseSource
  *
- * Source para queries de datos de un tenant específico.
- * `instance` devuelve un cliente Postgrest apuntando al schema privado
- * del tenant (e.g. "tenant_550e8400e29b41d4a716446655440000"),
- * lo que permite que los repositorios usen `.from('companies')` etc.
- * sin modificar su lógica interna.
+ * Supabase source scoped to a specific tenant schema.
+ * `instance` returns a Postgrest client pointing to the tenant's private
+ * schema (e.g. "tenant_550e8400e29b41d4a716446655440000"), allowing
+ * repositories to call `.from('companies')` without modifying their logic.
  */
-export class TenantSupabaseSource implements ISource<any> {
+type SchemaClient = ReturnType<SupabaseClient['schema']>;
+
+export class TenantSupabaseSource implements ISource<SchemaClient> {
     private _client: SupabaseClient | null = null;
     private readonly _schemaName: string;
 
@@ -18,7 +19,7 @@ export class TenantSupabaseSource implements ISource<any> {
         this._schemaName = schemaName;
     }
 
-    connect(): any {
+    connect(): SchemaClient {
         const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
         const key = process.env.SUPABASE_SERVICE_ROLE_KEY
                  ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -34,7 +35,7 @@ export class TenantSupabaseSource implements ISource<any> {
         return this._client.schema(this._schemaName);
     }
 
-    get instance(): any {
+    get instance(): SchemaClient {
         return this.connect();
     }
 
@@ -43,7 +44,7 @@ export class TenantSupabaseSource implements ISource<any> {
     }
 }
 
-/** Calcula el nombre de schema a partir del UUID del usuario */
+/** Returns the Postgres schema name derived from the user UUID */
 export function tenantSchemaName(userId: string): string {
     return 'tenant_' + userId.replace(/-/g, '');
 }

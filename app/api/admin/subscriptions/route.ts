@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     // Fetch tenant emails from auth.users via RPC or admin API
     const tenantIds = [...new Set((data ?? []).map((r) => r.tenant_id))];
-    let emailMap: Record<string, string> = {};
+    const emailMap: Record<string, string> = {};
 
     if (tenantIds.length > 0) {
         const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });

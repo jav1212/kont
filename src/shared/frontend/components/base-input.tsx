@@ -18,7 +18,7 @@ interface BaseInputFields extends Omit<InputProps, "onValueChange"> {
 }
 
 // ============================================================================
-// STYLES — alineados al canon: border-light, rounded-lg, mono, sobrio
+// STYLES — aligned to canon: border-light, rounded-lg, mono, minimal
 // ============================================================================
 
 const INPUT_STYLES = {
@@ -48,7 +48,7 @@ const INPUT_STYLES = {
 } as const;
 
 // ============================================================================
-// ICONS — mínimos, trazo fino
+// ICONS — minimal, thin stroke
 // ============================================================================
 
 const ErrorIcon = () => (
@@ -75,93 +75,95 @@ const InfoIcon = () => (
 // COMPONENT
 // ============================================================================
 
-export abstract class BaseInput {
-    protected static readonly STYLES = INPUT_STYLES;
+// Namespace-style export — keeps BaseInput.Field call sites unchanged
+// while avoiding the invalid-hook-in-class-static-method lint pattern.
+const InputField = ({
+    label,
+    placeholder,
+    helperText,
+    error,
+    value: externalValue,
+    onValueChange,
+    type = "text",
+    className = "",
+    startContent,
+    endContent,
+    ...props
+}: BaseInputFields) => {
+    const id = useId();
+    const [internalValue, setInternalValue] = useState("");
 
-    static Field = ({
-        label,
-        placeholder,
-        helperText,
-        error,
-        value: externalValue,
-        onValueChange,
-        type = "text",
-        className = "",
-        startContent,
-        endContent,
-        ...props
-    }: BaseInputFields) => {
-        const id = useId();
-        const [internalValue, setInternalValue] = useState("");
+    const isControlled = externalValue !== undefined;
+    const value = isControlled ? externalValue : internalValue;
+    const isInvalid = !!error;
 
-        const isControlled = externalValue !== undefined;
-        const value = isControlled ? externalValue : internalValue;
-        const isInvalid = !!error;
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const next = e.target.value;
+            if (!isControlled) setInternalValue(next);
+            onValueChange?.(next);
+        },
+        [isControlled, onValueChange]
+    );
 
-        const handleChange = useCallback(
-            (e: React.ChangeEvent<HTMLInputElement>) => {
-                const next = e.target.value;
-                if (!isControlled) setInternalValue(next);
-                onValueChange?.(next);
-            },
-            [isControlled, onValueChange]
-        );
+    return (
+        <div className={`flex flex-col gap-0 w-full ${className}`}>
 
-        return (
-            <div className={`flex flex-col gap-0 w-full ${className}`}>
+            {/* ── label ──────────────────────────────────────────────── */}
+            {label && (
+                <label
+                    htmlFor={id}
+                    className={[
+                        `font-mono ${APP_SIZES.text.label} uppercase block ${APP_SIZES.spacing.labelBottom}`,
+                        "transition-colors duration-150",
+                        isInvalid
+                            ? "text-error/80"
+                            : "text-neutral-500 dark:text-neutral-400",
+                    ].join(" ")}
+                >
+                    {label}
+                </label>
+            )}
 
-                {/* ── label ──────────────────────────────────────────────── */}
-                {label && (
-                    <label
-                        htmlFor={id}
-                        className={[
-                            `font-mono ${APP_SIZES.text.label} uppercase block ${APP_SIZES.spacing.labelBottom}`,
-                            "transition-colors duration-150",
-                            isInvalid
-                                ? "text-error/80"
-                                : "text-neutral-500 dark:text-neutral-400",
-                        ].join(" ")}
-                    >
-                        {label}
-                    </label>
-                )}
+            {/* ── input ──────────────────────────────────────────────── */}
+            <Input
+                id={id}
+                type={type}
+                value={value}
+                onChange={handleChange}
+                placeholder={placeholder}
+                isInvalid={isInvalid}
+                variant="bordered"
+                startContent={startContent}
+                endContent={isInvalid && !endContent ? <ErrorIcon /> : endContent}
+                classNames={{
+                    inputWrapper: INPUT_STYLES.inputWrapper,
+                    input: INPUT_STYLES.input,
+                    label: "hidden",
+                    innerWrapper: "gap-2",
+                }}
+                className="group min-h-[40px]"
+                {...props}
+            />
 
-                {/* ── input ──────────────────────────────────────────────── */}
-                <Input
-                    id={id}
-                    type={type}
-                    value={value}
-                    onChange={handleChange}
-                    placeholder={placeholder}
-                    isInvalid={isInvalid}
-                    variant="bordered"
-                    startContent={startContent}
-                    endContent={isInvalid && !endContent ? <ErrorIcon /> : endContent}
-                    classNames={{
-                        inputWrapper: INPUT_STYLES.inputWrapper,
-                        input: INPUT_STYLES.input,
-                        label: "hidden",
-                        innerWrapper: "gap-2",
-                    }}
-                    className="group min-h-[40px]"
-                    {...props}
-                />
+            {/* ── helper / error ─────────────────────────────────────── */}
+            {(helperText || error) && (
+                <div className={`flex items-start gap-1.5 ${APP_SIZES.spacing.helperTop}`}>
+                    {error ? <ErrorIcon /> : <InfoIcon />}
+                    <p className={[
+                        `font-mono ${APP_SIZES.text.helper} leading-snug`,
+                        error
+                            ? "text-error/80"
+                            : "text-neutral-400 dark:text-neutral-500",
+                    ].join(" ")}>
+                        {error || helperText}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
 
-                {/* ── helper / error ─────────────────────────────────────── */}
-                {(helperText || error) && (
-                    <div className={`flex items-start gap-1.5 ${APP_SIZES.spacing.helperTop}`}>
-                        {error ? <ErrorIcon /> : <InfoIcon />}
-                        <p className={[
-                            `font-mono ${APP_SIZES.text.helper} leading-snug`,
-                            error
-                                ? "text-error/80"
-                                : "text-neutral-400 dark:text-neutral-500",
-                        ].join(" ")}>
-                            {error || helperText}
-                        </p>
-                    </div>
-                )}
-            </div>
-        );
-    };
-}
+export const BaseInput = {
+    Field: InputField,
+} as const;

@@ -17,9 +17,9 @@ import {
 } from "./payroll-row-editors";
 import type { EarningRow, DeductionRow, BonusRow, HorasExtrasRow } from "../types/payroll-types";
 import { HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
-import { generatePayrollPdf, PdfEmployeeResult } from "../utils/payroll-pdf";
+import { generatePayrollPdf } from "../utils/payroll-pdf";
 import { computeAportes, downloadAportesCsv } from "../utils/aportes-patronales";
-import { Employee } from "../hooks/use-employee";
+import { Employee, EmployeeEstado } from "../hooks/use-employee";
 
 // ============================================================================
 // TYPES
@@ -648,7 +648,7 @@ export const PayrollEmployeeTable = ({
                 </div>
             ),
         },
-        { key: "cargo", label: "Cargo", sortable: true, searchable: true, render: (v) => <span className="font-mono text-[12px] uppercase tracking-[0.1em] text-neutral-500">{v}</span> },
+        { key: "cargo", label: "Cargo", sortable: true, searchable: true, render: (v) => <span className="font-mono text-[12px] uppercase tracking-[0.1em] text-neutral-500">{String(v)}</span> },
         {
             key: "salarioMensual", label: "Salario", sortable: true, align: "end",
             render: (_, r) => (
@@ -667,13 +667,13 @@ export const PayrollEmployeeTable = ({
                 </div>
             ),
         },
-        { key: "estado", label: "Estado", align: "center", render: (v) => <StatusBadge estado={v} /> },
+        { key: "estado", label: "Estado", align: "center", render: (v) => <StatusBadge estado={v as EmployeeEstado} /> },
         { key: "gross", label: "Bruto VES", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums">{fmt(r.gross)}</span> },
         { key: "totalDeductions", label: "Deducciones", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-error/70">-{fmt(r.totalDeductions)}</span> },
         { key: "net", label: "Neto VES", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[13px] font-semibold tabular-nums text-primary-500">{fmt(r.net)}</span> },
         { key: "netUSD", label: "Neto $", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-neutral-400">{fmt(r.netUSD)}</span> },
         {
-            key: "_expand" as any, label: "", align: "center", width: 48,
+            key: "_expand" as string, label: "", align: "center", width: 48,
             render: (_, r) => <ExpandBtn open={expandedId === r.cedula} onClick={() => setExpandedId((prev) => prev === r.cedula ? null : r.cedula)} />,
         },
     ];
@@ -689,8 +689,6 @@ export const PayrollEmployeeTable = ({
     }, [results, search]);
 
     const showTable = !empLoading && !empError && employees.length > 0;
-    const vacacionCount = employees.filter(e => e.estado === "vacacion").length;
-
     // ── Confirm modal totals ───────────────────────────────────────────────
     const activeResults = results.filter((r) => r.estado === "activo");
     const modalTotals   = activeResults.reduce(

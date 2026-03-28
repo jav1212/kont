@@ -174,7 +174,7 @@ export default function NuevaFacturaPage() {
     const {
         products, loadProducts,
         suppliers, loadSuppliers,
-        periodCloses, loadPeriodCloses,
+        loadPeriodCloses,
         currentDollarRate,
         error, setError,
         savePurchaseInvoice, confirmPurchaseInvoice,

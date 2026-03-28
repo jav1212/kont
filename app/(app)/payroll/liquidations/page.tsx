@@ -372,8 +372,8 @@ export default function LiquidacionesPage() {
         [filtered, egreso, motivo, diasUtil, diasBono, bcvRate],
     );
 
-    const validResults  = results.filter(r => !r.warning);
-    const totalGeneral  = validResults.reduce((s, r) => s + r.total, 0);
+    const validResults = useMemo(() => results.filter(r => !r.warning), [results]);
+    const totalGeneral = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
 
     const handleExport = useCallback(() => exportCsv(results, egreso, motivo), [results, egreso, motivo]);
 

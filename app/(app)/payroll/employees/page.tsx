@@ -289,7 +289,7 @@ function EmployeeRow({
 
 export default function EmployeesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading, error, upsert, remove, reload, getSalaryHistory } = useEmployee(companyId);
+    const { employees, loading, error, upsert, remove, getSalaryHistory } = useEmployee(companyId);
     const { canAddEmployee, employeesRemaining } = useCapacity();
     const atEmployeeLimit = companyId ? !canAddEmployee(companyId) : false;
     const empRemaining = companyId ? employeesRemaining(companyId) : null;
@@ -298,7 +298,7 @@ export default function EmployeesPage() {
     const [modes, setModes] = useState<Record<string, RowMode>>({});
     const [drafts, setDrafts] = useState<Record<string, RowState>>({});
     const [saving, setSaving] = useState<Record<string, boolean>>({});
-    const [rowError, setRowError] = useState<Record<string, string>>({});
+    const [, setRowError] = useState<Record<string, string>>({});
 
     // ── New rows ───────────────────────────────────────────────────────────
     const [newRows, setNewRows] = useState<{ id: string; draft: RowState }[]>([]);
@@ -385,11 +385,6 @@ export default function EmployeesPage() {
         if (err) setRowError((e) => ({ ...e, [cedula]: err }));
         else cancelEdit(cedula);
     }, [drafts, upsert, cancelEdit]);
-
-    const deleteOne = useCallback(async (id: string) => {
-        const err = await remove([id]);
-        if (err) setBulkError(err);
-    }, [remove]);
 
     // ── New row actions ────────────────────────────────────────────────────
 

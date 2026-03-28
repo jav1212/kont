@@ -73,15 +73,13 @@ export const ParamsSection = ({
 
 export const EarningsSection = ({
     rows, values, total,
-    dailyRate, weeklyRate, mondaysInMonth,
+    dailyRate,
     onUpdate, onRemove, onAdd,
 }: {
-    rows:           EarningRow[];
-    values:         EarningValue[];
-    total:          number;
-    dailyRate:      number;
-    weeklyRate:     number;
-    mondaysInMonth: number;
+    rows:     EarningRow[];
+    values:   EarningValue[];
+    total:    number;
+    dailyRate: number;
     onUpdate: (id: string, updated: EarningRow) => void;
     onRemove: (id: string) => void;
     onAdd:    (blank: EarningRow) => void;
