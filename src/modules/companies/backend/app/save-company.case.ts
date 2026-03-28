@@ -1,10 +1,16 @@
-import { ICompanyRepository } from "../domain/repository/company.repository";
-import { Company } from "../domain/company";
-import { Result } from "@/src/core/domain/result";
-import { UseCase } from "@/src/core/domain/use-case";
+// SaveCompanyUseCase — validates and persists a new company, then emits CompanySaved.
+import { ICompanyRepository }  from "../domain/repository/company.repository";
+import { Company }             from "../domain/company";
+import { Result }              from "@/src/core/domain/result";
+import { UseCase }             from "@/src/core/domain/use-case";
+import { IEventBus }           from "@/src/core/domain/event-bus";
+import { CompanySavedPayload } from "../domain/events/company-saved.event";
 
 export class SaveCompanyUseCase extends UseCase<Company, void> {
-    constructor(private readonly repository: ICompanyRepository) {
+    constructor(
+        private readonly repository: ICompanyRepository,
+        private readonly eventBus?: IEventBus,
+    ) {
         super();
     }
 
@@ -15,6 +21,22 @@ export class SaveCompanyUseCase extends UseCase<Company, void> {
         if (!company.ownerId) {
             return Result.fail("La empresa debe estar vinculada a un dueño (ownerId).");
         }
-        return await this.repository.save(company);
+
+        const result = await this.repository.save(company);
+
+        if (result.isSuccess && this.eventBus) {
+            await this.eventBus.publish<CompanySavedPayload>({
+                eventId:    crypto.randomUUID(),
+                eventType:  "company.saved",
+                occurredAt: new Date().toISOString(),
+                payload: {
+                    companyId: company.id,
+                    ownerId:   company.ownerId,
+                    name:      company.name,
+                },
+            });
+        }
+
+        return result;
     }
 }

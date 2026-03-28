@@ -1,10 +1,12 @@
-// RevokeMembershipUseCase — revokes an accepted membership or deletes a pending invitation.
+// RevokeMembershipUseCase — revokes an accepted membership or deletes a pending invitation, then emits MembershipRevoked.
 // Role: application — enforces authorization: contables cannot revoke; admins cannot revoke owners; owners cannot self-revoke.
 // Invariant: the operation targets either tenant_memberships or tenant_invitations — never both.
 
-import { UseCase } from "@/src/core/domain/use-case";
-import { Result } from "@/src/core/domain/result";
-import { IMembershipsRepository } from "../../domain/memberships-repository";
+import { UseCase }                  from "@/src/core/domain/use-case";
+import { Result }                   from "@/src/core/domain/result";
+import { IEventBus }                from "@/src/core/domain/event-bus";
+import { IMembershipsRepository }   from "../../domain/memberships-repository";
+import { MembershipRevokedPayload } from "../../domain/events/membership-revoked.event";
 
 interface Input {
     tenantOwnerId: string;
@@ -13,7 +15,10 @@ interface Input {
 }
 
 export class RevokeMembershipUseCase extends UseCase<Input, void> {
-    constructor(private readonly repo: IMembershipsRepository) {
+    constructor(
+        private readonly repo:     IMembershipsRepository,
+        private readonly eventBus?: IEventBus,
+    ) {
         super();
     }
 
@@ -36,6 +41,15 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
                 return Result.fail("Cannot remove the tenant owner");
             }
 
+            if (this.eventBus) {
+                await this.eventBus.publish<MembershipRevokedPayload>({
+                    eventId:    crypto.randomUUID(),
+                    eventType:  "membership.revoked",
+                    occurredAt: new Date().toISOString(),
+                    payload: { tenantOwnerId, memberId, revokedBy: callerRole },
+                });
+            }
+
             return Result.success(undefined);
         }
 
@@ -44,6 +58,15 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
 
         if (invResult.isFailure) {
             return Result.fail("Membership not found");
+        }
+
+        if (this.eventBus) {
+            await this.eventBus.publish<MembershipRevokedPayload>({
+                eventId:    crypto.randomUUID(),
+                eventType:  "membership.revoked",
+                occurredAt: new Date().toISOString(),
+                payload: { tenantOwnerId, memberId, revokedBy: callerRole },
+            });
         }
 
         return Result.success(undefined);
