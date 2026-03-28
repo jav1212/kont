@@ -1,3 +1,6 @@
+// employee-factory — assembles the employee module dependency graph.
+// Role: infrastructure entry point — wires RpcEmployeeRepository (canonical) into all use cases.
+// Invariant: always use RpcEmployeeRepository; the legacy SupabaseEmployeeRepository was removed in Phase 3.
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcEmployeeRepository } from './repository/rpc-employee.repository';
 import { GetEmployeesByCompanyUseCase } from '../app/get-employees-by-company.case';

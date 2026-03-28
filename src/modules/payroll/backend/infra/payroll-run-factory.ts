@@ -1,3 +1,6 @@
+// payroll-run-factory — assembles the payroll run dependency graph.
+// Role: infrastructure entry point — wires RpcPayrollRunRepository (canonical) into all use cases.
+// Invariant: always use RpcPayrollRunRepository; the legacy SupabasePayrollRunRepository was removed in Phase 3.
 import { ServerSupabaseSource }          from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcPayrollRunRepository }        from './repository/rpc-payroll-run.repository';
 import { ConfirmPayrollRunUseCase }       from '../app/confirm-payroll-run.case';
