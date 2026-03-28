@@ -2,12 +2,14 @@
 // Role: application — enforces role-based authorization rules, delegates persistence and email sending.
 // Invariant: contables cannot invite anyone; admins can only invite contables; owners can invite admins and contables.
 
-import { UseCase } from "@/src/core/domain/use-case";
-import { Result } from "@/src/core/domain/result";
-import { Invitation } from "../../domain/invitation";
+import { UseCase }               from "@/src/core/domain/use-case";
+import { Result }                from "@/src/core/domain/result";
+import { IEventBus }             from "@/src/core/domain/event-bus";
+import { Invitation }            from "../../domain/invitation";
 import { IMembershipsRepository } from "../../domain/memberships-repository";
-import { sendInviteEmail } from "@/src/shared/backend/utils/send-invite-email";
-import { MemberRole } from "../../domain/membership";
+import { sendInviteEmail }       from "@/src/shared/backend/utils/send-invite-email";
+import { MemberRole }            from "../../domain/membership";
+import { InvitationSentPayload } from "../../domain/events/invitation-sent.event";
 
 interface Input {
     tenantOwnerId: string;
@@ -19,7 +21,10 @@ interface Input {
 }
 
 export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
-    constructor(private readonly repo: IMembershipsRepository) {
+    constructor(
+        private readonly repo:     IMembershipsRepository,
+        private readonly eventBus?: IEventBus,
+    ) {
         super();
     }
 
@@ -66,6 +71,20 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
         }).catch((err: unknown) => {
             console.error("[SendMemberInvitation] Error sending invite email:", err);
         });
+
+        if (this.eventBus) {
+            await this.eventBus.publish<InvitationSentPayload>({
+                eventId:    crypto.randomUUID(),
+                eventType:  "membership.invitation_sent",
+                occurredAt: new Date().toISOString(),
+                payload: {
+                    tenantOwnerId,
+                    invitedBy,
+                    invitedEmail: email.toLowerCase().trim(),
+                    role,
+                },
+            });
+        }
 
         return Result.success({ ...invitation, acceptUrl });
     }
