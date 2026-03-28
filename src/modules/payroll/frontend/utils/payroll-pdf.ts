@@ -1,10 +1,12 @@
 // src/frontend/utils/payroll-pdf.ts
 //
 // Recibos de nómina — layout vertical por sección.
-// Requiere: npm install jspdf
+// Supports per-company PDF segment visibility (REQ-005).
+// Requires: jspdf
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -46,6 +48,9 @@ export interface PdfPayrollOptions {
     salaryMode?:    "mensual" | "integral";  // qué salario mostrar en la tarjeta del empleado
     logoUrl?:       string;
     showLogoInPdf?: boolean;
+    // Per-company PDF segment visibility (REQ-005).
+    // When absent, all segments are shown (backward-compatible default).
+    pdfVisibility?: PdfVisibility;
 }
 
 // Genera el serial de nómina a partir del período
@@ -290,7 +295,10 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     }
 
     // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
-    const CARD_H = opts.salaryMode === "integral" ? 42 : 30;
+    // If alicuota breakdown visibility is disabled, fall back to mensual card height.
+    const effectiveSalaryMode =
+        opts.pdfVisibility?.showAlicuotaBreakdown === false ? "mensual" : opts.salaryMode;
+    const CARD_H = effectiveSalaryMode === "integral" ? 42 : 30;
     box(doc, ML, y, W, CARD_H, C.white, C.border, 0.3);
     fill(doc, ML, y, 3, CARD_H, C.primary);
 
@@ -323,9 +331,9 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
 
     vline(doc, c3x - 2, y + 3, y + CARD_H - 3, C.border);
 
-    // — Col 3: salario según modo seleccionado
+    // — Col 3: salario según modo seleccionado (respecting showAlicuotaBreakdown)
     const c3Txt = c3x + 4;   // left edge for formula text inside col 3
-    if (opts.salaryMode === "integral") {
+    if (effectiveSalaryMode === "integral") {
         // Label + valor integral destacado
         lbl(doc, "Sal. Integral", c3Txt, y + 5);
         t(doc, fmtVES(emp.salarioIntegral), MR - 4, y + 12, 9, true, C.primary, "right");
@@ -358,43 +366,62 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     y += CARD_H + 5;
 
     // ── SECTIONS ──────────────────────────────────────────────────────────
+    // Each section is shown unless the matching pdfVisibility flag is false.
+    // Visibility affects only rendering — totals in the net summary are unchanged.
 
-    y = drawSection(doc, ML, y, W, {
-        title:    "Asignaciones",
-        lines:    emp.earningLines,
-        total:    emp.totalEarnings,
-        sign:     "+",
-        accentC:  C.green,
-        accentLt: C.greenLt,
-        accentBd: C.greenBd,
-        amtColor: C.green,
-    });
+    const vis = opts.pdfVisibility;
 
-    y += 4;
+    // Filter earning lines by visibility flags before rendering
+    const filteredEarningLines = vis
+        ? emp.earningLines.filter((l) => {
+              const isOvertime    = l.label.startsWith("H.E.");
+              const isNightBonus  = l.label === "Bono Nocturno";
+              if (isOvertime   && vis.showOvertime         === false) return false;
+              if (isNightBonus && vis.showNightShiftBonus  === false) return false;
+              return true;
+          })
+        : emp.earningLines;
 
-    y = drawSection(doc, ML, y, W, {
-        title:    "Bonificaciones",
-        lines:    emp.bonusLines,
-        total:    emp.totalBonuses,
-        sign:     "+",
-        accentC:  C.primary,
-        accentLt: C.primaryLt,
-        accentBd: C.primaryBd,
-        amtColor: C.primary,
-    });
+    if (!vis || vis.showEarnings !== false) {
+        y = drawSection(doc, ML, y, W, {
+            title:    "Asignaciones",
+            lines:    filteredEarningLines,
+            total:    emp.totalEarnings,
+            sign:     "+",
+            accentC:  C.green,
+            accentLt: C.greenLt,
+            accentBd: C.greenBd,
+            amtColor: C.green,
+        });
+        y += 4;
+    }
 
-    y += 4;
+    if (!vis || vis.showBonuses !== false) {
+        y = drawSection(doc, ML, y, W, {
+            title:    "Bonificaciones",
+            lines:    emp.bonusLines,
+            total:    emp.totalBonuses,
+            sign:     "+",
+            accentC:  C.primary,
+            accentLt: C.primaryLt,
+            accentBd: C.primaryBd,
+            amtColor: C.primary,
+        });
+        y += 4;
+    }
 
-    y = drawSection(doc, ML, y, W, {
-        title:    "Deducciones",
-        lines:    emp.deductionLines,
-        total:    emp.totalDeductions,
-        sign:     "-",
-        accentC:  C.red,
-        accentLt: C.redLt,
-        accentBd: C.redBd,
-        amtColor: C.red,
-    });
+    if (!vis || vis.showDeductions !== false) {
+        y = drawSection(doc, ML, y, W, {
+            title:    "Deducciones",
+            lines:    emp.deductionLines,
+            total:    emp.totalDeductions,
+            sign:     "-",
+            accentC:  C.red,
+            accentLt: C.redLt,
+            accentBd: C.redBd,
+            amtColor: C.red,
+        });
+    }
 
     y += 6;
 

@@ -11,11 +11,14 @@ export interface EarningRow {
 }
 
 export interface DeductionRow {
-    id:    string;
-    label: string;
-    rate:  string;               // percentage string e.g. "4" — OR fixed VES amount when mode="fixed"
-    base:  "weekly" | "monthly" | "integral" | "weekly-capped"; // "weekly-capped" = min(weeklyBase, 10×salMin)
-    mode?: "rate" | "fixed";     // "rate" = % of base (default), "fixed" = flat VES amount
+    id:           string;
+    label:        string;
+    rate:         string;               // percentage string e.g. "4" — OR fixed VES amount when mode="fixed"
+    base:         "weekly" | "monthly" | "integral" | "weekly-capped"; // "weekly-capped" = min(weeklyBase, 10×salMin)
+    mode?:        "rate" | "fixed";     // "rate" = % of base (default), "fixed" = flat VES amount
+    // Period rule: "second-half" → row is excluded when computing first-half (Q1) payroll.
+    // Enables the formal FAOV rule per REQ-005 without ad-hoc row editing.
+    quincenaRule?: "always" | "second-half";
 }
 
 export interface BonusRow {
