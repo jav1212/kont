@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/backend/domain/employee";
-import { apiFetch as tenantFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { fetchJson } from "@/src/shared/frontend/utils/api-fetch";
 
 export type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry };
 
@@ -16,14 +16,6 @@ interface UseEmployeeResult {
     getSalaryHistory: (companyId: string, cedula: string) => Promise<{ history: SalaryHistoryEntry[]; error: string | null }>;
 }
 
-async function apiFetch(path: string, options?: RequestInit) {
-    const res  = await tenantFetch(path, options);
-    const text = await res.text();
-    let json: any = {};
-    try { json = JSON.parse(text); } catch { json = { error: `Error del servidor (${res.status})` }; }
-    return { ok: res.ok, json };
-}
-
 export function useEmployee(companyId: string | null): UseEmployeeResult {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading,   setLoading]   = useState(false);
@@ -33,9 +25,9 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         if (!companyId) return;
         setLoading(true);
         setError(null);
-        const { ok, json } = await apiFetch(`/api/employees/get-by-company?companyId=${companyId}`);
+        const { ok, json } = await fetchJson(`/api/employees/get-by-company?companyId=${companyId}`);
         if (!ok) setError(json.error ?? "Error al cargar empleados");
-        else     setEmployees(json.data ?? []);
+        else     setEmployees((json.data as Employee[]) ?? []);
         setLoading(false);
     }, [companyId]);
 
@@ -47,7 +39,7 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
     const upsert = useCallback(async (rows: Omit<Employee, "id" | "companyId">[]): Promise<string | null> => {
         if (!companyId) return "No hay empresa seleccionada";
         const withCompany = rows.map((e) => ({ ...e, companyId }));
-        const { ok, json } = await apiFetch("/api/employees/upsert", {
+        const { ok, json } = await fetchJson("/api/employees/upsert", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ companyId, employees: withCompany }),
@@ -59,7 +51,7 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
 
     const remove = useCallback(async (ids: string[]): Promise<string | null> => {
         if (!companyId) return "No hay empresa seleccionada";
-        const { ok, json } = await apiFetch("/api/employees/delete", {
+        const { ok, json } = await fetchJson("/api/employees/delete", {
             method:  "DELETE",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ ids }),
@@ -72,11 +64,11 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
     const getSalaryHistory = useCallback(async (
         cId: string, cedula: string
     ): Promise<{ history: SalaryHistoryEntry[]; error: string | null }> => {
-        const { ok, json } = await apiFetch(
+        const { ok, json } = await fetchJson(
             `/api/employees/salary-history?companyId=${cId}&cedula=${encodeURIComponent(cedula)}`
         );
         if (!ok) return { history: [], error: json.error ?? "Error al cargar historial" };
-        return { history: json.data ?? [], error: null };
+        return { history: (json.data as SalaryHistoryEntry[]) ?? [], error: null };
     }, []);
 
     return { employees, loading, error, reload, upsert, remove, getSalaryHistory };

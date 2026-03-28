@@ -11,7 +11,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { apiFetch as tenantApiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { apiFetch as tenantApiFetch, type ApiJsonResult } from "@/src/shared/frontend/utils/api-fetch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,11 +52,12 @@ export interface UseCompanyResult {
 
 // ── Fetch helper ──────────────────────────────────────────────────────────────
 
-async function apiFetch(path: string, options?: RequestInit) {
+// Uses raw fetch (not tenant-aware) — company CRUD routes rely on auth session only.
+async function apiFetch(path: string, options?: RequestInit): Promise<{ ok: boolean; json: ApiJsonResult }> {
     const res  = await fetch(path, options);
     const text = await res.text();
-    let json: any = {};
-    try { json = JSON.parse(text); }
+    let json: ApiJsonResult;
+    try { json = JSON.parse(text) as ApiJsonResult; }
     catch { json = { error: `Error del servidor (${res.status})` }; }
     return { ok: res.ok, json };
 }
@@ -89,14 +90,14 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         const ownerId = activeTenantId ?? user.id;
         const res = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
         const text = await res.text();
-        let json: any = {};
-        try { json = JSON.parse(text); } catch { json = { error: `Error del servidor (${res.status})` }; }
+        let json: ApiJsonResult;
+        try { json = JSON.parse(text) as ApiJsonResult; } catch { json = { error: `Error del servidor (${res.status})` }; }
         const { ok } = { ok: res.ok };
 
         if (!ok) {
             setError(json.error ?? "Error al cargar empresas");
         } else {
-            const list: Company[] = json.data ?? [];
+            const list: Company[] = (json.data as Company[]) ?? [];
             setCompanies(list);
             setSelectedCompanyId((prev) => {
                 const valid = list.find((c) => c.id === prev);

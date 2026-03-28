@@ -1,8 +1,20 @@
+import type { ReactNode } from "react";
+
+// Shared audit row and container components for payroll deduction/income breakdowns.
+// Architectural role: shared UI primitive — must not contain business-specific logic.
+
 interface AuditRowProps {
     label: string;
     formula: string;
     value: number;
     isNegative?: boolean;
+}
+
+interface AuditContainerProps {
+    children: ReactNode;
+    title: string;
+    total: number;
+    type?: "income" | "deduction";
 }
 
 export const AuditRow = ({ label, formula, value, isNegative = false }: AuditRowProps) => (
@@ -14,7 +26,7 @@ export const AuditRow = ({ label, formula, value, isNegative = false }: AuditRow
     </div>
 );
 
-export const AuditContainer = ({ children, title, total, type = "income" }: any) => (
+export const AuditContainer = ({ children, title, total, type = "income" }: AuditContainerProps) => (
     <div className={`bg-surface-1 border border-border-light p-4 rounded-lg space-y-3 border-l-4 ${type === 'income' ? 'border-l-primary-500' : 'border-l-danger-500'}`}>
         {children}
         <div className={`flex justify-between text-[11px] border-t border-dashed pt-2 font-bold uppercase ${type === 'income' ? 'text-primary-600' : 'text-danger-600'}`}>

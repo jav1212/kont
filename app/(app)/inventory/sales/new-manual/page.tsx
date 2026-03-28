@@ -6,6 +6,8 @@
 
 import { useEffect, useState, useCallback, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
@@ -314,18 +316,20 @@ export default function NuevaSalidaManualPage() {
                             Las existencias han sido actualizadas exitosamente.
                         </p>
                         <div className="flex items-center justify-center gap-3">
-                            <button
+                            <BaseButton.Root
+                                variant="primary"
+                                size="md"
                                 onClick={() => router.push("/inventory/sales")}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver salidas
-                            </button>
-                            <button
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="md"
                                 onClick={() => router.push(`/inventory/movements?periodo=${period}`)}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </div>
@@ -335,25 +339,11 @@ export default function NuevaSalidaManualPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Salida Manual de Inventario
-                        </h1>
-                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                            Registro directo de disminución de existencias
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => router.back()}
-                        className="h-9 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                    >
-                        ← Volver
-                    </button>
-                </div>
-            </div>
+            <PageHeader title="Salida Manual de Inventario" subtitle="Registro directo de disminución de existencias">
+                <BaseButton.Root variant="secondary" size="md" onClick={() => router.back()}>
+                    ← Volver
+                </BaseButton.Root>
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-5 max-w-4xl">
                 {error && (
@@ -623,22 +613,22 @@ export default function NuevaSalidaManualPage() {
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-3 pb-8">
-                    <button
-                        type="button"
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="md"
                         onClick={() => router.back()}
                         disabled={saving}
-                        className="h-10 px-5 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[13px] uppercase tracking-[0.12em] transition-colors"
                     >
                         Cancelar
-                    </button>
-                    <button
-                        type="button"
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="primary"
+                        size="md"
                         onClick={handleSave}
                         disabled={saving}
-                        className="h-10 px-6 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[13px] uppercase tracking-[0.12em] transition-colors"
                     >
                         {saving ? "Registrando…" : "Registrar salida"}
-                    </button>
+                    </BaseButton.Root>
                 </div>
             </div>
         </div>

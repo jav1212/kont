@@ -4,6 +4,8 @@
 // Allows closing accounting periods and lists all closed periods.
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 
@@ -93,15 +95,7 @@ export default function CierresPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                    Cierres de período
-                </h1>
-                <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                    Gestión de períodos cerrados
-                </p>
-            </div>
+            <PageHeader title="Cierres de período" subtitle="Gestión de períodos cerrados" />
 
             <div className="px-8 py-6 grid grid-cols-3 gap-6">
                 {/* Left: close period form */}
@@ -179,27 +173,34 @@ export default function CierresPage() {
                                 <p className="text-[12px] text-[var(--text-secondary)] text-center">
                                     ¿Confirmar cierre de <span className="font-bold text-foreground">{closingPeriod}</span>?
                                 </p>
-                                <button
-                                    onClick={handleClose} disabled={saving}
-                                    className="w-full h-9 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                <BaseButton.Root
+                                    variant="danger"
+                                    size="md"
+                                    onClick={handleClose}
+                                    disabled={saving}
+                                    fullWidth
                                 >
                                     {saving ? "Cerrando…" : "Sí, cerrar período"}
-                                </button>
-                                <button
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="md"
                                     onClick={() => setConfirm(false)}
-                                    className="w-full h-9 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                    fullWidth
                                 >
                                     Cancelar
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         ) : (
                             <div className="mt-4 pt-4 border-t border-border-light">
-                                <button
+                                <BaseButton.Root
+                                    variant="dangerOutline"
+                                    size="md"
                                     onClick={() => setConfirm(true)}
-                                    className="w-full h-9 rounded-lg border border-red-500/30 bg-red-500/[0.05] hover:bg-red-500/[0.10] text-red-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                    fullWidth
                                 >
                                     Cerrar período {closingPeriod}
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         )}
                     </div>

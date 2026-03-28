@@ -5,6 +5,8 @@
 // the useInventory hook — no business logic lives here.
 
 import { useEffect, useState, useMemo } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
@@ -91,22 +93,22 @@ function EditModal({
                     </div>
                 </div>
                 <div className="flex items-center justify-end gap-3 mt-6">
-                    <button
-                        type="button"
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="md"
                         onClick={onClose}
                         disabled={saving}
-                        className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                     >
                         Cancelar
-                    </button>
-                    <button
-                        type="button"
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="primary"
+                        size="md"
                         onClick={() => onSave(date, reference, notes)}
                         disabled={saving || !date}
-                        className="h-9 px-5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                     >
                         {saving ? "Guardando…" : "Guardar"}
-                    </button>
+                    </BaseButton.Root>
                 </div>
             </div>
         </div>
@@ -144,22 +146,22 @@ function DeleteConfirm({
                     La existencia del producto se reducirá en {fmtN(mov.quantity)} unidades.
                 </div>
                 <div className="flex items-center justify-end gap-3">
-                    <button
-                        type="button"
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="md"
                         onClick={onClose}
                         disabled={deleting}
-                        className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                     >
                         Cancelar
-                    </button>
-                    <button
-                        type="button"
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="danger"
+                        size="md"
                         onClick={onConfirm}
                         disabled={deleting}
-                        className="h-9 px-5 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                     >
                         {deleting ? "Eliminando…" : "Eliminar"}
-                    </button>
+                    </BaseButton.Root>
                 </div>
             </div>
         </div>
@@ -237,28 +239,15 @@ export default function LibroEntradasPage() {
                 />
             )}
 
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Libro de Entradas
-                        </h1>
-                        <p className="text-[12px] text-text-tertiary uppercase tracking-[0.12em] mt-0.5">
-                            Movimientos de entradas por período
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <label className="text-[11px] uppercase tracking-[0.12em] text-text-tertiary">Período</label>
-                        <input
-                            type="month"
-                            className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 text-[13px] text-foreground outline-none focus:border-primary-500/60"
-                            value={period}
-                            onChange={(e) => setPeriod(e.target.value)}
-                        />
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Libro de Entradas" subtitle="Movimientos de entradas por período">
+                <label className="text-[11px] uppercase tracking-[0.12em] text-text-tertiary">Período</label>
+                <input
+                    type="month"
+                    className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 text-[13px] text-foreground outline-none focus:border-primary-500/60"
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value)}
+                />
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-4">
                 {error && (

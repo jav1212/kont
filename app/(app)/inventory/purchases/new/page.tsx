@@ -7,6 +7,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
@@ -388,18 +390,20 @@ export default function NuevaFacturaPage() {
                             Las entradas de inventario han sido registradas exitosamente.
                         </p>
                         <div className="flex items-center justify-center gap-3">
-                            <button
+                            <BaseButton.Root
+                                variant="primary"
+                                size="md"
                                 onClick={() => router.push("/inventory/purchases")}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver facturas
-                            </button>
-                            <button
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="md"
                                 onClick={() => router.push(`/inventory/movements?periodo=${period}`)}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Ver movimientos
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </div>
@@ -409,25 +413,11 @@ export default function NuevaFacturaPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Nueva Factura de Compra
-                        </h1>
-                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                            Registrar compra a proveedor
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => router.back()}
-                        className="h-9 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                    >
-                        ← Volver
-                    </button>
-                </div>
-            </div>
+            <PageHeader title="Nueva Factura de Compra" subtitle="Registrar compra a proveedor">
+                <BaseButton.Root variant="secondary" size="md" onClick={() => router.back()}>
+                    ← Volver
+                </BaseButton.Root>
+            </PageHeader>
 
             <div className="px-8 py-6">
                 {error && (
@@ -624,20 +614,22 @@ export default function NuevaFacturaPage() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-3">
-                            <button
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="md"
                                 onClick={handleSaveDraft}
                                 disabled={saving || confirming}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 {saving ? "Guardando…" : "Guardar borrador"}
-                            </button>
-                            <button
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="primary"
+                                size="md"
                                 onClick={handleConfirm}
                                 disabled={saving || confirming}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 {confirming ? "Confirmando…" : "Confirmar factura"}
-                            </button>
+                            </BaseButton.Root>
                             {savedId && !confirmed && (
                                 <span className="text-[11px] text-green-500 uppercase tracking-[0.12em]">
                                     Borrador guardado

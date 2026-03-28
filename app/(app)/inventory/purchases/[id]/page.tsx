@@ -8,6 +8,8 @@
 import { useEffect, useState, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
@@ -233,36 +235,23 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div>
-                            <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                                Factura de Compra
-                            </h1>
-                            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                                {invoice.invoiceNumber || `#${id.slice(0, 8)}`}
-                            </p>
-                        </div>
-                        {isConfirmed ? (
-                            <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-success">
-                                Confirmada
-                            </span>
-                        ) : (
-                            <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-warning">
-                                Borrador
-                            </span>
-                        )}
-                    </div>
-                    <button
-                        onClick={() => router.back()}
-                        className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                    >
-                        ← Volver
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Factura de Compra"
+                subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
+            >
+                {isConfirmed ? (
+                    <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-success">
+                        Confirmada
+                    </span>
+                ) : (
+                    <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-warning">
+                        Borrador
+                    </span>
+                )}
+                <BaseButton.Root variant="secondary" size="sm" onClick={() => router.back()}>
+                    ← Volver
+                </BaseButton.Root>
+            </PageHeader>
 
             {/* Purchase Return Modal */}
             {showReturnModal && (
@@ -352,20 +341,22 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         </div>
 
                         <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                            <button
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => setShowReturnModal(false)}
                                 disabled={savingReturn}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="danger"
+                                size="sm"
                                 onClick={handleReturn}
                                 disabled={savingReturn || !returnDate || returnItems.every((i) => i.returnQty === 0)}
-                                className="h-8 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                             >
                                 {savingReturn ? "Registrando…" : "Confirmar devolución"}
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </div>
@@ -538,20 +529,22 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         {/* Actions */}
                         {isDraft && (
                             <div className="flex items-center gap-3">
-                                <button
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
                                     onClick={handleSaveDraft}
                                     disabled={saving || confirming}
-                                    className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
                                 >
                                     {saving ? "Guardando…" : "Guardar borrador"}
-                                </button>
-                                <button
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="primary"
+                                    size="sm"
                                     onClick={handleConfirm}
                                     disabled={saving || confirming}
-                                    className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
                                 >
                                     {confirming ? "Confirmando…" : "Confirmar factura"}
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         )}
 
@@ -563,12 +556,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 >
                                     Ver movimientos →
                                 </Link>
-                                <button
+                                <BaseButton.Root
+                                    variant="dangerOutline"
+                                    size="sm"
                                     onClick={openReturnModal}
-                                    className="h-8 px-4 rounded-lg border border-red-500/30 bg-red-500/[0.06] hover:bg-red-500/[0.12] text-red-500 text-[11px] uppercase tracking-[0.14em] transition-colors"
                                 >
                                     Registrar devolución
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         )}
 

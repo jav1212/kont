@@ -106,6 +106,20 @@ export const APP_SIZES = {
 
         /** Large: h-10 (40 px) — primary CTAs */
         lg: "h-10 px-5 text-[14px] gap-2",
+
+        /**
+         * Compact secondary toolbar button — used in spreadsheet-style page headers
+         * (companies, payroll employees). Intentionally surface-1 bg (lighter than
+         * BaseButton secondary's surface-2) and tighter tracking for dense layouts.
+         * Use as a raw className when the element must be a <label> (file input trigger).
+         */
+        toolbarBtn: [
+            "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
+            "hover:border-border-medium hover:bg-surface-2",
+            "disabled:opacity-40 disabled:cursor-not-allowed",
+            "font-mono text-[12px] uppercase tracking-[0.18em] text-foreground",
+            "transition-colors duration-150",
+        ].join(" "),
     },
 
     /** Icon-only button dimensions per size */

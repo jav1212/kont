@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import type { ElementType } from "react";
 import { Button, ButtonProps } from "@heroui/react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
@@ -8,7 +9,7 @@ import { APP_SIZES } from "@/src/shared/frontend/sizes";
 // TYPES
 // ============================================================================
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline" | "dangerOutline";
 type ButtonSize    = "sm" | "md" | "lg";
 
 interface BaseButtonProps extends Omit<ButtonProps, "variant" | "color" | "size"> {
@@ -18,6 +19,10 @@ interface BaseButtonProps extends Omit<ButtonProps, "variant" | "color" | "size"
     rightIcon?:  React.ReactNode;
     loading?:    boolean;
     fullWidth?:  boolean;
+    // Polymorphic rendering — pass as={Link} href="/path" for Next.js client navigation.
+    // HeroUI Button forwards these to the underlying element.
+    as?:         ElementType;
+    href?:       string;
 }
 
 // ============================================================================
@@ -63,6 +68,14 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
         "hover:border-border-medium",
         "hover:bg-neutral-50 dark:hover:bg-neutral-900/40",
         "active:bg-neutral-100 dark:active:bg-neutral-900",
+    ].join(" "),
+
+    // Soft red outline — used for destructive bulk actions before confirmation.
+    dangerOutline: [
+        "bg-red-500/5 text-red-500",
+        "border border-red-500/30",
+        "hover:bg-red-500/10 hover:border-red-500/40",
+        "active:bg-red-500/15",
     ].join(" "),
 };
 

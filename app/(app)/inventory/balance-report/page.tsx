@@ -4,6 +4,8 @@
 // Shows a monthly inventory summary grouped by department.
 
 import { useEffect, useState, useMemo } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { BalanceReportRow } from "@/src/modules/inventory/backend/domain/balance-report";
@@ -111,56 +113,45 @@ export default function BalanceReportPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Reporte SALDO
-                        </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Resumen mensual agrupado por departamento
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                Período
-                            </label>
-                            <input
-                                type="month"
-                                value={period}
-                                onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
-                                className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={loadingBalanceReport}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            {loadingBalanceReport ? "Cargando…" : "Generar"}
-                        </button>
-                        {balanceReport.length > 0 && (
-                            <>
-                                <button
-                                    onClick={() => exportCSV(balanceReport, period)}
-                                    className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                                >
-                                    Exportar CSV
-                                </button>
-                                <button
-                                    onClick={() => window.print()}
-                                    className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                                >
-                                    Imprimir
-                                </button>
-                            </>
-                        )}
-                    </div>
+            <PageHeader title="Reporte SALDO" subtitle="Resumen mensual agrupado por departamento">
+                <div className="flex items-center gap-2">
+                    <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                        Período
+                    </label>
+                    <input
+                        type="month"
+                        value={period}
+                        onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
+                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                    />
                 </div>
-            </div>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={loadingBalanceReport}
+                >
+                    {loadingBalanceReport ? "Cargando…" : "Generar"}
+                </BaseButton.Root>
+                {balanceReport.length > 0 && (
+                    <>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => exportCSV(balanceReport, period)}
+                        >
+                            Exportar CSV
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.print()}
+                        >
+                            Imprimir
+                        </BaseButton.Root>
+                    </>
+                )}
+            </PageHeader>
 
             <div className="px-8 py-6">
                 {error && (

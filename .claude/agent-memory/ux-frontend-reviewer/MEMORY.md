@@ -17,5 +17,7 @@
 - [landing_page_patterns.md](./landing_page_patterns.md) — Landing page section order, copy tone, ModuleCarousel implementation details
 - [inline_edit_patterns.md](./inline_edit_patterns.md) — Inline table row edit: logo upload button design, upload state machine, mobile field fallback, aria-label + focus-visible conventions
 
+- [page_header_patterns.md](./page_header_patterns.md) — PageHeader component: font-size inconsistency vs. existing pages, subtitle legibility issue, button size cross-page mismatch, dangerOutline two-step bulk-delete pattern
+
 ## Brand
 - [brand_konta.md](./brand_konta.md) — Konta rebrand spec: logo treatment pattern, color tokens, admin area exception, document shell exception

@@ -4,6 +4,8 @@
 // Supports PDF export of the kardex table.
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { MovementType } from "@/src/modules/inventory/backend/domain/movement";
@@ -120,25 +122,13 @@ export default function KardexPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">Kardex</h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Historial de movimientos por producto
-                        </p>
-                    </div>
-                    {searched && kardex.length > 0 && product && (
-                        <button
-                            onClick={exportPdf}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            Exportar PDF
-                        </button>
-                    )}
-                </div>
-            </div>
+            <PageHeader title="Kardex" subtitle="Historial de movimientos por producto">
+                {searched && kardex.length > 0 && product && (
+                    <BaseButton.Root variant="secondary" size="sm" onClick={exportPdf}>
+                        Exportar PDF
+                    </BaseButton.Root>
+                )}
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-4">
                 {/* Selector */}

@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 
@@ -52,33 +53,20 @@ export default function InventoryDashboard() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[20px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Inventario
-                        </h1>
-                        <p className="text-[13px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                            Dashboard — {periodo}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/inventory/purchases/new"
-                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
-                        >
-                            + Entrada
-                        </Link>
-                        <Link
-                            href="/inventory/sales"
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
-                        >
-                            + Salida
-                        </Link>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Inventario" subtitle={`Dashboard — ${periodo}`}>
+                <Link
+                    href="/inventory/purchases/new"
+                    className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                >
+                    + Entrada
+                </Link>
+                <Link
+                    href="/inventory/sales"
+                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                >
+                    + Salida
+                </Link>
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-6">
                 {/* KPI cards */}

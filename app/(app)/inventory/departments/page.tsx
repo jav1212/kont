@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import type { Department } from "@/src/modules/inventory/backend/domain/department";
 import {
     departmentsToCsv,
@@ -49,6 +51,7 @@ export default function DepartamentosPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [bulkDeleting, setBulkDeleting] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (companyId) loadDepartments(companyId);
@@ -77,7 +80,9 @@ export default function DepartamentosPage() {
     }
 
     async function handleDelete(id: string) {
+        setDeletingId(id);
         await deleteDepartment(id);
+        setDeletingId(null);
         setConfirmDelete(null);
     }
 
@@ -133,47 +138,21 @@ export default function DepartamentosPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Departamentos
-                        </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Categorías de productos
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleExport}
-                            disabled={departments.length === 0}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            Exportar CSV
-                        </button>
-                        <button
-                            onClick={() => { setPasteOpen((v) => !v); setError(null); }}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            Pegar CSV
-                        </button>
-                        <button
-                            onClick={() => fileRef.current?.click()}
-                            className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            Importar archivo
-                        </button>
-                        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-                        <button
-                            onClick={openNew}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            + Nuevo departamento
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Departamentos" subtitle="Categorías de productos">
+                <BaseButton.Root variant="secondary" size="sm" onClick={handleExport} isDisabled={departments.length === 0}>
+                    Exportar CSV
+                </BaseButton.Root>
+                <BaseButton.Root variant="secondary" size="sm" onClick={() => { setPasteOpen((v) => !v); setError(null); }}>
+                    Pegar CSV
+                </BaseButton.Root>
+                <BaseButton.Root variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+                    Importar archivo
+                </BaseButton.Root>
+                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                <BaseButton.Root variant="primary" size="sm" onClick={openNew}>
+                    + Nuevo departamento
+                </BaseButton.Root>
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-4">
                 {/* Search + bulk actions */}
@@ -189,28 +168,17 @@ export default function DepartamentosPage() {
                         confirmBulkDelete ? (
                             <div className="flex items-center gap-2">
                                 <span className="text-[12px] text-foreground">¿Eliminar {selected.size} elemento(s)?</span>
-                                <button
-                                    onClick={handleBulkDelete}
-                                    disabled={bulkDeleting}
-                                    className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                                >
+                                <BaseButton.Root variant="danger" size="md" onClick={handleBulkDelete} isDisabled={bulkDeleting} loading={bulkDeleting}>
                                     {bulkDeleting ? "Eliminando…" : "Confirmar"}
-                                </button>
-                                <button
-                                    onClick={() => setConfirmBulkDelete(false)}
-                                    disabled={bulkDeleting}
-                                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                                >
+                                </BaseButton.Root>
+                                <BaseButton.Root variant="secondary" size="md" onClick={() => setConfirmBulkDelete(false)} isDisabled={bulkDeleting}>
                                     Cancelar
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => setConfirmBulkDelete(true)}
-                                className="h-9 px-4 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            <BaseButton.Root variant="dangerOutline" size="md" onClick={() => setConfirmBulkDelete(true)}>
                                 Eliminar {selected.size} seleccionado(s)
-                            </button>
+                            </BaseButton.Root>
                         )
                     )}
                 </div>
@@ -243,19 +211,12 @@ export default function DepartamentosPage() {
                             onChange={(e) => setPasteText(e.target.value)}
                         />
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
-                            <button
-                                onClick={handlePasteParse}
-                                disabled={!pasteText.trim()}
-                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handlePasteParse} isDisabled={!pasteText.trim()}>
                                 Procesar
-                            </button>
-                            <button
-                                onClick={() => { setPasteOpen(false); setPasteText(""); }}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => { setPasteOpen(false); setPasteText(""); }}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -279,19 +240,12 @@ export default function DepartamentosPage() {
                             </p>
                         )}
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
-                            <button
-                                onClick={handleImport}
-                                disabled={importing || importResult.departments.length === 0}
-                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handleImport} isDisabled={importing || importResult.departments.length === 0} loading={importing}>
                                 {importing ? "Importando…" : `Importar ${importResult.departments.length}`}
-                            </button>
-                            <button
-                                onClick={() => setImportResult(null)}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => setImportResult(null)}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -323,28 +277,24 @@ export default function DepartamentosPage() {
                             </div>
                         </div>
 
-                        <div className="mb-4 flex items-center gap-2">
-                            <input
-                                type="checkbox" checked={form.active}
-                                onChange={(e) => set("active", e.target.checked)}
-                                className="w-4 h-4 rounded"
-                            />
-                            <span className="text-[11px] text-foreground">Activo</span>
+                        <div className="mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox" checked={form.active}
+                                    onChange={(e) => set("active", e.target.checked)}
+                                    className="w-4 h-4 rounded"
+                                />
+                                <span className="text-[11px] text-foreground">Activo</span>
+                            </label>
                         </div>
 
                         <div className="flex items-center gap-3 pt-2 border-t border-border-light">
-                            <button
-                                onClick={handleSave} disabled={saving}
-                                className="h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handleSave} isDisabled={saving} loading={saving}>
                                 {saving ? "Guardando…" : "Guardar"}
-                            </button>
-                            <button
-                                onClick={closeForm}
-                                className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={closeForm}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -355,7 +305,7 @@ export default function DepartamentosPage() {
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : departments.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[11px] text-[var(--text-tertiary)]">
-                            No hay departamentos. Haz clic en "+ Nuevo departamento" para crear uno.
+                            No hay departamentos. Haz clic en &quot;+ Nuevo departamento&quot; para crear uno.
                         </div>
                     ) : filtered.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[11px] text-text-tertiary">Sin resultados para &quot;{search}&quot;.</div>
@@ -417,13 +367,15 @@ export default function DepartamentosPage() {
                                                     <>
                                                         <button
                                                             onClick={() => handleDelete(d.id!)}
-                                                            className="text-[9px] uppercase tracking-[0.12em] text-red-500 hover:text-red-600 transition-colors"
+                                                            disabled={deletingId === d.id}
+                                                            className="text-[9px] uppercase tracking-[0.12em] text-red-500 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
-                                                            Confirmar
+                                                            {deletingId === d.id ? "Eliminando…" : "Confirmar"}
                                                         </button>
                                                         <button
                                                             onClick={() => setConfirmDelete(null)}
-                                                            className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+                                                            disabled={deletingId === d.id}
+                                                            className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                         >
                                                             Cancelar
                                                         </button>
@@ -431,7 +383,8 @@ export default function DepartamentosPage() {
                                                 ) : (
                                                     <button
                                                         onClick={() => setConfirmDelete(d.id!)}
-                                                        className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                        disabled={!!deletingId}
+                                                        className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors disabled:opacity-50"
                                                     >
                                                         Eliminar
                                                     </button>

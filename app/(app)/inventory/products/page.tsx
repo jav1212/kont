@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     productsToCsv,
@@ -108,6 +110,7 @@ export default function ProductosPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [bulkDeleting, setBulkDeleting] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (companyId) {
@@ -143,7 +146,9 @@ export default function ProductosPage() {
     }
 
     async function handleDelete(id: string) {
+        setDeletingId(id);
         await deleteProduct(id);
+        setDeletingId(null);
         setConfirmDelete(null);
     }
 
@@ -207,49 +212,27 @@ export default function ProductosPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Productos
-                        </h1>
-                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                            Catálogo de productos
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleExport}
-                            disabled={products.length === 0}
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                        >
-                            Exportar CSV
-                        </button>
-                        <button
-                            onClick={() => { setPasteOpen((v) => !v); setError(null); }}
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                        >
-                            Pegar CSV
-                        </button>
-                        <button
-                            onClick={() => fileRef.current?.click()}
-                            disabled={loadingDepartments}
-                            title={loadingDepartments ? "Cargando departamentos…" : undefined}
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-40 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                        >
-                            Importar archivo
-                        </button>
-                        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-                        <button
-                            onClick={openNew}
-                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                        >
-                            + Nuevo producto
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Productos" subtitle="Catálogo de productos">
+                <BaseButton.Root variant="secondary" size="sm" onClick={handleExport} isDisabled={products.length === 0}>
+                    Exportar CSV
+                </BaseButton.Root>
+                <BaseButton.Root variant="secondary" size="sm" onClick={() => { setPasteOpen((v) => !v); setError(null); }}>
+                    Pegar CSV
+                </BaseButton.Root>
+                <BaseButton.Root
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fileRef.current?.click()}
+                    isDisabled={loadingDepartments}
+                    title={loadingDepartments ? "Cargando departamentos…" : undefined}
+                >
+                    Importar archivo
+                </BaseButton.Root>
+                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                <BaseButton.Root variant="primary" size="sm" onClick={openNew}>
+                    + Nuevo producto
+                </BaseButton.Root>
+            </PageHeader>
 
             <div className="px-8 py-6 space-y-4">
                 {/* Search + bulk actions */}
@@ -265,28 +248,17 @@ export default function ProductosPage() {
                         confirmBulkDelete ? (
                             <div className="flex items-center gap-2">
                                 <span className="text-[12px] text-foreground">¿Eliminar {selected.size} elemento(s)?</span>
-                                <button
-                                    onClick={handleBulkDelete}
-                                    disabled={bulkDeleting}
-                                    className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                                >
+                                <BaseButton.Root variant="danger" size="md" onClick={handleBulkDelete} isDisabled={bulkDeleting} loading={bulkDeleting}>
                                     {bulkDeleting ? "Eliminando…" : "Confirmar"}
-                                </button>
-                                <button
-                                    onClick={() => setConfirmBulkDelete(false)}
-                                    disabled={bulkDeleting}
-                                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                                >
+                                </BaseButton.Root>
+                                <BaseButton.Root variant="secondary" size="md" onClick={() => setConfirmBulkDelete(false)} isDisabled={bulkDeleting}>
                                     Cancelar
-                                </button>
+                                </BaseButton.Root>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => setConfirmBulkDelete(true)}
-                                className="h-9 px-4 rounded-lg border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-500 text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            <BaseButton.Root variant="dangerOutline" size="md" onClick={() => setConfirmBulkDelete(true)}>
                                 Eliminar {selected.size} seleccionado(s)
-                            </button>
+                            </BaseButton.Root>
                         )
                     )}
                 </div>
@@ -323,19 +295,12 @@ export default function ProductosPage() {
                             ) : (
                                 <span className="text-[12px] text-text-tertiary">{departments.length} departamento(s) disponible(s)</span>
                             )}
-                            <button
-                                onClick={handlePasteParse}
-                                disabled={!pasteText.trim() || loadingDepartments}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handlePasteParse} isDisabled={!pasteText.trim() || loadingDepartments}>
                                 Procesar
-                            </button>
-                            <button
-                                onClick={() => { setPasteOpen(false); setPasteText(""); }}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => { setPasteOpen(false); setPasteText(""); }}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -359,19 +324,12 @@ export default function ProductosPage() {
                             </p>
                         )}
                         <div className="flex items-center gap-3 pt-1 border-t border-border-light">
-                            <button
-                                onClick={handleImport}
-                                disabled={importing || importResult.products.length === 0}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handleImport} isDisabled={importing || importResult.products.length === 0} loading={importing}>
                                 {importing ? "Importando…" : `Importar ${importResult.products.length}`}
-                            </button>
-                            <button
-                                onClick={() => setImportResult(null)}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={() => setImportResult(null)}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -443,28 +401,24 @@ export default function ProductosPage() {
                             </div>
                         </div>
 
-                        <div className="mb-4 flex items-center gap-2">
-                            <input
-                                type="checkbox" checked={form.active}
-                                onChange={(e) => set("active", e.target.checked)}
-                                className="w-4 h-4 rounded"
-                            />
-                            <span className="text-[14px] text-foreground">Activo</span>
+                        <div className="mb-4">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox" checked={form.active}
+                                    onChange={(e) => set("active", e.target.checked)}
+                                    className="w-4 h-4 rounded"
+                                />
+                                <span className="text-[14px] text-foreground">Activo</span>
+                            </label>
                         </div>
 
                         <div className="flex items-center gap-3 pt-2 border-t border-border-light">
-                            <button
-                                onClick={handleSave} disabled={saving}
-                                className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            <BaseButton.Root variant="primary" size="sm" onClick={handleSave} isDisabled={saving} loading={saving}>
                                 {saving ? "Guardando…" : "Guardar"}
-                            </button>
-                            <button
-                                onClick={closeForm}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="secondary" size="sm" onClick={closeForm}>
                                 Cancelar
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 )}
@@ -475,7 +429,7 @@ export default function ProductosPage() {
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
                     ) : products.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
-                            No hay productos. Haz clic en "+ Nuevo producto" para crear uno.
+                            No hay productos. Haz clic en &quot;+ Nuevo producto&quot; para crear uno.
                         </div>
                     ) : filtered.length === 0 ? (
                         <div className="px-5 py-8 text-center text-[13px] text-text-tertiary">Sin resultados para &quot;{search}&quot;.</div>
@@ -548,13 +502,15 @@ export default function ProductosPage() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleDelete(p.id!)}
-                                                                className="text-[11px] uppercase tracking-[0.10em] text-red-500 hover:text-red-600 transition-colors"
+                                                                disabled={deletingId === p.id}
+                                                                className="text-[11px] uppercase tracking-[0.10em] text-red-500 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
-                                                                Confirmar
+                                                                {deletingId === p.id ? "Eliminando…" : "Confirmar"}
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(null)}
-                                                                className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+                                                                disabled={deletingId === p.id}
+                                                                className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 Cancelar
                                                             </button>
@@ -562,7 +518,8 @@ export default function ProductosPage() {
                                                     ) : (
                                                         <button
                                                             onClick={() => setConfirmDelete(p.id!)}
-                                                            className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                            disabled={!!deletingId}
+                                                            className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors disabled:opacity-50"
                                                         >
                                                             Eliminar
                                                         </button>

@@ -4,6 +4,8 @@
 // Shows per-product movement history for the monthly ISLR inventory registry.
 
 import { useEffect, useState, useMemo } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { IslrProduct, IslrMovement } from "@/src/modules/inventory/backend/domain/islr-report";
@@ -214,56 +216,45 @@ export default function IslrReportPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Reporte Art. 177 ISLR
-                        </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Reglamento ISLR Art. 177 — Registro mensual por producto
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                Período
-                            </label>
-                            <input
-                                type="month"
-                                value={period}
-                                onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
-                                className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={loadingIslrReport}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            {loadingIslrReport ? "Cargando…" : "Generar"}
-                        </button>
-                        {islrReport.length > 0 && (
-                            <>
-                                <button
-                                    onClick={() => exportCSV(islrReport, period)}
-                                    className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                                >
-                                    Exportar CSV
-                                </button>
-                                <button
-                                    onClick={() => window.print()}
-                                    className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                                >
-                                    Imprimir
-                                </button>
-                            </>
-                        )}
-                    </div>
+            <PageHeader title="Reporte Art. 177 ISLR" subtitle="Reglamento ISLR Art. 177 — Registro mensual por producto">
+                <div className="flex items-center gap-2">
+                    <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                        Período
+                    </label>
+                    <input
+                        type="month"
+                        value={period}
+                        onChange={(e) => { setPeriod(e.target.value); setSearched(false); }}
+                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                    />
                 </div>
-            </div>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={loadingIslrReport}
+                >
+                    {loadingIslrReport ? "Cargando…" : "Generar"}
+                </BaseButton.Root>
+                {islrReport.length > 0 && (
+                    <>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => exportCSV(islrReport, period)}
+                        >
+                            Exportar CSV
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.print()}
+                        >
+                            Imprimir
+                        </BaseButton.Root>
+                    </>
+                )}
+            </PageHeader>
 
             <div className="px-8 py-6">
                 {error && (

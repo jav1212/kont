@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -114,16 +115,19 @@ export default function MembersPage() {
                     )}
                 </div>
                 {canInvite && (
-                    <button
+                    <BaseButton.Root
+                        variant="primary"
+                        size="sm"
                         onClick={() => setInviteOpen(true)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-xs transition-colors min-h-11"
+                        leftIcon={
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                                <path d="M6 1v10M1 6h10" />
+                            </svg>
+                        }
                     >
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                            <path d="M6 1v10M1 6h10" />
-                        </svg>
                         <span className="hidden sm:inline">Invitar miembro</span>
                         <span className="sm:hidden">Invitar</span>
-                    </button>
+                    </BaseButton.Root>
                 )}
             </div>
 
@@ -301,20 +305,12 @@ function RevokeConfirmDialog({
                     Esta acción no se puede deshacer.
                 </p>
                 <div className="flex gap-2">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="flex-1 py-2.5 rounded-lg border border-border-light font-mono text-xs text-foreground/60 hover:text-foreground transition-colors"
-                    >
+                    <BaseButton.Root type="button" variant="outline" size="md" onClick={onCancel} fullWidth>
                         Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className="flex-1 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-mono text-xs transition-colors"
-                    >
+                    </BaseButton.Root>
+                    <BaseButton.Root type="button" variant="danger" size="md" onClick={onConfirm} fullWidth>
                         {member.pending ? "Cancelar invitación" : "Revocar"}
-                    </button>
+                    </BaseButton.Root>
                 </div>
             </div>
         </div>
@@ -404,12 +400,9 @@ function InviteModal({
                             </button>
                         </div>
 
-                        <button
-                            onClick={onSuccess}
-                            className="w-full py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-xs transition-colors"
-                        >
+                        <BaseButton.Root variant="primary" size="md" onClick={onSuccess} fullWidth>
                             Listo
-                        </button>
+                        </BaseButton.Root>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -439,20 +432,12 @@ function InviteModal({
                             </select>
                         </div>
                         <div className="flex gap-2 pt-1">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="flex-1 py-2.5 rounded-lg border border-border-light font-mono text-xs text-foreground/60 hover:text-foreground transition-colors"
-                            >
+                            <BaseButton.Root type="button" variant="outline" size="md" onClick={onClose} fullWidth>
                                 Cancelar
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="flex-1 py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white font-mono text-xs transition-colors"
-                            >
+                            </BaseButton.Root>
+                            <BaseButton.Root type="submit" variant="primary" size="md" isDisabled={loading} loading={loading} fullWidth>
                                 {loading ? "Enviando…" : "Enviar invitación"}
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </form>
                 )}

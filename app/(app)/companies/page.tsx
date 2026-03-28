@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
@@ -20,11 +21,9 @@ const cellInput = [
     "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
 ].join(" ");
 
-const toolbarBtn = [
-    "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
-    "hover:border-border-medium hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed",
-    "font-mono text-[10px] uppercase tracking-[0.18em] text-foreground transition-colors duration-150",
-].join(" ");
+// Compact secondary toolbar button — shared via APP_SIZES.button.toolbarBtn.
+// Applied directly as className when the element must be a <label> (file input trigger).
+const toolbarBtn = APP_SIZES.button.toolbarBtn;
 
 // ============================================================================
 // ICONS
@@ -347,20 +346,16 @@ export default function CompaniesPage() {
                                 Pegar CSV
                             </button>
                             {/* New */}
-                            <button
+                            <BaseButton.Root
+                                variant="primary"
+                                size="sm"
                                 onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
-                                disabled={showNew || atCompanyLimit}
+                                isDisabled={showNew || atCompanyLimit}
                                 title={atCompanyLimit ? "Límite de empresas alcanzado según tu plan" : undefined}
-                                className={[
-                                    "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
-                                    "bg-primary-500 border-primary-600 text-white",
-                                    "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                                    "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
-                                ].join(" ")}
+                                leftIcon={<IconPlus />}
                             >
-                                <IconPlus />
                                 Nueva empresa
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </header>

@@ -5,6 +5,7 @@
 // All identifiers use English domain types from backend/domain/movement and backend/domain/product.
 
 import { useEffect, useState, useMemo } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
@@ -285,15 +286,10 @@ export default function MovementsPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                    Ajustes y Devoluciones
-                </h1>
-                <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                    Correcciones de inventario y devoluciones — entradas en Entradas · salidas en Salidas
-                </p>
-            </div>
+            <PageHeader
+                title="Ajustes y Devoluciones"
+                subtitle="Correcciones de inventario y devoluciones — entradas en Entradas · salidas en Salidas"
+            />
 
             <div className="px-8 py-6 grid grid-cols-5 gap-6">
                 {/* Left: forms */}

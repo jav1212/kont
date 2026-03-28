@@ -4,6 +4,8 @@
 // Allows recording transformation batches: consumes raw materials to produce finished products.
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Transformation, TransformationInput } from "@/src/modules/inventory/backend/domain/transformation";
@@ -122,15 +124,7 @@ export default function ProductionPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                    Producción
-                </h1>
-                <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                    Lotes de transformación y producción
-                </p>
-            </div>
+            <PageHeader title="Producción" subtitle="Lotes de transformación y producción" />
 
             <div className="px-8 py-6 grid grid-cols-5 gap-6">
                 {/* Left: form */}
@@ -237,12 +231,15 @@ export default function ProductionPage() {
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-border-light">
-                            <button
-                                onClick={handleSave} disabled={saving}
-                                className="w-full h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
+                            <BaseButton.Root
+                                variant="primary"
+                                size="md"
+                                onClick={handleSave}
+                                disabled={saving}
+                                fullWidth
                             >
                                 {saving ? "Procesando…" : "Registrar lote"}
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </div>

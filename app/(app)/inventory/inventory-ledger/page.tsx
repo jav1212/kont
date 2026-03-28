@@ -4,6 +4,8 @@
 // Displays annual inventory movements per product and computes ISLR Art. 177 cost of sales.
 
 import { useEffect, useRef, useState, useMemo } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InventoryLedgerRow } from "@/src/modules/inventory/backend/domain/inventory-ledger";
@@ -95,58 +97,47 @@ export default function LibroInventariosPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Libro de Inventarios Anual
-                        </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Código de Comercio Art. 36 — Inventario anual al cierre del ejercicio
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                Año
-                            </label>
-                            <input
-                                type="number"
-                                min={2000}
-                                max={2100}
-                                value={year}
-                                onChange={(e) => { searchedRef.current = false; setYear(Number(e.target.value)); }}
-                                className="h-8 w-24 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={loadingInventoryLedger}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            {loadingInventoryLedger ? "Cargando…" : "Generar"}
-                        </button>
-                        {inventoryLedger.length > 0 && (
-                            <button
-                                onClick={() => exportCSV(inventoryLedger, year)}
-                                className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
-                                Exportar CSV
-                            </button>
-                        )}
-                        {inventoryLedger.length > 0 && (
-                            <button
-                                onClick={() => window.print()}
-                                className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
-                                Imprimir
-                            </button>
-                        )}
-                    </div>
+            <PageHeader title="Libro de Inventarios Anual" subtitle="Código de Comercio Art. 36 — Inventario anual al cierre del ejercicio">
+                <div className="flex items-center gap-2">
+                    <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                        Año
+                    </label>
+                    <input
+                        type="number"
+                        min={2000}
+                        max={2100}
+                        value={year}
+                        onChange={(e) => { searchedRef.current = false; setYear(Number(e.target.value)); }}
+                        className="h-8 w-24 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                    />
                 </div>
-            </div>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={loadingInventoryLedger}
+                >
+                    {loadingInventoryLedger ? "Cargando…" : "Generar"}
+                </BaseButton.Root>
+                {inventoryLedger.length > 0 && (
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => exportCSV(inventoryLedger, year)}
+                    >
+                        Exportar CSV
+                    </BaseButton.Root>
+                )}
+                {inventoryLedger.length > 0 && (
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => window.print()}
+                    >
+                        Imprimir
+                    </BaseButton.Root>
+                )}
+            </PageHeader>
 
             <div className="px-8 py-6">
                 {error && (

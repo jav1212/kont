@@ -2,21 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { PayrollRun }     from "@/src/modules/payroll/backend/domain/payroll-run";
-import { apiFetch as tenantFetch } from "@/src/shared/frontend/utils/api-fetch";
+import { fetchJson } from "@/src/shared/frontend/utils/api-fetch";
 import type { PayrollReceipt } from "@/src/modules/payroll/backend/domain/payroll-receipt";
 
 export type { PayrollRun, PayrollReceipt };
-
-// ── Fetch helper ──────────────────────────────────────────────────────────────
-
-async function apiFetch(path: string, options?: RequestInit) {
-    const res  = await tenantFetch(path, options);
-    const text = await res.text();
-    let json: any = {};
-    try   { json = JSON.parse(text); }
-    catch { json = { error: `Error del servidor (${res.status})` }; }
-    return { ok: res.ok, json };
-}
 
 // ============================================================================
 // TYPES
@@ -73,9 +62,9 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         setLoading(true);
         setError(null);
 
-        const { ok, json } = await apiFetch(`/api/payroll/runs?companyId=${companyId}`);
+        const { ok, json } = await fetchJson(`/api/payroll/runs?companyId=${companyId}`);
         if (!ok) setError(json.error ?? "Error al cargar historial");
-        else     setRuns(json.data ?? []);
+        else     setRuns((json.data as PayrollRun[]) ?? []);
 
         setLoading(false);
     }, [companyId]);
@@ -86,13 +75,13 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
     }, [companyId, reload]);
 
     const getReceipts = useCallback(async (runId: string) => {
-        const { ok, json } = await apiFetch(`/api/payroll/receipts?runId=${runId}`);
+        const { ok, json } = await fetchJson(`/api/payroll/receipts?runId=${runId}`);
         if (!ok) return { receipts: [], error: json.error ?? "Error al cargar recibos" };
-        return { receipts: json.data ?? [], error: null };
+        return { receipts: (json.data as PayrollReceipt[]) ?? [], error: null };
     }, []);
 
     const confirm = useCallback(async (payload: ConfirmPayload): Promise<string | null> => {
-        const { ok, json } = await apiFetch("/api/payroll/runs/confirm", {
+        const { ok, json } = await fetchJson("/api/payroll/runs/confirm", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify(payload),

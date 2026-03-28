@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -108,11 +109,9 @@ const IconPlus = () => (
     </svg>
 );
 
-const toolbarBtn = [
-    "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
-    "hover:border-border-medium hover:bg-surface-2 disabled:opacity-40 disabled:cursor-not-allowed",
-    "font-mono text-[12px] uppercase tracking-[0.18em] text-foreground transition-colors duration-150",
-].join(" ");
+// Compact secondary toolbar button — shared via APP_SIZES.button.toolbarBtn.
+// Applied directly as className when the element must be a <label> (file input trigger).
+const toolbarBtn = APP_SIZES.button.toolbarBtn;
 
 // ============================================================================
 // EMPLOYEE ROW
@@ -580,20 +579,16 @@ export default function EmployeesPage() {
                                 </svg>
                                 Pegar CSV
                             </button>
-                            <button
+                            <BaseButton.Root
+                                variant="primary"
+                                size="sm"
                                 onClick={addNewRow}
-                                disabled={atEmployeeLimit}
+                                isDisabled={atEmployeeLimit}
                                 title={atEmployeeLimit ? "Límite de empleados alcanzado según tu plan" : undefined}
-                                className={[
-                                    "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
-                                    "bg-primary-500 border-primary-600 text-white",
-                                    "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                                    "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
-                                ].join(" ")}
+                                leftIcon={<IconPlus />}
                             >
-                                <IconPlus />
                                 Nuevo empleado
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </header>

@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InvoiceStatus } from "@/src/modules/inventory/backend/domain/purchase-invoice";
@@ -67,33 +69,14 @@ export default function PurchaseInvoicesPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Facturas de Compra
-                        </h1>
-                        <p className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] mt-0.5">
-                            Registro de compras a proveedores
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/inventory/purchases"
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
-                        >
-                            ← Libro de entradas
-                        </Link>
-                        <Link
-                            href="/inventory/purchases/new"
-                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
-                        >
-                            + Nueva factura
-                        </Link>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Facturas de Compra" subtitle="Registro de compras a proveedores">
+                <BaseButton.Root as={Link} href="/inventory/purchases" variant="secondary" size="sm">
+                    ← Libro de entradas
+                </BaseButton.Root>
+                <BaseButton.Root as={Link} href="/inventory/purchases/new" variant="primary" size="sm">
+                    + Nueva factura
+                </BaseButton.Root>
+            </PageHeader>
 
             {/* Warning modal for deleting a confirmed invoice */}
             {confirmDeleteConfirmada && (
@@ -114,20 +97,22 @@ export default function PurchaseInvoicesPage() {
                             </p>
                         </div>
                         <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                            <button
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="md"
                                 onClick={() => { setConfirmDeleteConfirmada(null); setError(null); }}
                                 disabled={deleting}
-                                className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 disabled:opacity-50 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 Cancelar
-                            </button>
-                            <button
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="danger"
+                                size="md"
                                 onClick={() => handleDelete(confirmDeleteConfirmada)}
                                 disabled={deleting}
-                                className="h-9 px-4 rounded-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
                             >
                                 {deleting ? "Eliminando…" : "Sí, eliminar"}
-                            </button>
+                            </BaseButton.Root>
                         </div>
                     </div>
                 </div>

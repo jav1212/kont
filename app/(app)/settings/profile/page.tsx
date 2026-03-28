@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -160,13 +161,15 @@ export default function ProfilePage() {
                     <p className="font-mono text-xs text-green-500">Guardado correctamente.</p>
                 )}
 
-                <button
+                <BaseButton.Root
                     type="submit"
-                    disabled={saving}
-                    className="h-10 px-6 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white font-mono text-xs uppercase tracking-[0.18em] transition-colors"
+                    variant="primary"
+                    size="lg"
+                    isDisabled={saving}
+                    loading={saving}
                 >
                     {saving ? "Guardando…" : "Guardar cambios"}
-                </button>
+                </BaseButton.Root>
             </form>
         </div>
     );

@@ -4,6 +4,8 @@
 // Displays a monthly inventory report grouped by department with cost and VAT breakdown.
 
 import { useEffect, useRef, useState, useMemo, Fragment } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PeriodReportRow } from "@/src/modules/inventory/backend/domain/period-report";
@@ -123,48 +125,36 @@ export default function PeriodReportPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[13px] font-bold uppercase tracking-[0.18em] text-foreground">
-                            Reporte de Período
-                        </h1>
-                        <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.16em] mt-0.5">
-                            Inventario mensual con costos, IVA y movimientos
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                Período
-                            </label>
-                            <input
-                                type="month"
-                                value={period}
-                                onChange={(e) => { searchedRef.current = false; setPeriod(e.target.value); }}
-                                className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
-                            />
-                        </div>
-                        <button
-                            onClick={handleSearch}
-                            disabled={loadingPeriodReport}
-                            className="h-8 px-3 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[11px] uppercase tracking-[0.14em] transition-colors"
-                        >
-                            {loadingPeriodReport ? "Cargando…" : "Generar"}
-                        </button>
-                        {periodReport.length > 0 && (
-                            <button
-                                onClick={() => exportCSV(periodReport, period)}
-                                className="h-8 px-3 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors"
-                            >
-                                Exportar CSV
-                            </button>
-                        )}
-                    </div>
+            <PageHeader title="Reporte de Período" subtitle="Inventario mensual con costos, IVA y movimientos">
+                <div className="flex items-center gap-2">
+                    <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                        Período
+                    </label>
+                    <input
+                        type="month"
+                        value={period}
+                        onChange={(e) => { searchedRef.current = false; setPeriod(e.target.value); }}
+                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                    />
                 </div>
-            </div>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSearch}
+                    disabled={loadingPeriodReport}
+                >
+                    {loadingPeriodReport ? "Cargando…" : "Generar"}
+                </BaseButton.Root>
+                {periodReport.length > 0 && (
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => exportCSV(periodReport, period)}
+                    >
+                        Exportar CSV
+                    </BaseButton.Root>
+                )}
+            </PageHeader>
 
             <div className="px-8 py-6">
                 {/* Error */}

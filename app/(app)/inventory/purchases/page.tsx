@@ -1,43 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+// Note: Link is passed as polymorphic `as` prop to BaseButton, not used as JSX directly.
 
 export default function EntradasPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Entradas de Inventario
-                        </h1>
-                        <p className="text-[12px] text-text-tertiary uppercase tracking-[0.12em] mt-0.5">
-                            Registro de entradas de existencias
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Link
-                            href="/inventory/purchases/invoices"
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
-                        >
-                            Facturas
-                        </Link>
-                        <Link
-                            href="/inventory/purchases/new-manual"
-                            className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
-                        >
-                            + Entrada manual
-                        </Link>
-                        <Link
-                            href="/inventory/purchases/new"
-                            className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[12px] uppercase tracking-[0.12em] transition-colors inline-flex items-center"
-                        >
-                            + Nueva factura
-                        </Link>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="Entradas de Inventario" subtitle="Registro de entradas de existencias">
+                <BaseButton.Root as={Link} href="/inventory/purchases/invoices" variant="secondary" size="sm">
+                    Facturas
+                </BaseButton.Root>
+                <BaseButton.Root as={Link} href="/inventory/purchases/new-manual" variant="secondary" size="sm">
+                    + Entrada manual
+                </BaseButton.Root>
+                <BaseButton.Root as={Link} href="/inventory/purchases/new" variant="primary" size="sm">
+                    + Nueva factura
+                </BaseButton.Root>
+            </PageHeader>
 
             <div className="px-8 py-16 flex flex-col items-center justify-center text-center gap-3">
                 <p className="text-[13px] text-text-tertiary uppercase tracking-[0.12em]">
