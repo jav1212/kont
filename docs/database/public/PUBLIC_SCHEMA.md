@@ -87,6 +87,7 @@ Purpose:
 Current examples:
 - `payroll`
 - `inventory`
+- `accounting`
 
 ### `public.tenant_subscriptions`
 

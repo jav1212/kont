@@ -193,12 +193,98 @@ Main pattern:
 - the policy is tied to the tenant owner user id
 - collaborator access is handled at the application/API layer through membership checks and `actingAs` resolution
 
+## Accounting tables
+
+Added in migration 048. New-English-named tables (unlike the legacy Spanish inventory naming).
+
+### `accounting_accounts`
+
+Purpose:
+- chart of accounts per company
+- hierarchical via `parent_code`
+
+Current notable fields:
+- `company_id`
+- `code` (unique per company, e.g. "1-01-001")
+- `name`
+- `type` — 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+- `parent_code`
+- `is_active`
+
+### `accounting_periods`
+
+Purpose:
+- fiscal periods for grouping journal entries
+
+Current notable fields:
+- `company_id`
+- `name`
+- `start_date` / `end_date`
+- `status` — 'open' | 'closed'
+- `closed_at`
+
+### `accounting_entries`
+
+Purpose:
+- journal entries (asientos contables)
+
+Current notable fields:
+- `company_id`
+- `period_id`
+- `entry_number` (sequential per company)
+- `date`
+- `description`
+- `status` — 'draft' | 'posted'
+- `source` — 'manual' | 'payroll' | 'inventory'
+- `source_ref` — FK to originating record (for integrations)
+- `posted_at`
+
+### `accounting_entry_lines`
+
+Purpose:
+- debit/credit lines within a journal entry
+
+Current notable fields:
+- `entry_id`
+- `account_id`
+- `type` — 'debit' | 'credit'
+- `amount`
+- `description`
+
+### `accounting_integration_rules`
+
+Purpose:
+- maps operational module events (payroll, inventory_purchase, inventory_movement) to accounting account pairs
+- one rule per (company, source, amount_field) combination
+
+Current notable fields:
+- `company_id`
+- `source` — 'payroll' | 'inventory_purchase' | 'inventory_movement'
+- `debit_account_id`
+- `credit_account_id`
+- `amount_field` — which financial field from the source to use (e.g. 'net_pay', 'total')
+- `description` — template for entry description (supports `{{period}}` and `{{ref}}`)
+- `is_active`
+
+### `accounting_integration_log`
+
+Purpose:
+- immutable audit trail of each integration execution (success, error, or skipped)
+
+Current notable fields:
+- `company_id`
+- `source`
+- `source_ref` — FK to source record (payroll run id, invoice id, etc.)
+- `entry_id` — accounting entry created (nullable if skipped/error)
+- `status` — 'success' | 'error' | 'skipped'
+- `error_message`
+
 ## Important observations
 
 - data isolation relies on separate schemas plus RLS
 - the app frequently reaches tenant data through `public.tenant_*` RPC functions
 - this means tenant schema changes often require matching RPC updates
-- the tenant schema is currently a blend of payroll, inventory, documents, and company management
+- the tenant schema is currently a blend of payroll, inventory, documents, company management, and accounting
 
 ## Current modeling note
 

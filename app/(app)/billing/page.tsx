@@ -15,6 +15,7 @@ interface Plan {
     priceMonthlyUsd:        number;
     priceQuarterlyUsd:      number | null;
     priceAnnualUsd:         number | null;
+    moduleSlug:             string | null;
 }
 
 interface TenantData {
@@ -60,6 +61,12 @@ const Spinner = () => (
         <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
 );
+
+const MODULE_LABEL: Record<string, string> = {
+    payroll:    "Nómina",
+    inventory:  "Inventario",
+    accounting: "Contabilidad",
+};
 
 const STATUS_CLS: Record<string, string> = {
     active:    "border badge-success",
@@ -215,7 +222,7 @@ export default function BillingPage() {
                         </div>
                         <button
                             onClick={() => { setFormOpen(true); setSubmitError(null); }}
-                            disabled={formOpen}
+                            disabled={formOpen || loading}
                             className={[
                                 "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                 "bg-primary-500 border-primary-600 text-white",
@@ -233,16 +240,16 @@ export default function BillingPage() {
 
                 {/* Success banner */}
                 {submitOk && (
-                    <div className="px-4 py-3 border border-green-500/20 rounded-xl bg-green-500/[0.05]">
-                        <p className="font-mono text-[11px] text-green-500">
+                    <div className="px-4 py-3 border rounded-xl badge-success">
+                        <p className="font-mono text-[11px] text-text-success">
                             Solicitud enviada. Un administrador la revisará pronto.
                         </p>
                     </div>
                 )}
 
                 {dataError && (
-                    <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                        <p className="font-mono text-[11px] text-red-500">{dataError}</p>
+                    <div className="px-4 py-3 border rounded-xl badge-error">
+                        <p className="font-mono text-[11px] text-text-error">{dataError}</p>
                     </div>
                 )}
 
@@ -334,12 +341,13 @@ export default function BillingPage() {
                         </div>
 
                         {/* Module subscriptions */}
-                        {subscriptions.length > 0 && (
-                            <div>
+                        <div>
+                            {subscriptions.length > 0 && (
                                 <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">
                                     Módulos activos
                                 </p>
-                                <div className="space-y-2">
+                            )}
+                            <div className="space-y-2">
                                     {subscriptions.map((sub) => (
                                         <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
@@ -353,6 +361,12 @@ export default function BillingPage() {
                                                         <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                                             <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
                                                             <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
+                                                        </svg>
+                                                    ) : sub.product?.slug === "accounting" ? (
+                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="1" y="1" width="11" height="11" rx="1.5" />
+                                                            <path d="M4 4h2M4 6.5h5M4 9h3" />
+                                                            <path d="M8.5 3.5l1 1-1 1" />
                                                         </svg>
                                                     ) : null}
                                                 </div>
@@ -387,7 +401,7 @@ export default function BillingPage() {
                                     {!subscriptions.some((s) => s.product?.slug === "inventory") && (
                                         <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-disabled)] flex-shrink-0">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
                                                     <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                                                         <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
                                                         <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
@@ -397,19 +411,44 @@ export default function BillingPage() {
                                                     <p className="font-mono text-[12px] font-bold text-[var(--text-tertiary)]">
                                                         Inventario
                                                     </p>
-                                                    <p className="font-mono text-[10px] text-[var(--text-disabled)] mt-0.5">
-                                                        Control de inventario — próximamente disponible
+                                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                                                        Desde $9 / mes · Actívalo enviando un pago
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-disabled)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
+                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
                                                 No activo
                                             </span>
                                         </div>
                                     )}
-                                </div>
+
+                                    {/* Accounting upsell if not subscribed */}
+                                    {!subscriptions.some((s) => s.product?.slug === "accounting") && (
+                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
+                                                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                                        <rect x="1" y="1" width="11" height="11" rx="1.5" />
+                                                        <path d="M4 4h2M4 6.5h5M4 9h3" />
+                                                        <path d="M8.5 3.5l1 1-1 1" />
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <p className="font-mono text-[12px] font-bold text-[var(--text-tertiary)]">
+                                                        Contabilidad
+                                                    </p>
+                                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                                                        Desde $7 / mes · Plan de cuentas, asientos y balances
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
+                                                No activo
+                                            </span>
+                                        </div>
+                                    )}
                             </div>
-                        )}
+                        </div>
 
                         {/* Payment form */}
                         {formOpen && (
@@ -420,9 +459,10 @@ export default function BillingPage() {
                                     </h2>
                                     <button
                                         onClick={() => setFormOpen(false)}
+                                        aria-label="Cerrar formulario de pago"
                                         className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
                                     >
-                                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                             <path d="M2 2l9 9M11 2l-9 9" />
                                         </svg>
                                     </button>
@@ -432,18 +472,29 @@ export default function BillingPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {/* Plan */}
                                         <div>
-                                            <label className={labelCls}>Plan</label>
-                                            <select value={selPlanId} onChange={(e) => setSelPlanId(e.target.value)} className={selectCls}>
-                                                {plans.map((p) => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
+                                            <label htmlFor="sel-plan" className={labelCls}>Plan</label>
+                                            <select id="sel-plan" value={selPlanId} onChange={(e) => { setSelPlanId(e.target.value); setSelCycle("monthly"); }} className={selectCls}>
+                                                {(["payroll", "inventory", "accounting", null] as (string | null)[]).map((slug) => {
+                                                    const group = plans.filter((p) => p.moduleSlug === slug);
+                                                    if (group.length === 0) return null;
+                                                    const label = slug ? (MODULE_LABEL[slug] ?? slug) : "General";
+                                                    return (
+                                                        <optgroup key={slug ?? "__general"} label={label}>
+                                                            {group.map((p) => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.name} — ${p.priceMonthlyUsd}/mes
+                                                                </option>
+                                                            ))}
+                                                        </optgroup>
+                                                    );
+                                                })}
                                             </select>
                                         </div>
 
                                         {/* Cycle */}
                                         <div>
-                                            <label className={labelCls}>Ciclo de pago</label>
-                                            <select value={selCycle} onChange={(e) => setSelCycle(e.target.value)} className={selectCls}>
+                                            <label htmlFor="sel-cycle" className={labelCls}>Ciclo de pago</label>
+                                            <select id="sel-cycle" value={selCycle} onChange={(e) => setSelCycle(e.target.value)} className={selectCls}>
                                                 <option value="monthly">Mensual</option>
                                                 {selectedPlan?.priceQuarterlyUsd && <option value="quarterly">Trimestral</option>}
                                                 {selectedPlan?.priceAnnualUsd    && <option value="annual">Anual</option>}
@@ -454,16 +505,16 @@ export default function BillingPage() {
                                     <div className="grid grid-cols-2 gap-4">
                                         {/* Amount (read-only) */}
                                         <div>
-                                            <label className={labelCls}>Monto (USD)</label>
-                                            <div className="h-9 px-3 flex items-center rounded-lg border border-border-light bg-surface-2 font-mono text-[12px] text-[var(--text-secondary)]">
+                                            <label htmlFor="sel-amount" className={labelCls}>Monto (USD)</label>
+                                            <div id="sel-amount" className="h-9 px-3 flex items-center rounded-lg border border-border-light bg-surface-2 font-mono text-[12px] text-[var(--text-secondary)]">
                                                 ${amount}
                                             </div>
                                         </div>
 
                                         {/* Payment method */}
                                         <div>
-                                            <label className={labelCls}>Método de pago</label>
-                                            <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
+                                            <label htmlFor="sel-method" className={labelCls}>Método de pago</label>
+                                            <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
                                                 <option value="transferencia">Transferencia bancaria</option>
                                                 <option value="zelle">Zelle</option>
                                                 <option value="paypal">PayPal</option>
@@ -475,8 +526,9 @@ export default function BillingPage() {
 
                                     {/* Receipt URL */}
                                     <div>
-                                        <label className={labelCls}>URL del comprobante (opcional)</label>
+                                        <label htmlFor="inp-receipt" className={labelCls}>URL del comprobante (opcional)</label>
                                         <input
+                                            id="inp-receipt"
                                             type="url"
                                             value={receiptUrl}
                                             onChange={(e) => setReceiptUrl(e.target.value)}

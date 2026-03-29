@@ -963,6 +963,7 @@ export default function AdminPage() {
                                                     >
                                                         <option value="payroll">Nómina</option>
                                                         <option value="inventory">Inventario</option>
+                                                        <option value="accounting">Contabilidad</option>
                                                     </select>
                                                 </div>
                                                 <div>
@@ -1165,6 +1166,7 @@ export default function AdminPage() {
                                                                                     >
                                                                                         <option value="payroll">Nómina</option>
                                                                                         <option value="inventory">Inventario</option>
+                                                                                        <option value="accounting">Contabilidad</option>
                                                                                     </select>
                                                                                 </div>
                                                                                 <div>
@@ -1263,6 +1265,7 @@ export default function AdminPage() {
                                                 <select value={newSubProductSlug} onChange={(e) => setNewSubProductSlug(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
                                                     <option value="payroll">Nómina</option>
                                                     <option value="inventory">Inventario</option>
+                                                    <option value="accounting">Contabilidad</option>
                                                 </select>
                                             </div>
                                             <div>

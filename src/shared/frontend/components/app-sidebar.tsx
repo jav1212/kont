@@ -56,6 +56,13 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
             <path d="M8 1v3h3M5 7h3M5 9.5h2" />
         </svg>
     ),
+    accounting: (
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="1" y="1" width="11" height="11" rx="1.5" />
+            <path d="M4 4h2M4 6.5h5M4 9h3" />
+            <path d="M8.5 3.5l1 1-1 1" />
+        </svg>
+    ),
 };
 
 // ── Sub-navigation per module ─────────────────────────────────────────────────
@@ -90,6 +97,14 @@ const MODULE_SUBNAV: Record<string, { href: string; label: string; group?: strin
         { href: "/inventory/report",           label: "Reporte Período",      group: "Reportes" },
         { href: "/inventory/balance-report",     label: "Reporte SALDO",        group: "Reportes" },
         { href: "/inventory/islr-report",      label: "Reporte ISLR 177",     group: "Reportes" },
+    ],
+    accounting: [
+        { href: "/accounting",                  label: "Inicio",          group: null },
+        { href: "/accounting/accounts",         label: "Plan de cuentas", group: "Configuración" },
+        { href: "/accounting/periods",          label: "Períodos",        group: "Configuración" },
+        { href: "/accounting/integrations",     label: "Integraciones",   group: "Configuración" },
+        { href: "/accounting/journal",          label: "Libro diario",    group: "Contabilidad" },
+        { href: "/accounting/trial-balance",    label: "Balance de sumas", group: "Contabilidad" },
     ],
 };
 
@@ -166,9 +181,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { companies, company, companyId, selectCompany, loading: companyLoading } = useCompany();
     const [companyOpen,   setCompanyOpen]   = useState(false);
     const [companySearch, setCompanySearch] = useState("");
-    const { hasAccess: hasInventory } = useModuleAccess("inventory");
-    const { hasAccess: hasPayroll   } = useModuleAccess("payroll");
-    const paidModuleAccess: Record<string, boolean> = { payroll: hasPayroll, inventory: hasInventory };
+    const { hasAccess: hasInventory  } = useModuleAccess("inventory");
+    const { hasAccess: hasPayroll    } = useModuleAccess("payroll");
+    const { hasAccess: hasAccounting } = useModuleAccess("accounting");
+    const paidModuleAccess: Record<string, boolean> = { payroll: hasPayroll, inventory: hasInventory, accounting: hasAccounting };
     const { activeTenantRole } = useActiveTenantContext();
     const { profile, email: userEmail } = useProfile();
     const companyDropdownRef = useRef<HTMLDivElement>(null);

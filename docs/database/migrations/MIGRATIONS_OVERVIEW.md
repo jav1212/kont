@@ -13,6 +13,7 @@ The migration set shows how the database evolved from:
 - to memberships
 - to documents
 - to storage/branding additions
+- to accounting module
 
 ## Evolution by stage
 
@@ -110,6 +111,21 @@ Focus:
 - tenant document folders/documents
 - storage access
 - document RPCs
+
+### Stage 7 - Accounting module
+
+Main migrations:
+- `050_accounting_module` (applied as DB migration 050)
+- `051_accounting_integration` (applied as DB migration 051)
+
+Focus:
+- accounting product in public.products
+- accounting subscription plans (4 tiers)
+- tenant schema tables: accounting_accounts, accounting_periods, accounting_entries, accounting_entry_lines
+- tenant schema tables: accounting_integration_rules, accounting_integration_log
+- RPC gateway functions for all accounting CRUD, reporting, and integration
+- balance-validation constraint enforced at posting time
+- non-blocking integration hooks from payroll and inventory confirm flows
 
 ### Stage 6 - Branding and media
 

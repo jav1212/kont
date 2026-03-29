@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { getPayrollRunActions } from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
-import { withTenant } from "@/src/shared/backend/utils/require-tenant";
+import { getPayrollRunActions }  from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
+import { getAccountingActions }  from "@/src/modules/accounting/backend/infrastructure/accounting-factory";
+import { withTenant }            from "@/src/shared/backend/utils/require-tenant";
 
 const CalculationDataSchema = z.object({
     gross:          z.number(),
@@ -49,5 +50,24 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     const ownerId = actingAs?.ownerId ?? userId;
     const result = await getPayrollRunActions(ownerId).confirm.execute(parsed.data);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
-    return Response.json({ data: { runId: result.getValue() } }, { status: 201 });
+
+    const runId = result.getValue();
+
+    // Non-blocking: trigger accounting integration after successful confirm.
+    // Errors are absorbed and logged in accounting_integration_log — they do not fail this response.
+    const { run, receipts } = parsed.data;
+    const totalEarnings   = receipts.reduce((s, r) => s + r.totalEarnings,   0);
+    const totalDeductions = receipts.reduce((s, r) => s + r.totalDeductions, 0);
+    const netPay          = receipts.reduce((s, r) => s + r.netPay,          0);
+
+    await getAccountingActions(ownerId).processPayrollIntegration.execute({
+        companyId:       run.companyId,
+        payrollRunId:    runId,
+        periodEnd:       run.periodEnd,
+        totalEarnings,
+        totalDeductions,
+        netPay,
+    });
+
+    return Response.json({ data: { runId } }, { status: 201 });
 });
