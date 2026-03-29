@@ -4,17 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActiveTenantContext } from "../context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
-
-const ChevronIcon = ({ open }: { open: boolean }) => (
-    <svg
-        width="10" height="10" viewBox="0 0 10 10" fill="none"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-        aria-hidden="true"
-        className={`flex-shrink-0 transition-transform duration-150 ${open ? "rotate-180" : "rotate-0"}`}
-    >
-        <path d="M2 4l3 3 3-3" />
-    </svg>
-);
+import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 
 function TenantAvatar({ email }: { email?: string }) {
     return (
@@ -81,7 +71,7 @@ export function TenantSwitcher() {
     return (
         <div className="px-3 py-3 border-b border-sidebar-border">
             <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                Tenant
+                Cuenta
             </p>
 
             <div className="relative" ref={ref}>

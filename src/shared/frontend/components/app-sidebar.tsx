@@ -1,119 +1,30 @@
 "use client";
 
+// AppSidebar — main navigation shell for desktop (inline) and mobile (drawer).
+// Orchestrates layout, collapsed/resize state, and module/subnav selection.
+// Business UI is delegated to TenantSwitcher, SidebarCompanySelector, SidebarModuleSelector,
+// and SidebarSubnav. This file contains only structural and state concerns.
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { APP_MODULES } from "@/src/shared/frontend/navigation";
-import { useAuth }     from "@/src/modules/auth/frontend/hooks/use-auth";
-import { useTheme }    from "@/src/shared/frontend/components/theme-provider";
-import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { APP_MODULES, MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
+import { useAuth }          from "@/src/modules/auth/frontend/hooks/use-auth";
+import { useTheme }         from "@/src/shared/frontend/components/theme-provider";
+import { useCompany }       from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useModuleAccess }  from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { APP_SIZES }        from "@/src/shared/frontend/sizes";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
-import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
+import { useIsDesktop }     from "@/src/shared/frontend/hooks/use-is-desktop";
 import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
-import { TenantSwitcher } from "@/src/modules/memberships/frontend/components/tenant-switcher";
-import { LogoFull } from "@/src/shared/frontend/components/logo";
-import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
+import { TenantSwitcher }   from "@/src/modules/memberships/frontend/components/tenant-switcher";
+import { LogoFull, LogoMark } from "@/src/shared/frontend/components/logo";
+import { useProfile }       from "@/src/shared/frontend/hooks/use-profile";
+import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
+import { SidebarModuleSelector }  from "@/src/shared/frontend/components/sidebar-module-selector";
+import { SidebarSubnav }          from "@/src/shared/frontend/components/sidebar-subnav";
 
-// ── Module icons ──────────────────────────────────────────────────────────────
-
-const MODULE_ICONS: Record<string, React.ReactNode> = {
-    payroll: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-            <path d="M4 5h5M4 7.5h3" />
-        </svg>
-    ),
-    employees: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="6.5" cy="4" r="2.5" />
-            <path d="M1.5 12c0-2.8 2.2-5 5-5s5 2.2 5 5" />
-        </svg>
-    ),
-    companies: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="4" width="11" height="8" rx="1" />
-            <path d="M4 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4" />
-            <path d="M5 8h3M6.5 6.5v3" />
-        </svg>
-    ),
-    inventory: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
-            <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
-        </svg>
-    ),
-    billing: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="3" width="11" height="7" rx="1" />
-            <path d="M1 6h11M4.5 8.5h2" />
-        </svg>
-    ),
-    documents: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 1h5l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
-            <path d="M8 1v3h3M5 7h3M5 9.5h2" />
-        </svg>
-    ),
-    accounting: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-            <path d="M4 4h2M4 6.5h5M4 9h3" />
-            <path d="M8.5 3.5l1 1-1 1" />
-        </svg>
-    ),
-};
-
-// ── Sub-navigation per module ─────────────────────────────────────────────────
-
-const MODULE_SUBNAV: Record<string, { href: string; label: string; group?: string | null }[]> = {
-    payroll: [
-        { href: "/payroll/tablero",           label: "Tablero",      group: null         },
-        { href: "/payroll",                   label: "Calculadora",  group: "Operaciones" },
-        { href: "/payroll/history",           label: "Historial",    group: "Operaciones" },
-        { href: "/payroll/vacations",         label: "Vacaciones",   group: "Operaciones" },
-        { href: "/payroll/profit-sharing",    label: "Utilidades",   group: "Operaciones" },
-        { href: "/payroll/social-benefits",   label: "Prestaciones", group: "Operaciones" },
-        { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones" },
-    ],
-    documents: [
-        { href: "/documents/tablero", label: "Tablero",  group: null },
-        { href: "/documents",         label: "Archivos", group: null },
-    ],
-    inventory: [
-        { href: "/inventory", label: "Dashboard", group: null },
-
-        { href: "/inventory/products",         label: "Productos",     group: "Catálogos" },
-        { href: "/inventory/suppliers",       label: "Proveedores",   group: "Catálogos" },
-        { href: "/inventory/departments",     label: "Departamentos", group: "Catálogos" },
-
-        { href: "/inventory/purchases",            label: "Entradas",      group: "Operaciones" },
-        { href: "/inventory/sales",           label: "Salidas",       group: "Operaciones" },
-        { href: "/inventory/adjustments",           label: "Ajustes",       group: "Operaciones" },
-        { href: "/inventory/returns",      label: "Devoluciones",  group: "Operaciones" },
-        { href: "/inventory/self-consumption",       label: "Autoconsumo",   group: "Operaciones" },
-        { href: "/inventory/production",        label: "Producción",    group: "Operaciones" },
-
-        { href: "/inventory/kardex",            label: "Kardex",                group: "Reportes" },
-        { href: "/inventory/purchase-ledger",    label: "Libro de Entradas",     group: "Reportes" },
-        { href: "/inventory/sales-ledger",     label: "Libro de Salidas",      group: "Reportes" },
-        { href: "/inventory/inventory-ledger", label: "Libro de Inventarios", group: "Reportes" },
-        { href: "/inventory/report",           label: "Reporte Período",      group: "Reportes" },
-        { href: "/inventory/balance-report",     label: "Reporte SALDO",        group: "Reportes" },
-        { href: "/inventory/islr-report",      label: "Reporte ISLR 177",     group: "Reportes" },
-    ],
-    accounting: [
-        { href: "/accounting",                  label: "Inicio",          group: null },
-        { href: "/accounting/accounts",         label: "Plan de cuentas", group: "Configuración" },
-        { href: "/accounting/periods",          label: "Períodos",        group: "Configuración" },
-        { href: "/accounting/integrations",     label: "Integraciones",   group: "Configuración" },
-        { href: "/accounting/journal",          label: "Libro diario",    group: "Contabilidad" },
-        { href: "/accounting/trial-balance",    label: "Balance de sumas", group: "Contabilidad" },
-    ],
-};
-
-// ── Sun / Moon icons ──────────────────────────────────────────────────────────
+// ── Small icon helpers (used only inside this file) ────────────────────────────
 
 const SunIcon = () => (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -128,88 +39,142 @@ const MoonIcon = () => (
     </svg>
 );
 
-// ── Chevron icon ──────────────────────────────────────────────────────────────
-
-const ChevronIcon = ({ open }: { open: boolean }) => (
-    <svg
-        width="10" height="10" viewBox="0 0 10 10" fill="none"
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-        aria-hidden="true"
-        className={`flex-shrink-0 transition-transform duration-150 ${open ? "rotate-180" : "rotate-0"}`}
-    >
-        <path d="M2 4l3 3 3-3" />
+const CollapseIcon = ({ collapsed }: { collapsed: boolean }) => (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {collapsed
+            ? <path d="M3 2.5l4 4-4 4M9 6.5H7" />
+            : <path d="M10 2.5l-4 4 4 4M4 6.5h2" />
+        }
     </svg>
 );
 
-// ── Sidebar nav item base classes ─────────────────────────────────────────────
-// Shared so hover/focus states stay consistent across Link and button elements.
+const SignOutIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />
+    </svg>
+);
+
+const MembersIcon = () => (
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="5" cy="4" r="2.5" />
+        <path d="M1 11c0-2.2 1.8-4 4-4s4 1.8 4 4" />
+        <path d="M10 5v4M12 7H8" />
+    </svg>
+);
+
+// ── Nav item class constants ───────────────────────────────────────────────────
+// `relative` is required on NAV_ITEM_BASE for the absolute-positioned ActiveBar.
 
 const NAV_ITEM_BASE =
-    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border`;
+    `relative flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border`;
 
 const NAV_ITEM_IDLE =
     "text-sidebar-fg border-transparent hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
 
 const NAV_ITEM_ACTIVE =
-    "text-sidebar-active-fg bg-sidebar-active-bg border-sidebar-active-border";
+    "text-sidebar-active-fg bg-sidebar-active-bg/60 border-transparent";
+
+// Icon-only button for the collapsed bottom section
+const ICON_BTN =
+    "flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
+
+// ── Active bar — 2px left accent for bottom-section active items ───────────────
+
+function ActiveBar() {
+    return <span aria-hidden="true" className="absolute left-0 inset-y-1.5 w-0.5 rounded-full bg-primary-500" />;
+}
+
+// ── Storage keys ──────────────────────────────────────────────────────────────
+
+const STORAGE_WIDTH     = "sidebar-width";
+const STORAGE_MODULE    = "sidebar-module";
+const STORAGE_COLLAPSED = "sidebar-collapsed";
+
+// ── Size constants ────────────────────────────────────────────────────────────
+
+const MIN_WIDTH       = 160;
+const MAX_WIDTH       = 400;
+const DEFAULT_WIDTH   = 208;
+const COLLAPSED_WIDTH = 48;
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
-
-function UserAvatar({ avatarUrl, email, size = 18 }: { avatarUrl?: string | null; email?: string | null; size?: number }) {
-    const initial = (email?.[0] ?? "?").toUpperCase();
-    return (
-        <div aria-hidden="true" style={{ width: size, height: size }}
-            className="rounded-full bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0">
-            {avatarUrl
-                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                : <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">{initial}</span>}
-        </div>
-    );
-}
 
 interface AppSidebarProps {
     open: boolean;
     onClose: () => void;
 }
 
-const MIN_WIDTH = 160;
-const MAX_WIDTH = 400;
-const DEFAULT_WIDTH = 208; // xl:w-52
-
 export function AppSidebar({ open, onClose }: AppSidebarProps) {
-    const pathname         = usePathname();
-    const router           = useRouter();
-    const { signOut }      = useAuth();
+    const pathname = usePathname();
+    const router   = useRouter();
+
+    const { signOut }            = useAuth();
     const { theme, toggleTheme } = useTheme();
-    const { companies, company, companyId, selectCompany, loading: companyLoading } = useCompany();
-    const [companyOpen,   setCompanyOpen]   = useState(false);
-    const [companySearch, setCompanySearch] = useState("");
+    const { companies, companyId, selectCompany, loading: companyLoading } = useCompany();
     const { hasAccess: hasInventory  } = useModuleAccess("inventory");
     const { hasAccess: hasPayroll    } = useModuleAccess("payroll");
     const { hasAccess: hasAccounting } = useModuleAccess("accounting");
-    const paidModuleAccess: Record<string, boolean> = { payroll: hasPayroll, inventory: hasInventory, accounting: hasAccounting };
     const { activeTenantRole } = useActiveTenantContext();
     const { profile, email: userEmail } = useProfile();
-    const companyDropdownRef = useRef<HTMLDivElement>(null);
     const isDesktop = useIsDesktop();
 
-    // ── Resizable sidebar (desktop only) ──────────────────────────────────────
-    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH);
-    const isResizing    = useRef(false);
-    const startX        = useRef(0);
-    const startWidth    = useRef(DEFAULT_WIDTH);
-    const widthRef      = useRef(DEFAULT_WIDTH);
+    // ── Collapsed rail (desktop only) ─────────────────────────────────────────
+    const [collapsed, setCollapsed] = useState<boolean>(false);
 
-    useEffect(() => {
-        const saved = localStorage.getItem("sidebar-width");
-        if (saved) {
-            const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parseInt(saved, 10)));
-            setSidebarWidth(w);
-            widthRef.current = w;
-        }
-    }, []);
+    const isCollapsed = collapsed && isDesktop;
+
+    function handleToggleCollapse() {
+        const next = !collapsed;
+        setCollapsed(next);
+        localStorage.setItem(STORAGE_COLLAPSED, String(next));
+    }
+
+    // ── Module selection ──────────────────────────────────────────────────────
+    const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
+
+    const derivedModuleId = useMemo(() => {
+        const match = APP_MODULES.find((mod) => {
+            const base = "/" + mod.href.split("/").filter(Boolean)[0];
+            return pathname.startsWith(base);
+        });
+        return match?.id ?? null;
+    }, [pathname]);
+
+    // Pathname match always wins over the stored preference
+    const resolvedModuleId = derivedModuleId ?? storedModuleId;
+    const subnav = resolvedModuleId ? MODULE_SUBNAV[resolvedModuleId] : undefined;
+
+    // Modules available in the picker — excludes child modules and inaccessible paid ones
+    const paidAccess: Record<string, boolean> = {
+        payroll: hasPayroll, inventory: hasInventory, accounting: hasAccounting,
+    };
+
+    const selectableModules = useMemo(() =>
+        APP_MODULES
+            .filter((mod) => {
+                if ("parentId" in mod) return false;
+                if (mod.paid && !paidAccess[mod.id]) return false;
+                if (mod.desktopOnly && !isDesktop) return false;
+                return true;
+            })
+            .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasPayroll, hasInventory, hasAccounting, isDesktop]);
+
+    function handleSelectModule(id: string, href: string) {
+        setStoredModuleId(id);
+        localStorage.setItem(STORAGE_MODULE, id);
+        router.push(href);
+    }
+
+    // ── Resizable sidebar (desktop only, disabled when collapsed) ─────────────
+    const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_WIDTH);
+    const isResizing = useRef(false);
+    const startX     = useRef(0);
+    const startWidth = useRef(DEFAULT_WIDTH);
+    const widthRef   = useRef(DEFAULT_WIDTH);
 
     useEffect(() => { widthRef.current = sidebarWidth; }, [sidebarWidth]);
 
@@ -222,326 +187,216 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         document.body.style.userSelect = "none";
     }, []);
 
+    // ── Sync with localStorage on mount ───────────────────────────────────
+    useEffect(() => {
+        const savedCollapsed = localStorage.getItem(STORAGE_COLLAPSED);
+        if (savedCollapsed !== null) {
+            setCollapsed(savedCollapsed === "true");
+        }
+
+        const savedModule = localStorage.getItem(STORAGE_MODULE);
+        if (savedModule !== null) {
+            setStoredModuleId(savedModule);
+        }
+
+        const savedWidth = localStorage.getItem(STORAGE_WIDTH);
+        if (savedWidth !== null) {
+            const w = parseInt(savedWidth, 10);
+            if (!isNaN(w)) {
+                setSidebarWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w)));
+            }
+        }
+    }, []);
+
     useEffect(() => {
         function onMouseMove(e: MouseEvent) {
             if (!isResizing.current) return;
-            const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + (e.clientX - startX.current)));
-            setSidebarWidth(newWidth);
+            setSidebarWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + (e.clientX - startX.current))));
         }
         function onMouseUp() {
             if (!isResizing.current) return;
             isResizing.current             = false;
             document.body.style.cursor     = "";
             document.body.style.userSelect = "";
-            localStorage.setItem("sidebar-width", String(widthRef.current));
+            localStorage.setItem(STORAGE_WIDTH, String(widthRef.current));
         }
         document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
+        document.addEventListener("mouseup",   onMouseUp);
         return () => {
             document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
+            document.removeEventListener("mouseup",   onMouseUp);
         };
     }, []);
 
-    // Close drawer on route change (mobile navigation)
-    useEffect(() => {
-        onClose();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pathname]);
+    // ── Drawer auto-close on route change (mobile) ────────────────────────────
+    const onCloseRef = useRef(onClose);
+    useEffect(() => { onCloseRef.current = onClose; });
+    useEffect(() => { onCloseRef.current(); }, [pathname]);
 
-    // Close company dropdown when clicking outside
-    useEffect(() => {
-        if (!companyOpen) return;
-        function handleOutsideClick(e: MouseEvent) {
-            if (companyDropdownRef.current && !companyDropdownRef.current.contains(e.target as Node)) {
-                setCompanyOpen(false);
-                setCompanySearch("");
-            }
-        }
-        document.addEventListener("mousedown", handleOutsideClick);
-        return () => document.removeEventListener("mousedown", handleOutsideClick);
-    }, [companyOpen]);
-
-    // Close company dropdown on Escape
-    useEffect(() => {
-        if (!companyOpen) return;
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "Escape") { setCompanyOpen(false); setCompanySearch(""); }
-        }
-        document.addEventListener("keydown", handleKeyDown);
-        return () => document.removeEventListener("keydown", handleKeyDown);
-    }, [companyOpen]);
-
+    // ── Sign out ──────────────────────────────────────────────────────────────
     async function handleSignOut() {
         await signOut();
         router.replace("/sign-in");
     }
 
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    const profileActive = pathname.startsWith("/settings/profile");
+    const membersActive = pathname.startsWith("/settings/members");
+
     return (
         <aside
             aria-label="Navegación principal"
-            style={isDesktop ? { width: sidebarWidth } : undefined}
+            style={isDesktop ? { width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth } : undefined}
             className={[
-                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border",
-                // Mobile/tablet: fixed drawer deslizable desde la izquierda
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-hidden",
                 "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
                 open ? "translate-x-0" : "-translate-x-full",
-                // Desktop (xl+): en flujo, relative para contener el resize handle
-                "xl:relative xl:inset-auto xl:z-auto xl:w-52 xl:translate-x-0 xl:transition-none",
+                "xl:relative xl:inset-auto xl:z-auto xl:translate-x-0 xl:transition-[width] xl:duration-200",
             ].join(" ")}
         >
-
             {/* ── Logo ──────────────────────────────────────────────────── */}
-            <div className="px-5 py-[18px] border-b border-sidebar-border">
-                <LogoFull size={24} className="text-sidebar-fg" />
+            <div className={[
+                "border-b border-sidebar-border flex items-center",
+                isCollapsed ? "justify-center py-[18px] px-2" : "px-5 py-[18px]",
+            ].join(" ")}>
+                {isCollapsed
+                    ? <LogoMark size={20} className="text-sidebar-fg" />
+                    : <LogoFull  size={24} className="text-sidebar-fg" />
+                }
             </div>
 
-            {/* ── Tenant switcher (solo visible si hay más de un tenant) ── */}
-            <TenantSwitcher />
+            {/* ── Tenant switcher — hidden when collapsed ────────────────── */}
+            {!isCollapsed && <TenantSwitcher />}
 
             {/* ── Company selector ──────────────────────────────────────── */}
-            <div className="px-3 py-3 border-b border-sidebar-border overflow-visible">
-                <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                    Empresa
-                </p>
-
-                {companyLoading ? (
-                    <div className="px-2 py-1.5">
-                        <div className="h-3 rounded bg-foreground/[0.06] animate-pulse w-3/4" />
-                    </div>
-                ) : companies.length === 0 ? (
-                    <p className={`px-2 font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
-                        Sin empresas
+            <div className={[
+                "border-b border-sidebar-border overflow-visible",
+                isCollapsed ? "py-2 flex justify-center" : "px-3 py-3",
+            ].join(" ")}>
+                {!isCollapsed && (
+                    <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
+                        Empresa
                     </p>
-                ) : companies.length === 1 ? (
-                    <div className="px-2 py-1.5 flex items-center gap-2">
-                        <CompanyAvatar name={company?.name} logoUrl={company?.logoUrl} />
-                        <span className={`font-mono ${APP_SIZES.nav.companyName} truncate text-sidebar-fg`}>
-                            {company?.name}
-                        </span>
-                    </div>
-                ) : (
-                    <div className="relative" ref={companyDropdownRef}>
-                        <button
-                            onClick={() => setCompanyOpen((v) => !v)}
-                            aria-expanded={companyOpen}
-                            aria-haspopup="listbox"
-                            aria-label={`Empresa seleccionada: ${company?.name ?? "Ninguna"}. Cambiar empresa`}
-                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
-                        >
-                            <CompanyAvatar name={company?.name} logoUrl={company?.logoUrl} />
-                            <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
-                                {company?.name ?? "Seleccionar…"}
-                            </span>
-                            <ChevronIcon open={companyOpen} />
-                        </button>
-
-                        {companyOpen && (
-                            <div className="absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden">
-                                {/* Search */}
-                                <div className="p-2 border-b border-sidebar-border">
-                                    <input
-                                        type="text"
-                                        value={companySearch}
-                                        onChange={(e) => setCompanySearch(e.target.value)}
-                                        placeholder="Buscar empresa…"
-                                        autoFocus
-                                        className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
-                                    />
-                                </div>
-                                <ul
-                                    role="listbox"
-                                    aria-label="Empresas disponibles"
-                                    className="max-h-48 overflow-y-auto"
-                                >
-                                    {companies
-                                        .filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
-                                        .map((c) => {
-                                            const isSelected = c.id === companyId;
-                                            return (
-                                                <li key={c.id} role="option" aria-selected={isSelected}>
-                                                    <button
-                                                        onClick={() => { selectCompany(c.id); setCompanyOpen(false); setCompanySearch(""); }}
-                                                        className={[
-                                                            `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                                            isSelected
-                                                                ? "text-sidebar-active-fg bg-sidebar-active-bg"
-                                                                : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                                        ].join(" ")}
-                                                    >
-                                                        <CompanyAvatar name={c.name} logoUrl={c.logoUrl} />
-                                                        <span className="truncate">{c.name}</span>
-                                                        {isSelected && (
-                                                            <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
-                                                                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                                <path d="M2 5.5l2.5 2.5 4-5" />
-                                                            </svg>
-                                                        )}
-                                                    </button>
-                                                </li>
-                                            );
-                                        })}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
                 )}
+                <SidebarCompanySelector
+                    companies={companies}
+                    selectedId={companyId}
+                    loading={companyLoading}
+                    isCollapsed={isCollapsed}
+                    onSelect={selectCompany}
+                />
             </div>
 
-            {/* ── Module nav ────────────────────────────────────────────── */}
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Módulos">
-                <p className={`px-2 mb-3 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                    Módulos
-                </p>
+            {/* ── Module selector ───────────────────────────────────────── */}
+            <div className={[
+                "border-b border-sidebar-border overflow-visible",
+                isCollapsed ? "py-2 flex justify-center" : "px-3 py-3",
+            ].join(" ")}>
+                {!isCollapsed && (
+                    <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
+                        Módulo
+                    </p>
+                )}
+                <SidebarModuleSelector
+                    modules={selectableModules}
+                    activeModuleId={resolvedModuleId}
+                    isCollapsed={isCollapsed}
+                    onSelect={handleSelectModule}
+                />
+            </div>
 
-                {APP_MODULES.filter((mod) => {
-                    if (mod.paid && !paidModuleAccess[mod.id]) return false;
-                    if ('parentId' in mod && paidModuleAccess[mod.parentId as string] === false) return false;
-                    if (mod.desktopOnly && !isDesktop) return false;
-                    return true;
-                }).map((mod) => {
-                    const subnav = MODULE_SUBNAV[mod.id];
-                    // Use the first path segment as the base for subnav expansion detection.
-                    // This allows a module whose landing href is a sub-path (e.g. /payroll/tablero)
-                    // to still expand its subnav when the user is anywhere under /payroll/*.
-                    const modBasePath = "/" + mod.href.split("/").filter(Boolean)[0];
-                    const subnavOpen = subnav && pathname.startsWith(modBasePath);
+            {/* ── Module subnav — hidden in collapsed mode ──────────────── */}
+            {!isCollapsed && (
+                <nav className="flex-1 px-3 py-4 overflow-y-auto" aria-label="Secciones del módulo">
+                    <SidebarSubnav subnav={subnav ?? []} pathname={pathname} />
+                </nav>
+            )}
 
-                    // Module link is active only when on the exact module root — when the
-                    // sub-nav is expanded, child items own the active state.
-                    const isActive = !subnavOpen && (
-                        pathname === mod.href ||
-                        pathname.startsWith(mod.href + "/")
-                    );
-
-                    return (
-                        <div key={mod.id}>
-                            <Link
-                                href={mod.href}
-                                aria-current={isActive ? "page" : undefined}
-                                className={[NAV_ITEM_BASE, isActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}
-                            >
-                                {MODULE_ICONS[mod.id]}
-                                {mod.label}
-                            </Link>
-
-                            {/* Sub-nav */}
-                            {subnavOpen && (
-                                <div
-                                    className="pl-4 mt-0.5 ml-[1.125rem] border-l border-sidebar-border"
-                                >
-                                    {(() => {
-                                        const seenGroups = new Set<string>();
-                                        return subnav.map(({ href, label, group }) => {
-                                            const subActive = pathname === href;
-                                            const showGroupHeader = group && !seenGroups.has(group) && (() => { seenGroups.add(group); return true; })();
-                                            return (
-                                                <div key={href}>
-                                                    {showGroupHeader && (
-                                                        <p className={`px-2 pt-2 pb-0.5 font-mono ${APP_SIZES.nav.group} uppercase text-sidebar-label`}>
-                                                            {group}
-                                                        </p>
-                                                    )}
-                                                    <Link
-                                                        href={href}
-                                                        aria-current={subActive ? "page" : undefined}
-                                                        className={[
-                                                            `flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors duration-150 font-mono ${APP_SIZES.nav.subItem}`,
-                                                            subActive
-                                                                ? "text-sidebar-active-fg bg-sidebar-active-bg"
-                                                                : "text-sidebar-label hover:text-sidebar-fg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
-                                                        ].join(" ")}
-                                                    >
-                                                        <div
-                                                            aria-hidden="true"
-                                                            className={[
-                                                                "w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-150",
-                                                                subActive ? "bg-sidebar-active-fg shadow-[0_0_6px_var(--sidebar-active-fg)]" : "bg-sidebar-border",
-                                                            ].join(" ")}
-                                                        />
-                                                        {label}
-                                                    </Link>
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </nav>
+            {/* Spacer — keeps bottom section flush to the bottom when collapsed */}
+            {isCollapsed && <div className="flex-1" />}
 
             {/* ── Bottom actions ─────────────────────────────────────────── */}
-            <div className="px-3 py-4 space-y-1 border-t border-sidebar-border">
-
-                {/* Profile */}
-                <Link
-                    href="/settings/profile"
-                    aria-current={pathname.startsWith("/settings/profile") ? "page" : undefined}
-                    className={[
-                        NAV_ITEM_BASE,
-                        pathname.startsWith("/settings/profile") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE,
-                    ].join(" ")}
-                >
-                    <UserAvatar avatarUrl={profile.avatarUrl} email={userEmail} size={18} />
-                    <span className="truncate flex-1 text-left">
-                        {profile.name ?? userEmail?.split("@")[0] ?? "Perfil"}
-                    </span>
-                </Link>
-
-                {/* Members settings — hidden only for contables acting on behalf */}
-                {activeTenantRole !== "contable" && (
-                    <Link
-                        href="/settings/members"
-                        aria-current={pathname.startsWith("/settings/members") ? "page" : undefined}
-                        className={[
-                            NAV_ITEM_BASE,
-                            pathname.startsWith("/settings/members") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE,
-                        ].join(" ")}
-                    >
-                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="5" cy="4" r="2.5" />
-                            <path d="M1 11c0-2.2 1.8-4 4-4s4 1.8 4 4" />
-                            <path d="M10 5v4M12 7H8" />
-                        </svg>
-                        Miembros
+            {isCollapsed ? (
+                <div className="py-3 flex flex-col items-center gap-1 border-t border-sidebar-border">
+                    <Link href="/settings/profile" aria-label="Perfil"
+                        aria-current={profileActive ? "page" : undefined}
+                        className={[ICON_BTN, profileActive ? "text-sidebar-active-fg bg-sidebar-active-bg/60" : ""].join(" ")}>
+                        <UserAvatar avatarUrl={profile.avatarUrl} email={userEmail} size={18} />
                     </Link>
-                )}
 
-                {/* PWA install */}
-                <PWAInstallButton navItemBase={NAV_ITEM_BASE} navItemIdle={NAV_ITEM_IDLE} />
+                    {activeTenantRole !== "contable" && (
+                        <Link href="/settings/members" aria-label="Miembros"
+                            aria-current={membersActive ? "page" : undefined}
+                            className={[ICON_BTN, membersActive ? "text-sidebar-active-fg bg-sidebar-active-bg/60" : ""].join(" ")}>
+                            <MembersIcon />
+                        </Link>
+                    )}
 
-                {/* Theme toggle */}
-                <button
-                    onClick={toggleTheme}
-                    aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                    className={[NAV_ITEM_BASE, NAV_ITEM_IDLE].join(" ")}
-                >
-                    {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-                    {theme === "dark" ? "Modo claro" : "Modo oscuro"}
-                </button>
+                    <button onClick={toggleTheme}
+                        aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                        className={ICON_BTN}>
+                        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                    </button>
 
-                {/* Sign out */}
-                <button
-                    onClick={handleSignOut}
-                    aria-label="Cerrar sesión"
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40`}
-                >
-                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />
-                    </svg>
-                    Cerrar sesión
-                </button>
-            </div>
+                    <button onClick={handleSignOut} aria-label="Cerrar sesión"
+                        className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40">
+                        <SignOutIcon />
+                    </button>
 
-            {/* ── Resize handle (desktop only) ────────────────────────── */}
-            {isDesktop && (
-                <div
-                    aria-hidden="true"
-                    onMouseDown={handleResizeStart}
-                    className="absolute inset-y-0 right-0 w-1 cursor-col-resize group z-10"
-                >
+                    <button onClick={handleToggleCollapse} aria-label="Expandir barra lateral" className={ICON_BTN}>
+                        <CollapseIcon collapsed={true} />
+                    </button>
+                </div>
+            ) : (
+                <div className="px-3 py-4 space-y-1 border-t border-sidebar-border">
+                    <Link href="/settings/profile"
+                        aria-current={profileActive ? "page" : undefined}
+                        className={[NAV_ITEM_BASE, profileActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}>
+                        {profileActive && <ActiveBar />}
+                        <UserAvatar avatarUrl={profile.avatarUrl} email={userEmail} size={18} />
+                        <span className="truncate flex-1 text-left">
+                            {profile.name ?? userEmail?.split("@")[0] ?? "Perfil"}
+                        </span>
+                    </Link>
+
+                    {activeTenantRole !== "contable" && (
+                        <Link href="/settings/members"
+                            aria-current={membersActive ? "page" : undefined}
+                            className={[NAV_ITEM_BASE, membersActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}>
+                            {membersActive && <ActiveBar />}
+                            <MembersIcon />
+                            Miembros
+                        </Link>
+                    )}
+
+                    <PWAInstallButton navItemBase={NAV_ITEM_BASE} navItemIdle={NAV_ITEM_IDLE} />
+
+                    <button onClick={toggleTheme}
+                        aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                        className={[NAV_ITEM_BASE, NAV_ITEM_IDLE].join(" ")}>
+                        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+                        {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+                    </button>
+
+                    <button onClick={handleSignOut} aria-label="Cerrar sesión"
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40`}>
+                        <SignOutIcon />
+                        Cerrar sesión
+                    </button>
+
+                    <button onClick={handleToggleCollapse} aria-label="Colapsar barra lateral"
+                        className={[NAV_ITEM_BASE, NAV_ITEM_IDLE].join(" ")}>
+                        <CollapseIcon collapsed={false} />
+                        Colapsar
+                    </button>
+                </div>
+            )}
+
+            {/* ── Resize handle (desktop, hidden when collapsed) ─────────── */}
+            {isDesktop && !isCollapsed && (
+                <div aria-hidden="true" onMouseDown={handleResizeStart}
+                    className="absolute inset-y-0 right-0 w-1 cursor-col-resize group z-10">
                     <div className="absolute inset-y-0 right-0 w-px bg-sidebar-border transition-colors duration-150 group-hover:bg-primary-500/50 group-active:bg-primary-500" />
                 </div>
             )}
@@ -549,26 +404,17 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     );
 }
 
-// ── Shared sub-component ──────────────────────────────────────────────────────
+// ── UserAvatar ────────────────────────────────────────────────────────────────
 
-function CompanyAvatar({ name, logoUrl }: { name?: string; logoUrl?: string }) {
+function UserAvatar({ avatarUrl, email, size = 18 }: { avatarUrl?: string | null; email?: string | null; size?: number }) {
+    const initial = (email?.[0] ?? "?").toUpperCase();
     return (
-        <div
-            aria-hidden="true"
-            className="w-5 h-5 rounded-md bg-primary-500/20 overflow-hidden flex items-center justify-center flex-shrink-0"
-        >
-            {logoUrl ? (
-                <img
-                    src={logoUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
-            ) : (
-                <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
-                    {name?.[0] ?? "?"}
-                </span>
-            )}
+        <div aria-hidden="true" style={{ width: size, height: size }}
+            className="rounded-full bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0">
+            {avatarUrl
+                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                : <span className="font-mono text-[9px] font-bold text-primary-400 uppercase">{initial}</span>}
         </div>
     );
 }

@@ -22,6 +22,9 @@
 ## Brand
 - [brand_konta.md](./brand_konta.md) — Konta rebrand spec: logo treatment pattern, color tokens, admin area exception, document shell exception
 
+## Sidebar Redesign
+- [sidebar_redesign_proposal.md](./sidebar_redesign_proposal.md) — Module selector + Financo-inspired style proposal (2026-03-29): key decisions, collapsed rail state machine, UX risks
+
 ## Module-Specific Reviews
 - [accounting_module_patterns.md](./accounting_module_patterns.md) — Accounting module: HOMOLOGATED 2026-03-29. Canonical patterns for buttons, inputs, tables, badges, modals, layout structure, hook usage, and financial formatting
 - [billing_page_patterns.md](./billing_page_patterns.md) — Billing page review (2026-03-29): upsell card visibility bug (zero-subscription guard), stale selCycle on plan change, missing htmlFor/id pairs, raw color tokens in banners, "No activo" badge contrast failure

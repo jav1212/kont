@@ -9,3 +9,52 @@ export const APP_MODULES = [
 ] as const;
 
 export type AppModule = typeof APP_MODULES[number];
+
+// ── Sub-navigation per module ─────────────────────────────────────────────────
+// employees is absorbed into payroll subnav and excluded from the module selector.
+
+export type SubNavItem = { href: string; label: string; group?: string | null };
+
+export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
+    payroll: [
+        { href: "/payroll/tablero",           label: "Tablero",       group: null           },
+        { href: "/payroll/employees",         label: "Empleados",     group: null           },
+        { href: "/payroll",                   label: "Calculadora",   group: "Operaciones"  },
+        { href: "/payroll/history",           label: "Historial",     group: "Operaciones"  },
+        { href: "/payroll/vacations",         label: "Vacaciones",    group: "Operaciones"  },
+        { href: "/payroll/profit-sharing",    label: "Utilidades",    group: "Operaciones"  },
+        { href: "/payroll/social-benefits",   label: "Prestaciones",  group: "Operaciones"  },
+        { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones"  },
+    ],
+    documents: [
+        { href: "/documents/tablero", label: "Tablero",  group: null },
+        { href: "/documents",         label: "Archivos", group: null },
+    ],
+    inventory: [
+        { href: "/inventory",                  label: "Dashboard",            group: null          },
+        { href: "/inventory/products",         label: "Productos",            group: "Catálogos"   },
+        { href: "/inventory/suppliers",        label: "Proveedores",          group: "Catálogos"   },
+        { href: "/inventory/departments",      label: "Departamentos",        group: "Catálogos"   },
+        { href: "/inventory/purchases",        label: "Entradas",             group: "Operaciones" },
+        { href: "/inventory/sales",            label: "Salidas",              group: "Operaciones" },
+        { href: "/inventory/adjustments",      label: "Ajustes",              group: "Operaciones" },
+        { href: "/inventory/returns",          label: "Devoluciones",         group: "Operaciones" },
+        { href: "/inventory/self-consumption", label: "Autoconsumo",          group: "Operaciones" },
+        { href: "/inventory/production",       label: "Producción",           group: "Operaciones" },
+        { href: "/inventory/kardex",           label: "Kardex",               group: "Reportes"    },
+        { href: "/inventory/purchase-ledger",  label: "Libro de Entradas",    group: "Reportes"    },
+        { href: "/inventory/sales-ledger",     label: "Libro de Salidas",     group: "Reportes"    },
+        { href: "/inventory/inventory-ledger", label: "Libro de Inventarios", group: "Reportes"    },
+        { href: "/inventory/report",           label: "Reporte Período",      group: "Reportes"    },
+        { href: "/inventory/balance-report",   label: "Reporte SALDO",        group: "Reportes"    },
+        { href: "/inventory/islr-report",      label: "Reporte ISLR 177",     group: "Reportes"    },
+    ],
+    accounting: [
+        { href: "/accounting",                 label: "Inicio",           group: null             },
+        { href: "/accounting/accounts",        label: "Plan de cuentas",  group: "Configuración"  },
+        { href: "/accounting/periods",         label: "Períodos",         group: "Configuración"  },
+        { href: "/accounting/integrations",    label: "Integraciones",    group: "Configuración"  },
+        { href: "/accounting/journal",         label: "Libro diario",     group: "Contabilidad"   },
+        { href: "/accounting/trial-balance",   label: "Balance de sumas", group: "Contabilidad"   },
+    ],
+};
