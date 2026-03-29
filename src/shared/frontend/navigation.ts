@@ -1,5 +1,5 @@
 export const APP_MODULES = [
-    { id: "payroll",     label: "Nómina",        href: "/payroll",                desktopOnly: true,  paid: true              },
+    { id: "payroll",     label: "Nómina",        href: "/payroll/tablero",        desktopOnly: false, paid: true              },
     { id: "employees",   label: "Empleados",     href: "/payroll/employees",      desktopOnly: false, paid: false, parentId: "payroll" },
     { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: true,  paid: true              },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },

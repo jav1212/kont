@@ -5,19 +5,17 @@
 
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { PageHeader }            from "@/src/shared/frontend/components/page-header";
+import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";
+import { DashboardQuickActions } from "@/src/shared/frontend/components/dashboard-quick-actions";
+import { currentPeriod }         from "@/src/shared/frontend/utils/current-period";
+import { useCompany }            from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useInventory }          from "@/src/modules/inventory/frontend/hooks/use-inventory";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function fmtN(n: number) {
     return n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-}
-
-function currentPeriod() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 // ── component ────────────────────────────────────────────────────────────────
@@ -70,17 +68,10 @@ export default function InventoryDashboard() {
 
             <div className="px-8 py-6 space-y-6">
                 {/* KPI cards */}
-                <div className="grid grid-cols-3 gap-4">
-                    {[
-                        { label: "Productos activos",   value: loading ? "…" : kpis.activos,   color: "text-primary-500" },
-                        { label: "Entradas del mes",    value: loading ? "…" : kpis.entradas,  color: "text-green-500"   },
-                        { label: "Salidas del mes",     value: loading ? "…" : kpis.salidas,   color: "text-red-500"     },
-                    ].map((kpi) => (
-                        <div key={kpi.label} className="rounded-xl border border-border-light bg-surface-1 px-5 py-4">
-                            <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-2">{kpi.label}</p>
-                            <p className={`text-[24px] font-bold tabular-nums ${kpi.color}`}>{kpi.value}</p>
-                        </div>
-                    ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <DashboardKpiCard label="Productos activos" value={kpis.activos}  color="primary" loading={loading} />
+                    <DashboardKpiCard label="Entradas del mes"  value={kpis.entradas} color="success" loading={loading} />
+                    <DashboardKpiCard label="Salidas del mes"   value={kpis.salidas}  color="danger"  loading={loading} />
                 </div>
 
                 {/* Products table */}
@@ -93,7 +84,7 @@ export default function InventoryDashboard() {
                             href="/inventory/products"
                             className="text-[13px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                         >
-                            Ver todos →
+                            Ver todos <span aria-hidden="true">→</span>
                         </Link>
                     </div>
 
@@ -107,11 +98,12 @@ export default function InventoryDashboard() {
                             </Link>
                         </div>
                     ) : (
-                        <table className="w-full text-[13px]">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-[13px]" aria-label="Productos">
                             <thead>
                                 <tr className="border-b border-border-light">
                                     {["Código", "Nombre", "Tipo", "Existencia", "Estado"].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
+                                        <th key={h} scope="col" className="px-4 py-2.5 text-left text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
                                             {h}
                                         </th>
                                     ))}
@@ -139,28 +131,18 @@ export default function InventoryDashboard() {
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     )}
                 </div>
 
                 {/* Quick links */}
-                <div className="grid grid-cols-3 gap-4">
-                    {[
-                        { href: "/inventory/production",  label: "Producción",      desc: "Transformaciones y lotes"       },
-                        { href: "/inventory/movements", label: "Ajustes / Devol.", desc: "Correcciones y devoluciones"   },
-                        { href: "/inventory/kardex",      label: "Kardex",           desc: "Historial por producto"        },
-                    ].map((q) => (
-                        <Link
-                            key={q.href}
-                            href={q.href}
-                            className="rounded-xl border border-border-light bg-surface-1 px-5 py-4 hover:bg-surface-2 transition-colors group"
-                        >
-                            <p className="text-[13px] font-medium text-foreground group-hover:text-primary-500 transition-colors">
-                                {q.label}
-                            </p>
-                            <p className="text-[13px] text-[var(--text-tertiary)] mt-0.5">{q.desc}</p>
-                        </Link>
-                    ))}
-                </div>
+                <DashboardQuickActions
+                    actions={[
+                        { href: "/inventory/production",  label: "Producción",      desc: "Transformaciones y lotes"    },
+                        { href: "/inventory/movements",   label: "Ajustes / Devol.", desc: "Correcciones y devoluciones" },
+                        { href: "/inventory/kardex",      label: "Kardex",           desc: "Historial por producto"      },
+                    ]}
+                />
             </div>
         </div>
     );

@@ -25,3 +25,4 @@
 ## Module-Specific Reviews
 - [accounting_module_patterns.md](./accounting_module_patterns.md) — Accounting module: HOMOLOGATED 2026-03-29. Canonical patterns for buttons, inputs, tables, badges, modals, layout structure, hook usage, and financial formatting
 - [billing_page_patterns.md](./billing_page_patterns.md) — Billing page review (2026-03-29): upsell card visibility bug (zero-subscription guard), stale selCycle on plan change, missing htmlFor/id pairs, raw color tokens in banners, "No activo" badge contrast failure
+- [dashboard_tablero_patterns.md](./dashboard_tablero_patterns.md) — Dashboard/tablero pages (Payroll, Documents, Inventory) review 2026-03-29: KPI skeleton CLS, raw color tokens, missing ARIA on tables, missing empty states, duplicated helpers, focus ring contrast failure

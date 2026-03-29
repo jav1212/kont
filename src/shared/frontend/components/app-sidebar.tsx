@@ -69,12 +69,17 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
 
 const MODULE_SUBNAV: Record<string, { href: string; label: string; group?: string | null }[]> = {
     payroll: [
-        { href: "/payroll",               label: "Calculadora"   },
-        { href: "/payroll/history",        label: "Historial"     },
-        { href: "/payroll/vacations",     label: "Vacaciones"    },
-        { href: "/payroll/profit-sharing",     label: "Utilidades"    },
-        { href: "/payroll/social-benefits",   label: "Prestaciones"  },
-        { href: "/payroll/liquidations",  label: "Liquidaciones" },
+        { href: "/payroll/tablero",           label: "Tablero",      group: null         },
+        { href: "/payroll",                   label: "Calculadora",  group: "Operaciones" },
+        { href: "/payroll/history",           label: "Historial",    group: "Operaciones" },
+        { href: "/payroll/vacations",         label: "Vacaciones",   group: "Operaciones" },
+        { href: "/payroll/profit-sharing",    label: "Utilidades",   group: "Operaciones" },
+        { href: "/payroll/social-benefits",   label: "Prestaciones", group: "Operaciones" },
+        { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones" },
+    ],
+    documents: [
+        { href: "/documents/tablero", label: "Tablero",  group: null },
+        { href: "/documents",         label: "Archivos", group: null },
     ],
     inventory: [
         { href: "/inventory", label: "Dashboard", group: null },
@@ -396,7 +401,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     return true;
                 }).map((mod) => {
                     const subnav = MODULE_SUBNAV[mod.id];
-                    const subnavOpen = subnav && pathname.startsWith(mod.href);
+                    // Use the first path segment as the base for subnav expansion detection.
+                    // This allows a module whose landing href is a sub-path (e.g. /payroll/tablero)
+                    // to still expand its subnav when the user is anywhere under /payroll/*.
+                    const modBasePath = "/" + mod.href.split("/").filter(Boolean)[0];
+                    const subnavOpen = subnav && pathname.startsWith(modBasePath);
 
                     // Module link is active only when on the exact module root — when the
                     // sub-nav is expanded, child items own the active state.

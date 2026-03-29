@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -542,6 +543,7 @@ export default function PayrollCalculator() {
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
+        <DesktopOnlyGuard>
         <div className="flex flex-1 bg-surface-2 font-mono overflow-hidden">
 
             {/* ══ LEFT PANEL — configuration ══════════════════════════════ */}
@@ -1151,5 +1153,6 @@ export default function PayrollCalculator() {
             </main>
 
         </div>
+        </DesktopOnlyGuard>
     );
 }

@@ -26,13 +26,17 @@ export function useCapacity() {
     }, []);
 
     function canAddCompany(): boolean {
-        if (!capacity) return false;
+        // While loading (capacity = null), assume allowed to avoid SSR/client hydration mismatch.
+        // The server validates limits on every mutation regardless.
+        if (!capacity) return true;
         if (capacity.companies.max === null) return true;
         return capacity.companies.remaining! > 0;
     }
 
     function canAddEmployee(companyId: string): boolean {
-        if (!capacity) return false;
+        // While loading (capacity = null), assume allowed to avoid SSR/client hydration mismatch.
+        // The server validates limits on every mutation regardless.
+        if (!capacity) return true;
         if (capacity.employeesPerCompany.max === null) return true;
         const used = capacity.employeesPerCompany.byCompany[companyId] ?? 0;
         return used < capacity.employeesPerCompany.max;
