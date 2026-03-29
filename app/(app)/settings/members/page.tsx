@@ -102,12 +102,11 @@ export default function MembersPage() {
     const pending  = members.filter((m) => m.pending);
 
     return (
-        <div className="p-4 sm:p-6 max-w-2xl mx-auto w-full min-h-full">
+        <div className="w-full min-h-full">
 
-            {/* Header */}
+            {/* Header (Action bar) */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="font-mono text-sm font-semibold text-foreground">Miembros</h1>
                     {isActingOnBehalf && (
                         <p className="font-mono text-xs text-foreground/40 mt-0.5">
                             Gestionando tenant de cliente

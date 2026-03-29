@@ -12,42 +12,54 @@ import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon
 
 const MODULE_ICONS: Record<string, React.ReactNode> = {
     payroll: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-            <path d="M4 5h5M4 7.5h3" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="1" y="1" width="11" height="11" rx="1.5" />
+                <path d="M4 5h5M4 7.5h3" />
+            </svg>
+        </div>
     ),
     companies: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="4" width="11" height="8" rx="1" />
-            <path d="M4 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4" />
-            <path d="M5 8h3M6.5 6.5v3" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="1" y="4" width="11" height="8" rx="1" />
+                <path d="M4 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4" />
+                <path d="M5 8h3M6.5 6.5v3" />
+            </svg>
+        </div>
     ),
     inventory: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
-            <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
+                <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
+            </svg>
+        </div>
     ),
     billing: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="3" width="11" height="7" rx="1" />
-            <path d="M1 6h11M4.5 8.5h2" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="1" y="3" width="11" height="7" rx="1" />
+                <path d="M1 6h11M4.5 8.5h2" />
+            </svg>
+        </div>
     ),
     documents: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 1h5l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
-            <path d="M8 1v3h3M5 7h3M5 9.5h2" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 1h5l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
+                <path d="M8 1v3h3M5 7h3M5 9.5h2" />
+            </svg>
+        </div>
     ),
     accounting: (
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-            <path d="M4 4h2M4 6.5h5M4 9h3" />
-            <path d="M8.5 3.5l1 1-1 1" />
-        </svg>
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="1" y="1" width="11" height="11" rx="1.5" />
+                <path d="M4 4h2M4 6.5h5M4 9h3" />
+                <path d="M8.5 3.5l1 1-1 1" />
+            </svg>
+        </div>
     ),
 };
 

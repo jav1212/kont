@@ -69,93 +69,87 @@ export function TenantSwitcher() {
     }
 
     return (
-        <div className="px-3 py-3 border-b border-sidebar-border">
-            <p className={`px-2 mb-1.5 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                Cuenta
-            </p>
-
-            <div className="relative" ref={ref}>
-                <button
-                    onClick={() => setOpen((v) => !v)}
-                    aria-expanded={open}
-                    aria-haspopup="listbox"
-                    aria-label={`Tenant activo: ${activeTenant?.tenantEmail ?? "Propio"}. Cambiar tenant`}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
-                >
-                    <TenantAvatar email={activeTenant?.tenantEmail} />
-                    <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
-                        {activeTenant?.isOwn ? "Mi cuenta" : (activeTenant?.tenantEmail ?? "Seleccionar…")}
+        <div className="relative" ref={ref}>
+            <button
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                aria-haspopup="listbox"
+                aria-label={`Tenant activo: ${activeTenant?.tenantEmail ?? "Propio"}. Cambiar tenant`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border text-left"
+            >
+                <TenantAvatar email={activeTenant?.tenantEmail} />
+                <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1`}>
+                    {activeTenant?.isOwn ? "Mi cuenta" : (activeTenant?.tenantEmail ?? "Seleccionar…")}
+                </span>
+                {isActingOnBehalf && activeTenantRole && (
+                    <span className={`font-mono ${APP_SIZES.nav.sectionLabel} px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 uppercase flex-shrink-0`}>
+                        {activeTenantRole}
                     </span>
-                    {isActingOnBehalf && activeTenantRole && (
-                        <span className={`font-mono ${APP_SIZES.nav.sectionLabel} px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 uppercase flex-shrink-0`}>
-                            {activeTenantRole}
-                        </span>
-                    )}
-                    <ChevronIcon open={open} />
-                </button>
-
-                {open && (
-                    <div
-                        role="listbox"
-                        aria-label="Tenants disponibles"
-                        className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-50 shadow-lg bg-sidebar-bg border border-sidebar-border"
-                        style={{ boxShadow: "var(--shadow-lg)" }}
-                    >
-                        {/* Search */}
-                        <div className="p-2 border-b border-sidebar-border">
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Buscar cuenta…"
-                                autoFocus
-                                className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
-                            />
-                        </div>
-
-                        <ul>
-                            {filteredTenants.length === 0 ? (
-                                <li className={`px-3 py-2 font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
-                                    Sin resultados
-                                </li>
-                            ) : (
-                                filteredTenants.map((t) => {
-                                    const isSelected = t.tenantId === activeTenantId;
-                                    return (
-                                        <li key={t.tenantId} role="option" aria-selected={isSelected}>
-                                            <button
-                                                onClick={() => handleSelect(t.tenantId)}
-                                                className={[
-                                                    `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                                    isSelected
-                                                        ? "text-sidebar-active-fg bg-sidebar-active-bg"
-                                                        : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                                ].join(" ")}
-                                            >
-                                                <TenantAvatar email={t.tenantEmail} />
-                                                <span className="truncate flex-1">
-                                                    {t.isOwn ? "Mi cuenta" : t.tenantEmail}
-                                                </span>
-                                                {!t.isOwn && (
-                                                    <span className={`font-mono ${APP_SIZES.nav.sectionLabel} px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 uppercase flex-shrink-0`}>
-                                                        {t.role}
-                                                    </span>
-                                                )}
-                                                {isSelected && (
-                                                    <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
-                                                        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                        <path d="M2 5.5l2.5 2.5 4-5" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        </li>
-                                    );
-                                })
-                            )}
-                        </ul>
-                    </div>
                 )}
-            </div>
+                <ChevronIcon open={open} />
+            </button>
+
+            {open && (
+                <div
+                    role="listbox"
+                    aria-label="Tenants disponibles"
+                    className="absolute left-0 right-0 top-full mt-1 rounded-lg overflow-hidden z-50 shadow-lg bg-sidebar-bg border border-sidebar-border"
+                    style={{ boxShadow: "var(--shadow-lg)" }}
+                >
+                    {/* Search */}
+                    <div className="p-2 border-b border-sidebar-border">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar cuenta…"
+                            autoFocus
+                            className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
+                        />
+                    </div>
+
+                    <ul>
+                        {filteredTenants.length === 0 ? (
+                            <li className={`px-3 py-2 font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
+                                Sin resultados
+                            </li>
+                        ) : (
+                            filteredTenants.map((t) => {
+                                const isSelected = t.tenantId === activeTenantId;
+                                return (
+                                    <li key={t.tenantId} role="option" aria-selected={isSelected}>
+                                        <button
+                                            onClick={() => handleSelect(t.tenantId)}
+                                            className={[
+                                                `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                                isSelected
+                                                    ? "text-sidebar-active-fg bg-sidebar-active-bg"
+                                                    : "text-sidebar-fg hover:bg-sidebar-bg-hover",
+                                            ].join(" ")}
+                                        >
+                                            <TenantAvatar email={t.tenantEmail} />
+                                            <span className="truncate flex-1">
+                                                {t.isOwn ? "Mi cuenta" : t.tenantEmail}
+                                            </span>
+                                            {!t.isOwn && (
+                                                <span className={`font-mono ${APP_SIZES.nav.sectionLabel} px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 uppercase flex-shrink-0`}>
+                                                    {t.role}
+                                                </span>
+                                            )}
+                                            {isSelected && (
+                                                <svg className="ml-auto flex-shrink-0" width="10" height="10" viewBox="0 0 10 10"
+                                                    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                                    <path d="M2 5.5l2.5 2.5 4-5" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </li>
+                                );
+                            })
+                        )}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 }

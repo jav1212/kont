@@ -20,11 +20,7 @@ export default function CompanySettingsPage() {
     }
 
     return (
-        <div className="px-6 py-8 max-w-2xl space-y-8">
-            <div>
-                <h1 className="font-mono text-sm font-bold text-foreground">Empresa</h1>
-                <p className="font-mono text-xs text-foreground/40 mt-0.5">Configuración general de la empresa activa.</p>
-            </div>
+        <div className="max-w-2xl space-y-8">
 
             {/* Reportes PDF */}
             <section className="border border-border-light rounded-xl overflow-hidden">
