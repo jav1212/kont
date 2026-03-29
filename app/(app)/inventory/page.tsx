@@ -5,12 +5,24 @@
 
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
+import { 
+    Package, 
+    ArrowDownLeft, 
+    ArrowUpRight, 
+    Boxes, 
+    ArrowRightLeft, 
+    History,
+    ArrowRight,
+    Search
+} from "lucide-react";
 import { PageHeader }            from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";
 import { DashboardQuickActions } from "@/src/shared/frontend/components/dashboard-quick-actions";
 import { currentPeriod }         from "@/src/shared/frontend/utils/current-period";
 import { useCompany }            from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory }          from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { BaseButton }            from "@/src/shared/frontend/components/base-button";
+import { motion }                from "framer-motion";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,43 +62,80 @@ export default function InventoryDashboard() {
     const loading = loadingProducts || loadingMovements;
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
             <PageHeader title="Inventario" subtitle={`Dashboard — ${periodo}`}>
-                <Link
+                <BaseButton.Root
+                    as={Link}
                     href="/inventory/purchases/new"
-                    className="h-9 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                    variant="primary"
+                    size="md"
+                    leftIcon={<ArrowDownLeft size={16} strokeWidth={3} />}
                 >
                     + Entrada
-                </Link>
-                <Link
+                </BaseButton.Root>
+                <BaseButton.Root
+                    as={Link}
                     href="/inventory/sales"
-                    className="h-9 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[13px] uppercase tracking-[0.12em] flex items-center gap-1.5 transition-colors"
+                    variant="secondary"
+                    size="md"
+                    leftIcon={<ArrowUpRight size={16} />}
                 >
                     + Salida
-                </Link>
+                </BaseButton.Root>
             </PageHeader>
 
             <div className="px-8 py-6 space-y-6">
                 {/* KPI cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <DashboardKpiCard label="Productos activos" value={kpis.activos}  color="primary" loading={loading} />
-                    <DashboardKpiCard label="Entradas del mes"  value={kpis.entradas} color="success" loading={loading} />
-                    <DashboardKpiCard label="Salidas del mes"   value={kpis.salidas}  color="danger"  loading={loading} />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <DashboardKpiCard 
+                        label="Productos activos" 
+                        value={kpis.activos}  
+                        color="primary" 
+                        loading={loading} 
+                        icon={Package}
+                    />
+                    <DashboardKpiCard 
+                        label="Entradas del mes"  
+                        value={kpis.entradas} 
+                        color="success" 
+                        loading={loading} 
+                        icon={ArrowDownLeft}
+                    />
+                    <DashboardKpiCard 
+                        label="Salidas del mes"   
+                        value={kpis.salidas}  
+                        color="danger"  
+                        loading={loading} 
+                        icon={ArrowUpRight}
+                    />
                 </div>
 
-                {/* Products table */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                        <p className="text-[13px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                            Productos
-                        </p>
-                        <Link
-                            href="/inventory/products"
-                            className="text-[13px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
-                        >
-                            Ver todos <span aria-hidden="true">→</span>
-                        </Link>
-                    </div>
+                {/* Products snapshop table */}
+                <div className="flex flex-col gap-4">
+                    <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2">
+                        <span className="w-1 h-3 rounded-full bg-primary-500/50" />
+                        Snapshop de Inventario
+                    </h2>
+
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm shadow-black/5"
+                    >
+                        <div className="px-6 py-4 border-b border-border-light flex items-center justify-between bg-surface-1/50">
+                            <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+                                Productos Recientes
+                            </p>
+                            <BaseButton.Root
+                                as={Link}
+                                href="/inventory/products"
+                                variant="ghost"
+                                size="sm"
+                                rightIcon={<ArrowRight size={14} />}
+                            >
+                                Ver todos
+                            </BaseButton.Root>
+                        </div>
 
                     {loading ? (
                         <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
@@ -100,15 +149,19 @@ export default function InventoryDashboard() {
                     ) : (
                         <div className="overflow-x-auto">
                         <table className="w-full text-[13px]" aria-label="Productos">
-                            <thead>
-                                <tr className="border-b border-border-light">
-                                    {["Código", "Nombre", "Tipo", "Existencia", "Estado"].map((h) => (
-                                        <th key={h} scope="col" className="px-4 py-2.5 text-left text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
+                                <thead>
+                                    <tr className="bg-surface-2/30 border-b border-border-light">
+                                        {["Código", "Nombre", "Tipo", "Existencia", "Estado"].map((h) => (
+                                            <th 
+                                                key={h} 
+                                                scope="col" 
+                                                className="px-6 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]"
+                                            >
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
                             <tbody>
                                 {products.slice(0, 20).map((p) => (
                                         <tr key={p.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
@@ -133,14 +186,30 @@ export default function InventoryDashboard() {
                         </table>
                         </div>
                     )}
+                    </motion.div>
                 </div>
 
-                {/* Quick links */}
+                {/* Quick actions grid */}
                 <DashboardQuickActions
                     actions={[
-                        { href: "/inventory/production",  label: "Producción",      desc: "Transformaciones y lotes"    },
-                        { href: "/inventory/movements",   label: "Ajustes / Devol.", desc: "Correcciones y devoluciones" },
-                        { href: "/inventory/kardex",      label: "Kardex",           desc: "Historial por producto"      },
+                        { 
+                            href: "/inventory/production",  
+                            label: "Producción",      
+                            desc: "Transformaciones y lotes",
+                            icon: Boxes
+                        },
+                        { 
+                            href: "/inventory/movements",   
+                            label: "Ajustes / Devol.", 
+                            desc: "Correcciones y devoluciones",
+                            icon: ArrowRightLeft
+                        },
+                        { 
+                            href: "/inventory/kardex",      
+                            label: "Kardex",           
+                            desc: "Historial por producto",
+                            icon: History
+                        },
                     ]}
                 />
             </div>

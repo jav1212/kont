@@ -1,7 +1,27 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { 
+    CreditCard, 
+    Calendar, 
+    Users, 
+    Building2, 
+    CheckCircle2, 
+    AlertCircle, 
+    Clock, 
+    Plus, 
+    X, 
+    ArrowRight,
+    Search,
+    Receipt,
+    LayoutDashboard,
+    Package,
+    Calculator
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import { PageHeader }  from "@/src/shared/frontend/components/page-header";
+import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 
 // ============================================================================
 // TYPES
@@ -193,50 +213,30 @@ export default function BillingPage() {
     // ── Render ─────────────────────────────────────────────────────────────
 
     const inputCls = [
-        "w-full h-9 px-3 rounded-lg border bg-surface-1 outline-none",
-        "font-mono text-base sm:text-[12px] text-foreground",
+        "w-full px-4 rounded-xl border bg-surface-1 outline-none",
+        "text-base sm:text-[13px] text-foreground font-medium",
         "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-        "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
+        "transition-all duration-200 placeholder:text-[var(--text-disabled)] shadow-sm shadow-black/5",
     ].join(" ");
 
-    const selectCls = inputCls + " cursor-pointer";
-    const labelCls = "font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block";
+    const selectCls = inputCls + " h-10 cursor-pointer pr-10 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22none%22%20stroke%3D%22%236b7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%206l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_0.8rem_center] bg-[size:1.1rem] bg-no-repeat";
+    const labelCls = "text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5 block px-0.5";
 
     return (
-        <div className="min-h-full bg-surface-2 p-4 sm:p-8 font-mono">
-            <div className="max-w-[720px] mx-auto space-y-6">
+        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
+            <PageHeader title="Facturación" subtitle="Mi Plan, Suscripción y Pagos">
+                <BaseButton.Root
+                    onClick={() => { setFormOpen(true); setSubmitError(null); }}
+                    disabled={formOpen || loading}
+                    variant="primary"
+                    size="md"
+                    leftIcon={<Plus size={16} strokeWidth={3} />}
+                >
+                    Enviar pago
+                </BaseButton.Root>
+            </PageHeader>
 
-                {/* Header */}
-                <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
-                        Facturación
-                    </nav>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-                        <div>
-                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
-                                Mi Plan
-                            </h1>
-                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
-                                Suscripción y pagos
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => { setFormOpen(true); setSubmitError(null); }}
-                            disabled={formOpen || loading}
-                            className={[
-                                "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
-                                "bg-primary-500 border-primary-600 text-white",
-                                "hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed",
-                                "font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150",
-                            ].join(" ")}
-                        >
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                <path d="M6 1v10M1 6h10" />
-                            </svg>
-                            Enviar pago
-                        </button>
-                    </div>
-                </header>
+            <div className="max-w-[800px] mx-auto w-full px-8 py-8 space-y-8">
 
                 {/* Success banner */}
                 {submitOk && (
@@ -254,381 +254,407 @@ export default function BillingPage() {
                 )}
 
                 {loading ? (
-                    <div className="flex items-center justify-center h-40 gap-2 border border-border-light rounded-xl">
+                    <div className="flex flex-col items-center justify-center h-64 gap-3 border border-dashed border-border-light rounded-2xl bg-surface-1/50">
                         <Spinner />
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
+                        <span className="text-[12px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Cargando facturación…</span>
                     </div>
                 ) : (
                     <>
                         {/* Current plan card */}
-                        <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light/60">
+                        <div className="flex flex-col gap-4">
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
+                                <span className="w-1 h-3 rounded-full bg-primary-500/50" />
+                                Plan Actual
+                            </h2>
 
-                            {/* Plan info */}
-                            <div className="px-5 py-4 flex items-start justify-between gap-4">
-                                <div>
-                                    <p className={labelCls}>Plan actual</p>
-                                    <p className="font-mono text-[18px] font-bold text-foreground">
-                                        {tenant?.plan?.name ?? "—"}
-                                    </p>
-                                    {tenant?.plan && (
-                                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5">
-                                            ${tenant.plan.priceMonthlyUsd} USD / mes
-                                        </p>
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="border border-border-light rounded-2xl bg-surface-1 overflow-hidden shadow-sm shadow-black/5 divide-y divide-border-light/60"
+                            >
+                                {/* Plan info */}
+                                <div className="px-6 py-6 flex items-start justify-between gap-4">
+                                    <div className="flex gap-4">
+                                        <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 border border-primary-500/20">
+                                            <CreditCard size={24} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[14px] font-bold text-foreground">
+                                                {tenant?.plan?.name ?? "Sin plan activo"}
+                                            </p>
+                                            <p className="text-[12px] text-[var(--text-tertiary)] mt-1 font-medium capitalize flex items-center gap-1.5">
+                                                <Calendar size={12} />
+                                                {CYCLE_LABEL[tenant?.billingCycle ?? ""] ?? "Pago bajo demanda"} 
+                                                {tenant?.plan && ` · $${tenant.plan.priceMonthlyUsd} USD / mes`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {tenant?.status && (
+                                        <span className={[
+                                            "h-6 px-3 rounded-full border text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-1.5",
+                                            STATUS_CLS[tenant.status] ?? "",
+                                        ].join(" ")}>
+                                            <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                            {STATUS_LABEL[tenant.status] ?? tenant.status}
+                                        </span>
                                     )}
                                 </div>
-                                {tenant?.status && (
-                                    <span className={[
-                                        "h-6 px-2.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.18em] flex items-center",
-                                        STATUS_CLS[tenant.status] ?? "",
-                                    ].join(" ")}>
-                                        {STATUS_LABEL[tenant.status] ?? tenant.status}
-                                    </span>
-                                )}
-                            </div>
 
-                            {/* Period */}
-                            <div className="px-5 py-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div>
-                                    <p className={labelCls}>Ciclo</p>
-                                    <p className="font-mono text-[12px] text-foreground">
-                                        {CYCLE_LABEL[tenant?.billingCycle ?? ""] ?? tenant?.billingCycle ?? "—"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className={labelCls}>Período inicio</p>
-                                    <p className="font-mono text-[12px] text-foreground">
-                                        {formatDate(tenant?.currentPeriodStart)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className={labelCls}>Período fin</p>
-                                    <p className="font-mono text-[12px] text-foreground">
-                                        {formatDate(tenant?.currentPeriodEnd)}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Capacity */}
-                            {capacity && (
-                                <div className="px-5 py-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <p className={labelCls}>Empresas</p>
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-mono text-[12px] text-foreground">
-                                                {capacity.companies.used}
-                                                {capacity.companies.max !== null && ` / ${capacity.companies.max}`}
+                                {/* Period */}
+                                <div className="px-6 py-5 bg-surface-2/30 grid grid-cols-2 sm:grid-cols-2 gap-8 items-center border-t border-border-light">
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-[var(--text-tertiary)]">
+                                            <Clock size={16} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-tertiary)] font-bold">Vence en</p>
+                                            <p className="text-[13px] font-bold text-foreground tabular-nums">
+                                                {formatDate(tenant?.currentPeriodEnd)}
                                             </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-[var(--text-tertiary)]">
+                                            <Receipt size={16} />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-tertiary)] font-bold">Último Pago</p>
+                                            <p className="text-[13px] font-bold text-foreground tabular-nums">
+                                                {formatDate(tenant?.lastPaymentAt)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Capacity / Usage Meters */}
+                                {capacity && (
+                                    <div className="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)] flex items-center gap-2">
+                                                    <Building2 size={13} /> Empresas
+                                                </p>
+                                                <p className="text-[12px] font-bold text-foreground tabular-nums">
+                                                    {capacity.companies.used} / {capacity.companies.max ?? "∞"}
+                                                </p>
+                                            </div>
                                             {capacity.companies.max !== null && (
-                                                <div className="flex-1 h-1.5 rounded-full bg-foreground/[0.08] overflow-hidden">
-                                                    <div
-                                                        className="h-full rounded-full bg-primary-500/60"
-                                                        style={{ width: `${Math.min(100, (capacity.companies.used / capacity.companies.max!) * 100)}%` }}
+                                                <div className="h-2 rounded-full bg-surface-2 overflow-hidden border border-border-light/50">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${Math.min(100, (capacity.companies.used / (capacity.companies.max || 1)) * 100)}%` }}
+                                                        transition={{ duration: 1, ease: "easeOut" }}
+                                                        className="h-full rounded-full bg-gradient-to-r from-primary-500/80 to-primary-500 shadow-[0_0_8px_rgba(var(--primary-500-rgb),0.3)]"
                                                     />
                                                 </div>
                                             )}
                                         </div>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)] flex items-center gap-2">
+                                                    <Users size={13} /> Empleados por empresa
+                                                </p>
+                                                <p className="text-[12px] font-bold text-foreground tabular-nums">
+                                                    {capacity.employeesPerCompany.max ?? "Ilimitados"}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[12px] text-[var(--text-tertiary)] font-medium bg-surface-2/50 px-3 py-1.5 rounded-lg border border-border-light/50 w-fit">
+                                                <CheckCircle2 size={14} className="text-primary-500" />
+                                                Límite de suscripción activo
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className={labelCls}>Empleados por empresa</p>
-                                        <p className="font-mono text-[12px] text-foreground">
-                                            {capacity.employeesPerCompany.max !== null
-                                                ? `Máx. ${capacity.employeesPerCompany.max}`
-                                                : "Ilimitados"}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </motion.div>
                         </div>
 
-                        {/* Module subscriptions */}
-                        <div>
-                            {subscriptions.length > 0 && (
-                                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">
-                                    Módulos activos
-                                </p>
-                            )}
-                            <div className="space-y-2">
-                                    {subscriptions.map((sub) => (
-                                        <div key={sub.id} className="border border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
-                                                    {sub.product?.slug === "payroll" ? (
-                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-                                                            <path d="M4 5h5M4 7.5h3" />
-                                                        </svg>
-                                                    ) : sub.product?.slug === "inventory" ? (
-                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                                            <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
-                                                            <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
-                                                        </svg>
-                                                    ) : sub.product?.slug === "accounting" ? (
-                                                        <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="1" y="1" width="11" height="11" rx="1.5" />
-                                                            <path d="M4 4h2M4 6.5h5M4 9h3" />
-                                                            <path d="M8.5 3.5l1 1-1 1" />
-                                                        </svg>
-                                                    ) : null}
+                        {/* Module subscriptions grid */}
+                        <div className="flex flex-col gap-4">
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
+                                <span className="w-1 h-3 rounded-full bg-primary-500/50" />
+                                Suscripciones por Módulo
+                            </h2>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                    {subscriptions.map((sub, index) => (
+                                        <motion.div 
+                                            key={sub.id} 
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            className="border border-border-light rounded-2xl bg-surface-1 px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary-500/30 transition-all duration-200"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
+                                                    {sub.product?.slug === "payroll" && <Receipt size={20} />}
+                                                    {sub.product?.slug === "inventory" && <Package size={20} />}
+                                                    {sub.product?.slug === "accounting" && <Calculator size={20} />}
                                                 </div>
                                                 <div>
-                                                    <p className="font-mono text-[12px] font-bold text-foreground">
-                                                        {sub.product?.name ?? "—"}
+                                                    <p className="text-[14px] font-bold text-foreground">
+                                                        {sub.product?.name ?? sub.product?.slug}
                                                     </p>
-                                                    {sub.product?.description && (
-                                                        <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
-                                                            {sub.product.description}
-                                                        </p>
-                                                    )}
+                                                    <p className="text-[12px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1">
+                                                        {sub.product?.description ?? "Acceso al módulo completo"}
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-4 justify-between sm:justify-end">
                                                 {sub.plan && (
-                                                    <p className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                                                        {sub.plan.name} · ${sub.plan.priceMonthlyUsd}/mes
-                                                    </p>
+                                                    <div className="text-right">
+                                                        <p className="text-[13px] font-bold text-foreground tabular-nums">
+                                                            ${sub.plan.priceMonthlyUsd}
+                                                        </p>
+                                                        <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">USD / mes</p>
+                                                    </div>
                                                 )}
                                                 <span className={[
-                                                    "h-6 px-2.5 rounded-md border font-mono text-[9px] uppercase tracking-[0.18em] flex items-center",
+                                                    "h-6 px-3 rounded-full border text-[10px] font-bold uppercase tracking-[0.1em] flex items-center",
                                                     STATUS_CLS[sub.status] ?? "",
                                                 ].join(" ")}>
                                                     {STATUS_LABEL[sub.status] ?? sub.status}
                                                 </span>
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     ))}
 
-                                    {/* Inventory upsell if not subscribed */}
+                                    {/* Inventory upsell */}
                                     {!subscriptions.some((s) => s.product?.slug === "inventory") && (
-                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
-                                                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
-                                                        <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
-                                                    </svg>
+                                        <div className="border border-dashed border-border-light rounded-2xl bg-surface-1/40 px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-surface-1/60 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl border border-dashed border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)]/50 flex-shrink-0 group-hover:text-primary-500/60 transition-colors">
+                                                    <Package size={20} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-mono text-[12px] font-bold text-[var(--text-tertiary)]">
+                                                    <p className="text-[14px] font-bold text-[var(--text-tertiary)] group-hover:text-foreground transition-colors">
                                                         Inventario
                                                     </p>
-                                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                                                    <p className="text-[12px] text-[var(--text-tertiary)]/60 mt-0.5">
                                                         Desde $9 / mes · Actívalo enviando un pago
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
-                                                No activo
+                                            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]/50 border border-border-light rounded-full h-6 px-3 flex items-center">
+                                                No habilitado
                                             </span>
                                         </div>
                                     )}
 
-                                    {/* Accounting upsell if not subscribed */}
+                                    {/* Accounting upsell */}
                                     {!subscriptions.some((s) => s.product?.slug === "accounting") && (
-                                        <div className="border border-dashed border-border-light rounded-xl bg-surface-1 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg border border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)] flex-shrink-0">
-                                                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                                        <rect x="1" y="1" width="11" height="11" rx="1.5" />
-                                                        <path d="M4 4h2M4 6.5h5M4 9h3" />
-                                                        <path d="M8.5 3.5l1 1-1 1" />
-                                                    </svg>
+                                        <div className="border border-dashed border-border-light rounded-2xl bg-surface-1/40 px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-surface-1/60 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl border border-dashed border-border-light bg-surface-2 flex items-center justify-center text-[var(--text-tertiary)]/50 flex-shrink-0 group-hover:text-primary-500/60 transition-colors">
+                                                    <Calculator size={20} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-mono text-[12px] font-bold text-[var(--text-tertiary)]">
+                                                    <p className="text-[14px] font-bold text-[var(--text-tertiary)] group-hover:text-foreground transition-colors">
                                                         Contabilidad
                                                     </p>
-                                                    <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5">
+                                                    <p className="text-[12px] text-[var(--text-tertiary)]/60 mt-0.5">
                                                         Desde $7 / mes · Plan de cuentas, asientos y balances
                                                     </p>
                                                 </div>
                                             </div>
-                                            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] border border-border-light rounded-md h-6 px-2.5 flex items-center">
-                                                No activo
+                                            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]/50 border border-border-light rounded-full h-6 px-3 flex items-center">
+                                                No habilitado
                                             </span>
                                         </div>
                                     )}
                             </div>
                         </div>
 
-                        {/* Payment form */}
-                        {formOpen && (
-                            <div className="border border-primary-500/20 rounded-xl bg-surface-1 divide-y divide-border-light/60">
-                                <div className="px-5 py-4 flex items-center justify-between">
-                                    <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.15em] text-foreground">
-                                        Nueva solicitud de pago
-                                    </h2>
-                                    <button
-                                        onClick={() => setFormOpen(false)}
-                                        aria-label="Cerrar formulario de pago"
-                                        className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
-                                    >
-                                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                            <path d="M2 2l9 9M11 2l-9 9" />
-                                        </svg>
-                                    </button>
-                                </div>
-
-                                <div className="px-5 py-4 space-y-4">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {/* Plan */}
-                                        <div>
-                                            <label htmlFor="sel-plan" className={labelCls}>Plan</label>
-                                            <select id="sel-plan" value={selPlanId} onChange={(e) => { setSelPlanId(e.target.value); setSelCycle("monthly"); }} className={selectCls}>
-                                                {(["payroll", "inventory", "accounting", null] as (string | null)[]).map((slug) => {
-                                                    const group = plans.filter((p) => p.moduleSlug === slug);
-                                                    if (group.length === 0) return null;
-                                                    const label = slug ? (MODULE_LABEL[slug] ?? slug) : "General";
-                                                    return (
-                                                        <optgroup key={slug ?? "__general"} label={label}>
-                                                            {group.map((p) => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.name} — ${p.priceMonthlyUsd}/mes
-                                                                </option>
-                                                            ))}
-                                                        </optgroup>
-                                                    );
-                                                })}
-                                            </select>
-                                        </div>
-
-                                        {/* Cycle */}
-                                        <div>
-                                            <label htmlFor="sel-cycle" className={labelCls}>Ciclo de pago</label>
-                                            <select id="sel-cycle" value={selCycle} onChange={(e) => setSelCycle(e.target.value)} className={selectCls}>
-                                                <option value="monthly">Mensual</option>
-                                                {selectedPlan?.priceQuarterlyUsd && <option value="quarterly">Trimestral</option>}
-                                                {selectedPlan?.priceAnnualUsd    && <option value="annual">Anual</option>}
-                                            </select>
-                                        </div>
+                        {/* Payment form segment */}
+                        <AnimatePresence>
+                            {formOpen && (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.98 }}
+                                    className="border-2 border-primary-500/20 rounded-2xl bg-surface-1 overflow-hidden shadow-xl shadow-primary-500/5 divide-y divide-border-light/60"
+                                >
+                                    <div className="px-6 py-4 flex items-center justify-between bg-primary-500/5">
+                                        <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
+                                            Nueva Solicitud de Pago
+                                        </h2>
+                                        <BaseButton.Icon
+                                            onClick={() => setFormOpen(false)}
+                                            variant="ghost"
+                                            size="sm"
+                                        >
+                                            <X size={16} />
+                                        </BaseButton.Icon>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {/* Amount (read-only) */}
-                                        <div>
-                                            <label htmlFor="sel-amount" className={labelCls}>Monto (USD)</label>
-                                            <div id="sel-amount" className="h-9 px-3 flex items-center rounded-lg border border-border-light bg-surface-2 font-mono text-[12px] text-[var(--text-secondary)]">
-                                                ${amount}
+                                    <div className="px-6 py-6 space-y-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            {/* Plan */}
+                                            <div className="space-y-1.5">
+                                                <label htmlFor="sel-plan" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Plan</label>
+                                                <select id="sel-plan" value={selPlanId} onChange={(e) => { setSelPlanId(e.target.value); setSelCycle("monthly"); }} className={selectCls}>
+                                                    {(["payroll", "inventory", "accounting", null] as (string | null)[]).map((slug) => {
+                                                        const group = plans.filter((p) => p.moduleSlug === slug);
+                                                        if (group.length === 0) return null;
+                                                        const label = slug ? (MODULE_LABEL[slug] ?? slug) : "General";
+                                                        return (
+                                                            <optgroup key={slug ?? "__general"} label={label}>
+                                                                {group.map((p) => (
+                                                                    <option key={p.id} value={p.id}>
+                                                                        {p.name} — ${p.priceMonthlyUsd}/mes
+                                                                    </option>
+                                                                ))}
+                                                            </optgroup>
+                                                        );
+                                                    })}
+                                                </select>
+                                            </div>
+
+                                            {/* Cycle */}
+                                            <div className="space-y-1.5">
+                                                <label htmlFor="sel-cycle" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Ciclo de pago</label>
+                                                <select id="sel-cycle" value={selCycle} onChange={(e) => setSelCycle(e.target.value)} className={selectCls}>
+                                                    <option value="monthly">Mensual</option>
+                                                    {selectedPlan?.priceQuarterlyUsd && <option value="quarterly">Trimestral</option>}
+                                                    {selectedPlan?.priceAnnualUsd    && <option value="annual">Anual</option>}
+                                                </select>
                                             </div>
                                         </div>
 
-                                        {/* Payment method */}
-                                        <div>
-                                            <label htmlFor="sel-method" className={labelCls}>Método de pago</label>
-                                            <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
-                                                <option value="transferencia">Transferencia bancaria</option>
-                                                <option value="zelle">Zelle</option>
-                                                <option value="paypal">PayPal</option>
-                                                <option value="binance">Binance Pay</option>
-                                                <option value="efectivo">Efectivo</option>
-                                            </select>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            {/* Amount (read-only) */}
+                                            <div className="space-y-1.5">
+                                                <label htmlFor="sel-amount" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Monto a pagar</label>
+                                                <div id="sel-amount" className="h-10 px-4 flex items-center rounded-xl border border-border-light bg-surface-2 font-bold text-[14px] text-foreground tabular-nums">
+                                                    ${amount} <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-normal">USD</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Payment method */}
+                                            <div className="space-y-1.5">
+                                                <label htmlFor="sel-method" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Método de pago</label>
+                                                <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
+                                                    <option value="transferencia">Transferencia bancaria</option>
+                                                    <option value="zelle">Zelle</option>
+                                                    <option value="paypal">PayPal</option>
+                                                    <option value="binance">Binance Pay</option>
+                                                    <option value="efectivo">Efectivo</option>
+                                                </select>
+                                            </div>
                                         </div>
+
+                                        {/* Receipt URL */}
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="inp-receipt" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">URL del comprobante (opcional)</label>
+                                            <input
+                                                id="inp-receipt"
+                                                type="url"
+                                                value={receiptUrl}
+                                                onChange={(e) => setReceiptUrl(e.target.value)}
+                                                placeholder="https://drive.google.com/..."
+                                                className={inputCls + " h-10 px-4 rounded-xl"}
+                                            />
+                                        </div>
+
+                                        {submitError && (
+                                            <div className="flex items-center gap-2 text-error text-[12px] font-medium bg-error/5 p-3 rounded-lg border border-error/20">
+                                                <AlertCircle size={14} />
+                                                {submitError}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Receipt URL */}
-                                    <div>
-                                        <label htmlFor="inp-receipt" className={labelCls}>URL del comprobante (opcional)</label>
-                                        <input
-                                            id="inp-receipt"
-                                            type="url"
-                                            value={receiptUrl}
-                                            onChange={(e) => setReceiptUrl(e.target.value)}
-                                            placeholder="https://drive.google.com/..."
-                                            className={inputCls}
-                                        />
+                                    <div className="px-6 py-4 flex items-center justify-end gap-3 bg-surface-2/30">
+                                        <BaseButton.Root
+                                            onClick={() => setFormOpen(false)}
+                                            variant="ghost"
+                                            size="md"
+                                        >
+                                            Cancelar
+                                        </BaseButton.Root>
+                                        <BaseButton.Root
+                                            onClick={handleSubmit}
+                                            disabled={submitting || !selPlanId}
+                                            loading={submitting}
+                                            variant="primary"
+                                            size="md"
+                                        >
+                                            Enviar solicitud
+                                        </BaseButton.Root>
                                     </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
-                                    {submitError && (
-                                        <p className="font-mono text-[10px] text-red-500">{submitError}</p>
-                                    )}
-                                </div>
-
-                                <div className="px-5 py-4 flex items-center justify-end gap-2">
-                                    <button
-                                        onClick={() => setFormOpen(false)}
-                                        className="h-8 px-4 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={handleSubmit}
-                                        disabled={submitting || !selPlanId}
-                                        className={[
-                                            "h-8 px-4 rounded-lg flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest",
-                                            "bg-primary-500 text-white hover:bg-primary-600",
-                                            "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
-                                        ].join(" ")}
-                                    >
-                                        {submitting && <Spinner />}
-                                        {submitting ? "Enviando…" : "Enviar solicitud"}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Payment history */}
-                        <div>
-                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-3">
-                                Historial de pagos
-                            </p>
+                        {/* Payment history list */}
+                        <div className="flex flex-col gap-4">
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
+                                <span className="w-1 h-3 rounded-full bg-primary-500/50" />
+                                Historial de Pagos
+                            </h2>
 
                             {history.length === 0 ? (
-                                <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                    <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                <div className="border border-dashed border-border-light rounded-2xl px-4 py-12 text-center bg-surface-1/50">
+                                    <p className="text-[12px] font-bold uppercase tracking-widest text-[var(--text-disabled)] mb-1">
                                         Sin solicitudes de pago
+                                    </p>
+                                    <p className="text-[11px] text-[var(--text-tertiary)]">
+                                        Tus futuras solicitudes de suscripción aparecerán aquí.
                                     </p>
                                 </div>
                             ) : (
-                                <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b border-border-light bg-surface-2">
-                                                {["Fecha", "Plan", "Ciclo", "Monto", "Método", "Estado"].map((h) => (
-                                                    <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
-                                                        {h}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {history.map((req) => {
-                                                const plan = plans.find((p) => p.id === req.plan_id);
-                                                return (
-                                                    <tr key={req.id} className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors">
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)]">
-                                                            {formatDate(req.submitted_at)}
-                                                        </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-foreground">
-                                                            {plan?.name ?? req.plan_id}
-                                                        </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)]">
-                                                            {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
-                                                        </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-foreground tabular-nums">
-                                                            ${req.amount_usd}
-                                                        </td>
-                                                        <td className="px-4 py-3 font-mono text-[11px] text-[var(--text-secondary)] capitalize">
-                                                            {req.payment_method}
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <span className={[
-                                                                "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.15em] inline-flex items-center",
-                                                                STATUS_CLS[req.status] ?? "",
-                                                            ].join(" ")}>
-                                                                {STATUS_LABEL[req.status] ?? req.status}
-                                                            </span>
-                                                            {req.admin_note && (
-                                                                <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5 max-w-[160px] truncate" title={req.admin_note}>
-                                                                    {req.admin_note}
-                                                                </p>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm shadow-black/5">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="bg-surface-2/30 border-b border-border-light font-bold">
+                                                    {["Fecha", "Plan", "Ciclo", "Monto", "Método", "Estado"].map((h) => (
+                                                        <th key={h} className="px-6 py-4 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                                            {h}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border-light/60">
+                                                {history.map((req) => {
+                                                    const plan = plans.find((p) => p.id === req.plan_id);
+                                                    return (
+                                                        <tr key={req.id} className="hover:bg-foreground/[0.02] transition-colors group">
+                                                            <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)] tabular-nums">
+                                                                {formatDate(req.submitted_at)}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-[13px] font-bold text-foreground">
+                                                                    {plan?.name ?? req.plan_id}
+                                                                </div>
+                                                                {req.admin_note && (
+                                                                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1 group-hover:line-clamp-none max-w-[180px]" title={req.admin_note}>
+                                                                        Nota: {req.admin_note}
+                                                                    </p>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)]">
+                                                                {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-[13px] font-bold text-foreground tabular-nums">
+                                                                ${req.amount_usd}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)] capitalize">
+                                                                {req.payment_method}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className={[
+                                                                    "h-6 px-3 rounded-full border text-[10px] font-bold uppercase tracking-[0.1em] inline-flex items-center",
+                                                                    STATUS_CLS[req.status] ?? "",
+                                                                ].join(" ")}>
+                                                                    {STATUS_LABEL[req.status] ?? req.status}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
                         </div>

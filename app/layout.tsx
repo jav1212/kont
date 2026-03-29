@@ -74,7 +74,7 @@ export default function RootLayout({
           } catch(e) {}
         `}} />
       </head>
-      <body className={`${darkerGrotesque.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${darkerGrotesque.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

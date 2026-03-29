@@ -254,12 +254,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 "flex items-center gap-3",
                 isCollapsed ? "justify-center py-6 px-2" : "px-6 py-6",
             ].join(" ")}>
-                <LogoMark size={28} className="text-primary-500" />
-                {!isCollapsed && (
-                    <span className="font-bold text-xl tracking-tight text-sidebar-fg">
-                        Konta
-                    </span>
-                )}
+                <LogoMark size={44} className="text-primary-500" />
             </div>
 
             {/* ── Sections ────────────────────────────────────────────────── */}
@@ -272,7 +267,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         </p>
                     )}
                     <div className={isCollapsed ? "flex justify-center" : ""}>
-                         <TenantSwitcher />
+                        <TenantSwitcher />
                     </div>
                 </div>
 
