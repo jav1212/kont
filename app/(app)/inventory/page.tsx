@@ -63,7 +63,7 @@ export default function InventoryDashboard() {
 
     return (
         <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
-            <PageHeader title="Inventario" subtitle={`Dashboard — ${periodo}`}>
+            <PageHeader title="Inventario" subtitle={`Tablero — ${periodo}`}>
                 <BaseButton.Root
                     as={Link}
                     href="/inventory/purchases/new"

@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp } from "lucide-react";
+import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import {
@@ -32,8 +35,8 @@ function isoToday(): string { return new Date().toISOString().split("T")[0]; }
 function formatDateES(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
-                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
 }
 
@@ -41,7 +44,7 @@ function formatDateES(iso: string): string {
 function getMesesCompletos(desde: string, hasta: string): number {
     if (!desde || !hasta) return 0;
     const a = new Date(desde + "T00:00:00");
-    const b = new Date(hasta  + "T00:00:00");
+    const b = new Date(hasta + "T00:00:00");
     if (b <= a) return 0;
     let m = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
     if (b.getDate() < a.getDate()) m--;
@@ -63,11 +66,11 @@ function maxDate(a: string, b: string): string {
 // ============================================================================
 
 interface UtilidadesCompletas {
-    salarioVES:     number;
-    salarioDia:     number;
+    salarioVES: number;
+    salarioDia: number;
     diasUtilidades: number;
-    monto:          number;
-    anioFiscal:     number;
+    monto: number;
+    anioFiscal: number;
 }
 
 function computeCompletas(
@@ -77,20 +80,20 @@ function computeCompletas(
 ): UtilidadesCompletas | null {
     if (salarioVES <= 0 || diasUtilidades <= 0) return null;
     const salarioDia = salarioVES / 30;
-    const monto      = diasUtilidades * salarioDia;
+    const monto = diasUtilidades * salarioDia;
     return { salarioVES, salarioDia, diasUtilidades, monto, anioFiscal };
 }
 
 interface UtilidadesFraccionadas {
-    salarioVES:      number;
-    salarioDia:      number;
-    diasUtilidades:  number;
-    anioFiscal:      number;
-    inicioFiscal:    string;
-    periodoInicio:   string;   // max(inicioFiscal, fechaIngreso)
+    salarioVES: number;
+    salarioDia: number;
+    diasUtilidades: number;
+    anioFiscal: number;
+    inicioFiscal: string;
+    periodoInicio: string;   // max(inicioFiscal, fechaIngreso)
     mesesTrabajados: number;
     diasFraccionados: number;
-    monto:           number;
+    monto: number;
 }
 
 function computeFraccionadas(
@@ -102,18 +105,18 @@ function computeFraccionadas(
 ): UtilidadesFraccionadas | null {
     if (salarioVES <= 0 || diasUtilidades <= 0 || !fechaIngreso || !fechaCorte) return null;
 
-    const inicioFiscal  = inicioDeAnio(anioFiscal);
+    const inicioFiscal = inicioDeAnio(anioFiscal);
     // Period starts at whichever is later: fiscal year start or hire date
     const periodoInicio = maxDate(inicioFiscal, fechaIngreso);
 
     if (fechaCorte <= periodoInicio) return null;
 
-    const mesesTrabajados  = getMesesCompletos(periodoInicio, fechaCorte);
+    const mesesTrabajados = getMesesCompletos(periodoInicio, fechaCorte);
     if (mesesTrabajados <= 0) return null;
 
     const diasFraccionados = Math.ceil((diasUtilidades / 12) * mesesTrabajados);
-    const salarioDia       = salarioVES / 30;
-    const monto            = diasFraccionados * salarioDia;
+    const salarioDia = salarioVES / 30;
+    const monto = diasFraccionados * salarioDia;
 
     return {
         salarioVES, salarioDia, diasUtilidades, anioFiscal,
@@ -126,9 +129,9 @@ function computeFraccionadas(
 // ============================================================================
 
 function SectionHeader({ label, color }: { label: string; color?: "emerald" | "amber" }) {
-    const cls = color === "amber"   ? "text-amber-500/70"
-              : color === "emerald" ? "text-emerald-500/70"
-              : "text-[var(--text-tertiary)]";
+    const cls = color === "amber" ? "text-amber-500/70"
+        : color === "emerald" ? "text-emerald-500/70"
+            : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
@@ -138,8 +141,8 @@ function CalcRow({ label, formula, value, accent, dim }: {
 }) {
     const valCls = dim ? "text-[var(--text-tertiary)]"
         : accent === "emerald" ? "text-emerald-500"
-        : accent === "amber"   ? "text-amber-500"
-        : "text-foreground";
+            : accent === "amber" ? "text-amber-500"
+                : "text-foreground";
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
             <div className="min-w-0">
@@ -165,24 +168,25 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
     const handlePdf = () => generateUtilidadesCompletasPdf({
         companyName,
         employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
-        anioFiscal:     calc.anioFiscal,
-        salarioVES:     calc.salarioVES,
-        salarioDia:     calc.salarioDia,
+        anioFiscal: calc.anioFiscal,
+        salarioVES: calc.salarioVES,
+        salarioDia: calc.salarioDia,
         diasUtilidades: calc.diasUtilidades,
-        monto:          calc.monto,
+        monto: calc.monto,
         logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     return (
         <div className="max-w-2xl mx-auto space-y-3">
             <div className="flex justify-end">
-                <button onClick={handlePdf}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
-                    </svg>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePdf}
+                    leftIcon={<Download size={14} />}
+                >
                     Descargar PDF
-                </button>
+                </BaseButton.Root>
             </div>
             <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
 
@@ -218,9 +222,9 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                 {/* Salary */}
                 <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-surface-2/50">
                     {[
-                        { lbl: "Salario mensual",   val: fmt(calc.salarioVES) },
-                        { lbl: "Salario diario",    val: `${fmt(calc.salarioDia)} / día` },
-                        { lbl: "Días utilidades",   val: `${calc.diasUtilidades} días` },
+                        { lbl: "Salario mensual", val: fmt(calc.salarioVES) },
+                        { lbl: "Salario diario", val: `${fmt(calc.salarioDia)} / día` },
+                        { lbl: "Días utilidades", val: `${calc.diasUtilidades} días` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
                             <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
@@ -272,38 +276,40 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
 
 function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCargo,
     companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaCorte }: {
-    calc: UtilidadesFraccionadas;
-    employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
-    fechaIngreso: string; fechaCorte: string;
-}) {
+        calc: UtilidadesFraccionadas;
+        employeeName: string; employeeCedula: string; employeeCargo?: string;
+        companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+        fechaIngreso: string; fechaCorte: string;
+    }) {
     const handlePdf = () => generateUtilidadesFraccionadasPdf({
         companyName,
         employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
-        anioFiscal:       calc.anioFiscal,
+        anioFiscal: calc.anioFiscal,
         fechaIngreso,
         fechaCorte,
-        inicioFiscal:     calc.inicioFiscal,
-        periodoInicio:    calc.periodoInicio,
-        mesesTrabajados:  calc.mesesTrabajados,
-        diasUtilidades:   calc.diasUtilidades,
+        inicioFiscal: calc.inicioFiscal,
+        periodoInicio: calc.periodoInicio,
+        mesesTrabajados: calc.mesesTrabajados,
+        diasUtilidades: calc.diasUtilidades,
         diasFraccionados: calc.diasFraccionados,
-        salarioVES:       calc.salarioVES,
-        salarioDia:       calc.salarioDia,
-        monto:            calc.monto,
+        salarioVES: calc.salarioVES,
+        salarioDia: calc.salarioDia,
+        monto: calc.monto,
         logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
     return (
         <div className="max-w-2xl mx-auto space-y-3">
             <div className="flex justify-end">
-                <button onClick={handlePdf}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
-                    </svg>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePdf}
+                    leftIcon={<Download size={14} />}
+                    className="bg-amber-500 hover:bg-amber-600 border-amber-600"
+                >
                     Descargar PDF
-                </button>
+                </BaseButton.Root>
             </div>
             <div className="rounded-2xl border border-amber-500/20 bg-surface-1 overflow-hidden shadow-sm">
 
@@ -342,9 +348,9 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                 {/* Period overview */}
                 <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-amber-500/3">
                     {[
-                        { lbl: "Inicio período",    val: formatDateES(calc.periodoInicio) },
-                        { lbl: "Fecha de corte",    val: formatDateES(fechaCorte) },
-                        { lbl: "Meses trabajados",  val: `${calc.mesesTrabajados} mes${calc.mesesTrabajados !== 1 ? "es" : ""}` },
+                        { lbl: "Inicio período", val: formatDateES(calc.periodoInicio) },
+                        { lbl: "Fecha de corte", val: formatDateES(fechaCorte) },
+                        { lbl: "Meses trabajados", val: `${calc.mesesTrabajados} mes${calc.mesesTrabajados !== 1 ? "es" : ""}` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
                             <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
@@ -356,8 +362,8 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                 {/* Salary */}
                 <div className="px-8 py-4 border-b border-border-light flex gap-8 bg-surface-2/50">
                     {[
-                        { lbl: "Salario mensual",   val: fmt(calc.salarioVES) },
-                        { lbl: "Salario diario",    val: `${fmt(calc.salarioDia)} / día` },
+                        { lbl: "Salario mensual", val: fmt(calc.salarioVES) },
+                        { lbl: "Salario diario", val: `${fmt(calc.salarioDia)} / día` },
                         { lbl: "Días base anuales", val: `${calc.diasUtilidades} días` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
@@ -420,36 +426,46 @@ type Mode = "completas" | "fraccionadas";
 
 export default function UtilidadesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading }  = useEmployee(companyId);
+    const { employees, loading } = useEmployee(companyId);
 
     // ── Mode ────────────────────────────────────────────────────────────────
     const [mode, setMode] = useState<Mode>("completas");
 
     // ── Employee ─────────────────────────────────────────────────────────────
     const [selectedCedula, setSelectedCedula] = useState<string>("");
-    const selectedEmp = useMemo<Employee | undefined>(
-        () => employees.find(e => e.cedula === selectedCedula),
-        [employees, selectedCedula],
-    );
+    const [soloActivos,    setSoloActivos]    = useState(true);
+
     const [salarioOverride, setSalarioOverride] = useState("");
-    const [manualIngreso,   setManualIngreso]   = useState("");
+    const [manualIngreso, setManualIngreso] = useState("");
 
     // ── BCV ─────────────────────────────────────────────────────────────────
-    const [bcvRate,    setBcvRate]    = useState(0);
+    const [exchangeRate, setExchangeRate] = useState("79.59");
     const [bcvLoading, setBcvLoading] = useState(true);
-    const [bcvError,   setBcvError]   = useState<string | null>(null);
+    const [bcvError, setBcvError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
+
+    const fetchBcvRate = useCallback(() => {
+        setBcvLoading(true);
         fetch(`/api/bcv/rate?date=${isoToday()}`)
             .then(r => r.json())
-            .then(d => { if (d.rate) { setBcvRate(d.rate); setBcvError(null); } else setBcvError("No disponible"); })
+            .then(d => { 
+                const rate = d.price || d.rate;
+                if (rate) { 
+                    setExchangeRate(rate.toFixed(2)); 
+                    setBcvError(null); 
+                } else setBcvError("No disponible"); 
+            })
             .catch(() => setBcvError("Error al obtener tasa"))
             .finally(() => setBcvLoading(false));
     }, []);
 
+    useEffect(() => { fetchBcvRate(); }, [fetchBcvRate]);
+
+    // ── Shared derived ────────────────────────────────────────────────────────
+    const selectedEmp = useMemo(() => employees.find(e => e.cedula === selectedCedula), [employees, selectedCedula]);
+
     // Salary field auto-populated from employee data, overridable by user.
-    // Uses render-phase state update (React-approved pattern) to avoid
-    // setState-in-effect cascading renders.
     const [salarioSourceKey, setSalarioSourceKey] = useState("");
     const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
     if (salarioSourceKey !== currentSalarioKey) {
@@ -464,13 +480,12 @@ export default function UtilidadesPage() {
         }
     }
 
-    // ── Shared derived ────────────────────────────────────────────────────────
-    const salarioVES  = parseFloat(salarioOverride) || 0;
+    const salarioVES = parseFloat(salarioOverride) || 0;
     const fechaIngreso = selectedEmp?.fechaIngreso ?? manualIngreso;
 
     // ── Shared params ─────────────────────────────────────────────────────────
-    const currentYear  = new Date().getFullYear();
-    const [anioFiscal,     setAnioFiscal]     = useState(String(currentYear));
+    const currentYear = new Date().getFullYear();
+    const [anioFiscal, setAnioFiscal] = useState(String(currentYear));
     const [diasUtilidades, setDiasUtilidades] = useState("15");
 
     // ── COMPLETAS ─────────────────────────────────────────────────────────────
@@ -493,275 +508,407 @@ export default function UtilidadesPage() {
         [salarioVES, diasUtilidades, anioFiscal, fechaIngreso, fechaCorte, currentYear],
     );
 
-    // ── Mode toggle classes ───────────────────────────────────────────────────
-    const modeBtnCls = (m: Mode) => [
-        "flex-1 h-8 rounded-lg font-mono text-[12px] uppercase tracking-[0.14em] border transition-colors duration-150",
-        mode === m
-            ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
-    ].join(" ");
+    // ── BATCH PROCESSING ─────────────────────────────────────────────────────
+
+    interface UtilResult {
+        emp:  Employee;
+        calc: UtilidadesCompletas | UtilidadesFraccionadas | null;
+        msg?: string;
+    }
+
+    const filtered = useMemo(() => {
+        const pool = soloActivos ? employees.filter(e => e.estado === "activo") : employees;
+        if (!selectedCedula) return pool;
+        return pool.filter(e => e.cedula === selectedCedula);
+    }, [employees, soloActivos, selectedCedula]);
+
+    const results = useMemo<UtilResult[]>(() => {
+        return filtered.map(emp => {
+            const ves = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            const ing = emp.fechaIngreso ?? "";
+
+            let calc: UtilidadesCompletas | UtilidadesFraccionadas | null = null;
+            let msg: string | undefined;
+
+            if (mode === "completas") {
+                calc = computeCompletas(ves, parseInt(diasUtilidades) || 0, parseInt(anioFiscal) || currentYear);
+                if (!calc) msg = "Verificar parámetros";
+            } else {
+                calc = computeFraccionadas(ves, parseInt(diasUtilidades) || 0, parseInt(anioFiscal) || currentYear, ing, fechaCorte);
+                if (!calc) msg = "Verificar fechas/parámetros";
+            }
+
+            return { emp, calc, msg };
+        });
+    }, [filtered, mode, diasUtilidades, anioFiscal, currentYear, fechaCorte, bcvRate]);
+
+    const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.monto ?? 0), 0), [results]);
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col lg:flex-row overflow-hidden">
-
-            {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
-            <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
-
-                {/* Header + mode toggle */}
-                <div className="px-5 py-4 border-b border-border-light space-y-3">
-                    <div>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Utilidades</p>
-                        <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Arts. 131 · 174 · 175 LOTTT</p>
-                    </div>
-                    <div className="flex gap-1.5">
-                        <button onClick={() => setMode("completas")}    className={modeBtnCls("completas")}>Completas</button>
-                        <button onClick={() => setMode("fraccionadas")} className={modeBtnCls("fraccionadas")}>Fraccionadas</button>
-                    </div>
+        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+            <PageHeader
+                title="Utilidades"
+                subtitle="Cálculo de utilidades anuales y fraccionadas (Arts. 131 · 174 LOTTT)"
+            >
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                    </span>
+                    {bcvError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvError} />}
                 </div>
+            </PageHeader>
 
-                <div className="flex-1 divide-y divide-border-light">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
+                <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
 
-                    {/* ── Empleado ───────────────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-3">
-                        <SectionHeader label="Empleado" />
-                        {!loading && employees.length > 0 && (
-                            <div>
-                                <label className={labelCls}>Seleccionar</label>
-                                <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls}>
-                                    <option value="">— Manual —</option>
-                                    {employees.filter(e => e.estado === "activo").map(e => (
-                                        <option key={e.cedula} value={e.cedula}>{e.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        {selectedEmp && (
-                            <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-1">
-                                {[
-                                    { k: "Cédula",        v: selectedEmp.cedula },
-                                    { k: "Cargo",         v: selectedEmp.cargo || "—" },
-                                    { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
-                                ].map(({ k, v }) => (
-                                    <div key={k} className="flex justify-between font-mono text-[12px]">
-                                        <span className="text-[var(--text-tertiary)]">{k}</span>
-                                        <span className="text-foreground tabular-nums">{v}</span>
+                    <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
+                        <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
+                            <TrendingUp size={14} className="text-primary-500" />
+                            Calculadora
+                        </p>
+                    </div>
+
+                    {/* Mode toggle */}
+                    <div className="px-5 py-5 border-b border-border-light bg-surface-2/[0.03]">
+                        <label className={labelCls + " mb-2"}>Tipo de Utilidades</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button 
+                                onClick={() => setMode("completas")} 
+                                className={`flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all ${mode === "completas" ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-700" : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium"}`}
+                            >
+                                <ClipboardCheck size={14} /> Completas
+                            </button>
+                            <button 
+                                onClick={() => setMode("fraccionadas")} 
+                                className={`flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all ${mode === "fraccionadas" ? "bg-amber-500/10 border-amber-500/50 text-amber-700" : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium"}`}
+                            >
+                                <HandCoins size={14} /> Fraccionadas
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 divide-y divide-border-light">
+
+                        {/* ── Empleado ───────────────────────────────────────── */}
+                        <div className="px-5 py-4 space-y-4">
+                            <SectionHeader label="Alcance" />
+                            
+                            <div className="space-y-4">
+                                {!loading && employees.length > 0 && (
+                                    <div className="relative">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
+                                            <option value="">Lote por defecto (Todos)</option>
+                                            <optgroup label="Empleados">
+                                                {employees
+                                                    .filter(e => !soloActivos || e.estado === "activo")
+                                                    .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                                                    .map(e => (
+                                                        <option key={e.cedula} value={e.cedula}>{e.nombre} ({e.cedula})</option>
+                                                    ))
+                                                }
+                                            </optgroup>
+                                        </select>
                                     </div>
-                                ))}
+                                )}
+
+                                {selectedEmp && (
+                                    <div className="p-3.5 rounded-xl border border-border-light bg-surface-2/[0.03] space-y-2.5 relative overflow-hidden">
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500/40" />
+                                        {[
+                                            { k: "Cédula", v: selectedEmp.cedula, icon: <Info size={12} /> },
+                                            { k: "Cargo", v: selectedEmp.cargo || "—", icon: <ClipboardCheck size={12} /> },
+                                            { k: "Ingreso", v: selectedEmp.fechaIngreso ?? "—", icon: <Calendar size={12} /> },
+                                        ].map(({ k, v, icon }) => (
+                                            <div key={k} className="flex justify-between items-center font-mono text-[11px]">
+                                                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                                                    {icon}
+                                                    <span className="uppercase tracking-wider">{k}</span>
+                                                </div>
+                                                <span className="text-foreground font-bold tabular-nums">{v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <label className="flex items-center gap-3 cursor-pointer group py-1">
+                                    <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
+                                        className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                        <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                    </div>
+                                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
+                                </label>
                             </div>
-                        )}
-                        {/* Salario siempre editable */}
-                        <div>
-                            <label className={labelCls}>
-                                Salario mensual (Bs.)
-                                {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
-                            </label>
+
+                            {selectedCedula && (
+                                <div className="pt-2">
+                                    <label className={labelCls}>
+                                        Salario mensual (Bs.)
+                                        <span className="ml-1 text-[var(--text-link)]">— editable</span>
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                        <input type="number" step="0.01" min="0" value={salarioOverride}
+                                            onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {!selectedEmp && selectedCedula && (
+                                <div>
+                                    <label className={labelCls}>Fecha de ingreso</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <input type="date" value={manualIngreso}
+                                            onChange={e => setManualIngreso(e.target.value)} className={fieldCls + " pl-9"} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Tasa BCV ────────────────────────────────────────── */}
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <SectionHeader label="Tasa BCV" />
+                                <button 
+                                    onClick={fetchBcvRate}
+                                    disabled={bcvLoading}
+                                    className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
+                                    title="Actualizar tasa"
+                                >
+                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
+                                </button>
+                            </div>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input type="number" step="0.01" min="0" value={salarioOverride}
-                                    onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
-                                    className={fieldCls + " pl-9 text-right"} />
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={exchangeRate}
+                                    onChange={e => setExchangeRate(e.target.value)} 
+                                    className={fieldCls + " pl-9 text-right"} 
+                                />
                             </div>
-                            {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
-                            )}
+                            {bcvError && <p className="font-mono text-[10px] text-red-500 mt-1.5">{bcvError}</p>}
                         </div>
-                        {!selectedEmp && (
-                            <div>
-                                <label className={labelCls}>Fecha de ingreso</label>
-                                <input type="date" value={manualIngreso}
-                                    onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Requerida para calcular fraccionadas</p>
-                            </div>
-                        )}
-                    </div>
 
-                    {/* ── Tasa BCV ────────────────────────────────────────── */}
-                    <div className="px-5 py-4">
-                        <SectionHeader label="Tasa BCV (auto)" />
-                        {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                                <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                                    <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                </svg>
-                                <span className="font-mono text-[11px]">Consultando BCV…</span>
-                            </div>
-                        ) : bcvError ? (
-                            <div className="space-y-2">
-                                <p className="font-mono text-[12px] text-red-500">{bcvError}</p>
-                                <input type="number" step="0.01" value={bcvRate || ""}
-                                    onChange={e => setBcvRate(parseFloat(e.target.value) || 0)}
-                                    placeholder="Ingresar tasa manualmente"
-                                    className={fieldCls + " text-right"} />
-                            </div>
-                        ) : (
-                            <div className="flex items-baseline gap-2">
-                                <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[12px] text-[var(--text-tertiary)]">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[11px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ── Parámetros ─────────────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-3">
-                        <SectionHeader label="Parámetros" />
-                        <div>
-                            <label className={labelCls}>Año fiscal</label>
-                            <input type="number" min="2000" max="2100" step="1"
-                                value={anioFiscal}
-                                onChange={e => setAnioFiscal(e.target.value)}
-                                className={fieldCls + " text-right"} />
-                        </div>
-                        <div>
-                            <label className={labelCls}>Días de utilidades</label>
-                            <input type="number" min="15" max="120" step="1"
-                                value={diasUtilidades}
-                                onChange={e => setDiasUtilidades(e.target.value)}
-                                className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Mínimo 15 · Máximo 120 (Art. 174 LOTTT)</p>
-                        </div>
-                    </div>
-
-                    {/* ══ MODE: COMPLETAS ════════════════════════════════════ */}
-                    {mode === "completas" && (
-                        <div className="px-5 py-4 space-y-0.5">
-                            <SectionHeader label="Cálculo — Arts. 131 + 174 LOTTT" />
-                            {calcCompletas ? (<>
-                                <CalcRow label="Salario mensual"  value={fmt(calcCompletas.salarioVES)} dim />
-                                <CalcRow label="Salario diario"  formula="salario ÷ 30"
-                                    value={`${fmtN(calcCompletas.salarioDia)} Bs./día`} dim />
-                                <Hr />
-                                <SectionHeader label="Utilidades" color="emerald" />
-                                <CalcRow label="Días de utilidades"
-                                    formula={`Establecido por el empleador (mín. 15, máx. 120)`}
-                                    value={`${calcCompletas.diasUtilidades} días`} dim />
-                                <CalcRow label="Monto"
-                                    formula={`${calcCompletas.diasUtilidades}d × ${fmtN(calcCompletas.salarioDia)} Bs./día`}
-                                    value={fmt(calcCompletas.monto)} accent="emerald" />
-                                <Hr />
-                                <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
-                                    <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{fmt(calcCompletas.monto)}</span>
+                        {/* ── Parámetros ─────────────────────────────────────── */}
+                        <div className="px-5 py-5 space-y-4">
+                            <SectionHeader label="Configuración Fiscal" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={labelCls}>Año fiscal</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" min="2000" max="2100" step="1"
+                                            value={anioFiscal}
+                                            onChange={e => setAnioFiscal(e.target.value)}
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
                                 </div>
-                            </>) : (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
-                                    {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Verifica los parámetros."}
-                                </p>
-                            )}
+                                <div>
+                                    <label className={labelCls}>Días util.</label>
+                                    <div className="relative">
+                                        <HandCoins className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" min="15" max="120" step="1"
+                                            value={diasUtilidades}
+                                            onChange={e => setDiasUtilidades(e.target.value)}
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="font-mono text-[10px] text-[var(--text-disabled)] leading-relaxed">
+                                <Info size={10} className="inline mr-1 -mt-0.5" />
+                                Basado en Arts. 131 y 174 de la LOTTT.
+                            </p>
+                        </div>
+
+                        {/* ══ MODE: COMPLETAS ════════════════════════════════════ */}
+                        {mode === "completas" && (
+                            <div className="px-5 py-4 space-y-0.5">
+                                <SectionHeader label="Cálculo — Arts. 131 + 174 LOTTT" />
+                                {calcCompletas ? (<>
+                                    <CalcRow label="Salario mensual" value={fmt(calcCompletas.salarioVES)} dim />
+                                    <CalcRow label="Salario diario" formula="salario ÷ 30"
+                                        value={`${fmtN(calcCompletas.salarioDia)} Bs./día`} dim />
+                                    <Hr />
+                                    <SectionHeader label="Utilidades" color="emerald" />
+                                    <CalcRow label="Días de utilidades"
+                                        formula={`Establecido por el empleador (mín. 15, máx. 120)`}
+                                        value={`${calcCompletas.diasUtilidades} días`} dim />
+                                    <CalcRow label="Monto"
+                                        formula={`${calcCompletas.diasUtilidades}d × ${fmtN(calcCompletas.salarioDia)} Bs./día`}
+                                        value={fmt(calcCompletas.monto)} accent="emerald" />
+                                    <Hr />
+                                    <div className="flex items-baseline justify-between pt-1">
+                                        <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
+                                        <span className="font-mono text-[20px] font-black tabular-nums text-emerald-500">{fmt(calcCompletas.monto)}</span>
+                                    </div>
+                                </>) : (
+                                    <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
+                                        {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Verifica los parámetros."}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ══ MODE: FRACCIONADAS ═════════════════════════════════ */}
+                        {mode === "fraccionadas" && (<>
+
+                            <div className="px-5 py-4 space-y-3">
+                                <SectionHeader label="Período de Cálculo" />
+                                <div>
+                                    <label className={labelCls}>Fecha de corte</label>
+                                    <input type="date" value={fechaCorte}
+                                        onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
+                                    <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
+                                        Fecha de egreso o fin del período a calcular
+                                    </p>
+                                </div>
+                                {calcFrac && (
+                                    <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/4 space-y-1.5">
+                                        {[
+                                            { k: "Inicio año fiscal", v: calcFrac.inicioFiscal },
+                                            {
+                                                k: "Inicio período", v: calcFrac.periodoInicio !== calcFrac.inicioFiscal
+                                                    ? `${calcFrac.periodoInicio} (desde ingreso)`
+                                                    : calcFrac.periodoInicio
+                                            },
+                                            { k: "Meses trabajados", v: `${calcFrac.mesesTrabajados} mes${calcFrac.mesesTrabajados !== 1 ? "es" : ""}` },
+                                            { k: "Días fraccionados", v: `${calcFrac.diasFraccionados} días` },
+                                        ].map(({ k, v }) => (
+                                            <div key={k} className="flex justify-between font-mono text-[12px]">
+                                                <span className="text-[var(--text-tertiary)]">{k}</span>
+                                                <span className="text-amber-500 tabular-nums font-medium">{v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="px-5 py-4 space-y-0.5">
+                                <SectionHeader label="Cálculo — Art. 175 LOTTT" />
+                                {calcFrac ? (<>
+                                    <CalcRow label="Salario mensual" value={fmt(calcFrac.salarioVES)} dim />
+                                    <CalcRow label="Salario diario" formula="salario ÷ 30"
+                                        value={`${fmtN(calcFrac.salarioDia)} Bs./día`} dim />
+                                    <Hr />
+                                    <SectionHeader label="Fracción proporcional" color="amber" />
+                                    <CalcRow label="Días anuales base"
+                                        value={`${calcFrac.diasUtilidades} días`} dim />
+                                    <CalcRow label="Meses trabajados en el año"
+                                        value={`${calcFrac.mesesTrabajados} meses`} dim />
+                                    <CalcRow label="Fórmula"
+                                        formula={`⌈ ${calcFrac.diasUtilidades}d / 12 × ${calcFrac.mesesTrabajados} meses ⌉`}
+                                        value={`${calcFrac.diasFraccionados} días`} dim />
+                                    <CalcRow label="Monto fraccionado"
+                                        formula={`${calcFrac.diasFraccionados}d × ${fmtN(calcFrac.salarioDia)} Bs./día`}
+                                        value={fmt(calcFrac.monto)} accent="amber" />
+                                    <Hr />
+                                    <div className="flex items-baseline justify-between pt-1">
+                                        <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
+                                        <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.monto)}</span>
+                                    </div>
+                                </>) : (
+                                    <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
+                                        {salarioVES <= 0
+                                            ? "Ingresa el salario del empleado."
+                                            : !fechaIngreso
+                                                ? "Ingresa la fecha de ingreso."
+                                                : "Verifica las fechas ingresadas."}
+                                    </p>
+                                )}
+                            </div>
+                        </>)}
+                    </div>
+
+                    {/* Totals + export */}
+                    <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
+                        {results.length > 0 && (
+                            <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
+                                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
+                                    <span className="text-[var(--text-tertiary)]">Empleados</span>
+                                    <span className="text-foreground font-bold">{results.length}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
+                                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral.</span>
+                                    <span className="font-mono text-[15px] font-black tabular-nums text-emerald-500">{fmt(totalGral)}</span>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <BaseButton.Root
+                            variant="primary"
+                            className="w-full"
+                            onClick={() => {}}
+                            disabled={results.length === 0}
+                            leftIcon={<Download size={14} />}
+                        >
+                            Exportar Lote
+                        </BaseButton.Root>
+                    </div>
+                </aside>
+
+                {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
+                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
+                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
+                        </div>
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)] opacity-40">
+                             <HandCoins size={48} strokeWidth={1} />
+                             <p className="font-mono text-[12px] uppercase tracking-widest">Selecciona empleados para calcular</p>
+                        </div>
+                    ) : (
+                        <div className="max-w-2xl mx-auto space-y-8">
+                            {results.map(r => {
+                                if (r.msg) return (
+                                    <div key={r.emp.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
+                                        <div>
+                                            <p className="font-mono text-[13px] font-bold uppercase text-foreground">{r.emp.nombre}</p>
+                                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{r.emp.cargo}</p>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-amber-500 uppercase border border-amber-500/20 px-2 py-0.5 rounded">{r.msg}</span>
+                                    </div>
+                                );
+
+                                if (mode === "completas") return (
+                                    <ConstanciaCompletas
+                                        key={r.emp.cedula}
+                                        calc={r.calc as UtilidadesCompletas}
+                                        employeeName={r.emp.nombre}
+                                        employeeCedula={r.emp.cedula}
+                                        employeeCargo={r.emp.cargo}
+                                        companyName={company?.name ?? "La Empresa"}
+                                    />
+                                );
+
+                                return (
+                                    <ConstanciaFraccionadas
+                                        key={r.emp.cedula}
+                                        calc={r.calc as UtilidadesFraccionadas}
+                                        employeeName={r.emp.nombre}
+                                        employeeCedula={r.emp.cedula}
+                                        employeeCargo={r.emp.cargo}
+                                        companyName={company?.name ?? "La Empresa"}
+                                        fechaIngreso={r.emp.fechaIngreso ?? ""}
+                                        fechaCorte={fechaCorte}
+                                    />
+                                );
+                            })}
                         </div>
                     )}
-
-                    {/* ══ MODE: FRACCIONADAS ═════════════════════════════════ */}
-                    {mode === "fraccionadas" && (<>
-
-                        <div className="px-5 py-4 space-y-3">
-                            <SectionHeader label="Período de Cálculo" />
-                            <div>
-                                <label className={labelCls}>Fecha de corte</label>
-                                <input type="date" value={fechaCorte}
-                                    onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
-                                    Fecha de egreso o fin del período a calcular
-                                </p>
-                            </div>
-                            {calcFrac && (
-                                <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/4 space-y-1.5">
-                                    {[
-                                        { k: "Inicio año fiscal",  v: calcFrac.inicioFiscal },
-                                        { k: "Inicio período",     v: calcFrac.periodoInicio !== calcFrac.inicioFiscal
-                                            ? `${calcFrac.periodoInicio} (desde ingreso)`
-                                            : calcFrac.periodoInicio },
-                                        { k: "Meses trabajados",   v: `${calcFrac.mesesTrabajados} mes${calcFrac.mesesTrabajados !== 1 ? "es" : ""}` },
-                                        { k: "Días fraccionados",  v: `${calcFrac.diasFraccionados} días` },
-                                    ].map(({ k, v }) => (
-                                        <div key={k} className="flex justify-between font-mono text-[12px]">
-                                            <span className="text-[var(--text-tertiary)]">{k}</span>
-                                            <span className="text-amber-500 tabular-nums font-medium">{v}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="px-5 py-4 space-y-0.5">
-                            <SectionHeader label="Cálculo — Art. 175 LOTTT" />
-                            {calcFrac ? (<>
-                                <CalcRow label="Salario mensual"  value={fmt(calcFrac.salarioVES)} dim />
-                                <CalcRow label="Salario diario"  formula="salario ÷ 30"
-                                    value={`${fmtN(calcFrac.salarioDia)} Bs./día`} dim />
-                                <Hr />
-                                <SectionHeader label="Fracción proporcional" color="amber" />
-                                <CalcRow label="Días anuales base"
-                                    value={`${calcFrac.diasUtilidades} días`} dim />
-                                <CalcRow label="Meses trabajados en el año"
-                                    value={`${calcFrac.mesesTrabajados} meses`} dim />
-                                <CalcRow label="Fórmula"
-                                    formula={`⌈ ${calcFrac.diasUtilidades}d / 12 × ${calcFrac.mesesTrabajados} meses ⌉`}
-                                    value={`${calcFrac.diasFraccionados} días`} dim />
-                                <CalcRow label="Monto fraccionado"
-                                    formula={`${calcFrac.diasFraccionados}d × ${fmtN(calcFrac.salarioDia)} Bs./día`}
-                                    value={fmt(calcFrac.monto)} accent="amber" />
-                                <Hr />
-                                <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
-                                    <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.monto)}</span>
-                                </div>
-                            </>) : (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
-                                    {salarioVES <= 0
-                                        ? "Ingresa el salario del empleado."
-                                        : !fechaIngreso
-                                        ? "Ingresa la fecha de ingreso."
-                                        : "Verifica las fechas ingresadas."}
-                                </p>
-                            )}
-                        </div>
-                    </>)}
-                </div>
-            </aside>
-
-            {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-            <main className="flex-1 overflow-y-auto p-6">
-                {mode === "completas" ? (
-                    calcCompletas ? (
-                        <ConstanciaCompletas
-                            calc={calcCompletas}
-                            employeeName={selectedEmp?.nombre  ?? "Empleado"}
-                            employeeCedula={selectedEmp?.cedula ?? "—"}
-                            employeeCargo={selectedEmp?.cargo}
-                            companyName={company?.name ?? "La Empresa"}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                            </svg>
-                            <p className="font-mono text-[12px] uppercase tracking-widest">Ingresa los datos del empleado</p>
-                        </div>
-                    )
-                ) : (
-                    calcFrac ? (
-                        <ConstanciaFraccionadas
-                            calc={calcFrac}
-                            employeeName={selectedEmp?.nombre  ?? "Empleado"}
-                            employeeCedula={selectedEmp?.cedula ?? "—"}
-                            employeeCargo={selectedEmp?.cargo}
-                            companyName={company?.name ?? "La Empresa"}
-                            fechaIngreso={fechaIngreso}
-                            fechaCorte={fechaCorte}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                            </svg>
-                            <p className="font-mono text-[12px] uppercase tracking-widest">Ingresa los datos y la fecha de corte</p>
-                        </div>
-                    )
-                )}
-            </main>
+                </main>
+            </div>
         </div>
     );
 }

@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck } from "lucide-react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -142,16 +145,22 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
     return (
         <div className="max-w-xl mx-auto space-y-3">
             <div className="flex justify-end gap-2">
-                <button onClick={handlePdfIntereses}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/></svg>
+                <BaseButton.Root
+                    variant="secondary"
+                    size="sm"
+                    onClick={handlePdfIntereses}
+                    leftIcon={<FileText size={14} />}
+                >
                     Intereses y Anticipo
-                </button>
-                <button onClick={handlePdf}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/></svg>
+                </BaseButton.Root>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePdf}
+                    leftIcon={<Download size={14} />}
+                >
                     Reporte Completo
-                </button>
+                </BaseButton.Root>
             </div>
 
             <div className="rounded-2xl border border-emerald-500/20 bg-surface-1 overflow-hidden shadow-sm">
@@ -297,29 +306,54 @@ export default function PrestacionesPage() {
 
     // ── Employee ──────────────────────────────────────────────────────────────
     const [selectedCedula, setSelectedCedula] = useState<string>("");
-    const selectedEmp = useMemo<Employee | undefined>(
-        () => employees.find(e => e.cedula === selectedCedula),
-        [employees, selectedCedula],
-    );
+    const [soloActivos,    setSoloActivos]    = useState(true);
+
     const [salarioOverride, setSalarioOverride] = useState("");
     const [manualIngreso,   setManualIngreso]   = useState("");
 
-    // ── BCV ───────────────────────────────────────────────────────────────────
-    const [bcvRate,    setBcvRate]    = useState(0);
+    // ── BCV ─────────────────────────────────────────────────────────────────
+    const [exchangeRate, setExchangeRate] = useState("79.59");
     const [bcvLoading, setBcvLoading] = useState(true);
-    const [bcvError,   setBcvError]   = useState<string | null>(null);
+    const [bcvError, setBcvError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
+
+    const fetchBcvRate = useCallback(() => {
+        setBcvLoading(true);
         fetch(`/api/bcv/rate?date=${isoToday()}`)
             .then(r => r.json())
-            .then(d => { if (d.rate) { setBcvRate(d.rate); setBcvError(null); } else setBcvError("No disponible"); })
+            .then(d => { 
+                const rate = d.price || d.rate;
+                if (rate) { 
+                    setExchangeRate(rate.toFixed(2)); 
+                    setBcvError(null); 
+                } else setBcvError("No disponible"); 
+            })
             .catch(() => setBcvError("Error al obtener tasa"))
             .finally(() => setBcvLoading(false));
     }, []);
 
+    useEffect(() => { fetchBcvRate(); }, [fetchBcvRate]);
+
+    // ── Params ────────────────────────────────────────────────────────────────
+    const [fechaCorte,          setFechaCorte]          = useState(isoToday());
+    const [diasUtilidades,      setDiasUtilidades]      = useState("15");
+    const [diasBono,            setDiasBono]            = useState("15");
+    const [tasaIntereses,       setTasaIntereses]       = useState("3");
+    const [porcentajeAnticipo,  setPorcentajeAnticipo]  = useState("75");
+
+    // ── BATCH PROCESSING ─────────────────────────────────────────────────────
+
+    const filtered = useMemo(() => {
+        const pool = soloActivos ? employees.filter(e => e.estado === "activo") : employees;
+        if (!selectedCedula) return pool;
+        return pool.filter(e => e.cedula === selectedCedula);
+    }, [employees, soloActivos, selectedCedula]);
+
+    // Derived for individual manual mode if needed
+    const selectedEmp = useMemo(() => employees.find(e => e.cedula === selectedCedula), [employees, selectedCedula]);
+
     // Salary field auto-populated from employee data, overridable by user.
-    // Uses render-phase state update (React-approved pattern) to avoid
-    // setState-in-effect cascading renders.
     const [salarioSourceKey, setSalarioSourceKey] = useState("");
     const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
     if (salarioSourceKey !== currentSalarioKey) {
@@ -334,328 +368,360 @@ export default function PrestacionesPage() {
         }
     }
 
-    // ── Derived ───────────────────────────────────────────────────────────────
+    interface PrestResult {
+        emp:  Employee;
+        calc: PrestacionesCalc | null;
+        msg?: string;
+    }
+
+    const results = useMemo<PrestResult[]>(() => {
+        return filtered.map(emp => {
+            const ves  = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            const ing  = emp.fechaIngreso ?? "";
+            const util = parseInt(diasUtilidades) || 15;
+            const bono = parseInt(diasBono)       || 15;
+
+            const res = computePrestaciones({
+                salarioVES: ves,
+                fechaIngreso: ing,
+                fechaCorte,
+                diasUtil: util,
+                diasBonoVac: bono,
+            });
+
+            if (!res) return { emp, calc: null, msg: "Verificar datos" };
+
+            const salDia = ves / 30;
+            const alUtil = salDia * util / 360;
+            const alBono = salDia * bono / 360;
+            const gar    = 30 * res.salarioIntegralDiario * res.anios;
+            const sld    = res.saldoPrestaciones;
+            const mto    = sld + gar;
+            const pct    = Math.min(100, Math.max(0, parseFloat(porcentajeAnticipo) || 75));
+            const ant    = sld * (pct / 100);
+            const t      = Math.max(0, parseFloat(tasaIntereses) || 0);
+            const ints   = sld * (t / 100) * (res.mesesCompletos / 12);
+
+            const calc: PrestacionesCalc = {
+                salarioVES: ves,
+                salarioDiario: salDia,
+                alicuotaUtil: alUtil,
+                alicuotaBono: alBono,
+                salarioIntegralDiario: res.salarioIntegralDiario,
+                anios:            res.anios,
+                mesesCompletos:   res.mesesCompletos,
+                totalDias:        res.totalDias,
+                diasTrimestrales: res.diasTrimestrales,
+                diasAdicionales:  res.diasAdicionales,
+                diasTotales:      res.diasTotales,
+                saldoAcumulado:   sld,
+                garantia:         gar,
+                montoFinal:       mto,
+                aplicaGarantia:   false,
+                anticipoPrestaciones: ant,
+                interesesAcumulados:  ints,
+                pagoInmediato:        ant + ints,
+                saldoFavor:           mto - ant - ints,
+            };
+
+            return { emp, calc };
+        });
+    }, [filtered, bcvRate, diasUtilidades, diasBono, fechaCorte, porcentajeAnticipo, tasaIntereses]);
+
+    const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.saldoFavor ?? 0), 0), [results]);
+
     const salarioVES   = parseFloat(salarioOverride) || 0;
     const fechaIngreso = selectedEmp?.fechaIngreso ?? manualIngreso;
-
-    // ── Params ────────────────────────────────────────────────────────────────
-    const [fechaCorte,          setFechaCorte]          = useState(isoToday());
-    const [diasUtilidades,      setDiasUtilidades]      = useState("15");
-    const [diasBono,            setDiasBono]            = useState("15");
-    const [tasaIntereses,       setTasaIntereses]       = useState("3");
-    const [porcentajeAnticipo,  setPorcentajeAnticipo]  = useState("75");
-
-    // ── Calculation ───────────────────────────────────────────────────────────
-    const calc = useMemo<PrestacionesCalc | null>(() => {
-        const diasUtil    = parseInt(diasUtilidades) || 15;
-        const diasBonoVac = parseInt(diasBono)       || 15;
-        const res = computePrestaciones({
-            salarioVES,
-            fechaIngreso,
-            fechaCorte,
-            diasUtil,
-            diasBonoVac,
-        });
-        if (!res) return null;
-
-        const salarioDiario  = salarioVES / 30;
-        const alicuotaUtil   = salarioDiario * diasUtil    / 360;
-        const alicuotaBono   = salarioDiario * diasBonoVac / 360;
-        const garantia       = 30 * res.salarioIntegralDiario * res.anios;
-        const saldoAcumulado = res.saldoPrestaciones;
-        const montoFinal     = saldoAcumulado + garantia;
-        const pct          = Math.min(100, Math.max(0, parseFloat(porcentajeAnticipo) || 75));
-        const anticipo     = saldoAcumulado * (pct / 100);
-        const tasa         = Math.max(0, parseFloat(tasaIntereses) || 0);
-        const intereses    = saldoAcumulado * (tasa / 100) * (res.mesesCompletos / 12);
-        const pagoInmediato = anticipo + intereses;
-        const saldoFavor    = montoFinal - anticipo - intereses;
-
-        return {
-            salarioVES,
-            salarioDiario,
-            alicuotaUtil,
-            alicuotaBono,
-            salarioIntegralDiario: res.salarioIntegralDiario,
-            anios:            res.anios,
-            mesesCompletos:   res.mesesCompletos,
-            totalDias:        res.totalDias,
-            diasTrimestrales: res.diasTrimestrales,
-            diasAdicionales:  res.diasAdicionales,
-            diasTotales:      res.diasTotales,
-            saldoAcumulado,
-            garantia,
-            montoFinal,
-            aplicaGarantia: false,
-            anticipoPrestaciones: anticipo,
-            interesesAcumulados:  intereses,
-            pagoInmediato,
-            saldoFavor,
-        };
-    }, [salarioVES, fechaIngreso, fechaCorte, diasUtilidades, diasBono, tasaIntereses, porcentajeAnticipo]);
+    const calc = results.length === 1 ? results[0].calc : null;
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col lg:flex-row overflow-hidden">
-
-            {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
-            <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
-
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Prestaciones</p>
-                    <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT · Garantía de Prestaciones</p>
+        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+            <PageHeader
+                title="Prestaciones Sociales"
+                subtitle="Cálculo de garantía y acumulados (Art. 142 LOTTT)"
+            >
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                    </span>
+                    {bcvError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvError} />}
                 </div>
+            </PageHeader>
 
-                <div className="flex-1 divide-y divide-border-light">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
+                <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
 
-                    {/* ── Empleado ────────────────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-3">
-                        <SectionHeader label="Empleado" />
-                        {!loading && employees.length > 0 && (
-                            <div>
-                                <label className={labelCls}>Seleccionar</label>
-                                <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls}>
-                                    <option value="">— Manual —</option>
-                                    {employees.filter(e => e.estado === "activo").map(e => (
-                                        <option key={e.cedula} value={e.cedula}>{e.nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        {selectedEmp && (
-                            <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-1">
-                                {[
-                                    { k: "Cédula",        v: selectedEmp.cedula },
-                                    { k: "Cargo",         v: selectedEmp.cargo || "—" },
-                                    { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
-                                ].map(({ k, v }) => (
-                                    <div key={k} className="flex justify-between font-mono text-[12px]">
-                                        <span className="text-[var(--text-tertiary)]">{k}</span>
-                                        <span className="text-foreground tabular-nums">{v}</span>
+                    <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
+                        <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
+                            <TrendingUp size={14} className="text-primary-500" />
+                            Calculadora
+                        </p>
+                    </div>
+
+                    <div className="flex-1 divide-y divide-border-light">
+                        <div className="px-5 py-4 space-y-4">
+                            <SectionHeader label="Alcance" />
+                            <div className="space-y-4">
+                                {!loading && employees.length > 0 && (
+                                    <div className="relative">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
+                                            <option value="">Lote por defecto (Todos)</option>
+                                            <optgroup label="Empleados">
+                                                {employees
+                                                    .filter(e => !soloActivos || e.estado === "activo")
+                                                    .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                                                    .map(e => (
+                                                        <option key={e.cedula} value={e.cedula}>{e.nombre} ({e.cedula})</option>
+                                                    ))
+                                                }
+                                            </optgroup>
+                                        </select>
                                     </div>
-                                ))}
+                                )}
+                                {selectedEmp && (
+                                    <div className="p-3.5 rounded-xl border border-border-light bg-surface-2/[0.03] space-y-2.5 relative overflow-hidden">
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500/40" />
+                                        {[
+                                            { k: "Cédula", v: selectedEmp.cedula, icon: <Info size={12} /> },
+                                            { k: "Cargo", v: selectedEmp.cargo || "—", icon: <ClipboardCheck size={12} /> },
+                                            { k: "Ingreso", v: selectedEmp.fechaIngreso ?? "—", icon: <Calendar size={12} /> },
+                                        ].map(({ k, v, icon }) => (
+                                            <div key={k} className="flex justify-between items-center font-mono text-[11px]">
+                                                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                                                    {icon}
+                                                    <span className="uppercase tracking-wider">{k}</span>
+                                                </div>
+                                                <span className="text-foreground font-bold tabular-nums">{v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <label className="flex items-center gap-3 cursor-pointer group py-1">
+                                    <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
+                                        className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                        <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                    </div>
+                                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
+                                </label>
                             </div>
-                        )}
-                        {/* Salario siempre editable */}
-                        <div>
-                            <label className={labelCls}>
-                                Salario mensual (Bs.)
-                                {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
-                            </label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input type="number" step="0.01" min="0" value={salarioOverride}
-                                    onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
-                                    className={fieldCls + " pl-9 text-right"} />
-                            </div>
-                            {selectedEmp?.moneda === "USD" && (
-                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Pre-cargado desde USD (convertido con tasa BCV)</p>
+
+                            {selectedCedula && (
+                                <div className="pt-2">
+                                    <label className={labelCls}>Salario mensual (Bs.)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                        <input type="number" step="0.01" min="0" value={salarioOverride}
+                                            onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
+                                </div>
+                            )}
+                            {!selectedEmp && selectedCedula && (
+                                <div>
+                                    <label className={labelCls}>Fecha de ingreso</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <input type="date" value={manualIngreso}
+                                            onChange={e => setManualIngreso(e.target.value)} className={fieldCls + " pl-9"} />
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        {!selectedEmp && (
+
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <SectionHeader label="Tasa BCV" />
+                                <button 
+                                    onClick={fetchBcvRate}
+                                    disabled={bcvLoading}
+                                    className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
+                                >
+                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={exchangeRate}
+                                    onChange={e => setExchangeRate(e.target.value)} 
+                                    className={fieldCls + " pl-9 text-right"} 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-5 py-5 space-y-4">
+                            <SectionHeader label="Configuración Temporal" />
                             <div>
-                                <label className={labelCls}>Fecha de ingreso</label>
-                                <input type="date" value={manualIngreso}
-                                    onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
+                                <label className={labelCls}>Fecha de corte</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                    <input type="date" value={fechaCorte}
+                                        onChange={e => setFechaCorte(e.target.value)} className={fieldCls + " pl-9"} />
+                                </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* ── Tasa BCV ────────────────────────────────────────── */}
-                    <div className="px-5 py-4">
-                        <SectionHeader label="Tasa BCV (auto)" />
-                        {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                                <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                                    <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                </svg>
-                                <span className="font-mono text-[11px]">Consultando BCV…</span>
-                            </div>
-                        ) : bcvError ? (
-                            <div className="space-y-2">
-                                <p className="font-mono text-[12px] text-red-500">{bcvError}</p>
-                                <input type="number" step="0.01" value={bcvRate || ""}
-                                    onChange={e => setBcvRate(parseFloat(e.target.value) || 0)}
-                                    placeholder="Ingresar tasa manualmente"
-                                    className={fieldCls + " text-right"} />
-                            </div>
-                        ) : (
-                            <div className="flex items-baseline gap-2">
-                                <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[12px] text-[var(--text-tertiary)]">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[11px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* ── Parámetros ──────────────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-3">
-                        <SectionHeader label="Parámetros" />
-                        <div>
-                            <label className={labelCls}>Fecha de corte</label>
-                            <input type="date" value={fechaCorte}
-                                onChange={e => setFechaCorte(e.target.value)} className={fieldCls} />
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Fecha de egreso o consulta</p>
-                        </div>
-                        <div>
-                            <label className={labelCls}>Días de utilidades</label>
-                            <input type="number" min="15" max="120" step="1"
-                                value={diasUtilidades}
-                                onChange={e => setDiasUtilidades(e.target.value)}
-                                className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 174)</p>
-                        </div>
-                        <div>
-                            <label className={labelCls}>Días bono vacacional</label>
-                            <input type="number" min="15" max="90" step="1"
-                                value={diasBono}
-                                onChange={e => setDiasBono(e.target.value)}
-                                className={fieldCls + " text-right"} />
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Para calcular alícuota (mín. 15 · Art. 192)</p>
-                        </div>
-                    </div>
-
-                    {/* ── Anticipo e Intereses ─────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-3">
-                        <SectionHeader label="Ajustes" />
-                        <div>
-                            <label className={labelCls}>Tasa de intereses (%)</label>
-                            <div className="relative">
-                                <input type="number" step="0.01" min="0" max="100"
-                                    value={tasaIntereses}
-                                    onChange={e => setTasaIntereses(e.target.value)}
-                                    className={fieldCls + " pr-9 text-right"} />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
-                            </div>
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Art. 143 LOTTT — sobre saldo × meses / 12</p>
-                        </div>
-                        <div>
-                            <label className={labelCls}>Porcentaje de anticipo (%)</label>
-                            <div className="relative">
-                                <input type="number" step="1" min="0" max="75"
-                                    value={porcentajeAnticipo}
-                                    onChange={e => setPorcentajeAnticipo(e.target.value)}
-                                    className={fieldCls + " pr-9 text-right"} />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">%</span>
-                            </div>
-                            <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Art. 144 LOTTT — máximo 75% del saldo</p>
-                        </div>
-                        {calc && (
-                            <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-2">
+                            <div className="grid grid-cols-2 gap-3 pt-1">
                                 <div>
-                                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Intereses calculados</p>
-                                    <p className="font-mono text-[13px] font-black tabular-nums text-emerald-600">{fmt(calc.interesesAcumulados)}</p>
+                                    <label className={labelCls}>Días Util.</label>
+                                    <div className="relative">
+                                        <ClipboardCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" min="15" max="120" step="1"
+                                            value={diasUtilidades}
+                                            onChange={e => setDiasUtilidades(e.target.value)}
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
                                 </div>
                                 <div>
-                                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-0.5">Anticipo ({porcentajeAnticipo}% saldo)</p>
-                                    <p className="font-mono text-[13px] font-black tabular-nums text-amber-500">{fmt(calc.anticipoPrestaciones)}</p>
+                                    <label className={labelCls}>Bono Vac.</label>
+                                    <div className="relative">
+                                        <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" min="15" max="90" step="1"
+                                            value={diasBono}
+                                            onChange={e => setDiasBono(e.target.value)}
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-5 py-5 space-y-4 bg-surface-2/[0.03]">
+                            <SectionHeader label="Ajustes de Ley" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={labelCls}>Tasa Int.</label>
+                                    <div className="relative">
+                                        <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" step="0.01" min="0" max="100"
+                                            value={tasaIntereses}
+                                            onChange={e => setTasaIntereses(e.target.value)}
+                                            className={fieldCls + " pl-8 text-right"} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Anticipo</label>
+                                    <div className="relative">
+                                        <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
+                                        <input type="number" step="1" min="0" max="75"
+                                            value={porcentajeAnticipo}
+                                            onChange={e => setPorcentajeAnticipo(e.target.value)}
+                                            className={fieldCls + " pl-8 text-right"} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="px-5 py-4 space-y-0.5">
+                            <SectionHeader label="Cálculo — Art. 142 LOTTT" />
+                            {calc ? (<>
+                                <CalcRow label="Salario mensual"  value={fmt(calc.salarioVES)} dim />
+                                <CalcRow label="Salario diario"   formula="salario ÷ 30"
+                                    value={`${fmtN(calc.salarioDiario)} Bs./día`} dim />
+                                <SectionHeader label="Salario integral" color="green" />
+                                <CalcRow label="Sal. integral / día"
+                                    value={`${fmtN(calc.salarioIntegralDiario)} Bs./día`} accent="green" />
+                                <Hr />
+                                <SectionHeader label="Montos Acumulados" />
+                                <CalcRow label="Saldo prestaciones"
+                                    value={fmt(calc.saldoAcumulado)} dim />
+                                <CalcRow label="Garantía Art. 142.c"
+                                    value={fmt(calc.garantia)} dim />
+                                <Hr />
+                                <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] space-y-2 relative overflow-hidden ring-1 ring-emerald-500/10">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-700/70">Saldo a favor</span>
+                                    </div>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="font-mono text-[24px] font-black tabular-nums text-emerald-600 truncate">{fmt(calc.saldoFavor)}</span>
+                                    </div>
+                                </div>
+                            </>) : (
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] pt-2">
+                                    {salarioVES <= 0 ? "Ingresa el salario." : "Selecciona un empleado."}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Totals + export */}
+                    <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
+                        {results.length > 0 && (
+                            <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
+                                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
+                                    <span className="text-[var(--text-tertiary)]">Empleados</span>
+                                    <span className="text-foreground font-bold">{results.length}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
+                                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral. (Neto)</span>
+                                    <span className="font-mono text-[15px] font-black tabular-nums text-emerald-500">{fmt(totalGral)}</span>
                                 </div>
                             </div>
                         )}
+                        
+                        <BaseButton.Root
+                            variant="primary"
+                            className="w-full"
+                            onClick={() => {}}
+                            disabled={results.length === 0}
+                            leftIcon={<Download size={14} />}
+                        >
+                            Exportar Lote
+                        </BaseButton.Root>
                     </div>
+                </aside>
 
-                    {/* ── Cálculo ─────────────────────────────────────────── */}
-                    <div className="px-5 py-4 space-y-0.5">
-                        <SectionHeader label="Cálculo — Art. 142 LOTTT" />
-                        {calc ? (<>
-                            <CalcRow label="Salario mensual"  value={fmt(calc.salarioVES)} dim />
-                            <CalcRow label="Salario diario"   formula="salario ÷ 30"
-                                value={`${fmtN(calc.salarioDiario)} Bs./día`} dim />
-                            <Hr />
-                            <SectionHeader label="Salario integral" color="green" />
-                            <CalcRow label="Alíc. utilidades"
-                                formula={`sal.diario × ${diasUtilidades}d / 360`}
-                                value={`${fmtN(calc.alicuotaUtil)} Bs./día`} dim />
-                            <CalcRow label="Alíc. bono vac."
-                                formula={`sal.diario × ${diasBono}d / 360`}
-                                value={`${fmtN(calc.alicuotaBono)} Bs./día`} dim />
-                            <CalcRow label="Sal. integral / día"
-                                value={`${fmtN(calc.salarioIntegralDiario)} Bs./día`} accent="green" />
-                            <Hr />
-                            <SectionHeader label="Días acumulados" />
-                            <CalcRow label="Trimestrales"
-                                formula={`5d/mes × ${calc.mesesCompletos} meses`}
-                                value={`${calc.diasTrimestrales} días`} dim />
-                            <CalcRow label="Adicionales"
-                                formula="2d × año desde año 2 (acumulativo)"
-                                value={`${calc.diasAdicionales} días`} dim />
-                            <CalcRow label="Total días"
-                                value={`${calc.diasTotales} días`} accent="green" />
-                            <Hr />
-                            <SectionHeader label="Montos" />
-                            <CalcRow label="Saldo acumulado"
-                                formula={`${calc.diasTotales}d × ${fmtN(calc.salarioIntegralDiario)} Bs./día`}
-                                value={fmt(calc.saldoAcumulado)} dim />
-                            <CalcRow label="Garantía Art. 142.c"
-                                formula={`30d × ${calc.anios} años × ${fmtN(calc.salarioIntegralDiario)} Bs./día`}
-                                value={fmt(calc.garantia)} dim />
-                            <Hr />
-                            <CalcRow label={calc.aplicaGarantia ? "Garantía (mayor)" : "Saldo (mayor)"}
-                                value={fmt(calc.montoFinal)} accent="green" />
-                            {(calc.interesesAcumulados > 0 || calc.anticipoPrestaciones > 0) && (<>
-                                <Hr />
-                                <SectionHeader label="Pago inmediato" color="amber" />
-                                {calc.anticipoPrestaciones > 0 && (
-                                    <CalcRow label={`Anticipo (${porcentajeAnticipo}%)`} formula="Art. 144 LOTTT"
-                                        value={fmt(calc.anticipoPrestaciones)} accent="amber" />
-                                )}
-                                {calc.interesesAcumulados > 0 && (
-                                    <CalcRow label="Intereses acumulados" formula="Art. 143 LOTTT"
-                                        value={fmt(calc.interesesAcumulados)} accent="green" />
-                                )}
-                                <CalcRow label="Total pago inmediato"
-                                    value={fmt(calc.pagoInmediato)} accent="amber" />
-                                <Hr />
-                                <SectionHeader label="Saldo a favor" color="green" />
-                                <CalcRow label="Monto prestaciones" formula={calc.aplicaGarantia ? "Garantía 142.c" : "Saldo acumulado"}
-                                    value={fmt(calc.montoFinal)} dim />
-                                <CalcRow label="− Anticipo + Intereses"
-                                    value={`− ${fmt(calc.pagoInmediato)}`} dim />
-                                <Hr />
-                                <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Saldo a favor</span>
-                                    <span className="font-mono text-[20px] font-black tabular-nums text-emerald-600">{fmt(calc.saldoFavor)}</span>
-                                </div>
-                            </>)}
-                        </>) : (
-                            <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
-                                {salarioVES <= 0
-                                    ? "Ingresa el salario del empleado."
-                                    : !fechaIngreso
-                                    ? "Ingresa la fecha de ingreso."
-                                    : "Verifica los datos ingresados."}
-                            </p>
-                        )}
-                    </div>
-                </div>
-            </aside>
+                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
+                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
+                        </div>
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)] opacity-40">
+                             <Info size={48} strokeWidth={1} />
+                             <p className="font-mono text-[12px] uppercase tracking-widest">Selecciona empleados para calcular</p>
+                        </div>
+                    ) : (
+                        <div className="max-w-xl mx-auto space-y-8">
+                            {results.map(r => {
+                                if (r.msg || !r.calc) return (
+                                    <div key={r.emp.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
+                                        <div>
+                                            <p className="font-mono text-[13px] font-bold uppercase text-foreground">{r.emp.nombre}</p>
+                                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{r.emp.cargo}</p>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-amber-500 uppercase border border-amber-500/20 px-2 py-0.5 rounded">{r.msg ?? "Error"}</span>
+                                    </div>
+                                );
 
-            {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-            <main className="flex-1 overflow-y-auto p-6">
-                {calc ? (
-                    <ConstanciaArt142
-                        calc={calc}
-                        fechaIngreso={fechaIngreso}
-                        fechaCorte={fechaCorte}
-                        employeeName={selectedEmp?.nombre  ?? "Empleado"}
-                        employeeCedula={selectedEmp?.cedula ?? "—"}
-                        employeeCargo={selectedEmp?.cargo}
-                        companyName={company?.name ?? "La Empresa"}
-                        porcentajeAnticipo={porcentajeAnticipo}
-                        tasaIntereses={tasaIntereses}
-                    />
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/>
-                            <path d="M8 21h8M12 17v4"/>
-                        </svg>
-                        <p className="font-mono text-[12px] uppercase tracking-widest">Ingresa los datos del empleado</p>
-                    </div>
-                )}
-            </main>
+                                return (
+                                    <ConstanciaArt142
+                                        key={r.emp.cedula}
+                                        calc={r.calc}
+                                        fechaIngreso={r.emp.fechaIngreso ?? ""}
+                                        fechaCorte={fechaCorte}
+                                        employeeName={r.emp.nombre}
+                                        employeeCedula={r.emp.cedula}
+                                        employeeCargo={r.emp.cargo}
+                                        companyName={company?.name ?? "La Empresa"}
+                                        porcentajeAnticipo={porcentajeAnticipo}
+                                        tasaIntereses={tasaIntereses}
+                                    />
+                                );
+                            })}
+                        </div>
+                    )}
+                </main>
+            </div>
         </div>
     );
 }

@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { Receipt } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -1058,25 +1061,21 @@ export default function PayrollCalculator() {
             {/* ══ RIGHT PANEL — results ════════════════════════════════════ */}
             <main className="flex-1 flex flex-col overflow-hidden">
 
-                {/* Header bar */}
-                <div className="flex items-center justify-between px-6 py-3.5 border-b border-border-light bg-surface-1 flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col gap-0.5">
-                            <p className="font-mono text-[11px] font-semibold text-foreground uppercase tracking-tight">
-                                {quincenaInfo.label}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <span className="font-mono text-[12px] uppercase tracking-widest text-[var(--text-tertiary)]">
-                                    {employees.filter(e => e.estado === "activo").length} activos · {employees.length} total
-                                </span>
-                            </div>
+                <PageHeader
+                    title="Nómina"
+                    subtitle={
+                        <div className="flex items-center gap-2">
+                            <span>{quincenaInfo.label}</span>
+                            <span className="text-border-light/40">•</span>
+                            <span>{employees.filter(e => e.estado === "activo").length} activos</span>
                         </div>
-                    </div>
-
+                    }
+                >
                     <div className="flex items-center gap-3">
-                        {/* Cesta ticket button — only 2ª quincena */}
                         {selQuincena === 2 && (
-                            <button
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => {
                                     const active = employees.filter((e) => e.estado === "activo");
                                     if (!active.length) return;
@@ -1092,31 +1091,26 @@ export default function PayrollCalculator() {
                                         }
                                     );
                                 }}
-                                className={[
-                                    "h-8 px-3 rounded-lg border flex items-center gap-1.5",
-                                    "font-mono text-[12px] uppercase tracking-[0.16em] transition-colors duration-150",
-                                    "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.16]",
-                                ].join(" ")}
+                                leftIcon={<Receipt size={14} />}
                             >
                                 Cesta Ticket
-                            </button>
+                            </BaseButton.Root>
                         )}
 
-                        {/* BCV badge */}
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2">
-                            <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
-                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2 h-8">
+                            <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                            <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
                                 {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                             </span>
                         </div>
 
                         {company && (
-                            <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
                                 {company.name}
                             </span>
                         )}
                     </div>
-                </div>
+                </PageHeader>
 
                 {/* Table area */}
                 <div className="flex-1 overflow-y-auto p-6">

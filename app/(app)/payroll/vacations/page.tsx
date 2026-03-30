@@ -1,7 +1,19 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { 
+    FileText, 
+    Download, 
+    Users, 
+    Calendar, 
+    ClipboardCheck, 
+    RefreshCw, 
+    TrendingUp, 
+    Info 
+} from "lucide-react";
+import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -43,7 +55,7 @@ function nextWorkingDay(iso: string): string {
 function calcAniosAt(fechaIngreso: string, refDate: string): number {
     if (!fechaIngreso || !refDate) return 0;
     const a = new Date(fechaIngreso + "T00:00:00");
-    const b = new Date(refDate     + "T00:00:00");
+    const b = new Date(refDate + "T00:00:00");
     if (b <= a) return 0;
     return Math.floor((b.getTime() - a.getTime()) / (365.25 * 86400000));
 }
@@ -75,7 +87,7 @@ function calculateCulminacion(fechaInicio: string, diasHabilesNeeded: number): s
     const cur = new Date(fechaInicio + "T00:00:00");
     let counted = 0;
     while (counted < diasHabilesNeeded) {
-        const wd  = cur.getDay();
+        const wd = cur.getDay();
         const iso = cur.toISOString().split("T")[0];
         if (wd !== 0 && wd !== 6 && !holidays.has(iso)) counted++;
         if (counted < diasHabilesNeeded) cur.setDate(cur.getDate() + 1);
@@ -86,17 +98,17 @@ function calculateCulminacion(fechaInicio: string, diasHabilesNeeded: number): s
 function getDiasCalendario(inicio: string, fin: string): number {
     if (!inicio || !fin || inicio > fin) return 0;
     const a = new Date(inicio + "T00:00:00");
-    const b = new Date(fin    + "T00:00:00");
+    const b = new Date(fin + "T00:00:00");
     return Math.round((b.getTime() - a.getTime()) / 86400000) + 1;
 }
 
 interface PeriodStats { habiles: number; descanso: number; feriadoList: string[]; }
 function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
     if (!inicio || !culminacion || inicio > culminacion) return { habiles: 0, descanso: 0, feriadoList: [] };
-    const holidays   = getHolidaysInRange(inicio, culminacion);
-    const holSet     = new Set(holidays.map(h => h.date));
+    const holidays = getHolidaysInRange(inicio, culminacion);
+    const holSet = new Set(holidays.map(h => h.date));
     let habiles = 0, descanso = 0;
-    const cur = new Date(inicio     + "T00:00:00");
+    const cur = new Date(inicio + "T00:00:00");
     const end = new Date(culminacion + "T00:00:00");
     while (cur <= end) {
         const wd = cur.getDay();
@@ -110,8 +122,8 @@ function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
 function formatDateES(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
-                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
 }
 
@@ -125,7 +137,7 @@ interface VacCalc {
     diasCalendario: number; diasHabiles: number; diasDescanso: number; feriadoList: string[];
     salarioVES: number; salarioDia: number; anios: number;
     diasLegalDisfrute: number; diasDisfrute: number; diasAdicDisfrute: number; montoDisfrute: number;
-    diasLegalBono: number;     diasBono: number;     diasAdicBono: number;     montoBono: number;
+    diasLegalBono: number; diasBono: number; diasAdicBono: number; montoBono: number;
     total: number;
 }
 
@@ -133,19 +145,19 @@ function computeVac(salarioVES: number, fechaIngreso: string, fechaInicio: strin
     if (!fechaInicio || !fechaCulminacion || fechaInicio > fechaCulminacion || salarioVES <= 0) return null;
     const { habiles, descanso, feriadoList } = getPeriodStats(fechaInicio, fechaCulminacion);
     const diasCalendario = getDiasCalendario(fechaInicio, fechaCulminacion);
-    const anios          = calcAniosAt(fechaIngreso, fechaInicio);
-    const diasAdicDisfrute  = anios >= 2 ? Math.min(anios - 1, 15) : 0;
+    const anios = calcAniosAt(fechaIngreso, fechaInicio);
+    const diasAdicDisfrute = anios >= 2 ? Math.min(anios - 1, 15) : 0;
     const diasLegalDisfrute = 15 + diasAdicDisfrute;
-    const diasDisfrute      = Math.max(diasLegalDisfrute, habiles);
-    const diasAdicBono      = anios >= 2 ? Math.min(anios - 1, 15) : 0;
-    const diasLegalBono     = 15 + diasAdicBono;
-    const diasBono          = diasLegalBono;
-    const salarioDia        = salarioVES / 30;
+    const diasDisfrute = Math.max(diasLegalDisfrute, habiles);
+    const diasAdicBono = anios >= 2 ? Math.min(anios - 1, 15) : 0;
+    const diasLegalBono = 15 + diasAdicBono;
+    const diasBono = diasLegalBono;
+    const salarioDia = salarioVES / 30;
     return {
         diasCalendario, diasHabiles: habiles, diasDescanso: descanso, feriadoList,
         salarioVES, salarioDia, anios,
         diasLegalDisfrute, diasDisfrute, diasAdicDisfrute, montoDisfrute: diasDisfrute * salarioDia,
-        diasLegalBono,     diasBono,     diasAdicBono,     montoBono:     diasBono     * salarioDia,
+        diasLegalBono, diasBono, diasAdicBono, montoBono: diasBono * salarioDia,
         total: (diasDisfrute + diasBono) * salarioDia,
     };
 }
@@ -153,20 +165,20 @@ function computeVac(salarioVES: number, fechaIngreso: string, fechaInicio: strin
 // ── Vacaciones fraccionadas (Art. 196 LOTTT) ─────────────────────────────────
 
 interface VacFracCalc {
-    salarioVES:        number;
-    salarioDia:        number;
-    aniosCompletos:    number;
+    salarioVES: number;
+    salarioDia: number;
+    aniosCompletos: number;
     ultimoAniversario: string;
-    mesesFraccion:     number;
+    mesesFraccion: number;
     // Entitlement for the current partial year
-    diasAdicAnuales:   number;   // adicionales: min(aniosCompletos, 15)
-    diasAnuales:       number;   // 15 + diasAdicAnuales
+    diasAdicAnuales: number;   // adicionales: min(aniosCompletos, 15)
+    diasAnuales: number;   // 15 + diasAdicAnuales
     // Fractional result
-    fraccionDisfrute:  number;   // ceil(diasAnuales / 12 × meses)
-    fraccionBono:      number;   // mismo
-    montoDisfrute:     number;
-    montoBono:         number;
-    total:             number;
+    fraccionDisfrute: number;   // ceil(diasAnuales / 12 × meses)
+    fraccionBono: number;   // mismo
+    montoDisfrute: number;
+    montoBono: number;
+    total: number;
 }
 
 function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: string): VacFracCalc | null {
@@ -174,8 +186,8 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
     if (fechaEgreso <= fechaIngreso) return null;
 
     // Complete years at egreso
-    const aniosCompletos     = calcAniosAt(fechaIngreso, fechaEgreso);
-    const ultimoAniversario  = aniosCompletos > 0
+    const aniosCompletos = calcAniosAt(fechaIngreso, fechaEgreso);
+    const ultimoAniversario = aniosCompletos > 0
         ? getAniversario(fechaIngreso, aniosCompletos)
         : fechaIngreso;
 
@@ -186,15 +198,15 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
     // Art. 196: proportional to what they'd earn at end of current year
     // Art. 190: year N+1 gives 15 + N adicionales (where N = aniosCompletos)
     const diasAdicAnuales = Math.min(aniosCompletos, 15);
-    const diasAnuales     = 15 + diasAdicAnuales;
+    const diasAnuales = 15 + diasAdicAnuales;
 
     // Fracción (Art. 196): ceil(diasAnuales / 12 × mesesCompletos)
     const fraccionDisfrute = Math.ceil((diasAnuales / 12) * mesesFraccion);
-    const fraccionBono     = Math.ceil((diasAnuales / 12) * mesesFraccion);
+    const fraccionBono = Math.ceil((diasAnuales / 12) * mesesFraccion);
 
-    const salarioDia    = salarioVES / 30;
+    const salarioDia = salarioVES / 30;
     const montoDisfrute = fraccionDisfrute * salarioDia;
-    const montoBono     = fraccionBono     * salarioDia;
+    const montoBono = fraccionBono * salarioDia;
 
     return {
         salarioVES, salarioDia, aniosCompletos, ultimoAniversario,
@@ -209,20 +221,20 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
 // SHARED UI ATOMS
 // ============================================================================
 
-function SectionHeader({ label, color }: { label: string; color?: "primary" | "amber" }) {
-    const cls = color === "amber"   ? "text-amber-500/70"
-              : color === "primary" ? "text-[var(--text-link)]"
+function SectionHeader({ label, color }: { label: string; color?: "green" | "amber" }) {
+    const cls = color === "amber" ? "text-amber-500/70"
+              : color === "green" ? "text-emerald-500/70"
               : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
 function CalcRow({ label, formula, value, accent, dim }: {
     label: string; formula?: string; value: string;
-    accent?: "primary" | "amber"; dim?: boolean;
+    accent?: "green" | "amber"; dim?: boolean;
 }) {
     const valCls = dim ? "text-[var(--text-tertiary)]"
-        : accent === "primary" ? "text-primary-500"
-        : accent === "amber"   ? "text-amber-500"
+        : accent === "green"  ? "text-emerald-500"
+        : accent === "amber"  ? "text-amber-500"
         : "text-foreground";
     return (
         <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
@@ -243,10 +255,10 @@ function Hr() { return <div className="border-t border-border-light my-2" />; }
 
 function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
     companyName, companyLogoUrl, showLogoInPdf, fechaInicio, fechaCulminacion, fechaReintegro }: {
-    calc: VacCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
-    fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
-}) {
+        calc: VacCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
+        companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+        fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
+    }) {
     const handlePdf = () => generateVacComplletasPdf({
         companyName, employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo, anios: calc.anios },
         fechaInicio, fechaCulminacion, fechaReintegro,
@@ -262,13 +274,14 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
     return (
         <div className="max-w-2xl mx-auto space-y-3">
             <div className="flex justify-end">
-                <button onClick={handlePdf}
-                    className="flex items-center gap-2 h-8 px-4 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
-                    </svg>
+                <BaseButton.Root
+                    variant="primary"
+                    size="sm"
+                    onClick={handlePdf}
+                    leftIcon={<FileText size={14} />}
+                >
                     Descargar PDF
-                </button>
+                </BaseButton.Root>
             </div>
 
             {/* Document shell — same bg as PDF page */}
@@ -311,9 +324,9 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
                 {/* ── PARAMS STRIP ── */}
                 <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
                     {[
-                        { lbl: "Salario Mensual",  val: `Bs. ${fmtN(calc.salarioVES)}`,                                      cls: "text-white" },
-                        { lbl: "Salario Diario",   val: `Bs. ${fmtN(calc.salarioDia)}`,                                      cls: "text-white" },
-                        { lbl: "Reintegro",        val: formatDateES(fechaReintegro).toUpperCase(),                           cls: "text-[#96c8dc]" },
+                        { lbl: "Salario Mensual", val: `Bs. ${fmtN(calc.salarioVES)}`, cls: "text-white" },
+                        { lbl: "Salario Diario", val: `Bs. ${fmtN(calc.salarioDia)}`, cls: "text-white" },
+                        { lbl: "Reintegro", val: formatDateES(fechaReintegro).toUpperCase(), cls: "text-[#96c8dc]" },
                         { lbl: "Cal · Háb · Desc", val: `${calc.diasCalendario} · ${calc.diasHabiles} · ${calc.diasDescanso}`, cls: "text-white" },
                     ].map(({ lbl, val, cls }) => (
                         <div key={lbl}>
@@ -413,10 +426,10 @@ function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
 
 function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCargo,
     companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaEgreso }: {
-    calc: VacFracCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
-    companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
-    fechaIngreso: string; fechaEgreso: string;
-}) {
+        calc: VacFracCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
+        companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
+        fechaIngreso: string; fechaEgreso: string;
+    }) {
     const handlePdf = () => generateVacFraccionadasPdf({
         companyName, employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
         fechaIngreso, fechaEgreso,
@@ -436,7 +449,7 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
                 <button onClick={handlePdf}
                     className="flex items-center gap-2 h-8 px-4 rounded-lg bg-[#b4780a] hover:bg-[#92600a] text-white font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150">
                     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3"/>
+                        <path d="M3 12h10M8 2v8m-3-3 3 3 3-3" />
                     </svg>
                     Descargar PDF
                 </button>
@@ -483,10 +496,10 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
                 {/* ── PARAMS STRIP ── */}
                 <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
                     {[
-                        { lbl: "Fecha de Ingreso",     val: formatDateES(fechaIngreso).toUpperCase(),       cls: "text-white" },
-                        { lbl: "Último Aniversario",   val: formatDateES(calc.ultimoAniversario).toUpperCase(), cls: "text-white" },
-                        { lbl: "Meses Año en Curso",   val: `${calc.mesesFraccion} mes${calc.mesesFraccion !== 1 ? "es" : ""}`, cls: "text-[#96c8dc]" },
-                        { lbl: "Días Anuales Base",    val: `${calc.diasAnuales} días`,                     cls: "text-white" },
+                        { lbl: "Fecha de Ingreso", val: formatDateES(fechaIngreso).toUpperCase(), cls: "text-white" },
+                        { lbl: "Último Aniversario", val: formatDateES(calc.ultimoAniversario).toUpperCase(), cls: "text-white" },
+                        { lbl: "Meses Año en Curso", val: `${calc.mesesFraccion} mes${calc.mesesFraccion !== 1 ? "es" : ""}`, cls: "text-[#96c8dc]" },
+                        { lbl: "Días Anuales Base", val: `${calc.diasAnuales} días`, cls: "text-white" },
                     ].map(({ lbl, val, cls }) => (
                         <div key={lbl}>
                             <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-1">{lbl}</p>
@@ -555,7 +568,7 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
                 <div className="mx-6 mt-3 bg-[#f0f0f5] border border-[#dadae2] px-5 py-2.5 rounded flex gap-8">
                     {[
                         { lbl: "Salario Mensual", val: `Bs. ${fmtN(calc.salarioVES)}` },
-                        { lbl: "Salario Diario",  val: `Bs. ${fmtN(calc.salarioDia)} / día` },
+                        { lbl: "Salario Diario", val: `Bs. ${fmtN(calc.salarioDia)} / día` },
                     ].map(({ lbl, val }) => (
                         <div key={lbl}>
                             <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-0.5">{lbl}</p>
@@ -600,74 +613,6 @@ function ConstanciaFraccionada({ calc, employeeName, employeeCedula, employeeCar
     );
 }
 
-// ============================================================================
-// SHARED LEFT PANEL — Employee + BCV inputs
-// ============================================================================
-
-function EmployeeSection({ employees, loading, selectedCedula, onSelect, selectedEmp,
-    salarioOverride, setSalarioOverride, manualIngreso, setManualIngreso }: {
-    employees: Employee[]; loading: boolean; selectedCedula: string; onSelect: (v: string) => void;
-    selectedEmp?: Employee;
-    salarioOverride: string; setSalarioOverride: (v: string) => void;
-    manualIngreso: string; setManualIngreso: (v: string) => void;
-}) {
-    return (
-        <div className="px-5 py-4 space-y-3 border-b border-border-light">
-            <SectionHeader label="Empleado" />
-            {!loading && employees.length > 0 && (
-                <div>
-                    <label className={labelCls}>Seleccionar</label>
-                    <select value={selectedCedula} onChange={e => onSelect(e.target.value)} className={fieldCls}>
-                        <option value="">— Manual —</option>
-                        {employees.filter(e => e.estado === "activo").map(e => (
-                            <option key={e.cedula} value={e.cedula}>{e.nombre}</option>
-                        ))}
-                    </select>
-                </div>
-            )}
-            {selectedEmp && (
-                <div className="px-3 py-2 rounded-lg border border-border-light bg-surface-2 space-y-1">
-                    {[
-                        { k: "Cédula",        v: selectedEmp.cedula },
-                        { k: "Cargo",         v: selectedEmp.cargo || "—" },
-                        { k: "Fecha ingreso", v: selectedEmp.fechaIngreso ?? "—" },
-                    ].map(({ k, v }) => (
-                        <div key={k} className="flex justify-between font-mono text-[12px]">
-                            <span className="text-[var(--text-tertiary)]">{k}</span>
-                            <span className="text-foreground tabular-nums">{v}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {/* Salario siempre editable */}
-            <div>
-                <label className={labelCls}>
-                    Salario mensual (Bs.)
-                    {selectedEmp && <span className="ml-1 text-[var(--text-link)]">— editable</span>}
-                </label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                    <input type="number" step="0.01" min="0" value={salarioOverride}
-                        onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
-                        className={fieldCls + " pl-9 text-right"} />
-                </div>
-                {selectedEmp?.moneda === "USD" && (
-                    <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
-                        Pre-cargado desde USD (convertido con tasa BCV)
-                    </p>
-                )}
-            </div>
-            {!selectedEmp && (
-                <div>
-                    <label className={labelCls}>Fecha de ingreso</label>
-                    <input type="date" value={manualIngreso}
-                        onChange={e => setManualIngreso(e.target.value)} className={fieldCls} />
-                    <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Para calcular años de servicio y días adicionales</p>
-                </div>
-            )}
-        </div>
-    );
-}
 
 // ============================================================================
 // PAGE
@@ -682,31 +627,50 @@ export default function VacacionesPage() {
     // ── Mode ────────────────────────────────────────────────────────────────
     const [mode, setMode] = useState<Mode>("completas");
 
-    // ── Employee ────────────────────────────────────────────────────────────
+    // ── Employee Selection ──────────────────────────────────────────────────
     const [selectedCedula, setSelectedCedula] = useState<string>("");
-    const selectedEmp = useMemo<Employee | undefined>(
-        () => employees.find(e => e.cedula === selectedCedula),
-        [employees, selectedCedula],
-    );
+    const [soloActivos,    setSoloActivos]    = useState(true);
     const [salarioOverride, setSalarioOverride] = useState("");
-    const [manualIngreso,   setManualIngreso]   = useState("");
+    const [manualIngreso, setManualIngreso] = useState("");
 
     // ── BCV ─────────────────────────────────────────────────────────────────
-    const [bcvRate,    setBcvRate]    = useState(0);
+    const [exchangeRate, setExchangeRate] = useState("79.59");
     const [bcvLoading, setBcvLoading] = useState(true);
-    const [bcvError,   setBcvError]   = useState<string | null>(null);
+    const [bcvError, setBcvError] = useState<string | null>(null);
+    const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
 
-    useEffect(() => {
+    const fetchBcvRate = useCallback(() => {
+        setBcvLoading(true);
         fetch(`/api/bcv/rate?date=${isoToday()}`)
             .then(r => r.json())
-            .then(data => { if (data.rate) { setBcvRate(data.rate); setBcvError(null); } else setBcvError("No disponible"); })
+            .then(d => { 
+                const rate = d.price || d.rate;
+                if (rate) { 
+                    setExchangeRate(rate.toFixed(2)); 
+                    setBcvError(null); 
+                } else setBcvError("No disponible"); 
+            })
             .catch(() => setBcvError("Error al obtener tasa"))
             .finally(() => setBcvLoading(false));
     }, []);
 
-    // Salary field auto-populated from employee data, overridable by user.
-    // Uses render-phase state update (React-approved pattern) to avoid
-    // setState-in-effect cascading renders.
+    useEffect(() => { fetchBcvRate(); }, [fetchBcvRate]);
+
+    // ── Global Params ────────────────────────────────────────────────────────
+    const todayStr = isoToday();
+    const [fechaInicio, setFechaInicio] = useState(todayStr);
+    const [fechaEgreso, setFechaEgreso] = useState(todayStr);
+
+    // Override states for manual date tweaking (optional, but keep for UI compatibility)
+    const [fechaCulminacion, setFechaCulminacion] = useState("");
+    const [fechaReintegro, setFechaReintegro] = useState("");
+    const [userEditedCulm, setUserEditedCulm] = useState(false);
+    const [userEditedReint, setUserEditedReint] = useState(false);
+
+    // ── Shared derived ───────────────────────────────────────────────────────
+    const selectedEmp = useMemo(() => employees.find(e => e.cedula === selectedCedula), [employees, selectedCedula]);
+
+    // Salary field sync
     const [salarioSourceKey, setSalarioSourceKey] = useState("");
     const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
     if (salarioSourceKey !== currentSalarioKey) {
@@ -721,360 +685,361 @@ export default function VacacionesPage() {
         }
     }
 
-    // ── Derived ─────────────────────────────────────────────────────────────
     const salarioVES = parseFloat(salarioOverride) || 0;
-
     const fechaIngreso = selectedEmp?.fechaIngreso ?? manualIngreso;
 
-    // ── COMPLETAS state ──────────────────────────────────────────────────────
-    const todayStr = isoToday();
-    const [fechaInicio,      setFechaInicio]      = useState(todayStr);
-    const [fechaCulminacion, setFechaCulminacion] = useState("");
-    const [fechaReintegro,   setFechaReintegro]   = useState("");
-    const [userEditedCulm,   setUserEditedCulm]   = useState(false);
-    const [userEditedReint,  setUserEditedReint]  = useState(false);
+    // ── BATCH PROCESSING ─────────────────────────────────────────────────────
+    const filtered = useMemo(() => {
+        const pool = soloActivos ? employees.filter(e => e.estado === "activo") : employees;
+        if (!selectedCedula) return pool;
+        return pool.filter(e => e.cedula === selectedCedula);
+    }, [employees, soloActivos, selectedCedula]);
 
-    const diasLegal = useMemo(() => {
-        const anios = calcAniosAt(fechaIngreso, fechaInicio);
-        return 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
-    }, [fechaIngreso, fechaInicio]);
-
-    // Derive fechaCulminacion and fechaReintegro from fechaInicio + diasLegal
-    // unless the user has manually edited them. Render-phase state update
-    // avoids setState-in-effect cascading renders.
-    const [culmSourceKey, setCulmSourceKey] = useState("");
-    const currentCulmKey = `${fechaInicio}|${diasLegal}`;
-    if (!userEditedCulm && culmSourceKey !== currentCulmKey) {
-        setCulmSourceKey(currentCulmKey);
-        const culm = calculateCulminacion(fechaInicio, diasLegal);
-        setFechaCulminacion(culm);
-        if (!userEditedReint) setFechaReintegro(nextWorkingDay(culm));
+    interface VacResult {
+        emp:  Employee;
+        calc: VacCalc | VacFracCalc | null;
+        dates?: { start: string; end: string; rest: string; };
+        msg?: string;
     }
 
+    const results = useMemo<VacResult[]>(() => {
+        return filtered.map(emp => {
+            const ves = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            const ing = emp.fechaIngreso ?? "";
+
+            if (mode === "completas") {
+                const anios = calcAniosAt(ing, fechaInicio);
+                const dL = 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
+                const culm = calculateCulminacion(fechaInicio, dL);
+                const reint = nextWorkingDay(culm);
+                const c = computeVac(ves, ing, fechaInicio, culm);
+                return { emp, calc: c, dates: { start: fechaInicio, end: culm, rest: reint } };
+            } else {
+                const c = computeVacFrac(ves, ing, fechaEgreso);
+                return { emp, calc: c };
+            }
+        });
+    }, [filtered, mode, bcvRate, fechaInicio, fechaEgreso]);
+
+    const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.total ?? 0), 0), [results]);
+
+    // Handlers for UI inputs
     const handleInicioChange = (val: string) => {
         setFechaInicio(val);
         setUserEditedCulm(false);
         setUserEditedReint(false);
     };
-
     const handleCulminacionChange = (val: string) => {
         setFechaCulminacion(val);
         setUserEditedCulm(true);
         if (!userEditedReint) setFechaReintegro(nextWorkingDay(val));
     };
 
-    const periodStats = useMemo(() => getPeriodStats(fechaInicio, fechaCulminacion), [fechaInicio, fechaCulminacion]);
-    const diasCal     = getDiasCalendario(fechaInicio, fechaCulminacion);
-
-    const calcCompletas = useMemo(
-        () => computeVac(salarioVES, fechaIngreso, fechaInicio, fechaCulminacion),
-        [salarioVES, fechaIngreso, fechaInicio, fechaCulminacion],
-    );
-
-    // ── FRACCIONADAS state ───────────────────────────────────────────────────
-    const [fechaEgreso, setFechaEgreso] = useState(todayStr);
-
-    const calcFrac = useMemo(
-        () => computeVacFrac(salarioVES, fechaIngreso, fechaEgreso),
-        [salarioVES, fechaIngreso, fechaEgreso],
-    );
-
-    // ── Mode toggle button classes ───────────────────────────────────────────
-    const modeBtnCls = (m: Mode) => [
-        "flex-1 h-8 rounded-lg font-mono text-[12px] uppercase tracking-[0.14em] border transition-colors duration-150",
-        mode === m
-            ? "bg-primary-500 border-primary-600 text-white"
-            : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
-    ].join(" ");
+    const calcDisplay = results.length === 1 ? results[0].calc : null;
+    const datesDisplay = results.length === 1 ? results[0].dates : null;
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col lg:flex-row overflow-hidden">
-
-            {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
-            <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
-
-                {/* Header + mode toggle */}
-                <div className="px-5 py-4 border-b border-border-light space-y-3">
-                    <div>
-                        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Vacaciones</p>
-                        <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Calculadora</p>
-                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Arts. 190 · 192 · 196 LOTTT</p>
-                    </div>
-                    <div className="flex gap-1.5">
-                        <button onClick={() => setMode("completas")}    className={modeBtnCls("completas")}>Completas</button>
-                        <button onClick={() => setMode("fraccionadas")} className={modeBtnCls("fraccionadas")}>Fraccionadas</button>
-                    </div>
+        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+            <PageHeader
+                title="Vacaciones"
+                subtitle="Cálculo de disfrute y bono vacacional (Art. 190 LOTTT)"
+            >
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                    </span>
+                    {bcvError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvError} />}
                 </div>
+            </PageHeader>
 
-                <div className="flex-1 divide-y divide-border-light">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
+                <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
 
-                    {/* ── Empleado (shared) ──────────────────────────────── */}
-                    <EmployeeSection
-                        employees={employees} loading={loading}
-                        selectedCedula={selectedCedula} onSelect={setSelectedCedula}
-                        selectedEmp={selectedEmp}
-                        salarioOverride={salarioOverride} setSalarioOverride={setSalarioOverride}
-                        manualIngreso={manualIngreso} setManualIngreso={setManualIngreso}
-                    />
+                    <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
+                        <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
+                            <TrendingUp size={14} className="text-primary-500" />
+                            Calculadora
+                        </p>
+                    </div>
 
-                    {/* ── Tasa BCV (shared) ──────────────────────────────── */}
-                    <div className="px-5 py-4">
-                        <SectionHeader label="Tasa BCV (auto)" />
-                        {bcvLoading ? (
-                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                                <svg className="animate-spin" width="11" height="11" viewBox="0 0 12 12" fill="none">
-                                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                                    <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                                </svg>
-                                <span className="font-mono text-[11px]">Consultando BCV…</span>
+                    {/* Mode toggle */}
+                    <div className="px-5 py-5 border-b border-border-light">
+                        <label className={labelCls}>Tipo de Vacaciones</label>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button 
+                                onClick={() => setMode("completas")} 
+                                className={`flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all ${mode === "completas" ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-700" : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium"}`}
+                            >
+                                <ClipboardCheck size={14} /> Completas
+                            </button>
+                            <button 
+                                onClick={() => setMode("fraccionadas")} 
+                                className={`flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all ${mode === "fraccionadas" ? "bg-amber-500/10 border-amber-500/50 text-amber-700" : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium"}`}
+                            >
+                                <TrendingUp size={14} /> Fracc.
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 divide-y divide-border-light">
+                        {/* ── Alcance ───────────────────────────────────────── */}
+                         <div className="px-5 py-4 space-y-4">
+                            <SectionHeader label="Alcance" />
+                            <div className="space-y-4">
+                                {!loading && employees.length > 0 && (
+                                    <div className="relative">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
+                                            <option value="">Lote por defecto (Todos)</option>
+                                            <optgroup label="Empleados">
+                                                {employees
+                                                    .filter(e => !soloActivos || e.estado === "activo")
+                                                    .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                                                    .map(e => (
+                                                        <option key={e.cedula} value={e.cedula}>{e.nombre} ({e.cedula})</option>
+                                                    ))
+                                                }
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                )}
+                                {selectedEmp && (
+                                    <div className="p-3.5 rounded-xl border border-border-light bg-surface-2/[0.03] space-y-2.5 relative overflow-hidden">
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500/40" />
+                                        {[
+                                            { k: "Cédula", v: selectedEmp.cedula, icon: <Info size={12} /> },
+                                            { k: "Cargo", v: selectedEmp.cargo || "—", icon: <ClipboardCheck size={12} /> },
+                                            { k: "Ingreso", v: selectedEmp.fechaIngreso ?? "—", icon: <Calendar size={12} /> },
+                                        ].map(({ k, v, icon }) => (
+                                            <div key={k} className="flex justify-between items-center font-mono text-[11px]">
+                                                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                                                    {icon}
+                                                    <span className="uppercase tracking-wider">{k}</span>
+                                                </div>
+                                                <span className="text-foreground font-bold tabular-nums">{v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <label className="flex items-center gap-3 cursor-pointer group py-1">
+                                    <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
+                                        className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                        <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                    </div>
+                                    <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
+                                </label>
                             </div>
-                        ) : bcvError ? (
-                            <div className="space-y-2">
-                                <p className="font-mono text-[12px] text-red-500">{bcvError}</p>
-                                <input type="number" step="0.01" value={bcvRate || ""}
-                                    onChange={e => setBcvRate(parseFloat(e.target.value) || 0)}
-                                    placeholder="Ingresar tasa manualmente"
-                                    className={fieldCls + " text-right"} />
+
+                            {selectedCedula && (
+                                <div className="pt-2">
+                                    <label className={labelCls}>Salario mensual (Bs.)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                        <input type="number" step="0.01" min="0" value={salarioOverride}
+                                            onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
+                                            className={fieldCls + " pl-9 text-right"} />
+                                    </div>
+                                </div>
+                            )}
+                            {!selectedEmp && selectedCedula && (
+                                <div>
+                                    <label className={labelCls}>Fecha de ingreso</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <input type="date" value={manualIngreso}
+                                            onChange={e => setManualIngreso(e.target.value)} className={fieldCls + " pl-9"} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Tasa BCV ────────────────────────────────────────── */}
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <SectionHeader label="Tasa BCV" />
+                                <button 
+                                    onClick={fetchBcvRate}
+                                    disabled={bcvLoading}
+                                    className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
+                                    title="Actualizar tasa"
+                                >
+                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
+                                </button>
                             </div>
-                        ) : (
-                            <div className="flex items-baseline gap-2">
-                                <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmtN(bcvRate)}</span>
-                                <span className="font-mono text-[12px] text-[var(--text-tertiary)]">Bs. / USD</span>
-                                <span className="ml-auto font-mono text-[11px] text-[var(--text-link)] bg-primary-500/8 px-2 py-0.5 rounded">BCV HOY</span>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={exchangeRate}
+                                    onChange={e => setExchangeRate(e.target.value)} 
+                                    className={fieldCls + " pl-9 text-right"} 
+                                />
+                            </div>
+                        </div>
+
+                        {/* ── Parámetros Temporales ───────────────────────────── */}
+                        <div className="px-5 py-5 space-y-4">
+                            {mode === "completas" ? (<>
+                                <SectionHeader label="Fechas de Disfrute" />
+                                <div>
+                                    <label className={labelCls}>Fecha Inicio</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <input type="date" value={fechaInicio} onChange={e => handleInicioChange(e.target.value)} className={fieldCls + " pl-9"} />
+                                    </div>
+                                </div>
+                                {selectedCedula && (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className={labelCls}>Culminación</label>
+                                            <input type="date" value={fechaCulminacion || (datesDisplay?.end ?? "")} onChange={e => handleCulminacionChange(e.target.value)} className={fieldCls} />
+                                        </div>
+                                        <div>
+                                            <label className={labelCls}>Reintegro</label>
+                                            <input type="date" value={fechaReintegro || (datesDisplay?.rest ?? "")} onChange={e => setFechaReintegro(e.target.value)} className={fieldCls} />
+                                        </div>
+                                    </div>
+                                )}
+                            </>) : (
+                                <>
+                                    <SectionHeader label="Egreso" />
+                                    <div>
+                                        <label className={labelCls}>Fecha de Egreso</label>
+                                        <div className="relative">
+                                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                            <input type="date" value={fechaEgreso} onChange={e => setFechaEgreso(e.target.value)} className={fieldCls + " pl-9"} />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* ── Resultados Resumen ───────────────────────────────── */}
+                        <div className="px-5 py-4 space-y-0.5">
+                            <SectionHeader label="Resumen de Cálculo" />
+                            {mode === "completas" && calcDisplay ? (<>
+                                <CalcRow label="Años de servicio" value={`${(calcDisplay as VacCalc).anios} ${(calcDisplay as VacCalc).anios === 1 ? "año" : "años"}`} dim />
+                                <CalcRow label="Días base"    value={`${(calcDisplay as VacCalc).diasHabiles} háb. / ${(calcDisplay as VacCalc).diasCalendario} cal.`} dim />
+                                <CalcRow label="Feriados/Desc." value={`${(calcDisplay as VacCalc).diasDescanso} días`} dim />
+                                <CalcRow label="Total días pago" value={`${(calcDisplay as VacCalc).diasDisfrute + (calcDisplay as VacCalc).diasBono} días`} accent="green" />
+                                <div className="mt-4 p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] space-y-2 relative overflow-hidden text-emerald-700">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+                                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] opacity-70">Total a Pagar</span>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="font-mono text-[24px] font-black tabular-nums truncate">{fmt((calcDisplay as VacCalc).total)}</span>
+                                    </div>
+                                </div>
+                            </>) : mode === "fraccionadas" && calcDisplay ? (<>
+                                <CalcRow label="Fracción meses" value={`${(calcDisplay as VacFracCalc).mesesFraccion} meses`} dim />
+                                <CalcRow label="Días proporción" value={`${(calcDisplay as VacFracCalc).fraccionDisfrute + (calcDisplay as VacFracCalc).fraccionBono} días`} accent="amber" />
+                                <div className="mt-4 p-4 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] space-y-2 relative overflow-hidden text-amber-700">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500" />
+                                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] opacity-70">Total Fraccionado</span>
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="font-mono text-[24px] font-black tabular-nums truncate">{fmt((calcDisplay as VacFracCalc).total)}</span>
+                                    </div>
+                                </div>
+                            </>) : (
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] pt-2">Selecciona empleados para ver resumen.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Totals + export */}
+                    <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
+                        {results.length > 0 && (
+                            <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
+                                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
+                                    <span className="text-[var(--text-tertiary)]">Empleados</span>
+                                    <span className="text-foreground font-bold">{results.length}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
+                                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral. (NETO)</span>
+                                    <span className="font-mono text-[15px] font-black tabular-nums text-emerald-500">{fmt(totalGral)}</span>
+                                </div>
                             </div>
                         )}
+                        
+                        <BaseButton.Root
+                            variant="primary"
+                            className="w-full"
+                            onClick={() => {}}
+                            disabled={results.length === 0}
+                            leftIcon={<Download size={14} />}
+                        >
+                            Exportar Lote
+                        </BaseButton.Root>
                     </div>
+                </aside>
 
-                    {/* ══ MODE: COMPLETAS ════════════════════════════════════ */}
-                    {mode === "completas" && (<>
-
-                        {/* Período */}
-                        <div className="px-5 py-4 space-y-3">
-                            <SectionHeader label="Período de Vacaciones" />
-                            <div>
-                                <label className={labelCls}>Fecha de inicio</label>
-                                <input type="date" value={fechaInicio}
-                                    onChange={e => handleInicioChange(e.target.value)} className={fieldCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Fecha de culminación</label>
-                                <input type="date" value={fechaCulminacion} min={fechaInicio}
-                                    onChange={e => handleCulminacionChange(e.target.value)} className={fieldCls} />
-                                {!userEditedCulm && (
-                                    <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
-                                        Auto: {diasLegal} días hábiles desde el inicio
-                                    </p>
-                                )}
-                            </div>
-                            <div>
-                                <label className={labelCls}>Fecha de reintegro</label>
-                                <input type="date" value={fechaReintegro}
-                                    min={fechaCulminacion ? addCalDays(fechaCulminacion, 1) : undefined}
-                                    onChange={e => { setFechaReintegro(e.target.value); setUserEditedReint(true); }}
-                                    className={fieldCls} />
-                                {!userEditedReint && (
-                                    <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">Auto: primer día hábil tras culminación</p>
-                                )}
-                            </div>
-                            {diasCal > 0 && (
-                                <div className="grid grid-cols-3 gap-2 pt-1">
-                                    {[
-                                        { label: "Calendario", val: diasCal,              cls: "text-foreground" },
-                                        { label: "Hábiles",    val: periodStats.habiles,  cls: "text-primary-500" },
-                                        { label: "Descanso",   val: periodStats.descanso, cls: "text-[var(--text-tertiary)]" },
-                                    ].map(({ label, val, cls }) => (
-                                        <div key={label} className="rounded-lg border border-border-light bg-surface-2 px-3 py-2 text-center">
-                                            <p className={`font-mono text-[17px] font-black tabular-nums ${cls}`}>{val}</p>
-                                            <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {periodStats.feriadoList.length > 0 && (
-                                <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/4 space-y-0.5">
-                                    <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-link)] mb-1">Feriados en el período</p>
-                                    {periodStats.feriadoList.map(f => <p key={f} className="font-mono text-[12px] text-[var(--text-secondary)]">{f}</p>)}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Cálculo completas */}
-                        <div className="px-5 py-4 space-y-0.5">
-                            <SectionHeader label="Cálculo" />
-                            {calcCompletas ? (<>
-                                <CalcRow label="Salario mensual" value={fmt(calcCompletas.salarioVES)} dim />
-                                <CalcRow label="Salario diario" formula="salario ÷ 30"
-                                    value={`${fmtN(calcCompletas.salarioDia)} Bs./día`} dim />
-                                <CalcRow label="Años de servicio"
-                                    formula={fechaIngreso ? `desde ${fechaIngreso}` : "sin fecha de ingreso"}
-                                    value={calcCompletas.anios > 0 ? `${calcCompletas.anios} año${calcCompletas.anios !== 1 ? "s" : ""}` : "< 1 año"} dim />
-                                <Hr />
-                                <SectionHeader label="Art. 190 — Disfrute Vacacional" color="primary" />
-                                <CalcRow label="Días base"           value="15 días hábiles" dim />
-                                <CalcRow label="Días adicionales"
-                                    formula={calcCompletas.anios >= 2 ? `+1d/año desde año 2 = +${calcCompletas.diasAdicDisfrute}d` : "aplica desde el año 2"}
-                                    value={`${calcCompletas.diasAdicDisfrute} días`} dim />
-                                <CalcRow label="Total legal"
-                                    formula={`15 + ${calcCompletas.diasAdicDisfrute} = ${calcCompletas.diasLegalDisfrute}d`}
-                                    value={`${calcCompletas.diasLegalDisfrute} días hábiles`} dim />
-                                {calcCompletas.diasDisfrute > calcCompletas.diasLegalDisfrute && (
-                                    <CalcRow label="Hábiles reales (mayor)" formula="se usa este valor"
-                                        value={`${calcCompletas.diasHabiles} días`} dim />
-                                )}
-                                <CalcRow label="Monto disfrute"
-                                    formula={`${calcCompletas.diasDisfrute}d × ${fmtN(calcCompletas.salarioDia)} Bs./día`}
-                                    value={fmt(calcCompletas.montoDisfrute)} accent="primary" />
-                                <Hr />
-                                <SectionHeader label="Art. 192 — Bono Vacacional" color="amber" />
-                                <CalcRow label="Días base"           value="15 días" dim />
-                                <CalcRow label="Días adicionales"
-                                    formula={calcCompletas.anios >= 2 ? `+1d/año desde año 2 = +${calcCompletas.diasAdicBono}d` : "aplica desde el año 2"}
-                                    value={`${calcCompletas.diasAdicBono} días`} dim />
-                                <CalcRow label="Total bono"
-                                    formula={`15 + ${calcCompletas.diasAdicBono} = ${calcCompletas.diasBono}d`}
-                                    value={`${calcCompletas.diasBono} días`} dim />
-                                <CalcRow label="Monto bono"
-                                    formula={`${calcCompletas.diasBono}d × ${fmtN(calcCompletas.salarioDia)} Bs./día`}
-                                    value={fmt(calcCompletas.montoBono)} accent="amber" />
-                                <Hr />
-                                <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total</span>
-                                    <span className="font-mono text-[20px] font-black tabular-nums text-primary-500">{fmt(calcCompletas.total)}</span>
-                                </div>
-                            </>) : (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
-                                    {salarioVES <= 0 ? "Ingresa el salario del empleado." : "Selecciona las fechas de vacaciones."}
-                                </p>
-                            )}
-                        </div>
-                    </>)}
-
-                    {/* ══ MODE: FRACCIONADAS ═════════════════════════════════ */}
-                    {mode === "fraccionadas" && (<>
-
-                        {/* Fecha de egreso */}
-                        <div className="px-5 py-4 space-y-3">
-                            <SectionHeader label="Fecha de Egreso" />
-                            <div>
-                                <label className={labelCls}>Fecha de egreso (salida)</label>
-                                <input type="date" value={fechaEgreso}
-                                    onChange={e => setFechaEgreso(e.target.value)} className={fieldCls} />
-                                <p className="font-mono text-[12px] text-[var(--text-disabled)] mt-1">
-                                    Fecha efectiva de retiro o cálculo proporcional
-                                </p>
-                            </div>
-                            {calcFrac && (
-                                <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/4 space-y-1.5">
-                                    {[
-                                        { k: "Años completos",      v: `${calcFrac.aniosCompletos} año${calcFrac.aniosCompletos !== 1 ? "s" : ""}` },
-                                        { k: "Último aniversario",  v: calcFrac.ultimoAniversario },
-                                        { k: "Meses en año actual", v: `${calcFrac.mesesFraccion} mes${calcFrac.mesesFraccion !== 1 ? "es" : ""}` },
-                                        { k: "Días anuales base",   v: `${calcFrac.diasAnuales} días (año ${calcFrac.aniosCompletos + 1})` },
-                                    ].map(({ k, v }) => (
-                                        <div key={k} className="flex justify-between font-mono text-[12px]">
-                                            <span className="text-[var(--text-tertiary)]">{k}</span>
-                                            <span className="text-amber-500 tabular-nums font-medium">{v}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                        </div>
-
-                        {/* Cálculo fraccionadas */}
-                        <div className="px-5 py-4 space-y-0.5">
-                            <SectionHeader label="Cálculo — Art. 196 LOTTT" />
-                            {calcFrac ? (<>
-                                <CalcRow label="Salario mensual" value={fmt(calcFrac.salarioVES)} dim />
-                                <CalcRow label="Salario diario" formula="salario ÷ 30"
-                                    value={`${fmtN(calcFrac.salarioDia)} Bs./día`} dim />
-                                <Hr />
-                                <SectionHeader label="Días anuales del año en curso" color="amber" />
-                                <CalcRow label="Días base"
-                                    value="15 días" dim />
-                                <CalcRow label="Días adicionales"
-                                    formula={`1 día × ${calcFrac.diasAdicAnuales} años completos`}
-                                    value={`${calcFrac.diasAdicAnuales} días`} dim />
-                                <CalcRow label="Total anual"
-                                    formula={`15 + ${calcFrac.diasAdicAnuales} = ${calcFrac.diasAnuales} días`}
-                                    value={`${calcFrac.diasAnuales} días`} dim />
-                                <Hr />
-                                <SectionHeader label="Fracción proporcional (Art. 196)" color="primary" />
-                                <CalcRow label="Fórmula"
-                                    formula={`⌈ ${calcFrac.diasAnuales}d / 12 × ${calcFrac.mesesFraccion} meses ⌉`}
-                                    value={`${calcFrac.fraccionDisfrute} días`} dim />
-                                <CalcRow label="Monto disfrute fraccionado"
-                                    formula={`${calcFrac.fraccionDisfrute}d × ${fmtN(calcFrac.salarioDia)} Bs./día`}
-                                    value={fmt(calcFrac.montoDisfrute)} accent="amber" />
-                                <CalcRow label="Monto bono fraccionado"
-                                    formula={`${calcFrac.fraccionBono}d × ${fmtN(calcFrac.salarioDia)} Bs./día`}
-                                    value={fmt(calcFrac.montoBono)} accent="amber" />
-                                <Hr />
-                                <div className="flex items-baseline justify-between pt-1">
-                                    <span className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</span>
-                                    <span className="font-mono text-[20px] font-black tabular-nums text-amber-500">{fmt(calcFrac.total)}</span>
-                                </div>
-                            </>) : (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)]">
-                                    {salarioVES <= 0
-                                        ? "Ingresa el salario del empleado."
-                                        : !fechaIngreso
-                                        ? "Ingresa la fecha de ingreso."
-                                        : "Verifica las fechas ingresadas."}
-                                </p>
-                            )}
-                        </div>
-                    </>)}
-                </div>
-            </aside>
-
-            {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-            <main className="flex-1 overflow-y-auto p-6">
-                {mode === "completas" ? (
-                    calcCompletas ? (
-                        <ConstanciaCompleta
-                            calc={calcCompletas}
-                            employeeName={selectedEmp?.nombre ?? "Empleado"}
-                            employeeCedula={selectedEmp?.cedula ?? "—"}
-                            employeeCargo={selectedEmp?.cargo}
-                            companyName={company?.name ?? "La Empresa"}
-                            companyLogoUrl={company?.logoUrl}
-                            showLogoInPdf={company?.showLogoInPdf}
-                            fechaInicio={fechaInicio}
-                            fechaCulminacion={fechaCulminacion}
-                            fechaReintegro={fechaReintegro}
-                        />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
+                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
+                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                             </svg>
-                            <p className="font-mono text-[12px] uppercase tracking-widest">Ingresa los datos del empleado</p>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
                         </div>
-                    )
-                ) : (
-                    calcFrac ? (
-                        <ConstanciaFraccionada
-                            calc={calcFrac}
-                            employeeName={selectedEmp?.nombre ?? "Empleado"}
-                            employeeCedula={selectedEmp?.cedula ?? "—"}
-                            employeeCargo={selectedEmp?.cargo}
-                            companyName={company?.name ?? "La Empresa"}
-                            companyLogoUrl={company?.logoUrl}
-                            showLogoInPdf={company?.showLogoInPdf}
-                            fechaIngreso={fechaIngreso}
-                            fechaEgreso={fechaEgreso}
-                        />
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)] opacity-40">
+                             <Users size={48} strokeWidth={1} />
+                             <p className="font-mono text-[12px] uppercase tracking-widest">Selecciona empleados para calcular</p>
+                        </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                            </svg>
-                            <p className="font-mono text-[12px] uppercase tracking-widest">Ingresa los datos del empleado y la fecha de egreso</p>
+                        <div className="max-w-2xl mx-auto space-y-8">
+                            {results.map(r => {
+                                if (r.msg || !r.calc) return (
+                                    <div key={r.emp.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
+                                        <div>
+                                            <p className="font-mono text-[13px] font-bold uppercase text-foreground">{r.emp.nombre}</p>
+                                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{r.emp.cargo}</p>
+                                        </div>
+                                        <span className="font-mono text-[10px] text-amber-500 uppercase border border-amber-500/20 px-2 py-0.5 rounded">{r.msg ?? "Error"}</span>
+                                    </div>
+                                );
+
+                                if (mode === "completas") return (
+                                    <ConstanciaCompleta
+                                        key={r.emp.cedula}
+                                        calc={r.calc as VacCalc}
+                                        employeeName={r.emp.nombre}
+                                        employeeCedula={r.emp.cedula}
+                                        employeeCargo={r.emp.cargo}
+                                        companyName={company?.name ?? "La Empresa"}
+                                        companyLogoUrl={company?.logoUrl}
+                                        showLogoInPdf={company?.showLogoInPdf}
+                                        fechaInicio={r.dates?.start ?? ""}
+                                        fechaCulminacion={r.dates?.end ?? ""}
+                                        fechaReintegro={r.dates?.rest ?? ""}
+                                    />
+                                );
+
+                                return (
+                                    <ConstanciaFraccionada
+                                        key={r.emp.cedula}
+                                        calc={r.calc as VacFracCalc}
+                                        employeeName={r.emp.nombre}
+                                        employeeCedula={r.emp.cedula}
+                                        employeeCargo={r.emp.cargo}
+                                        companyName={company?.name ?? "La Empresa"}
+                                        companyLogoUrl={company?.logoUrl}
+                                        showLogoInPdf={company?.showLogoInPdf}
+                                        fechaIngreso={r.emp.fechaIngreso ?? ""}
+                                        fechaEgreso={fechaEgreso}
+                                    />
+                                );
+                            })}
                         </div>
-                    )
-                )}
-            </main>
+                    )}
+                </main>
+            </div>
         </div>
     );
 }

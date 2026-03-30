@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useCompany }        from "@/src/modules/companies/frontend/hooks/use-companies";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { FileText, Download } from "lucide-react";
+import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import { generatePayrollPdf } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
@@ -29,7 +32,7 @@ function formatDateTime(iso: string) {
 
 function exportReceiptsCsv(receipts: PayrollReceipt[], run: PayrollRun, companyName: string) {
     const rows = [
-        ["cedula","nombre","cargo","salario_mensual","asignaciones","bonos","deducciones","bruto_ves","neto_ves","neto_usd"].join(","),
+        ["cedula", "nombre", "cargo", "salario_mensual", "asignaciones", "bonos", "deducciones", "bruto_ves", "neto_ves", "neto_usd"].join(","),
         ...receipts.map((r) => [
             r.employeeCedula,
             `"${r.employeeNombre}"`,
@@ -45,9 +48,9 @@ function exportReceiptsCsv(receipts: PayrollReceipt[], run: PayrollRun, companyN
     ].join("\n");
 
     const blob = new Blob([rows], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
     a.download = `nomina_${companyName.replace(/\s+/g, "_")}_${run.periodStart}_${run.periodEnd}.csv`;
     a.click();
     URL.revokeObjectURL(url);
@@ -55,32 +58,32 @@ function exportReceiptsCsv(receipts: PayrollReceipt[], run: PayrollRun, companyN
 
 function buildPdfEmployees(receipts: PayrollReceipt[]): PdfEmployeeResult[] {
     return receipts.map((r) => {
-        const cd  = r.calculationData ?? {};
+        const cd = r.calculationData ?? {};
         const net = r.netPay;
         const gross = cd.gross ?? (r.totalEarnings + r.totalBonuses);
 
         // Reconstruir líneas resumidas (sin detalle, sólo totales)
-        const earningLines  = r.totalEarnings  > 0 ? [{ label: "Asignaciones",   formula: "—", amount: r.totalEarnings  }] : [];
-        const bonusLines    = r.totalBonuses   > 0 ? [{ label: "Bonificaciones", formula: "—", amount: r.totalBonuses   }] : [];
-        const deductionLines = r.totalDeductions > 0 ? [{ label: "Deducciones",   formula: "—", amount: r.totalDeductions }] : [];
+        const earningLines = r.totalEarnings > 0 ? [{ label: "Asignaciones", formula: "—", amount: r.totalEarnings }] : [];
+        const bonusLines = r.totalBonuses > 0 ? [{ label: "Bonificaciones", formula: "—", amount: r.totalBonuses }] : [];
+        const deductionLines = r.totalDeductions > 0 ? [{ label: "Deducciones", formula: "—", amount: r.totalDeductions }] : [];
 
         return {
-            cedula:          r.employeeCedula,
-            nombre:          r.employeeNombre,
-            cargo:           r.employeeCargo,
-            salarioMensual:  r.monthlySalary,
-            estado:          "activo",
+            cedula: r.employeeCedula,
+            nombre: r.employeeNombre,
+            cargo: r.employeeCargo,
+            salarioMensual: r.monthlySalary,
+            estado: "activo",
             earningLines,
             bonusLines,
             deductionLines,
-            totalEarnings:   r.totalEarnings,
-            totalBonuses:    r.totalBonuses,
+            totalEarnings: r.totalEarnings,
+            totalBonuses: r.totalBonuses,
             totalDeductions: r.totalDeductions,
             gross,
             net,
-            netUSD:          cd.netUsd ?? 0,
-            alicuotaUtil:    cd.alicuotaUtil    ?? 0,
-            alicuotaBono:    cd.alicuotaBono    ?? 0,
+            netUSD: cd.netUsd ?? 0,
+            alicuotaUtil: cd.alicuotaUtil ?? 0,
+            alicuotaBono: cd.alicuotaBono ?? 0,
             salarioIntegral: cd.salarioIntegral ?? r.monthlySalary,
         };
     });
@@ -158,9 +161,9 @@ function ReceiptsPanel({ receipts, loading, error }: {
         </div>
     );
 
-    const totNet    = receipts.reduce((s, r) => s + r.netPay, 0);
+    const totNet = receipts.reduce((s, r) => s + r.netPay, 0);
     const totNetUsd = receipts.reduce((s, r) => s + (r.calculationData?.netUsd ?? 0), 0);
-    const totGross  = receipts.reduce((s, r) => s + (r.calculationData?.gross ?? 0), 0);
+    const totGross = receipts.reduce((s, r) => s + (r.calculationData?.gross ?? 0), 0);
 
     return (
         <div className="space-y-3">
@@ -226,10 +229,10 @@ export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
     const { runs, loading, error, getReceipts } = usePayrollHistory(companyId);
 
-    const [selectedRunId,   setSelectedRunId]   = useState<string | null>(null);
-    const [receipts,        setReceipts]        = useState<PayrollReceipt[]>([]);
+    const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+    const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
-    const [receiptsError,   setReceiptsError]   = useState<string | null>(null);
+    const [receiptsError, setReceiptsError] = useState<string | null>(null);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -249,113 +252,87 @@ export default function PayrollHistoryPage() {
         const employees = buildPdfEmployees(receipts);
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
         await generatePayrollPdf(employees, {
-            companyName:    company?.name ?? "Empresa",
-            payrollDate:    selectedRun.periodEnd,
-            periodStart:    selectedRun.periodStart,
+            companyName: company?.name ?? "Empresa",
+            payrollDate: selectedRun.periodEnd,
+            periodStart: selectedRun.periodStart,
             periodLabel,
-            bcvRate:        selectedRun.exchangeRate,
+            bcvRate: selectedRun.exchangeRate,
             mondaysInMonth: receipts[0]?.calculationData?.mondaysInMonth ?? 4,
-            logoUrl:        company?.logoUrl,
-            showLogoInPdf:  company?.showLogoInPdf,
+            logoUrl: company?.logoUrl,
+            showLogoInPdf: company?.showLogoInPdf,
         });
     }, [selectedRun, receipts, company]);
 
     return (
-        <div className="min-h-full bg-surface-2 p-8 font-mono">
-            <div className="max-w-[1100px] mx-auto space-y-5">
-
-                {/* Header */}
-                <header className="pb-4 border-b border-border-light">
-                    <nav className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-2">
-                        Nómina / Historial
-                    </nav>
-                    <div className="flex items-end justify-between gap-4 flex-wrap">
-                        <div>
-                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
-                                Historial
-                            </h1>
-                            {company && (
-                                <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
-                                    {company.name} · {runs.length} período{runs.length !== 1 ? "s" : ""}
-                                </p>
-                            )}
-                        </div>
-
-                        {selectedRun && receipts.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={handleDownloadPdf}
-                                    className={[
-                                        "h-8 px-3 rounded-lg flex items-center gap-1.5",
-                                        "bg-primary-500 hover:bg-primary-600",
-                                        "font-mono text-[12px] uppercase tracking-[0.18em] text-white",
-                                        "transition-colors duration-150",
-                                    ].join(" ")}
-                                >
-                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
-                                    </svg>
-                                    Descargar PDF
-                                </button>
-                                <button
-                                    onClick={() => exportReceiptsCsv(receipts, selectedRun, company?.name ?? "empresa")}
-                                    className={[
-                                        "h-8 px-3 rounded-lg flex items-center gap-1.5 border border-border-light bg-surface-1",
-                                        "hover:border-border-medium hover:bg-surface-2",
-                                        "font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-secondary)]",
-                                        "transition-colors duration-150",
-                                    ].join(" ")}
-                                >
-                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M6 2v7M2 9l4 2 4-2M2 5H1v6h10V5h-1" />
-                                    </svg>
-                                    Exportar CSV
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </header>
-
-                {/* Content */}
-                {loading ? (
-                    <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
-                        <Spinner />
-                        <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
-                    </div>
-                ) : error ? (
-                    <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                        <p className="font-mono text-[13px] text-red-500">{error}</p>
-                    </div>
-                ) : runs.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                        </svg>
-                        <span className="font-mono text-[13px] uppercase tracking-widest">Sin nóminas confirmadas</span>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                            {runs.map((run) => (
-                                <RunRow
-                                    key={run.id}
-                                    run={run}
-                                    isSelected={selectedRunId === run.id}
-                                    onSelect={handleSelectRun}
-                                />
-                            ))}
-                        </div>
-
-                        {selectedRunId && (
-                            <ReceiptsPanel
-                                receipts={receipts}
-                                loading={receiptsLoading}
-                                error={receiptsError}
-                            />
-                        )}
+        <div className="min-h-full bg-surface-2 flex flex-col">
+            <PageHeader
+                title="Historial de Nómina"
+                subtitle={company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados"}
+            >
+                {selectedRun && receipts.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <BaseButton.Root
+                            variant="primary"
+                            size="sm"
+                            onClick={handleDownloadPdf}
+                            leftIcon={<FileText size={14} />}
+                        >
+                            Descargar PDF
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => exportReceiptsCsv(receipts, selectedRun, company?.name ?? "empresa")}
+                            leftIcon={<Download size={14} />}
+                        >
+                            Exportar CSV
+                        </BaseButton.Root>
                     </div>
                 )}
+            </PageHeader>
 
+            <div className="flex-1 overflow-y-auto p-8">
+                <div className="max-w-[1100px] mx-auto space-y-5">
+                    {/* Content */}
+                    {loading ? (
+                        <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl bg-surface-1">
+                            <Spinner />
+                            <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
+                        </div>
+                    ) : error ? (
+                        <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
+                            <p className="font-mono text-[13px] text-red-500">{error}</p>
+                        </div>
+                    ) : runs.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3 bg-surface-1">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                            </svg>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Sin nóminas confirmadas</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                {runs.map((run) => (
+                                    <RunRow
+                                        key={run.id}
+                                        run={run}
+                                        isSelected={selectedRunId === run.id}
+                                        onSelect={handleSelectRun}
+                                    />
+                                ))}
+                            </div>
+
+                            {selectedRunId && (
+                                <ReceiptsPanel
+                                    receipts={receipts}
+                                    loading={receiptsLoading}
+                                    error={receiptsError}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

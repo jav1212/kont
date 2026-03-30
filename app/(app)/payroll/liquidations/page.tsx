@@ -1,6 +1,19 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { 
+    FileText, 
+    Download, 
+    Users, 
+    Calendar, 
+    ClipboardCheck, 
+    Terminal, 
+    RefreshCw, 
+    TrendingUp, 
+    Info 
+} from "lucide-react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -198,7 +211,7 @@ function ConstanciaLiquidacion({ r, companyName, egreso, motivo, diasUtil, diasB
     );
 
     return (
-        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2]">
+        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2] max-w-2xl mx-auto">
 
             {/* Header */}
             <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
@@ -340,6 +353,36 @@ function ConfigSection({ title, open, onToggle, children }: {
 }
 
 // ============================================================================
+// SHARED UI ATOMS
+// ============================================================================
+
+function SectionHeader({ label, color }: { label: string; color?: "green" | "amber" }) {
+    const cls = color === "amber" ? "text-amber-500/70"
+              : color === "green" ? "text-emerald-500/70"
+              : "text-[var(--text-tertiary)]";
+    return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
+}
+
+function CalcRow({ label, formula, value, accent, dim }: {
+    label: string; formula?: string; value: string;
+    accent?: "green" | "amber"; dim?: boolean;
+}) {
+    const valCls = dim ? "text-[var(--text-tertiary)]"
+        : accent === "green"  ? "text-emerald-500"
+        : accent === "amber"  ? "text-amber-500"
+        : "text-foreground";
+    return (
+        <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
+            <div className="min-w-0">
+                <span className="font-mono text-[13px] text-[var(--text-secondary)] leading-snug">{label}</span>
+                {formula && <div className="font-mono text-[12px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
+            </div>
+            <span className={`font-mono text-[13px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
+        </div>
+    );
+}
+
+// ============================================================================
 // PAGE
 // ============================================================================
 
@@ -353,21 +396,53 @@ export default function LiquidacionesPage() {
     const [motivo,      setMotivo]      = useState<Motivo>("renuncia");
     const [diasUtil,    setDiasUtil]    = useState("120");
     const [diasBono,    setDiasBono]    = useState("15");
-    const [bcvRate,     setBcvRate]     = useState("79.59");
     const [soloActivos, setSoloActivos] = useState(true);
     const [openCfg,     setOpenCfg]     = useState(true);
-
-    const filtered = useMemo(
-        () => soloActivos ? employees.filter(e => e.estado === "activo") : employees,
-        [employees, soloActivos],
+    const [selectedCedula, setSelectedCedula] = useState<string>("");
+    const selectedEmp = useMemo(
+        () => employees.find(e => e.cedula === selectedCedula),
+        [employees, selectedCedula]
     );
+
+    // ── BCV fetch ──────────────────────────────────────────────────────────
+    const [exchangeRate,  setExchangeRate]  = useState("79.59");
+    const [bcvLoading,     setBcvLoading]     = useState(false);
+    const [bcvFetchError,  setBcvFetchError]  = useState<string | null>(null);
+
+    const fetchBcvRate = useCallback(async () => {
+        setBcvLoading(true);
+        setBcvFetchError(null);
+        try {
+            const iso = new Date().toISOString().split("T")[0];
+            const res  = await fetch(`/api/bcv/rate?date=${iso}`);
+            const data = await res.json();
+            if (!res.ok) { setBcvFetchError(data.error ?? "No rate found"); return; }
+            setExchangeRate(String(data.price || data.rate));
+        } catch {
+            setBcvFetchError("No se pudo conectar.");
+        } finally {
+            setBcvLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchBcvRate();
+    }, [fetchBcvRate]);
+
+    const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
+
+    const filtered = useMemo(() => {
+        const pool = soloActivos ? employees.filter((e) => e.estado === "activo") : employees;
+        if (!selectedCedula) return pool;
+        return pool.filter((e) => e.cedula === selectedCedula);
+    }, [employees, soloActivos, selectedCedula]);
 
     const results = useMemo<EmpLiqResult[]>(() =>
         filtered.map(emp => calcLiqEmp(
             emp, egreso, motivo,
             parseFloat(diasUtil) || 120,
             parseFloat(diasBono) || 15,
-            parseFloat(bcvRate)  || 0,
+            bcvRate,
         )),
         [filtered, egreso, motivo, diasUtil, diasBono, bcvRate],
     );
@@ -429,160 +504,259 @@ export default function LiquidacionesPage() {
             companyName: company?.name ?? "Empresa",
             companyId:   company?.id,
             fechaDoc:    new Date().toISOString().split("T")[0],  // ISO format for fmtDate()
-            bcvRate:     parseFloat(bcvRate) || undefined,
+            bcvRate:     bcvRate || undefined,
         };
         generateLiquidacionPdf(pdfEmployees, opts);
     }, [validResults, egreso, motivo, diasUtil, diasBono, bcvRate, company]);
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col lg:flex-row">
-
-            {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
-            <aside className="w-full lg:w-72 flex-shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1">
-
-                <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">Nómina · Liquidaciones</p>
-                    <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">Liquidaciones</p>
-                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-1">Art. 142 LOTTT — egreso del empleado</p>
+        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+            <PageHeader
+                title="Liquidaciones"
+                subtitle="Cálculo de finiquito y prestaciones al egreso (Art. 142 LOTTT)"
+            >
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                    </span>
+                    {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>
+            </PageHeader>
 
-                <div className="flex-1 overflow-y-auto">
-                    <ConfigSection title="Parámetros" open={openCfg} onToggle={() => setOpenCfg(v => !v)}>
-                        <div className="py-3 space-y-3">
-                            <div>
-                                <label className={labelCls}>Fecha de egreso</label>
-                                <input type="date" value={egreso} max={today}
-                                    onChange={e => setEgreso(e.target.value)} className={fieldCls} />
-                            </div>
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
+                <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
 
-                            <div>
-                                <label className={labelCls}>Motivo</label>
-                                <select value={motivo} onChange={e => setMotivo(e.target.value as Motivo)} className={fieldCls}>
-                                    <option value="renuncia">Renuncia voluntaria</option>
-                                    <option value="despido_justificado">Despido justificado</option>
-                                    <option value="despido_injustificado">Despido injustificado</option>
+                    <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
+                        <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
+                            <TrendingUp size={14} className="text-primary-500" />
+                            Calculadora
+                        </p>
+                    </div>
+
+                    <div className="flex-1 divide-y divide-border-light">
+                        {/* ── Empleado ───────────────────────────────────────── */}
+                        <div className="px-5 py-4 space-y-4">
+                            <SectionHeader label="Alcance" />
+                            <div className="relative">
+                                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                <select
+                                    value={selectedCedula}
+                                    onChange={(e) => setSelectedCedula(e.target.value)}
+                                    className={fieldCls + " pl-9"}
+                                >
+                                    <option value="">Lote por defecto (Todos)</option>
+                                    <optgroup label="Empleados">
+                                        {employees
+                                            .filter(e => !soloActivos || e.estado === "activo")
+                                            .sort((a,b) => a.nombre.localeCompare(b.nombre))
+                                            .map(e => (
+                                                <option key={e.cedula} value={e.cedula}>
+                                                    {e.nombre} ({e.cedula})
+                                                </option>
+                                            ))
+                                        }
+                                    </optgroup>
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className={labelCls}>Días util.</label>
-                                    <input type="number" min="15" step="1" value={diasUtil}
-                                        onChange={e => setDiasUtil(e.target.value)} className={fieldCls + " text-right"} />
+                            {selectedEmp && (
+                                <div className="p-3.5 rounded-xl border border-border-light bg-surface-2/[0.03] space-y-2.5 relative overflow-hidden">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500/40" />
+                                    {[
+                                        { k: "Cédula", v: selectedEmp.cedula, icon: <Info size={12} /> },
+                                        { k: "Cargo", v: selectedEmp.cargo || "—", icon: <ClipboardCheck size={12} /> },
+                                        { k: "Ingreso", v: selectedEmp.fechaIngreso ?? "—", icon: <Calendar size={12} /> },
+                                    ].map(({ k, v, icon }) => (
+                                        <div key={k} className="flex justify-between items-center font-mono text-[11px]">
+                                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                                                {icon}
+                                                <span className="uppercase tracking-wider">{k}</span>
+                                            </div>
+                                            <span className="text-foreground font-bold tabular-nums">{v}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div>
-                                    <label className={labelCls}>Días bono vac.</label>
-                                    <input type="number" min="15" step="1" value={diasBono}
-                                        onChange={e => setDiasBono(e.target.value)} className={fieldCls + " text-right"} />
+                            )}
+
+                            <label className="flex items-center gap-3 cursor-pointer group py-1">
+                                <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
+                                    className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                    <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                </div>
+                                <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
+                            </label>
+                        </div>
+
+                        {/* ── Parámetros de Egreso ────────────────────────────── */}
+                        <div className="px-5 py-5 space-y-4">
+                            <SectionHeader label="Egreso" />
+                            <div>
+                                <label className={labelCls}>Fecha de egreso</label>
+                                <div className="relative">
+                                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                    <input 
+                                        type="date" 
+                                        value={egreso} 
+                                        max={today}
+                                        onChange={e => setEgreso(e.target.value)} 
+                                        className={fieldCls + " pl-9"} 
+                                    />
                                 </div>
                             </div>
 
                             <div>
-                                <label className={labelCls}>Tasa BCV (Bs./USD)</label>
+                                <label className={labelCls}>Motivo de Egreso</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                    <input type="number" step="0.01" value={bcvRate}
-                                        onChange={e => setBcvRate(e.target.value)} className={fieldCls + " pl-9 text-right"} />
+                                    <ClipboardCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                    <select 
+                                        value={motivo} 
+                                        onChange={e => setMotivo(e.target.value as Motivo)} 
+                                        className={fieldCls + " pl-9"}
+                                    >
+                                        <option value="renuncia">Renuncia voluntaria</option>
+                                        <option value="despido_justificado">Despido justificado</option>
+                                        <option value="despido_injustificado">Despido injustificado</option>
+                                    </select>
                                 </div>
                             </div>
-
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <div onClick={() => setSoloActivos(v => !v)}
-                                    className={["w-8 h-4.5 rounded-full transition-colors duration-150 flex items-center px-0.5 cursor-pointer", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
-                                    <div className={["w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-150", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
-                                </div>
-                                <span className="font-mono text-[12px] text-[var(--text-secondary)] uppercase tracking-widest">Solo activos</span>
-                            </label>
                         </div>
-                    </ConfigSection>
-                </div>
 
-                {/* Totals + export */}
-                <div className="px-5 py-4 border-t border-border-light space-y-3">
-                    {validResults.length > 0 && (
-                        <div className="space-y-1">
-                            <div className="flex justify-between font-mono text-[12px]">
-                                <span className="text-[var(--text-tertiary)]">Empleados</span>
-                                <span className="text-foreground">{validResults.length}</span>
-                            </div>
-                            {results.length - validResults.length > 0 && (
-                                <div className="flex justify-between font-mono text-[12px]">
-                                    <span className="text-[var(--text-tertiary)]">Sin fecha ingreso</span>
-                                    <span className="text-amber-500">{results.length - validResults.length}</span>
+                        {/* ── Parámetros de Cálculo ──────────────────────────── */}
+                        <div className="px-5 py-5 space-y-4">
+                            <SectionHeader label="Parámetros de Cálculo" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={labelCls}>Días util.</label>
+                                    <div className="relative">
+                                        <ClipboardCheck size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                        <input type="number" min="15" step="1" value={diasUtil}
+                                            onChange={e => setDiasUtil(e.target.value)} className={fieldCls + " pl-8 text-right"} />
+                                    </div>
                                 </div>
-                            )}
-                            {motivo === "despido_injustificado" && (
-                                <div className="flex justify-between font-mono text-[12px]">
-                                    <span className="text-[var(--text-tertiary)]">Incl. indemnización</span>
-                                    <span className="text-red-500/70">{fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}</span>
+                                <div>
+                                    <label className={labelCls}>Bono vac.</label>
+                                    <div className="relative">
+                                        <TrendingUp size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                        <input type="number" min="15" step="1" value={diasBono}
+                                            onChange={e => setDiasBono(e.target.value)} className={fieldCls + " pl-8 text-right"} />
+                                    </div>
                                 </div>
-                            )}
-                            <div className="flex justify-between font-mono text-[12px] font-bold pt-1 border-t border-border-light">
-                                <span className="text-[var(--text-secondary)]">Total</span>
-                                <span className="text-primary-500 tabular-nums">{fmtVES(totalGeneral)}</span>
                             </div>
+                        </div>
+
+                        {/* ── Tasa BCV ────────────────────────────────────────── */}
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <SectionHeader label="Tasa BCV" />
+                                <button 
+                                    onClick={fetchBcvRate}
+                                    disabled={bcvLoading}
+                                    className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
+                                    title="Actualizar tasa"
+                                >
+                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
+                                <input type="number" step="0.01" value={exchangeRate}
+                                    onChange={e => setExchangeRate(e.target.value)} className={fieldCls + " pl-9 text-right"} />
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* Totals + export */}
+                    <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
+                        {validResults.length > 0 && (
+                            <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
+                                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
+                                    <span className="text-[var(--text-tertiary)]">Empleados</span>
+                                    <span className="text-foreground font-bold">{validResults.length}</span>
+                                </div>
+                                
+                                {results.length - validResults.length > 0 && (
+                                    <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
+                                        <span className="text-[var(--text-tertiary)]">Observaciones</span>
+                                        <span className="text-amber-500 font-bold">{results.length - validResults.length}</span>
+                                    </div>
+                                )}
+
+                                {motivo === "despido_injustificado" && (
+                                    <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider pt-1 border-t border-border-light/30">
+                                        <span className="text-[var(--text-tertiary)]">Indemnización</span>
+                                        <span className="text-red-500/70 font-bold">{fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
+                                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral.</span>
+                                    <span className="font-mono text-[15px] font-black text-primary-500 tabular-nums">{fmtVES(totalGeneral)}</span>
+                                </div>
+                            </div>
+                        )}
+                        
+                        <BaseButton.Root
+                            variant="secondary"
+                            className="w-full"
+                            onClick={handleExport}
+                            disabled={results.length === 0}
+                            leftIcon={<FileText size={14} />}
+                        >
+                            Exportar CSV
+                        </BaseButton.Root>
+
+                        <BaseButton.Root
+                            variant="primary"
+                            className="w-full"
+                            onClick={handlePdf}
+                            disabled={validResults.length === 0}
+                            leftIcon={<Download size={14} />}
+                        >
+                            Generar PDF
+                        </BaseButton.Root>
+                    </div>
+                </aside>
+
+                {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
+                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
+                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
+                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            </svg>
+                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
+                        </div>
+                    ) : error ? (
+                        <div className="flex items-center justify-center h-48 font-mono text-[13px] text-red-500">{error}</div>
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
+                                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                                <path d="M8 21h8M12 17v4"/>
+                            </svg>
+                            <p className="font-mono text-[12px] uppercase tracking-widest">Sin empleados</p>
+                        </div>
+                    ) : (
+                        <div className="max-w-2xl mx-auto space-y-8">
+                            {results.map(r => (
+                                <ConstanciaLiquidacion
+                                    key={r.employee.cedula}
+                                    r={r}
+                                    companyName={company?.name ?? "La Empresa"}
+                                    egreso={egreso}
+                                    motivo={motivo}
+                                    diasUtil={diasUtil}
+                                    diasBono={diasBono}
+                                />
+                            ))}
                         </div>
                     )}
-                    <button onClick={handleExport} disabled={results.length === 0}
-                        className={["w-full h-9 rounded-lg flex items-center justify-center gap-2 border",
-                            "font-mono text-[12px] uppercase tracking-[0.16em] transition-colors duration-150",
-                            "border-primary-500/40 bg-primary-500/10 text-primary-500 hover:bg-primary-500/[0.16]",
-                            "disabled:opacity-40 disabled:cursor-not-allowed"].join(" ")}>
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
-                        </svg>
-                        Exportar CSV
-                    </button>
-
-                    <button onClick={handlePdf} disabled={validResults.length === 0}
-                        className={["w-full h-9 rounded-lg flex items-center justify-center gap-2",
-                            "font-mono text-[12px] uppercase tracking-[0.16em] transition-colors duration-150",
-                            "bg-primary-500 text-white hover:bg-primary-600",
-                            "disabled:opacity-40 disabled:cursor-not-allowed"].join(" ")}>
-                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3" /><path d="M5 9l1.5 1.5L9 7" />
-                        </svg>
-                        Generar PDF
-                    </button>
-                </div>
-            </aside>
-
-            {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-            <main className="flex-1 overflow-y-auto p-6">
-                {loading ? (
-                    <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
-                        <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                            <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                        </svg>
-                        <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
-                    </div>
-                ) : error ? (
-                    <div className="flex items-center justify-center h-48 font-mono text-[13px] text-red-500">{error}</div>
-                ) : results.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                            <rect x="2" y="3" width="20" height="14" rx="2"/>
-                            <path d="M8 21h8M12 17v4"/>
-                        </svg>
-                        <p className="font-mono text-[12px] uppercase tracking-widest">Sin empleados</p>
-                    </div>
-                ) : (
-                    <div className="max-w-2xl mx-auto space-y-8">
-                        {results.map(r => (
-                            <ConstanciaLiquidacion
-                                key={r.employee.cedula}
-                                r={r}
-                                companyName={company?.name ?? "La Empresa"}
-                                egreso={egreso}
-                                motivo={motivo}
-                                diasUtil={diasUtil}
-                                diasBono={diasBono}
-                            />
-                        ))}
-                    </div>
-                )}
-            </main>
+                </main>
+            </div>
         </div>
     );
 }
