@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from 'react';
+import { Upload, Loader2 } from 'lucide-react';
+import { BaseButton } from '@/src/shared/frontend/components/base-button';
 
 interface UploadProgress {
     file:     string;
@@ -67,18 +69,16 @@ export function UploadButton({ onUpload, disabled }: UploadButtonProps) {
                 disabled={disabled || uploading}
             />
 
-            <button
+            <BaseButton.Root
                 onClick={() => inputRef.current?.click()}
-                disabled={disabled || uploading}
-                className="min-h-[44px] flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-[11px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Subir archivos"
+                isDisabled={disabled || uploading}
+                variant="primary"
+                size="md"
+                leftIcon={uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                className="font-mono min-w-[140px]"
             >
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M6.5 9V1M3 4l3.5-3.5L10 4" />
-                    <path d="M1 12h11" />
-                </svg>
                 {uploading ? 'Subiendo…' : 'Subir archivos'}
-            </button>
+            </BaseButton.Root>
 
             {/* Progress list */}
             {progress.length > 0 && (

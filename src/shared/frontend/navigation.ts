@@ -5,7 +5,7 @@ export const APP_MODULES = [
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },
     { id: "companies",   label: "Empresas",      href: "/companies",              desktopOnly: false, paid: false             },
     { id: "billing",     label: "Facturación",   href: "/billing",                desktopOnly: false, paid: false             },
-    { id: "documents",   label: "Documentos",    href: "/documents",              desktopOnly: false, paid: false             },
+    { id: "documents",   label: "Documentos",    href: "/documents/tablero",      desktopOnly: false, paid: false             },
 ] as const;
 
 export type AppModule = typeof APP_MODULES[number];
@@ -31,7 +31,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/documents",         label: "Archivos", group: null },
     ],
     inventory: [
-        { href: "/inventory",                  label: "Dashboard",            group: null          },
+        { href: "/inventory",                  label: "Tablero",              group: null          },
         { href: "/inventory/products",         label: "Productos",            group: "Catálogos"   },
         { href: "/inventory/suppliers",        label: "Proveedores",          group: "Catálogos"   },
         { href: "/inventory/departments",      label: "Departamentos",        group: "Catálogos"   },

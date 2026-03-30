@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 interface PageHeaderProps {
     title: string;
-    subtitle?: string;
+    subtitle?: ReactNode;
     /** Action buttons rendered in the right slot. */
     children?: ReactNode;
 }
@@ -15,14 +15,14 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
     return (
         <div className="px-8 py-6 border-b border-border-light bg-surface-1">
             <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0">
                     <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
                         {title}
                     </h1>
                     {subtitle && (
-                        <p className="text-[12px] text-foreground/50 uppercase tracking-[0.12em] mt-0.5">
+                        <div className="text-[12px] text-foreground/50 uppercase tracking-[0.12em] mt-0.5">
                             {subtitle}
-                        </p>
+                        </div>
                     )}
                 </div>
                 {children && (

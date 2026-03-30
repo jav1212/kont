@@ -1,13 +1,31 @@
 "use client";
-
+ 
 import { useState, useCallback } from 'react';
+import { 
+    Folders, 
+    FileText, 
+    Share2, 
+    Upload, 
+    Menu, 
+    X, 
+    Check, 
+    Loader2, 
+    AlertCircle,
+    ChevronRight,
+    Search,
+    Copy,
+    CheckCircle2
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCompany } from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useDocuments } from '@/src/modules/documents/frontend/hooks/use-documents';
 import { FolderTree } from '@/src/modules/documents/frontend/components/folder-tree';
 import { DocumentList } from '@/src/modules/documents/frontend/components/document-list';
 import { UploadButton } from '@/src/modules/documents/frontend/components/upload-button';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
-
+import { PageHeader } from '@/src/shared/frontend/components/page-header';
+import { BaseButton } from '@/src/shared/frontend/components/base-button';
+ 
 export default function DocumentsPage() {
     const { companyId } = useCompany();
     const {
@@ -24,10 +42,10 @@ export default function DocumentsPage() {
         getDownloadUrl,
         replicateFolders,
     } = useDocuments(companyId ?? undefined);
-
+ 
     type ClientTenant  = { tenantId: string; tenantEmail: string };
     type SourceFolder  = { id: string; name: string };
-
+ 
     const [drawerOpen,       setDrawerOpen]       = useState(false);
     const [replicating,      setReplicating]      = useState(false);
     const [replicResult,     setReplicResult]     = useState<{ tenantId: string; foldersCreated: number; foldersExisting: number; error?: string }[] | null>(null);
@@ -38,11 +56,11 @@ export default function DocumentsPage() {
     const [selectedClients,  setSelectedClients]  = useState<Set<string>>(new Set());
     const [sourceFolders,    setSourceFolders]    = useState<SourceFolder[]>([]);
     const [selectedFolders,  setSelectedFolders]  = useState<Set<string>>(new Set());
-
+ 
     async function handleUpload(file: File, onProgress: (pct: number) => void) {
         await uploadDocument(file, selectedFolderId, onProgress);
     }
-
+ 
     const openReplicModal = useCallback(async () => {
         setReplicResult(null);
         setReplicError(null);
@@ -55,14 +73,14 @@ export default function DocumentsPage() {
             ]);
             const membJson    = await membRes.json();
             const foldersJson = await foldersRes.json();
-
+ 
             const contableClients: ClientTenant[] = (membJson.data ?? [])
                 .filter((m: { role: string; isOwn: boolean }) => m.role === 'contable' && !m.isOwn)
                 .map((m: { tenantId: string; tenantEmail: string }) => ({ tenantId: m.tenantId, tenantEmail: m.tenantEmail }));
-
+ 
             const rootFolders: SourceFolder[] = (foldersJson.data ?? [])
                 .map((f: { id: string; name: string }) => ({ id: f.id, name: f.name }));
-
+ 
             setClients(contableClients);
             setSelectedClients(new Set(contableClients.map((c) => c.tenantId)));
             setSourceFolders(rootFolders);
@@ -70,8 +88,8 @@ export default function DocumentsPage() {
         } finally {
             setClientsLoading(false);
         }
-    }, []);
-
+    }, [replicateFolders]);
+ 
     function toggleClient(tenantId: string) {
         setSelectedClients((prev) => {
             const next = new Set(prev);
@@ -80,7 +98,7 @@ export default function DocumentsPage() {
             return next;
         });
     }
-
+ 
     function toggleFolder(folderId: string) {
         setSelectedFolders((prev) => {
             const next = new Set(prev);
@@ -89,7 +107,7 @@ export default function DocumentsPage() {
             return next;
         });
     }
-
+ 
     async function handleReplicate() {
         setReplicConfirm(false);
         setReplicating(true);
@@ -104,19 +122,21 @@ export default function DocumentsPage() {
             setReplicating(false);
         }
     }
-
+ 
     const selectedFolder = folders.find((f) => f.id === selectedFolderId);
     const folderLabel    = selectedFolder?.name ?? 'Todos los documentos';
-
+ 
     // ── Panels ────────────────────────────────────────────────────────────────
-
+ 
     const FoldersPanel = (
-        <div className="flex flex-col h-full">
-            {/* Scrollable folder area */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3 border-b border-border-light">
-                <p className="font-mono text-[10px] uppercase text-foreground/40 tracking-wider mb-3">
-                    Carpetas
-                </p>
+        <div className="flex flex-col h-full bg-surface-1">
+            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-4">
+                <div className="flex items-center gap-2 mb-4 px-2">
+                    <Folders size={14} className="text-primary-500" />
+                    <span className="text-[10px] uppercase font-bold tracking-[0.15em] text-[var(--text-tertiary)]">
+                        Carpetas
+                    </span>
+                </div>
                 <FolderTree
                     folders={folders}
                     selectedFolderId={selectedFolderId}
@@ -125,360 +145,326 @@ export default function DocumentsPage() {
                     onDeleteFolder={deleteFolder}
                 />
             </div>
-
-            {/* Sticky replication button */}
-            <div className="flex-shrink-0 px-4 pt-3 pb-4">
-                <button
+ 
+            <div className="p-4 border-t border-border-light bg-surface-2/30">
+                <BaseButton.Root
+                    variant="secondary"
+                    size="sm"
                     onClick={openReplicModal}
-                    disabled={replicating}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-border-medium text-foreground/40 hover:text-primary-500 hover:border-primary-500/40 hover:bg-primary-500/[0.04] font-mono text-[11px] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                    isDisabled={replicating}
+                    leftIcon={replicating ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
+                    className="w-full text-[11px] font-mono border-dashed"
                 >
-                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M7.5 2.5l2 2-2 2" />
-                        <path d="M1.5 5.5h8" />
-                        <path d="M3.5 1.5v8" />
-                    </svg>
                     {replicating ? 'Replicando…' : 'Replicar plantilla'}
-                </button>
+                </BaseButton.Root>
             </div>
         </div>
     );
-
+ 
     const totalCreated   = replicResult?.reduce((s, r) => s + r.foldersCreated,  0) ?? 0;
     const totalExisting  = replicResult?.reduce((s, r) => s + (r.foldersExisting ?? 0), 0) ?? 0;
     const failedCount    = replicResult?.filter((r) => r.error).length ?? 0;
     const allFailed      = replicResult !== null && replicResult.length > 0 && failedCount === replicResult.length;
-
+ 
     return (
-        <div className="flex h-full overflow-hidden">
-
+        <div className="flex h-full overflow-hidden bg-surface-2">
+ 
             {/* ── Desktop sidebar (xl+) ─────────────────────────────────── */}
             <aside
                 aria-label="Carpetas"
-                className="hidden xl:flex xl:flex-col w-56 flex-shrink-0 border-r border-border-light bg-surface-1 overflow-hidden"
+                className="hidden xl:flex xl:flex-col w-64 flex-shrink-0 border-r border-border-light shadow-sm z-10"
             >
                 {FoldersPanel}
             </aside>
-
+ 
             {/* ── Mobile drawer ─────────────────────────────────────────── */}
-            {drawerOpen && (
-                <div
-                    className="xl:hidden fixed inset-0 z-40 flex"
-                    onKeyDown={(e) => e.key === 'Escape' && setDrawerOpen(false)}
-                >
-                    <div
-                        className="absolute inset-0 bg-black/40"
-                        onClick={() => setDrawerOpen(false)}
-                        aria-hidden="true"
-                    />
-                    <aside
-                        className="relative z-50 w-64 flex flex-col bg-surface-1 border-r border-border-light overflow-hidden"
-                        aria-label="Carpetas"
-                    >
-                        <div className="flex items-center justify-between px-4 pt-4 pb-2 flex-shrink-0">
-                            <p className="font-mono text-[10px] uppercase text-foreground/40 tracking-wider">
-                                Carpetas
-                            </p>
-                            <button
-                                onClick={() => setDrawerOpen(false)}
-                                aria-label="Cerrar"
-                                className="p-1 rounded text-foreground/40 hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                            >
-                                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                                    <path d="M2 2l9 9M11 2l-9 9" />
-                                </svg>
-                            </button>
-                        </div>
-                        {FoldersPanel}
-                    </aside>
-                </div>
-            )}
-
+            <AnimatePresence>
+                {drawerOpen && (
+                    <div className="xl:hidden fixed inset-0 z-[100] flex">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                            onClick={() => setDrawerOpen(false)}
+                            aria-hidden="true"
+                        />
+                        <motion.aside
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="relative z-10 w-72 flex flex-col bg-surface-1 border-r border-border-light shadow-2xl"
+                            aria-label="Carpetas móvil"
+                        >
+                            <div className="flex items-center justify-between px-6 py-5 border-b border-border-light">
+                                <div className="flex items-center gap-2">
+                                    <Folders size={16} className="text-primary-500" />
+                                    <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">Explorar</span>
+                                </div>
+                                <BaseButton.Icon
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setDrawerOpen(false)}
+                                    aria-label="Cerrar"
+                                >
+                                    <X size={16} />
+                                </BaseButton.Icon>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                {FoldersPanel}
+                            </div>
+                        </motion.aside>
+                    </div>
+                )}
+            </AnimatePresence>
+ 
             {/* ── Main content ──────────────────────────────────────────── */}
             <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-border-light gap-3 flex-shrink-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                        {/* Mobile: abrir drawer de carpetas */}
-                        <button
-                            onClick={() => setDrawerOpen(true)}
-                            aria-label="Mostrar carpetas"
-                            className="xl:hidden p-2 -ml-1 rounded-lg text-foreground/50 hover:text-foreground hover:bg-surface-2 transition-colors"
-                        >
-                            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                                <path d="M2 4h11M2 7.5h11M2 11h11" />
-                            </svg>
-                        </button>
-
-                        {/* Breadcrumb */}
-                        <div className="flex items-center gap-1.5 font-mono text-[12px] min-w-0">
-                            <button
+                <PageHeader 
+                    title="Archivos" 
+                    subtitle={
+                        <div className="flex items-center gap-1.5 min-w-0 font-bold text-primary-500">
+                            <BaseButton.Root
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => selectFolder(null)}
-                                className={selectedFolderId ? 'text-foreground/50 hover:text-foreground transition-colors' : 'text-foreground font-medium'}
+                                className={`px-1.5 h-auto py-0.5 text-[12px] font-bold uppercase tracking-wider ${selectedFolderId ? 'text-primary-500/60 hover:text-primary-500' : 'text-primary-500'}`}
                             >
                                 Documentos
-                            </button>
+                            </BaseButton.Root>
                             {selectedFolder && (
                                 <>
-                                    <span className="text-foreground/30">/</span>
-                                    <span className="text-foreground font-medium truncate">{folderLabel}</span>
+                                    <ChevronRight size={12} className="text-foreground/20 shrink-0" />
+                                    <span className="truncate">{folderLabel}</span>
                                 </>
                             )}
                         </div>
+                    }
+                >
+                    <div className="flex items-center gap-2">
+                        <BaseButton.Icon
+                            variant="secondary"
+                            size="md"
+                            className="xl:hidden"
+                            onClick={() => setDrawerOpen(true)}
+                        >
+                            <Menu size={18} />
+                        </BaseButton.Icon>
+                        <UploadButton onUpload={handleUpload} />
                     </div>
-
-                    <UploadButton onUpload={handleUpload} />
-                </div>
-
+                </PageHeader>
+ 
                 {/* Error banner */}
-                {error && (
-                    <div className="mx-5 mt-4 px-4 py-3 rounded-lg bg-red-500/[0.05] border border-red-500/20 font-mono text-[11px] text-red-500 flex-shrink-0">
-                        {error}
+                <AnimatePresence>
+                    {error && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mx-8 mt-4 px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/20 flex items-start gap-3"
+                        >
+                            <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={14} />
+                            <p className="text-[12px] text-red-600 font-medium">{error}</p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+ 
+                {/* Document list */}
+                <div className="flex-1 overflow-y-auto px-8 py-6">
+                    <div className="max-w-5xl mx-auto h-full">
+                        <DocumentList
+                            documents={documents}
+                            loading={loading}
+                            onDelete={deleteDocument}
+                            onDownload={getDownloadUrl}
+                        />
+                    </div>
+                </div>
+            </main>
+ 
+            {/* ── Modals ────────────────────────────────────────────────── */}
+            <AnimatePresence>
+                {/* Replicate Confirm */}
+                {replicConfirm && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                            onClick={() => setReplicConfirm(false)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-md rounded-2xl bg-surface-1 shadow-2xl border border-border-light overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-6 border-b border-border-light flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-[16px] font-bold text-foreground">Replicar plantilla</h3>
+                                    <p className="text-[12px] text-[var(--text-tertiary)] mt-1">
+                                        Crea la estructura de carpetas en tus clientes.
+                                    </p>
+                                </div>
+                                <BaseButton.Icon variant="secondary" size="md" onClick={() => setReplicConfirm(false)}>
+                                    <X size={18} />
+                                </BaseButton.Icon>
+                            </div>
+ 
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {clientsLoading ? (
+                                    <div className="py-12 flex flex-col items-center justify-center gap-3">
+                                        <Loader2 className="animate-spin text-primary-500" size={24} />
+                                        <p className="text-[12px] font-mono text-foreground/40 text-center">Analizando vinculaciones…</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Carpetas */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Carpetas base</span>
+                                                <BaseButton.Root 
+                                                    variant="ghost" 
+                                                    size="sm"
+                                                    onClick={() => setSelectedFolders(selectedFolders.size === sourceFolders.length ? new Set() : new Set(sourceFolders.map(f => f.id)))}
+                                                    className="h-auto p-1 text-[10px] font-bold"
+                                                >
+                                                    {selectedFolders.size === sourceFolders.length ? 'Deseleccionar todas' : 'Todas'}
+                                                </BaseButton.Root>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                                {sourceFolders.map(f => (
+                                                    <label key={f.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-border-light bg-surface-2/50 hover:border-primary-500/30 cursor-pointer transition-all">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="accent-primary-500 w-4 h-4 rounded-md"
+                                                            checked={selectedFolders.has(f.id)}
+                                                            onChange={() => toggleFolder(f.id)}
+                                                        />
+                                                        <Folders size={14} className="text-foreground/30" />
+                                                        <span className="text-[12px] font-medium truncate">{f.name}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-border-light" />
+
+                                        {/* Empresas */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Empresas destino</span>
+                                                <BaseButton.Root 
+                                                    variant="ghost" 
+                                                    size="sm"
+                                                    onClick={() => setSelectedClients(selectedClients.size === clients.length ? new Set() : new Set(clients.map(c => c.tenantId)))}
+                                                    className="h-auto p-1 text-[10px] font-bold"
+                                                >
+                                                    {selectedClients.size === clients.length ? 'Deseleccionar todas' : 'Todas'}
+                                                </BaseButton.Root>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                                {clients.map(c => (
+                                                    <label key={c.tenantId} className="flex items-center gap-3 p-2.5 rounded-xl border border-border-light bg-surface-2/50 hover:border-primary-500/30 cursor-pointer transition-all">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="accent-primary-500 w-4 h-4 rounded-md"
+                                                            checked={selectedClients.has(c.tenantId)}
+                                                            onChange={() => toggleClient(c.tenantId)}
+                                                        />
+                                                        <span className="text-[12px] font-medium truncate">{c.tenantEmail}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+ 
+                            <div className="p-6 bg-surface-2/50 border-t border-border-light flex gap-3">
+                                <BaseButton.Root variant="secondary" onClick={() => setReplicConfirm(false)} className="flex-1">
+                                    Cancelar
+                                </BaseButton.Root>
+                                <BaseButton.Root 
+                                    variant="primary" 
+                                    onClick={handleReplicate} 
+                                    isDisabled={selectedClients.size === 0 || selectedFolders.size === 0}
+                                    className="flex-1"
+                                >
+                                    Replicar estructura
+                                </BaseButton.Root>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+ 
+                {/* Result Modal */}
+                {replicResult && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                            onClick={() => setReplicResult(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-sm rounded-2xl bg-surface-1 shadow-2xl border border-border-light overflow-hidden p-6 text-center"
+                        >
+                            <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 ${allFailed ? 'bg-red-500/10 text-red-500' : 'bg-primary-500/10 text-primary-500'}`}>
+                                {allFailed ? <AlertCircle size={32} /> : <CheckCircle2 size={32} />}
+                            </div>
+                            <h3 className="text-[18px] font-bold text-foreground">
+                                {allFailed ? 'Replicación fallida' : '¡Proceso completado!'}
+                            </h3>
+                            <p className="text-[13px] text-[var(--text-secondary)] mt-2">
+                                {totalCreated > 0 ? `${totalCreated} carpetas creadas con éxito.` : 'No se crearon carpetas nuevas.'}
+                                {totalExisting > 0 && ` ${totalExisting} ya existían.`}
+                            </p>
+                            
+                            <BaseButton.Root variant="primary" onClick={() => setReplicResult(null)} className="mt-6 w-full">
+                                Aceptar e ir al tablero
+                            </BaseButton.Root>
+                        </motion.div>
                     </div>
                 )}
 
-                {/* Document list */}
-                <div className="flex-1 overflow-y-auto px-5 py-4">
-                    <DocumentList
-                        documents={documents}
-                        loading={loading}
-                        onDelete={deleteDocument}
-                        onDownload={getDownloadUrl}
-                    />
-                </div>
-            </main>
-
-            {/* ── Modal: Confirmar replicación ────────────────────────── */}
-            {replicConfirm && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-                    onKeyDown={(e) => e.key === 'Escape' && setReplicConfirm(false)}
-                >
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="replic-confirm-title"
-                        className="w-full max-w-sm rounded-xl border border-border-light bg-surface-1 shadow-xl p-6 flex flex-col gap-4"
-                    >
-                        <div>
-                            <p id="replic-confirm-title" className="font-mono text-[13px] font-medium text-foreground mb-1">
-                                Replicar plantilla de carpetas
-                            </p>
-                            <p className="font-mono text-[11px] text-foreground/60 leading-relaxed">
-                                Selecciona las empresas donde quieres replicar tus carpetas. Las carpetas existentes con el mismo nombre no se duplican.
-                            </p>
-                        </div>
-
-                        {clientsLoading ? (
-                            <p className="font-mono text-[11px] text-foreground/40 py-2 text-center">Cargando…</p>
-                        ) : (
-                            <div className="flex flex-col gap-4">
-                                {/* ── Carpetas ── */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="font-mono text-[10px] uppercase text-foreground/40 tracking-wider">Carpetas a replicar</span>
-                                        <button
-                                            onClick={() => setSelectedFolders(
-                                                selectedFolders.size === sourceFolders.length
-                                                    ? new Set()
-                                                    : new Set(sourceFolders.map((f) => f.id))
-                                            )}
-                                            className="font-mono text-[10px] text-primary-500 hover:text-primary-600 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500/40 rounded"
-                                        >
-                                            {selectedFolders.size === sourceFolders.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
-                                        </button>
-                                    </div>
-                                    {sourceFolders.length === 0 ? (
-                                        <p className="font-mono text-[11px] text-foreground/40">No tienes carpetas creadas.</p>
-                                    ) : (
-                                        <div className="flex flex-col gap-0.5 max-h-36 overflow-y-auto">
-                                            {sourceFolders.map((folder) => (
-                                                <label
-                                                    key={folder.id}
-                                                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-surface-2 cursor-pointer transition-colors"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedFolders.has(folder.id)}
-                                                        onChange={() => toggleFolder(folder.id)}
-                                                        className="accent-primary-500 w-3.5 h-3.5 flex-shrink-0"
-                                                    />
-                                                    <svg width="11" height="11" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-foreground/40 flex-shrink-0">
-                                                        <path d="M1 3.5A1 1 0 0 1 2 2.5h3l1 1.5h4a1 1 0 0 1 1 1V9a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3.5z" />
-                                                    </svg>
-                                                    <span className="font-mono text-[11px] text-foreground truncate">{folder.name}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ── Divisor ── */}
-                                <div className="border-t border-border-light" />
-
-                                {/* ── Empresas destino ── */}
-                                <div>
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="font-mono text-[10px] uppercase text-foreground/40 tracking-wider">
-                                            Empresas destino
-                                        </span>
-                                        <button
-                                            onClick={() => setSelectedClients(
-                                                selectedClients.size === clients.length
-                                                    ? new Set()
-                                                    : new Set(clients.map((c) => c.tenantId))
-                                            )}
-                                            className="font-mono text-[10px] text-primary-500 hover:text-primary-600 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-500/40 rounded"
-                                        >
-                                            {selectedClients.size === clients.length ? 'Deseleccionar todas' : 'Seleccionar todas'}
-                                        </button>
-                                    </div>
-                                    {clients.length === 0 ? (
-                                        <p className="font-mono text-[11px] text-foreground/40">No tienes empresas cliente como contador.</p>
-                                    ) : (
-                                        <div className="flex flex-col gap-0.5 max-h-36 overflow-y-auto">
-                                            {clients.map((client) => (
-                                                <label
-                                                    key={client.tenantId}
-                                                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-surface-2 cursor-pointer transition-colors"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedClients.has(client.tenantId)}
-                                                        onChange={() => toggleClient(client.tenantId)}
-                                                        className="accent-primary-500 w-3.5 h-3.5 flex-shrink-0"
-                                                    />
-                                                    <span className="font-mono text-[11px] text-foreground truncate">
-                                                        {client.tenantEmail}
-                                                    </span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleReplicate}
-                                disabled={clientsLoading || selectedClients.size === 0 || selectedFolders.size === 0}
-                                className="flex-1 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white font-mono text-[12px] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                            >
-                                Replicar{selectedClients.size > 0 ? ` (${selectedClients.size})` : ''}
-                            </button>
-                            <button
-                                onClick={() => setReplicConfirm(false)}
-                                className="px-4 py-2 rounded-lg border border-border-light text-foreground/60 hover:text-foreground font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Modal: Error de replicación ─────────────────────────── */}
-            {replicError && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-                    onKeyDown={(e) => e.key === 'Escape' && setReplicError(null)}
-                >
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="replic-error-title"
-                        className="w-full max-w-sm rounded-xl border border-border-light bg-surface-1 shadow-xl p-6 flex flex-col gap-4"
-                    >
-                        <div>
-                            <p id="replic-error-title" className="font-mono text-[13px] font-medium text-foreground mb-1">
-                                Error en la replicación
-                            </p>
-                            <p className="font-mono text-[11px] text-red-500">{replicError}</p>
-                        </div>
-                        <button
+                {/* Replicate Error Modal */}
+                {replicError && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
                             onClick={() => setReplicError(null)}
-                            className="w-full py-2 rounded-lg border border-border-light text-foreground/60 hover:text-foreground font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-sm rounded-2xl bg-surface-1 shadow-2xl border border-border-light overflow-hidden p-6 text-center"
                         >
-                            Cerrar
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Modal: Resultado replicación ────────────────────────── */}
-            {replicResult && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-                    onKeyDown={(e) => e.key === 'Escape' && setReplicResult(null)}
-                >
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="replic-result-title"
-                        className="w-full max-w-sm rounded-xl border border-border-light bg-surface-1 shadow-xl p-6 flex flex-col gap-4"
-                    >
-                        <div>
-                            <p id="replic-result-title" className="font-mono text-[13px] font-medium text-foreground mb-1">
-                                {allFailed ? 'Error en la replicación' : 'Replicación completada'}
+                            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4 bg-red-500/10 text-red-500">
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 className="text-[18px] font-bold text-foreground">Error de replicación</h3>
+                            <p className="text-[13px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+                                {replicError}
                             </p>
-                            {replicResult.length === 0 ? (
-                                <p className="font-mono text-[11px] text-foreground/60">
-                                    No se seleccionaron empresas.
-                                </p>
-                            ) : (
-                                <>
-                                    <p className="font-mono text-[11px] text-foreground/60">
-                                        {totalCreated > 0
-                                            ? `${totalCreated} carpeta${totalCreated !== 1 ? 's' : ''} nueva${totalCreated !== 1 ? 's' : ''} creada${totalCreated !== 1 ? 's' : ''}.`
-                                            : 'Ninguna carpeta nueva.'
-                                        }
-                                        {totalExisting > 0 && ` ${totalExisting} ya existía${totalExisting !== 1 ? 'n' : ''}.`}
-                                    </p>
-                                    {failedCount > 0 && (
-                                        <p className="font-mono text-[11px] text-red-500 mt-0.5">
-                                            {failedCount} empresa{failedCount !== 1 ? 's' : ''} tuvieron errores.
-                                        </p>
-                                    )}
-                                    <div className="flex flex-col gap-1 max-h-40 overflow-y-auto mt-3">
-                                        {replicResult.map((r) => {
-                                            const email = clients.find((c) => c.tenantId === r.tenantId)?.tenantEmail ?? r.tenantId.slice(0, 8) + '…';
-                                            return (
-                                                <div key={r.tenantId} className="flex items-center gap-2 font-mono text-[10px]">
-                                                    {r.error ? (
-                                                        <span className="text-red-500 flex-shrink-0">✕</span>
-                                                    ) : (
-                                                        <span className="text-primary-500 flex-shrink-0">✓</span>
-                                                    )}
-                                                    <span className="text-foreground/70 truncate flex-1">{email}</span>
-                                                    {r.error
-                                                        ? <span className="text-red-500 truncate">{r.error}</span>
-                                                        : <span className="text-foreground/40 flex-shrink-0">
-                                                            {r.foldersCreated > 0
-                                                                ? `${r.foldersCreated} nueva${r.foldersCreated !== 1 ? 's' : ''}`
-                                                                : r.foldersExisting > 0
-                                                                    ? 'ya existían'
-                                                                    : 'sin cambios'
-                                                            }
-                                                          </span>
-                                                    }
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => setReplicResult(null)}
-                            className="w-full py-2 rounded-lg border border-border-light text-foreground/60 hover:text-foreground font-mono text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
-                        >
-                            Cerrar
-                        </button>
+                            
+                            <BaseButton.Root variant="secondary" onClick={() => setReplicError(null)} className="mt-6 w-full">
+                                Cerrar y reintentar
+                            </BaseButton.Root>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }
