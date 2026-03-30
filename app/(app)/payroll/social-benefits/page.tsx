@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck } from "lucide-react";
+import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck, ChevronDown } from "lucide-react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -22,7 +22,7 @@ const fmtN = (n: number) =>
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "font-mono text-[13px] text-foreground tabular-nums appearance-none",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
@@ -466,7 +466,7 @@ export default function PrestacionesPage() {
                             <div className="space-y-4">
                                 {!loading && employees.length > 0 && (
                                     <div className="relative">
-                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={14} />
                                         <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
                                             <option value="">Lote por defecto (Todos)</option>
                                             <optgroup label="Empleados">
@@ -479,6 +479,7 @@ export default function PrestacionesPage() {
                                                 }
                                             </optgroup>
                                         </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                     </div>
                                 )}
                                 {selectedEmp && (

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { Receipt, TrendingUp, RefreshCw } from "lucide-react";
+import { Receipt, TrendingUp, RefreshCw, ChevronDown } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -545,7 +545,7 @@ export default function PayrollCalculator() {
 
     const fieldCls = [
         "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-        "font-mono text-[13px] text-foreground tabular-nums",
+        "font-mono text-[13px] text-foreground tabular-nums appearance-none",
         "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
     ].join(" ");
 
@@ -651,27 +651,33 @@ export default function PayrollCalculator() {
                             <div className="flex gap-2">
                                 <div className="flex-1">
                                     <label className={labelCls}>Mes</label>
-                                    <select
-                                        value={selMonth}
-                                        onChange={(e) => setSelMonth(Number(e.target.value))}
-                                        className={fieldCls}
-                                    >
-                                        {MONTH_NAMES.map((name, i) => (
-                                            <option key={i + 1} value={i + 1}>{name}</option>
-                                        ))}
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={selMonth}
+                                            onChange={(e) => setSelMonth(Number(e.target.value))}
+                                            className={fieldCls}
+                                        >
+                                            {MONTH_NAMES.map((name, i) => (
+                                                <option key={i + 1} value={i + 1}>{name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                    </div>
                                 </div>
                                 <div className="w-20">
                                     <label className={labelCls}>Año</label>
-                                    <select
-                                        value={selYear}
-                                        onChange={(e) => setSelYear(Number(e.target.value))}
-                                        className={fieldCls}
-                                    >
-                                        {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
-                                            <option key={y} value={y}>{y}</option>
-                                        ))}
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={selYear}
+                                            onChange={(e) => setSelYear(Number(e.target.value))}
+                                            className={fieldCls}
+                                        >
+                                            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
+                                                <option key={y} value={y}>{y}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                                    </div>
                                 </div>
                             </div>
 

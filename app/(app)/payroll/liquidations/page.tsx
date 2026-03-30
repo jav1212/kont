@@ -9,6 +9,7 @@ import {
     Users, 
     Calendar, 
     ClipboardCheck, 
+    ChevronDown, 
     Terminal, 
     RefreshCw, 
     TrendingUp, 
@@ -32,7 +33,7 @@ const fmtN = (n: number) =>
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "font-mono text-[13px] text-foreground tabular-nums appearance-none",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
@@ -559,6 +560,7 @@ export default function LiquidacionesPage() {
                                         }
                                     </optgroup>
                                 </select>
+                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                             </div>
 
                             {selectedEmp && (
@@ -619,6 +621,7 @@ export default function LiquidacionesPage() {
                                         <option value="despido_justificado">Despido justificado</option>
                                         <option value="despido_injustificado">Despido injustificado</option>
                                     </select>
+                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                 </div>
                             </div>
                         </div>

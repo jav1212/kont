@@ -22,7 +22,8 @@ import {
     Clock,
     Loader2,
     AlertCircle,
-    Copy
+    Copy,
+    ChevronDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -88,7 +89,7 @@ const ESTADO_CLS: Record<EmployeeEstado, string> = {
 
 const cellInput = [
     "w-full h-8 px-2 rounded-lg border bg-surface-1 outline-none",
-    "font-mono text-[12px] text-foreground tabular-nums",
+    "font-mono text-[12px] text-foreground tabular-nums appearance-none",
     "border-border-light focus:border-primary-500/60 focus:bg-surface-1",
     "hover:border-border-medium transition-colors duration-150",
 ].join(" ");
@@ -202,13 +203,16 @@ function EmployeeRow({
             <td className={tdCls + " w-52"}>
                 {isEditing ? (
                     <div className="flex h-8 rounded-lg border border-border-light bg-surface-1 focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-all duration-200 shadow-sm">
-                        <select
-                            className="bg-surface-2 border-r border-border-light px-2 font-mono text-[11px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
-                            value={draft.moneda}
-                            onChange={(e) => onDraftChange("moneda", e.target.value)}>
-                            <option value="VES">VES</option>
-                            <option value="USD">USD</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                className="bg-surface-2 border-r border-border-light pl-2 pr-6 h-full font-mono text-[11px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors appearance-none"
+                                value={draft.moneda}
+                                onChange={(e) => onDraftChange("moneda", e.target.value)}>
+                                <option value="VES">VES</option>
+                                <option value="USD">USD</option>
+                            </select>
+                            <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                        </div>
                         <input
                             className="flex-1 min-w-0 bg-transparent px-2.5 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
                             type="number" step="0.01" min="0" placeholder="0.00"
@@ -259,12 +263,15 @@ function EmployeeRow({
             {/* Estado */}
             <td className={tdCls + " w-32"}>
                 {isEditing ? (
-                    <select
-                        value={draft.estado}
-                        onChange={(e) => onDraftChange("estado", e.target.value)}
-                        className={cellInput}>
-                        {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <div className="relative">
+                        <select
+                            value={draft.estado}
+                            onChange={(e) => onDraftChange("estado", e.target.value)}
+                            className={cellInput}>
+                            {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                    </div>
                 ) : (
                     <span className={[
                         "inline-flex px-2 py-0.5 rounded-lg border font-mono text-[10px] uppercase tracking-wider font-bold",

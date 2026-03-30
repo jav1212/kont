@@ -9,6 +9,7 @@ import {
     Users, 
     Calendar, 
     ClipboardCheck, 
+    ChevronDown, 
     RefreshCw, 
     TrendingUp, 
     Info 
@@ -31,7 +32,7 @@ const fmtN = (n: number) =>
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
+    "font-mono text-[13px] text-foreground tabular-nums appearance-none",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
@@ -790,7 +791,7 @@ export default function VacacionesPage() {
                             <div className="space-y-4">
                                 {!loading && employees.length > 0 && (
                                     <div className="relative">
-                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={14} />
                                         <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
                                             <option value="">Lote por defecto (Todos)</option>
                                             <optgroup label="Empleados">
@@ -803,6 +804,7 @@ export default function VacacionesPage() {
                                                 }
                                             </optgroup>
                                         </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={14} />
                                     </div>
                                 )}
                                 {selectedEmp && (
