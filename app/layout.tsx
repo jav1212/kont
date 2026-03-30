@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)",  color: "#0B0C14" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B0C14" },
   ],
 };
 
@@ -32,10 +32,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon.ico",    sizes: "32x32",    type: "image/x-icon"  },
-      { url: "/icon-32.png",    sizes: "32x32",    type: "image/png"     },
-      { url: "/icon-512.png",   sizes: "512x512",  type: "image/png"     },
-      { url: "/icons/icon.svg",                    type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
     ],
     apple: [{ url: "/icon-512.png", sizes: "512x512" }],
   },
@@ -66,7 +66,8 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <head>
         {/* Anti-flash: apply theme class before paint */}
-        <script dangerouslySetInnerHTML={{ __html: `
+        <script dangerouslySetInnerHTML={{
+          __html: `
           try {
             var t = localStorage.getItem('kont-theme');
             if (!t) t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

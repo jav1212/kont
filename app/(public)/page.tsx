@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ModuleCarousel } from "@/src/shared/frontend/components/module-carousel";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 
 interface Plan {
     id:                     string;
@@ -17,14 +17,12 @@ interface Plan {
 
 type Cycle = "monthly" | "quarterly" | "annual";
 
-// Modules that can have billing plans — order determines tab order.
-const BILLABLE_MODULES: { slug: string; label: string }[] = [
+const BILLABLE_MODULES = [
     { slug: "payroll",   label: "Nómina"      },
     { slug: "inventory", label: "Inventario"  },
     { slug: "documents", label: "Documentos"  },
 ];
 
-// Features to display when a module has no paid plans (i.e. it's free).
 const FREE_MODULE_FEATURES: Record<string, string[]> = {
     documents: [
         "Carga y organización de archivos",
@@ -33,15 +31,13 @@ const FREE_MODULE_FEATURES: Record<string, string[]> = {
         "Sin límite de documentos",
     ],
 };
-
 const FREE_MODULE_FEATURES_FALLBACK = ["Sin costo adicional"];
 
 const PANEL_ID = "pricing-panel";
 
-
 export default function LandingPage() {
 
-    // Lazy init reads URL hash/query params once — avoids setState-in-effect pattern
+    // --- STATE LOGIC (Retained for functionality) ---
     const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
         if (typeof window === "undefined") return null;
         const hashParams  = new URLSearchParams(window.location.hash.substring(1));
@@ -49,11 +45,12 @@ export default function LandingPage() {
         const msg = hashParams.get('error_description') ?? queryParams.get('error_description');
         return msg ? { type: 'error', text: msg.replace(/\+/g, ' ') } : null;
     });
-    const [plans,           setPlans]           = useState<Plan[]>([]);
-    const [plansLoading,    setPlansLoading]    = useState<boolean>(true);
-    const [plansError,      setPlansError]      = useState<boolean>(false);
-    const [cycle,           setCycle]           = useState<Cycle>("monthly");
-    const [activeModule,    setActiveModule]    = useState<string>("payroll");
+    
+    const [plans, setPlans] = useState<Plan[]>([]);
+    const [plansLoading, setPlansLoading] = useState<boolean>(true);
+    const [plansError, setPlansError] = useState<boolean>(false);
+    const [cycle, setCycle] = useState<Cycle>("monthly");
+    const [activeModule, setActiveModule] = useState<string>("payroll");
     const [tabTransitioning, setTabTransitioning] = useState<boolean>(false);
 
     useEffect(() => {
@@ -73,7 +70,6 @@ export default function LandingPage() {
 
     const activeModuleIsFree = !plansLoading && !plansError && visiblePlans.length === 0;
 
-    // Compute average savings across all plans for the cycle toggle hints.
     const avgSavings = useMemo(() => {
         const withQuarterly = plans.filter((p) => p.priceQuarterlyUsd);
         const withAnnual    = plans.filter((p) => p.priceAnnualUsd);
@@ -113,421 +109,520 @@ export default function LandingPage() {
         return null;
     }
 
+    // --- ACCORDION FAQ STATE ---
+    const [openFaq, setOpenFaq] = useState<number | null>(0);
+
 
     return (
-        <div className="flex flex-col">
-
+        <div className="flex flex-col bg-background text-foreground selection:bg-primary-500/30 font-mono">
+            
+            {/* System Message Overlay */}
             {systemMessage && (
-                <div className="w-full bg-red-500/10 border-b border-red-500/20 px-8 py-3 animate-pulse">
-                    <div className="max-w-5xl mx-auto flex items-center gap-4">
-                        <span className="font-mono text-[12px] text-red-400 font-bold uppercase tracking-widest">
-                            [ SYSTEM_ERROR ]:
-                        </span>
-                        <span className="font-mono text-[12px] text-red-200/70 uppercase">
-                            {systemMessage.text}
-                        </span>
-                        <button
-                            onClick={() => setSystemMessage(null)}
-                            className="ml-auto font-mono text-[12px] text-[var(--text-tertiary)] hover:text-foreground"
-                        >
+                <div className="w-full bg-red-500/10 border-b border-red-500/20 px-8 py-3 shrink-0 z-50 fixed top-0 left-0 right-0">
+                    <div className="max-w-7xl mx-auto flex items-center gap-4">
+                        <span className="text-[12px] text-red-500 font-bold uppercase tracking-widest">[ ERROR ]</span>
+                        <span className="text-[13px] text-red-800 dark:text-red-200">{systemMessage.text}</span>
                             [ CERRAR ]
-                        </button>
                     </div>
                 </div>
             )}
 
-            {/* ── HERO ──────────────────────────────────────────────────── */}
-            <section className="px-8 pt-24 pb-20 max-w-5xl mx-auto w-full">
+            {/* 1. HERO SECTION (Split Left/Right) */}
+            <section className="relative px-6 pt-32 pb-20 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8 overflow-visible">
+                
+                {/* Left Side: Text Content */}
+                <div className="flex-1 w-full max-w-2xl flex flex-col items-start text-left shrink-0 z-10">
+                    <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 bg-surface-2 rounded-full border border-border-default">
+                        <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+                        <span className="text-[12px] uppercase tracking-wide text-text-secondary font-bold">Sistema Contable Integral</span>
+                    </div>
+                    
+                    <h1 className="text-[40px] sm:text-[56px] lg:text-[64px] font-bold leading-[1.05] tracking-tight text-foreground mb-6">
+                        Transparencia y Precisión <span className="text-primary-500">Konta Suite</span>
+                    </h1>
+                    
+                    <p className="text-[16px] sm:text-[18px] text-text-tertiary leading-relaxed mb-10 max-w-lg">
+                        Konta Suite es una solución contable de nueva generación que unifica y acelera tú negocio en Venezuela. Nómina y cálculos en tiempo real.
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row items-center gap-6 w-full sm:w-auto">
+                        <BaseButton.Root as={Link} href="/sign-in" variant="primary" className="h-12 px-8 text-[14px] rounded-full shadow-lg shadow-primary-500/25 w-full sm:w-auto">
+                            Comenzar Ahora
+                        </BaseButton.Root>
 
-                <div className="flex items-center gap-3 mb-10">
-                    <div className="h-px w-8 bg-primary-500/60" />
-                    <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
-                        Sistema de gestión · Venezuela
-                    </span>
-                </div>
-
-                <h1
-                    className="font-mono font-black uppercase leading-[0.92] tracking-tighter text-foreground"
-                    style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
-                >
-                    Gestión<br />
-                    <span className="text-[var(--text-disabled)]">precisa.</span><br />
-                    <span
-                        className="text-transparent"
-                        style={{ WebkitTextStroke: "1px rgba(8,145,178,0.7)" }}
-                    >
-                        siempre.
-                    </span>
-                </h1>
-
-                <p className="mt-10 max-w-lg font-mono text-[15px] leading-relaxed text-text-tertiary tracking-wide">
-                    Gestión contable, inventario y documentos en una sola plataforma. Indexación BCV
-                    en tiempo real. Sin errores, sin hojas de cálculo sueltas.
-                </p>
-
-                <div className="flex items-center gap-4 mt-12">
-                    <Link
-                        href="/sign-in"
-                        className={[
-                            "inline-flex items-center gap-2.5 px-6 py-3",
-                            "bg-primary-500 hover:bg-primary-400",
-                            "font-mono text-[13px] uppercase tracking-[0.18em] text-white",
-                            "rounded-lg transition-colors duration-150",
-                        ].join(" ")}
-                    >
-                        Acceder al sistema
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 6h8M6 2l4 4-4 4" />
-                        </svg>
-                    </Link>
-                    <Link
-                        href="/sign-up"
-                        className={[
-                            "inline-flex items-center px-6 py-3",
-                            "border border-foreground/10 hover:border-foreground/20",
-                            "font-mono text-[13px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary",
-                            "rounded-lg transition-colors duration-150",
-                        ].join(" ")}
-                    >
-                        Crear cuenta
-                    </Link>
-                </div>
-            </section>
-
-            {/* ── MODULE CAROUSEL ───────────────────────────────────────── */}
-            <ModuleCarousel />
-
-            {/* ── PRICING ───────────────────────────────────────────────── */}
-            <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
-
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-3">
-                    <div className="h-px w-8 bg-primary-500/60" />
-                    <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
-                        Planes
-                    </span>
-                </div>
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-                    <h2 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
-                        Sin sorpresas.<br />
-                        <span className="text-[var(--text-disabled)]">Precio fijo.</span>
-                    </h2>
-
-                    {/* Cycle toggle */}
-                    <div className="flex items-center gap-1 p-1 rounded-lg border border-border-light bg-foreground/[0.03]">
-                        {([
-                            { key: "monthly",   label: "Mensual",    savings: null                   },
-                            { key: "quarterly", label: "Trimestral", savings: avgSavings.quarterly   },
-                            { key: "annual",    label: "Anual",      savings: avgSavings.annual      },
-                        ] as { key: Cycle; label: string; savings: number | null }[]).map(({ key, label, savings }) => (
-                            <button
-                                key={key}
-                                onClick={() => setCycle(key)}
-                                className={[
-                                    "relative px-3 py-1.5 rounded-md font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                                    cycle === key
-                                        ? "bg-primary-500 text-white"
-                                        : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]",
-                                ].join(" ")}
-                            >
-                                {label}
-                                {savings !== null && savings > 0 && cycle !== key && (
-                                    <span className="ml-1.5 font-mono text-[10px] text-emerald-500 normal-case tracking-normal">
-                                        -{savings}%
-                                    </span>
-                                )}
-                            </button>
-                        ))}
+                        <div className="flex items-center gap-3">
+                            {/* Real Avatars */}
+                            <div className="flex -space-x-3">
+                                {[
+                                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+                                    "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80",
+                                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80"
+                                ].map((url, i) => (
+                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-background overflow-hidden relative shadow-sm">
+                                        <img src={url} alt="Usuario" className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                            <span className="text-[13px] text-text-secondary font-bold">
+                                +1,200 Contadores
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                {/* Module selector tabs */}
-                <div
-                    role="tablist"
-                    aria-label="Módulo de precios"
-                    className="flex items-center gap-1 p-1 mb-8 rounded-xl border border-border-light bg-foreground/[0.02] w-fit"
-                >
-                    {BILLABLE_MODULES.map((tab) => (
-                        <button
-                            key={tab.slug}
-                            role="tab"
-                            id={`tab-${tab.slug}`}
-                            aria-selected={activeModule === tab.slug}
-                            aria-controls={PANEL_ID}
-                            onClick={() => changeTab(tab.slug)}
-                            className={[
-                                "px-4 py-2 rounded-lg font-mono text-[12px] uppercase tracking-[0.18em] transition-all duration-150",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                                activeModule === tab.slug
-                                    ? "bg-surface-2 text-foreground border border-border-light shadow-sm"
-                                    : "text-foreground/40 hover:text-foreground/70 border border-transparent",
-                            ].join(" ")}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Cards */}
-                <div
-                    id={PANEL_ID}
-                    role="tabpanel"
-                    aria-labelledby={`tab-${activeModule}`}
-                    className="transition-opacity duration-[80ms]"
-                    style={{ opacity: tabTransitioning ? 0 : 1 }}
-                >
-                    {plansLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            {[...Array(4)].map((_, i) => (
-                                <div key={i} className="h-64 rounded-xl border border-border-light bg-surface-2 animate-pulse" />
-                            ))}
-                        </div>
-                    ) : plansError ? (
-                        <div className="flex flex-col items-center gap-3 py-12">
-                            <p className="font-mono text-[13px] text-[var(--text-tertiary)] uppercase tracking-[0.18em]">
-                                No pudimos cargar los planes
-                            </p>
-                            <button
-                                onClick={() => {
-                                    setPlansError(false);
-                                    setPlansLoading(true);
-                                    fetch("/api/billing/plans")
-                                        .then((r) => r.json())
-                                        .then((r) => {
-                                            if (r.data) setPlans(r.data);
-                                            else setPlansError(true);
-                                        })
-                                        .catch(() => setPlansError(true))
-                                        .finally(() => setPlansLoading(false));
-                                }}
-                                className={[
-                                    "font-mono text-[12px] uppercase tracking-[0.18em] px-4 py-2 rounded-lg",
-                                    "border border-border-light hover:border-border-medium text-[var(--text-secondary)]",
-                                    "transition-colors duration-150",
-                                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                                ].join(" ")}
-                            >
-                                Reintentar
-                            </button>
-                        </div>
-                    ) : activeModuleIsFree ? (
-                        <div className="flex justify-center">
-                            <div className="relative flex flex-col rounded-xl border border-border-light bg-surface-1 p-6 w-full max-w-xs">
-                                {/* Plan name */}
-                                <p className="font-mono text-[12px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-4">
-                                    Gratuito
-                                </p>
-
-                                {/* Price */}
-                                <div className="mb-1">
-                                    <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
-                                        $0
-                                    </span>
-                                    <span className="font-mono text-[12px] text-[var(--text-tertiary)] ml-1">
-                                        USD
-                                    </span>
+                {/* Right Side: Real Photographic Image */}
+                <div className="flex-1 w-full max-w-lg lg:max-w-xl shrink-0 relative z-0">
+                    {/* Circle Background */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-surface-2 via-background to-background rounded-full -z-10 blur-xl opacity-80" />
+                    
+                    <div className="relative aspect-square w-full rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] md:shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden border border-border-light group">
+                        <img 
+                            src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" 
+                            alt="Sistema Contable Konta" 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-primary-500/10 mix-blend-color pointer-events-none" />
+                        
+                        {/* Interactive UI highlight attached to image */}
+                        <div className="absolute inset-x-8 bottom-8 p-6 bg-background/80 backdrop-blur-md rounded-2xl border border-border-light shadow-xl text-foreground">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                 </div>
-                                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-4">
-                                    Sin costo adicional
-                                </p>
-
-                                {/* Divider */}
-                                <div className="h-px bg-border-light mb-5" />
-
-                                {/* Features */}
-                                <ul className="space-y-2.5 flex-1">
-                                    {(FREE_MODULE_FEATURES[activeModule] ?? FREE_MODULE_FEATURES_FALLBACK).map((feature) => (
-                                        <li key={feature} className="flex items-start gap-2">
-                                            <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                <path d="M2 5.5l2 2 4-4" />
-                                            </svg>
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                {feature}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-
-                                {/* CTA */}
-                                <Link
-                                    href="/sign-up"
-                                    aria-label="Comenzar gratis con Documentos"
-                                    className={[
-                                        "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
-                                        "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
-                                        "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                                    ].join(" ")}
-                                >
-                                    Comenzar gratis
-                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                        <path d="M2 5h6M5 2l3 3-3 3" />
-                                    </svg>
-                                </Link>
+                                <span className="font-bold text-[16px]">Cierre Contable Aprobado</span>
+                            </div>
+                            <div className="w-full bg-surface-2 h-2 rounded-full overflow-hidden mt-4">
+                                <div className="bg-primary-500 w-[100%] h-full rounded-full" />
                             </div>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            {visiblePlans.map((plan, idx) => {
-                                const highlighted = idx === Math.floor(visiblePlans.length / 2);
-                                const price       = planPrice(plan);
-                                const savings     = planSavings(plan);
+                    </div>
+                </div>
+            </section>
 
+            {/* 2. TARGET AUDIENCE RIBBON */}
+            <section className="max-w-5xl mx-auto w-full px-6 py-8 pb-16 flex flex-col items-center justify-center text-center border-b border-border-light">
+                <p className="text-[16px] text-text-tertiary font-medium mb-6 uppercase tracking-widest">
+                    Herramientas de alto nivel diseñadas para
+                </p>
+                <div className="flex flex-wrap justify-center items-center gap-6 md:gap-12 text-foreground font-bold text-[18px] md:text-[24px]">
+                    <span>Emprendedores</span>
+                    <span className="text-primary-500">•</span>
+                    <span>Pequeñas Empresas</span>
+                    <span className="text-primary-500">•</span>
+                    <span>Pymes</span>
+                    <span className="text-primary-500">•</span>
+                    <span>Estudiantes</span>
+                </div>
+            </section>
+
+            {/* 3. WHY KONTA? (Info split) */}
+            <section className="max-w-7xl mx-auto px-6 py-28 w-full flex flex-col lg:flex-row items-center gap-16 overflow-hidden">
+                
+                {/* Left: Real Image Photograph */}
+                <div className="flex-1 w-full rounded-[40px] shadow-sm aspect-square md:aspect-[4/3] flex items-center justify-center relative overflow-hidden border border-border-light group">
+                    <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary-500/10 rounded-full blur-2xl z-10" />
+                    
+                    <img 
+                        src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80" 
+                        alt="Reunión Contable" 
+                        className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-background/60 to-transparent pointer-events-none z-10" />
+                </div>
+
+                {/* Right: Text and Accordion features */}
+                <div className="flex-1 w-full">
+                    <span className="text-primary-500 font-bold text-[14px] uppercase tracking-wide">¿Por Qué Nosotros?</span>
+                    <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mt-3 mb-12">La ventaja competitiva para tu negocio</h2>
+                    
+                    <div className="flex flex-col gap-10">
+                        {/* Feature 1 */}
+                        <div className="flex gap-6 items-start">
+                            <div className="w-14 h-14 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center shrink-0">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-[20px] font-bold text-foreground mb-2">Soporte centralizado y dedicado</h3>
+                                <p className="text-[16px] text-text-tertiary leading-relaxed">Infraestructura blindada para proteger datos y un equipo siempre listo para resolver configuraciones organizacionales, evitando retrasos y múltiples intermediarios.</p>
+                            </div>
+                        </div>
+
+                        {/* Feature 2 */}
+                        <div className="flex gap-6 items-start">
+                            <div className="w-14 h-14 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center shrink-0">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-[20px] font-bold text-foreground mb-2">Desarrollos adaptados a Venezuela</h3>
+                                <p className="text-[16px] text-text-tertiary leading-relaxed">Integración directa y en vivo con las directrices BCV, automatizando la conversión a bolívares en cada operación crítica.</p>
+                            </div>
+                        </div>
+
+                        {/* Feature 3 */}
+                        <div className="flex gap-6 items-start">
+                            <div className="w-14 h-14 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center shrink-0">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                            </div>
+                            <div>
+                                <h3 className="text-[20px] font-bold text-foreground mb-2">Flexibilidad de uso</h3>
+                                <p className="text-[16px] text-text-tertiary leading-relaxed">Puedes utilizar Konta según tu capacidad. Accede de inmediato a los módulos contables adaptables a cualquier dispositivo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 4. END-TO-END MODULES GRID */}
+            <section className="bg-surface-2 pt-24 pb-32 border-y border-border-light">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+                        <div className="max-w-2xl">
+                            <span className="text-text-secondary font-bold text-[14px] uppercase tracking-wider">Flujo Comercial</span>
+                            <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mt-3">
+                                Gestiona tu negocio de principio a fin
+                            </h2>
+                            <p className="text-[16px] text-text-tertiary leading-relaxed mt-4">Soluciones interconectadas que potencian el flujo de información corporativo dándote herramientas para el control absoluto.</p>
+                        </div>
+                        <BaseButton.Root as={Link} href="/sign-up" variant="primary" className="rounded-full h-12 px-8 font-bold text-[14px]">
+                            Ver Todos
+                        </BaseButton.Root>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {/* Module Card 1 */}
+                        <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
+                            <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
+                                <img src="https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=600&q=80" alt="Nómina" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
+                            </div>
+                            <div className="p-8">
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta HR</span>
+                                <h3 className="text-[22px] font-bold text-foreground mb-4">Programa Inteligente de Nómina</h3>
+                                <p className="text-[15px] text-text-tertiary leading-relaxed">
+                                    Automatiza el cálculo de utilidades, liquidaciones y recibos, blindando a tu empresa contra riesgos legales bajo las nuevas directrices.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Module Card 2 */}
+                        <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
+                            <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
+                                <img src="https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=600&q=80" alt="Inventario" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
+                            </div>
+                            <div className="p-8">
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta Inventories</span>
+                                <h3 className="text-[22px] font-bold text-foreground mb-4">Módulo General de Inventarios</h3>
+                                <p className="text-[15px] text-text-tertiary leading-relaxed">
+                                    Control de existencia basado en lotes. Define el coste en USD con total visibilidad en las conversiones funcionales del momento.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Module Card 3 */}
+                        <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
+                            <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
+                                <img src="https://images.unsplash.com/photo-1606857521015-7f9fcf423740?auto=format&fit=crop&w=600&q=80" alt="Documentos" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
+                            </div>
+                            <div className="p-8">
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta Docs</span>
+                                <h3 className="text-[22px] font-bold text-foreground mb-4">Archivo y Organización Global</h3>
+                                <p className="text-[15px] text-text-tertiary leading-relaxed">
+                                    Lleva toda tu organización en la nube. Visualiza instantáneamente los soportes contables, facturas y registros para mantener todo legal.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5. EXPERIENCE & STATS */}
+            <section className="max-w-7xl mx-auto px-6 py-28 w-full">
+                
+                {/* Top section: Text | Stats */}
+                <div className="flex flex-col lg:flex-row justify-between mb-20 gap-16">
+                    <div className="flex-1 max-w-lg">
+                        <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 block border border-border-medium px-3 py-1 rounded-full w-fit">Sobre Nosotros</span>
+                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Fuerte Experiencia, Soluciones Modernas</h2>
+                        <p className="text-[18px] text-text-tertiary leading-relaxed">Combinamos años de conocimiento de los desafíos empresariales con desarrollo constante de vanguardia para impulsarte.</p>
+                    </div>
+
+                    <div className="flex-[1.5] w-full grid grid-cols-1 sm:grid-cols-3 gap-8 items-center border border-border-light rounded-3xl p-10 bg-surface-1/50 shadow-sm">
+                        <div className="text-center sm:text-left">
+                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">25<span className="text-primary-500">+</span></span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Reportes Fiscales</span>
+                        </div>
+                        <div className="text-center sm:text-left">
+                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">30<span className="text-primary-500">+</span></span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Sectores Activos</span>
+                        </div>
+                        <div className="text-center sm:text-left">
+                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">2K<span className="text-primary-500">+</span></span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Cuentas creadas</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom section: Split feature cards */}
+                <div className="flex flex-col md:flex-row gap-8">
+                    {/* Red Card */}
+                    <div className="flex-[1.2] bg-primary-500 rounded-[30px] p-12 text-white relative overflow-hidden flex flex-col justify-end min-h-[450px] shadow-lg shadow-primary-500/10 group">
+                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent pointer-events-none" />
+                        
+                        {/* Real Image Portrait Cutout Simulation */}
+                        <div className="absolute -bottom-6 -right-6 w-64 h-64 rounded-full border-8 border-primary-500/30 shadow-2xl overflow-hidden hidden md:block group-hover:scale-105 transition-transform duration-500">
+                            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Profesional Ejecutiva" className="w-full h-full object-cover" />
+                        </div>
+
+                        <div className="relative z-10 w-full sm:w-2/3 md:w-full lg:w-2/3">
+                            <div className="inline-flex bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 text-[12px] font-bold uppercase tracking-wide mb-6">Apto para ti</div>
+                            <h3 className="text-[32px] font-bold leading-tight mb-4">Soluciones Contables Adecuadas Para Tus Procesos</h3>
+                            <p className="text-primary-100 text-[16px] leading-relaxed">Controla todo desde un solo dispositivo. Transfórmate digitalmente agregando o limitando los módulos requeridos por empleado.</p>
+                        </div>
+                    </div>
+
+                    {/* White/Surface Card */}
+                    <div className="flex-1 bg-surface-1 rounded-[30px] border border-border-light p-12 relative overflow-hidden flex flex-col min-h-[450px]">
+                        <h3 className="text-[32px] font-bold text-foreground leading-tight mb-4">Fácil Para Empezar</h3>
+                        <p className="text-[16px] text-text-tertiary leading-relaxed mb-10 max-w-sm">Interfaces que mejoran con el tiempo facilitando los flujos del día a día en toda la empresa.</p>
+                        
+                        {/* Fake UI Checkboxes list */}
+                        <div className="flex-1 flex flex-col gap-4 justify-end">
+                            <div className="flex items-center gap-4 bg-background p-4 rounded-xl border border-border-default shadow-sm transform -rotate-1 translate-x-2">
+                                <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <span className="font-bold text-foreground text-[16px]">Automatización Activa</span>
+                            </div>
+                            <div className="flex items-center gap-4 bg-background p-4 rounded-xl border border-border-default shadow-sm transform rotate-1">
+                                <div className="w-6 h-6 rounded-full border-2 border-border-medium bg-surface-2 shrink-0" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <span className="font-bold text-text-secondary text-[16px]">Cálculo Retrolactivo</span>
+                                    <div className="w-1/2 h-2 bg-border-light rounded" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 6. PRICING GRID (Smart Integration of the Plans) */}
+            <section className="bg-background pt-8 pb-32">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="text-center max-w-3xl mx-auto mb-16">
+                        <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">Planes Modernos</span>
+                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Negocios Que Descubren Su Poder Con Konta</h2>
+                        <p className="text-[18px] text-text-tertiary leading-relaxed">Una cuenta para gestionar todo desde tu navegador preferido. Comienza con nuestro paquete base o expande las transacciones a nivel gerencial.</p>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex flex-col items-center justify-center gap-8 mb-16">
+                        <div className="flex items-center gap-2 p-1.5 bg-surface-1 rounded-full border border-border-light shadow-sm w-fit">
+                            {(["monthly", "quarterly", "annual"] as Cycle[]).map((cKey) => {
+                                const labels = { monthly: "Mensual", quarterly: "Trimestral", annual: "Anual" };
+                                const isSel  = cycle === cKey;
                                 return (
-                                    <div
-                                        key={plan.id}
-                                        className={[
-                                            "relative flex flex-col rounded-xl border p-6 transition-colors duration-200",
-                                            highlighted
-                                                ? "border-primary-500/40 bg-primary-500/[0.06]"
-                                                : "border-border-light bg-surface-1 hover:bg-surface-2",
-                                        ].join(" ")}
+                                    <button 
+                                        key={cKey} 
+                                        onClick={() => setCycle(cKey)}
+                                        className={`px-6 py-2.5 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all ${isSel ? 'bg-primary-500 text-white shadow-md' : 'text-text-secondary hover:text-foreground'}`}
                                     >
-                                        {highlighted && (
-                                            <div className="absolute -top-px left-6 right-6 h-px bg-primary-500/60" />
+                                        {labels[cKey]}
+                                        {avgSavings[cKey as keyof typeof avgSavings] && !isSel && (
+                                            <span className="ml-2 bg-foreground/10 px-2 py-0.5 rounded-full">-{avgSavings[cKey as keyof typeof avgSavings]}%</span>
                                         )}
-                                        {highlighted && (
-                                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-primary-500 font-mono text-[11px] uppercase tracking-[0.2em] text-white whitespace-nowrap">
-                                                Popular
-                                            </span>
-                                        )}
-
-                                        {/* Plan name */}
-                                        <p className={[
-                                            "font-mono text-[12px] uppercase tracking-[0.22em] mb-4",
-                                            highlighted ? "text-primary-400" : "text-[var(--text-tertiary)]",
-                                        ].join(" ")}>
-                                            {plan.name}
-                                        </p>
-
-                                        {/* Price */}
-                                        <div className="mb-1">
-                                            <span className="font-mono text-[36px] font-black text-foreground tabular-nums leading-none">
-                                                ${price}
-                                            </span>
-                                            <span className="font-mono text-[12px] text-[var(--text-tertiary)] ml-1">
-                                                USD
-                                            </span>
-                                        </div>
-                                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1">
-                                            {cycle === "monthly"   && "por mes"}
-                                            {cycle === "quarterly" && "por trimestre"}
-                                            {cycle === "annual"    && "por año"}
-                                        </p>
-                                        {savings && (
-                                            <span className="inline-flex items-center font-mono text-[11px] text-emerald-500 mb-4">
-                                                Ahorra {savings} vs mensual
-                                            </span>
-                                        )}
-                                        {!savings && <div className="mb-4" />}
-
-                                        {/* Divider */}
-                                        <div className="h-px bg-border-light mb-5" />
-
-                                        {/* Features */}
-                                        <ul className="space-y-2.5 flex-1">
-                                            <li className="flex items-start gap-2">
-                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                    <path d="M2 5.5l2 2 4-4" />
-                                                </svg>
-                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                    {plan.maxCompanies === null
-                                                        ? "Empresas ilimitadas"
-                                                        : `${plan.maxCompanies} empresa${plan.maxCompanies !== 1 ? "s" : ""}`}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                    <path d="M2 5.5l2 2 4-4" />
-                                                </svg>
-                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                    {plan.maxEmployeesPerCompany === null
-                                                        ? "Empleados ilimitados"
-                                                        : `Hasta ${plan.maxEmployeesPerCompany} empleados / empresa`}
-                                                </span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                    <path d="M2 5.5l2 2 4-4" />
-                                                </svg>
-                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                    Recibos y reportes
-                                                </span>
-                                            </li>
-                                            <li className="flex items-start gap-2">
-                                                <svg className="mt-0.5 shrink-0 text-[var(--text-link)]" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                    <path d="M2 5.5l2 2 4-4" />
-                                                </svg>
-                                                <span className="font-mono text-[12px] text-[var(--text-secondary)] leading-snug">
-                                                    Indexación BCV
-                                                </span>
-                                            </li>
-                                        </ul>
-
-                                        {/* CTA */}
-                                        <Link
-                                            href="/sign-up"
-                                            aria-label={`Elegir plan ${plan.name}`}
-                                            className={[
-                                                "mt-6 flex items-center justify-center gap-2 h-9 rounded-lg",
-                                                "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
-                                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50",
-                                                highlighted
-                                                    ? "bg-primary-500 hover:bg-primary-400 text-white"
-                                                    : "border border-border-default hover:border-border-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                                            ].join(" ")}
-                                        >
-                                            Elegir plan
-                                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                                <path d="M2 5h6M5 2l3 3-3 3" />
-                                            </svg>
-                                        </Link>
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
-                    )}
-                </div>
 
-                {/* Payment note */}
-                <div className="mt-6 flex flex-col items-center gap-1">
-                    <p className="text-center font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
-                        Pago por transferencia · Zelle · Binance · PayPal
-                    </p>
-                    <p className="text-center font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                        Activación manual por el equipo · Sin acceso inmediato
-                    </p>
+                        <div className="flex items-center divide-x divide-border-default border border-border-default rounded-xl overflow-hidden shadow-sm">
+                            {BILLABLE_MODULES.map((tab) => (
+                                <button
+                                    key={tab.slug}
+                                    onClick={() => changeTab(tab.slug)}
+                                    className={`px-6 py-3 text-[14px] font-bold transition-all ${activeModule === tab.slug ? 'bg-surface-2 text-foreground shadow-inner' : 'bg-background text-text-tertiary hover:bg-surface-1 hover:text-text-secondary'}`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Pricing Grid Payload */}
+                    <div
+                        id={PANEL_ID}
+                        className="transition-opacity duration-[200ms]"
+                        style={{ opacity: tabTransitioning ? 0 : 1 }}
+                    >
+                        {plansLoading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {[...Array(4)].map((_, i) => (
+                                    <div key={i} className="h-80 rounded-3xl bg-surface-2 border border-border-light animate-pulse" />
+                                ))}
+                            </div>
+                        ) : plansError ? (
+                            <div className="text-center py-20 text-red-500 font-bold">Error cargando planes. Intente de nuevo.</div>
+                        ) : activeModuleIsFree ? (
+                            <div className="flex justify-center">
+                                <div className="bg-surface-1 rounded-3xl border border-border-light p-10 max-w-sm w-full text-center shadow-lg">
+                                    <span className="text-[12px] font-bold uppercase tracking-widest text-text-tertiary mb-2 block">Libre de Costo</span>
+                                    <h3 className="text-[24px] font-bold mb-4">Plan Documentos</h3>
+                                    <div className="text-[56px] font-black text-foreground mb-4">$0</div>
+                                    <p className="text-[14px] text-text-secondary mb-8 font-medium">Sin costo hasta alcanzar los límites de uso por cuota (15GB).</p>
+                                    <div className="flex flex-col gap-4 text-left border-t border-border-light pt-6 mb-8 mt-auto">
+                                        {(FREE_MODULE_FEATURES[activeModule] ?? FREE_MODULE_FEATURES_FALLBACK).map(f => (
+                                            <div key={f} className="flex gap-4 items-center">
+                                                <div className="shrink-0 w-6 h-6 rounded-full bg-primary-500/10 text-primary-500 flex items-center justify-center">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                                </div>
+                                                <span className="text-[14px] text-text-secondary font-medium">{f}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <BaseButton.Root as={Link} href="/sign-up" variant="outline" className="w-full rounded-full h-12">Comenzar Ahora</BaseButton.Root>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {visiblePlans.map((plan, idx) => {
+                                    const highlighted = idx === Math.floor(visiblePlans.length / 2);
+                                    const price       = planPrice(plan);
+                                    const savings     = planSavings(plan);
+
+                                    return (
+                                        <div key={plan.id} className={`bg-background rounded-3xl flex flex-col relative transition-all duration-300 border px-8 pb-8 pt-10 ${highlighted ? 'border-2 border-primary-500 shadow-xl shadow-primary-500/20 -translate-y-4 hover:-translate-y-6' : 'border border-border-default shadow-sm hover:border-border-medium hover:-translate-y-2 mt-4'}`}>
+                                            {highlighted && (
+                                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary-500 text-white px-6 py-1.5 rounded-full text-[12px] font-bold uppercase tracking-wider shadow-md whitespace-nowrap">
+                                                    Recomendado
+                                                </div>
+                                            )}
+                                            
+                                            <h3 className="text-[22px] font-bold text-foreground mb-4">{plan.name}</h3>
+                                            <div className="mb-2 flex items-end">
+                                                <span className="text-[48px] font-black leading-[0.85]">${price}</span>
+                                                <span className="text-[14px] font-medium text-text-tertiary ml-2 bottom-1 relative">/ {cycle === "monthly" ? "mes" : cycle === "quarterly" ? "trim." : "año"}</span>
+                                            </div>
+                                            {savings ? (
+                                                <span className="inline-block px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold mb-6 w-fit">Ahorras {savings}</span>
+                                            ) : (
+                                                <div className="h-6 mb-6" /> // spacer
+                                            )}
+
+                                            <div className="flex-1 flex flex-col gap-4 text-left border-t border-border-light pt-8 mb-8 mt-auto text-[14px] text-text-secondary font-medium">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                    {plan.maxCompanies === null ? "Empresas Ilimitadas" : `${plan.maxCompanies} Empresa${plan.maxCompanies>1?'s':''}`}
+                                                </div>
+                                                <div className="flex items-start gap-4">
+                                                    <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                    {plan.maxEmployeesPerCompany === null ? "Usuarios Ilimitados" : `Hasta ${plan.maxEmployeesPerCompany} Usuarios`}
+                                                </div>
+                                                <div className="flex items-start gap-4">
+                                                    <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                    Actualizaciones Inmediatas
+                                                </div>
+                                                <div className="flex items-start gap-4 opacity-60">
+                                                    <div className="shrink-0 mt-0.5"><svg width="18" height="18" className="text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                                                    Soporte Regular
+                                                </div>
+                                            </div>
+
+                                            <BaseButton.Root as={Link} href="/sign-up" variant={highlighted ? "primary" : "outline"} className="w-full rounded-full h-12 font-bold text-[14px]">
+                                                Seleccionar
+                                            </BaseButton.Root>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </section>
 
-            {/* ── BOTTOM CTA STRIP ──────────────────────────────────────── */}
-            <section className="px-8 pb-20 max-w-5xl mx-auto w-full">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 px-8 py-6 border border-primary-500/20 rounded-xl bg-primary-500/[0.04]">
-                    <div>
-                        <p className="font-mono text-[13px] uppercase tracking-[0.18em] text-[var(--text-link)] mb-1">
-                            ¿Listo para empezar?
-                        </p>
-                        <p className="font-mono text-[15px] text-[var(--text-secondary)]">
-                            Configura tu primera empresa en menos de 5 minutos.
-                        </p>
+            {/* 7. FREQUENTLY ASKED QUESTIONS */}
+            <section className="bg-surface-2 pt-24 pb-32 border-y border-border-light">
+                <div className="max-w-7xl mx-auto px-6 w-full flex flex-col lg:flex-row gap-16 items-center">
+                    <div className="flex-1 w-full max-w-2xl">
+                        <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">FAQ</span>
+                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-10">Preguntas Frecuentes</h2>
+
+                        <div className="flex flex-col gap-4">
+                            {[
+                                { q: "¿Es fácil iniciar mi estructura salarial y contable?", a: "Totalmente. El sistema cuenta con configuraciones por defecto pre-establecidas por zona y sector que reducen horas de papeleo burocrático, además cuenta con asistente en vivo." },
+                                { q: "¿Ofrecemos soporte local e instalaciones físicas?", a: "Nuestro producto opera 100% en la nube protegiendo los datos bajo cifrado AES256. No es necesario realizar mantenimientos de servidor físico." },
+                                { q: "¿Cómo funcionan las equivalencias para la moneda contable?", a: "Se enlaza en directo con los índices BCV. Además, se guardan los históricos de transacciones con sus paridades funcionales del día del pago exacto de forma transparente." },
+                                { q: "¿Qué sucede al superar mi cuota de usuarios o espacio?", a: "No nos enfocamos en limitar el avance, simplemente se te sugiere subir al próximo nivel tarifario desde tu facturación, o liberar cuentas inactivas de tu tenencia." }
+                            ].map((faq, idx) => {
+                                const isOpen = openFaq === idx;
+                                return (
+                                    <div key={idx} className={`border rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'bg-background border-primary-500/50 shadow-md' : 'bg-surface-1 border-border-light hover:border-border-medium'}`}>
+                                        <button onClick={() => setOpenFaq(isOpen ? null : idx)} className="w-full flex justify-between items-center p-6 text-left focus-visible:outline-none">
+                                            <span className={`font-bold text-[16px] pr-4 transition-colors ${isOpen ? 'text-primary-500' : 'text-foreground'}`}>{faq.q}</span>
+                                            <div className="text-text-tertiary shrink-0">
+                                                {isOpen ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                       : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+                                            </div>
+                                        </button>
+                                        <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
+                                            <div className="px-6 pb-6 text-[15px] text-text-tertiary leading-relaxed pt-2 border-t border-border-light/50 mx-6">
+                                                {faq.a}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
                     </div>
-                    <Link
-                        href="/sign-in"
-                        className={[
-                            "flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5",
-                            "border border-primary-500/40 hover:border-primary-400/60 hover:bg-primary-500/10",
-                            "font-mono text-[12px] uppercase tracking-[0.18em] text-primary-400",
-                            "rounded-lg transition-all duration-150",
-                        ].join(" ")}
-                    >
-                        Acceder
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M2 5h6M5 2l3 3-3 3" />
-                        </svg>
-                    </Link>
+
+                    <div className="flex-1 w-full max-w-xl h-[500px] relative group">
+                         {/* Real Support Agent Photograph */}
+                         <div className="w-full h-full rounded-[40px] border border-border-light relative overflow-hidden flex flex-col items-center justify-end shadow-lg">
+                             <img 
+                                src="https://images.unsplash.com/photo-1590650516494-0c8e4a4dd67e?auto=format&fit=crop&w=600&q=80" 
+                                alt="Soporte Konta" 
+                                className="w-full h-full object-cover absolute inset-0 transition-transform duration-[1500ms] group-hover:scale-105"
+                             />
+                             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent pointer-events-none" />
+                             
+                             {/* Floating chat bubbles */}
+                             <div className="absolute bottom-12 left-8 right-8 flex flex-col gap-4">
+                                 <div className="bg-background rounded-2xl rounded-bl-none px-6 py-4 shadow-xl self-start max-w-[85%] border border-border-light animate-pulse">
+                                     <p className="text-[14px] text-foreground font-medium">¡Hola! ¿Cómo te puedo ayudar a integrar y organizar tu plan de cuentas?</p>
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 8. BOTTOM CTA BANNER */}
+            <section className="bg-background pt-32 pb-32">
+                <div className="max-w-7xl mx-auto px-6 w-full">
+                    <div className="bg-primary-500 text-white rounded-[40px] px-8 py-24 md:py-32 flex flex-col items-center text-center relative overflow-hidden shadow-2xl">
+                        {/* Glow and Shapes */}
+                        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/10 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
+                        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-black/20 blur-[120px] rounded-full -translate-x-1/3 translate-y-1/2" />
+                        
+                        <span className="relative z-10 text-primary-200 font-bold tracking-widest uppercase text-[12px] mb-6 inline-block border border-primary-400 px-4 py-1.5 rounded-full bg-primary-600/30">
+                            Centraliza Operaciones
+                        </span>
+                        
+                        <h2 className="relative z-10 text-[40px] md:text-[56px] font-bold leading-[1.05] max-w-4xl mb-8">
+                            Gestiona Todos Tus Procesos Fácilmente y Aumenta Tu Eficiencia
+                        </h2>
+                        
+                        <p className="relative z-10 text-[18px] md:text-[20px] text-white/80 max-w-2xl mb-12 font-medium">
+                            Automatiza tus finanzas y crece libremente. Toma las mejores decisiones basado en reportes a tiempo real.
+                        </p>
+                        
+                        <div className="relative z-10 bg-white/10 p-2 rounded-full border border-white/20 backdrop-blur-sm">
+                            <BaseButton.Root as={Link} href="/sign-up" className="rounded-full h-14 px-10 text-[16px] bg-white text-primary-500 hover:bg-neutral-100 font-bold transition-all shadow-lg hover:shadow-2xl hover:scale-105 active:scale-[0.98]">
+                                Solicitar un Demo Gratis
+                            </BaseButton.Root>
+                        </div>
+                    </div>
                 </div>
             </section>
 

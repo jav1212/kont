@@ -3,22 +3,31 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import Link from "next/link";
+import { 
+    Loader2, 
+    Lock, 
+    CheckCircle2, 
+    XCircle, 
+    ArrowRight,
+    Shield,
+    Key,
+    Fingerprint,
+    ShieldCheck,
+    RefreshCw,
+    UserCheck
+} from "lucide-react";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { LogoMark } from "@/src/shared/frontend/components/logo";
 
 const INPUT_CLS = [
-    "w-full h-10 px-3 rounded-lg",
-    "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[15px] text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
-    "disabled:opacity-40 disabled:cursor-not-allowed",
-    "transition-colors duration-150",
+    "w-full h-11 px-4 rounded-xl",
+    "bg-surface-2 border border-border-medium hover:border-border-default",
+    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
+    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    "transition-all duration-200",
 ].join(" ");
-
-const Spinner = () => (
-    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-);
 
 type Stage = "loading" | "ready" | "success" | "invalid";
 
@@ -87,118 +96,186 @@ export default function ResetPasswordPage() {
     }
 
     return (
-        <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-8 py-16">
-            <div className="w-full max-w-sm">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
 
-                <div className="mb-10">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="h-px w-6 bg-primary-500/60" />
-                        <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
-                            Recuperación
-                        </span>
-                    </div>
-                    <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
-                        Nueva<br />contraseña
-                    </h1>
-                </div>
+            {/* ── Form Side (Left) ─────────────────────────────────────── */}
+            <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 lg:px-20 overflow-y-auto hidden-scrollbar">
+                <div className="w-full max-w-[380px]">
 
-                {stage === "loading" && (
-                    <div className="flex items-center gap-3 text-text-tertiary">
-                        <Spinner />
-                        <span className="font-mono text-[13px] uppercase tracking-widest">Verificando enlace…</span>
-                    </div>
-                )}
-
-                {stage === "invalid" && (
-                    <div className="space-y-5">
-                        <div className="px-4 py-3.5 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                            <p className="font-mono text-[14px] text-text-tertiary leading-relaxed">
-                                El enlace expiró o ya fue usado. Solicita uno nuevo.
-                            </p>
+                    {/* Logo icon */}
+                    <div className="flex flex-col items-center mb-10">
+                        <div className="w-14 h-14 rounded-2xl bg-primary-500 flex items-center justify-center mb-5 shadow-lg shadow-primary-500/30">
+                            <LogoMark size={24} className="text-white" />
                         </div>
-                        <a
-                            href="/forgot-password"
-                            className="flex items-center gap-2 font-mono text-[13px] uppercase tracking-[0.18em] text-text-link hover:text-text-link-hover transition-colors"
-                        >
-                            Solicitar nuevo enlace
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M1 6h10M6 1l5 5-5 5" />
-                            </svg>
-                        </a>
+                        <h1 className="text-[26px] font-bold text-foreground tracking-tight mb-2">
+                            Nueva contraseña
+                        </h1>
+                        <p className="text-[13px] text-text-tertiary text-center max-w-[280px] leading-relaxed">
+                            Configura tu código de acceso personal para retornar al sistema.
+                        </p>
                     </div>
-                )}
 
-                {stage === "ready" && (
-                    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                        <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                Nueva contraseña
-                            </label>
-                            <input
-                                type="password"
-                                autoFocus
-                                autoComplete="new-password"
-                                placeholder="Mín. 8 caracteres"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={loading}
-                                className={INPUT_CLS}
-                            />
+                    {stage === "loading" && (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3 text-text-tertiary">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                            <span className="text-[12px] font-bold uppercase tracking-widest">Validando Sesión…</span>
                         </div>
+                    )}
 
-                        <div className="flex flex-col gap-1.5">
-                            <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                Confirmar contraseña
-                            </label>
-                            <input
-                                type="password"
-                                autoComplete="new-password"
-                                placeholder="Repite la contraseña"
-                                value={confirm}
-                                onChange={(e) => setConfirm(e.target.value)}
-                                disabled={loading}
-                                className={INPUT_CLS}
-                            />
-                        </div>
-
-                        {error && (
-                            <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                <p className="font-mono text-[13px] text-red-400">{error}</p>
+                    {stage === "invalid" && (
+                        <div className="space-y-6">
+                            <div className="p-6 border border-red-500/20 rounded-2xl bg-red-500/10 flex flex-col items-center gap-4 text-center">
+                                <XCircle className="w-10 h-10 text-red-500" />
+                                <p className="text-[14px] text-red-500 font-medium leading-relaxed">
+                                    El enlace caducó o es inválido. Por seguridad, debes solicitar uno nuevo.
+                                </p>
                             </div>
-                        )}
+                            <Link
+                                href="/forgot-password"
+                                className="flex items-center justify-center gap-2 w-full h-11 bg-surface-2 border border-border-medium hover:border-border-default rounded-xl transition-all font-bold text-[13px] text-foreground"
+                            >
+                                Solicitar nuevo enlace
+                                <ArrowRight className="w-4 h-4" />
+                            </Link>
+                        </div>
+                    )}
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={[
-                                "w-full h-10 mt-2 rounded-lg",
-                                "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
-                                "disabled:opacity-50 disabled:cursor-not-allowed",
-                                "font-mono text-[13px] uppercase tracking-[0.18em] text-white",
-                                "transition-colors duration-150 flex items-center justify-center gap-2",
-                            ].join(" ")}
-                        >
-                            {loading ? <><Spinner /> Guardando…</> : "Guardar contraseña"}
-                        </button>
-                    </form>
-                )}
+                    {stage === "ready" && (
+                        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                            <div>
+                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
+                                    Contraseña Nueva
+                                </label>
+                                <input
+                                    type="password"
+                                    placeholder="Mínimo 8 caracteres"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    disabled={loading}
+                                    className={INPUT_CLS}
+                                />
+                            </div>
 
-                {stage === "success" && (
-                    <div className="space-y-4">
-                        <div className="px-4 py-3.5 border border-primary-500/20 rounded-lg bg-primary-500/[0.05]">
-                            <p className="font-mono text-[14px] text-text-secondary leading-relaxed">
-                                Contraseña actualizada correctamente. Redirigiendo al inicio de sesión…
+                            <div>
+                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
+                                    Verificar Clave
+                                </label>
+                                <input
+                                    type="password"
+                                    placeholder="Repite la contraseña"
+                                    value={confirm}
+                                    onChange={(e) => setConfirm(e.target.value)}
+                                    disabled={loading}
+                                    className={INPUT_CLS}
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/10 flex items-start gap-3">
+                                    <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                    <p className="text-[13px] text-red-500 font-medium">
+                                        {error}
+                                    </p>
+                                </div>
+                            )}
+
+                            <BaseButton.Root
+                                type="submit"
+                                disabled={loading}
+                                variant="primary"
+                                className="w-full h-11 mt-1 rounded-xl text-[13px] font-bold shadow-md shadow-primary-500/20 flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin" /> Procesando…</>
+                                ) : (
+                                    "Actualizar Clave"
+                                )}
+                            </BaseButton.Root>
+                        </form>
+                    )}
+
+                    {stage === "success" && (
+                        <div className="space-y-6">
+                            <div className="p-8 border border-emerald-500/30 rounded-2xl bg-emerald-500/10 space-y-4 text-center">
+                                <div className="w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto mb-2">
+                                    <CheckCircle2 className="w-8 h-8" />
+                                </div>
+                                <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-[18px]">
+                                    Contraseña Actualizada
+                                </h3>
+                                <p className="text-[13px] text-text-tertiary font-medium leading-relaxed">
+                                    Tu acceso ha sido restablecido con éxito. Serás redirigido al inicio en unos segundos.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Visual Side (Right) ──────────────────────────────────── */}
+            <div className="hidden md:flex flex-1 relative p-6 items-center justify-center">
+                <div className="w-full h-full rounded-[28px] relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-br from-primary-500 via-primary-600 to-orange-600">
+                    
+                    {/* Ambient glows */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-black/20 blur-[80px] pointer-events-none" />
+
+                    {/* Grid */}
+                    <div
+                        className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                        style={{
+                            backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)",
+                            backgroundSize: "40px 40px",
+                        }}
+                    />
+
+                    {/* Orbit rings */}
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="relative w-64 h-64 flex items-center justify-center mb-10">
+                            <div className="absolute inset-0 rounded-full border border-white/20" />
+                            <div className="absolute inset-8 rounded-full border border-white/15" />
+                            <div className="absolute inset-16 rounded-full border border-white/15" />
+
+                            <div className="relative z-10 w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl">
+                                <Key size={32} className="text-white" />
+                            </div>
+
+                            {[
+                                { icon: <Lock className="w-5 h-5 text-white" />, angle: 0   },
+                                { icon: <ShieldCheck className="w-5 h-5 text-white" />, angle: 60  },
+                                { icon: <Fingerprint className="w-5 h-5 text-white" />, angle: 120 },
+                                { icon: <RefreshCw className="w-5 h-5 text-white" />, angle: 180 },
+                                { icon: <UserCheck className="w-5 h-5 text-white" />, angle: 240 },
+                                { icon: <Shield className="w-5 h-5 text-white" />, angle: 300 },
+                            ].map(({ icon, angle }) => {
+                                const rad = (angle * Math.PI) / 180;
+                                const r   = 104;
+                                const x   = Math.round(Math.cos(rad) * r);
+                                const y   = Math.round(Math.sin(rad) * r);
+                                return (
+                                    <div
+                                        key={angle}
+                                        className="absolute w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg"
+                                        style={{ transform: `translate(${x}px, ${y}px)` }}
+                                    >
+                                        {icon}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Caption */}
+                        <div className="text-center px-8 max-w-sm">
+                            <h2 className="text-white text-[26px] font-black leading-tight mb-3">
+                                Recupera tu{" "}
+                                <span className="text-white/70">Poder</span>
+                            </h2>
+                            <p className="text-white/60 text-[13px] leading-relaxed">
+                                Actualizar tu contraseña con regularidad mantiene tus activos y los de tu compañía protegidos contra amenazas.
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 text-text-link">
-                            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M2 7l3 3 6-6" />
-                            </svg>
-                            <span className="font-mono text-[13px] uppercase tracking-widest">Listo</span>
-                        </div>
                     </div>
-                )}
-
+                </div>
             </div>
         </div>
     );

@@ -2,39 +2,41 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { 
+    Loader2, 
+    Rocket, 
+    Building2, 
+    TrendingUp, 
+    Check,
+    Sparkles,
+    Users
+} from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { LogoMark } from "@/src/shared/frontend/components/logo";
 
 const INPUT_CLS = [
-    "w-full h-10 px-3 rounded-lg",
-    "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[15px] text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500/60 focus:bg-foreground/[0.06]",
-    "disabled:opacity-40 disabled:cursor-not-allowed",
-    "transition-colors duration-150",
+    "w-full h-11 px-4 rounded-xl",
+    "bg-surface-2 border border-border-medium hover:border-border-default",
+    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
+    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
+    "disabled:opacity-50 disabled:cursor-not-allowed",
+    "transition-all duration-200",
 ].join(" ");
 
-function validate(
-    name: string, email: string, pass: string, confirm: string, terms: boolean
-): string | null {
-    if (!name.trim())                        return "El nombre es requerido.";
-    if (!email.trim())                       return "El correo es requerido.";
-    if (!/\S+@\S+\.\S+/.test(email))        return "El correo no es válido.";
-    if (!/[a-z]/.test(pass))                return "La contraseña debe contener al menos una letra minúscula.";
-    if (!/[A-Z]/.test(pass))                return "La contraseña debe contener al menos una letra mayúscula.";
-    if (!/[0-9]/.test(pass))                return "La contraseña debe contener al menos un número.";
+function validate(name: string, email: string, pass: string, confirm: string, terms: boolean): string | null {
+    if (!name.trim())                         return "El nombre es requerido.";
+    if (!email.trim())                        return "El correo es requerido.";
+    if (!/\S+@\S+\.\S+/.test(email))         return "El correo no es válido.";
+    if (!/[a-z]/.test(pass))                 return "La contraseña debe contener al menos una letra minúscula.";
+    if (!/[A-Z]/.test(pass))                 return "La contraseña debe contener al menos una letra mayúscula.";
+    if (!/[0-9]/.test(pass))                 return "La contraseña debe contener al menos un número.";
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|<>?,./`~]/.test(pass))
-                                             return "La contraseña debe contener al menos un carácter especial.";
-    if (pass !== confirm)                    return "Las contraseñas no coinciden.";
-    if (!terms)                              return "Debes aceptar los términos para continuar.";
+                                              return "La contraseña debe contener al menos un carácter especial.";
+    if (pass !== confirm)                     return "Las contraseñas no coinciden.";
+    if (!terms)                               return "Debes aceptar los términos para continuar.";
     return null;
 }
-
-const Spinner = () => (
-    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-);
 
 export default function SignUpPage() {
     const { signUp } = useAuth();
@@ -65,203 +67,166 @@ export default function SignUpPage() {
     }
 
     return (
-        <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-8 py-16">
-            <div className="w-full max-w-sm">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
 
-                <div>
-                    <div className="mb-10">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="h-px w-6 bg-primary-500/60" />
-                            <span className="font-mono text-[12px] uppercase tracking-[0.28em] text-text-link">
-                                Registro
-                            </span>
+            {/* ── Form Side (Left) ─────────────────────────────────────── */}
+            <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 lg:px-20 overflow-y-auto hidden-scrollbar">
+                <div className="w-full max-w-[400px]">
+
+                    {/* Logo icon */}
+                    <div className="flex flex-col items-center mb-10">
+                        <div className="w-14 h-14 rounded-2xl bg-primary-500 flex items-center justify-center mb-5 shadow-lg shadow-primary-500/30">
+                            <LogoMark size={24} className="text-white" />
                         </div>
-                        <h1 className="font-mono text-[28px] font-black uppercase tracking-tighter text-foreground leading-none">
-                            Crear<br />cuenta
+                        <h1 className="text-[26px] font-bold text-foreground tracking-tight mb-2">
+                            Crear cuenta
                         </h1>
-                        <p className="font-mono text-[14px] text-text-tertiary mt-3 leading-relaxed">
-                            Acceso completo al sistema de gestión contable.
+                        <p className="text-[13px] text-text-tertiary text-center max-w-[240px] leading-relaxed">
+                            Habilita tu acceso completo al sistema de gestión de Konta.
                         </p>
                     </div>
 
                     {success ? (
                         <div className="space-y-5">
-                            <div className="px-5 py-5 border border-primary-500/30 rounded-xl bg-primary-500/[0.06] space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 rounded-full border border-primary-500/50 bg-primary-500/20 flex items-center justify-center flex-shrink-0">
-                                        <svg width="7" height="7" viewBox="0 0 7 7" fill="none"
-                                            stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                                            className="text-primary-400">
-                                            <path d="M1 3.5l1.8 1.8L6 1.5" />
-                                        </svg>
-                                    </div>
-                                    <span className="font-mono text-[13px] text-text-link font-semibold">
-                                        Revisa tu correo
-                                    </span>
+                            <div className="p-6 border border-emerald-500/30 rounded-2xl bg-emerald-500/10 space-y-3 text-center">
+                                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto mb-3">
+                                    <Check className="w-6 h-6" />
                                 </div>
-                                <p className="font-mono text-[13px] text-text-tertiary leading-relaxed pl-6">
-                                    Te enviamos un enlace de confirmación a <span className="text-text-secondary">{email}</span>. Haz clic en él para activar tu cuenta.
-                                </p>
-                                <p className="font-mono text-[13px] text-text-disabled leading-relaxed pl-6">
-                                    Revisa también tu carpeta de spam si no lo encuentras.
+                                <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-[17px]">¡Registro Exitoso!</h3>
+                                <p className="text-[13px] text-text-tertiary font-medium leading-relaxed">
+                                    Confirmación enviada a <span className="text-foreground font-bold">{email}</span>. Por favor revisa tu bandeja.
                                 </p>
                             </div>
-                            <Link
-                                href="/sign-in"
-                                className="flex items-center gap-2 font-mono text-[13px] uppercase tracking-[0.18em] text-text-tertiary hover:text-text-secondary transition-colors"
-                            >
-                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M10 6H2M6 2L2 6l4 4" />
-                                </svg>
-                                Volver a iniciar sesión
+                            <Link href="/sign-in" className="block w-full text-center text-[13px] font-bold text-primary-500 hover:underline transition-colors">
+                                Ir al inicio de sesión
                             </Link>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                    Nombre completo
-                                </label>
-                                <input
-                                    type="text"
-                                    autoComplete="name"
-                                    placeholder="Juan Pérez"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
+                            <div>
+                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Nombre</label>
+                                <input type="text" placeholder="Tu nombre completo" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} className={INPUT_CLS} />
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                    Correo electrónico
-                                </label>
-                                <input
-                                    type="email"
-                                    autoComplete="email"
-                                    placeholder="usuario@empresa.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
+                            <div>
+                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Correo</label>
+                                <input type="email" placeholder="usuario@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} className={INPUT_CLS} />
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                    Contraseña
-                                </label>
-                                <input
-                                    type="password"
-                                    autoComplete="new-password"
-                                    placeholder="••••••••"
-                                    value={pass}
-                                    onChange={(e) => setPass(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Clave</label>
+                                    <input type="password" placeholder="••••••••" value={pass} onChange={(e) => setPass(e.target.value)} disabled={loading} className={INPUT_CLS} />
+                                </div>
+                                <div>
+                                    <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Repetir</label>
+                                    <input type="password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} disabled={loading} className={INPUT_CLS} />
+                                </div>
                             </div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[12px] uppercase tracking-[0.18em] text-text-tertiary">
-                                    Confirmar contraseña
-                                </label>
-                                <input
-                                    type="password"
-                                    autoComplete="new-password"
-                                    placeholder="••••••••"
-                                    value={confirm}
-                                    onChange={(e) => setConfirm(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
-                            </div>
-
-                            <label className="flex items-start gap-3 cursor-pointer mt-1">
+                            <label className="flex items-start gap-3 cursor-pointer p-3 border border-border-default rounded-xl hover:bg-surface-1 transition-colors">
                                 <div className="relative mt-0.5 flex-shrink-0">
-                                    <input
-                                        type="checkbox"
-                                        className="peer sr-only"
-                                        checked={terms}
-                                        onChange={(e) => setTerms(e.target.checked)}
-                                        disabled={loading}
-                                    />
-                                    <div className={[
-                                        "w-4 h-4 rounded border border-foreground/30 bg-foreground/[0.08]",
-                                        "peer-checked:bg-primary-500 peer-checked:border-primary-500",
-                                        "transition-colors duration-150",
-                                        "flex items-center justify-center",
-                                    ].join(" ")}>
-                                        {terms && (
-                                            <svg
-                                                width="8" height="8" viewBox="0 0 8 8" fill="none"
-                                                stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                            >
-                                                <path d="M1 4l2 2 4-4" />
-                                            </svg>
-                                        )}
+                                    <input type="checkbox" className="peer sr-only" checked={terms} onChange={(e) => setTerms(e.target.checked)} disabled={loading} />
+                                    <div className="w-5 h-5 rounded-[6px] border-[2px] border-border-medium bg-background peer-checked:bg-primary-500 peer-checked:border-primary-500 transition-colors flex items-center justify-center">
+                                        {terms && <Check className="w-3.5 h-3.5 text-white" />}
                                     </div>
                                 </div>
-                                <span className="font-mono text-[13px] text-text-tertiary leading-relaxed">
-                                    Acepto los{" "}
-                                    <Link href="/terms" className="text-text-link hover:text-text-link-hover underline underline-offset-2">
-                                        términos de uso
-                                    </Link>{" "}
-                                    y la{" "}
-                                    <Link href="/privacy" className="text-text-link hover:text-text-link-hover underline underline-offset-2">
-                                        política de privacidad
-                                    </Link>.
+                                <span className="text-[12px] text-text-tertiary leading-relaxed font-medium">
+                                    Acepto los <Link href="/terms" className="text-primary-500 font-bold hover:underline">términos</Link> y la <Link href="/privacy" className="text-primary-500 font-bold hover:underline">política de privacidad</Link>.
                                 </span>
                             </label>
 
                             {error && (
-                                <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                    <p className="font-mono text-[13px] text-red-400 leading-relaxed">
-                                        {error}
-                                    </p>
+                                <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/10">
+                                    <p className="text-[13px] text-red-500 font-medium">{error}</p>
                                 </div>
                             )}
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className={[
-                                    "w-full h-10 mt-2 rounded-lg",
-                                    "bg-primary-500 hover:bg-primary-400 active:bg-primary-600",
-                                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary-500",
-                                    "font-mono text-[13px] uppercase tracking-[0.18em] text-white",
-                                    "transition-colors duration-150",
-                                    "flex items-center justify-center gap-2",
-                                ].join(" ")}
-                            >
-                                {loading ? (
-                                    <><Spinner /> Creando cuenta…</>
-                                ) : (
-                                    <>
-                                        Crear cuenta
-                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-                                            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M2 6h8M6 2l4 4-4 4" />
-                                        </svg>
-                                    </>
-                                )}
-                            </button>
+                            <BaseButton.Root type="submit" disabled={loading} variant="primary" className="w-full h-11 mt-1 rounded-xl text-[13px] font-bold shadow-md shadow-primary-500/20 flex items-center justify-center gap-2">
+                                {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Creando cuenta…</> : "Empezar Ahora"}
+                            </BaseButton.Root>
                         </form>
                     )}
 
-                    <p className="font-mono text-[13px] text-center text-text-tertiary mt-6">
+                    <div className="flex items-center gap-3 my-6">
+                        <div className="flex-1 h-px bg-border-light" />
+                        <span className="text-[10px] uppercase tracking-[0.15em] text-text-disabled font-bold">o</span>
+                        <div className="flex-1 h-px bg-border-light" />
+                    </div>
+
+                    <p className="text-[13px] text-center text-text-tertiary">
                         ¿Ya tienes cuenta?{" "}
-                        <Link
-                            href="/sign-in"
-                            className="text-text-link hover:text-text-link-hover transition-colors underline underline-offset-2"
-                        >
-                            Inicia sesión
+                        <Link href="/sign-in" className="text-primary-500 font-bold hover:underline transition-all">
+                            Iniciar sesión
                         </Link>
                     </p>
                 </div>
+            </div>
 
+            {/* ── Visual Side (Right) ──────────────────────────────────── */}
+            <div className="hidden md:flex flex-1 relative p-6 items-center justify-center">
+                <div className="w-full h-full rounded-[28px] relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-br from-primary-500 via-primary-600 to-orange-600">
+                    
+                    {/* Ambient glows */}
+                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
+                    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-black/20 blur-[80px] pointer-events-none" />
+
+                    {/* Grid pattern */}
+                    <div
+                        className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                        style={{
+                            backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)",
+                            backgroundSize: "40px 40px",
+                        }}
+                    />
+
+                    {/* Orbit rings */}
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="relative w-64 h-64 flex items-center justify-center mb-10">
+                            <div className="absolute inset-0 rounded-full border border-white/20" />
+                            <div className="absolute inset-8 rounded-full border border-white/15" />
+                            <div className="absolute inset-16 rounded-full border border-white/15" />
+
+                            <div className="relative z-10 w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl">
+                                <LogoMark size={32} className="text-white" />
+                            </div>
+
+                            {[
+                                { icon: <Rocket className="w-5 h-5 text-white" />, angle: 0   },
+                                { icon: <Sparkles className="w-5 h-5 text-white" />, angle: 60  },
+                                { icon: <Building2 className="w-5 h-5 text-white" />, angle: 120 },
+                                { icon: <TrendingUp className="w-5 h-5 text-white" />, angle: 180 },
+                                { icon: <Check className="w-5 h-5 text-white" />, angle: 240 },
+                                { icon: <Users className="w-5 h-5 text-white" />, angle: 300 },
+                            ].map(({ icon, angle }) => {
+                                const rad = (angle * Math.PI) / 180;
+                                const r   = 104;
+                                const x   = Math.round(Math.cos(rad) * r);
+                                const y   = Math.round(Math.sin(rad) * r);
+                                return (
+                                    <div
+                                        key={angle}
+                                        className="absolute w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg"
+                                        style={{ transform: `translate(${x}px, ${y}px)` }}
+                                    >
+                                        {icon}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Caption */}
+                        <div className="text-center px-8 max-w-sm">
+                            <h2 className="text-white text-[26px] font-black leading-tight mb-3">
+                                La nueva era de la{" "}
+                                <span className="text-white/70">contabilidad.</span>
+                            </h2>
+                            <p className="text-white/60 text-[13px] leading-relaxed">
+                                Hecho en Venezuela — para emprendedores, pymes y estudiantes que buscan el siguiente nivel.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

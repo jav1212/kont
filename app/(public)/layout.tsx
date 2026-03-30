@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
+import { PublicHeader, PublicFooter } from "./_components/public-navigation";
 
 export const metadata: Metadata = {
     title:       "Konta · Acceso",
@@ -8,19 +10,12 @@ export const metadata: Metadata = {
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="relative min-h-dvh bg-background text-foreground overflow-hidden">
+        <div className="relative min-h-dvh flex flex-col bg-background text-foreground font-mono overflow-hidden">
 
-            {/* ── Ledger grid ───────────────────────────────────────────── */}
+            {/* ── Ambient Mesh Background ─────────────────────────────────── */}
             <div
                 aria-hidden
-                className="pointer-events-none fixed inset-0 z-0"
-                style={{
-                    backgroundImage: `
-                        linear-gradient(var(--grid-line) 1px, transparent 1px),
-                        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)
-                    `,
-                    backgroundSize: "48px 48px",
-                }}
+                className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-surface-2 via-background to-background"
             />
 
             {/* ── Primary glow — top-left ───────────────────────────────── */}
@@ -46,31 +41,15 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             />
 
             {/* ── Top bar ───────────────────────────────────────────────── */}
-            <header className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-foreground/[0.07]">
-                <LogoFull size={40} className="text-foreground" />
-
-                <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
-                        Sistema operativo
-                    </span>
-                </div>
-            </header>
+            <PublicHeader />
 
             {/* ── Page content ──────────────────────────────────────────── */}
-            <main className="relative z-10">
+            <main className="relative z-10 flex-1 flex flex-col">
                 {children}
             </main>
 
             {/* ── Footer ───────────────────────────────────────────────── */}
-            <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                    © {new Date().getFullYear()} Konta
-                </span>
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                    v2.2 · LOTTT
-                </span>
-            </footer>
+            <PublicFooter />
         </div>
     );
 }
