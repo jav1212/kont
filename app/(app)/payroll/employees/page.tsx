@@ -3,11 +3,28 @@
 import React, { useState, useCallback, useRef } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { employeesToCsv, downloadCsv, parseCsv } from "@/src/modules/payroll/frontend/utils/employee-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import {
+    Users,
+    Download,
+    Upload,
+    Plus,
+    Search,
+    Trash2,
+    Edit3,
+    Check,
+    X,
+    Clock,
+    Loader2,
+    AlertCircle,
+    Copy
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ============================================================================
 // TYPES
@@ -60,9 +77,9 @@ function calcAntiguedad(fechaIngreso: string | null | undefined): string {
 const ESTADOS: EmployeeEstado[] = ["activo", "inactivo", "vacacion"];
 
 const ESTADO_CLS: Record<EmployeeEstado, string> = {
-    activo: "border badge-success",
-    inactivo: "border badge-error",
-    vacacion: "border badge-warning",
+    activo: "border-green-500/20 bg-green-500/10 text-green-600",
+    inactivo: "border-red-500/20 bg-red-500/10 text-red-600",
+    vacacion: "border-orange-500/20 bg-orange-500/10 text-orange-600",
 };
 
 // ============================================================================
@@ -76,38 +93,16 @@ const cellInput = [
     "hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-const Spinner = () => (
-    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-);
-
-const IconEdit = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 1.5l2.5 2.5L4 11.5H1.5V9L9 1.5z" />
-    </svg>
-);
-const IconSave = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 7l3.5 3.5L11 3" />
-    </svg>
-);
-const IconCancel = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 2l9 9M11 2l-9 9" />
-    </svg>
-);
-const IconTrash = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 6v4M8 6v4M3 3.5l.5 7h6l.5-7" />
-    </svg>
-);
-const IconPlus = () => (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <path d="M6 1v10M1 6h10" />
-    </svg>
-);
+const Spinner = () => <Loader2 className="animate-spin text-[var(--text-tertiary)]" size={13} />;
+const IconEdit = () => <Edit3 size={14} />;
+const IconSave = () => <Check size={14} />;
+const IconCancel = () => <X size={14} />;
+const IconTrash = () => <Trash2 size={14} />;
+const IconPlus = () => <Plus size={14} />;
+const IconHistory = () => <Clock size={14} />;
+const IconExport = () => <Download size={14} />;
+const IconImport = () => <Upload size={14} />;
+const IconPaste = () => <Copy size={14} />;
 
 // Compact secondary toolbar button — shared via APP_SIZES.button.toolbarBtn.
 // Applied directly as className when the element must be a <label> (file input trigger).
@@ -135,74 +130,100 @@ function EmployeeRow({
     onShowHistory: () => void;
 }) {
     const isEditing = mode === "edit" || mode === "new";
-    const tdCls = "px-3 py-2.5 border-b border-border-light/60 last:border-b-0";
+    const tdCls = "px-5 py-4 border-b border-border-light/40 last:border-b-0";
 
     return (
-        <tr className={["transition-colors duration-100 group", selected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]"].join(" ")}>
+        <tr className={[
+            "transition-colors duration-100 group",
+            selected ? "bg-primary-500/[0.04]" : "hover:bg-surface-2/40"
+        ].join(" ")}>
 
             {/* Checkbox */}
-            <td className={tdCls + " w-10 text-center"}>
-                <input type="checkbox" checked={selected}
-                    onChange={(e) => onSelect(e.target.checked)} disabled={isEditing}
-                    className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30" />
+            <td className={tdCls + " w-12 text-center"}>
+                <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(e) => onSelect(e.target.checked)}
+                    disabled={isEditing}
+                    className="w-4 h-4 rounded border-border-medium text-primary-500 focus:ring-primary-500/20 cursor-pointer disabled:opacity-30 transition-all"
+                />
             </td>
 
             {/* Cédula */}
-            <td className={tdCls + " w-28"}>
+            <td className={tdCls + " w-32"}>
                 {mode === "new" ? (
-                    <input className={cellInput} placeholder="V-12345678"
-                        value={draft.cedula} onChange={(e) => onDraftChange("cedula", e.target.value)} />
+                    <input
+                        className={cellInput}
+                        placeholder="V-12345678"
+                        autoFocus
+                        value={draft.cedula}
+                        onChange={(e) => onDraftChange("cedula", e.target.value)}
+                    />
                 ) : (
-                    <span className="font-mono text-[13px] text-[var(--text-secondary)] uppercase tracking-wider">{employee.cedula}</span>
+                    <span className="font-mono text-[12px] text-[var(--text-secondary)] tracking-tight">
+                        {employee.cedula}
+                    </span>
                 )}
             </td>
 
             {/* Nombre */}
             <td className={tdCls}>
                 {isEditing ? (
-                    <input className={cellInput} placeholder="Nombre completo"
-                        value={draft.nombre} onChange={(e) => onDraftChange("nombre", e.target.value)} />
+                    <input
+                        className={cellInput}
+                        placeholder="Nombre completo"
+                        value={draft.nombre}
+                        onChange={(e) => onDraftChange("nombre", e.target.value)}
+                    />
                 ) : (
-                    <span className="font-mono text-[14px] font-medium text-foreground">{employee.nombre}</span>
+                    <span className="text-[14px] font-medium text-foreground tracking-tight">
+                        {employee.nombre}
+                    </span>
                 )}
             </td>
 
             {/* Cargo */}
             <td className={tdCls + " w-40"}>
                 {isEditing ? (
-                    <input className={cellInput} placeholder="Cargo"
-                        value={draft.cargo} onChange={(e) => onDraftChange("cargo", e.target.value)} />
+                    <input
+                        className={cellInput}
+                        placeholder="Cargo"
+                        value={draft.cargo}
+                        onChange={(e) => onDraftChange("cargo", e.target.value)}
+                    />
                 ) : (
-                    <span className="font-mono text-[13px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{employee.cargo}</span>
+                    <span className="text-[13px] text-[var(--text-secondary)]">
+                        {employee.cargo}
+                    </span>
                 )}
             </td>
 
             {/* Salario + Moneda */}
             <td className={tdCls + " w-52"}>
                 {isEditing ? (
-                    <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
+                    <div className="flex h-8 rounded-lg border border-border-light bg-surface-1 focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-all duration-200 shadow-sm">
                         <select
-                            className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                            className="bg-surface-2 border-r border-border-light px-2 font-mono text-[11px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                             value={draft.moneda}
                             onChange={(e) => onDraftChange("moneda", e.target.value)}>
                             <option value="VES">VES</option>
                             <option value="USD">USD</option>
                         </select>
                         <input
-                            className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
+                            className="flex-1 min-w-0 bg-transparent px-2.5 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
                             type="number" step="0.01" min="0" placeholder="0.00"
                             value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
                     </div>
                 ) : (
-                    <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[14px] tabular-nums text-[var(--text-primary)]">
+                    <div className="flex items-center gap-2">
+                        <span className="font-mono text-[14px] tabular-nums text-foreground font-medium">
                             {Number(employee.salarioMensual).toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                         </span>
                         <span className={[
-                            "font-mono text-[11px] px-1 py-0.5 rounded border uppercase tracking-widest",
+                            "font-mono text-[10px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold",
                             employee.moneda === "USD"
-                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                                : "border-border-light text-[var(--text-tertiary)]",
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                : "border-border-light bg-surface-2 text-[var(--text-tertiary)]",
                         ].join(" ")}>
                             {employee.moneda ?? "VES"}
                         </span>
@@ -211,20 +232,23 @@ function EmployeeRow({
             </td>
 
             {/* Fecha de ingreso */}
-            <td className={tdCls + " w-32"}>
+            <td className={tdCls + " w-36"}>
                 {isEditing ? (
-                    <input className={cellInput} type="date"
+                    <input
+                        className={cellInput}
+                        type="date"
                         value={draft.fechaIngreso}
-                        onChange={(e) => onDraftChange("fechaIngreso", e.target.value)} />
+                        onChange={(e) => onDraftChange("fechaIngreso", e.target.value)}
+                    />
                 ) : (
                     <div className="flex flex-col gap-0.5">
-                        <span className="font-mono text-[13px] text-[var(--text-secondary)]">
+                        <span className="text-[13px] text-[var(--text-secondary)] whitespace-nowrap">
                             {employee.fechaIngreso
-                                ? new Date(employee.fechaIngreso + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "2-digit" })
+                                ? new Date(employee.fechaIngreso + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })
                                 : <span className="text-[var(--text-disabled)]">—</span>}
                         </span>
                         {employee.fechaIngreso && (
-                            <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-wider font-medium opacity-70">
                                 {calcAntiguedad(employee.fechaIngreso)}
                             </span>
                         )}
@@ -233,49 +257,73 @@ function EmployeeRow({
             </td>
 
             {/* Estado */}
-            <td className={tdCls + " w-28"}>
+            <td className={tdCls + " w-32"}>
                 {isEditing ? (
-                    <select value={draft.estado} onChange={(e) => onDraftChange("estado", e.target.value)} className={cellInput}>
+                    <select
+                        value={draft.estado}
+                        onChange={(e) => onDraftChange("estado", e.target.value)}
+                        className={cellInput}>
                         {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                 ) : (
-                    <span className={["inline-flex px-2 py-0.5 rounded-md border font-mono text-[11px] uppercase tracking-[0.14em]", ESTADO_CLS[employee.estado]].join(" ")}>
+                    <span className={[
+                        "inline-flex px-2 py-0.5 rounded-lg border font-mono text-[10px] uppercase tracking-wider font-bold",
+                        ESTADO_CLS[employee.estado]
+                    ].join(" ")}>
                         {employee.estado}
                     </span>
                 )}
             </td>
 
             {/* Actions */}
-            <td className={tdCls + " w-28 text-right pr-4"}>
+            <td className={tdCls + " w-32 text-right"}>
                 {saving ? (
-                    <div className="flex justify-end"><Spinner /></div>
+                    <div className="flex justify-end pr-2"><Spinner /></div>
                 ) : isEditing ? (
                     <div className="flex items-center justify-end gap-1">
-                        <button onClick={onSave} title="Guardar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                        <BaseButton.Icon
+                            variant="ghost"
+                            size="sm"
+                            onClick={onSave}
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                            title="Guardar">
                             <IconSave />
-                        </button>
-                        <button onClick={onCancel} title="Cancelar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
+                        </BaseButton.Icon>
+                        <BaseButton.Icon
+                            variant="ghost"
+                            size="sm"
+                            onClick={onCancel}
+                            className="text-[var(--text-tertiary)]"
+                            title="Cancelar">
                             <IconCancel />
-                        </button>
+                        </BaseButton.Icon>
                     </div>
                 ) : (
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={onShowHistory} title="Historial de salario"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors">
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="6" cy="6" r="5" /><path d="M6 3v3l2 1.5" />
-                            </svg>
-                        </button>
-                        <button onClick={onEdit} title="Editar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-1">
+                        <BaseButton.Icon
+                            variant="ghost"
+                            size="sm"
+                            onClick={onShowHistory}
+                            className="text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/5"
+                            title="Historial de salario">
+                            <IconHistory />
+                        </BaseButton.Icon>
+                        <BaseButton.Icon
+                            variant="ghost"
+                            size="sm"
+                            onClick={onEdit}
+                            className="text-[var(--text-tertiary)] hover:text-foreground"
+                            title="Editar">
                             <IconEdit />
-                        </button>
-                        <button onClick={onDelete} title="Eliminar"
-                            className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/[0.08] transition-colors">
+                        </BaseButton.Icon>
+                        <BaseButton.Icon
+                            variant="ghost"
+                            size="sm"
+                            onClick={onDelete}
+                            className="text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-50"
+                            title="Eliminar">
                             <IconTrash />
-                        </button>
+                        </BaseButton.Icon>
                     </div>
                 )}
             </td>
@@ -528,256 +576,319 @@ export default function EmployeesPage() {
     const anyEditing = Object.values(modes).some((m) => m === "edit") || newRows.length > 0;
 
     return (
-        <div className="min-h-full bg-surface-2 p-4 sm:p-8 font-mono">
-            <div className="max-w-[1100px] mx-auto space-y-5">
+        <div className="min-h-full bg-surface-2 selection:bg-primary-500/30">
+            <PageHeader
+                title="Empleados"
+                subtitle={company ? (
+                    empRemaining !== null
+                        ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
+                        : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
+                ) : undefined}
+            >
+                <div className="flex items-center gap-2 flex-wrap">
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleExport}
+                        isDisabled={employees.length === 0}
+                        leftIcon={<IconExport />}
+                    >
+                        Exportar
+                    </BaseButton.Root>
 
-                {/* Header */}
-                <header className="pb-4 border-b border-border-light">
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        isDisabled={csvLoading || atEmployeeLimit}
+                        title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}
+                        leftIcon={csvLoading ? <Spinner /> : <IconImport />}
+                    >
+                        Importar
+                    </BaseButton.Root>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        className="sr-only"
+                        onChange={handleImport}
+                        disabled={atEmployeeLimit}
+                    />
 
-                    <div className="flex items-end justify-between gap-4 flex-wrap">
-                        <div>
-                            <h1 className="font-mono text-[22px] font-black uppercase tracking-tighter text-foreground leading-none">
-                                Empleados
-                            </h1>
-                            {company && (
-                                <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1.5 uppercase tracking-[0.18em]">
-                                    {company.name} · {empRemaining !== null
-                                        ? `${employees.length} / ${employees.length + empRemaining} empleado${employees.length + empRemaining !== 1 ? "s" : ""}`
-                                        : `${employees.length} empleado${employees.length !== 1 ? "s" : ""}`
-                                    }
-                                </p>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <button onClick={handleExport} disabled={employees.length === 0} className={toolbarBtn}>
-                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M6 1v7M3 6l3 3 3-3M2 10h8" />
-                                </svg>
-                                Exportar CSV
-                            </button>
-                            <label className={[toolbarBtn, "cursor-pointer", (csvLoading || atEmployeeLimit) ? "opacity-40 pointer-events-none" : ""].join(" ")}
-                                title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}>
-                                {csvLoading ? <Spinner /> : (
-                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M6 8V1M3 4l3-3 3 3M2 10h8" />
-                                    </svg>
-                                )}
-                                Importar CSV
-                                <input ref={fileInputRef} type="file" accept=".csv" className="sr-only" onChange={handleImport} disabled={atEmployeeLimit} />
-                            </label>
-                            <button onClick={() => setPasteOpen(true)} disabled={atEmployeeLimit}
-                                title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}
-                                className={toolbarBtn}>
-                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="2" y="3" width="8" height="8" rx="1" />
-                                    <path d="M4 1h4v2H4z" />
-                                </svg>
-                                Pegar CSV
-                            </button>
-                            <BaseButton.Root
-                                variant="primary"
-                                size="sm"
-                                onClick={addNewRow}
-                                isDisabled={atEmployeeLimit}
-                                title={atEmployeeLimit ? "Límite de empleados alcanzado según tu plan" : undefined}
-                                leftIcon={<IconPlus />}
-                            >
-                                Nuevo empleado
-                            </BaseButton.Root>
-                        </div>
-                    </div>
-                </header>
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setPasteOpen(true)}
+                        isDisabled={atEmployeeLimit}
+                        title={atEmployeeLimit ? "Límite de empleados alcanzado" : undefined}
+                        leftIcon={<IconPaste />}
+                    >
+                        Pegar
+                    </BaseButton.Root>
+
+                    <BaseButton.Root
+                        variant="primary"
+                        size="sm"
+                        onClick={addNewRow}
+                        isDisabled={atEmployeeLimit}
+                        title={atEmployeeLimit ? "Límite de empleados alcanzado según tu plan" : undefined}
+                        leftIcon={<IconPlus />}
+                    >
+                        Nuevo empleado
+                    </BaseButton.Root>
+                </div>
+            </PageHeader>
+
+            <div className="px-8 py-6 space-y-6">
 
                 {/* Errors */}
-                {(csvError || bulkError) && (
+                {(csvError || bulkError || error) && (
                     <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                        <p className="font-mono text-[12px] text-red-500">{csvError ?? bulkError}</p>
+                        <p className="font-mono text-[10px] text-red-500 uppercase tracking-wider">
+                            {csvError ?? bulkError ?? error}
+                        </p>
                     </div>
                 )}
 
                 {/* Bulk action bar */}
-                {selected.size > 0 && (
-                    <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-primary-500/20 bg-primary-500/[0.05]">
-                        <span className="font-mono text-[13px] text-primary-500">
-                            {selected.size} empleado{selected.size !== 1 ? "s" : ""} seleccionado{selected.size !== 1 ? "s" : ""}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setSelected(new Set())}
-                                className="font-mono text-[12px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                            >
-                                Deseleccionar
-                            </button>
-                            {confirmDelete ? (
-                                <div className="flex items-center gap-2">
-                                    <span className="font-mono text-[12px] text-red-500">¿Confirmar eliminación?</span>
-                                    <button
-                                        onClick={handleBulkDelete}
-                                        disabled={bulkDeleting}
-                                        className="h-7 px-3 rounded-lg bg-red-500 text-white font-mono text-[12px] uppercase tracking-widest hover:bg-red-600 disabled:opacity-50 transition-colors"
-                                    >
-                                        {bulkDeleting ? "Eliminando…" : "Sí, eliminar"}
-                                    </button>
-                                    <button
-                                        onClick={() => setConfirmDelete(false)}
-                                        className="h-7 px-3 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
+                <AnimatePresence>
+                    {selected.size > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="flex items-center justify-between px-6 py-4 rounded-2xl border border-primary-500/20 bg-primary-500/[0.03] shadow-sm"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-500/10 text-primary-600">
+                                    <Users size={16} />
                                 </div>
-                            ) : (
-                                <button
-                                    onClick={() => setConfirmDelete(true)}
-                                    className="h-7 px-3 rounded-lg border border-red-500/30 bg-red-500/[0.08] text-red-500 font-mono text-[12px] uppercase tracking-widest hover:bg-red-500/[0.14] transition-colors flex items-center gap-1.5"
+                                <span className="text-[14px] font-medium text-primary-600">
+                                    {selected.size} empleado{selected.size !== 1 ? "s" : ""} seleccionado{selected.size !== 1 ? "s" : ""}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <BaseButton.Root
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelected(new Set())}
+                                    className="text-[var(--text-tertiary)] hover:text-foreground"
                                 >
-                                    <IconTrash />
-                                    Eliminar selección
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
+                                    Deseleccionar
+                                </BaseButton.Root>
+                                {confirmDelete ? (
+                                    <div className="flex items-center gap-2 bg-red-50 p-1 rounded-xl border border-red-100">
+                                        <BaseButton.Root
+                                            variant="danger"
+                                            size="sm"
+                                            onClick={handleBulkDelete}
+                                            loading={bulkDeleting}
+                                            className="h-8 px-4 text-[11px]"
+                                        >
+                                            Confirmar eliminación
+                                        </BaseButton.Root>
+                                        <BaseButton.Root
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setConfirmDelete(false)}
+                                            className="h-8 px-4 text-[11px]"
+                                        >
+                                            No
+                                        </BaseButton.Root>
+                                    </div>
+                                ) : (
+                                    <BaseButton.Root
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => setConfirmDelete(true)}
+                                        leftIcon={<IconTrash />}
+                                    >
+                                        Eliminar selección
+                                    </BaseButton.Root>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-                {/* Table */}
+                {/* Main Content Area */}
                 {loading ? (
-                    <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
-                        <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                            <Spinner />
-                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
-                        </div>
-                    </div>
-                ) : error ? (
-                    <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                        <p className="font-mono text-[13px] text-red-500">{error}</p>
+                    <div className="flex flex-col items-center justify-center h-64 gap-4 border border-border-light rounded-2xl bg-surface-1/50">
+                        <Loader2 className="animate-spin text-primary-500" size={32} strokeWidth={1.5} />
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando nómina…</span>
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {/* Search */}
-                        <div className="relative">
-                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
-                            </svg>
+                        {/* Search bar section */}
+                        <div className="relative group max-w-md">
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] group-focus-within:text-primary-500 transition-colors"
+                                size={15}
+                            />
                             <input
                                 type="text"
                                 placeholder="Buscar por nombre, cédula o cargo…"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className={[
-                                    "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                                    "font-mono text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
-                                    "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
+                                    "w-full h-10 pl-10 pr-4 rounded-xl border border-border-light bg-surface-1 outline-none",
+                                    "text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
+                                    "focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5 hover:border-border-medium transition-all duration-200",
                                 ].join(" ")}
                             />
                         </div>
 
-                        <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                        {/* Table Container */}
+                        <div className="border border-border-light rounded-2xl overflow-hidden bg-surface-1 shadow-sm">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full text-left">
                                     <thead>
-                                        <tr className="border-b border-border-light">
-                                            <th className="px-3 py-2.5 w-10 text-center">
+                                        <tr className="bg-surface-2/50 border-b border-border-light">
+                                            <th className="px-5 py-3.5 w-12 text-center">
                                                 <input
                                                     type="checkbox"
                                                     checked={allSelected}
                                                     onChange={(e) => toggleAll(e.target.checked)}
                                                     disabled={anyEditing || filtered.length === 0}
-                                                    className="w-3.5 h-3.5 rounded accent-primary-500 cursor-pointer disabled:opacity-30"
+                                                    className="w-4 h-4 rounded border-border-medium text-primary-500 focus:ring-primary-500/20 cursor-pointer disabled:opacity-30 transition-all"
                                                 />
                                             </th>
                                             {["Cédula", "Nombre", "Cargo", "Salario / Moneda", "Ingreso / Antigüedad", "Estado", ""].map((h) => (
-                                                <th key={h} className={[
-                                                    "px-3 py-2.5 text-left font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap",
-                                                    APP_SIZES.text.tableHeader
-                                                ].join(" ")}>
+                                                <th key={h} className="px-5 py-3.5 font-medium text-[var(--text-tertiary)] uppercase tracking-wider text-[11px] whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {/* New rows */}
-                                        {newRows.map((row) => (
-                                            <React.Fragment key={row.id}>
-                                                <tr className="bg-primary-500/[0.03] border-b border-border-light/60">
-                                                    <td className="px-3 py-2.5 w-10 text-center">
-                                                        <div className="w-3.5 h-3.5 rounded border border-border-medium opacity-30 mx-auto" />
+                                    <tbody className="divide-y divide-border-light/40">
+                                        {/* New rows render with distinct style */}
+                                        <AnimatePresence initial={false}>
+                                            {newRows.map((row) => (
+                                                <motion.tr
+                                                    key={row.id}
+                                                    initial={{ opacity: 0, x: -10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="bg-primary-500/[0.02]"
+                                                >
+                                                    <td className="px-5 py-4 w-12 text-center">
+                                                        <div className="w-4 h-4 rounded border-2 border-dashed border-primary-500/20 mx-auto" />
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-28">
-                                                        <input className={cellInput} placeholder="V-12345678"
+                                                    <td className="px-5 py-4 w-32">
+                                                        <input
+                                                            className={cellInput}
+                                                            placeholder="V-12345678"
+                                                            autoFocus
                                                             value={row.draft.cedula}
-                                                            onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)} />
+                                                            onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="px-3 py-2.5">
-                                                        <input className={cellInput} placeholder="Nombre completo"
+                                                    <td className="px-5 py-4">
+                                                        <input
+                                                            className={cellInput}
+                                                            placeholder="Nombre completo"
                                                             value={row.draft.nombre}
-                                                            onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)} />
+                                                            onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-40">
-                                                        <input className={cellInput} placeholder="Cargo"
+                                                    <td className="px-5 py-4 w-40">
+                                                        <input
+                                                            className={cellInput}
+                                                            placeholder="Cargo"
                                                             value={row.draft.cargo}
-                                                            onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)} />
+                                                            onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-52">
-                                                        <div className="flex h-8 rounded-lg border border-border-light focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-colors duration-150">
+                                                    <td className="px-5 py-4 w-52">
+                                                        <div className="flex h-8 rounded-lg border border-border-light bg-surface-1 focus-within:border-primary-500/60 hover:border-border-medium overflow-hidden transition-all duration-200">
                                                             <select
-                                                                className="bg-surface-2 border-r border-border-light px-1.5 font-mono text-[12px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
+                                                                className="bg-surface-2 border-r border-border-light px-2 font-mono text-[11px] text-[var(--text-secondary)] outline-none cursor-pointer hover:bg-surface-1 transition-colors"
                                                                 value={row.draft.moneda}
                                                                 onChange={(e) => updateNewDraft(row.id, "moneda", e.target.value)}>
                                                                 <option value="VES">VES</option>
                                                                 <option value="USD">USD</option>
                                                             </select>
                                                             <input
-                                                                className="flex-1 min-w-0 bg-surface-1 px-2 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
+                                                                className="flex-1 min-w-0 bg-transparent px-2.5 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
                                                                 type="number" step="0.01" min="0" placeholder="0.00"
                                                                 value={row.draft.salarioMensual}
                                                                 onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
                                                         </div>
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-32">
-                                                        <input className={cellInput} type="date"
+                                                    <td className="px-5 py-4 w-36">
+                                                        <input
+                                                            className={cellInput}
+                                                            type="date"
                                                             value={row.draft.fechaIngreso}
-                                                            onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)} />
+                                                            onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)}
+                                                        />
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-28">
-                                                        <select className={cellInput} value={row.draft.estado}
-                                                            onChange={(e) => updateNewDraft(row.id, "estado", e.target.value)}>
+                                                    <td className="px-5 py-4 w-32">
+                                                        <select
+                                                            className={cellInput}
+                                                            value={row.draft.estado}
+                                                            onChange={(e) => updateNewDraft(row.id, "estado", e.target.value)}
+                                                        >
                                                             {ESTADOS.map((s) => <option key={s} value={s}>{s}</option>)}
                                                         </select>
                                                     </td>
-                                                    <td className="px-3 py-2.5 w-24 text-right pr-4">
+                                                    <td className="px-5 py-4 w-32 text-right">
                                                         {newSaving[row.id] ? (
-                                                            <div className="flex justify-end"><Spinner /></div>
+                                                            <div className="flex justify-end pr-2"><Spinner /></div>
                                                         ) : (
                                                             <div className="flex items-center justify-end gap-1">
-                                                                <button onClick={() => saveNewRow(row.id)} title="Guardar"
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-md text-green-500 hover:bg-green-500/10 transition-colors">
+                                                                <BaseButton.Icon
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => saveNewRow(row.id)}
+                                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                >
                                                                     <IconSave />
-                                                                </button>
-                                                                <button onClick={() => cancelNewRow(row.id)} title="Cancelar"
-                                                                    className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:bg-foreground/[0.06] transition-colors">
+                                                                </BaseButton.Icon>
+                                                                <BaseButton.Icon
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => cancelNewRow(row.id)}
+                                                                >
                                                                     <IconCancel />
-                                                                </button>
+                                                                </BaseButton.Icon>
+                                                            </div>
+                                                        )}
+                                                        {newRowError[row.id] && (
+                                                            <div className="absolute left-0 right-0 py-1 bg-red-50 border-y border-red-100 px-5 mt-1 z-10">
+                                                                <p className="font-mono text-[10px] text-red-500 flex items-center gap-1">
+                                                                    <AlertCircle size={10} /> {newRowError[row.id]}
+                                                                </p>
                                                             </div>
                                                         )}
                                                     </td>
-                                                </tr>
-                                                {newRowError[row.id] && (
-                                                    <tr className="bg-red-500/[0.04]">
-                                                        <td colSpan={7} className="px-4 py-1.5">
-                                                            <p className="font-mono text-[12px] text-red-400">{newRowError[row.id]}</p>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        ))}
+                                                </motion.tr>
+                                            ))}
+                                        </AnimatePresence>
 
                                         {/* Existing rows */}
                                         {filtered.length === 0 && newRows.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-12 text-center font-mono text-[13px] text-[var(--text-disabled)] uppercase tracking-widest">
-                                                    {employees.length === 0
-                                                        ? "Sin empleados. Importa un CSV o agrega uno manualmente."
-                                                        : "Sin resultados para la búsqueda."}
+                                                <td colSpan={8} className="px-5 py-24 text-center">
+                                                    <motion.div
+                                                        initial={{ opacity: 0, scale: 0.9 }}
+                                                        animate={{ opacity: 1, scale: 1 }}
+                                                        className="flex flex-col items-center justify-center space-y-4 opacity-40"
+                                                    >
+                                                        <div className="p-5 rounded-3xl bg-surface-2 border border-border-light">
+                                                            <Users size={48} strokeWidth={1} className="text-[var(--text-tertiary)]" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <h3 className="text-[14px] font-bold uppercase tracking-widest text-foreground">
+                                                                {employees.length === 0 ? "Sin empleados registrados" : "Búsqueda sin resultados"}
+                                                            </h3>
+                                                            <p className="text-[12px] text-[var(--text-secondary)] max-w-xs mx-auto">
+                                                                {employees.length === 0
+                                                                    ? "Crea o importa empleados para comenzar a gestionar tu nómina."
+                                                                    : "No encontramos empleados que coincidan con tu búsqueda."}
+                                                            </p>
+                                                        </div>
+                                                    </motion.div>
                                                 </td>
                                             </tr>
                                         ) : (
@@ -808,157 +919,187 @@ export default function EmployeesPage() {
                         </div>
                     </div>
                 )}
-
             </div>
 
-            {/* ── Salary History Modal ────────────────────────────────────────── */}
-            {historyModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="w-full max-w-md bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-                            <div>
-                                <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
-                                    Historial de Salario
-                                </h2>
-                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
-                                    {historyModal.nombre} · {historyModal.cedula}
-                                </p>
-                            </div>
-                            <button onClick={() => setHistoryModal(null)}
-                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
-                                <IconCancel />
-                            </button>
-                        </div>
-                        <div className="p-5">
-                            {historyLoading ? (
-                                <div className="flex items-center justify-center h-24 gap-2 text-[var(--text-tertiary)]">
-                                    <Spinner />
-                                    <span className="font-mono text-[13px] uppercase tracking-widest">Cargando…</span>
+            {/* ── Modals Area ────────────────────────────────────────────────── */}
+
+            {/* Salary History Modal */}
+            <AnimatePresence>
+                {historyModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setHistoryModal(null)}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="relative w-full max-w-md bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-border-light bg-surface-2/30">
+                                <div>
+                                    <h2 className="text-[14px] font-bold uppercase tracking-widest text-foreground">
+                                        Historial Salarial
+                                    </h2>
+                                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wider">
+                                        {historyModal.nombre} · {historyModal.cedula}
+                                    </p>
                                 </div>
-                            ) : historyError ? (
-                                <p className="font-mono text-[13px] text-red-500">{historyError}</p>
-                            ) : historyData.length === 0 ? (
-                                <p className="font-mono text-[13px] text-[var(--text-tertiary)] text-center py-6 uppercase tracking-widest">Sin historial registrado.</p>
-                            ) : (
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-border-light">
-                                            {["Desde", "Salario", "Moneda"].map((h) => (
-                                                <th key={h} className="pb-2 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{h}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {historyData.map((entry) => (
-                                            <tr key={entry.id} className="border-b border-border-light/50 last:border-0">
-                                                <td className="py-2 font-mono text-[13px] text-[var(--text-secondary)]">{entry.fechaDesde}</td>
-                                                <td className="py-2 font-mono text-[13px] text-foreground">
-                                                    {entry.salarioMensual.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="py-2">
-                                                    <span className={[
-                                                        "font-mono text-[11px] uppercase tracking-widest px-1.5 py-0.5 rounded",
-                                                        entry.moneda === "USD"
-                                                            ? "bg-green-500/10 text-green-500"
-                                                            : "bg-foreground/[0.06] text-[var(--text-secondary)]",
-                                                    ].join(" ")}>
-                                                        {entry.moneda}
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                <BaseButton.Icon variant="ghost" size="sm" onClick={() => setHistoryModal(null)}>
+                                    <IconCancel />
+                                </BaseButton.Icon>
+                            </div>
+
+                            <div className="p-6">
+                                {historyLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                        <Spinner />
+                                        <span className="text-[11px] font-mono uppercase tracking-widest text-[var(--text-tertiary)]">Consultando…</span>
+                                    </div>
+                                ) : historyError ? (
+                                    <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-center gap-3 text-red-600">
+                                        <AlertCircle size={18} />
+                                        <p className="text-[13px] font-medium">{historyError}</p>
+                                    </div>
+                                ) : historyData.length === 0 ? (
+                                    <div className="text-center py-12 opacity-40">
+                                        <Clock size={40} strokeWidth={1} className="mx-auto mb-3" />
+                                        <p className="text-[12px] uppercase tracking-widest font-medium">Sin variaciones registradas</p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-border-light rounded-xl overflow-hidden shadow-sm">
+                                        <table className="w-full text-left text-[13px]">
+                                            <thead>
+                                                <tr className="bg-surface-2/50 border-b border-border-light">
+                                                    {["Desde", "Salario", "Moneda"].map((h) => (
+                                                        <th key={h} className="px-4 py-2.5 font-bold text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">{h}</th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border-light/40">
+                                                {historyData.map((entry) => (
+                                                    <tr key={entry.id} className="hover:bg-surface-2/50 transition-colors">
+                                                        <td className="px-4 py-3 text-[var(--text-secondary)] font-mono">
+                                                            {new Date(entry.fechaDesde + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" })}
+                                                        </td>
+                                                        <td className="px-4 py-3 font-semibold tabular-nums text-foreground">
+                                                            {entry.salarioMensual.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={[
+                                                                "text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-bold",
+                                                                entry.moneda === "USD" ? "bg-emerald-500/10 text-emerald-600" : "bg-surface-2 text-[var(--text-tertiary)]",
+                                                            ].join(" ")}>
+                                                                {entry.moneda}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end px-6 py-4 border-t border-border-light bg-surface-2/30">
+                                <BaseButton.Root variant="secondary" size="sm" onClick={() => setHistoryModal(null)}>
+                                    Cerrar
+                                </BaseButton.Root>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Paste CSV Modal */}
+            <AnimatePresence>
+                {pasteOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closePasteModal}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="relative w-full max-w-lg bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-border-light bg-surface-2/30">
+                                <div>
+                                    <h2 className="text-[14px] font-bold uppercase tracking-widest text-foreground">
+                                        Importar Datos
+                                    </h2>
+                                    <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wider">
+                                        CSV · cedula, nombre, cargo, salario, estado
+                                    </p>
+                                </div>
+                                <BaseButton.Icon variant="ghost" size="sm" onClick={closePasteModal}>
+                                    <IconCancel />
+                                </BaseButton.Icon>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <textarea
+                                    autoFocus
+                                    rows={8}
+                                    value={pasteText}
+                                    onChange={(e) => handlePasteChange(e.target.value)}
+                                    placeholder={`"cedula","nombre","cargo","salario","estado"\n"V-12345678","JUAN PEREZ","ANALISTA","1250.50","activo"`}
+                                    className={[
+                                        "w-full resize-none rounded-xl border bg-surface-2/50 outline-none p-4",
+                                        "font-mono text-[12px] text-foreground leading-relaxed",
+                                        "border-border-light focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5",
+                                        "transition-all duration-200 placeholder:text-[var(--text-disabled)]",
+                                    ].join(" ")}
+                                />
+
+                                {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
+                                    <div className="flex items-center gap-2 text-green-600">
+                                        <Check size={14} />
+                                        <p className="text-[11px] font-medium">
+                                            {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
+                                        </p>
+                                    </div>
+                                )}
+                                {pasteErrors.length > 0 && (
+                                    <div className="p-3 rounded-lg bg-red-50 border border-red-100 space-y-1">
+                                        {pasteErrors.slice(0, 2).map((e, i) => (
+                                            <p key={i} className="text-[10px] text-red-600 flex items-center gap-1.5"><X size={10} /> {e}</p>
                                         ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-                        <div className="flex justify-end px-5 py-4 border-t border-border-light">
-                            <button onClick={() => setHistoryModal(null)}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
-                                Cerrar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
-            {pasteOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="w-full max-w-lg bg-surface-1 border border-border-light rounded-2xl shadow-2xl overflow-hidden">
-
-                        {/* Modal header */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-                            <div>
-                                <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
-                                    Pegar CSV
-                                </h2>
-                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-widest">
-                                    Empleados · columnas: cedula, nombre, cargo, salario_mensual_ves, estado
-                                </p>
+                                        {pasteErrors.length > 2 && (
+                                            <p className="text-[10px] text-[var(--text-tertiary)] pl-4">…y {pasteErrors.length - 2} errores más.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <button onClick={closePasteModal}
-                                className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors">
-                                <IconCancel />
-                            </button>
-                        </div>
 
-                        {/* Textarea */}
-                        <div className="p-5 space-y-3">
-                            <textarea
-                                autoFocus
-                                rows={10}
-                                value={pasteText}
-                                onChange={(e) => handlePasteChange(e.target.value)}
-                                placeholder={`"cedula","nombre","cargo","salario_mensual_ves","estado"\n"V-12345678","JUAN PEREZ","ANALISTA","100000","activo"`}
-                                className={[
-                                    "w-full resize-none rounded-lg border bg-surface-2 outline-none p-3",
-                                    "font-mono text-[13px] text-foreground leading-relaxed",
-                                    "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-                                    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
-                                ].join(" ")}
-                            />
-
-                            {/* Validation feedback */}
-                            {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
-                                <p className="font-mono text-[12px] text-green-500">
-                                    {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
-                                </p>
-                            )}
-                            {pasteErrors.length > 0 && (
-                                <div className="space-y-1">
-                                    {pasteErrors.slice(0, 3).map((e, i) => (
-                                        <p key={i} className="font-mono text-[12px] text-red-500">{e}</p>
-                                    ))}
-                                    {pasteErrors.length > 3 && (
-                                        <p className="font-mono text-[12px] text-[var(--text-tertiary)]">…y {pasteErrors.length - 3} error(es) más.</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Modal footer */}
-                        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
-                            <button onClick={closePasteModal}
-                                className="h-8 px-4 rounded-lg border border-border-light font-mono text-[12px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-foreground hover:border-border-medium transition-colors">
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={handlePasteImport}
-                                disabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
-                                className={[
-                                    "h-8 px-4 rounded-lg font-mono text-[12px] uppercase tracking-widest",
-                                    "bg-primary-500 text-white hover:bg-primary-600",
-                                    "disabled:opacity-40 disabled:cursor-not-allowed transition-colors",
-                                    "flex items-center gap-2",
-                                ].join(" ")}
-                            >
-                                {pasteImporting && <Spinner />}
-                                {pasteImporting ? "Importando…" : "Importar"}
-                            </button>
-                        </div>
+                            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-light bg-surface-2/30">
+                                <BaseButton.Root variant="secondary" size="sm" onClick={closePasteModal}>
+                                    Cancelar
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={handlePasteImport}
+                                    disabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
+                                    loading={pasteImporting}
+                                    leftIcon={<IconPaste />}
+                                >
+                                    Importar ahora
+                                </BaseButton.Root>
+                            </div>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 }
