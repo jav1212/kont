@@ -137,11 +137,11 @@ export default function LandingPage() {
                         <span className="text-[12px] uppercase tracking-wide text-text-secondary font-bold">Sistema Contable Integral</span>
                     </div>
                     
-                    <h1 className="text-[40px] sm:text-[56px] lg:text-[64px] font-bold leading-[1.05] tracking-tight text-foreground mb-6">
-                        Transparencia y Precisión <span className="text-primary-500">Konta Suite</span>
+                    <h1 className="text-[32px] sm:text-[56px] lg:text-[64px] font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-foreground mb-6">
+                        Transparencia y Precisión <span className="text-primary-500 block sm:inline">Konta Suite</span>
                     </h1>
                     
-                    <p className="text-[16px] sm:text-[18px] text-text-tertiary leading-relaxed mb-10 max-w-lg">
+                    <p className="text-[16px] sm:text-[18px] text-text-tertiary leading-relaxed mb-8 sm:mb-10 max-w-lg">
                         Konta Suite es una solución contable de nueva generación que unifica y acelera tú negocio en Venezuela. Nómina y cálculos en tiempo real.
                     </p>
                     
@@ -184,7 +184,7 @@ export default function LandingPage() {
                         <div className="absolute inset-0 bg-primary-500/10 mix-blend-color pointer-events-none" />
                         
                         {/* Interactive UI highlight attached to image */}
-                        <div className="absolute inset-x-8 bottom-8 p-6 bg-background/80 backdrop-blur-md rounded-2xl border border-border-light shadow-xl text-foreground">
+                        <div className="absolute inset-x-4 sm:inset-x-8 bottom-4 sm:bottom-8 p-4 sm:p-6 bg-background/80 backdrop-blur-md rounded-2xl border border-border-light shadow-xl text-foreground">
                             <div className="flex items-center gap-3 mb-2">
                                 <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -216,10 +216,10 @@ export default function LandingPage() {
             </section>
 
             {/* 3. WHY KONTA? (Info split) */}
-            <section className="max-w-7xl mx-auto px-6 py-28 w-full flex flex-col lg:flex-row items-center gap-16 overflow-hidden">
+            <section className="max-w-7xl mx-auto px-6 py-16 md:py-28 w-full flex flex-col lg:flex-row items-center gap-12 md:gap-16 overflow-hidden">
                 
                 {/* Left: Real Image Photograph */}
-                <div className="flex-1 w-full rounded-[40px] shadow-sm aspect-square md:aspect-[4/3] flex items-center justify-center relative overflow-hidden border border-border-light group">
+                <div className="flex-1 w-full rounded-[32px] md:rounded-[40px] shadow-sm aspect-square md:aspect-[4/3] flex items-center justify-center relative overflow-hidden border border-border-light group">
                     <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary-500/10 rounded-full blur-2xl z-10" />
                     
                     <img 
@@ -232,8 +232,8 @@ export default function LandingPage() {
 
                 {/* Right: Text and Accordion features */}
                 <div className="flex-1 w-full">
-                    <span className="text-primary-500 font-bold text-[14px] uppercase tracking-wide">¿Por Qué Nosotros?</span>
-                    <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mt-3 mb-12">La ventaja competitiva para tu negocio</h2>
+                    <span className="text-primary-500 font-bold text-[14px] uppercase tracking-wide inline-block text-center md:text-left w-full md:w-auto">¿Por Qué Nosotros?</span>
+                    <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] md:leading-[1.1] mt-3 mb-8 md:mb-12 text-center md:text-left">La ventaja competitiva para tu negocio</h2>
                     
                     <div className="flex flex-col gap-10">
                         {/* Feature 1 */}
@@ -275,15 +275,15 @@ export default function LandingPage() {
             {/* 4. END-TO-END MODULES GRID */}
             <section className="bg-surface-2 pt-24 pb-32 border-y border-border-light">
                 <div className="max-w-7xl mx-auto px-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
-                        <div className="max-w-2xl">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16">
+                        <div className="max-w-2xl text-center md:text-left">
                             <span className="text-text-secondary font-bold text-[14px] uppercase tracking-wider">Flujo Comercial</span>
-                            <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mt-3">
+                            <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] mt-3">
                                 Gestiona tu negocio de principio a fin
                             </h2>
                             <p className="text-[16px] text-text-tertiary leading-relaxed mt-4">Soluciones interconectadas que potencian el flujo de información corporativo dándote herramientas para el control absoluto.</p>
                         </div>
-                        <BaseButton.Root as={Link} href="/sign-up" variant="primary" className="rounded-full h-12 px-8 font-bold text-[14px]">
+                        <BaseButton.Root as={Link} href="/sign-up" variant="primary" className="rounded-full h-12 px-8 font-bold text-[14px] w-full md:w-auto">
                             Ver Todos
                         </BaseButton.Root>
                     </div>
@@ -341,14 +341,14 @@ export default function LandingPage() {
             <section className="max-w-7xl mx-auto px-6 py-28 w-full">
                 
                 {/* Top section: Text | Stats */}
-                <div className="flex flex-col lg:flex-row justify-between mb-20 gap-16">
-                    <div className="flex-1 max-w-lg">
+                <div className="flex flex-col lg:flex-row justify-between mb-12 md:mb-20 gap-12 md:gap-16">
+                    <div className="flex-1 max-w-lg mx-auto text-center lg:text-left flex flex-col items-center lg:items-start">
                         <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 block border border-border-medium px-3 py-1 rounded-full w-fit">Sobre Nosotros</span>
-                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Fuerte Experiencia, Soluciones Modernas</h2>
-                        <p className="text-[18px] text-text-tertiary leading-relaxed">Combinamos años de conocimiento de los desafíos empresariales con desarrollo constante de vanguardia para impulsarte.</p>
+                        <h2 className="text-[28px] md:text-[36px] lg:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Fuerte Experiencia, Soluciones Modernas</h2>
+                        <p className="text-[16px] md:text-[18px] text-text-tertiary leading-relaxed">Combinamos años de conocimiento de los desafíos empresariales con desarrollo constante de vanguardia para impulsarte.</p>
                     </div>
 
-                    <div className="flex-[1.5] w-full grid grid-cols-1 sm:grid-cols-3 gap-8 items-center border border-border-light rounded-3xl p-10 bg-surface-1/50 shadow-sm">
+                    <div className="flex-[1.5] w-full grid grid-cols-1 sm:grid-cols-3 gap-8 items-center border border-border-light rounded-[32px] p-8 sm:p-10 bg-surface-1/50 shadow-sm">
                         <div className="text-center sm:text-left">
                             <span className="text-[56px] font-black text-foreground block leading-none mb-3">25<span className="text-primary-500">+</span></span>
                             <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Reportes Fiscales</span>
@@ -367,7 +367,7 @@ export default function LandingPage() {
                 {/* Bottom section: Split feature cards */}
                 <div className="flex flex-col md:flex-row gap-8">
                     {/* Red Card */}
-                    <div className="flex-[1.2] bg-primary-500 rounded-[30px] p-12 text-white relative overflow-hidden flex flex-col justify-end min-h-[450px] shadow-lg shadow-primary-500/10 group">
+                    <div className="flex-[1.2] bg-primary-500 rounded-[32px] p-8 md:p-12 text-white relative overflow-hidden flex flex-col justify-end min-h-[350px] md:min-h-[450px] shadow-lg shadow-primary-500/10 group">
                         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent pointer-events-none" />
                         
                         {/* Real Image Portrait Cutout Simulation */}
@@ -375,17 +375,17 @@ export default function LandingPage() {
                             <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Profesional Ejecutiva" className="w-full h-full object-cover" />
                         </div>
 
-                        <div className="relative z-10 w-full sm:w-2/3 md:w-full lg:w-2/3">
+                        <div className="relative z-10 w-full md:w-full lg:w-2/3">
                             <div className="inline-flex bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full px-4 py-2 text-[12px] font-bold uppercase tracking-wide mb-6">Apto para ti</div>
-                            <h3 className="text-[32px] font-bold leading-tight mb-4">Soluciones Contables Adecuadas Para Tus Procesos</h3>
-                            <p className="text-primary-100 text-[16px] leading-relaxed">Controla todo desde un solo dispositivo. Transfórmate digitalmente agregando o limitando los módulos requeridos por empleado.</p>
+                            <h3 className="text-[28px] md:text-[32px] font-bold leading-tight mb-4">Soluciones Contables Adecuadas Para Tus Procesos</h3>
+                            <p className="text-primary-100 text-[15px] md:text-[16px] leading-relaxed">Controla todo desde un solo dispositivo. Transfórmate digitalmente agregando o limitando los módulos requeridos por empleado.</p>
                         </div>
                     </div>
 
                     {/* White/Surface Card */}
-                    <div className="flex-1 bg-surface-1 rounded-[30px] border border-border-light p-12 relative overflow-hidden flex flex-col min-h-[450px]">
-                        <h3 className="text-[32px] font-bold text-foreground leading-tight mb-4">Fácil Para Empezar</h3>
-                        <p className="text-[16px] text-text-tertiary leading-relaxed mb-10 max-w-sm">Interfaces que mejoran con el tiempo facilitando los flujos del día a día en toda la empresa.</p>
+                    <div className="flex-1 bg-surface-1 rounded-[32px] border border-border-light p-8 md:p-12 relative overflow-hidden flex flex-col min-h-[350px] md:min-h-[450px]">
+                        <h3 className="text-[28px] md:text-[32px] font-bold text-foreground leading-tight mb-4">Fácil Para Empezar</h3>
+                        <p className="text-[15px] md:text-[16px] text-text-tertiary leading-relaxed mb-10 max-w-sm">Interfaces que mejoran con el tiempo facilitando los flujos del día a día en toda la empresa.</p>
                         
                         {/* Fake UI Checkboxes list */}
                         <div className="flex-1 flex flex-col gap-4 justify-end">
@@ -410,15 +410,15 @@ export default function LandingPage() {
             {/* 6. PRICING GRID (Smart Integration of the Plans) */}
             <section className="bg-background pt-8 pb-32">
                 <div className="max-w-7xl mx-auto px-6">
-                    <div className="text-center max-w-3xl mx-auto mb-16">
+                    <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
                         <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">Planes Modernos</span>
-                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Negocios Que Descubren Su Poder Con Konta</h2>
-                        <p className="text-[18px] text-text-tertiary leading-relaxed">Una cuenta para gestionar todo desde tu navegador preferido. Comienza con nuestro paquete base o expande las transacciones a nivel gerencial.</p>
+                        <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Negocios Que Descubren Su Poder Con Konta</h2>
+                        <p className="text-[16px] md:text-[18px] text-text-tertiary leading-relaxed">Una cuenta para gestionar todo desde tu navegador preferido. Comienza con nuestro paquete base o expande las transacciones a nivel gerencial.</p>
                     </div>
 
                     {/* Controls */}
-                    <div className="flex flex-col items-center justify-center gap-8 mb-16">
-                        <div className="flex items-center gap-2 p-1.5 bg-surface-1 rounded-full border border-border-light shadow-sm w-fit">
+                    <div className="flex flex-col items-center justify-center gap-6 md:gap-8 mb-12 md:mb-16 w-full">
+                        <div className="flex flex-col sm:flex-row items-center gap-2 p-1.5 bg-surface-1 rounded-3xl sm:rounded-full border border-border-light shadow-sm w-full sm:w-fit">
                             {(["monthly", "quarterly", "annual"] as Cycle[]).map((cKey) => {
                                 const labels = { monthly: "Mensual", quarterly: "Trimestral", annual: "Anual" };
                                 const isSel  = cycle === cKey;
@@ -426,23 +426,23 @@ export default function LandingPage() {
                                     <button 
                                         key={cKey} 
                                         onClick={() => setCycle(cKey)}
-                                        className={`px-6 py-2.5 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all ${isSel ? 'bg-primary-500 text-white shadow-md' : 'text-text-secondary hover:text-foreground'}`}
+                                        className={`px-6 py-2.5 rounded-full text-[13px] font-bold uppercase tracking-wide transition-all flex-1 text-center w-full sm:w-auto ${isSel ? 'bg-primary-500 text-white shadow-md' : 'text-text-secondary hover:bg-surface-2 hover:text-foreground'}`}
                                     >
                                         {labels[cKey]}
                                         {avgSavings[cKey as keyof typeof avgSavings] && !isSel && (
-                                            <span className="ml-2 bg-foreground/10 px-2 py-0.5 rounded-full">-{avgSavings[cKey as keyof typeof avgSavings]}%</span>
+                                            <span className="ml-2 bg-foreground/5 dark:bg-foreground/10 px-2 py-0.5 rounded-full">-{avgSavings[cKey as keyof typeof avgSavings]}%</span>
                                         )}
                                     </button>
                                 );
                             })}
                         </div>
 
-                        <div className="flex items-center divide-x divide-border-default border border-border-default rounded-xl overflow-hidden shadow-sm">
+                        <div className="flex items-center divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-border-default border border-border-default rounded-xl overflow-hidden shadow-sm flex-col sm:flex-row w-full sm:w-auto">
                             {BILLABLE_MODULES.map((tab) => (
                                 <button
                                     key={tab.slug}
                                     onClick={() => changeTab(tab.slug)}
-                                    className={`px-6 py-3 text-[14px] font-bold transition-all ${activeModule === tab.slug ? 'bg-surface-2 text-foreground shadow-inner' : 'bg-background text-text-tertiary hover:bg-surface-1 hover:text-text-secondary'}`}
+                                    className={`px-6 py-3 text-[14px] font-bold transition-all w-full sm:w-auto ${activeModule === tab.slug ? 'bg-surface-2 text-foreground shadow-inner' : 'bg-background text-text-tertiary hover:bg-surface-1 hover:text-text-secondary'}`}
                                 >
                                     {tab.label}
                                 </button>
@@ -544,9 +544,9 @@ export default function LandingPage() {
             {/* 7. FREQUENTLY ASKED QUESTIONS */}
             <section className="bg-surface-2 pt-24 pb-32 border-y border-border-light">
                 <div className="max-w-7xl mx-auto px-6 w-full flex flex-col lg:flex-row gap-16 items-center">
-                    <div className="flex-1 w-full max-w-2xl">
+                    <div className="flex-1 w-full max-w-2xl text-center lg:text-left mx-auto">
                         <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">FAQ</span>
-                        <h2 className="text-[36px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-10">Preguntas Frecuentes</h2>
+                        <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-8 md:mb-10">Preguntas Frecuentes</h2>
 
                         <div className="flex flex-col gap-4">
                             {[
@@ -598,9 +598,9 @@ export default function LandingPage() {
             </section>
 
             {/* 8. BOTTOM CTA BANNER */}
-            <section className="bg-background pt-32 pb-32">
+            <section className="bg-background pt-16 md:pt-32 pb-16 md:pb-32">
                 <div className="max-w-7xl mx-auto px-6 w-full">
-                    <div className="bg-primary-500 text-white rounded-[40px] px-8 py-24 md:py-32 flex flex-col items-center text-center relative overflow-hidden shadow-2xl">
+                    <div className="bg-primary-500 text-white rounded-[32px] md:rounded-[40px] px-6 py-16 md:py-32 flex flex-col items-center text-center relative overflow-hidden shadow-xl md:shadow-2xl">
                         {/* Glow and Shapes */}
                         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/10 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2" />
                         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-black/20 blur-[120px] rounded-full -translate-x-1/3 translate-y-1/2" />
@@ -609,11 +609,11 @@ export default function LandingPage() {
                             Centraliza Operaciones
                         </span>
                         
-                        <h2 className="relative z-10 text-[40px] md:text-[56px] font-bold leading-[1.05] max-w-4xl mb-8">
+                        <h2 className="relative z-10 text-[32px] md:text-[56px] font-bold leading-[1.1] md:leading-[1.05] max-w-4xl mb-6 md:mb-8">
                             Gestiona Todos Tus Procesos Fácilmente y Aumenta Tu Eficiencia
                         </h2>
                         
-                        <p className="relative z-10 text-[18px] md:text-[20px] text-white/80 max-w-2xl mb-12 font-medium">
+                        <p className="relative z-10 text-[16px] md:text-[20px] text-white/80 max-w-2xl mb-10 md:mb-12 font-medium">
                             Automatiza tus finanzas y crece libremente. Toma las mejores decisiones basado en reportes a tiempo real.
                         </p>
                         
