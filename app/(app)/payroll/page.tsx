@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { Receipt } from "lucide-react";
+import { Receipt, TrendingUp } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -547,16 +547,73 @@ export default function PayrollCalculator() {
     // ── Render ─────────────────────────────────────────────────────────────
     return (
         <DesktopOnlyGuard>
-        <div className="flex flex-1 bg-surface-2 font-mono overflow-hidden">
+        <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
+
+            <PageHeader
+                title="Nómina"
+                subtitle={
+                    <div className="flex items-center gap-2">
+                        <span>{quincenaInfo.label}</span>
+                        <span className="text-border-light/40">•</span>
+                        <span>{employees.filter(e => e.estado === "activo").length} activos</span>
+                    </div>
+                }
+            >
+                <div className="flex items-center gap-3">
+                    {selQuincena === 2 && (
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => {
+                                const active = employees.filter((e) => e.estado === "activo");
+                                if (!active.length) return;
+                                generateCestaTicketPdf(
+                                    active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
+                                    {
+                                        companyName: company?.name ?? "",
+                                        companyId:   company?.id,
+                                        periodLabel: quincenaInfo.label,
+                                        payrollDate: quincenaInfo.endDate,
+                                        montoUSD:    parseFloat(cestaTicketUSD) || 40,
+                                        bcvRate,
+                                    }
+                                );
+                            }}
+                            leftIcon={<Receipt size={14} />}
+                        >
+                            Cesta Ticket
+                        </BaseButton.Root>
+                    )}
+
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2 h-8">
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                        <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
+                            {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        </span>
+                    </div>
+
+                    {company && (
+                        <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
+                            {company.name}
+                        </span>
+                    )}
+                </div>
+            </PageHeader>
+
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
 
             {/* ══ LEFT PANEL — configuration ══════════════════════════════ */}
-            <aside className="w-80 flex-shrink-0 flex flex-col border-r border-border-light bg-surface-1 overflow-y-auto">
+            <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
+
+                <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
+                    <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
+                        <TrendingUp size={14} className="text-primary-500" />
+                        Calculadora
+                    </p>
+                </div>
 
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-border-light">
-                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[var(--text-tertiary)] mb-0.5">
-                        Nómina · Calculadora
-                    </p>
                     <div className="flex items-center justify-between">
                         <p className="font-mono text-[14px] font-black uppercase tracking-tight text-foreground leading-none">
                             Configuración
@@ -1061,57 +1118,6 @@ export default function PayrollCalculator() {
             {/* ══ RIGHT PANEL — results ════════════════════════════════════ */}
             <main className="flex-1 flex flex-col overflow-hidden">
 
-                <PageHeader
-                    title="Nómina"
-                    subtitle={
-                        <div className="flex items-center gap-2">
-                            <span>{quincenaInfo.label}</span>
-                            <span className="text-border-light/40">•</span>
-                            <span>{employees.filter(e => e.estado === "activo").length} activos</span>
-                        </div>
-                    }
-                >
-                    <div className="flex items-center gap-3">
-                        {selQuincena === 2 && (
-                            <BaseButton.Root
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => {
-                                    const active = employees.filter((e) => e.estado === "activo");
-                                    if (!active.length) return;
-                                    generateCestaTicketPdf(
-                                        active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
-                                        {
-                                            companyName: company?.name ?? "",
-                                            companyId:   company?.id,
-                                            periodLabel: quincenaInfo.label,
-                                            payrollDate: quincenaInfo.endDate,
-                                            montoUSD:    parseFloat(cestaTicketUSD) || 40,
-                                            bcvRate,
-                                        }
-                                    );
-                                }}
-                                leftIcon={<Receipt size={14} />}
-                            >
-                                Cesta Ticket
-                            </BaseButton.Root>
-                        )}
-
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2 h-8">
-                            <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
-                            <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                                {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
-                            </span>
-                        </div>
-
-                        {company && (
-                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
-                                {company.name}
-                            </span>
-                        )}
-                    </div>
-                </PageHeader>
-
                 {/* Table area */}
                 <div className="flex-1 overflow-y-auto p-6">
                     <PayrollEmployeeTable
@@ -1146,6 +1152,7 @@ export default function PayrollCalculator() {
 
             </main>
 
+            </div>
         </div>
         </DesktopOnlyGuard>
     );
