@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
-import { PageHeader }  from "@/src/shared/frontend/components/page-header";
+
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 
 // ============================================================================
@@ -223,8 +223,12 @@ export default function BillingPage() {
     const labelCls = "text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)] mb-1.5 block px-0.5";
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
-            <PageHeader title="Facturación" subtitle="Mi Plan, Suscripción y Pagos">
+        <div className="max-w-3xl space-y-8 w-full selection:bg-primary-500/30 font-mono">
+            <div className="flex items-center justify-between border-b border-border-light/50 pb-4">
+                <div>
+                     <h2 className="font-mono text-xs font-semibold text-foreground/70 uppercase tracking-[0.14em]">Suscripción y Pagos</h2>
+                     <p className="font-mono text-[11px] text-foreground/40 mt-1">Gestiona tu plan activo y pagos.</p>
+                </div>
                 <BaseButton.Root
                     onClick={() => { setFormOpen(true); setSubmitError(null); }}
                     disabled={formOpen || loading}
@@ -234,9 +238,7 @@ export default function BillingPage() {
                 >
                     Enviar pago
                 </BaseButton.Root>
-            </PageHeader>
-
-            <div className="max-w-[800px] mx-auto w-full px-8 py-8 space-y-8">
+            </div>
 
                 {/* Success banner */}
                 {submitOk && (
@@ -661,7 +663,6 @@ export default function BillingPage() {
                     </>
                 )}
 
-            </div>
         </div>
     );
 }

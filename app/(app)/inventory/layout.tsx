@@ -30,7 +30,7 @@ export default async function InventoryLayout({ children }: { children: React.Re
         .single();
 
     const hasAccess = sub?.status === "active" || sub?.status === "trial";
-    if (!hasAccess) redirect("/billing");
+    if (!hasAccess) redirect("/settings/billing");
 
     return <DesktopOnlyGuard>{children}</DesktopOnlyGuard>;
 }

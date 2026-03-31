@@ -62,7 +62,7 @@ export default function InventoryDashboard() {
     const loading = loadingProducts || loadingMovements;
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
+        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30 font-mono">
             <PageHeader title="Inventario" subtitle={`Tablero — ${periodo}`}>
                 <BaseButton.Root
                     as={Link}

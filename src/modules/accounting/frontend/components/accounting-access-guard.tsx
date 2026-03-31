@@ -27,7 +27,7 @@ export function AccountingAccessGuard({ children }: Props) {
                     El módulo de Contabilidad no está disponible en tu suscripción actual.
                 </p>
                 <Link
-                    href="/billing"
+                    href="/settings/billing"
                     className="inline-flex items-center h-9 px-4 rounded-lg bg-primary-500 text-white font-mono text-[12px] uppercase tracking-[0.1em] hover:bg-primary-600 transition-colors duration-150"
                 >
                     Ir a Facturación

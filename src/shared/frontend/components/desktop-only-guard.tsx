@@ -36,7 +36,7 @@ export function DesktopOnlyGuard({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <Link
-                    href="/billing"
+                    href="/settings/billing"
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-mono text-[13px] text-foreground/60 border border-border-light hover:bg-foreground/[0.04] hover:text-foreground transition-colors duration-150"
                 >
                     Ir a Facturación

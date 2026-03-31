@@ -16,11 +16,11 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
         <div className="px-8 py-6 border-b border-border-light bg-surface-1">
             <div className="flex items-center justify-between">
                 <div className="min-w-0">
-                    <h1 className="text-[16px] font-bold uppercase tracking-[0.14em] text-foreground">
+                    <h1 className="text-[16px] font-mono font-bold uppercase tracking-[0.14em] text-foreground">
                         {title}
                     </h1>
                     {subtitle && (
-                        <div className="text-[12px] text-foreground/50 uppercase tracking-[0.12em] mt-0.5">
+                        <div className="text-[12px] font-mono text-foreground/50 uppercase tracking-[0.12em] mt-0.5">
                             {subtitle}
                         </div>
                     )}

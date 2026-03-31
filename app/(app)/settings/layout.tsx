@@ -8,6 +8,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 const NAV_LINKS = [
     { href: "/settings/company", label: "Empresa" },
     { href: "/settings/members", label: "Miembros" },
+    { href: "/settings/billing", label: "Facturación" },
     { href: "/settings/apariencia", label: "Apariencia" },
 ];
  
