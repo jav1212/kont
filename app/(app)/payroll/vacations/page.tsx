@@ -974,7 +974,7 @@ export default function VacacionesPage() {
                             disabled={results.length === 0}
                             leftIcon={<Download size={14} />}
                         >
-                            Exportar Lote
+                            Generar PDF
                         </BaseButton.Root>
                     </div>
                 </aside>

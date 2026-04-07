@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp, ChevronDown } from "lucide-react";
+import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp, ChevronDown, Clock, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -176,94 +177,112 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
         logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
+    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
     return (
-        <div className="max-w-2xl mx-auto space-y-3">
-            <div className="flex justify-end">
-                <BaseButton.Root
-                    variant="primary"
-                    size="sm"
-                    onClick={handlePdf}
-                    leftIcon={<Download size={14} />}
-                >
-                    Descargar PDF
-                </BaseButton.Root>
-            </div>
-            <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
-
-                {/* Header */}
-                <div className="bg-[#12121a] px-8 py-6 relative overflow-hidden">
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500" />
-                    <div className="absolute left-1.5 right-0 bottom-0 h-0.5 bg-emerald-400/50" />
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#64648a] mb-1">Constancia de Utilidades · Art. 131 + 174 LOTTT</p>
-                            <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#64648a] mb-1">Año Fiscal</p>
-                            <p className="font-mono text-[22px] font-black text-white">{calc.anioFiscal}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Employee */}
-                <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
-                    <div className="col-span-2">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Trabajador</p>
-                        <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                        {employeeCargo && <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase">{employeeCargo}</p>}
-                    </div>
+        <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
+            <div className="px-8 py-6 border-b border-border-light bg-surface-2/30 flex items-start justify-between gap-6">
+                <div className="flex flex-row items-center gap-4">
+                    {(showLogoInPdf && companyLogoUrl) && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={companyLogoUrl} alt="Logo" className="max-h-12 w-auto object-contain shrink-0" />
+                    )}
                     <div>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Cédula</p>
-                        <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
+                        <p className="text-[20px] font-black uppercase tracking-tight text-foreground leading-none">{companyName}</p>
+                        <p className="text-[11px] text-[var(--text-tertiary)] mt-2 uppercase tracking-[0.2em] font-semibold">Constancia de Utilidades Completas</p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 131 + 174 LOTTT</p>
                     </div>
                 </div>
+                <div className="text-right shrink-0">
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Año Fiscal</p>
+                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{calc.anioFiscal}</p>
+                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {emitido}</p>
+                </div>
+            </div>
 
-                {/* Salary */}
-                <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-surface-2/50">
-                    {[
-                        { lbl: "Salario mensual", val: fmt(calc.salarioVES) },
-                        { lbl: "Salario diario", val: `${fmt(calc.salarioDia)} / día` },
-                        { lbl: "Días utilidades", val: `${calc.diasUtilidades} días` },
-                    ].map(({ lbl, val }) => (
-                        <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
-                            <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
+            <div className="px-8 py-5 border-b border-border-light flex flex-col sm:flex-row items-center justify-between bg-surface-1">
+                <div className="flex items-center gap-4 w-full">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center border border-border-light text-[var(--text-tertiary)] group-hover:border-primary-500/50 group-hover:text-primary-500 transition-colors">
+                        <Users size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[16px] font-bold text-foreground tracking-tight">{employeeName || "—"}</p>
+                        {employeeCargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{employeeCargo}</p>}
+                    </div>
+                    <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
+                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {employeeCedula || "—"}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
+                {[
+                    { lbl: "Salario Mensual",  val: fmt(calc.salarioVES), color: "text-foreground" },
+                    { lbl: "Año Fiscal", val: String(calc.anioFiscal), color: "text-foreground" },
+                    { lbl: "Días Base", val: `${calc.diasUtilidades} días`, color: "text-primary-500" },
+                    { lbl: "Salario Diario",  val: `${fmt(calc.salarioDia)} / día`, color: "text-foreground" },
+                ].map(({ lbl, val, color }) => (
+                    <div key={lbl}>
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{lbl}</p>
+                        <p className={`text-[13px] font-bold tabular-nums ${color}`}>{val}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="px-8 py-6">
+                <div className="flex justify-between pb-3 border-b border-border-light/60">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold">Concepto / Cálculo</p>
+                    <div className="flex items-center justify-end gap-12 w-48 shrink-0">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right w-12">Días</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right flex-1">Monto Asignado</p>
+                    </div>
+                </div>
+                
+                <div className="divide-y divide-border-light/40 pt-1">
+                    <div className="py-3.5 flex items-start justify-between group hover:bg-surface-2/30 -mx-4 px-4 rounded-lg transition-colors">
+                        <div className="pr-4">
+                            <p className="text-[13px] font-bold text-foreground tracking-tight">Utilidades Anuales</p>
+                            <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">Art. 131 + 174 LOTTT · {calc.diasUtilidades}d × {fmtN(calc.salarioDia)}/día</p>
                         </div>
-                    ))}
-                </div>
-
-                {/* Concept */}
-                <div className="px-8 py-5">
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
-                        {["Concepto", "Días", "Monto"].map(h => (
-                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] text-right first:text-left">{h}</p>
-                        ))}
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                        <div>
-                            <p className="font-mono text-[12px] font-bold text-foreground">Utilidades Anuales</p>
-                            <p className="font-mono text-[8px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
-                                Art. 131 + 174 LOTTT · {calc.diasUtilidades}d × {fmt(calc.salarioDia)}/día
+                        <div className="flex items-center justify-end gap-12 w-48 shrink-0 text-right">
+                            <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{calc.diasUtilidades}</p>
+                            <p className={`text-[14px] font-bold tabular-nums flex-1 text-foreground group-hover:text-primary-500 transition-colors`}>
+                                Bs. {fmtN(calc.monto)}
                             </p>
                         </div>
-                        <p className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)] text-right">{calc.diasUtilidades}</p>
-                        <p className="font-mono text-[14px] font-black tabular-nums text-emerald-500 text-right">{fmt(calc.monto)}</p>
-                    </div>
-                    <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total a recibir</p>
-                        <p className="font-mono text-[22px] font-black tabular-nums text-emerald-500 text-right">{fmt(calc.monto)}</p>
                     </div>
                 </div>
 
-                {/* Signatures */}
-                <div className="px-8 py-6 border-t border-border-light grid grid-cols-2 gap-10">
-                    {["Empleador", "Trabajador"].map(role => (
-                        <div key={role} className="text-center">
-                            <div className="h-10 border-b border-border-medium mb-2" />
-                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{role}</p>
+                <div className="mt-4 p-5 rounded-2xl bg-surface-2/60 border border-border-light flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--text-tertiary)] flex items-center gap-2 mb-1">
+                            Líquido a recibir
+                        </p>
+                        <p className="text-[24px] font-black tabular-nums text-foreground leading-none">
+                            Bs. {fmtN(calc.monto)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-8 pb-8 pt-4">
+                <div className="grid grid-cols-2 gap-12 max-w-lg mx-auto">
+                    {["Representante Empleador", "Firma del Trabajador"].map(role => (
+                        <div key={role} className="flex flex-col items-center">
+                            <div className="w-full h-12 border-b-2 border-dashed border-border-light mb-3" />
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)] font-bold text-center">{role}</p>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            <div className="bg-surface-2/30 px-8 py-4 border-t border-border-light flex items-center justify-between mt-auto">
+                <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed uppercase tracking-wider font-semibold">
+                    Documento de conformidad · Original
+                </p>
+                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                    <FileText size={14} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
                 </div>
             </div>
         </div>
@@ -298,120 +317,116 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
         logoUrl: companyLogoUrl, showLogoInPdf,
     });
 
+    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+
     return (
-        <div className="max-w-2xl mx-auto space-y-3">
-            <div className="flex justify-end">
-                <BaseButton.Root
-                    variant="primary"
-                    size="sm"
-                    onClick={handlePdf}
-                    leftIcon={<Download size={14} />}
-                    className="bg-amber-500 hover:bg-amber-600 border-amber-600"
-                >
-                    Descargar PDF
-                </BaseButton.Root>
-            </div>
-            <div className="rounded-2xl border border-amber-500/20 bg-surface-1 overflow-hidden shadow-sm">
-
-                {/* Header */}
-                <div className="bg-[#12121a] px-8 py-6 relative overflow-hidden">
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500" />
-                    <div className="absolute left-1.5 right-0 bottom-0 h-0.5 bg-amber-500/50" />
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#64648a] mb-1">Utilidades Fraccionadas · Art. 175 LOTTT</p>
-                            <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#64648a] mb-1">Año Fiscal</p>
-                            <p className="font-mono text-[22px] font-black text-white">{calc.anioFiscal}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Employee */}
-                <div className="px-8 py-5 border-b border-border-light grid grid-cols-3 gap-4">
-                    <div className="col-span-2">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Trabajador</p>
-                        <p className="font-mono text-[15px] font-bold text-foreground">{employeeName || "—"}</p>
-                        {employeeCargo && <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase">{employeeCargo}</p>}
-                    </div>
+        <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
+            <div className="px-8 py-6 border-b border-border-light bg-surface-2/30 flex items-start justify-between gap-6">
+                <div className="flex flex-row items-center gap-4">
+                    {(showLogoInPdf && companyLogoUrl) && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={companyLogoUrl} alt="Logo" className="max-h-12 w-auto object-contain shrink-0" />
+                    )}
                     <div>
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Cédula</p>
-                        <p className="font-mono text-[13px] font-medium text-foreground">{employeeCedula || "—"}</p>
-                        <p className="font-mono text-[9px] text-[var(--text-tertiary)] mt-0.5">
+                        <p className="text-[20px] font-black uppercase tracking-tight text-foreground leading-none">{companyName}</p>
+                        <p className="text-[11px] text-[var(--text-tertiary)] mt-2 uppercase tracking-[0.2em] font-semibold">Constancia de Utilidades Fraccionadas</p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 175 LOTTT</p>
+                    </div>
+                </div>
+                <div className="text-right shrink-0">
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Corte al</p>
+                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDateES(fechaCorte)}</p>
+                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {emitido}</p>
+                </div>
+            </div>
+
+            <div className="px-8 py-5 border-b border-border-light flex flex-col sm:flex-row items-center justify-between bg-surface-1">
+                <div className="flex items-center gap-4 w-full">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center border border-border-light text-[var(--text-tertiary)] group-hover:border-primary-500/50 group-hover:text-primary-500 transition-colors">
+                        <Users size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[16px] font-bold text-foreground tracking-tight">{employeeName || "—"}</p>
+                        {employeeCargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{employeeCargo}</p>}
+                    </div>
+                    <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
+                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {employeeCedula || "—"}</p>
+                        <div className="inline-flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-medium bg-surface-2 px-2 py-0.5 rounded border border-border-light">
+                            <Clock size={12} className="text-[var(--text-tertiary)]" />
                             {calc.mesesTrabajados} mes{calc.mesesTrabajados !== 1 ? "es" : ""} en {calc.anioFiscal}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Period overview */}
-                <div className="px-8 py-4 border-b border-border-light grid grid-cols-3 gap-4 bg-amber-500/3">
-                    {[
-                        { lbl: "Inicio período", val: formatDateES(calc.periodoInicio) },
-                        { lbl: "Fecha de corte", val: formatDateES(fechaCorte) },
-                        { lbl: "Meses trabajados", val: `${calc.mesesTrabajados} mes${calc.mesesTrabajados !== 1 ? "es" : ""}` },
-                    ].map(({ lbl, val }) => (
-                        <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
-                            <p className="font-mono text-[11px] font-bold text-foreground">{val}</p>
                         </div>
-                    ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
+                {[
+                    { lbl: "Salario Mensual", val: fmt(calc.salarioVES), color: "text-foreground" },
+                    { lbl: "Inicio Período", val: formatDateES(calc.periodoInicio), color: "text-foreground" },
+                    { lbl: "Meses Trab.", val: `${calc.mesesTrabajados} mes${calc.mesesTrabajados !== 1 ? "es" : ""}`, color: "text-primary-500" },
+                    { lbl: "Salario Diario", val: `${fmt(calc.salarioDia)} / día`, color: "text-foreground" },
+                ].map(({ lbl, val, color }) => (
+                    <div key={lbl}>
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{lbl}</p>
+                        <p className={`text-[13px] font-bold tabular-nums ${color}`}>{val}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="px-8 py-6">
+                <div className="flex justify-between pb-3 border-b border-border-light/60">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold">Concepto / Cálculo</p>
+                    <div className="flex items-center justify-end gap-12 w-48 shrink-0">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right w-12">Días</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right flex-1">Monto Asignado</p>
+                    </div>
                 </div>
 
-                {/* Salary */}
-                <div className="px-8 py-4 border-b border-border-light flex gap-8 bg-surface-2/50">
-                    {[
-                        { lbl: "Salario mensual", val: fmt(calc.salarioVES) },
-                        { lbl: "Salario diario", val: `${fmt(calc.salarioDia)} / día` },
-                        { lbl: "Días base anuales", val: `${calc.diasUtilidades} días` },
-                    ].map(({ lbl, val }) => (
-                        <div key={lbl}>
-                            <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">{lbl}</p>
-                            <p className="font-mono text-[11px] font-bold text-foreground tabular-nums">{val}</p>
+                <div className="divide-y divide-border-light/40 pt-1">
+                    <div className="py-3.5 flex items-start justify-between group hover:bg-surface-2/30 -mx-4 px-4 rounded-lg transition-colors">
+                        <div className="pr-4">
+                            <p className="text-[13px] font-bold text-foreground tracking-tight">Utilidades Fraccionadas</p>
+                            <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">Art. 175 LOTTT · ⌈ {calc.diasUtilidades}d / 12 × {calc.mesesTrabajados} meses ⌉</p>
                         </div>
-                    ))}
-                </div>
-
-                {/* Concepts */}
-                <div className="px-8 py-5">
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 pb-2 border-b-2 border-border-light">
-                        {["Concepto", "Días", "Monto"].map(h => (
-                            <p key={h} className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] text-right first:text-left">{h}</p>
-                        ))}
-                    </div>
-
-                    <div className="py-3 border-b border-border-light/40">
-                        <p className="font-mono text-[9px] text-[var(--text-tertiary)]">
-                            Fórmula: ⌈ {calc.diasUtilidades} días / 12 meses × {calc.mesesTrabajados} meses ⌉ = ⌈ {fmtN((calc.diasUtilidades / 12) * calc.mesesTrabajados)} ⌉
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 py-4 border-b border-border-light/60 items-center">
-                        <div>
-                            <p className="font-mono text-[12px] font-bold text-foreground">Utilidades Fraccionadas</p>
-                            <p className="font-mono text-[8px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wide">
-                                Art. 175 LOTTT · {calc.diasUtilidades}d/12 × {calc.mesesTrabajados} meses
+                        <div className="flex items-center justify-end gap-12 w-48 shrink-0 text-right">
+                            <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{calc.diasFraccionados}</p>
+                            <p className="text-[14px] font-bold tabular-nums flex-1 text-foreground group-hover:text-primary-500 transition-colors">
+                                Bs. {fmtN(calc.monto)}
                             </p>
                         </div>
-                        <p className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)] text-right">{calc.diasFraccionados}</p>
-                        <p className="font-mono text-[14px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.monto)}</p>
-                    </div>
-
-                    <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 items-baseline">
-                        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">Total fraccionado</p>
-                        <p className="font-mono text-[22px] font-black tabular-nums text-amber-500 text-right">{fmt(calc.monto)}</p>
                     </div>
                 </div>
 
-                {/* Signatures */}
-                <div className="px-8 py-6 border-t border-border-light grid grid-cols-2 gap-10">
-                    {["Empleador", "Trabajador"].map(role => (
-                        <div key={role} className="text-center">
-                            <div className="h-10 border-b border-border-medium mb-2" />
-                            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">{role}</p>
+                <div className="mt-4 p-5 rounded-2xl bg-surface-2/60 border border-border-light flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--text-tertiary)] flex items-center gap-2 mb-1">
+                            Líquido a recibir
+                        </p>
+                        <p className="text-[24px] font-black tabular-nums text-foreground leading-none">
+                            Bs. {fmtN(calc.monto)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-8 pb-8 pt-4">
+                <div className="grid grid-cols-2 gap-12 max-w-lg mx-auto">
+                    {["Representante Empleador", "Firma del Trabajador"].map(role => (
+                        <div key={role} className="flex flex-col items-center">
+                            <div className="w-full h-12 border-b-2 border-dashed border-border-light mb-3" />
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)] font-bold text-center">{role}</p>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            <div className="bg-surface-2/30 px-8 py-4 border-t border-border-light flex items-center justify-between mt-auto">
+                <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed uppercase tracking-wider font-semibold">
+                    Documento de conformidad · Original
+                </p>
+                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                    <FileText size={14} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
                 </div>
             </div>
         </div>
@@ -543,6 +558,52 @@ export default function UtilidadesPage() {
     }, [filtered, mode, diasUtilidades, anioFiscal, currentYear, fechaCorte, bcvRate]);
 
     const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.monto ?? 0), 0), [results]);
+
+    const [exportingLote, setExportingLote] = useState(false);
+    const handleExportLote = async () => {
+        setExportingLote(true);
+        try {
+            for (const r of results) {
+                if (!r.calc) continue;
+                if (mode === "completas") {
+                    await generateUtilidadesCompletasPdf({
+                        companyName: company?.name ?? "La Empresa",
+                        employee: { nombre: r.emp.nombre, cedula: r.emp.cedula, cargo: r.emp.cargo },
+                        anioFiscal: (r.calc as UtilidadesCompletas).anioFiscal,
+                        salarioVES: (r.calc as UtilidadesCompletas).salarioVES,
+                        salarioDia: (r.calc as UtilidadesCompletas).salarioDia,
+                        diasUtilidades: (r.calc as UtilidadesCompletas).diasUtilidades,
+                        monto: (r.calc as UtilidadesCompletas).monto,
+                        logoUrl: company?.logoUrl,
+                        showLogoInPdf: company?.showLogoInPdf,
+                    });
+                } else {
+                    await generateUtilidadesFraccionadasPdf({
+                        companyName: company?.name ?? "La Empresa",
+                        employee: { nombre: r.emp.nombre, cedula: r.emp.cedula, cargo: r.emp.cargo },
+                        anioFiscal: (r.calc as UtilidadesFraccionadas).anioFiscal,
+                        fechaIngreso: r.emp.fechaIngreso ?? "",
+                        fechaCorte: fechaCorte,
+                        inicioFiscal: (r.calc as UtilidadesFraccionadas).inicioFiscal,
+                        periodoInicio: (r.calc as UtilidadesFraccionadas).periodoInicio,
+                        mesesTrabajados: (r.calc as UtilidadesFraccionadas).mesesTrabajados,
+                        diasUtilidades: (r.calc as UtilidadesFraccionadas).diasUtilidades,
+                        diasFraccionados: (r.calc as UtilidadesFraccionadas).diasFraccionados,
+                        salarioVES: (r.calc as UtilidadesFraccionadas).salarioVES,
+                        salarioDia: (r.calc as UtilidadesFraccionadas).salarioDia,
+                        monto: (r.calc as UtilidadesFraccionadas).monto,
+                        logoUrl: company?.logoUrl,
+                        showLogoInPdf: company?.showLogoInPdf,
+                    });
+                }
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert("Error al exportar: " + (err?.message || String(err)));
+        } finally {
+            setExportingLote(false);
+        }
+    };
 
     return (
         <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
@@ -845,33 +906,39 @@ export default function UtilidadesPage() {
                         <BaseButton.Root
                             variant="primary"
                             className="w-full"
-                            onClick={() => {}}
-                            disabled={results.length === 0}
-                            leftIcon={<Download size={14} />}
+                            onClick={handleExportLote}
+                            disabled={results.length === 0 || exportingLote}
+                            leftIcon={exportingLote ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                         >
-                            Exportar Lote
+                            {exportingLote ? `Generando…` : `Generar PDF (${results.filter(r => r.calc).length})`}
                         </BaseButton.Root>
                     </div>
                 </aside>
 
                 {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-surface-2 lg:bg-surface-2/50 relative">
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+                    <div className="relative z-10 w-full h-full">
                     {loading ? (
-                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
-                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
+                        <div className="flex flex-col items-center justify-center h-full gap-4 text-[var(--text-tertiary)]">
+                            <RefreshCw size={24} className="animate-spin text-primary-500/50" />
+                            <span className="text-[13px] font-bold uppercase tracking-widest">Cargando datos…</span>
                         </div>
                     ) : results.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)] opacity-40">
-                             <HandCoins size={48} strokeWidth={1} />
-                             <p className="font-mono text-[12px] uppercase tracking-widest">Selecciona empleados para calcular</p>
+                        <div className="flex flex-col items-center justify-center h-full gap-5 text-[var(--text-disabled)] max-w-sm mx-auto animate-in fade-in duration-500">
+                            <div className="w-20 h-20 rounded-[1.5rem] bg-surface-1 border border-border-light flex items-center justify-center shadow-sm text-border-medium">
+                                <Users strokeWidth={1.5} size={32} />
+                            </div>
+                            <div className="text-center space-y-2">
+                                <p className="text-[14px] font-bold uppercase tracking-widest text-foreground">Sistema Listo</p>
+                                <p className="text-[13px] font-medium text-[var(--text-secondary)] leading-relaxed">
+                                    Selecciona un empleado de la lista y ajusta los parámetros de cálculo para previsualizar la constancia de utilidades.
+                                </p>
+                            </div>
                         </div>
                     ) : (
-                        <div className="max-w-2xl mx-auto space-y-8">
-                            {results.map(r => {
+                        <div className="max-w-4xl mx-auto space-y-10 pb-12">
+                            {results.map((r, i) => {
                                 if (r.msg) return (
                                     <div key={r.emp.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
                                         <div>
@@ -882,32 +949,42 @@ export default function UtilidadesPage() {
                                     </div>
                                 );
 
-                                if (mode === "completas") return (
-                                    <ConstanciaCompletas
-                                        key={r.emp.cedula}
-                                        calc={r.calc as UtilidadesCompletas}
-                                        employeeName={r.emp.nombre}
-                                        employeeCedula={r.emp.cedula}
-                                        employeeCargo={r.emp.cargo}
-                                        companyName={company?.name ?? "La Empresa"}
-                                    />
-                                );
-
                                 return (
-                                    <ConstanciaFraccionadas
+                                    <motion.div
                                         key={r.emp.cedula}
-                                        calc={r.calc as UtilidadesFraccionadas}
-                                        employeeName={r.emp.nombre}
-                                        employeeCedula={r.emp.cedula}
-                                        employeeCargo={r.emp.cargo}
-                                        companyName={company?.name ?? "La Empresa"}
-                                        fechaIngreso={r.emp.fechaIngreso ?? ""}
-                                        fechaCorte={fechaCorte}
-                                    />
+                                        initial={{ opacity: 0, scale: 0.98, y: 15 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        transition={{ delay: i * 0.05, ease: "easeOut" }}
+                                    >
+                                        {mode === "completas" ? (
+                                            <ConstanciaCompletas
+                                                calc={r.calc as UtilidadesCompletas}
+                                                employeeName={r.emp.nombre}
+                                                employeeCedula={r.emp.cedula}
+                                                employeeCargo={r.emp.cargo}
+                                                companyName={company?.name ?? "La Empresa"}
+                                                companyLogoUrl={company?.logoUrl}
+                                                showLogoInPdf={company?.showLogoInPdf}
+                                            />
+                                        ) : (
+                                            <ConstanciaFraccionadas
+                                                calc={r.calc as UtilidadesFraccionadas}
+                                                employeeName={r.emp.nombre}
+                                                employeeCedula={r.emp.cedula}
+                                                employeeCargo={r.emp.cargo}
+                                                companyName={company?.name ?? "La Empresa"}
+                                                companyLogoUrl={company?.logoUrl}
+                                                showLogoInPdf={company?.showLogoInPdf}
+                                                fechaIngreso={r.emp.fechaIngreso ?? ""}
+                                                fechaCorte={fechaCorte}
+                                            />
+                                        )}
+                                    </motion.div>
                                 );
                             })}
                         </div>
                     )}
+                    </div>
                 </main>
             </div>
         </div>

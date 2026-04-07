@@ -1,6 +1,5 @@
-// ============================================================================
-// PRESTACIONES PDF — Constancia de Prestaciones Sociales (Art. 142 LOTTT)
-// ============================================================================
+// prestaciones-pdf.ts
+// Redesigned to match Premium/Clean UI of liquidaciones-pdf.ts
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
@@ -8,643 +7,384 @@ import { loadImageAsBase64 } from "./pdf-image-helper";
 export interface PrestacionesPdfData {
     companyName:            string;
     employee:               { nombre: string; cedula: string; cargo?: string };
-    fechaIngreso:           string;   // ISO
-    fechaCorte:             string;   // ISO
-    // Antigüedad
+    fechaIngreso:           string;
+    fechaCorte:             string;
     anios:                  number;
     mesesCompletos:         number;
     totalDias:              number;
-    // Salario
     salarioVES:             number;
     salarioDiario:          number;
     alicuotaUtil:           number;
     alicuotaBono:           number;
     salarioIntegralDiario:  number;
-    // Días
     diasTrimestrales:       number;
     diasAdicionales:        number;
     diasTotales:            number;
-    // Montos
     saldoAcumulado:         number;
-    garantia:               number;   // 30d × integral × años (Art. 142.c)
-    montoFinal:             number;   // max(saldo, garantia)
+    garantia:               number;
+    montoFinal:             number;
     aplicaGarantia:         boolean;
-    // Ajustes opcionales
     anticipoPrestaciones:   number;
     interesesAcumulados:    number;
-    pagoInmediato:          number;   // anticipo + intereses (lo que se paga ahora)
-    saldoFavor:             number;   // montoFinal − anticipo − intereses
-    porcentajeAnticipo?:    number;   // e.g. 75
-    tasaIntereses?:         number;   // e.g. 3
+    pagoInmediato:          number;
+    saldoFavor:             number;
+    porcentajeAnticipo?:    number;
+    tasaIntereses?:         number;
     logoUrl?:               string;
     showLogoInPdf?:         boolean;
 }
 
 type RGB = [number, number, number];
 const C = {
-    inkMed:   [50,  50,  60]  as RGB,
-    muted:    [120, 120, 132] as RGB,
-    border:   [218, 218, 226] as RGB,
-    borderMd: [175, 175, 185] as RGB,
-    bg:       [255, 255, 255] as RGB,   // blanco para impresión
-    rowAlt:   [240, 240, 245] as RGB,
-    white:    [255, 255, 255] as RGB,
-    header:   [255, 255, 255] as RGB,
-    primary:  [8,   145, 178] as RGB,
-    accent:   [34,  211, 238] as RGB,
-    green:    [22,  101, 52]  as RGB,
-    greenBg:  [167, 243, 208] as RGB,
-    amber:    [180, 120, 10]  as RGB,
+    ink:       [32,  32,  40]  as RGB,
+    inkMed:    [70,  70,  80]  as RGB,
+    muted:     [140, 140, 150] as RGB,
+    border:    [230, 230, 235] as RGB,
+    borderStr: [190, 190, 200] as RGB,
+    bg:        [255, 255, 255] as RGB,
+    rowAlt:    [248, 248, 252] as RGB,
+    white:     [255, 255, 255] as RGB,
+    primary:   [217, 58,  16]  as RGB,
+    amber:     [220, 38,  38]  as RGB,
+    green:     [22,  101, 52]  as RGB,
 };
 
-const fill = (doc: jsPDF, x: number, y: number, w: number, h: number, c: RGB) => {
+type Doc = jsPDF;
+
+const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
     doc.setFillColor(c[0], c[1], c[2]);
     doc.rect(x, y, w, h, "F");
 };
 
-const hline = (doc: jsPDF, x: number, y: number, w: number, c: RGB = C.border, lw = 0.2) => {
+const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = C.border, lw = 0.25) => {
+    doc.setLineDashPattern([], 0);
     doc.setDrawColor(c[0], c[1], c[2]);
     doc.setLineWidth(lw);
     doc.line(x, y, x + w, y);
 };
 
-const txt = (
-    doc: jsPDF, text: string,
-    x: number, y: number, size: number, bold: boolean,
-    color: RGB, align: "left" | "center" | "right" = "left",
-    maxW?: number,
-) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
+const t = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, color: RGB, align: "left" | "center" | "right" = "left", maxW?: number, font: "helvetica" | "courier" = "helvetica") => {
+    doc.setFont(font, bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    doc.setCharSpace(0);
-    const str = maxW ? ((doc.splitTextToSize(text, maxW) as string[])[0] ?? "") : text;
-    let ax = x;
-    if (align === "right")  ax = x - doc.getTextWidth(str);
-    if (align === "center") ax = x - doc.getTextWidth(str) / 2;
-    doc.text(str, ax, y);
+    const opts: Record<string, unknown> = { align };
+    if (maxW) opts.maxWidth = maxW;
+    doc.text(text, x, y, opts);
 };
 
-const fmtNum = (n: number): string => {
-    const [int, dec] = n.toFixed(2).split(".");
-    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + dec;
-};
-const fmtVES = (n: number) => "Bs. " + fmtNum(n);
+const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = C.muted) =>
+    t(doc, text.toUpperCase(), x, y, 6, true, color, align, undefined, "helvetica");
 
-function formatDateES(iso: string): string {
+const tm = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
+    t(doc, text, x, y, size, bold, c, align, undefined, "courier");
+
+const fmtVES = (n: number) => "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (iso: string) => {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
-                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-    return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+    const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`.toUpperCase();
+};
+
+function drawFooter(doc: Doc, PW: number, PH: number, companyName: string, sub: string) {
+    fill(doc, 0, PH - 14, PW, 14, C.white);
+    hline(doc, 0, PH - 14, PW, C.border, 0.4);
+    lbl(doc, `${companyName.toUpperCase()}  |  ${sub}  |  DOCUMENTO CONFIDENCIAL`, PW / 2, PH - 7, "center", C.muted);
 }
 
-function drawBg(doc: jsPDF, PW: number, PH: number) {
-    doc.setFillColor(C.bg[0], C.bg[1], C.bg[2]);
-    doc.rect(0, 0, PW, PH, "F");
-}
-
-function drawFooter(doc: jsPDF, PW: number, PH: number, companyName: string, sub: string) {
-    fill(doc, 0, PH - 10, PW, 10, C.white);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(0, PH - 10, PW, PH - 10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(
-        `${companyName.toUpperCase()}  ·  ${sub}  ·  DOCUMENTO CONFIDENCIAL`,
-        PW / 2, PH - 4, { align: "center" },
-    );
-}
-
-function drawSignatures(doc: jsPDF, ML: number, W: number, y: number): number {
-    const SIG_W = (W - 12) / 2;
-    const SIG_H = 22;
+function drawSignatures(doc: Doc, ML: number, W: number, y: number): number {
+    const SIG_W = (W - 16) / 2;
+    const SIG_H = 24;
     ["EMPLEADOR", "TRABAJADOR"].forEach((role, i) => {
-        const sx = ML + i * (SIG_W + 12);
-        doc.setFillColor(C.white[0], C.white[1], C.white[2]);
-        doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-        doc.setLineWidth(0.25);
-        doc.rect(sx, y, SIG_W, SIG_H, "FD");
-        fill(doc, sx, y, SIG_W, 1.5, C.muted);
-        hline(doc, sx + 6, y + SIG_H - 5, SIG_W - 12, C.borderMd, 0.4);
-        txt(doc, role, sx + SIG_W / 2, y + SIG_H - 1.5, 4, false, C.muted, "center");
+        const sx = ML + i * (SIG_W + 16);
+        doc.setDrawColor(C.borderStr[0], C.borderStr[1], C.borderStr[2]);
+        doc.setLineWidth(0.4);
+        doc.setLineDashPattern([2, 1.5], 0);
+        doc.rect(sx, y, SIG_W, SIG_H, "S");
+        doc.setLineDashPattern([], 0); // reset
+        
+        hline(doc, sx + 8, y + SIG_H - 8, SIG_W - 16, C.borderStr, 0.4);
+        lbl(doc, role, sx + SIG_W / 2, y + SIG_H - 4.5, "center", C.muted);
     });
-    return y + SIG_H + 6;
+    return y + SIG_H + 8;
 }
 
 function detailRow(
-    doc: jsPDF, ML: number, W: number, y: number,
-    label: string, sub: string, value: string, color: RGB, alt: boolean,
+    doc: Doc, ML: number, MR: number, W: number, y: number,
+    label: string, sub: string, value: string, color: RGB, alt: boolean, formula?: string
 ): number {
     const H = 10;
-    fill(doc, ML, y, W, H, alt ? C.rowAlt : C.white);
-    hline(doc, ML, y + H, W, C.border, 0.1);
-    txt(doc, label, ML + 4,  y + 4.5, 7,   true,  C.inkMed);
-    txt(doc, sub,   ML + 4,  y + 8.5, 4.5, false, C.muted, "left", W * 0.6);
-    txt(doc, value, MR_DOC,  y + 7,   7.5, true,  color,   "right");
+    if (alt) fill(doc, ML, y, W, H, C.rowAlt);
+    hline(doc, ML, y + H, W, C.border, 0.25);
+    
+    t(doc, label, ML + 4,  y + 4.5, 7, true, C.ink);
+    if (sub) t(doc, sub, ML + 4,  y + 8.5, 5, false, C.muted, "left", W * 0.5);
+    
+    if (formula) {
+        tm(doc, formula, ML + W * 0.5, y + 6.5, 6, false, C.muted, "left");
+    }
+    
+    tm(doc, value, MR - 4, y + 6.5, 8, true, color, "right");
     return y + H;
 }
 
-// Module-level ref for MR (set per call)
-let MR_DOC = 0;
-
 export async function generatePrestacionesPdf(data: PrestacionesPdfData): Promise<void> {
+    console.log("Starting generatePrestacionesPdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
-    const ML = 13, MR = PW - 13, W = MR - ML;
-    MR_DOC = MR;
+    const ML = 16, MR = PW - 16, W = MR - ML;
 
-    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
-        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
-        : null;
-
-    drawBg(doc, PW, PH);
-
-    // ── Header ────────────────────────────────────────────────────────────────
-    const HDR_H = 40;
-    fill(doc, 0, 0, PW, HDR_H, C.header);
-    fill(doc, 0, HDR_H - 2, PW, 2, C.greenBg);
-    fill(doc, 0, 0, 4, HDR_H - 2, C.green);
-
-    txt(doc, data.companyName.toUpperCase(),        ML + 2, 10,   11, true,  C.inkMed);
-    txt(doc, "CONSTANCIA DE PRESTACIONES SOCIALES", ML + 2, 17,   6,  false, C.muted);
-    txt(doc, "Art. 142 LOTTT — Garantía de Prestaciones",   ML + 2, 23.5, 5.5, false, C.muted);
-    txt(doc, "CORTE AL",                            MR,     12,   5,  false, C.muted, "right");
-    txt(doc, formatDateES(data.fechaCorte),         MR,     18.5, 7,  true,  C.inkMed, "right");
-    txt(doc,
-        `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 26, 5, false, [100,100,118] as RGB, "right",
-    );
-
-    let y = HDR_H + 5;
-
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    let logoBase64 = null;
+    if (data.showLogoInPdf && data.logoUrl) {
+        console.log("Fetching logo...", data.logoUrl);
+        logoBase64 = await loadImageAsBase64(data.logoUrl).catch(err => {
+            console.warn("Logo fetch failed", err);
+            return null;
+        });
+        console.log("Logo fetched:", !!logoBase64);
     }
 
-    // ── Employee card ──────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 14, C.white);
-    fill(doc, ML, y, 3,  14, C.green);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(ML, y, W, 14, "D");
-    txt(doc, data.employee.nombre.toUpperCase(), ML + 7, y + 5.5, 9,   true,  C.inkMed, "left", W * 0.65);
-    txt(doc, data.employee.cargo?.toUpperCase() ?? "", ML + 7, y + 10, 5.5, false, C.muted, "left", W * 0.55);
-    txt(doc, `CI: ${data.employee.cedula}`,      MR - 2, y + 5.5, 7.5, true,  C.inkMed, "right");
-    txt(doc, `Ingreso: ${formatDateES(data.fechaIngreso).toUpperCase()}`, MR - 2, y + 10, 5, false, C.muted, "right");
+    fill(doc, 0, 0, PW, PH, C.bg);
+
+    // ── Header ────────────────────────────────────────────────────────────
+    let topY = 20;
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
+        t(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);
+    } else {
+        t(doc, data.companyName.toUpperCase(), ML, topY, 13, true, C.ink);
+    }
+
+    t(doc, "PRESTACIONES SOCIALES", MR, topY - 1, 9, true, C.ink, "right");
+    t(doc, "ART. 142 LOTTT — GARANTÍA Y ACUMULADOS", MR, topY + 3, 6, false, C.muted, "right");
+
+    lbl(doc, "FECHA CORTE", MR, topY + 11, "right");
+    tm(doc, fmtDate(data.fechaCorte), MR, topY + 15, 9, true, C.inkMed, "right");
+    
+    lbl(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 20, "right");
+
+    let y = topY + 26;
+    hline(doc, ML, y, W, C.border, 0.4);
+    y += 8;
+
+    // ── Employee data ──────────────────────────────────────────────
+    const c1x = ML;
+    const c2x = ML + W * 0.40;
+    const c3x = ML + W * 0.70;
+
+    lbl(doc, "Trabajador", c1x, y);
+    t(doc, data.employee.nombre.toUpperCase(), c1x, y + 5, 9, true, C.ink, "left", c2x - c1x - 4);
+    if (data.employee.cargo) t(doc, data.employee.cargo.toUpperCase(), c1x, y + 9, 6.5, false, C.muted);
+    tm(doc, "CI " + data.employee.cedula, c1x, y + 13.5, 7.5, true, C.inkMed, "left");
+
+    lbl(doc, "Antigüedad", c2x, y);
+    const antStr = `${data.anios}a ${data.mesesCompletos % 12}m`;
+    tm(doc, antStr, c2x, y + 5, 8.5, true, C.ink, "left");
+    tm(doc, `Ingreso: ${fmtDate(data.fechaIngreso)}`, c2x, y + 9.5, 6.5, false, C.inkMed, "left");
+
+    lbl(doc, "Sal. Integral / Día", c3x, y);
+    tm(doc, fmtVES(data.salarioIntegralDiario), c3x, y + 5, 8.5, true, C.ink, "left");
+    tm(doc, `Base: ${fmtVES(data.salarioDiario)}`, c3x, y + 9.5, 6.5, false, C.muted, "left");
 
     y += 18;
+    hline(doc, ML, y, W, C.border, 0.4);
+    y += 6;
 
-    // ── Antigüedad strip ──────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 13, C.rowAlt);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(ML, y, W, 13, "D");
-    const px1 = ML + 4, px2 = ML + W * 0.28, px3 = ML + W * 0.56, px4 = MR - 4;
-    txt(doc, "ANTIGÜEDAD",                       px1, y + 4, 5, false, C.muted);
-    txt(doc, `${data.anios} año${data.anios !== 1 ? "s" : ""} ${data.mesesCompletos % 12} mes${(data.mesesCompletos % 12) !== 1 ? "es" : ""}`,
-        px1, y + 9, 7, true, C.inkMed);
-    txt(doc, "DÍAS TOTALES",                     px2, y + 4, 5, false, C.muted);
-    txt(doc, `${data.totalDias} días`,           px2, y + 9, 7, true, C.inkMed);
-    txt(doc, "SAL. INTEGRAL / DÍA",              px3, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.salarioIntegralDiario), px3, y + 9, 7, true, C.green);
-    txt(doc, "SAL. INTEGRAL / MES",              px4, y + 4, 5, false, C.muted, "right");
-    txt(doc, fmtVES(data.salarioIntegralDiario * 30), px4, y + 9, 7, true, C.inkMed, "right");
+    // ── Componentes Salariales ──────────────────────────────────────────────
+    lbl(doc, "COMPONENTE SALARIAL", ML, y + 2, "left");
+    y += 5;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y = detailRow(doc, ML, MR, W, y, "Salario normal / día", "", fmtVES(data.salarioDiario), C.inkMed, false, "Salario mensual ÷ 30");
+    y = detailRow(doc, ML, MR, W, y, "Alícuota de utilidades", "", fmtVES(data.alicuotaUtil), C.inkMed, true, "Sal. Diario × días_util / 360");
+    y = detailRow(doc, ML, MR, W, y, "Alícuota bono vacacional", "", fmtVES(data.alicuotaBono), C.inkMed, false, "Sal. Diario × días_bono / 360");
+    
+    fill(doc, ML, y, W, 8, C.rowAlt);
+    t(doc, "SALARIO INTEGRAL DIARIO (Art. 122)", ML + 4, y + 5.5, 7, true, C.ink);
+    tm(doc, fmtVES(data.salarioIntegralDiario), MR - 4, y + 5.5, 9, true, C.ink, "right");
+    y += 8;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y += 8;
 
-    y += 17;
+    // ── Días Acumulados ──────────────────────────────────────────────
+    lbl(doc, "PRESTACIONES ACUMULADAS", ML, y + 2, "left");
+    y += 5;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y = detailRow(doc, ML, MR, W, y, "Días trimestrales", "5 días/mes × meses completos", `${data.diasTrimestrales} días`, C.ink, false);
+    y = detailRow(doc, ML, MR, W, y, "Días adicionales", "Art. 142.b (desde año 2)", `${data.diasAdicionales} días`, C.ink, true);
+    
+    fill(doc, ML, y, W, 12, C.white);
+    t(doc, `SALDO ACUMULADO`, ML + 4, y + 5.5, 7, true, C.ink);
+    t(doc, `${data.diasTotales} días × ${fmtVES(data.salarioIntegralDiario)}`, ML + 4, y + 9.5, 6, false, C.muted);
+    tm(doc, fmtVES(data.saldoAcumulado), MR - 4, y + 7.5, 10, true, C.inkMed, "right");
+    y += 12;
+    hline(doc, ML, y, W, C.border, 0.25);
+    fill(doc, ML, y, W, 12, C.white);
+    t(doc, `GARANTÍA ART. 142.C`, ML + 4, y + 5.5, 7, true, C.ink);
+    t(doc, `30 días × Sal. Integral × ${data.anios} año(s)`, ML + 4, y + 9.5, 6, false, C.muted);
+    tm(doc, fmtVES(data.garantia), MR - 4, y + 7.5, 10, true, C.inkMed, "right");
+    y += 12;
 
-    // ── Section: Salario Integral ─────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.rowAlt);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("COMPONENTE SALARIAL",  ML + 4, y + 4.5);
-    doc.text("FÓRMULA",              ML + W * 0.6, y + 4.5, { align: "right" });
-    doc.text("MONTO/DÍA",            MR, y + 4.5, { align: "right" });
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 7, ML + W, y + 7);
-    y += 7;
+    // Monto final
+    fill(doc, ML, y, W, 12, C.rowAlt);
+    t(doc, "MONTO TOTAL PRESTACIONES", ML + 4, y + 7.5, 8, true, C.ink);
+    tm(doc, fmtVES(data.montoFinal), MR - 4, y + 8, 12, true, C.ink, "right");
+    y += 12;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y += 8;
 
-    y = detailRow(doc, ML, W, y, "Salario normal / día", "Salario mensual ÷ 30", fmtVES(data.salarioDiario), C.inkMed, false);
-    y = detailRow(doc, ML, W, y, "Alícuota de utilidades", `${fmtVES(data.salarioDiario)} × días_util / 360`, fmtVES(data.alicuotaUtil), C.inkMed, true);
-    y = detailRow(doc, ML, W, y, "Alícuota bono vacacional", `${fmtVES(data.salarioDiario)} × días_bono / 360`, fmtVES(data.alicuotaBono), C.inkMed, false);
-
-    // Integral total
-    fill(doc, ML, y, W, 10, C.white);
-    fill(doc, ML, y, 3,  10, C.green);
-    doc.setDrawColor(C.green[0], C.green[1], C.green[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 10, ML + W, y + 10);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("SALARIO INTEGRAL DIARIO  (Art. 122 LOTTT)", ML + 7, y + 6.5);
-    doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-    doc.setFontSize(9);
-    doc.text(fmtVES(data.salarioIntegralDiario), MR, y + 7, { align: "right" });
-
-    y += 14;
-
-    // ── Section: Días acumulados ──────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.rowAlt);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("PRESTACIONES ACUMULADAS  (Art. 142)", ML + 4, y + 4.5);
-    doc.text("DÍAS", MR, y + 4.5, { align: "right" });
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 7, ML + W, y + 7);
-    y += 7;
-
-    // Trimestrales
-    fill(doc, ML, y, W, 10, C.white);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, "Días trimestrales", ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, `5 días/mes × ${data.mesesCompletos} meses completos`, ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, `${data.diasTrimestrales} días`, MR, y + 7, 7.5, true, C.inkMed, "right");
-    y += 10;
-
-    // Adicionales
-    fill(doc, ML, y, W, 10, C.rowAlt);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, "Días adicionales", ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, `2 días × año desde año 2 (acumulativo) — Art. 142.b`, ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, `${data.diasAdicionales} días`, MR, y + 7, 7.5, true,
-        data.diasAdicionales > 0 ? C.amber : C.muted, "right");
-    y += 10 + 2;
-
-    // Total días → Saldo acumulado
-    fill(doc, ML, y, W, 11, C.white);
-    fill(doc, ML, y, 3,  11, C.primary);
-    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 11, ML + W, y + 11);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text(`SALDO ACUMULADO  ·  ${data.diasTotales} días × ${fmtVES(data.salarioIntegralDiario)}`, ML + 7, y + 7);
-    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setFontSize(9);
-    doc.text(fmtVES(data.saldoAcumulado), MR, y + 7.5, { align: "right" });
-
-    y += 15;
-
-    // ── Garantía Art. 142.c ───────────────────────────────────────────────────
-    fill(doc, ML, y, W, 11, C.white);
-    fill(doc, ML, y, 3,  11, C.green);
-    doc.setDrawColor(C.green[0], C.green[1], C.green[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 11, ML + W, y + 11);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text(`GARANTÍA ART. 142.C  ·  30 días × ${fmtVES(data.salarioIntegralDiario)} × ${data.anios} año${data.anios !== 1 ? "s" : ""}`, ML + 7, y + 7);
-    doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-    doc.setFontSize(9);
-    doc.text(fmtVES(data.garantia), MR, y + 7.5, { align: "right" });
-
-    y += 15;
-
-    // ── Monto final ───────────────────────────────────────────────────────────
-    const montoColor = data.aplicaGarantia ? C.green : C.primary;
-    const montoBar   = data.aplicaGarantia ? C.greenBg : [103, 232, 249] as RGB;
-    fill(doc, ML, y, W, 13, C.white);
-    fill(doc, ML, y, 3,  13, montoBar);
-    doc.setDrawColor(montoColor[0], montoColor[1], montoColor[2]);
-    doc.setLineWidth(1);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 13, ML + W, y + 13);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text(
-        data.aplicaGarantia
-            ? "SE APLICA GARANTÍA ART. 142.C  (mayor al saldo acumulado)"
-            : "SE APLICA SALDO ACUMULADO  (mayor a la garantía)",
-        ML + 7, y + 5.5,
-    );
-    doc.setTextColor(montoColor[0], montoColor[1], montoColor[2]);
-    doc.setFontSize(11);
-    doc.text(fmtVES(data.montoFinal), MR, y + 9.5, { align: "right" });
-
-    y += 18;
-
-    // ── Pago inmediato + Saldo a favor ────────────────────────────────────────
+    // ── Pago inmediato (Anticipos) ──────────────────────────────────────────
     if (data.anticipoPrestaciones > 0 || data.interesesAcumulados > 0) {
         const pct = data.porcentajeAnticipo ?? 75;
-
-        // Sub-header: Pago inmediato
-        fill(doc, ML, y, W, 7, C.rowAlt);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(5);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        doc.text("PAGO INMEDIATO  (Art. 143 / 144 LOTTT)", ML + 4, y + 4.5);
-        doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-        doc.setLineWidth(0.2);
-        doc.line(ML, y + 7, ML + W, y + 7);
-        y += 7;
-
+        lbl(doc, "PAGO INMEDIATO", ML, y + 2, "left");
+        y += 5;
+        hline(doc, ML, y, W, C.borderStr, 0.8);
+        
+        let localAlt = false;
         if (data.anticipoPrestaciones > 0) {
-            fill(doc, ML, y, W, 10, C.white);
-            hline(doc, ML, y + 10, W, C.border, 0.1);
-            txt(doc, `Anticipo (${pct}% saldo acumulado)`, ML + 4, y + 4.5, 7, true, C.inkMed);
-            txt(doc, `Art. 144 LOTTT — ${pct}% de ${fmtVES(data.saldoAcumulado)}`, ML + 4, y + 8.5, 4.5, false, C.muted);
-            txt(doc, fmtVES(data.anticipoPrestaciones), MR, y + 7, 8, true, C.amber, "right");
-            y += 10;
+            y = detailRow(doc, ML, MR, W, y, `Anticipo de Prestaciones (${pct}%)`, "Art. 144 LOTTT", fmtVES(data.anticipoPrestaciones), C.amber, localAlt);
+            localAlt = !localAlt;
         }
-
         if (data.interesesAcumulados > 0) {
-            fill(doc, ML, y, W, 10, C.rowAlt);
-            hline(doc, ML, y + 10, W, C.border, 0.1);
-            txt(doc, "Intereses acumulados", ML + 4, y + 4.5, 7, true, C.inkMed);
-            txt(doc, "Art. 143 LOTTT — Se pagan junto con el anticipo", ML + 4, y + 8.5, 4.5, false, C.muted);
-            txt(doc, fmtVES(data.interesesAcumulados), MR, y + 7, 8, true, C.green, "right");
-            y += 10;
+            y = detailRow(doc, ML, MR, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", fmtVES(data.interesesAcumulados), C.ink, localAlt);
         }
 
-        // Total pago inmediato bar
-        fill(doc, ML, y, W, 11, C.white);
-        fill(doc, ML, y, 3,  11, [253, 200, 80] as RGB);
-        doc.setDrawColor(C.amber[0], C.amber[1], C.amber[2]);
-        doc.setLineWidth(0.8);
-        doc.line(ML, y, ML + W, y);
-        doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-        doc.setLineWidth(0.2);
-        doc.line(ML, y + 11, ML + W, y + 11);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(5.5);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        doc.text("TOTAL PAGO INMEDIATO  (Anticipo + Intereses)", ML + 7, y + 7);
-        doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]);
-        doc.setFontSize(9);
-        doc.text(fmtVES(data.pagoInmediato), MR, y + 7.5, { align: "right" });
+        fill(doc, ML, y, W, 12, C.white);
+        t(doc, "Monto total acumulado (Garantía o Saldo)", ML + 4, y + 5.5, 7, false, C.inkMed);
+        tm(doc, fmtVES(data.montoFinal), MR - 4, y + 5.5, 9, false, C.inkMed, "right");
+        t(doc, "TOTAL ANTICIPOS ENTREGADOS", ML + 4, y + 9.5, 7, true, C.inkMed);
+        tm(doc, `- ${fmtVES(data.pagoInmediato)}`, MR - 4, y + 9.5, 9, false, C.inkMed, "right");
+        y += 12;
 
-        y += 15;
-
-        // Sub-header: Saldo a favor
-        fill(doc, ML, y, W, 7, C.rowAlt);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(5);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        doc.text("SALDO A FAVOR DEL TRABAJADOR", ML + 4, y + 4.5);
-        doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-        doc.setLineWidth(0.2);
-        doc.line(ML, y + 7, ML + W, y + 7);
-        y += 7;
-
-        // Monto prestaciones row
-        fill(doc, ML, y, W, 10, C.white);
-        hline(doc, ML, y + 10, W, C.border, 0.1);
-        txt(doc, "Monto total prestaciones", ML + 4, y + 4.5, 7, true, C.inkMed);
-        txt(doc, data.aplicaGarantia ? "Garantía Art. 142.c" : "Saldo acumulado", ML + 4, y + 8.5, 4.5, false, C.muted);
-        txt(doc, fmtVES(data.montoFinal), MR, y + 7, 7.5, true, C.inkMed, "right");
-        y += 10;
-
-        // Deducción row
-        fill(doc, ML, y, W, 10, C.rowAlt);
-        hline(doc, ML, y + 10, W, C.border, 0.1);
-        txt(doc, "- Anticipo + Intereses", ML + 4, y + 4.5, 7, true, C.inkMed);
-        txt(doc, "Monto ya pagado al trabajador", ML + 4, y + 8.5, 4.5, false, C.muted);
-        txt(doc, `- ${fmtVES(data.pagoInmediato)}`, MR, y + 7, 7.5, true, C.muted, "right");
-        y += 10 + 2;
-
-        // Saldo a favor bar
-        fill(doc, ML, y, W, 13, C.white);
-        fill(doc, ML, y, 3,  13, C.greenBg);
-        doc.setDrawColor(C.green[0], C.green[1], C.green[2]);
-        doc.setLineWidth(1);
-        doc.line(ML, y, ML + W, y);
-        doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-        doc.setLineWidth(0.2);
-        doc.line(ML, y + 13, ML + W, y + 13);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(6);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        doc.text("SALDO A FAVOR  (Prestaciones - Anticipo - Intereses)", ML + 7, y + 5.5);
-        doc.setFontSize(11);
-        doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-        doc.text(fmtVES(data.saldoFavor), MR, y + 9.5, { align: "right" });
-
-        y += 18;
+        fill(doc, ML, y, W, 12, C.rowAlt);
+        t(doc, "SALDO A FAVOR (PRESTACIONES NETAS)", ML + 4, y + 7.5, 8, true, C.ink);
+        tm(doc, fmtVES(data.saldoFavor), MR - 4, y + 8, 12, true, C.ink, "right");
+        y += 12;
+        hline(doc, ML, y, W, C.borderStr, 0.8);
+        y += 8;
     }
 
-    // ── Signatures ────────────────────────────────────────────────────────────
-    txt(doc, "FIRMAS DE CONFORMIDAD", ML, y, 6, true, C.inkMed);
-    y += 5;
+    // ── Signatures ──────────────────────────────────────────────
+    if (y > PH - 45) {
+        doc.addPage();
+        y = 30;
+    } else {
+        y += 4;
+    }
+
+    const legal = "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 días de salario integral por año de servicio (Art. 142.c).";
+    t(doc, legal, ML, y, 6, false, C.muted, "left", W);
+    
+    y += 16;
     y = drawSignatures(doc, ML, W, y);
 
-    // ── Legal note ────────────────────────────────────────────────────────────
-    hline(doc, ML, y, W, C.border, 0.2);
-    y += 4;
-    const legal = "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 días de salario integral por año de servicio (Art. 142.c). El salario integral incluye las alícuotas de utilidades y bono vacacional (Art. 122 LOTTT).";
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    (doc.splitTextToSize(legal, W) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 3.5);
-    });
-
-    drawFooter(doc, PW, PH, data.companyName, `PRESTACIONES AL ${formatDateES(data.fechaCorte).toUpperCase()}`);
+    drawFooter(doc, PW, PH, data.companyName, `PRESTACIONES SOCIALES AL ${fmtDate(data.fechaCorte)}`);
+    console.log("PDF building done. Saving...");
     doc.save(`prestaciones_${data.employee.cedula}_${data.fechaCorte.replaceAll("-", "")}.pdf`);
+    console.log("PDF saved!");
 }
-
-// ============================================================================
-// SIMPLIFIED PDF — Intereses y Anticipo (Art. 143 / 144 LOTTT)
-// ============================================================================
 
 export async function generateInteresesAnticipoPdf(data: PrestacionesPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
-    const ML = 13, MR = PW - 13, W = MR - ML;
-    MR_DOC = MR;
+    const ML = 16, MR = PW - 16, W = MR - ML;
 
     const logoBase64 = (data.showLogoInPdf && data.logoUrl)
         ? await loadImageAsBase64(data.logoUrl).catch(() => null)
         : null;
 
-    drawBg(doc, PW, PH);
+    fill(doc, 0, 0, PW, PH, C.bg);
 
-    // ── Header ────────────────────────────────────────────────────────────────
-    const HDR_H = 40;
-    fill(doc, 0, 0, PW, HDR_H, C.header);
-    fill(doc, 0, HDR_H - 2, PW, 2, [253, 230, 138] as RGB);
-    fill(doc, 0, 0, 4, HDR_H - 2, C.amber);
-
-    txt(doc, data.companyName.toUpperCase(),          ML + 2, 10,   11, true,  C.inkMed);
-    txt(doc, "INTERESES Y ANTICIPO DE PRESTACIONES",  ML + 2, 17,   6,  false, C.muted);
-    txt(doc, "Art. 143 / 144 LOTTT",                  ML + 2, 23.5, 5.5, false, C.muted);
-    txt(doc, "CORTE AL",                              MR,     12,   5,  false, C.muted, "right");
-    txt(doc, formatDateES(data.fechaCorte),           MR,     18.5, 7,  true,  C.inkMed, "right");
-    txt(doc,
-        `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 26, 5, false, [100,100,118] as RGB, "right",
-    );
-
-    let y = HDR_H + 5;
-
+    // ── Header ────────────────────────────────────────────────────────────
+    let topY = 20;
     if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+        try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
+        t(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);
+    } else {
+        t(doc, data.companyName.toUpperCase(), ML, topY, 13, true, C.ink);
     }
 
-    // ── Employee card ──────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 14, C.white);
-    fill(doc, ML, y, 3,  14, C.amber);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(ML, y, W, 14, "D");
-    txt(doc, data.employee.nombre.toUpperCase(), ML + 7, y + 5.5, 9,   true,  C.inkMed, "left", W * 0.65);
-    txt(doc, data.employee.cargo?.toUpperCase() ?? "", ML + 7, y + 10, 5.5, false, C.muted, "left", W * 0.55);
-    txt(doc, `CI: ${data.employee.cedula}`,      MR - 2, y + 5.5, 7.5, true,  C.inkMed, "right");
-    txt(doc, `Ingreso: ${formatDateES(data.fechaIngreso).toUpperCase()}`, MR - 2, y + 10, 5, false, C.muted, "right");
+    t(doc, "INTERESES Y ANTICIPO", MR, topY - 1, 9, true, C.ink, "right");
+    t(doc, "ART. 143/144 LOTTT", MR, topY + 3, 6, false, C.muted, "right");
+
+    lbl(doc, "FECHA CORTE", MR, topY + 11, "right");
+    tm(doc, fmtDate(data.fechaCorte), MR, topY + 15, 9, true, C.inkMed, "right");
+    
+    lbl(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 20, "right");
+
+    let y = topY + 26;
+    hline(doc, ML, y, W, C.border, 0.4);
+    y += 8;
+
+    // ── Employee data ──────────────────────────────────────────────
+    const c1x = ML;
+    const c2x = ML + W * 0.40;
+    const c3x = ML + W * 0.70;
+
+    lbl(doc, "Trabajador", c1x, y);
+    t(doc, data.employee.nombre.toUpperCase(), c1x, y + 5, 9, true, C.ink, "left", c2x - c1x - 4);
+    if (data.employee.cargo) t(doc, data.employee.cargo.toUpperCase(), c1x, y + 9, 6.5, false, C.muted);
+    tm(doc, "CI " + data.employee.cedula, c1x, y + 13.5, 7.5, true, C.inkMed, "left");
+
+    lbl(doc, "Antigüedad", c2x, y);
+    const antStr = `${data.anios}a ${data.mesesCompletos % 12}m`;
+    tm(doc, antStr, c2x, y + 5, 8.5, true, C.ink, "left");
+    tm(doc, `Ingreso: ${fmtDate(data.fechaIngreso)}`, c2x, y + 9.5, 6.5, false, C.inkMed, "left");
+
+    lbl(doc, "Base de Cálculo", c3x, y);
+    tm(doc, "Saldo Acumulado", c3x, y + 5, 7, false, C.muted, "left");
+    tm(doc, fmtVES(data.saldoAcumulado), c3x, y + 9.5, 8.5, true, C.inkMed, "left");
 
     y += 18;
+    hline(doc, ML, y, W, C.border, 0.4);
+    y += 6;
 
-    // ── Antigüedad strip (params reference) ───────────────────────────────────
-    fill(doc, ML, y, W, 13, C.rowAlt);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(ML, y, W, 13, "D");
-    const px1 = ML + 4, px2 = ML + W * 0.35, px3 = MR - 4;
-    txt(doc, "ANTIGÜEDAD",                        px1, y + 4, 5, false, C.muted);
-    txt(doc, `${data.anios} año${data.anios !== 1 ? "s" : ""} ${data.mesesCompletos % 12} mes${(data.mesesCompletos % 12) !== 1 ? "es" : ""}`,
-        px1, y + 9, 7, true, C.inkMed);
-    txt(doc, "SALDO ACUMULADO",                   px2, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.saldoAcumulado),         px2, y + 9, 7, true, C.primary);
-    txt(doc, "SAL. INTEGRAL / DÍA",               px3, y + 4, 5, false, C.muted, "right");
-    txt(doc, fmtVES(data.salarioIntegralDiario),  px3, y + 9, 7, true, C.inkMed, "right");
-
-    y += 17;
-
-    const pct  = data.porcentajeAnticipo ?? 75;
+    // ── Liquidación / Conceptos ──────────────────────────────────────────────
+    const pct = data.porcentajeAnticipo ?? 75;
     const tasa = data.tasaIntereses ?? 0;
-
-    // ── Pago inmediato ────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.rowAlt);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("PAGO INMEDIATO  (Art. 143 / 144 LOTTT)", ML + 4, y + 4.5);
-    doc.text("MONTO", MR, y + 4.5, { align: "right" });
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 7, ML + W, y + 7);
-    y += 7;
-
-    // Anticipo
-    fill(doc, ML, y, W, 10, C.white);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, `Anticipo (${pct}% saldo acumulado)`, ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, `Art. 144 LOTTT — ${pct}% de ${fmtVES(data.saldoAcumulado)}`, ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, fmtVES(data.anticipoPrestaciones), MR, y + 7, 8, true, C.amber, "right");
-    y += 10;
-
-    // Intereses acumulados
-    fill(doc, ML, y, W, 10, C.rowAlt);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, "Intereses acumulados", ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, `Art. 143 LOTTT — ${fmtVES(data.saldoAcumulado)} × ${tasa}% × ${data.mesesCompletos} meses / 12`, ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, fmtVES(data.interesesAcumulados), MR, y + 7, 8, true, C.green, "right");
-    y += 10 + 2;
-
-    // Total pago inmediato
-    fill(doc, ML, y, W, 12, C.white);
-    fill(doc, ML, y, 3,  12, [253, 200, 80] as RGB);
-    doc.setDrawColor(C.amber[0], C.amber[1], C.amber[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 12, ML + W, y + 12);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("TOTAL PAGO INMEDIATO  (Anticipo + Intereses)", ML + 7, y + 7);
-    doc.setTextColor(C.amber[0], C.amber[1], C.amber[2]);
-    doc.setFontSize(10);
-    doc.text(fmtVES(data.pagoInmediato), MR, y + 8, { align: "right" });
-
-    y += 16;
-
-    // ── Saldo a favor ─────────────────────────────────────────────────────────
-    fill(doc, ML, y, W, 7, C.rowAlt);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("SALDO A FAVOR DEL TRABAJADOR", ML + 4, y + 4.5);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 7, ML + W, y + 7);
-    y += 7;
-
-    fill(doc, ML, y, W, 10, C.white);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, "Monto total prestaciones", ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, data.aplicaGarantia ? "Garantía Art. 142.c" : "Saldo acumulado", ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, fmtVES(data.montoFinal), MR, y + 7, 7.5, true, C.inkMed, "right");
-    y += 10;
-
-    fill(doc, ML, y, W, 10, C.rowAlt);
-    hline(doc, ML, y + 10, W, C.border, 0.1);
-    txt(doc, "− Anticipo + Intereses", ML + 4, y + 4.5, 7, true, C.inkMed);
-    txt(doc, "Monto ya pagado al trabajador", ML + 4, y + 8.5, 4.5, false, C.muted);
-    txt(doc, `− ${fmtVES(data.pagoInmediato)}`, MR, y + 7, 7.5, true, C.muted, "right");
-    y += 10 + 2;
-
-    // Saldo a favor bar
-    fill(doc, ML, y, W, 14, C.white);
-    fill(doc, ML, y, 3,  14, [167, 243, 208] as RGB);
-    doc.setDrawColor(C.green[0], C.green[1], C.green[2]);
-    doc.setLineWidth(1);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 14, ML + W, y + 14);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("SALDO A FAVOR  (Prestaciones - Anticipo - Intereses)", ML + 7, y + 5.5);
-    doc.setFontSize(5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text("Monto pendiente en el fideicomiso del trabajador", ML + 7, y + 10);
-    doc.setFontSize(12);
-    doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-    doc.text(fmtVES(data.saldoFavor), MR, y + 10, { align: "right" });
-
-    y += 20;
-
-    // ── Signatures ────────────────────────────────────────────────────────────
-    txt(doc, "FIRMAS DE CONFORMIDAD", ML, y, 6, true, C.inkMed);
+    lbl(doc, "PAGO INMEDIATO", ML, y + 2, "left");
     y += 5;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+
+    y = detailRow(doc, ML, MR, W, y, `Anticipo de Prestaciones (${pct}%)`, `Art. 144 — ${pct}% del saldo acumulado`, fmtVES(data.anticipoPrestaciones), C.amber, false);
+    y = detailRow(doc, ML, MR, W, y, "Intereses sobre Prestaciones", `Art. 143 — Tasa aplicada ${tasa}%`, fmtVES(data.interesesAcumulados), C.green, true);
+    
+    fill(doc, ML, y, W, 12, C.rowAlt);
+    t(doc, "TOTAL ANTICIPOS E INTERESES", ML + 4, y + 7.5, 8, true, C.ink);
+    tm(doc, fmtVES(data.pagoInmediato), MR - 4, y + 8, 12, true, C.ink, "right");
+    y += 12;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y += 8;
+
+    // Resumen de saldo a favor
+    lbl(doc, "RESUMEN DE CUENTA DE GARANTÍA", ML, y + 2, "left");
+    y += 5;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y = detailRow(doc, ML, MR, W, y, "Monto Prestaciones Acumuladas", data.aplicaGarantia ? "Se aplicó Garantía Art. 142.c" : "Por días acumulados", fmtVES(data.montoFinal), C.inkMed, false);
+    y = detailRow(doc, ML, MR, W, y, "Total Deducción (Pago actual)", "Anticipos + Intereses ya entregados", `- ${fmtVES(data.pagoInmediato)}`, C.inkMed, true);
+
+    fill(doc, ML, y, W, 12, C.rowAlt);
+    t(doc, "SALDO PENDIENTE A FAVOR DEL TRABAJADOR", ML + 4, y + 7.5, 8, true, C.ink);
+    tm(doc, fmtVES(data.saldoFavor), MR - 4, y + 8, 12, true, C.green, "right");
+    y += 12;
+    hline(doc, ML, y, W, C.borderStr, 0.8);
+    y += 8;
+
+    // ── Signatures ──────────────────────────────────────────────
+    if (y > PH - 45) {
+        doc.addPage();
+        y = 30;
+    } else {
+        y += 4;
+    }
+
+    const legal = `Los intereses son calculados conforme al Art. 143 LOTTT. El monto anticipado ha sido depositado y deducido proporcionalmente conforme al Art. 144 LOTTT.`;
+    t(doc, legal, ML, y, 6, false, C.muted, "left", W);
+    
+    y += 12;
     y = drawSignatures(doc, ML, W, y);
 
-    // ── Legal note ────────────────────────────────────────────────────────────
-    hline(doc, ML, y, W, C.border, 0.2);
-    y += 4;
-    const legal = `Los intereses sobre prestaciones sociales son calculados conforme al Art. 143 LOTTT, aplicando la tasa del ${tasa}% anual sobre el saldo acumulado proporcional a los ${data.mesesCompletos} meses de servicio. El anticipo del ${pct}% corresponde al máximo establecido por el Art. 144 LOTTT, el cual limita el anticipo de prestaciones al 75% del saldo acumulado. El monto neto a cobrar resulta de sumar los intereses y deducir el anticipo del monto de prestaciones correspondiente.`;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    (doc.splitTextToSize(legal, W) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 3.5);
-    });
-
-    drawFooter(doc, PW, PH, data.companyName, `INTERESES Y ANTICIPO AL ${formatDateES(data.fechaCorte).toUpperCase()}`);
+    drawFooter(doc, PW, PH, data.companyName, `INTERESES Y ANTICIPO AL ${fmtDate(data.fechaCorte)}`);
     doc.save(`intereses_anticipo_${data.employee.cedula}_${data.fechaCorte.replaceAll("-", "")}.pdf`);
 }

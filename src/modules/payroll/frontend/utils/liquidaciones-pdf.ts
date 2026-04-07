@@ -38,44 +38,22 @@ export interface LiquidacionOptions {
     showLogoInPdf?: boolean;
 }
 
-// ── Palette (Konta orange — unificada con payroll-pdf) ────────────────────────
-
+// ── Palette (Clean Monochromo) ────────────────────────────────────────────────
 type RGB = [number, number, number];
-
 const C = {
-    ink:       [8,   18,  25]  as RGB,
-    inkMed:    [30,  50,  65]  as RGB,
-    muted:     [100, 115, 130] as RGB,
-    border:    [210, 220, 230] as RGB,
-    borderMed: [160, 178, 192] as RGB,
-    bg:        [255, 255, 255] as RGB,   // blanco para impresión
-    rowAlt:    [228, 233, 244] as RGB,
+    ink:       [32,  32,  40]  as RGB,
+    inkMed:    [70,  70,  80]  as RGB,
+    muted:     [140, 140, 150] as RGB,
+    border:    [230, 230, 235] as RGB,
+    borderStr: [190, 190, 200] as RGB,
+    bg:        [255, 255, 255] as RGB,
+    rowAlt:    [248, 248, 252] as RGB,
     white:     [255, 255, 255] as RGB,
-    // Primary — Konta orange
-    primary:   [217, 58,  16]  as RGB,   // #D93A10
-    primaryLt: [255, 244, 240] as RGB,   // #FFF4F0
-    primaryBd: [255, 160, 133] as RGB,   // #FFA085
-    // Accent — brand orange for dark backgrounds
-    accent:    [255, 74,  24]  as RGB,   // #FF4A18
-    // Success — emerald
-    green:     [5,   150, 105] as RGB,
-    greenLt:   [236, 253, 245] as RGB,
-    greenBd:   [167, 243, 208] as RGB,
-    // Warning — amber (indemnización)
-    amber:     [180, 83,  9]   as RGB,
-    amberLt:   [255, 247, 237] as RGB,
-    amberBd:   [251, 191, 36]  as RGB,
-    // Error — red
-    red:       [185, 28,  28]  as RGB,
-    redLt:     [254, 242, 242] as RGB,
-    redBd:     [252, 165, 165] as RGB,
-    // Header
-    headerBg:  [255, 255, 255] as RGB,
-    headerSub: [245, 245, 250] as RGB,
+    primary:   [217, 58,  16]  as RGB,  // Konta orange accents
+    amber:     [220, 38,  38]  as RGB,  // Error/Amber Highlight
 };
 
 // ── Primitives ────────────────────────────────────────────────────────────────
-
 type Doc = jsPDF;
 
 const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
@@ -83,37 +61,15 @@ const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
     doc.rect(x, y, w, h, "F");
 };
 
-const box = (doc: Doc, x: number, y: number, w: number, h: number, fc: RGB, sc: RGB, lw = 0.2) => {
-    doc.setFillColor(fc[0], fc[1], fc[2]);
-    doc.setDrawColor(sc[0], sc[1], sc[2]);
-    doc.setLineWidth(lw);
-    doc.rect(x, y, w, h, "FD");
-};
-
 const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = C.border, lw = 0.25) => {
+    doc.setLineDashPattern([], 0);
     doc.setDrawColor(c[0], c[1], c[2]);
     doc.setLineWidth(lw);
     doc.line(x, y, x + w, y);
 };
 
-const vline = (doc: Doc, x: number, y1: number, y2: number, c: RGB = C.border, lw = 0.2) => {
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y1, x, y2);
-};
-
-const t = (
-    doc:   Doc,
-    text:  string,
-    x:     number,
-    y:     number,
-    size:  number,
-    bold:  boolean,
-    color: RGB,
-    align: "left" | "center" | "right" = "left",
-    maxW?: number,
-) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
+const t = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, color: RGB, align: "left" | "center" | "right" = "left", maxW?: number, font: "helvetica" | "courier" = "helvetica") => {
+    doc.setFont(font, bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
     const opts: Record<string, unknown> = { align };
@@ -121,219 +77,158 @@ const t = (
     doc.text(text, x, y, opts);
 };
 
-const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left") =>
-    t(doc, text.toUpperCase(), x, y, 5, false, C.muted, align);
+const lbl = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = C.muted) =>
+    t(doc, text.toUpperCase(), x, y, 6, true, color, align, undefined, "helvetica");
+
+const tm = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
+    t(doc, text, x, y, size, bold, c, align, undefined, "courier");
 
 // ── Formatters ────────────────────────────────────────────────────────────────
-
-const fmtVES = (n: number) =>
-    "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
+const fmtVES = (n: number) => "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtDate = (iso: string) => {
-    const [y, m, d] = iso.split("-").map(Number);
-    return new Date(y, m - 1, d)
-        .toLocaleDateString("es-VE", { day: "numeric", month: "long", year: "numeric" })
-        .toUpperCase();
+    if (!iso) return "—";
+    const [y, m, d] = iso.split("-");
+    const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`.toUpperCase();
 };
-
-const MOTIVO_LABEL: Record<string, string> = {
-    renuncia:              "Renuncia Voluntaria",
-    despido_justificado:   "Despido Justificado",
-    despido_injustificado: "Despido Injustificado",
-};
+const MOTIVO_LABEL: Record<string, string> = { renuncia: "Renuncia Voluntaria", despido_justificado: "Despido Justificado", despido_injustificado: "Despido Injustificado" };
 
 // ── Receipt renderer ──────────────────────────────────────────────────────────
-
 function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOptions, isFirst: boolean, logoBase64?: string | null) {
     if (!isFirst) doc.addPage();
-
     const PW = doc.internal.pageSize.getWidth();
     const PH = doc.internal.pageSize.getHeight();
-    const ML = 13;
-    const MR = PW - 13;
+    const ML = 16;
+    const MR = PW - 16;
     const W  = MR - ML;
 
-    // ── PAGE BG ───────────────────────────────────────────────────────────
     fill(doc, 0, 0, PW, PH, C.bg);
 
     // ── HEADER ────────────────────────────────────────────────────────────
-    const HDR_H = 38;
-    fill(doc, 0, 0, PW, HDR_H, C.headerBg);
-    fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
-    fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
-
-    // Left: company
-    t(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, C.ink);
-    if (opts.companyId) t(doc, `RIF: ${opts.companyId}`, ML + 2, 16.5, 6.5, false, C.inkMed);
-    t(doc, "LIQUIDACIÓN LABORAL · LOTTT ART. 92 Y 142", ML + 2, 23, 6, false, C.muted);
-
-    // Right: motivo + fecha
-    t(doc, (MOTIVO_LABEL[emp.motivo] ?? emp.motivo).toUpperCase(), MR, 9, 8, true, C.ink, "right");
-    lbl(doc, "Motivo de egreso", MR, 14.5, "right");
-    t(doc, `Egreso: ${fmtDate(emp.fechaEgreso)}`, MR, 22.5, 6.5, false, C.inkMed, "right");
-    t(doc,
-        `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 29, 5.5, false, C.muted, "right"
-    );
-
-    let y = HDR_H + 5;
-
+    let topY = 20;
     if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+        try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
+        t(doc, opts.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);
+        if (opts.companyId) tm(doc, `ID ${opts.companyId}`, ML + 32, topY + 4, 7, false, C.muted, "left");
+    } else {
+        t(doc, opts.companyName.toUpperCase(), ML, topY, 13, true, C.ink);
+        if (opts.companyId) tm(doc, `ID ${opts.companyId}`, ML, topY + 4, 7, false, C.muted, "left");
     }
 
-    // ── EMPLOYEE CARD ─────────────────────────────────────────────────────
-    const CARD_H = 28;
-    box(doc, ML, y, W, CARD_H, C.white, C.border, 0.3);
-    fill(doc, ML, y, 3, CARD_H, C.primary);
+    t(doc, "CONSTANCIA DE LIQUIDACIÓN", MR, topY - 1, 9, true, C.ink, "right");
+    t(doc, "ART. 142 LOTTT — " + (MOTIVO_LABEL[emp.motivo] ?? emp.motivo).toUpperCase(), MR, topY + 3, 6, false, C.muted, "right");
 
-    const c1x = ML + 6;
-    const c2x = ML + W * 0.46;
-    const c3x = ML + W * 0.73;
+    lbl(doc, "FECHA DE EGRESO", MR, topY + 11, "right");
+    tm(doc, fmtDate(emp.fechaEgreso), MR, topY + 15, 9, true, C.inkMed, "right");
+    
+    lbl(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 20, "right");
 
-    // Col 1: nombre + cédula
-    lbl(doc, "Trabajador", c1x, y + 5.5);
-    t(doc, emp.nombre, c1x, y + 12, 9.5, true, C.ink, "left", c2x - c1x - 4);
-    t(doc, emp.cedula, c1x, y + 18.5, 6.5, false, C.muted);
+    let y = topY + 26;
+    hline(doc, ML, y, W, C.border, 0.4);
+    y += 8;
 
-    vline(doc, c2x - 2, y + 3, y + CARD_H - 3, C.border);
+    // ── EMPLOYEE DATA POINTS ──────────────────────────────────────────────
+    const c1x = ML;
+    const c2x = ML + W * 0.40;
+    const c3x = ML + W * 0.70;
 
-    // Col 2: cargo + antigüedad
-    lbl(doc, "Cargo / Antigüedad", c2x, y + 5.5);
-    t(doc, emp.cargo, c2x, y + 12, 8, false, C.inkMed, "left", c3x - c2x - 4);
-    const antStr = emp.antiguedadAnios > 0
-        ? `${emp.antiguedadAnios} año${emp.antiguedadAnios !== 1 ? "s" : ""}, ${emp.antiguedadDias} días`
-        : `${emp.antiguedadDias} días`;
-    t(doc, antStr, c2x, y + 21, 7.5, true, C.primary);
+    lbl(doc, "Trabajador", c1x, y);
+    t(doc, emp.nombre.toUpperCase(), c1x, y + 5, 9, true, C.ink, "left", c2x - c1x - 4);
+    if (emp.cargo) t(doc, emp.cargo.toUpperCase(), c1x, y + 9, 6.5, false, C.muted);
+    tm(doc, "CI " + emp.cedula, c1x, y + 13.5, 7.5, true, C.inkMed, "left");
 
-    vline(doc, c3x - 2, y + 3, y + CARD_H - 3, C.border);
+    lbl(doc, "Antigüedad", c2x, y);
+    const antStr = `${emp.antiguedadAnios}a ${emp.antiguedadDias % 365}d`;
+    tm(doc, antStr, c2x, y + 5, 8.5, true, C.ink, "left");
+    tm(doc, `Ingreso: ${fmtDate(emp.fechaIngreso)}`, c2x, y + 9.5, 6.5, false, C.inkMed, "left");
 
-    // Col 3: período de trabajo
-    lbl(doc, "Período de Trabajo", MR - 4, y + 5.5, "right");
-    t(doc, fmtDate(emp.fechaIngreso), MR - 4, y + 12, 6.5, false, C.inkMed, "right");
-    hline(doc, c3x - 2, y + 15, MR - (c3x - 2), C.border, 0.15);
-    lbl(doc, "Fecha de Egreso", MR - 4, y + 19, "right");
-    t(doc, fmtDate(emp.fechaEgreso), MR - 4, y + 26, 7.5, true, C.primary, "right");
+    lbl(doc, "Salario Base / Día", c3x, y);
+    const salDiario = emp.lines.length > 0 && emp.lines[0].salario && emp.lines[0].salario > 0
+        ? emp.lines[0].salario
+        : (emp.total > 0 ? emp.total / 30 : 0);
+    tm(doc, salDiario > 0 ? fmtVES(salDiario) : "—", c3x, y + 5, 8.5, true, C.ink, "left");
 
-    y += CARD_H + 5;
+    y += 18;
+    hline(doc, ML, y, W, C.border, 0.3);
+    y += 8;
 
     // ── TABLE HEADER ──────────────────────────────────────────────────────
-    const COL_CONCEPTO = ML;
-    const COL_DIAS     = MR - 62;
-    const COL_SAL      = MR - 36;
-    const COL_MONTO    = MR;
-    const LABEL_MAX    = COL_DIAS - ML - 10;
+    const COL_DIAS  = MR - 50;
+    const COL_MONTO = MR;
 
-    const TH_H = 7.5;
-    fill(doc, ML, y, W, TH_H, C.rowAlt);
-    fill(doc, ML, y, 3, TH_H, C.primary);
-    hline(doc, ML, y + TH_H, W, C.borderMed, 0.4);
+    lbl(doc, "CONCEPTO / CÁLCULO", ML, y, "left", C.inkMed);
+    lbl(doc, "DÍAS", COL_DIAS, y, "center", C.inkMed);
+    lbl(doc, "MONTO ASIGNADO", COL_MONTO, y, "right", C.inkMed);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text("CONCEPTO",        COL_CONCEPTO + 6, y + 4.8, { align: "left"   });
-    doc.text("DÍAS",            COL_DIAS,          y + 4.8, { align: "center" });
-    doc.text("SALARIO DIARIO",  COL_SAL,           y + 4.8, { align: "center" });
-    doc.text("MONTO (Bs)",      COL_MONTO,         y + 4.8, { align: "right"  });
-    y += TH_H;
+    y += 3;
+    hline(doc, ML, y, W, C.borderStr, 0.4);
+    y += 6;
 
     // ── CONCEPT ROWS ──────────────────────────────────────────────────────
-    const ROW_H = 7;
-    emp.lines.forEach((line, i) => {
+    const ROW_H = 10;
+    emp.lines.forEach((line) => {
         const isAmber = line.highlight === "amber";
-        const rowBg   = isAmber ? C.amberLt : (i % 2 === 0 ? C.white : C.rowAlt);
+        const cTitle  = isAmber ? C.amber : C.ink;
 
-        fill(doc, ML, y, W, ROW_H, rowBg);
-        hline(doc, ML, y + ROW_H, W, C.border, 0.1);
-        vline(doc, COL_DIAS - 12, y, y + ROW_H, C.border, 0.1);
-        vline(doc, COL_SAL  - 12, y, y + ROW_H, C.border, 0.1);
+        t(doc, line.label.toUpperCase(), ML, y, 7.5, true, cTitle);
+        if (line.formula) {
+            t(doc, line.formula.toUpperCase(), ML, y + 3.5, 5.5, false, C.muted);
+        }
 
-        const labelColor: RGB = isAmber ? C.amber : C.inkMed;
-        const amtColor: RGB   = isAmber ? C.amber : C.primary;
-
-        t(doc, line.label, COL_CONCEPTO + 6, y + 4.5, 7, isAmber, labelColor, "left", LABEL_MAX);
-        if (line.dias !== undefined)
-            t(doc, String(line.dias), COL_DIAS, y + 4.5, 7, false, C.inkMed, "center");
-        if (line.formula !== undefined)
-            t(doc, line.formula, COL_SAL, y + 4.5, 5, false, C.muted, "center", 40);
-        else if (line.salario !== undefined)
-            t(doc, fmtVES(line.salario), COL_SAL, y + 4.5, 6, false, C.muted, "center");
-        t(doc, fmtVES(line.monto), COL_MONTO, y + 4.5, 7.5, true, amtColor, "right");
+        if (line.dias !== undefined) tm(doc, String(line.dias), COL_DIAS, y + 1, 8, true, C.muted, "center");
+        tm(doc, fmtVES(line.monto), COL_MONTO, y + 1, 8.5, true, cTitle, "right");
 
         y += ROW_H;
+        hline(doc, ML, y - 4, W, C.border, 0.2); // Faint line between concepts
     });
 
-    y += 4;
+    y += 6;
 
     // ── TOTAL BAR ─────────────────────────────────────────────────────────
-    const NET_H = 20;
-    fill(doc, ML, y, W, NET_H, C.white);
-    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setLineWidth(1.2);
-    doc.line(ML, y, MR, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(ML, y + NET_H, MR, y + NET_H);
+    fill(doc, ML, y, W, 14, C.rowAlt);
+    hline(doc, ML, y, W, C.borderStr, 0.4);
+    hline(doc, ML, y + 14, W, C.borderStr, 0.4);
 
-    const midX = ML + W * 0.5;
-    vline(doc, midX, y + 4, y + NET_H - 4, C.border, 0.5);
+    lbl(doc, "LÍQUIDO A RECIBIR", ML + 4, y + 8, "left", C.inkMed);
+    tm(doc, fmtVES(emp.total), MR - 4, y + 9.5, 12, true, C.ink, "right");
 
-    // Left: employee summary
-    lbl(doc, `${emp.lines.length} concepto${emp.lines.length !== 1 ? "s" : ""}`, ML + 6, y + 7);
-    t(doc, emp.nombre, ML + 6, y + 14, 7, false, C.inkMed, "left", midX - ML - 10);
-
-    // Right: total
-    lbl(doc, "Total a Cobrar", midX + 6, y + 7);
-    t(doc, fmtVES(emp.total), MR - 4, y + 16, 14, true, C.primary, "right");
-
-    y += NET_H + 10;
+    y += 24;
 
     // ── LEGAL NOTE ────────────────────────────────────────────────────────
-    hline(doc, ML, y, W, C.border, 0.2);
-    y += 4;
     const nota =
-        "El presente documento certifica el pago de todas las acreencias laborales del trabajador indicado, calculadas conforme a la " +
-        "Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El trabajador declara recibir los montos indicados " +
-        "a su entera satisfacción, sin reserva ni reclamación alguna por los conceptos aquí liquidados.";
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(5.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    const notaLines: string[] = doc.splitTextToSize(nota, W);
-    notaLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 3.5);
-    });
+        "El presente documento certifica la liquidación y pago de todas las acreencias laborales aplicables al trabajador indicado, calculadas conforme a la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Incluye prestaciones sociales, utilidades, vacaciones y afines" +
+        (emp.motivo === "despido_injustificado" ? " e indemnización por despido injustificado (Art. 92)." : ".");
+    
+    t(doc, nota, ML, y, 6, false, C.muted, "left", W, "helvetica");
 
     // ── SIGNATURES ────────────────────────────────────────────────────────
-    const sigY  = PH - 40;
-    const sigW  = 75;
-    const sigH  = 24;
-    const sigPd = 6;
+    const sigW = 60;
+    const sigY = PH - 38;
 
-    box(doc, ML, sigY, sigW, sigH, C.white, C.border, 0.25);
-    fill(doc, ML, sigY, sigW, 1.5, C.primary);
-    t(doc, opts.companyName, ML + sigW / 2, sigY + 9, 7, true, C.inkMed, "center", sigW - 10);
-    if (opts.companyId) t(doc, opts.companyId, ML + sigW / 2, sigY + 14, 5.5, false, C.muted, "center");
-    hline(doc, ML + sigPd, sigY + 19, sigW - sigPd * 2, C.borderMed, 0.4);
-    lbl(doc, "Firma y Sello del Empleador", ML + sigW / 2, sigY + 23, "center");
+    doc.setLineDashPattern([1.5, 1.5], 0);
+    doc.setDrawColor(C.borderStr[0], C.borderStr[1], C.borderStr[2]);
+    doc.setLineWidth(0.3);
+    
+    // Employer
+    doc.line(ML + 5, sigY, ML + 5 + sigW, sigY);
+    lbl(doc, "REPRESENTANTE DEL EMPLEADOR", ML + 5 + sigW / 2, sigY + 5, "center");
+    if (opts.companyName) t(doc, opts.companyName.toUpperCase(), ML + 5 + sigW / 2, sigY + 9, 6, false, C.muted, "center", sigW);
 
-    const esx = MR - sigW;
-    box(doc, esx, sigY, sigW, sigH, C.white, C.border, 0.25);
-    fill(doc, esx, sigY, sigW, 1.5, C.primary);
-    t(doc, emp.nombre, esx + sigW / 2, sigY + 9, 7, true, C.inkMed, "center", sigW - 10);
-    t(doc, emp.cedula, esx + sigW / 2, sigY + 14, 5.5, false, C.muted, "center");
-    hline(doc, esx + sigPd, sigY + 19, sigW - sigPd * 2, C.borderMed, 0.4);
-    lbl(doc, "Firma del Trabajador · Conforme", esx + sigW / 2, sigY + 23, "center");
+    // Employee
+    const cxRight = MR - 5 - sigW / 2;
+    doc.line(MR - 5 - sigW, sigY, MR - 5, sigY);
+
+    lbl(doc, "FIRMA DEL TRABAJADOR", cxRight, sigY + 5, "center");
+    tm(doc, "CI " + emp.cedula, cxRight, sigY + 9, 7, false, C.muted, "center");
+    
+    doc.setLineDashPattern([], 0);
 
     // ── FOOTER ────────────────────────────────────────────────────────────
-    fill(doc, 0, PH - 10, PW, 10, C.white);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(0, PH - 10, PW, PH - 10);
-    t(doc,
-        `${opts.companyName.toUpperCase()}  ·  LIQUIDACIÓN LABORAL  ·  ${fmtDate(opts.fechaDoc)}  ·  DOCUMENTO CONFIDENCIAL`,
-        PW / 2, PH - 4, 5, false, C.muted, "center"
-    );
+    hline(doc, ML, PH - 14, W, C.border, 0.4);
+    lbl(doc, "DOCUMENTO DE CONFORMIDAD · ORIGINAL", ML, PH - 9, "left", C.muted);
+    
+    const rnd = Math.random().toString(36).substring(2, 6).toUpperCase();
+    tm(doc, "ID " + rnd, MR, PH - 9, 6, true, C.muted, "right");
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────

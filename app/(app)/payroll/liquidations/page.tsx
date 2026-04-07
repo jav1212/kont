@@ -13,13 +13,16 @@ import {
     Terminal, 
     RefreshCw, 
     TrendingUp, 
-    Info 
+    Info,
+    Clock,
+    AlertCircle
 } from "lucide-react";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { generateLiquidacionPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import type { LiquidacionEmployee, LiquidacionOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
+import { motion } from "framer-motion";
 
 // ============================================================================
 // HELPERS
@@ -146,27 +149,6 @@ function calcLiqEmp(
     };
 }
 
-function exportCsv(results: EmpLiqResult[], egreso: string, motivo: Motivo) {
-    const motivoLabel = motivo === "renuncia" ? "Renuncia" : motivo === "despido_justificado" ? "Despido justificado" : "Despido injustificado";
-    const headers = ["Empleado", "Cédula", "Cargo", "Salario Bs.", "Antigüedad (días)", "Días Prest.", "Días Adic.", "Prestaciones", "Util. Frac.", "Vac. Frac.", "Bono Vac.", "Indemnización", "Total Bs.", "Observación"];
-    const rows = results.map((r) => [
-        r.employee.nombre, r.employee.cedula, r.employee.cargo,
-        fmtN(r.salarioVES), r.antiguedadDias, r.diasPrestTrimestr, r.diasPrestAdic,
-        fmtN(r.prestaciones), fmtN(r.utilFrac), fmtN(r.vacFrac),
-        fmtN(r.bonoVacFrac), fmtN(r.indemnizacion), fmtN(r.total),
-        r.warning ?? "",
-    ]);
-    const meta = [[`Fecha de egreso: ${egreso}`, `Motivo: ${motivoLabel}`], []];
-    const csv  = [...meta, headers, ...rows].map((r) => r.join(";")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `liquidaciones_${egreso.replaceAll("-", "")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
 function formatDateES(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
@@ -179,153 +161,144 @@ function formatDateES(iso: string): string {
 // CARD — Constancia de Liquidación (formato visual vacaciones)
 // ============================================================================
 
-function ConstanciaLiquidacion({ r, companyName, egreso, motivo, diasUtil, diasBono }: {
-    r: EmpLiqResult; companyName: string; egreso: string; motivo: Motivo;
+function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, egreso, motivo, diasUtil, diasBono }: {
+    r: EmpLiqResult; companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean; egreso: string; motivo: Motivo;
     diasUtil: string; diasBono: string;
 }) {
     const motivoLabel = motivo === "renuncia" ? "Renuncia voluntaria"
         : motivo === "despido_justificado" ? "Despido justificado"
         : "Despido injustificado";
-    const accent      = motivo === "despido_injustificado" ? "#dc2626" : "#FF4A18";
-    const accentLight = motivo === "despido_injustificado" ? "#fca5a5" : "#FF7450";
-    const emitido     = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
     const diasVacBase = Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1));
 
-    const concepts: { label: string; sub: string; dias?: number; monto: number; alt: boolean }[] = [
-        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${r.diasPrestTrimestr}d trim.${r.diasPrestAdic > 0 ? ` + ${r.diasPrestAdic}d adic.` : ""}`, dias: r.diasPrest, monto: r.prestaciones, alt: false },
-        { label: "Utilidades fraccionadas", sub: `${r.diasEnAnioActual}d en año × ${diasUtil}d util. / 365`, monto: r.utilFrac, alt: true },
-        { label: "Vacaciones fraccionadas", sub: `${r.diasDesdeAniversario}d / 365 × ${diasVacBase}d vac.`, monto: r.vacFrac, alt: false },
-        { label: "Bono vacacional fraccionado", sub: `${r.diasDesdeAniversario}d / 365 × ${diasBono}d bono`, monto: r.bonoVacFrac, alt: true },
-        ...(r.indemnizacion > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto de prestaciones", monto: r.indemnizacion, alt: false }] : []),
+    const concepts = [
+        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${r.diasPrestTrimestr}d trim.${r.diasPrestAdic > 0 ? ` + ${r.diasPrestAdic}d adic.` : ""}`, dias: r.diasPrest, monto: r.prestaciones },
+        { label: "Utilidades fraccionadas", sub: `${r.diasEnAnioActual}d en año × ${diasUtil}d util. / 365`, monto: r.utilFrac },
+        { label: "Vacaciones fraccionadas", sub: `${r.diasDesdeAniversario}d / 365 × ${diasVacBase}d vac.`, monto: r.vacFrac },
+        { label: "Bono vacacional fraccionado", sub: `${r.diasDesdeAniversario}d / 365 × ${diasBono}d bono`, monto: r.bonoVacFrac },
+        ...(r.indemnizacion > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto", monto: r.indemnizacion, highlight: true }] : []),
     ].filter(c => c.monto > 0);
 
     if (r.warning) return (
-        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden border border-[#dadae2] shadow-sm">
-            <div className="bg-[#12121a] px-8 py-4 relative overflow-hidden">
-                <div className="absolute left-0 top-0 w-1 bottom-0 bg-amber-500" />
-                <div className="pl-3 flex items-center justify-between">
-                    <p className="font-mono text-[13px] font-bold uppercase text-white">{r.employee.nombre}</p>
-                    <span className="font-mono text-[11px] text-amber-400 uppercase tracking-widest border border-amber-500/40 px-2 py-0.5 rounded">{r.warning}</span>
-                </div>
+        <div className="bg-warning/5 rounded-2xl overflow-hidden border border-warning/20 shadow-sm mb-6">
+            <div className="px-6 py-4 flex items-center justify-between border-l-4 border-warning">
+                <p className="text-[14px] font-bold uppercase text-foreground">{r.employee.nombre}</p>
+                <span className="text-[12px] text-warning font-bold uppercase tracking-widest bg-warning/10 px-2 py-1 rounded">{r.warning}</span>
             </div>
         </div>
     );
 
     return (
-        <div className="bg-[#f6f6fa] rounded-xl overflow-hidden shadow-md border border-[#dadae2] max-w-2xl mx-auto">
-
-            {/* Header */}
-            <div className="bg-[#12121a] px-8 py-5 relative overflow-hidden">
-                <div className="absolute left-0 top-0 w-1 bottom-0.5" style={{ backgroundColor: accent }} />
-                <div className="absolute left-1 right-0 bottom-0 h-0.5" style={{ backgroundColor: accentLight }} />
-                <div className="pl-3 flex items-start justify-between gap-4">
+        <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
+            <div className="px-8 py-6 border-b border-border-light bg-surface-2/30 flex items-start justify-between gap-6">
+                <div className="flex flex-row items-center gap-4">
+                    {(showLogoInPdf && companyLogoUrl) && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={companyLogoUrl} alt="Logo" className="max-h-12 w-auto object-contain shrink-0" />
+                    )}
                     <div>
-                        <p className="font-mono text-[17px] font-black uppercase text-white tracking-tight leading-none">{companyName}</p>
-                        <p className="font-mono text-[10px] text-[#787884] mt-1.5 uppercase tracking-[0.2em]">Constancia de Liquidación Laboral</p>
-                        <p className="font-mono text-[9px] text-[#505064] mt-0.5">Art. 142 LOTTT — {motivoLabel}</p>
+                        <p className="text-[20px] font-black uppercase tracking-tight text-foreground leading-none">{companyName}</p>
+                        <p className="text-[11px] text-[var(--text-tertiary)] mt-2 uppercase tracking-[0.2em] font-semibold">Constancia de Liquidación Laboral</p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 142 LOTTT — {motivoLabel}</p>
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#787884] mb-1">Fecha de Egreso</p>
-                        <p className="font-mono text-[11px] font-bold text-white">{formatDateES(egreso)}</p>
-                        <p className="font-mono text-[8px] text-[#787884] mt-1.5">Emitido: {emitido}</p>
+                </div>
+                <div className="text-right shrink-0">
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Fecha de Egreso</p>
+                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDateES(egreso)}</p>
+                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {emitido}</p>
+                </div>
+            </div>
+
+            <div className="px-8 py-5 border-b border-border-light flex flex-col sm:flex-row items-center justify-between bg-surface-1">
+                <div className="flex items-center gap-4 w-full">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center border border-border-light text-[var(--text-tertiary)] group-hover:border-primary-500/50 group-hover:text-primary-500 transition-colors">
+                        <Users size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[16px] font-bold text-foreground tracking-tight">{r.employee.nombre}</p>
+                        {r.employee.cargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{r.employee.cargo}</p>}
+                    </div>
+                    <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
+                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {r.employee.cedula}</p>
+                        <div className="inline-flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-medium bg-surface-2 px-2 py-0.5 rounded border border-border-light">
+                            <Clock size={12} className="text-[var(--text-tertiary)]" />
+                            {r.antiguedadAnios} año{r.antiguedadAnios !== 1 ? "s" : ""}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Employee card */}
-            <div className="mx-6 mt-5 bg-white border border-[#dadae2] rounded relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: accent }} />
-                <div className="pl-5 pr-5 py-3 flex items-start justify-between">
-                    <div>
-                        <p className="font-mono text-[14px] font-black uppercase text-[#32323c] tracking-tight">{r.employee.nombre}</p>
-                        {r.employee.cargo && <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#787884] mt-0.5">{r.employee.cargo}</p>}
-                    </div>
-                    <div className="text-right">
-                        <p className="font-mono text-[12px] font-bold text-[#32323c]">CI: {r.employee.cedula}</p>
-                        <p className="font-mono text-[9px] text-[#787884] mt-0.5">{r.antiguedadAnios} año{r.antiguedadAnios !== 1 ? "s" : ""} de servicio</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Params strip */}
-            <div className="mx-6 mt-3 bg-[#12121a] px-5 py-3 grid grid-cols-4 gap-3">
+            <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
                 {[
-                    { lbl: "Salario Mensual",  val: fmtVES(r.salarioVES),                          cls: "text-white" },
-                    { lbl: "Fecha de Ingreso", val: formatDateES(r.employee.fechaIngreso ?? "").toUpperCase(), cls: "text-white" },
-                    { lbl: "Antigüedad",       val: `${r.antiguedadAnios}a ${r.antiguedadDias % 365}d`, cls: "text-[#96c8dc]" },
-                    { lbl: "Sal. Integral/Día",val: fmtVES(r.diasPrest > 0 ? r.prestaciones / r.diasPrest : r.salarioVES / 30), cls: "text-white" },
-                ].map(({ lbl, val, cls }) => (
+                    { lbl: "Salario Mensual",  val: fmtVES(r.salarioVES), color: "text-foreground" },
+                    { lbl: "Fecha de Ingreso", val: formatDateES(r.employee.fechaIngreso ?? ""), color: "text-foreground" },
+                    { lbl: "Antigüedad",val: `${r.antiguedadAnios}a ${r.antiguedadDias % 365}d`, color: "text-primary-500" },
+                    { lbl: "Salario Base/Día",  val: fmtVES(r.salarioVES / 30), color: "text-foreground" },
+                ].map(({ lbl, val, color }) => (
                     <div key={lbl}>
-                        <p className="font-mono text-[7px] uppercase tracking-[0.18em] text-[#787884] mb-1">{lbl}</p>
-                        <p className={`font-mono text-[10px] font-bold tabular-nums leading-snug ${cls}`}>{val}</p>
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{lbl}</p>
+                        <p className={`text-[13px] font-bold tabular-nums ${color}`}>{val}</p>
                     </div>
                 ))}
             </div>
 
-            {/* Concept table */}
-            <div className="mx-6 mt-3">
-                <div className="bg-[#12121a] px-5 py-2 flex justify-between">
-                    <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Concepto</p>
-                    <div className="flex gap-10">
-                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Días</p>
-                        <p className="font-mono text-[7px] uppercase tracking-[0.22em] text-[#787884]">Monto</p>
+            <div className="px-8 py-6">
+                <div className="flex justify-between pb-3 border-b border-border-light/60">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold">Concepto / Cálculo</p>
+                    <div className="flex items-center justify-end gap-12 w-48 shrink-0">
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right w-12">Días</p>
+                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right flex-1">Monto Asignado</p>
                     </div>
                 </div>
-                {concepts.map((c, i) => (
-                    <div key={c.label} className={`px-5 py-3 flex items-start justify-between border-b border-[#dadae2] ${c.alt ? "bg-[#f0f0f5]" : "bg-white"}`}>
-                        <div>
-                            <p className="font-mono text-[12px] font-bold text-[#32323c]">{c.label}</p>
-                            <p className="font-mono text-[8px] text-[#787884] mt-0.5 uppercase tracking-wide">{c.sub}</p>
-                        </div>
-                        <div className="flex items-center gap-10 text-right shrink-0">
-                            <p className="font-mono text-[11px] tabular-nums text-[#787884]">{c.dias != null ? `${c.dias} d` : "—"}</p>
-                            <p className="font-mono text-[13px] font-black tabular-nums" style={{ color: i === concepts.length - 1 && r.indemnizacion > 0 ? "#dc2626" : i % 2 === 0 ? accent : "#b4780a" }}>
-                                Bs. {fmtN(c.monto)}
-                            </p>
-                        </div>
-                    </div>
-                ))}
-                {/* Total bar */}
-                <div className="bg-[#12121a] px-5 py-3 flex items-center justify-between relative">
-                    <div className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ backgroundColor: accentLight }} />
-                    <p className="pl-3 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-[#787884]">
-                        Total Liquidación
-                    </p>
-                    <p className="font-mono text-[16px] font-black tabular-nums" style={{ color: accentLight }}>
-                        Bs. {fmtN(r.total)}
-                    </p>
-                </div>
-            </div>
-
-            {/* Firmas */}
-            <div className="mx-6 mt-6 mb-2">
-                <p className="font-mono text-[8px] uppercase tracking-[0.2em] text-[#32323c] font-bold mb-3">Firmas de Conformidad</p>
-                <div className="grid grid-cols-2 gap-8">
-                    {["Empleador", "Trabajador"].map(role => (
-                        <div key={role} className="bg-white border border-[#dadae2] rounded overflow-hidden">
-                            <div className="h-[3px] w-full bg-[#787884]" />
-                            <div className="px-4 pt-4 pb-3">
-                                <div className="h-8 border-b border-[#afafb9] mb-2" />
-                                <p className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#787884] text-center">{role}</p>
+                
+                <div className="divide-y divide-border-light/40 pt-1">
+                    {concepts.map((c) => (
+                        <div key={c.label} className="py-3.5 flex items-start justify-between group hover:bg-surface-2/30 -mx-4 px-4 rounded-lg transition-colors">
+                            <div className="pr-4">
+                                <p className="text-[13px] font-bold text-foreground tracking-tight">{c.label}</p>
+                                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{c.sub}</p>
                             </div>
+                            <div className="flex items-center justify-end gap-12 w-48 shrink-0 text-right">
+                                <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{c.dias != null ? c.dias : "—"}</p>
+                                <p className={`text-[14px] font-bold tabular-nums flex-1 ${c.highlight ? "text-error" : "text-foreground group-hover:text-primary-500 transition-colors"}`}>
+                                    Bs. {fmtN(c.monto)}
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-4 p-5 rounded-2xl bg-surface-2/60 border border-border-light flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--text-tertiary)] flex items-center gap-2 mb-1">
+                            Líquido a recibir
+                        </p>
+                        <p className="text-[24px] font-black tabular-nums text-foreground leading-none">
+                            Bs. {fmtN(r.total)}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-8 pb-8 pt-4">
+                <div className="grid grid-cols-2 gap-12 max-w-lg mx-auto">
+                    {["Representante Empleador", "Firma del Trabajador"].map(role => (
+                        <div key={role} className="flex flex-col items-center">
+                            <div className="w-full h-12 border-b-2 border-dashed border-border-light mb-3" />
+                            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)] font-bold text-center">{role}</p>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* Legal */}
-            <div className="mx-6 mb-5 mt-4 pt-3 border-t border-[#dadae2]">
-                <p className="font-mono text-[8px] text-[#787884] leading-relaxed">
-                    La presente constancia certifica la liquidación laboral de conformidad con la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto incluye prestaciones sociales (Art. 142), utilidades fraccionadas, vacaciones y bono vacacional fraccionados{motivo === "despido_injustificado" ? " e indemnización por despido injustificado (Art. 92)" : ""}.
+            <div className="bg-surface-2/30 px-8 py-4 border-t border-border-light flex items-center justify-between mt-auto">
+                <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed uppercase tracking-wider font-semibold">
+                    Documento de conformidad · Original
                 </p>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-[#12121a] px-8 py-2.5 relative">
-                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ backgroundColor: accentLight }} />
-                <p className="font-mono text-[7px] text-[#505064] text-center uppercase tracking-[0.2em]">
-                    {companyName.toUpperCase()} · Liquidación Laboral · Documento Confidencial
-                </p>
+                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                    <FileText size={14} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
+                </div>
             </div>
         </div>
     );
@@ -451,7 +424,6 @@ export default function LiquidacionesPage() {
     const validResults = useMemo(() => results.filter(r => !r.warning), [results]);
     const totalGeneral = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
 
-    const handleExport = useCallback(() => exportCsv(results, egreso, motivo), [results, egreso, motivo]);
 
     const handlePdf = useCallback(() => {
         const pdfEmployees: LiquidacionEmployee[] = validResults.map(r => {
@@ -502,10 +474,12 @@ export default function LiquidacionesPage() {
             };
         });
         const opts: LiquidacionOptions = {
-            companyName: company?.name ?? "Empresa",
-            companyId:   company?.id,
-            fechaDoc:    new Date().toISOString().split("T")[0],  // ISO format for fmtDate()
-            bcvRate:     bcvRate || undefined,
+            companyName:   company?.name ?? "Empresa",
+            companyId:     company?.id,
+            fechaDoc:      new Date().toISOString().split("T")[0],  // ISO format for fmtDate()
+            bcvRate:       bcvRate || undefined,
+            logoUrl:       company?.logoUrl,
+            showLogoInPdf: company?.showLogoInPdf,
         };
         generateLiquidacionPdf(pdfEmployees, opts);
     }, [validResults, egreso, motivo, diasUtil, diasBono, bcvRate, company]);
@@ -700,16 +674,6 @@ export default function LiquidacionesPage() {
                                 </div>
                             </div>
                         )}
-                        
-                        <BaseButton.Root
-                            variant="secondary"
-                            className="w-full"
-                            onClick={handleExport}
-                            disabled={results.length === 0}
-                            leftIcon={<FileText size={14} />}
-                        >
-                            Exportar CSV
-                        </BaseButton.Root>
 
                         <BaseButton.Root
                             variant="primary"
@@ -724,40 +688,55 @@ export default function LiquidacionesPage() {
                 </aside>
 
                 {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-                <main className="flex-1 overflow-y-auto p-6 bg-surface-2">
+                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-surface-2 lg:bg-surface-2/50 relative">
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
+                    <div className="relative z-10 w-full h-full">
                     {loading ? (
-                        <div className="flex items-center justify-center h-48 gap-2 text-[var(--text-tertiary)]">
-                            <svg className="animate-spin" width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-                                <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                            </svg>
-                            <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados…</span>
+                        <div className="flex flex-col items-center justify-center h-full gap-4 text-[var(--text-tertiary)]">
+                            <RefreshCw size={24} className="animate-spin text-primary-500/50" />
+                            <span className="text-[13px] font-bold uppercase tracking-widest">Cargando datos…</span>
                         </div>
                     ) : error ? (
-                        <div className="flex items-center justify-center h-48 font-mono text-[13px] text-red-500">{error}</div>
+                        <div className="flex flex-col items-center justify-center h-full gap-3 text-error">
+                            <AlertCircle size={32} />
+                            <span className="text-[13px] font-bold uppercase tracking-widest">{error}</span>
+                        </div>
                     ) : results.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-[var(--text-disabled)]">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.8">
-                                <rect x="2" y="3" width="20" height="14" rx="2"/>
-                                <path d="M8 21h8M12 17v4"/>
-                            </svg>
-                            <p className="font-mono text-[12px] uppercase tracking-widest">Sin empleados</p>
+                        <div className="flex flex-col items-center justify-center h-full gap-5 text-[var(--text-disabled)] max-w-sm mx-auto animate-in fade-in duration-500">
+                            <div className="w-20 h-20 rounded-[1.5rem] bg-surface-1 border border-border-light flex items-center justify-center shadow-sm text-border-medium">
+                                <Users strokeWidth={1.5} size={32} />
+                            </div>
+                            <div className="text-center space-y-2">
+                                <p className="text-[14px] font-bold uppercase tracking-widest text-foreground">Sistema Listo</p>
+                                <p className="text-[13px] font-medium text-[var(--text-secondary)] leading-relaxed">
+                                    Selecciona un empleado de la lista y ajusta los parámetros de cálculo para previsualizar la constancia de liquidación laboral.
+                                </p>
+                            </div>
                         </div>
                     ) : (
-                        <div className="max-w-2xl mx-auto space-y-8">
-                            {results.map(r => (
-                                <ConstanciaLiquidacion
+                        <div className="max-w-4xl mx-auto space-y-10 pb-12">
+                            {results.map((r, i) => (
+                                <motion.div
                                     key={r.employee.cedula}
-                                    r={r}
-                                    companyName={company?.name ?? "La Empresa"}
-                                    egreso={egreso}
-                                    motivo={motivo}
-                                    diasUtil={diasUtil}
-                                    diasBono={diasBono}
-                                />
+                                    initial={{ opacity: 0, scale: 0.98, y: 15 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ delay: i * 0.05, ease: "easeOut" }}
+                                >
+                                    <ConstanciaLiquidacion
+                                        r={r}
+                                        companyName={company?.name ?? "La Empresa"}
+                                        companyLogoUrl={company?.logoUrl}
+                                        showLogoInPdf={company?.showLogoInPdf}
+                                        egreso={egreso}
+                                        motivo={motivo}
+                                        diasUtil={diasUtil}
+                                        diasBono={diasBono}
+                                    />
+                                </motion.div>
                             ))}
                         </div>
                     )}
+                    </div>
                 </main>
             </div>
         </div>

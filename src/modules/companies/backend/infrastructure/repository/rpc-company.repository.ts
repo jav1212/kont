@@ -70,16 +70,25 @@ export class RpcCompanyRepository implements ICompanyRepository {
 
     async update(id: string, company: Partial<Company>): Promise<Result<Company>> {
         try {
+            const currentRes = await this.findById(id);
+            if (!currentRes.isSuccess) {
+                return Result.fail('Error al buscar la empresa para actualizar');
+            }
+            const current = currentRes.getValue();
+            if (!current) {
+                return Result.fail('Empresa no encontrada para actualizar');
+            }
+
             const { data, error } = await this.source.instance
                 .rpc('tenant_company_update', {
                     p_user_id:           this.userId,
                     p_id:                id,
-                    p_name:              company.name,
-                    p_rif:               company.rif             ?? null,
-                    p_phone:             company.phone           ?? null,
-                    p_address:           company.address         ?? null,
-                    p_logo_url:          company.logoUrl         ?? null,
-                    p_show_logo_in_pdf:  company.showLogoInPdf   ?? null,
+                    p_name:              company.name          ?? current.name,
+                    p_rif:               (company.rif          !== undefined ? company.rif : current.rif) ?? null,
+                    p_phone:             (company.phone        !== undefined ? company.phone : current.phone) ?? null,
+                    p_address:           (company.address      !== undefined ? company.address : current.address) ?? null,
+                    p_logo_url:          (company.logoUrl      !== undefined ? company.logoUrl : current.logoUrl) ?? null,
+                    p_show_logo_in_pdf:  (company.showLogoInPdf!== undefined ? company.showLogoInPdf : current.showLogoInPdf) ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
