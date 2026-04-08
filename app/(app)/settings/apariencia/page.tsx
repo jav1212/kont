@@ -1,7 +1,6 @@
 "use client";
 
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
-import { BaseButton } from "@/src/shared/frontend/components/base-button";
 
 export default function AparienciaPage() {
     const { theme, setTheme } = useTheme();

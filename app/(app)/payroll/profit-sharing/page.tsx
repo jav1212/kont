@@ -3,11 +3,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp, ChevronDown, Clock, AlertCircle } from "lucide-react";
+import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp, ChevronDown, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import {
     generateUtilidadesCompletasPdf,
     generateUtilidadesFraccionadasPdf,
@@ -31,7 +32,17 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function isoToday(): string { return new Date().toISOString().split("T")[0]; }
+function isoToday(): string { return getTodayIsoDate(); }
+
+function makeDocumentId(seed: string): string {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    return Math.abs(hash).toString(36).slice(0, 4).toUpperCase().padStart(4, "0");
+}
+
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
 
 function formatDateES(iso: string): string {
     if (!iso) return "—";
@@ -166,18 +177,8 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
     employeeName: string; employeeCedula: string; employeeCargo?: string;
     companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
 }) {
-    const handlePdf = () => generateUtilidadesCompletasPdf({
-        companyName,
-        employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
-        anioFiscal: calc.anioFiscal,
-        salarioVES: calc.salarioVES,
-        salarioDia: calc.salarioDia,
-        diasUtilidades: calc.diasUtilidades,
-        monto: calc.monto,
-        logoUrl: companyLogoUrl, showLogoInPdf,
-    });
-
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const documentId = makeDocumentId(`${employeeCedula}|${calc.anioFiscal}|completas`);
 
     return (
         <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
@@ -282,7 +283,7 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
                 </p>
                 <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                     <FileText size={14} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {documentId}</span>
                 </div>
             </div>
         </div>
@@ -294,30 +295,14 @@ function ConstanciaCompletas({ calc, employeeName, employeeCedula, employeeCargo
 // ============================================================================
 
 function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCargo,
-    companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaCorte }: {
+    companyName, companyLogoUrl, showLogoInPdf, fechaIngreso: _fechaIngreso, fechaCorte }: {
         calc: UtilidadesFraccionadas;
         employeeName: string; employeeCedula: string; employeeCargo?: string;
         companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
         fechaIngreso: string; fechaCorte: string;
     }) {
-    const handlePdf = () => generateUtilidadesFraccionadasPdf({
-        companyName,
-        employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
-        anioFiscal: calc.anioFiscal,
-        fechaIngreso,
-        fechaCorte,
-        inicioFiscal: calc.inicioFiscal,
-        periodoInicio: calc.periodoInicio,
-        mesesTrabajados: calc.mesesTrabajados,
-        diasUtilidades: calc.diasUtilidades,
-        diasFraccionados: calc.diasFraccionados,
-        salarioVES: calc.salarioVES,
-        salarioDia: calc.salarioDia,
-        monto: calc.monto,
-        logoUrl: companyLogoUrl, showLogoInPdf,
-    });
-
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const documentId = makeDocumentId(`${employeeCedula}|${fechaCorte}|fraccionadas`);
 
     return (
         <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
@@ -426,7 +411,7 @@ function ConstanciaFraccionadas({ calc, employeeName, employeeCedula, employeeCa
                 </p>
                 <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                     <FileText size={14} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {documentId}</span>
                 </div>
             </div>
         </div>
@@ -597,9 +582,9 @@ export default function UtilidadesPage() {
                     });
                 }
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert("Error al exportar: " + (err?.message || String(err)));
+            alert("Error al exportar: " + getErrorMessage(err));
         } finally {
             setExportingLote(false);
         }

@@ -11,6 +11,18 @@ const withSerwistConfig = withSerwist({
 const nextConfig: NextConfig = {
     // Serwist uses webpack — disable Turbopack for production builds
     turbopack: {},
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "images.unsplash.com",
+            },
+            {
+                protocol: "https",
+                hostname: "**.supabase.co",
+            },
+        ],
+    },
 };
 
 export default withSerwistConfig(nextConfig);

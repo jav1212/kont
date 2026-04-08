@@ -10,7 +10,6 @@ import {
     Calendar, 
     ClipboardCheck, 
     ChevronDown, 
-    Terminal, 
     RefreshCw, 
     TrendingUp, 
     Info,
@@ -23,6 +22,7 @@ import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee
 import { generateLiquidacionPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import type { LiquidacionEmployee, LiquidacionOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import { motion } from "framer-motion";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 
 // ============================================================================
 // HELPERS
@@ -170,6 +170,7 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
         : "Despido injustificado";
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
     const diasVacBase = Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1));
+    const documentId = makeDocumentId(`${r.employee.cedula}|${egreso}|${motivo}`);
 
     const concepts = [
         { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${r.diasPrestTrimestr}d trim.${r.diasPrestAdic > 0 ? ` + ${r.diasPrestAdic}d adic.` : ""}`, dias: r.diasPrest, monto: r.prestaciones },
@@ -297,7 +298,7 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
                 </p>
                 <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
                     <FileText size={14} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {Math.random().toString(36).substring(2, 6).toUpperCase()}</span>
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {documentId}</span>
                 </div>
             </div>
         </div>
@@ -307,24 +308,6 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
 // ============================================================================
 // CONFIG SECTION
 // ============================================================================
-
-function ConfigSection({ title, open, onToggle, children }: {
-    title: string; open: boolean; onToggle: () => void; children: React.ReactNode;
-}) {
-    return (
-        <div className="border-b border-border-light last:border-0">
-            <button onClick={onToggle} className="w-full flex items-center justify-between px-5 py-3 hover:bg-foreground/[0.02] transition-colors duration-150">
-                <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">{title}</span>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="text-[var(--text-tertiary)] flex-shrink-0 transition-transform duration-200"
-                    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>
-                    <path d="M2 4l3 3 3-3" />
-                </svg>
-            </button>
-            {open && <div className="px-5 pb-4">{children}</div>}
-        </div>
-    );
-}
 
 // ============================================================================
 // SHARED UI ATOMS
@@ -337,25 +320,6 @@ function SectionHeader({ label, color }: { label: string; color?: "green" | "amb
     return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
 }
 
-function CalcRow({ label, formula, value, accent, dim }: {
-    label: string; formula?: string; value: string;
-    accent?: "green" | "amber"; dim?: boolean;
-}) {
-    const valCls = dim ? "text-[var(--text-tertiary)]"
-        : accent === "green"  ? "text-emerald-500"
-        : accent === "amber"  ? "text-amber-500"
-        : "text-foreground";
-    return (
-        <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border-light/60 last:border-0">
-            <div className="min-w-0">
-                <span className="font-mono text-[13px] text-[var(--text-secondary)] leading-snug">{label}</span>
-                {formula && <div className="font-mono text-[12px] text-[var(--text-tertiary)] mt-0.5 tabular-nums">{formula}</div>}
-            </div>
-            <span className={`font-mono text-[13px] font-bold tabular-nums shrink-0 ${valCls}`}>{value}</span>
-        </div>
-    );
-}
-
 // ============================================================================
 // PAGE
 // ============================================================================
@@ -364,14 +328,13 @@ export default function LiquidacionesPage() {
     const { companyId, company } = useCompany();
     const { employees, loading, error } = useEmployee(companyId);
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayIsoDate();
 
     const [egreso,      setEgreso]      = useState(today);
     const [motivo,      setMotivo]      = useState<Motivo>("renuncia");
     const [diasUtil,    setDiasUtil]    = useState("120");
     const [diasBono,    setDiasBono]    = useState("15");
     const [soloActivos, setSoloActivos] = useState(true);
-    const [openCfg,     setOpenCfg]     = useState(true);
     const [selectedCedula, setSelectedCedula] = useState<string>("");
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedCedula),
@@ -387,7 +350,7 @@ export default function LiquidacionesPage() {
         setBcvLoading(true);
         setBcvFetchError(null);
         try {
-            const iso = new Date().toISOString().split("T")[0];
+            const iso = getTodayIsoDate();
             const res  = await fetch(`/api/bcv/rate?date=${iso}`);
             const data = await res.json();
             if (!res.ok) { setBcvFetchError(data.error ?? "No rate found"); return; }
@@ -476,7 +439,7 @@ export default function LiquidacionesPage() {
         const opts: LiquidacionOptions = {
             companyName:   company?.name ?? "Empresa",
             companyId:     company?.id,
-            fechaDoc:      new Date().toISOString().split("T")[0],  // ISO format for fmtDate()
+            fechaDoc:      getTodayIsoDate(),  // ISO format for fmtDate()
             bcvRate:       bcvRate || undefined,
             logoUrl:       company?.logoUrl,
             showLogoInPdf: company?.showLogoInPdf,
@@ -741,4 +704,9 @@ export default function LiquidacionesPage() {
             </div>
         </div>
     );
+}
+function makeDocumentId(seed: string): string {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    return Math.abs(hash).toString(36).slice(0, 4).toUpperCase().padStart(4, "0");
 }

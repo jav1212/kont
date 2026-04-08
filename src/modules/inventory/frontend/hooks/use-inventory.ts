@@ -18,6 +18,7 @@ import type { IslrProduct } from '../../backend/domain/islr-report';
 import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
 import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
 import type { BalanceReportRow } from '../../backend/domain/balance-report';
+import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 
 export type { Product, Movement, KardexEntry, Transformation, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow };
 
@@ -62,7 +63,7 @@ export function useInventory() {
         setLoadingProducts(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/products?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/products?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar productos'); return; }
             setProducts(json.data ?? []);
@@ -76,7 +77,7 @@ export function useInventory() {
     const saveProduct = useCallback(async (product: Product): Promise<Product | null> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/products', {
+            const res = await apiFetch('/api/inventory/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(product),
@@ -100,7 +101,7 @@ export function useInventory() {
     const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/products/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/inventory/products/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar producto'); return false; }
             setProducts((prev) => prev.filter((p) => p.id !== id));
@@ -119,7 +120,7 @@ export function useInventory() {
         try {
             const params = new URLSearchParams({ companyId });
             if (period) params.set('period', period);
-            const res = await fetch(`/api/inventory/movements?${params}`);
+            const res = await apiFetch(`/api/inventory/movements?${params}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar movimientos'); return; }
             setMovements(json.data ?? []);
@@ -133,7 +134,7 @@ export function useInventory() {
     const deleteMovement = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/movements/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/inventory/movements/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar movimiento'); return false; }
             setMovements((prev) => prev.filter((m) => m.id !== id));
@@ -149,7 +150,7 @@ export function useInventory() {
     ): Promise<Movement | null> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/movements/${id}`, {
+            const res = await apiFetch(`/api/inventory/movements/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ date, reference, notes }),
@@ -168,7 +169,7 @@ export function useInventory() {
     const saveMovement = useCallback(async (movement: Movement): Promise<Movement | null> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/movements', {
+            const res = await apiFetch('/api/inventory/movements', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(movement),
@@ -198,7 +199,7 @@ export function useInventory() {
         setLoadingKardex(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/kardex?companyId=${encodeURIComponent(companyId)}&productId=${encodeURIComponent(productId)}`
             );
             const json = await res.json();
@@ -217,7 +218,7 @@ export function useInventory() {
         setLoadingTransformations(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/transformations?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/transformations?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar transformaciones'); return; }
             setTransformations(json.data ?? []);
@@ -231,7 +232,7 @@ export function useInventory() {
     const saveTransformation = useCallback(async (transformation: Transformation): Promise<Transformation | null> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/transformations', {
+            const res = await apiFetch('/api/inventory/transformations', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(transformation),
@@ -253,7 +254,7 @@ export function useInventory() {
         setLoadingPeriodCloses(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/closings?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/closings?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar cierres'); return; }
             setPeriodCloses(json.data ?? []);
@@ -278,7 +279,7 @@ export function useInventory() {
     ): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/closings', {
+            const res = await apiFetch('/api/inventory/closings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ companyId, period, notes: notes ?? '', dollarRate: dollarRate ?? null }),
@@ -299,7 +300,7 @@ export function useInventory() {
         setLoadingSuppliers(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/suppliers?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/suppliers?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar proveedores'); return; }
             setSuppliers(json.data ?? []);
@@ -313,7 +314,7 @@ export function useInventory() {
     const saveSupplier = useCallback(async (supplier: Supplier): Promise<Supplier | null> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/suppliers', {
+            const res = await apiFetch('/api/inventory/suppliers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(supplier),
@@ -337,7 +338,7 @@ export function useInventory() {
     const deleteSupplier = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/suppliers/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/inventory/suppliers/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar proveedor'); return false; }
             setSuppliers((prev) => prev.filter((s) => s.id !== id));
@@ -354,7 +355,7 @@ export function useInventory() {
         setLoadingPurchaseInvoices(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/purchases?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/purchases?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar facturas'); return; }
             setPurchaseInvoices(json.data ?? []);
@@ -369,7 +370,7 @@ export function useInventory() {
         setLoadingPurchaseInvoice(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
+            const res = await apiFetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar factura'); return; }
             setCurrentPurchaseInvoice(json.data ?? null);
@@ -389,7 +390,7 @@ export function useInventory() {
             const url = invoice.id
                 ? `/api/inventory/purchases/${invoice.id}`
                 : '/api/inventory/purchases';
-            const res = await fetch(url, {
+            const res = await apiFetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ invoice, items }),
@@ -414,7 +415,7 @@ export function useInventory() {
     const deletePurchaseInvoice = useCallback(async (invoiceId: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/purchases/${invoiceId}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar factura'); return false; }
             setPurchaseInvoices((prev) => prev.filter((f) => f.id !== invoiceId));
@@ -428,7 +429,7 @@ export function useInventory() {
     const confirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/purchases/${invoiceId}/confirm`, {
+            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/confirm`, {
                 method: 'POST',
             });
             const json = await res.json();
@@ -449,7 +450,7 @@ export function useInventory() {
         setLoadingDepartments(true);
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/departments?companyId=${encodeURIComponent(companyId)}`);
+            const res = await apiFetch(`/api/inventory/departments?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al cargar departamentos'); return; }
             setDepartments(json.data ?? []);
@@ -463,7 +464,7 @@ export function useInventory() {
     const saveDepartment = useCallback(async (department: Department): Promise<Department | null> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/departments', {
+            const res = await apiFetch('/api/inventory/departments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(department),
@@ -487,7 +488,7 @@ export function useInventory() {
     const deleteDepartment = useCallback(async (id: string): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch(`/api/inventory/departments/${id}`, { method: 'DELETE' });
+            const res = await apiFetch(`/api/inventory/departments/${id}`, { method: 'DELETE' });
             const json = await res.json();
             if (!res.ok) { setError(json.error ?? 'Error al eliminar departamento'); return false; }
             setDepartments((prev) => prev.filter((d) => d.id !== id));
@@ -504,7 +505,7 @@ export function useInventory() {
         setLoadingPurchaseLedger(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/purchase-ledger?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
@@ -523,7 +524,7 @@ export function useInventory() {
         setLoadingIslrReport(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/islr-report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
@@ -542,7 +543,7 @@ export function useInventory() {
         setLoadingSalesLedger(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/sales-ledger?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
@@ -563,7 +564,7 @@ export function useInventory() {
     }): Promise<boolean> => {
         setError(null);
         try {
-            const res = await fetch('/api/inventory/sales', {
+            const res = await apiFetch('/api/inventory/sales', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -591,7 +592,7 @@ export function useInventory() {
         setLoadingInventoryLedger(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/inventory-ledger?companyId=${encodeURIComponent(companyId)}&year=${year}`
             );
             const json = await res.json();
@@ -610,7 +611,7 @@ export function useInventory() {
         setLoadingBalanceReport(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/balance-report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
@@ -629,7 +630,7 @@ export function useInventory() {
         setLoadingPeriodReport(true);
         setError(null);
         try {
-            const res = await fetch(
+            const res = await apiFetch(
                 `/api/inventory/report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();

@@ -1,16 +1,14 @@
 "use client";
  
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
     Folder, 
     MoreVertical, 
     Trash2, 
-    Plus, 
     X, 
     Check, 
     Loader2, 
     FolderPlus,
-    ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BaseButton } from '@/src/shared/frontend/components/base-button';
@@ -25,7 +23,7 @@ interface FolderTreeProps {
     folders: FolderData[];
     selectedFolderId?: string | null;
     onSelect: (id: string | null) => void;
-    onCreateFolder: (name: string, parentId?: string | null) => Promise<any>;
+    onCreateFolder: (name: string, parentId?: string | null) => Promise<unknown>;
     onDeleteFolder: (id: string) => Promise<void>;
 }
  
@@ -141,7 +139,7 @@ interface FolderItemProps {
     isRoot?: boolean;
 }
  
-function FolderItem({ id, label, isSelected, onSelect, onDelete, isRoot }: FolderItemProps) {
+function FolderItem({ label, isSelected, onSelect, onDelete, isRoot }: FolderItemProps) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);

@@ -33,7 +33,8 @@ interface RawPlanRow {
 }
 
 interface RawPlanWithProductRow extends RawPlanRow {
-    products: { slug: string } | { slug: string }[] | null;
+    products:        { slug: string } | { slug: string }[] | null;
+    is_contact_only: boolean;
 }
 
 interface RawSubscriptionRow {
@@ -207,7 +208,8 @@ export class SupabaseBillingRepository implements IBillingRepository {
             const product  = Array.isArray(products) ? products[0] : products;
             return {
                 ...normalizePlan(raw),
-                moduleSlug: product?.slug ?? null,
+                moduleSlug:    product?.slug ?? null,
+                isContactOnly: raw.is_contact_only ?? false,
             };
         });
 

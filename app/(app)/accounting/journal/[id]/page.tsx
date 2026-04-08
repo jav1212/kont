@@ -4,7 +4,7 @@
 // Displays a single entry's metadata and its debit/credit lines.
 // Draft entries can be posted from here using a modal confirmation.
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter }             from 'next/navigation';
+import { useParams }                        from 'next/navigation';
 import Link                                 from 'next/link';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { PageHeader }                       from '@/src/shared/frontend/components/page-header';
@@ -74,7 +74,6 @@ interface LineRow {
 
 export default function JournalEntryDetailPage() {
     const { id }                  = useParams<{ id: string }>();
-    const router                  = useRouter();
     const [data,    setData]      = useState<EntryWithLines | null>(null);
     const [loading, setLoading]   = useState(true);
     const [error,   setError]     = useState<string | null>(null);

@@ -11,7 +11,7 @@ import { APP_SIZES } from "@/src/shared/frontend/sizes";
 // ── Connecting-line indicator (Tree style) ────────────────────────────────────
 // Fixed vertical line with horizontal branches for each item.
 
-function SubnavIndicator({ active, isLast }: { active?: boolean; isLast?: boolean }) {
+function SubnavIndicator({ isLast }: { isLast?: boolean }) {
     return (
         <div className="relative w-4 h-full flex items-center justify-center shrink-0">
             {/* Vertical connector segment */}
@@ -63,7 +63,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                             aria-current={isActive ? "page" : undefined}
                             className={[ITEM_BASE, isActive ? ITEM_ACTIVE : ITEM_IDLE].join(" ")}
                         >
-                            <SubnavIndicator active={isActive} isLast={isLast} />
+                            <SubnavIndicator isLast={isLast} />
                             <span className="truncate flex-1">{label}</span>
                         </Link>
                     </div>

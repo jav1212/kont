@@ -69,13 +69,6 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         setLoading(false);
     }, [companyId]);
 
-    // Clear runs on render when companyId is removed (render-phase update).
-    const [lastCompanyId, setLastCompanyId] = useState(companyId);
-    if (lastCompanyId !== companyId) {
-        setLastCompanyId(companyId);
-        if (!companyId) setRuns([]);
-    }
-
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
         if (companyId) reload();
@@ -98,5 +91,12 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         return null;
     }, [reload]);
 
-    return { runs, loading, error, reload, getReceipts, confirm };
+    return {
+        runs: companyId ? runs : [],
+        loading: companyId ? loading : false,
+        error: companyId ? error : null,
+        reload,
+        getReceipts,
+        confirm,
+    };
 }

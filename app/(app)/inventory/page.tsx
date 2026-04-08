@@ -12,8 +12,7 @@ import {
     Boxes, 
     ArrowRightLeft, 
     History,
-    ArrowRight,
-    Search
+    ArrowRight
 } from "lucide-react";
 import { PageHeader }            from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";

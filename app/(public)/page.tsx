@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -38,7 +39,7 @@ const PANEL_ID = "pricing-panel";
 export default function LandingPage() {
 
     // --- STATE LOGIC (Retained for functionality) ---
-    const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
+    const [systemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
         if (typeof window === "undefined") return null;
         const hashParams  = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
@@ -159,7 +160,7 @@ export default function LandingPage() {
                                     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80"
                                 ].map((url, i) => (
                                     <div key={i} className="w-10 h-10 rounded-full border-2 border-background overflow-hidden relative shadow-sm">
-                                        <img src={url} alt="Usuario" className="w-full h-full object-cover" />
+                                        <Image src={url} alt="Usuario" fill sizes="40px" className="object-cover" />
                                     </div>
                                 ))}
                             </div>
@@ -176,10 +177,12 @@ export default function LandingPage() {
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-surface-2 via-background to-background rounded-full -z-10 blur-xl opacity-80" />
                     
                     <div className="relative aspect-square w-full rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] md:shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden border border-border-light group">
-                        <img 
+                        <Image 
                             src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" 
                             alt="Sistema Contable Konta" 
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            fill
+                            sizes="(min-width: 1024px) 40vw, 100vw"
+                            className="object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-primary-500/10 mix-blend-color pointer-events-none" />
                         
@@ -222,10 +225,12 @@ export default function LandingPage() {
                 <div className="flex-1 w-full rounded-[32px] md:rounded-[40px] shadow-sm aspect-square md:aspect-[4/3] flex items-center justify-center relative overflow-hidden border border-border-light group">
                     <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary-500/10 rounded-full blur-2xl z-10" />
                     
-                    <img 
+                    <Image 
                         src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=800&q=80" 
                         alt="Reunión Contable" 
-                        className="w-full h-full object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105"
+                        fill
+                        sizes="(min-width: 1024px) 50vw, 100vw"
+                        className="object-cover absolute inset-0 transition-transform duration-700 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-tr from-background/60 to-transparent pointer-events-none z-10" />
                 </div>
@@ -292,7 +297,7 @@ export default function LandingPage() {
                         {/* Module Card 1 */}
                         <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
                             <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
-                                <img src="https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=600&q=80" alt="Nómina" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <Image src="https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=600&q=80" alt="Nómina" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
@@ -307,7 +312,7 @@ export default function LandingPage() {
                         {/* Module Card 2 */}
                         <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
                             <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
-                                <img src="https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=600&q=80" alt="Inventario" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <Image src="https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=600&q=80" alt="Inventario" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
@@ -322,7 +327,7 @@ export default function LandingPage() {
                         {/* Module Card 3 */}
                         <div className="bg-background rounded-3xl border border-border-default overflow-hidden transition-all hover:shadow-2xl hover:shadow-foreground/5 hover:-translate-y-2 group">
                             <div className="h-56 bg-surface-1 border-b border-border-default flex items-center justify-center relative overflow-hidden group-hover:bg-surface-2 transition-colors">
-                                <img src="https://images.unsplash.com/photo-1606857521015-7f9fcf423740?auto=format&fit=crop&w=600&q=80" alt="Documentos" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                <Image src="https://images.unsplash.com/photo-1606857521015-7f9fcf423740?auto=format&fit=crop&w=600&q=80" alt="Documentos" fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-105" />
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
@@ -372,7 +377,7 @@ export default function LandingPage() {
                         
                         {/* Real Image Portrait Cutout Simulation */}
                         <div className="absolute -bottom-6 -right-6 w-64 h-64 rounded-full border-8 border-primary-500/30 shadow-2xl overflow-hidden hidden md:block group-hover:scale-105 transition-transform duration-500">
-                            <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Profesional Ejecutiva" className="w-full h-full object-cover" />
+                            <Image src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Profesional Ejecutiva" fill sizes="256px" className="object-cover" />
                         </div>
 
                         <div className="relative z-10 w-full md:w-full lg:w-2/3">
@@ -579,10 +584,12 @@ export default function LandingPage() {
                     <div className="flex-1 w-full max-w-xl h-[500px] relative group">
                          {/* Real Support Agent Photograph */}
                          <div className="w-full h-full rounded-[40px] border border-border-light relative overflow-hidden flex flex-col items-center justify-end shadow-lg">
-                             <img 
+                             <Image 
                                 src="https://images.unsplash.com/photo-1590650516494-0c8e4a4dd67e?auto=format&fit=crop&w=600&q=80" 
                                 alt="Soporte Konta" 
-                                className="w-full h-full object-cover absolute inset-0 transition-transform duration-[1500ms] group-hover:scale-105"
+                                fill
+                                sizes="(min-width: 1024px) 40vw, 100vw"
+                                className="object-cover absolute inset-0 transition-transform duration-[1500ms] group-hover:scale-105"
                              />
                              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent pointer-events-none" />
                              

@@ -38,6 +38,7 @@ export async function GET(req: Request) {
                 priceQuarterlyUsd:      p.price_quarterly_usd,
                 priceAnnualUsd:         p.price_annual_usd,
                 isActive:               p.is_active,
+                isContactOnly:          p.is_contact_only ?? false,
                 productSlug:            product?.slug ?? null,
                 productName:            product?.name ?? null,
             };
@@ -57,39 +58,29 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json();
-        const { name, productSlug, priceMonthlyUsd } = body;
+        const { name, priceMonthlyUsd } = body;
 
-        if (!name || !productSlug || priceMonthlyUsd == null) {
+        if (!name || priceMonthlyUsd == null) {
             return Response.json(
-                { error: 'name, productSlug y priceMonthlyUsd son requeridos' },
+                { error: 'name y priceMonthlyUsd son requeridos' },
                 { status: 400 }
             );
         }
 
         const supabase = serviceClient();
 
-        // Resolve product_id from slug
-        const { data: product, error: productErr } = await supabase
-            .from('products')
-            .select('id, slug, name')
-            .eq('slug', productSlug)
-            .single();
-
-        if (productErr || !product) {
-            return Response.json({ error: 'Producto no encontrado' }, { status: 404 });
-        }
-
         const { data, error } = await supabase
             .from('plans')
             .insert({
                 name,
-                product_id:               product.id,
+                product_id:               null,
                 price_monthly_usd:        Number(priceMonthlyUsd),
-                price_quarterly_usd:      body.priceQuarterlyUsd != null ? Number(body.priceQuarterlyUsd) : null,
-                price_annual_usd:         body.priceAnnualUsd    != null ? Number(body.priceAnnualUsd)    : null,
+                price_quarterly_usd:      body.priceQuarterlyUsd != null ? Number(body.priceQuarterlyUsd) : 0,
+                price_annual_usd:         body.priceAnnualUsd    != null ? Number(body.priceAnnualUsd)    : 0,
                 max_companies:            body.maxCompanies            != null ? Number(body.maxCompanies)            : null,
                 max_employees_per_company: body.maxEmployeesPerCompany != null ? Number(body.maxEmployeesPerCompany) : null,
                 is_active:                body.isActive ?? true,
+                is_contact_only:          body.isContactOnly ?? false,
             })
             .select()
             .single();
@@ -106,8 +97,9 @@ export async function POST(req: Request) {
                 priceQuarterlyUsd:      data.price_quarterly_usd,
                 priceAnnualUsd:         data.price_annual_usd,
                 isActive:               data.is_active,
-                productSlug:            product.slug,
-                productName:            product.name,
+                isContactOnly:          data.is_contact_only ?? false,
+                productSlug:            null,
+                productName:            null,
             },
         }, { status: 201 });
     } catch {

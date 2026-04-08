@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { employeesToCsv, downloadCsv, parseCsv } from "@/src/modules/payroll/frontend/utils/employee-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
@@ -104,10 +104,6 @@ const IconHistory = () => <Clock size={14} />;
 const IconExport = () => <Download size={14} />;
 const IconImport = () => <Upload size={14} />;
 const IconPaste = () => <Copy size={14} />;
-
-// Compact secondary toolbar button — shared via APP_SIZES.button.toolbarBtn.
-// Applied directly as className when the element must be a <label> (file input trigger).
-const toolbarBtn = APP_SIZES.button.toolbarBtn;
 
 // ============================================================================
 // EMPLOYEE ROW
@@ -532,7 +528,7 @@ export default function EmployeesPage() {
 
     const handleExport = useCallback(() => {
         if (!employees.length) return;
-        downloadCsv(employeesToCsv(employees), `empleados_${new Date().toISOString().split("T")[0]}.csv`);
+        downloadCsv(employeesToCsv(employees), `empleados_${getTodayIsoDate()}.csv`);
     }, [employees]);
 
     const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {

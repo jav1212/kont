@@ -3,11 +3,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck, ChevronDown, Clock, AlertCircle } from "lucide-react";
+import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck, ChevronDown, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { computePrestaciones } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
 import { generatePrestacionesPdf, generateInteresesAnticipoPdf } from "@/src/modules/payroll/frontend/utils/prestaciones-pdf";
 
@@ -29,7 +30,11 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function isoToday(): string { return new Date().toISOString().split("T")[0]; }
+function isoToday(): string { return getTodayIsoDate(); }
+
+function getErrorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
 
 function formatDateES(iso: string): string {
     if (!iso) return "—";
@@ -95,8 +100,6 @@ function CalcRow({ label, formula, value, accent, dim }: {
     );
 }
 
-function Hr() { return <div className="border-t border-border-light my-2" />; }
-
 // ============================================================================
 // RIGHT PANEL — Constancia Art. 142
 // ============================================================================
@@ -147,9 +150,9 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
         try {
             setDownloadingFull(true);
             await generatePrestacionesPdf(pdfBase);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert("Error al descargar: " + (err?.message || String(err)));
+            alert("Error al descargar: " + getErrorMessage(err));
         } finally {
             setDownloadingFull(false);
         }
@@ -158,9 +161,9 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
         try {
             setDownloadingInt(true);
             await generateInteresesAnticipoPdf(pdfBase);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert("Error al descargar: " + (err?.message || String(err)));
+            alert("Error al descargar: " + getErrorMessage(err));
         } finally {
             setDownloadingInt(false);
         }
@@ -420,7 +423,6 @@ export default function PrestacionesPage() {
     const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.saldoFavor ?? 0), 0), [results]);
 
     const salarioVES   = parseFloat(salarioOverride) || 0;
-    const fechaIngreso = selectedEmp?.fechaIngreso ?? manualIngreso;
     const calc = results.length === 1 ? results[0].calc : null;
 
     const [exportingLote, setExportingLote] = useState(false);
@@ -461,9 +463,9 @@ export default function PrestacionesPage() {
                     showLogoInPdf: company?.showLogoInPdf,
                 });
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            alert("Error al exportar: " + (err?.message || String(err)));
+            alert("Error al exportar: " + getErrorMessage(err));
         } finally {
             setExportingLote(false);
         }

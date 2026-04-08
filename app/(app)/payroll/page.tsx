@@ -17,6 +17,7 @@ import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import { usePayrollSettings } from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import type {
     PdfVisibility,
     OvertimeDefaults,
@@ -269,21 +270,18 @@ export default function PayrollCalculator() {
     const [monthlySalary, setMonthlySalary] = useState("130.00");
 
     // ── BCV fetch ──────────────────────────────────────────────────────────
-    const [bcvDate, setBcvDate] = useState(() => new Date().toISOString().split("T")[0]);
+    const [bcvDate, setBcvDate] = useState(() => getTodayIsoDate());
     const [bcvLoading, setBcvLoading] = useState(false);
     const [bcvFetchError, setBcvFetchError] = useState<string | null>(null);
-    const [bcvFetchedDate, setBcvFetchedDate] = useState<string | null>(null);
 
     const fetchBcvRate = useCallback(async () => {
         setBcvLoading(true);
         setBcvFetchError(null);
-        setBcvFetchedDate(null);
         try {
             const res = await fetch(`/api/bcv/rate?date=${bcvDate}`);
             const data = await res.json();
             if (!res.ok) { setBcvFetchError(data.error ?? "Error al consultar."); return; }
             setExchangeRate(String(data.rate));
-            setBcvFetchedDate(data.date);
         } catch {
             setBcvFetchError("No se pudo conectar con la API BCV.");
         } finally {
@@ -739,7 +737,7 @@ export default function PayrollCalculator() {
                                 <input
                                     type="date"
                                     value={bcvDate}
-                                    max={new Date().toISOString().split("T")[0]}
+                                    max={getTodayIsoDate()}
                                     onChange={(e) => { setBcvDate(e.target.value); setBcvFetchError(null); setBcvFetchedDate(null); }}
                                     className={fieldCls + " flex-1 text-[12px] px-2.5"}
                                     title="Fecha sugerida"

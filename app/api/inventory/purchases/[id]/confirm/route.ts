@@ -6,16 +6,17 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId }) => {
+export const POST = withTenant(async (req, { userId, actingAs }) => {
     // URL pattern: /api/inventory/purchases/[id]/confirm
     const segments  = new URL(req.url).pathname.split('/');
     const invoiceId = segments[segments.length - 2];
-    const result    = await getInventoryActions(userId).confirmPurchaseInvoice.execute({ invoiceId });
+    const ownerId   = actingAs?.ownerId ?? userId;
+    const result    = await getInventoryActions(ownerId).confirmPurchaseInvoice.execute({ invoiceId });
 
     // Non-blocking: trigger accounting integration after successful confirmation.
     if (result.isSuccess) {
         const invoice = result.getValue();
-        await getAccountingActions(userId).processInventoryPurchaseIntegration.execute({
+        await getAccountingActions(ownerId).processInventoryPurchaseIntegration.execute({
             companyId:  invoice.companyId,
             invoiceId:  invoice.id ?? invoiceId,
             date:       invoice.date,

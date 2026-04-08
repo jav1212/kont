@@ -14,8 +14,7 @@ import {
     Share2,
     Heart,
     Sparkles,
-    Zap,
-    Check
+    Zap
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -27,15 +26,6 @@ const ERROR_MESSAGES: Record<string, string> = {
     email_mismatch: "El email de la invitación no coincide con tu cuenta.",
     server:         "Ocurrió un error en el servidor. Intenta de nuevo.",
 };
-
-const INPUT_CLS = [
-    "w-full h-11 px-4 rounded-xl",
-    "bg-surface-2 border border-border-medium hover:border-border-default",
-    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    "transition-all duration-200",
-].join(" ");
 
 function AcceptInviteVisual() {
     return (
@@ -81,6 +71,19 @@ function AcceptInviteVisual() {
     );
 }
 
+function PageWrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+            <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 lg:px-20 overflow-y-auto hidden-scrollbar">
+                <div className="w-full max-w-[400px]">
+                    {children}
+                </div>
+            </div>
+            <AcceptInviteVisual />
+        </div>
+    );
+}
+
 function AcceptInviteInner() {
     const searchParams = useSearchParams();
     const router       = useRouter();
@@ -108,18 +111,6 @@ function AcceptInviteInner() {
         acceptingRef.current = true;
         router.replace(`/api/memberships/accept?token=${token}`);
     }, [authLoading, token, isAuthenticated, status, router]);
-
-    // Layout Wrapper
-    const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
-            <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 lg:px-20 overflow-y-auto hidden-scrollbar">
-                <div className="w-full max-w-[400px]">
-                    {children}
-                </div>
-            </div>
-            <AcceptInviteVisual />
-        </div>
-    );
 
     if (status === "error" || errorMsg) {
         return (

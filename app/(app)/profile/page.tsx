@@ -1,6 +1,7 @@
 "use client";
  
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -115,7 +116,7 @@ export default function ProfilePage() {
                                         >
                                             <div className="w-full h-full rounded-full overflow-hidden bg-primary-500/10 flex items-center justify-center relative">
                                                 {avatarUrl ? (
-                                                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                                                    <Image src={avatarUrl} alt="Avatar" fill unoptimized sizes="96px" className="object-cover transition-transform duration-300 group-hover:scale-110" />
                                                 ) : (
                                                     <span className="font-mono text-3xl font-bold text-primary-400 uppercase">
                                                         {(user?.email?.[0] ?? "?").toUpperCase()}

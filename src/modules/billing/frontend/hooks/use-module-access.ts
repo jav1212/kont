@@ -52,3 +52,35 @@ export function invalidateModuleAccessCache() {
     cache = null;
     cachePromise = null;
 }
+
+// ── Plan name hook ─────────────────────────────────────────────────────────────
+
+let planCache: string | null | undefined = undefined;
+let planCachePromise: Promise<string | null> | null = null;
+
+async function fetchPlanName(): Promise<string | null> {
+    if (planCache !== undefined) return planCache;
+    if (!planCachePromise) {
+        planCachePromise = fetch("/api/billing/tenant")
+            .then((r) => r.json())
+            .then((r) => {
+                planCache = r.data?.plan?.name ?? null;
+                return planCache!;
+            })
+            .catch(() => {
+                planCachePromise = null;
+                return null;
+            });
+    }
+    return planCachePromise;
+}
+
+export function usePlanName(): string | null {
+    const [planName, setPlanName] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchPlanName().then(setPlanName);
+    }, []);
+
+    return planName;
+}

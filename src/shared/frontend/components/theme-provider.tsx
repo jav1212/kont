@@ -27,16 +27,16 @@ function applyTheme(t: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>("dark");
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === "undefined") return "dark";
+        const stored = localStorage.getItem("kont-theme") as Theme | null;
+        if (stored) return stored;
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    });
 
     useEffect(() => {
-        const stored = localStorage.getItem("kont-theme") as Theme | null;
-        const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        const initial = stored ?? system;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-only init (localStorage/matchMedia); runs once on mount
-        setTheme(initial);
-        applyTheme(initial);
-    }, []);
+        applyTheme(theme);
+    }, [theme]);
 
     function toggleTheme() {
         const next = theme === "dark" ? "light" : "dark";

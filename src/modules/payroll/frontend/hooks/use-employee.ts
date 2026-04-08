@@ -31,13 +31,6 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         setLoading(false);
     }, [companyId]);
 
-    // Clear employees on render when companyId is removed (render-phase update).
-    const [lastCompanyId, setLastCompanyId] = useState(companyId);
-    if (lastCompanyId !== companyId) {
-        setLastCompanyId(companyId);
-        if (!companyId) setEmployees([]);
-    }
-
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
         if (companyId) reload();
@@ -78,5 +71,13 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         return { history: (json.data as SalaryHistoryEntry[]) ?? [], error: null };
     }, []);
 
-    return { employees, loading, error, reload, upsert, remove, getSalaryHistory };
+    return {
+        employees: companyId ? employees : [],
+        loading: companyId ? loading : false,
+        error: companyId ? error : null,
+        reload,
+        upsert,
+        remove,
+        getSalaryHistory,
+    };
 }

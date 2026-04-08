@@ -4,28 +4,31 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const GET = withTenant(async (req, { userId }) => {
+export const GET = withTenant(async (req, { userId, actingAs }) => {
     // URL pattern: /api/inventory/purchases/[id]
     const segments = new URL(req.url).pathname.split('/');
     const id       = segments[segments.length - 1];
-    const result   = await getInventoryActions(userId).getPurchaseInvoice.execute({ invoiceId: id });
+    const ownerId  = actingAs?.ownerId ?? userId;
+    const result   = await getInventoryActions(ownerId).getPurchaseInvoice.execute({ invoiceId: id });
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { userId }) => {
+export const DELETE = withTenant(async (req, { userId, actingAs }) => {
     const segments = new URL(req.url).pathname.split('/');
     const id       = segments[segments.length - 1];
-    const result   = await getInventoryActions(userId).deletePurchaseInvoice.execute({ invoiceId: id });
+    const ownerId  = actingAs?.ownerId ?? userId;
+    const result   = await getInventoryActions(ownerId).deletePurchaseInvoice.execute({ invoiceId: id });
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId }) => {
+export const POST = withTenant(async (req, { userId, actingAs }) => {
     const segments = new URL(req.url).pathname.split('/');
     const id       = segments[segments.length - 1];
     const body     = await req.json();
     const { invoice, items } = body;
     if (!invoice || !items) return Response.json({ error: 'invoice e items son requeridos' }, { status: 400 });
-    const result = await getInventoryActions(userId).savePurchaseInvoice.execute({
+    const ownerId = actingAs?.ownerId ?? userId;
+    const result = await getInventoryActions(ownerId).savePurchaseInvoice.execute({
         invoice: { ...invoice, id },
         items,
     });

@@ -1,50 +1,89 @@
 ---
 name: Billing Page UX Patterns
-description: UX review findings for the billing page (2026-03-29) — upsell card visibility bug, cycle stale state, label/htmlFor gap, raw color tokens in banners
+description: UX review findings for the billing page — plan comparison grid, interaction design, accessibility, color conventions
 type: project
 ---
 
-## Critical: upsell cards invisible to zero-subscription users
+## Review 2026-04-08 — Plan comparison grid added (5-card layout)
 
-Both inventory and accounting upsell cards are wrapped inside `{subscriptions.length > 0 && ...}`.
-A brand-new user with no subscriptions sees no upsell cards — the highest-value moment is missed.
+### Critical: xl:grid-cols-5 produces ~180px cards at 1280px viewport
 
-**Why:** The upsell cards were added inside the "Módulos activos" guard block rather than as a parallel section.
+At 1280px (xl breakpoint), 5 cards in a 5-column grid with gap-3 = roughly 180px per card. The featured Emprendedor
+card has a 22px bold price, feature list, and CTA at 11px text. At 180px wide that price wraps, the feature labels
+clip, and the CTA button is barely tappable. The intermediate lg:grid-cols-3 breakpoint is correct, but the jump
+to 5 columns at xl is too aggressive. A 2→3→4→5 progression is safer with xl needing wider container (max-w-6xl
+minimum) or settling at 4 columns max.
 
-**How to apply:** The section heading "Módulos activos" can be conditional, but upsell cards must render regardless of whether any subscriptions exist.
+**Why:** Card content (price, feature list at 11px, CTA) has a minimum readable width of ~200px. At gap-3 (12px),
+5 columns in max-w-4xl (896px) = (896 - 48)/5 = ~169px. That is narrower than the minimum.
 
-## Critical: stale selCycle state when plan changes
+**How to apply:** Change `max-w-4xl` on the page wrapper to `max-w-6xl`, or cap at `xl:grid-cols-4` and let
+Empresarial's "Contáctanos" card be the odd one out. Also add `min-w-[160px]` to each card as a floor.
 
-When the user switches selPlanId to a plan with no quarterly/annual pricing, selCycle may retain a stale value ("quarterly"/"annual"). The cycle options disappear from the DOM but state is not reset. planPrice() silently falls back to monthly, so the displayed amount mismatches the user's belief about what cycle they are paying for.
+### Critical: "Seleccionar" button is a raw `<button>` — not BaseButton
 
-Fix: reset selCycle to "monthly" whenever selPlanId changes.
+The CTA button in plan cards uses a handwritten `<button>` with manual hover classes, bypassing BaseButton.Root.
+This means it has no focus-visible ring, no loading state prop, and cannot accept the `loading` flag if async
+state is ever added. The "Contáctanos" `<a>` and "Activo" `<div>` CTAs also lack keyboard focus rings.
 
-## Accessibility: form labels not programmatically linked
+**How to apply:** Replace with `<BaseButton.Root variant="primary" size="sm" fullWidth>Seleccionar</BaseButton.Root>`.
+For the "Activo" display state, use `<BaseButton.Root variant="secondary" size="sm" fullWidth isDisabled>`.
+For "Contáctanos", use `<BaseButton.Root as="a" href="mailto:..." variant="outline" size="sm" fullWidth>`.
 
-All labels in the payment form use proximity-based association only — no htmlFor/id pairs. Screen readers will not associate labels with inputs. Every label needs `htmlFor="field-id"` and every control needs a matching `id`.
+### Critical: Gratuito plan has no CTA — leaves users with a blank card bottom
 
-## Accessibility: icon-only close button missing aria-label
+`plan.priceMonthlyUsd === 0 ? null` renders nothing in the CTA slot. If the user is on a paid plan and wants
+to downgrade to Gratuito, there is no affordance. Even for new users, an empty card bottom breaks visual rhythm.
 
-The close (X) button on the payment form has no accessible name. Add `aria-label="Cerrar formulario de pago"`.
+**How to apply:** Add `<BaseButton.Root variant="ghost" size="sm" fullWidth onClick={() => openFormForPlan(plan.id)}>Seleccionar</BaseButton.Root>`
+for Gratuito — or at minimum a placeholder `<div className="h-8" />` to maintain card height consistency.
 
-## Color token: success/error banners use raw Tailwind values
+### Issue: Both "Popular" and "Plan Actual" banners can render simultaneously
 
-Success banner (submitOk): `border-green-500/20 bg-green-500/[0.05] text-green-500` — should use `badge-success` + `text-text-success`.
-Error banner (dataError): same pattern with `red-500` — should use `badge-error` + `text-text-error`.
-`text-green-500` and `text-red-500` are overridden in globals.css but the bg/border values are not.
+If the user is on the Emprendedor plan, both the "Popular" banner and the "Plan Actual" banner render stacked
+at the top of that card (isFeatured AND isCurrent are both true). Two colored bars in a 180px card is visually
+broken. "Plan Actual" should always win — suppress "Popular" when isCurrent.
 
-## Color token: "No activo" badge uses --text-disabled (3.0:1, fails WCAG AA)
+**How to apply:** `{isFeatured && !isCurrent && <div ...>Popular</div>}`
 
-Both upsell card "No activo" badges use `text-[var(--text-disabled)]` which is documented as decorative-only (3.0:1).
-Fix: use `text-[var(--text-tertiary)]` (5.62:1).
+### Issue: Payment form is inline (AnimatePresence) but has no scroll-into-view behavior
+
+The form appears below the plan grid via AnimatePresence. On small screens, users click "Seleccionar" and nothing
+appears to happen because the form renders below the fold. No `scrollIntoView` or focus trap — users are left
+confused.
+
+**How to apply:** After `setFormOpen(true)` in `openFormForPlan`, call `formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })`.
+Alternatively, move to a Modal/Drawer (HeroUI Modal) which auto-focuses and is always in-viewport.
+
+### Issue: Page title text-foreground/70 and text-foreground/40 violate the no-opacity rule
+
+Line 248: `text-foreground/70` (h2 heading) — overridden by globals.css to --text-tertiary but semantically
+should be `text-text-secondary` for a heading.
+Line 249: `text-foreground/40` (subtitle) — overridden to --text-tertiary which is correct, but explicit token
+should be used.
+
+### Issue: Amount display field has no htmlFor/id — "Monto a pagar" label is unlinked
+
+The read-only amount `<div>` (line 534) has no id attribute, and its `<label>` has no htmlFor. It is a `<div>`
+not an `<input>` — correct approach is `aria-label` on the div or wrap with role="status".
+
+### Stale pattern (from 2026-03-29 review — now fixed)
+
+- htmlFor/id pairs: now present on Plan, Ciclo, Método selects — good.
+- selCycle reset on plan change: `openFormForPlan` calls `setSelCycle("monthly")` — fixed.
+- Badge classes: STATUS_CLS uses `badge-success` / `badge-error` / `badge-warning` correctly.
+- Success/error banners use `badge-success` + `text-text-success` / `badge-error` + `text-text-error` — fixed.
 
 ## Good patterns established in this page
 
-- Dashed border + text-disabled combination correctly communicates "not yet active" without relying on color alone
-- Icon SVG attrs (viewBox, strokeWidth, strokeLinecap, strokeLinejoin) are consistent across all three product icons — same optical weight
-- optgroup grouping of plans by module is the semantically correct HTML choice
-- selCycle dynamically shows/hides quarterly/annual options based on selectedPlan — error prevention via constraint
-- loadAll uses Promise.all for four concurrent initial fetches
-- Submit button shows Spinner + label change during async op, with disabled guard
-- formatDate uses es-VE locale (correct)
+- Promise.all for three concurrent initial fetches
+- `loadAll` wrapped in useCallback to avoid re-creation
+- `formatDate` uses es-VE locale
+- `tabular-nums` on all monetary and date values
 - History table uses semantic table/thead/tbody (not div soup)
+- STATUS_CLS and STATUS_LABEL maps are clean, extensible
+- `motion.div` stagger (delay: index * 0.06) on plan cards creates smooth cascade entrance
+- `overflow-x-auto` on the history table prevents horizontal page scroll
+- `admin_note` progressive disclosure via `line-clamp-1 group-hover:line-clamp-none` is a solid pattern
+- Capacity progress bar uses `Math.min(100, ...)` — correctly caps the bar at 100%
+- Custom SVG spinner is lightweight and consistent with the design system

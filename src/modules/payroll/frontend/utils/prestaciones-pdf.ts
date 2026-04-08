@@ -148,7 +148,7 @@ export async function generatePrestacionesPdf(data: PrestacionesPdfData): Promis
     fill(doc, 0, 0, PW, PH, C.bg);
 
     // ── Header ────────────────────────────────────────────────────────────
-    let topY = 20;
+    const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
         t(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);
@@ -297,7 +297,7 @@ export async function generateInteresesAnticipoPdf(data: PrestacionesPdfData): P
     fill(doc, 0, 0, PW, PH, C.bg);
 
     // ── Header ────────────────────────────────────────────────────────────
-    let topY = 20;
+    const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
         t(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);

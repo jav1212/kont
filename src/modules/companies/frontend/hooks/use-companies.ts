@@ -113,19 +113,11 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         setLoading(false);
     }, [user, activeTenantId]);
 
-    // Clear companies on render when user signs out (render-phase update avoids
-    // multiple synchronous setState calls inside an effect body).
-    const [lastAuthKey, setLastAuthKey] = useState(`${isAuthenticated}|${user?.id ?? ""}`);
-    const currentAuthKey = `${isAuthenticated}|${user?.id ?? ""}`;
-    if (lastAuthKey !== currentAuthKey) {
-        setLastAuthKey(currentAuthKey);
+    useEffect(() => {
         if (!isAuthenticated || !user?.id) {
             if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
-            setCompanies([]);
-            setSelectedCompanyId(null);
-            setLoading(false);
         }
-    }
+    }, [isAuthenticated, user?.id]);
 
     useEffect(() => {
         if (isAuthenticated && user?.id) {
@@ -169,11 +161,22 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         localStorage.setItem(STORAGE_KEY, id);
     }, []);
 
-    const selectedCompany = companies.find((c) => c.id === selectedCompanyId) ?? null;
+    const hasSession = isAuthenticated && !!user?.id;
+    const visibleCompanies = hasSession ? companies : [];
+    const visibleCompanyId = hasSession ? selectedCompanyId : null;
+    const selectedCompany = visibleCompanies.find((c) => c.id === visibleCompanyId) ?? null;
 
     return {
-        companies, company: selectedCompany, companyId: selectedCompanyId,
-        loading, error, reload, selectCompany, save, update, remove,
+        companies: visibleCompanies,
+        company: selectedCompany,
+        companyId: visibleCompanyId,
+        loading: hasSession ? loading : false,
+        error: hasSession ? error : null,
+        reload,
+        selectCompany,
+        save,
+        update,
+        remove,
     };
 }
 

@@ -26,6 +26,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         'price_quarterly_usd',
         'price_annual_usd',
         'is_active',
+        'is_contact_only',
         'product_id',
     ];
 
@@ -38,6 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         priceQuarterlyUsd:      'price_quarterly_usd',
         priceAnnualUsd:         'price_annual_usd',
         isActive:               'is_active',
+        isContactOnly:          'is_contact_only',
         productId:              'product_id',
     };
 
@@ -90,6 +92,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             priceQuarterlyUsd:      data.price_quarterly_usd,
             priceAnnualUsd:         data.price_annual_usd,
             isActive:               data.is_active,
+            isContactOnly:          data.is_contact_only ?? false,
             productSlug:            product?.slug ?? null,
             productName:            product?.name ?? null,
         },

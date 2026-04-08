@@ -10,7 +10,8 @@ export interface Plan {
 
 // Plan returned by the public plans listing — includes the associated module slug.
 export interface PlanWithModule extends Plan {
-    moduleSlug: string | null;
+    moduleSlug:    string | null;
+    isContactOnly: boolean;
 }
 
 export type TenantStatus   = 'trial' | 'active' | 'suspended';

@@ -17,6 +17,7 @@ import {
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import { generateVacComplletasPdf, generateVacFraccionadasPdf } from "@/src/modules/payroll/frontend/utils/vacaciones-pdf";
 
@@ -38,19 +39,26 @@ const fieldCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
-function isoToday(): string { return new Date().toISOString().split("T")[0]; }
+function isoToday(): string { return getTodayIsoDate(); }
+
+function localIso(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
 function addCalDays(iso: string, n: number): string {
     const d = new Date(iso + "T00:00:00");
     d.setDate(d.getDate() + n);
-    return d.toISOString().split("T")[0];
+    return localIso(d);
 }
 
 function nextWorkingDay(iso: string): string {
     const d = new Date(iso + "T00:00:00");
     d.setDate(d.getDate() + 1);
     while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0];
+    return localIso(d);
 }
 
 function calcAniosAt(fechaIngreso: string, refDate: string): number {
@@ -66,7 +74,7 @@ function getAniversario(fechaIngreso: string, n: number): string {
     const [y, m, d] = fechaIngreso.split("-").map(Number);
     const date = new Date(y + n, m - 1, d);
     if (date.getDate() !== d) date.setDate(0); // overflow → last day of prev month
-    return date.toISOString().split("T")[0];
+    return localIso(date);
 }
 
 /** Complete calendar months between two ISO dates */
@@ -89,11 +97,11 @@ function calculateCulminacion(fechaInicio: string, diasHabilesNeeded: number): s
     let counted = 0;
     while (counted < diasHabilesNeeded) {
         const wd = cur.getDay();
-        const iso = cur.toISOString().split("T")[0];
+        const iso = localIso(cur);
         if (wd !== 0 && wd !== 6 && !holidays.has(iso)) counted++;
         if (counted < diasHabilesNeeded) cur.setDate(cur.getDate() + 1);
     }
-    return cur.toISOString().split("T")[0];
+    return localIso(cur);
 }
 
 function getDiasCalendario(inicio: string, fin: string): number {
@@ -113,7 +121,7 @@ function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
     const end = new Date(culminacion + "T00:00:00");
     while (cur <= end) {
         const wd = cur.getDay();
-        const iso = cur.toISOString().split("T")[0];
+        const iso = localIso(cur);
         if (wd === 0 || wd === 6 || holSet.has(iso)) { descanso++; } else { habiles++; }
         cur.setDate(cur.getDate() + 1);
     }
@@ -247,8 +255,6 @@ function CalcRow({ label, formula, value, accent, dim }: {
         </div>
     );
 }
-
-function Hr() { return <div className="border-t border-border-light my-2" />; }
 
 // ============================================================================
 // RIGHT PANEL — Constancia Completa  (PDF-faithful preview)
@@ -640,22 +646,29 @@ export default function VacacionesPage() {
     const [bcvError, setBcvError] = useState<string | null>(null);
     const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
 
-    const fetchBcvRate = useCallback(() => {
+    const fetchBcvRate = useCallback(async () => {
+        await Promise.resolve();
         setBcvLoading(true);
-        fetch(`/api/bcv/rate?date=${isoToday()}`)
-            .then(r => r.json())
-            .then(d => { 
-                const rate = d.price || d.rate;
-                if (rate) { 
-                    setExchangeRate(rate.toFixed(2)); 
-                    setBcvError(null); 
-                } else setBcvError("No disponible"); 
-            })
-            .catch(() => setBcvError("Error al obtener tasa"))
-            .finally(() => setBcvLoading(false));
+        try {
+            const response = await fetch(`/api/bcv/rate?date=${isoToday()}`);
+            const data = await response.json();
+            const rate = data.price || data.rate;
+            if (rate) {
+                setExchangeRate(rate.toFixed(2));
+                setBcvError(null);
+            } else {
+                setBcvError("No disponible");
+            }
+        } catch {
+            setBcvError("Error al obtener tasa");
+        } finally {
+            setBcvLoading(false);
+        }
     }, []);
 
-    useEffect(() => { fetchBcvRate(); }, [fetchBcvRate]);
+    useEffect(() => {
+        void fetchBcvRate();
+    }, [fetchBcvRate]);
 
     // ── Global Params ────────────────────────────────────────────────────────
     const todayStr = isoToday();
@@ -665,7 +678,7 @@ export default function VacacionesPage() {
     // Override states for manual date tweaking (optional, but keep for UI compatibility)
     const [fechaCulminacion, setFechaCulminacion] = useState("");
     const [fechaReintegro, setFechaReintegro] = useState("");
-    const [userEditedCulm, setUserEditedCulm] = useState(false);
+    const [, setUserEditedCulm] = useState(false);
     const [userEditedReint, setUserEditedReint] = useState(false);
 
     // ── Shared derived ───────────────────────────────────────────────────────
@@ -686,8 +699,6 @@ export default function VacacionesPage() {
         }
     }
 
-    const salarioVES = parseFloat(salarioOverride) || 0;
-    const fechaIngreso = selectedEmp?.fechaIngreso ?? manualIngreso;
 
     // ── BATCH PROCESSING ─────────────────────────────────────────────────────
     const filtered = useMemo(() => {

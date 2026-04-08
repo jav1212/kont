@@ -4,7 +4,7 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const GET = withTenant(async (req, { userId }) => {
+export const GET = withTenant(async (req, { userId, actingAs }) => {
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get('companyId');
     const yearStr   = searchParams.get('year');
@@ -12,6 +12,7 @@ export const GET = withTenant(async (req, { userId }) => {
     if (!yearStr)   return Response.json({ error: 'year es requerido' },       { status: 400 });
     const year = parseInt(yearStr, 10);
     if (isNaN(year)) return Response.json({ error: 'year inválido' }, { status: 400 });
-    const result = await getInventoryActions(userId).getInventoryLedger.execute({ companyId, year });
+    const ownerId = actingAs?.ownerId ?? userId;
+    const result = await getInventoryActions(ownerId).getInventoryLedger.execute({ companyId, year });
     return handleResult(result);
 });

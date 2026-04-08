@@ -5,6 +5,7 @@
 // Business UI is delegated to TenantSwitcher, SidebarCompanySelector, SidebarModuleSelector,
 // and SidebarSubnav. This file contains only structural and state concerns.
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,13 +13,13 @@ import { APP_MODULES, MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { useModuleAccess } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import { useModuleAccess, usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { PWAInstallButton } from "@/src/shared/frontend/components/pwa-install-button";
 import { TenantSwitcher } from "@/src/modules/memberships/frontend/components/tenant-switcher";
-import { LogoFull, LogoMark } from "@/src/shared/frontend/components/logo";
+import { LogoMark } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
 import { SidebarModuleSelector } from "@/src/shared/frontend/components/sidebar-module-selector";
@@ -26,39 +27,9 @@ import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
 
 // ── Small icon helpers (used only inside this file) ────────────────────────────
 
-const SunIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="6.5" cy="6.5" r="2.5" />
-        <path d="M6.5 1v1M6.5 11v1M1 6.5h1M11 6.5h1M2.9 2.9l.7.7M9.4 9.4l.7.7M2.9 10.1l.7-.7M9.4 3.6l.7-.7" />
-    </svg>
-);
-
-const MoonIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M11 7.5A5 5 0 0 1 5.5 2a5 5 0 1 0 5.5 5.5z" />
-    </svg>
-);
-
-const CollapseIcon = ({ collapsed }: { collapsed: boolean }) => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {collapsed
-            ? <path d="M3 2.5l4 4-4 4M9 6.5H7" />
-            : <path d="M10 2.5l-4 4 4 4M4 6.5h2" />
-        }
-    </svg>
-);
-
 const SignOutIcon = () => (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 1H2a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M9 9l3-3-3-3M12 6.5H5" />
-    </svg>
-);
-
-const MembersIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="5" cy="4" r="2.5" />
-        <path d="M1 11c0-2.2 1.8-4 4-4s4 1.8 4 4" />
-        <path d="M10 5v4M12 7H8" />
     </svg>
 );
 
@@ -75,9 +46,6 @@ const NAV_ITEM_ACTIVE =
     "text-sidebar-active-fg bg-sidebar-active-bg/40 border-transparent shadow-sm";
 
 // Icon-only button for the collapsed bottom section
-const ICON_BTN =
-    "flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
 const STORAGE_WIDTH = "sidebar-width";
@@ -105,25 +73,20 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const router = useRouter();
 
     const { signOut } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    useTheme();
     const { companies, companyId, selectCompany, loading: companyLoading } = useCompany();
     const { hasAccess: hasInventory } = useModuleAccess("inventory");
     const { hasAccess: hasPayroll } = useModuleAccess("payroll");
     const { hasAccess: hasAccounting } = useModuleAccess("accounting");
-    const { activeTenantRole } = useActiveTenantContext();
+    useActiveTenantContext();
     const { profile, email: userEmail } = useProfile();
+    const planName = usePlanName();
     const isDesktop = useIsDesktop();
 
     // ── Collapsed rail (desktop only) ─────────────────────────────────────────
     const [collapsed, setCollapsed] = useState<boolean>(false);
 
     const isCollapsed = collapsed && isDesktop;
-
-    function handleToggleCollapse() {
-        const next = !collapsed;
-        setCollapsed(next);
-        localStorage.setItem(STORAGE_COLLAPSED, String(next));
-    }
 
     // ── Module selection ──────────────────────────────────────────────────────
     const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
@@ -236,8 +199,6 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     // ── Render ────────────────────────────────────────────────────────────────
 
     const profileActive = pathname.startsWith("/settings/profile");
-    const membersActive = pathname.startsWith("/settings/members");
-
     return (
         <aside
             aria-label="Navegación principal"
@@ -344,6 +305,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         email={userEmail}
                         active={profileActive}
                         isCollapsed={isCollapsed}
+                        planName={planName}
                     />
                 </Link>
 
@@ -384,16 +346,20 @@ function UserAvatar({ avatarUrl, email, size = 32 }: { avatarUrl?: string | null
     const initial = (email?.[0] ?? "?").toUpperCase();
     return (
         <div aria-hidden="true" style={{ width: size, height: size }}
-            className="rounded-full bg-primary-500/10 border border-primary-500/20 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+            className="relative rounded-full bg-primary-500/10 border border-primary-500/20 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
             {avatarUrl
-                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                ? <Image src={avatarUrl} alt="" fill unoptimized sizes="36px" className="object-cover" />
                 : <span className="font-mono text-xs font-bold text-primary-500 uppercase">{initial}</span>}
         </div>
     );
 }
 
-function ProfileSection({ profile, email, active, isCollapsed }: { profile: any; email?: string | null; active: boolean; isCollapsed: boolean }) {
+interface SidebarProfile {
+    name?: string | null;
+    avatarUrl?: string | null;
+}
+
+function ProfileSection({ profile, email, active, isCollapsed, planName }: { profile: SidebarProfile; email?: string | null; active: boolean; isCollapsed: boolean; planName?: string | null }) {
     if (isCollapsed) {
         return (
             <div className="relative flex justify-center py-2">
@@ -413,7 +379,7 @@ function ProfileSection({ profile, email, active, isCollapsed }: { profile: any;
                     {profile.name ?? email?.split("@")[0] ?? "Usuario"}
                 </p>
                 <p className="text-[10px] text-sidebar-label font-medium uppercase tracking-wider">
-                    Silver Level
+                    {planName ?? "—"}
                 </p>
             </div>
         </div>

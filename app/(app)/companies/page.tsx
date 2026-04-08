@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useRef, useCallback } from "react";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -10,6 +10,7 @@ import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/co
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import {
     Building2,
     Download,
@@ -36,10 +37,6 @@ const cellInput = [
     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
     "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
 ].join(" ");
-
-// Compact secondary toolbar button — shared via APP_SIZES.button.toolbarBtn.
-// Applied directly as className when the element must be a <label> (file input trigger).
-const toolbarBtn = APP_SIZES.button.toolbarBtn;
 
 // ============================================================================
 // ICONS
@@ -215,7 +212,7 @@ export default function CompaniesPage() {
 
     const handleExport = useCallback(() => {
         if (!filtered.length) return;
-        downloadCsv(companiesToCsv(filtered), `empresas_${new Date().toISOString().split("T")[0]}.csv`);
+        downloadCsv(companiesToCsv(filtered), `empresas_${getTodayIsoDate()}.csv`);
     }, [filtered]);
 
     // ── CSV import (file) ──────────────────────────────────────────────────
@@ -282,8 +279,6 @@ export default function CompaniesPage() {
         if (!iso) return "—";
         return new Date(iso).toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" });
     };
-
-    const tdCls = "px-4 py-3 border-b border-border-light/60 last:border-b-0";
 
     // ── Render ─────────────────────────────────────────────────────────────
 
@@ -515,10 +510,13 @@ export default function CompaniesPage() {
                                                                             ].join(" ")}
                                                                         >
                                                                             {editLogoUrl ? (
-                                                                                <img
+                                                                                <Image
                                                                                     src={editLogoUrl}
                                                                                     alt={`Logo`}
-                                                                                    className={["w-full h-full object-cover", logoUploading ? "opacity-30" : ""].join(" ")}
+                                                                                    fill
+                                                                                    unoptimized
+                                                                                    sizes="32px"
+                                                                                    className={["object-cover", logoUploading ? "opacity-30" : ""].join(" ")}
                                                                                 />
                                                                             ) : (
                                                                                 <span className="font-bold text-primary-500 text-[11px]">{editName[0] ?? "?"}</span>
@@ -554,7 +552,7 @@ export default function CompaniesPage() {
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface-2 border border-border-light/50 flex items-center justify-center shrink-0">
                                                                         {company.logoUrl ? (
-                                                                            <img src={company.logoUrl} alt={company.name} className="w-full h-full object-cover" />
+                                                                            <Image src={company.logoUrl} alt={company.name} fill unoptimized sizes="32px" className="object-cover" />
                                                                         ) : (
                                                                             <Building2 className="text-[var(--text-tertiary)]" size={14} strokeWidth={1.5} />
                                                                         )}

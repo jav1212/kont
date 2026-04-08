@@ -4,6 +4,7 @@
 // Manages its own open/search state; receives company data as props (business-agnostic).
 // Collapsed mode: avatar-only trigger, dropdown opens to the right of the rail.
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
@@ -14,14 +15,16 @@ function CompanyAvatar({ name, logoUrl }: { name?: string; logoUrl?: string | nu
     return (
         <div
             aria-hidden="true"
-            className="w-5 h-5 rounded-md bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0"
+            className="relative w-5 h-5 rounded-md bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0"
         >
             {logoUrl ? (
-                <img
+                <Image
                     src={logoUrl}
                     alt=""
-                    className="w-full h-full object-cover"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    fill
+                    unoptimized
+                    sizes="20px"
+                    className="object-cover"
                 />
             ) : (
                 <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>

@@ -105,7 +105,7 @@ function drawReceipt(doc: Doc, emp: LiquidacionEmployee, opts: LiquidacionOption
     fill(doc, 0, 0, PW, PH, C.bg);
 
     // ── HEADER ────────────────────────────────────────────────────────────
-    let topY = 20;
+    const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
         t(doc, opts.companyName.toUpperCase(), ML + 32, topY, 13, true, C.ink);

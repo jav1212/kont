@@ -9,13 +9,14 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => getTodayIsoDate();
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtN = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

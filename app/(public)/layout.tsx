@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { PublicHeader, PublicFooter } from "./_components/public-navigation";
 
 export const metadata: Metadata = {

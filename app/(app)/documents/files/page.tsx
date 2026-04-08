@@ -3,16 +3,11 @@
 import { useState, useCallback } from 'react';
 import { 
     Folders, 
-    FileText, 
-    Share2, 
-    Upload, 
     Menu, 
     X, 
-    Check, 
     Loader2, 
     AlertCircle,
     ChevronRight,
-    Search,
     Copy,
     CheckCircle2
 } from 'lucide-react';
@@ -88,7 +83,7 @@ export default function DocumentsPage() {
         } finally {
             setClientsLoading(false);
         }
-    }, [replicateFolders]);
+    }, []);
  
     function toggleClient(tenantId: string) {
         setSelectedClients((prev) => {

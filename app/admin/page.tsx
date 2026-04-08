@@ -52,6 +52,7 @@ interface PlanRow {
     priceQuarterlyUsd:      number;
     priceAnnualUsd:         number;
     isActive:               boolean;
+    isContactOnly:          boolean;
     productSlug:            string | null;
     productName:            string | null;
 }
@@ -70,14 +71,16 @@ interface SubscriptionRow {
 }
 
 interface TenantRow {
-    tenant_id:        string;
-    email:            string | null;
-    status:           string;
-    plan_name:        string | null;
-    total_companies:  number;
-    total_employees:  number;
-    created_at:       string;
+    tenant_id:         string;
+    email:             string | null;
+    status:            string;
+    plan_name:         string | null;
+    company_count:     number;
+    employee_count:    number;
+    created_at:        string;
     current_period_end: string | null;
+    member_count:      number;          // usuarios no-owner activos en este tenant
+    member_of_tenants: string | null;   // emails de tenants ajenos donde este usuario es miembro
 }
 
 // ============================================================================
@@ -151,20 +154,15 @@ export default function AdminPage() {
     const [planSaving,   setPlanSaving]   = useState(false);
     const [planSaveErr,  setPlanSaveErr]  = useState<string | null>(null);
     const [newPlanOpen,        setNewPlanOpen]        = useState(false);
-    const [newPlanDraft,       setNewPlanDraft]       = useState<Partial<PlanRow & { productSlug: string }>>({ productSlug: "payroll", isActive: true });
+    const [newPlanDraft,       setNewPlanDraft]       = useState<Partial<PlanRow>>({ isActive: true, isContactOnly: false });
     const [newPlanSaving,      setNewPlanSaving]      = useState(false);
     const [newPlanError,       setNewPlanError]       = useState<string | null>(null);
 
     // Subscriptions
-    const [subscriptions,       setSubscriptions]       = useState<SubscriptionRow[]>([]);
+    const [, setSubscriptions] = useState<SubscriptionRow[]>([]);
     const [subsLoaded,          setSubsLoaded]          = useState(false);
-    const [subActionId,         setSubActionId]         = useState<string | null>(null);
-    const [subActionStatus,     setSubActionStatus]     = useState("");
-    const [subActionPlanId,     setSubActionPlanId]     = useState("");
-    const [subActioning,        setSubActioning]        = useState(false);
-    const [subActionError,      setSubActionError]      = useState<string | null>(null);
     const [newSubTenantId,      setNewSubTenantId]      = useState("");
-    const [newSubProductSlug,   setNewSubProductSlug]   = useState("inventory");
+    const [newSubProductSlug] = useState("inventory");
     const [newSubStatus,        setNewSubStatus]        = useState("trial");
     const [newSubPlanId,        setNewSubPlanId]        = useState("");
     const [newSubSaving,        setNewSubSaving]        = useState(false);
@@ -267,7 +265,7 @@ export default function AdminPage() {
 
     // ── Create new plan ───────────────────────────────────────────────────
     const handleNewPlan = useCallback(async () => {
-        if (!newPlanDraft.name || !newPlanDraft.productSlug || newPlanDraft.priceMonthlyUsd == null) return;
+        if (!newPlanDraft.name || newPlanDraft.priceMonthlyUsd == null) return;
         setNewPlanSaving(true);
         setNewPlanError(null);
         const res = await fetch("/api/admin/plans", {
@@ -275,13 +273,13 @@ export default function AdminPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 name:                   newPlanDraft.name,
-                productSlug:            newPlanDraft.productSlug,
                 priceMonthlyUsd:        newPlanDraft.priceMonthlyUsd,
                 priceQuarterlyUsd:      newPlanDraft.priceQuarterlyUsd ?? null,
                 priceAnnualUsd:         newPlanDraft.priceAnnualUsd    ?? null,
                 maxCompanies:           newPlanDraft.maxCompanies       ?? null,
                 maxEmployeesPerCompany: newPlanDraft.maxEmployeesPerCompany ?? null,
                 isActive:               newPlanDraft.isActive ?? true,
+                isContactOnly:          newPlanDraft.isContactOnly ?? false,
             }),
         });
         const json = await res.json();
@@ -291,7 +289,7 @@ export default function AdminPage() {
         } else {
             setPlans((prev) => [...prev, json.data]);
             setNewPlanOpen(false);
-            setNewPlanDraft({ productSlug: "payroll", isActive: true });
+            setNewPlanDraft({ isActive: true, isContactOnly: false });
             setNewPlanError(null);
         }
     }, [newPlanDraft]);
@@ -309,29 +307,6 @@ export default function AdminPage() {
     }, [tab, subsLoaded, loadSubscriptions]);
 
     // ── Update subscription status ────────────────────────────────────────
-    const handleSubStatus = useCallback(async (id: string) => {
-        setSubActioning(true);
-        setSubActionError(null);
-        const res = await fetch(`/api/admin/subscriptions/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                status: subActionStatus,
-                ...(subActionPlanId ? { planId: subActionPlanId } : {}),
-            }),
-        });
-        const json = await res.json();
-        setSubActioning(false);
-        if (!res.ok) {
-            setSubActionError(json.error ?? "Error al actualizar.");
-        } else {
-            setSubActionId(null);
-            setSubActionStatus("");
-            setSubActionPlanId("");
-            setSubActionError(null);
-            await loadSubscriptions();
-        }
-    }, [subActionStatus, subActionPlanId, loadSubscriptions]);
 
     // ── Create subscription ───────────────────────────────────────────────
     const handleNewSub = useCallback(async () => {
@@ -360,6 +335,7 @@ export default function AdminPage() {
             setTimeout(() => setNewSubOk(false), 3000);
         }
     }, [newSubTenantId, newSubProductSlug, newSubStatus, newSubPlanId, loadSubscriptions]);
+    void handleNewSub;
 
     // ── Load admins (lazy, solo cuando se abre la pestaña) ───────────────
     const loadAdmins = useCallback(async () => {
@@ -658,7 +634,7 @@ export default function AdminPage() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border-light bg-surface-2">
-                                            {["Tenant ID", "Email", "Plan", "Estado", "Empresas", "Empleados", "Período fin", ""].map((h) => (
+                                            {["Tenant ID", "Email", "Plan", "Estado", "Empresas", "Empleados", "Miembros", "Período fin", ""].map((h) => (
                                                 <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                     {h}
                                                 </th>
@@ -668,7 +644,7 @@ export default function AdminPage() {
                                     <tbody>
                                         {tenants.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                <td colSpan={9} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                                     Sin tenants
                                                 </td>
                                             </tr>
@@ -694,21 +670,44 @@ export default function AdminPage() {
                                                             {t.email ?? "—"}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
-                                                            {t.plan_name ?? "—"}
+                                                            {t.company_count === 0 && t.member_of_tenants
+                                                                ? <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
+                                                                : (t.plan_name ?? "—")}
                                                         </td>
                                                         <td className="px-3 py-3">
-                                                            <span className={[
-                                                                "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
-                                                                STATUS_CLS[t.status] ?? "",
-                                                            ].join(" ")}>
-                                                                {STATUS_LABEL[t.status] ?? t.status}
-                                                            </span>
+                                                            {t.company_count === 0 && t.member_of_tenants
+                                                                ? <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
+                                                                : (
+                                                                    <span className={[
+                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                        STATUS_CLS[t.status] ?? "",
+                                                                    ].join(" ")}>
+                                                                        {STATUS_LABEL[t.status] ?? t.status}
+                                                                    </span>
+                                                                )}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
-                                                            {t.total_companies}
+                                                            {t.company_count}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
-                                                            {t.total_employees}
+                                                            {t.employee_count}
+                                                        </td>
+                                                        <td className="px-3 py-3">
+                                                            {/* Tenant sin empresas propias que trabaja en otro tenant = usuario secundario */}
+                                                            {t.company_count === 0 && t.member_of_tenants ? (
+                                                                <span
+                                                                    title={`Administrador de: ${t.member_of_tenants}`}
+                                                                    className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-violet-500/20 bg-violet-500/[0.08] text-violet-500 cursor-help"
+                                                                >
+                                                                    administrador
+                                                                </span>
+                                                            ) : t.member_count > 0 ? (
+                                                                <span className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-primary-500/20 bg-primary-500/[0.08] text-primary-500">
+                                                                    {t.member_count} usuario{t.member_count !== 1 ? "s" : ""}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
+                                                            )}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                             {formatDate(t.current_period_end)}
@@ -725,7 +724,7 @@ export default function AdminPage() {
 
                                                     {isEditing && (
                                                         <tr key={t.tenant_id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
-                                                            <td colSpan={8} className="px-4 py-3">
+                                                            <td colSpan={9} className="px-4 py-3">
                                                                 <div className="flex items-end gap-3 flex-wrap">
                                                                     <div>
                                                                         <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
@@ -955,22 +954,10 @@ export default function AdminPage() {
                                         <div className="px-5 py-4 space-y-4">
                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                                 <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
-                                                    <select
-                                                        value={newPlanDraft.productSlug ?? "payroll"}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, productSlug: e.target.value }))}
-                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 w-full cursor-pointer"
-                                                    >
-                                                        <option value="payroll">Nómina</option>
-                                                        <option value="inventory">Inventario</option>
-                                                        <option value="accounting">Contabilidad</option>
-                                                    </select>
-                                                </div>
-                                                <div>
                                                     <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
                                                     <input
                                                         type="text"
-                                                        placeholder="Ej: Básico, Pro…"
+                                                        placeholder="Ej: Pro, Premium…"
                                                         value={newPlanDraft.name ?? ""}
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, name: e.target.value }))}
                                                         className={inputCls}
@@ -991,6 +978,17 @@ export default function AdminPage() {
                                                         onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxEmployeesPerCompany: e.target.value === "" ? undefined : Number(e.target.value) }))}
                                                         className={inputCls}
                                                     />
+                                                </div>
+                                                <div>
+                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Solo contacto</label>
+                                                    <select
+                                                        value={String(newPlanDraft.isContactOnly ?? false)}
+                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, isContactOnly: e.target.value === "true" }))}
+                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 w-full cursor-pointer"
+                                                    >
+                                                        <option value="false">No</option>
+                                                        <option value="true">Sí (contactar)</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-3 gap-3">
@@ -1023,14 +1021,14 @@ export default function AdminPage() {
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={handleNewPlan}
-                                                    disabled={newPlanSaving || !newPlanDraft.name || !newPlanDraft.priceMonthlyUsd}
+                                                    disabled={newPlanSaving || !newPlanDraft.name || newPlanDraft.priceMonthlyUsd == null}
                                                     className="h-8 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
                                                 >
                                                     {newPlanSaving && <Spinner />}
                                                     {newPlanSaving ? "Creando…" : "Crear plan"}
                                                 </button>
                                                 <button
-                                                    onClick={() => { setNewPlanOpen(false); setNewPlanDraft({ productSlug: "payroll", isActive: true }); setNewPlanError(null); }}
+                                                    onClick={() => { setNewPlanOpen(false); setNewPlanDraft({ isActive: true, isContactOnly: false }); setNewPlanError(null); }}
                                                     className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                 >
                                                     Cancelar
@@ -1054,7 +1052,7 @@ export default function AdminPage() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-border-light bg-surface-2">
-                                                    {["Módulo", "Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
+                                                    {["Tipo", "Nombre", "Empresas máx.", "Empleados máx.", "Precio/mes", "Precio/trim.", "Precio/año", "Activo", ""].map((h) => (
                                                         <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                             {h}
                                                         </th>
@@ -1091,17 +1089,14 @@ export default function AdminPage() {
                                                         <Fragment key={plan.id}>
                                                             <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
                                                                 <td className="px-3 py-3">
-                                                                    {plan.productName ? (
-                                                                        <span className={[
-                                                                            "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
-                                                                            plan.productSlug === "payroll"
-                                                                                ? "border-primary-500/20 bg-primary-500/[0.08] text-primary-500"
-                                                                                : "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
-                                                                        ].join(" ")}>
-                                                                            {plan.productName}
+                                                                    {plan.isContactOnly ? (
+                                                                        <span className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-violet-500/20 bg-violet-500/[0.08] text-violet-500">
+                                                                            Contacto
                                                                         </span>
                                                                     ) : (
-                                                                        <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
+                                                                        <span className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-primary-500/20 bg-primary-500/[0.08] text-primary-500">
+                                                                            Universal
+                                                                        </span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-3 py-3 font-mono text-[12px] font-medium text-foreground">
@@ -1158,18 +1153,6 @@ export default function AdminPage() {
                                                                         <div className="space-y-4">
                                                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                                                                                 <div>
-                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
-                                                                                    <select
-                                                                                        value={(d as Partial<PlanRow & { productSlug: string }>).productSlug ?? plan.productSlug ?? "payroll"}
-                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, productSlug: e.target.value } as Partial<PlanRow>))}
-                                                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 w-full cursor-pointer"
-                                                                                    >
-                                                                                        <option value="payroll">Nómina</option>
-                                                                                        <option value="inventory">Inventario</option>
-                                                                                        <option value="accounting">Contabilidad</option>
-                                                                                    </select>
-                                                                                </div>
-                                                                                <div>
                                                                                     <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
                                                                                     <input
                                                                                         type="text"
@@ -1180,6 +1163,17 @@ export default function AdminPage() {
                                                                                 </div>
                                                                                 {numInput("maxCompanies", "Empresas máx.", true)}
                                                                                 {numInput("maxEmployeesPerCompany", "Empleados máx.", true)}
+                                                                                <div>
+                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Solo contacto</label>
+                                                                                    <select
+                                                                                        value={String(d.isContactOnly ?? plan.isContactOnly)}
+                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, isContactOnly: e.target.value === "true" }))}
+                                                                                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
+                                                                                    >
+                                                                                        <option value="false">No</option>
+                                                                                        <option value="true">Sí</option>
+                                                                                    </select>
+                                                                                </div>
                                                                                 <div>
                                                                                     <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Activo</label>
                                                                                     <select
@@ -1236,11 +1230,11 @@ export default function AdminPage() {
                         {tab === "subscriptions" && (
                             <div className="space-y-4">
 
-                                {/* New subscription form */}
+                                {/* Quick plan assignment form */}
                                 <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light/60">
                                     <div className="px-5 py-3">
                                         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
-                                            Asignar módulo a tenant
+                                            Asignar plan a tenant
                                         </p>
                                     </div>
                                     <div className="px-5 py-4">
@@ -1255,39 +1249,57 @@ export default function AdminPage() {
                                                     <option value="">Seleccionar tenant…</option>
                                                     {tenants.map((t) => (
                                                         <option key={t.tenant_id} value={t.tenant_id}>
-                                                            {t.email ?? t.tenant_id.slice(0, 8)}
+                                                            {t.email ?? t.tenant_id.slice(0, 8)} · {t.plan_name ?? "Sin plan"}
                                                         </option>
                                                     ))}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Módulo</label>
-                                                <select value={newSubProductSlug} onChange={(e) => setNewSubProductSlug(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
-                                                    <option value="payroll">Nómina</option>
-                                                    <option value="inventory">Inventario</option>
-                                                    <option value="accounting">Contabilidad</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Plan</label>
-                                                <select value={newSubPlanId} onChange={(e) => setNewSubPlanId(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
-                                                    <option value="">Sin plan</option>
-                                                    {plans.filter((p) => p.productSlug === newSubProductSlug && p.isActive).map((p) => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nuevo plan</label>
+                                                <select
+                                                    value={newSubPlanId}
+                                                    onChange={(e) => setNewSubPlanId(e.target.value)}
+                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer"
+                                                >
+                                                    <option value="">Seleccionar plan…</option>
+                                                    {plans.filter((p) => p.isActive && !p.isContactOnly).map((p) => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.name} · {p.priceMonthlyUsd === 0 ? "Gratis" : `$${p.priceMonthlyUsd}/mes`}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado inicial</label>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado</label>
                                                 <select value={newSubStatus} onChange={(e) => setNewSubStatus(e.target.value)} className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer">
-                                                    <option value="trial">Prueba</option>
                                                     <option value="active">Activo</option>
+                                                    <option value="trial">Prueba</option>
                                                     <option value="suspended">Suspendido</option>
                                                 </select>
                                             </div>
                                             <button
-                                                onClick={handleNewSub}
-                                                disabled={newSubSaving || !newSubTenantId.trim()}
+                                                onClick={async () => {
+                                                    if (!newSubTenantId || !newSubPlanId) return;
+                                                    setNewSubSaving(true);
+                                                    setNewSubError(null);
+                                                    const res = await fetch(`/api/admin/tenants/${newSubTenantId}`, {
+                                                        method: "PATCH",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({ planId: newSubPlanId, status: newSubStatus }),
+                                                    });
+                                                    const json = await res.json();
+                                                    setNewSubSaving(false);
+                                                    if (!res.ok) {
+                                                        setNewSubError(json.error ?? "Error al asignar plan.");
+                                                    } else {
+                                                        setNewSubOk(true);
+                                                        setNewSubTenantId("");
+                                                        setNewSubPlanId("");
+                                                        await loadAll();
+                                                        setTimeout(() => setNewSubOk(false), 3000);
+                                                    }
+                                                }}
+                                                disabled={newSubSaving || !newSubTenantId || !newSubPlanId}
                                                 className="h-9 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
                                             >
                                                 {newSubSaving && <Spinner />}
@@ -1295,139 +1307,58 @@ export default function AdminPage() {
                                             </button>
                                         </div>
                                         {newSubError && <p className="font-mono text-[10px] text-red-500 mt-2">{newSubError}</p>}
-                                        {newSubOk    && <p className="font-mono text-[10px] text-green-500 mt-2">Suscripción creada correctamente.</p>}
+                                        {newSubOk    && <p className="font-mono text-[10px] text-green-500 mt-2">Plan asignado correctamente.</p>}
                                     </div>
                                 </div>
 
-                                {/* Subscriptions list */}
-                                {!subsLoaded ? (
-                                    <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl">
-                                        <Spinner />
-                                        <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>
-                                    </div>
-                                ) : subscriptions.length === 0 ? (
-                                    <div className="border border-border-light rounded-xl px-4 py-10 text-center">
-                                        <p className="font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">Sin suscripciones</p>
-                                    </div>
-                                ) : (
-                                    <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-border-light bg-surface-2">
-                                                    {["Tenant", "Módulo", "Plan", "Estado", "Período fin", "Creado", ""].map((h) => (
-                                                        <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
-                                                            {h}
-                                                        </th>
-                                                    ))}
+                                {/* Tenants + plan overview */}
+                                <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-border-light bg-surface-2">
+                                                {["Email", "Plan actual", "Estado", "Empresas", "Período fin"].map((h) => (
+                                                    <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tenants.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                        Sin tenants
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                {subscriptions.map((sub) => {
-                                                    const isEditing = subActionId === sub.id;
-                                                    return (
-                                                        <Fragment key={sub.id}>
-                                                            <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
-                                                                <td className="px-3 py-3">
-                                                                    <p className="font-mono text-[10px] text-[var(--text-secondary)] truncate max-w-[160px]">
-                                                                        {sub.tenantEmail ?? sub.tenantId.slice(0, 8) + "…"}
-                                                                    </p>
-                                                                    <p className="font-mono text-[9px] text-[var(--text-tertiary)]" title={sub.tenantId}>
-                                                                        {sub.tenantId.slice(0, 8)}…
-                                                                    </p>
-                                                                </td>
-                                                                <td className="px-3 py-3">
-                                                                    <span className={[
-                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
-                                                                        sub.product?.slug === "payroll"
-                                                                            ? "border-primary-500/20 bg-primary-500/[0.08] text-primary-500"
-                                                                            : "border-amber-500/20 bg-amber-500/[0.08] text-amber-600 dark:text-amber-400",
-                                                                    ].join(" ")}>
-                                                                        {sub.product?.name ?? "—"}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
-                                                                    {sub.plan?.name ?? "—"}
-                                                                </td>
-                                                                <td className="px-3 py-3">
-                                                                    <span className={[
-                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
-                                                                        STATUS_CLS[sub.status] ?? "",
-                                                                    ].join(" ")}>
-                                                                        {STATUS_LABEL[sub.status] ?? sub.status}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
-                                                                    {formatDate(sub.currentPeriodEnd)}
-                                                                </td>
-                                                                <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-tertiary)]">
-                                                                    {formatDate(sub.createdAt)}
-                                                                </td>
-                                                                <td className="px-3 py-3 text-right">
-                                                                    <button
-                                                                        onClick={() => { setSubActionId(isEditing ? null : sub.id); setSubActionStatus(sub.status); setSubActionPlanId(sub.plan?.id ?? ""); setSubActionError(null); }}
-                                                                        className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
-                                                                    >
-                                                                        {isEditing ? "Cerrar" : "Editar"}
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-
-                                                            {isEditing && (
-                                                                <tr key={sub.id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
-                                                                    <td colSpan={7} className="px-4 py-3">
-                                                                        <div className="flex items-end gap-3">
-                                                                            <div>
-                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Plan</label>
-                                                                                <select
-                                                                                    value={subActionPlanId}
-                                                                                    onChange={(e) => setSubActionPlanId(e.target.value)}
-                                                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
-                                                                                >
-                                                                                    <option value="">Sin plan</option>
-                                                                                    {plans.filter((p) => p.productSlug === sub.product?.slug && p.isActive).map((p) => (
-                                                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                                                    ))}
-                                                                                </select>
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Estado</label>
-                                                                                <select
-                                                                                    value={subActionStatus}
-                                                                                    onChange={(e) => setSubActionStatus(e.target.value)}
-                                                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60"
-                                                                                >
-                                                                                    <option value="trial">Prueba</option>
-                                                                                    <option value="active">Activo</option>
-                                                                                    <option value="suspended">Suspendido</option>
-                                                                                    <option value="cancelled">Cancelado</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <button
-                                                                                onClick={() => handleSubStatus(sub.id)}
-                                                                                disabled={subActioning}
-                                                                                className="h-8 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
-                                                                            >
-                                                                                {subActioning && <Spinner />}
-                                                                                Guardar
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => { setSubActionId(null); setSubActionError(null); }}
-                                                                                className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                                                                            >
-                                                                                Cancelar
-                                                                            </button>
-                                                                        </div>
-                                                                        {subActionError && <p className="font-mono text-[10px] text-red-500 mt-2">{subActionError}</p>}
-                                                                    </td>
-                                                                </tr>
-                                                            )}
-                                                        </Fragment>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
+                                            ) : tenants.map((t) => (
+                                                <tr key={t.tenant_id} className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors">
+                                                    <td className="px-3 py-3 font-mono text-[11px] text-foreground max-w-[200px] truncate">
+                                                        {t.email ?? t.tenant_id.slice(0, 8) + "…"}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-primary-500/20 bg-primary-500/[0.08] text-primary-500">
+                                                            {t.plan_name ?? "—"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        <span className={[
+                                                            "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                            STATUS_CLS[t.status] ?? "",
+                                                        ].join(" ")}>
+                                                            {STATUS_LABEL[t.status] ?? t.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
+                                                        {t.company_count}
+                                                    </td>
+                                                    <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
+                                                        {formatDate(t.current_period_end)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
