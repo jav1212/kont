@@ -7,11 +7,13 @@ export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expens
 export interface Account {
     id:          string;
     companyId:   string;
-    code:        string;       // e.g. "1-01-001"
+    chartId:     string | null; // null = standalone (not part of an imported chart)
+    code:        string;        // e.g. "1-01-001"
     name:        string;
     type:        AccountType;
     parentCode:  string | null;
     isActive:    boolean;
-    createdAt:   string;       // ISO timestamp
-    updatedAt:   string;       // ISO timestamp
+    isGroup:     boolean;       // true = summary account (cannot post entries directly)
+    createdAt:   string;        // ISO timestamp
+    updatedAt:   string;        // ISO timestamp
 }

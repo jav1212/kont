@@ -8,11 +8,13 @@ import { Account }                                 from '../../domain/account';
 interface RawAccountRow {
     id:          string;
     company_id:  string;
+    chart_id:    string | null;
     code:        string;
     name:        string;
     type:        string;
     parent_code: string | null;
     is_active:   boolean;
+    is_group:    boolean;
     created_at:  string;
     updated_at:  string;
 }
@@ -77,11 +79,13 @@ export class RpcAccountRepository implements IAccountRepository {
         return {
             id:         row.id,
             companyId:  row.company_id,
+            chartId:    row.chart_id,
             code:       row.code,
             name:       row.name,
             type:       row.type as Account['type'],
             parentCode: row.parent_code,
             isActive:   row.is_active,
+            isGroup:    row.is_group,
             createdAt:  row.created_at,
             updatedAt:  row.updated_at,
         };

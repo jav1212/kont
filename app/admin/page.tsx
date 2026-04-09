@@ -83,6 +83,13 @@ interface TenantRow {
     member_of_tenants: string | null;   // emails de tenants ajenos donde este usuario es miembro
 }
 
+interface TenantMember {
+    userId:   string;
+    email:    string;
+    role:     string;
+    joinedAt: string | null;
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -139,6 +146,11 @@ export default function AdminPage() {
     const [actionNote,  setActionNote]  = useState("");
     const [actioning,   setActioning]   = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+
+    // Tenant expand / members
+    const [expandedTenantId,   setExpandedTenantId]   = useState<string | null>(null);
+    const [membersByTenant,    setMembersByTenant]    = useState<Record<string, TenantMember[]>>({});
+    const [membersLoading,     setMembersLoading]     = useState<Record<string, boolean>>({});
 
     // Tenant status override
     const [tenantActionId,     setTenantActionId]     = useState<string | null>(null);
@@ -403,6 +415,20 @@ export default function AdminPage() {
         await loadAll();
     }, [tenantActionStatus, tenantActionPlanId, loadAll]);
 
+    const toggleMembers = useCallback(async (tenantId: string) => {
+        if (expandedTenantId === tenantId) {
+            setExpandedTenantId(null);
+            return;
+        }
+        setExpandedTenantId(tenantId);
+        if (membersByTenant[tenantId]) return; // already fetched
+        setMembersLoading((p) => ({ ...p, [tenantId]: true }));
+        const res = await fetch(`/api/admin/tenants/${tenantId}/members`);
+        const json = await res.json();
+        setMembersByTenant((p) => ({ ...p, [tenantId]: json.data ?? [] }));
+        setMembersLoading((p) => ({ ...p, [tenantId]: false }));
+    }, [expandedTenantId, membersByTenant]);
+
     // ── Styles ─────────────────────────────────────────────────────────────
     const inputCls = [
         "w-full h-8 px-3 rounded-lg border bg-surface-1 outline-none",
@@ -629,30 +655,53 @@ export default function AdminPage() {
                         )}
 
                         {/* ── TENANTS TAB ────────────────────────────────────────── */}
-                        {tab === "tenants" && (
+                        {tab === "tenants" && (() => {
+                            // Only show real tenants (owners with companies, or standalone users)
+                            const realTenants = tenants.filter((t) => !(t.company_count === 0 && t.member_of_tenants));
+                            return (
                             <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-border-light bg-surface-2">
-                                            {["Tenant ID", "Email", "Plan", "Estado", "Empresas", "Empleados", "Miembros", "Período fin", ""].map((h) => (
-                                                <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                            {["", "Tenant ID", "Email", "Plan", "Estado", "Empresas", "Empleados", "Período fin", ""].map((h, i) => (
+                                                <th key={i} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                     {h}
                                                 </th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {tenants.length === 0 ? (
+                                        {realTenants.length === 0 ? (
                                             <tr>
                                                 <td colSpan={9} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                                     Sin tenants
                                                 </td>
                                             </tr>
-                                        ) : tenants.map((t) => {
-                                            const isEditing = tenantActionId === t.tenant_id;
+                                        ) : realTenants.map((t) => {
+                                            const isEditing  = tenantActionId === t.tenant_id;
+                                            const isExpanded = expandedTenantId === t.tenant_id;
+                                            const members    = membersByTenant[t.tenant_id];
+                                            const loadingMem = membersLoading[t.tenant_id];
                                             return (
                                                 <Fragment key={t.tenant_id}>
                                                     <tr className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors group">
+                                                        {/* Expand chevron */}
+                                                        <td className="px-2 py-3 w-7">
+                                                            {t.member_count > 0 ? (
+                                                                <button
+                                                                    onClick={() => toggleMembers(t.tenant_id)}
+                                                                    title={isExpanded ? "Ocultar miembros" : `Ver ${t.member_count} miembro${t.member_count !== 1 ? "s" : ""}`}
+                                                                    className="flex items-center justify-center w-5 h-5 rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
+                                                                >
+                                                                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                                                                        style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 150ms" }}>
+                                                                        <path d="M3.5 2l3 3-3 3" />
+                                                                    </svg>
+                                                                </button>
+                                                            ) : (
+                                                                <span className="w-5 h-5 block" />
+                                                            )}
+                                                        </td>
                                                         <td className="px-3 py-3">
                                                             <button
                                                                 onClick={() => navigator.clipboard.writeText(t.tenant_id)}
@@ -670,44 +719,21 @@ export default function AdminPage() {
                                                             {t.email ?? "—"}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
-                                                            {t.company_count === 0 && t.member_of_tenants
-                                                                ? <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
-                                                                : (t.plan_name ?? "—")}
+                                                            {t.plan_name ?? "—"}
                                                         </td>
                                                         <td className="px-3 py-3">
-                                                            {t.company_count === 0 && t.member_of_tenants
-                                                                ? <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
-                                                                : (
-                                                                    <span className={[
-                                                                        "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
-                                                                        STATUS_CLS[t.status] ?? "",
-                                                                    ].join(" ")}>
-                                                                        {STATUS_LABEL[t.status] ?? t.status}
-                                                                    </span>
-                                                                )}
+                                                            <span className={[
+                                                                "h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center",
+                                                                STATUS_CLS[t.status] ?? "",
+                                                            ].join(" ")}>
+                                                                {STATUS_LABEL[t.status] ?? t.status}
+                                                            </span>
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                             {t.company_count}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] tabular-nums text-center">
                                                             {t.employee_count}
-                                                        </td>
-                                                        <td className="px-3 py-3">
-                                                            {/* Tenant sin empresas propias que trabaja en otro tenant = usuario secundario */}
-                                                            {t.company_count === 0 && t.member_of_tenants ? (
-                                                                <span
-                                                                    title={`Administrador de: ${t.member_of_tenants}`}
-                                                                    className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-violet-500/20 bg-violet-500/[0.08] text-violet-500 cursor-help"
-                                                                >
-                                                                    administrador
-                                                                </span>
-                                                            ) : t.member_count > 0 ? (
-                                                                <span className="h-5 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.12em] inline-flex items-center border-primary-500/20 bg-primary-500/[0.08] text-primary-500">
-                                                                    {t.member_count} usuario{t.member_count !== 1 ? "s" : ""}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="font-mono text-[10px] text-[var(--text-tertiary)]">—</span>
-                                                            )}
                                                         </td>
                                                         <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                             {formatDate(t.current_period_end)}
@@ -721,6 +747,48 @@ export default function AdminPage() {
                                                             </button>
                                                         </td>
                                                     </tr>
+
+                                                    {/* Members sub-table */}
+                                                    {isExpanded && (
+                                                        <tr key={t.tenant_id + "-members"} className="border-b border-border-light/60 bg-surface-2/60">
+                                                            <td colSpan={9} className="px-0 py-0">
+                                                                <div className="pl-10 pr-4 py-3">
+                                                                    {loadingMem ? (
+                                                                        <div className="flex items-center gap-2 py-2 text-[var(--text-tertiary)] font-mono text-[10px]">
+                                                                            <Spinner /> Cargando miembros…
+                                                                        </div>
+                                                                    ) : !members || members.length === 0 ? (
+                                                                        <p className="font-mono text-[10px] text-[var(--text-disabled)] py-1">Sin miembros</p>
+                                                                    ) : (
+                                                                        <table className="w-full">
+                                                                            <thead>
+                                                                                <tr>
+                                                                                    {["Email", "Rol", "Desde"].map((h) => (
+                                                                                        <th key={h} className="pb-1.5 text-left font-mono text-[8px] uppercase tracking-[0.22em] text-[var(--text-disabled)]">{h}</th>
+                                                                                    ))}
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {members.map((m) => (
+                                                                                    <tr key={m.userId} className="border-t border-border-light/40">
+                                                                                        <td className="py-2 pr-4 font-mono text-[10px] text-foreground">{m.email}</td>
+                                                                                        <td className="py-2 pr-4">
+                                                                                            <span className="h-4 px-1.5 rounded border font-mono text-[8px] uppercase tracking-[0.12em] inline-flex items-center border-violet-500/20 bg-violet-500/[0.08] text-violet-500">
+                                                                                                {m.role}
+                                                                                            </span>
+                                                                                        </td>
+                                                                                        <td className="py-2 font-mono text-[10px] text-[var(--text-secondary)]">
+                                                                                            {formatDate(m.joinedAt)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
 
                                                     {isEditing && (
                                                         <tr key={t.tenant_id + "-edit"} className="border-b border-border-light/60 bg-primary-500/[0.02]">
@@ -779,7 +847,8 @@ export default function AdminPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        )}
+                            );
+                        })()}
 
                         {/* ── ADMINS TAB ─────────────────────────────────────────── */}
                         {tab === "admins" && (

@@ -2,12 +2,16 @@
 // All use cases are wired with their RPC repositories and shared source adapters.
 import { ServerSupabaseSource }                              from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcAccountRepository }                              from './repository/rpc-account.repository';
+import { RpcChartRepository }                                from './repository/rpc-chart.repository';
 import { RpcPeriodRepository }                               from './repository/rpc-period.repository';
 import { RpcJournalEntryRepository }                         from './repository/rpc-journal-entry.repository';
 import { RpcIntegrationRuleRepository }                      from './repository/rpc-integration-rule.repository';
 import { RpcIntegrationLogRepository }                       from './repository/rpc-integration-log.repository';
 import { SaveAccountUseCase }                                from '../application/commands/save-account.use-case';
 import { DeleteAccountUseCase }                              from '../application/commands/delete-account.use-case';
+import { SaveChartUseCase }                                  from '../application/commands/save-chart.use-case';
+import { DeleteChartUseCase }                                from '../application/commands/delete-chart.use-case';
+import { ImportChartUseCase }                                from '../application/commands/import-chart.use-case';
 import { SaveJournalEntryUseCase }                           from '../application/commands/save-journal-entry.use-case';
 import { PostJournalEntryUseCase }                           from '../application/commands/post-journal-entry.use-case';
 import { SaveAccountingPeriodUseCase }                       from '../application/commands/save-accounting-period.use-case';
@@ -17,6 +21,7 @@ import { DeleteIntegrationRuleUseCase }                      from '../applicatio
 import { ProcessPayrollIntegrationUseCase }                  from '../application/commands/process-payroll-integration.use-case';
 import { ProcessInventoryPurchaseIntegrationUseCase }        from '../application/commands/process-inventory-purchase-integration.use-case';
 import { GetAccountsUseCase }                                from '../application/queries/get-accounts.use-case';
+import { GetChartsUseCase }                                  from '../application/queries/get-charts.use-case';
 import { GetJournalEntriesUseCase }                          from '../application/queries/get-journal-entries.use-case';
 import { GetEntryWithLinesUseCase }                          from '../application/queries/get-entry-with-lines.use-case';
 import { GetAccountingPeriodsUseCase }                       from '../application/queries/get-accounting-periods.use-case';
@@ -27,6 +32,7 @@ import { GetIntegrationLogUseCase }                          from '../applicatio
 export function getAccountingActions(userId: string) {
     const source        = new ServerSupabaseSource();
     const accountRepo   = new RpcAccountRepository(source, userId);
+    const chartRepo     = new RpcChartRepository(source, userId);
     const periodRepo    = new RpcPeriodRepository(source, userId);
     const entryRepo     = new RpcJournalEntryRepository(source, userId);
     const ruleRepo      = new RpcIntegrationRuleRepository(source, userId);
@@ -37,6 +43,12 @@ export function getAccountingActions(userId: string) {
         getAccounts:    new GetAccountsUseCase(accountRepo),
         saveAccount:    new SaveAccountUseCase(accountRepo),
         deleteAccount:  new DeleteAccountUseCase(accountRepo),
+
+        // Charts (plan de cuentas)
+        getCharts:    new GetChartsUseCase(chartRepo),
+        saveChart:    new SaveChartUseCase(chartRepo),
+        deleteChart:  new DeleteChartUseCase(chartRepo),
+        importChart:  new ImportChartUseCase(chartRepo),
 
         // Periods
         getPeriods:     new GetAccountingPeriodsUseCase(periodRepo),

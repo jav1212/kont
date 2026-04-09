@@ -18,7 +18,8 @@ import { useAccounts }             from "@/src/modules/accounting/frontend/hooks
 // ── quick actions ─────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS = [
-    { href: "/accounting/accounts",      label: "Plan de Cuentas",         desc: "Catálogo jerárquico de cuentas contables"         },
+    { href: "/accounting/charts",        label: "Planes de Cuentas",       desc: "Importar y gestionar planes de cuentas completos"   },
+    { href: "/accounting/accounts",      label: "Cuentas",                 desc: "Catálogo jerárquico de cuentas contables"         },
     { href: "/accounting/periods",       label: "Períodos",                desc: "Administrar períodos contables abiertos y cerrados" },
     { href: "/accounting/journal",       label: "Libro Diario",            desc: "Crear y consultar asientos contables"              },
     { href: "/accounting/trial-balance", label: "Balance de Comprobación", desc: "Resumen de débitos, créditos y saldos por cuenta"  },

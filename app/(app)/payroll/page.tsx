@@ -738,7 +738,7 @@ export default function PayrollCalculator() {
                                     type="date"
                                     value={bcvDate}
                                     max={getTodayIsoDate()}
-                                    onChange={(e) => { setBcvDate(e.target.value); setBcvFetchError(null); setBcvFetchedDate(null); }}
+                                    onChange={(e) => { setBcvDate(e.target.value); setBcvFetchError(null); }}
                                     className={fieldCls + " flex-1 text-[12px] px-2.5"}
                                     title="Fecha sugerida"
                                 />
