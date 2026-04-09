@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
+
+const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface CapacityData {
     companies: {
@@ -19,10 +22,26 @@ export function useCapacity() {
     const [loading, setLoading]     = useState(true);
 
     useEffect(() => {
-        fetch("/api/billing/capacity")
-            .then((r) => r.json())
-            .then((r) => setCapacity(r.data ?? null))
-            .finally(() => setLoading(false));
+        let cancelled = false;
+
+        const load = () => {
+            setLoading(true);
+            apiFetch("/api/billing/capacity")
+                .then((r) => r.json())
+                .then((r) => {
+                    if (!cancelled) setCapacity(r.data ?? null);
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false);
+                });
+        };
+
+        load();
+        window.addEventListener(TENANT_EVENT, load);
+        return () => {
+            cancelled = true;
+            window.removeEventListener(TENANT_EVENT, load);
+        };
     }, []);
 
     function canAddCompany(): boolean {

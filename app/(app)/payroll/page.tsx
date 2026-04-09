@@ -750,7 +750,7 @@ export default function PayrollCalculator() {
                                         type="number"
                                         step="0.01"
                                         value={exchangeRate}
-                                        onChange={(e) => { setExchangeRate(e.target.value); setBcvFetchedDate(null); }}
+                                        onChange={(e) => { setExchangeRate(e.target.value); }}
                                         className={fieldCls + " pl-8 text-right text-[12px]"}
                                         title="Tasa manual"
                                     />

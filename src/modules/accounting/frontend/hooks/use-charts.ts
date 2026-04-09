@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { AccountChart }               from '../../backend/domain/account-chart';
 import type { ImportAccountInput }         from '../../backend/domain/repository/chart.repository';
+import { apiFetch }                        from '@/src/shared/frontend/utils/api-fetch';
 
 export function useCharts(companyId: string | null) {
     const [data,    setData]    = useState<AccountChart[]>([]);
@@ -15,7 +16,7 @@ export function useCharts(companyId: string | null) {
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/charts?companyId=${companyId}`);
+            const res  = await apiFetch(`/api/accounting/charts?companyId=${companyId}`);
             const json = await res.json() as { data?: AccountChart[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);
@@ -28,8 +29,33 @@ export function useCharts(companyId: string | null) {
 
     useEffect(() => { void reload(); }, [reload]);
 
+    async function createChart(name: string): Promise<string | null> {
+        if (!companyId) return 'companyId requerido';
+        const res  = await apiFetch('/api/accounting/charts', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ companyId, name }),
+        });
+        const json = await res.json() as { error?: string };
+        if (!res.ok) return json.error ?? 'No se pudo crear el plan';
+        await reload();
+        return null;
+    }
+
+    async function renameChart(chartId: string, companyId: string, name: string): Promise<string | null> {
+        const res  = await apiFetch(`/api/accounting/charts/${chartId}`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ companyId, name }),
+        });
+        const json = await res.json() as { error?: string };
+        if (!res.ok) return json.error ?? 'No se pudo renombrar el plan';
+        await reload();
+        return null;
+    }
+
     async function deleteChart(chartId: string): Promise<string | null> {
-        const res  = await fetch(`/api/accounting/charts/${chartId}`, { method: 'DELETE' });
+        const res  = await apiFetch(`/api/accounting/charts/${chartId}`, { method: 'DELETE' });
         const json = await res.json() as { error?: string };
         if (!res.ok) return json.error ?? 'No se pudo eliminar el plan';
         await reload();
@@ -38,7 +64,7 @@ export function useCharts(companyId: string | null) {
 
     async function importChart(name: string, accounts: ImportAccountInput[]): Promise<string | null> {
         if (!companyId) return 'companyId requerido';
-        const res  = await fetch('/api/accounting/charts/import', {
+        const res  = await apiFetch('/api/accounting/charts/import', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ companyId, name, accounts }),
@@ -49,5 +75,5 @@ export function useCharts(companyId: string | null) {
         return null;
     }
 
-    return { data, loading, error, reload, deleteChart, importChart };
+    return { data, loading, error, reload, createChart, renameChart, deleteChart, importChart };
 }

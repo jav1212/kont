@@ -4,6 +4,7 @@
 // Provides loading/error/data contract consistent with other module hooks.
 import { useEffect, useState, useCallback } from 'react';
 import type { Account }                      from '../../backend/domain/account';
+import { apiFetch }                         from '@/src/shared/frontend/utils/api-fetch';
 
 export function useAccounts(companyId: string | null) {
     const [data,    setData]    = useState<Account[]>([]);
@@ -15,7 +16,7 @@ export function useAccounts(companyId: string | null) {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/accounting/accounts?companyId=${companyId}`);
+            const res = await apiFetch(`/api/accounting/accounts?companyId=${companyId}`);
             const json = await res.json() as { data?: Account[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

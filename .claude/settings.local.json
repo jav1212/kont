@@ -5,7 +5,13 @@
       "Bash(pnpm lint:*)",
       "mcp__claude_ai_Supabase__execute_sql",
       "mcp__claude_ai_Supabase__list_projects",
-      "mcp__claude_ai_Supabase__apply_migration"
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(grep -r \"accounting\" /Users/haldrimmolina/Documents/GitHub/kont/supabase/migrations/*.sql 2>/dev/null | head -20)",
+      "Bash(pnpm tsc:*)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__get_logs",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration"
     ]
   },
   "enableAllProjectMcpServers": true,

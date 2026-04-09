@@ -3,6 +3,7 @@
 // Data hook for accounting integration rules.
 import { useEffect, useState, useCallback } from 'react';
 import type { IntegrationRule }             from '../../backend/domain/integration-rule';
+import { apiFetch }                        from '@/src/shared/frontend/utils/api-fetch';
 
 export function useIntegrationRules(companyId: string | null) {
     const [data,    setData]    = useState<IntegrationRule[]>([]);
@@ -14,7 +15,7 @@ export function useIntegrationRules(companyId: string | null) {
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/integration-rules?companyId=${companyId}`);
+            const res  = await apiFetch(`/api/accounting/integration-rules?companyId=${companyId}`);
             const json = await res.json() as { data?: IntegrationRule[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

@@ -7,6 +7,11 @@ const CalculationDataSchema = z.object({
     gross:          z.number(),
     netUsd:         z.number(),
     mondaysInMonth: z.number().int().nonnegative(),
+    diasUtilidades: z.number().nonnegative().optional(),
+    diasBonoVacacional: z.number().nonnegative().optional(),
+    alicuotaUtil:   z.number().nonnegative().optional(),
+    alicuotaBono:   z.number().nonnegative().optional(),
+    salarioIntegral: z.number().nonnegative().optional(),
 });
 
 const ReceiptSchema = z.object({

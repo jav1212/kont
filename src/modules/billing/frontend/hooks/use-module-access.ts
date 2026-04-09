@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 
 interface Subscription {
     id:     string;
@@ -8,79 +9,127 @@ interface Subscription {
     product: { slug: string } | null;
 }
 
-let cache: Subscription[] | null = null;
-let cachePromise: Promise<Subscription[]> | null = null;
+const STORAGE_KEY = "kont-active-tenant-id";
+const TENANT_EVENT = "kont-active-tenant-changed";
+const SELF_KEY = "__self__";
 
-async function fetchSubscriptions(): Promise<Subscription[]> {
-    if (cache) return cache;
-    if (!cachePromise) {
-        cachePromise = fetch("/api/billing/subscriptions")
+const subscriptionCache = new Map<string, Subscription[]>();
+const subscriptionPromiseCache = new Map<string, Promise<Subscription[]>>();
+const planCache = new Map<string, string | null>();
+const planPromiseCache = new Map<string, Promise<string | null>>();
+
+function getActiveTenantCacheKey(): string {
+    if (typeof window === "undefined") return SELF_KEY;
+    return localStorage.getItem(STORAGE_KEY) ?? SELF_KEY;
+}
+
+async function fetchSubscriptions(tenantKey: string): Promise<Subscription[]> {
+    const cached = subscriptionCache.get(tenantKey);
+    if (cached) return cached;
+
+    const pending = subscriptionPromiseCache.get(tenantKey);
+    if (pending) return pending;
+
+    const promise = apiFetch("/api/billing/subscriptions")
             .then((r) => r.json())
             .then((r) => {
-                cache = r.data ?? [];
-                return cache!;
+                const data = (r.data ?? []) as Subscription[];
+                subscriptionCache.set(tenantKey, data);
+                subscriptionPromiseCache.delete(tenantKey);
+                return data;
             })
             .catch(() => {
-                cachePromise = null;
+                subscriptionPromiseCache.delete(tenantKey);
                 return [] as Subscription[];
             });
-    }
-    return cachePromise;
+
+    subscriptionPromiseCache.set(tenantKey, promise);
+    return promise;
 }
 
 export function useModuleAccess(slug: string) {
     const [hasAccess, setHasAccess] = useState(false);
     const [status,    setStatus]    = useState<string | null>(null);
     const [loading,   setLoading]   = useState(true);
+    const [tenantKey, setTenantKey] = useState<string>(SELF_KEY);
 
     useEffect(() => {
-        fetchSubscriptions().then((subs) => {
+        const syncTenant = () => {
+            setLoading(true);
+            setTenantKey(getActiveTenantCacheKey());
+        };
+        syncTenant();
+        window.addEventListener(TENANT_EVENT, syncTenant);
+        return () => window.removeEventListener(TENANT_EVENT, syncTenant);
+    }, []);
+
+    useEffect(() => {
+        fetchSubscriptions(tenantKey).then((subs) => {
             const sub = subs.find((s) => s.product?.slug === slug);
             if (sub) {
                 setStatus(sub.status);
                 setHasAccess(sub.status === 'active' || sub.status === 'trial');
+            } else {
+                setStatus(null);
+                setHasAccess(false);
             }
             setLoading(false);
         });
-    }, [slug]);
+    }, [slug, tenantKey]);
 
     return { hasAccess, status, loading };
 }
 
 /** Invalidate the cache (call after admin actions or payment approval). */
 export function invalidateModuleAccessCache() {
-    cache = null;
-    cachePromise = null;
+    subscriptionCache.clear();
+    subscriptionPromiseCache.clear();
+    planCache.clear();
+    planPromiseCache.clear();
 }
 
 // ── Plan name hook ─────────────────────────────────────────────────────────────
 
-let planCache: string | null | undefined = undefined;
-let planCachePromise: Promise<string | null> | null = null;
+async function fetchPlanName(tenantKey: string): Promise<string | null> {
+    if (planCache.has(tenantKey)) return planCache.get(tenantKey) ?? null;
 
-async function fetchPlanName(): Promise<string | null> {
-    if (planCache !== undefined) return planCache;
-    if (!planCachePromise) {
-        planCachePromise = fetch("/api/billing/tenant")
+    const pending = planPromiseCache.get(tenantKey);
+    if (pending) return pending;
+
+    const promise = apiFetch("/api/billing/tenant")
             .then((r) => r.json())
             .then((r) => {
-                planCache = r.data?.plan?.name ?? null;
-                return planCache!;
+                const value = (r.data?.plan?.name ?? null) as string | null;
+                planCache.set(tenantKey, value);
+                planPromiseCache.delete(tenantKey);
+                return value;
             })
             .catch(() => {
-                planCachePromise = null;
+                planPromiseCache.delete(tenantKey);
                 return null;
             });
-    }
-    return planCachePromise;
+
+    planPromiseCache.set(tenantKey, promise);
+    return promise;
 }
 
 export function usePlanName(): string | null {
     const [planName, setPlanName] = useState<string | null>(null);
+    const [tenantKey, setTenantKey] = useState<string>(SELF_KEY);
 
     useEffect(() => {
-        fetchPlanName().then(setPlanName);
+        const syncTenant = () => {
+            setPlanName(null);
+            setTenantKey(getActiveTenantCacheKey());
+        };
+        syncTenant();
+        window.addEventListener(TENANT_EVENT, syncTenant);
+        return () => window.removeEventListener(TENANT_EVENT, syncTenant);
     }, []);
+
+    useEffect(() => {
+        fetchPlanName(tenantKey).then(setPlanName);
+    }, [tenantKey]);
 
     return planName;
 }

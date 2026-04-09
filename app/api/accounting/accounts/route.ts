@@ -14,13 +14,16 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     const ownerId = actingAs?.ownerId ?? userId;
     const body    = await req.json() as Record<string, unknown>;
     const result  = await getAccountingActions(ownerId).saveAccount.execute({
-        id:         typeof body.id === 'string' ? body.id : undefined,
-        companyId:  String(body.companyId ?? ''),
-        code:       String(body.code ?? ''),
-        name:       String(body.name ?? ''),
-        type:       String(body.type ?? ''),
-        parentCode: typeof body.parentCode === 'string' ? body.parentCode : null,
-        isActive:   body.isActive !== false,
+        id:           typeof body.id === 'string' ? body.id : undefined,
+        companyId:    String(body.companyId ?? ''),
+        chartId:      typeof body.chartId === 'string' ? body.chartId : null,
+        code:         String(body.code ?? ''),
+        name:         String(body.name ?? ''),
+        type:         String(body.type ?? ''),
+        parentCode:   typeof body.parentCode === 'string' ? body.parentCode : null,
+        isActive:     body.isActive !== false,
+        isGroup:      body.isGroup === true,
+        saldoInicial: Number(body.saldoInicial) || 0,
     });
     return handleResult(result, 201);
 });
