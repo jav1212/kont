@@ -71,6 +71,18 @@ export function useDocuments(companyId?: string | null) {
         return json.data as DocumentFolder;
     }, [companyId, loadFolders]);
 
+    const renameFolder = useCallback(async (id: string, name: string) => {
+        const res  = await apiFetch(`/api/documents/folders/${id}`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ name }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? 'Error al renombrar carpeta');
+        setFolders((prev) => prev.map((f) => f.id === id ? { ...f, name: json.data.name } : f));
+        return json.data as DocumentFolder;
+    }, []);
+
     const deleteFolder = useCallback(async (id: string) => {
         const res = await apiFetch(`/api/documents/folders/${id}`, { method: 'DELETE' });
         if (!res.ok) {
@@ -170,6 +182,7 @@ export function useDocuments(companyId?: string | null) {
         error,
         selectFolder,
         createFolder,
+        renameFolder,
         deleteFolder,
         uploadDocument,
         deleteDocument,

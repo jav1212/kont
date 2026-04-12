@@ -31,6 +31,7 @@ export default function DocumentsPage() {
         error,
         selectFolder,
         createFolder,
+        renameFolder,
         deleteFolder,
         uploadDocument,
         deleteDocument,
@@ -137,6 +138,7 @@ export default function DocumentsPage() {
                     selectedFolderId={selectedFolderId}
                     onSelect={(id) => { selectFolder(id); setDrawerOpen(false); }}
                     onCreateFolder={createFolder}
+                    onRenameFolder={renameFolder}
                     onDeleteFolder={deleteFolder}
                 />
             </div>

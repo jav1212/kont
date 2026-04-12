@@ -274,10 +274,10 @@ function CalcRow({ label, formula, value, accent, dim }: {
 // ============================================================================
 
 function ConstanciaCompleta({ calc, employeeName, employeeCedula, employeeCargo,
-    companyName, companyLogoUrl, showLogoInPdf, fechaInicio, fechaCulminacion, fechaReintegro }: {
+    companyName, companyLogoUrl, showLogoInPdf, fechaIngreso, fechaInicio, fechaCulminacion, fechaReintegro }: {
         calc: VacCalc; employeeName: string; employeeCedula: string; employeeCargo?: string;
         companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
-        fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
+        fechaIngreso: string; fechaInicio: string; fechaCulminacion: string; fechaReintegro: string;
     }) {
     const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
     const documentId = makeDocumentId(companyName, employeeCedula, fechaIngreso, fechaInicio, fechaCulminacion);
@@ -959,6 +959,7 @@ export default function VacacionesPage() {
                                         companyName={company?.name ?? "La Empresa"}
                                         companyLogoUrl={company?.logoUrl}
                                         showLogoInPdf={company?.showLogoInPdf}
+                                        fechaIngreso={r.emp.fechaIngreso ?? ""}
                                         fechaInicio={r.dates?.start ?? ""}
                                         fechaCulminacion={r.dates?.end ?? ""}
                                         fechaReintegro={r.dates?.rest ?? ""}
