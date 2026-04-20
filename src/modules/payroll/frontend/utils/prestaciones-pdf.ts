@@ -36,9 +36,9 @@ export interface SocialBenefitsPdfData {
 // ── Palette (Clean Monochrome) ────────────────────────────────────────────────
 type RGB = [number, number, number];
 const COLORS = {
-    ink:       [32,  32,  40]  as RGB,
-    inkMed:    [70,  70,  80]  as RGB,
-    muted:     [140, 140, 150] as RGB,
+    ink:       [0,   0,   0]   as RGB,
+    inkMed:    [0,   0,   0]   as RGB,
+    muted:     [0,   0,   0]   as RGB,
     border:    [230, 230, 235] as RGB,
     borderStr: [190, 190, 200] as RGB,
     bg:        [255, 255, 255] as RGB,
@@ -68,13 +68,19 @@ const renderText = (doc: Doc, text: string, x: number, y: number, size: number, 
     doc.setFont(font, bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    const opts: Record<string, unknown> = { align };
-    if (maxW) opts.maxWidth = maxW;
-    doc.text(text, x, y, opts);
+
+    // Enforce single-line to avoid vertical overlap (wrapping)
+    let str = text;
+    if (maxW) {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        str = lines[0] || "";
+    }
+
+    doc.text(str, x, y, { align });
 };
 
 const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 6, true, color, align, undefined, "helvetica");
+    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
 
 const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
     renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
@@ -106,7 +112,7 @@ function drawSignatures(doc: Doc, ML: number, W: number, y: number): number {
         doc.setLineDashPattern([], 0); // reset
         
         hline(doc, sx + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.4);
-        renderLabel(doc, role, sx + SIG_W / 2, y + SIG_H - 4.5, "center", COLORS.muted);
+        renderLabel(doc, role, sx + SIG_W / 2, y + SIG_H - 5.5, "center", COLORS.muted);
     });
     return y + SIG_H + 8;
 }
@@ -115,18 +121,18 @@ function renderDetailRow(
     doc: Doc, ML: number, MR: number, W: number, y: number,
     label: string, sub: string, value: string, color: RGB, alt: boolean, formula?: string
 ): number {
-    const H = 10;
+    const H = 12;
     if (alt) fill(doc, ML, y, W, H, COLORS.rowAlt);
     hline(doc, ML, y + H, W, COLORS.border, 0.25);
     
-    renderText(doc, label, ML + 4,  y + 4.5, 7, true, COLORS.ink);
-    if (sub) renderText(doc, sub, ML + 4,  y + 8.5, 5, false, COLORS.muted, "left", W * 0.5);
-    
+    renderText(doc, label, ML + 4,  y + 5, 9.5, true, COLORS.ink);
+    if (sub) renderText(doc, sub, ML + 4,  y + 9.5, 8.5, false, COLORS.muted, "left", W * 0.5);
+
     if (formula) {
-        renderMono(doc, formula, ML + W * 0.5, y + 6.5, 6, false, COLORS.muted, "left");
+        renderMono(doc, formula, ML + W * 0.5, y + 7.5, 8.5, false, COLORS.muted, "left");
     }
-    
-    renderMono(doc, value, MR - 4, y + 6.5, 8, true, color, "right");
+
+    renderMono(doc, value, MR - 4, y + 7.5, 10.5, true, color, "right");
     return y + H;
 }
 
@@ -149,18 +155,18 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, COLORS.ink);
+        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 15, true, COLORS.ink);
     } else {
-        renderText(doc, data.companyName.toUpperCase(), ML, topY, 13, true, COLORS.ink);
+        renderText(doc, data.companyName.toUpperCase(), ML, topY, 15, true, COLORS.ink);
     }
 
-    renderText(doc, "PRESTACIONES SOCIALES", MR, topY - 1, 9, true, COLORS.ink, "right");
-    renderText(doc, "ART. 142 LOTTT — GARANTÍA Y ACUMULADOS", MR, topY + 3, 6, false, COLORS.muted, "right");
+    renderText(doc, "PRESTACIONES SOCIALES", MR, topY - 1, 11, true, COLORS.ink, "right");
+    renderText(doc, "ART. 142 LOTTT — GARANTÍA Y ACUMULADOS", MR, topY + 4, 9, false, COLORS.muted, "right");
 
-    renderLabel(doc, "FECHA CORTE", MR, topY + 11, "right");
-    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 15, 9, true, COLORS.inkMed, "right");
+    renderLabel(doc, "FECHA CORTE", MR, topY + 12, "right");
+    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 17, 11, true, COLORS.inkMed, "right");
     
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 20, "right");
+    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 23, "right");
 
     let y = topY + 26;
     hline(doc, ML, y, W, COLORS.border, 0.4);
@@ -168,22 +174,21 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
 
     // ── Employee data ──────────────────────────────────────────────
     const c1x = ML;
-    const c2x = ML + W * 0.40;
-    const c3x = ML + W * 0.70;
+    const c2x = ML + W * 0.38;
 
     renderLabel(doc, "Trabajador", c1x, y);
-    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 5, 9, true, COLORS.ink, "left", c2x - c1x - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 9, 6.5, false, COLORS.muted);
-    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 13.5, 7.5, true, COLORS.inkMed, "left");
+    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 6, 11, true, COLORS.ink, "left", c2x - c1x - 4);
+    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 12, 8.5, false, COLORS.muted);
+    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 17, 9.5, true, COLORS.inkMed, "left");
 
     renderLabel(doc, "Antigüedad", c2x, y);
     const antStr = `${data.yearsOfService}a ${data.completeMonths % 12}m`;
-    renderMono(doc, antStr, c2x, y + 5, 8.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 9.5, 6.5, false, COLORS.inkMed, "left");
+    renderMono(doc, antStr, c2x, y + 6, 10.5, true, COLORS.ink, "left");
+    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 11.5, 9, false, COLORS.inkMed, "left");
 
-    renderLabel(doc, "Sal. Integral / Día", c3x, y);
-    renderMono(doc, formatVES(data.integratedDailySalary), c3x, y + 5, 8.5, true, COLORS.ink, "left");
-    renderMono(doc, `Base: ${formatVES(data.dailySalary)}`, c3x, y + 9.5, 6.5, false, COLORS.muted, "left");
+    renderLabel(doc, "Sal. Integral / Día", MR, y, "right");
+    renderMono(doc, formatVES(data.integratedDailySalary), MR, y + 6, 10.5, true, COLORS.ink, "right");
+    renderMono(doc, `Base: ${formatVES(data.dailySalary)}`, MR, y + 11.5, 9, false, COLORS.muted, "right");
 
     y += 18;
     hline(doc, ML, y, W, COLORS.border, 0.4);
@@ -197,10 +202,10 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     y = renderDetailRow(doc, ML, MR, W, y, "Alícuota de utilidades", "", formatVES(data.profitSharingQuota), COLORS.inkMed, true, "Sal. Diario × días_util / 360");
     y = renderDetailRow(doc, ML, MR, W, y, "Alícuota bono vacacional", "", formatVES(data.vacationBonusQuota), COLORS.inkMed, false, "Sal. Diario × días_bono / 360");
     
-    fill(doc, ML, y, W, 8, COLORS.rowAlt);
-    renderText(doc, "SALARIO INTEGRAL DIARIO (Art. 122)", ML + 4, y + 5.5, 7, true, COLORS.ink);
-    renderMono(doc, formatVES(data.integratedDailySalary), MR - 4, y + 5.5, 9, true, COLORS.ink, "right");
-    y += 8;
+    fill(doc, ML, y, W, 10, COLORS.rowAlt);
+    renderText(doc, "SALARIO INTEGRAL DIARIO (Art. 122)", ML + 4, y + 6.5, 10, true, COLORS.ink);
+    renderMono(doc, formatVES(data.integratedDailySalary), MR - 4, y + 6.5, 11, true, COLORS.ink, "right");
+    y += 10;
     hline(doc, ML, y, W, COLORS.borderStr, 0.8);
     y += 8;
 
@@ -211,23 +216,23 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     y = renderDetailRow(doc, ML, MR, W, y, "Días trimestrales", "5 días/mes × meses completos", `${data.quarterlyDays} días`, COLORS.ink, false);
     y = renderDetailRow(doc, ML, MR, W, y, "Días adicionales", "Art. 142.b (desde año 2)", `${data.extraDays} días`, COLORS.ink, true);
     
-    fill(doc, ML, y, W, 12, COLORS.white);
-    renderText(doc, `SALDO ACUMULADO`, ML + 4, y + 5.5, 7, true, COLORS.ink);
-    renderText(doc, `${data.totalSeniorityDays} días × ${formatVES(data.integratedDailySalary)}`, ML + 4, y + 9.5, 6, false, COLORS.muted);
-    renderMono(doc, formatVES(data.accumulatedBalance), MR - 4, y + 7.5, 10, true, COLORS.inkMed, "right");
-    y += 12;
+    fill(doc, ML, y, W, 14, COLORS.white);
+    renderText(doc, `SALDO ACUMULADO`, ML + 4, y + 6.5, 10, true, COLORS.ink);
+    renderText(doc, `${data.totalSeniorityDays} días × ${formatVES(data.integratedDailySalary)}`, ML + 4, y + 11.5, 8.5, false, COLORS.muted);
+    renderMono(doc, formatVES(data.accumulatedBalance), MR - 4, y + 9, 12, true, COLORS.inkMed, "right");
+    y += 14;
     hline(doc, ML, y, W, COLORS.border, 0.25);
-    fill(doc, ML, y, W, 12, COLORS.white);
-    renderText(doc, `GARANTÍA ART. 142.C`, ML + 4, y + 5.5, 7, true, COLORS.ink);
-    renderText(doc, `30 días × Sal. Integral × ${data.yearsOfService} año(s)`, ML + 4, y + 9.5, 6, false, COLORS.muted);
-    renderMono(doc, formatVES(data.seniorityIndemnityGuarantee), MR - 4, y + 7.5, 10, true, COLORS.inkMed, "right");
-    y += 12;
+    fill(doc, ML, y, W, 14, COLORS.white);
+    renderText(doc, `GARANTÍA ART. 142.C`, ML + 4, y + 6.5, 10, true, COLORS.ink);
+    renderText(doc, `30 días × Sal. Integral × ${data.yearsOfService} año(s)`, ML + 4, y + 11.5, 8.5, false, COLORS.muted);
+    renderMono(doc, formatVES(data.seniorityIndemnityGuarantee), MR - 4, y + 9, 12, true, COLORS.inkMed, "right");
+    y += 14;
 
     // Final social benefits amount
-    fill(doc, ML, y, W, 12, COLORS.rowAlt);
-    renderText(doc, "MONTO TOTAL PRESTACIONES", ML + 4, y + 7.5, 8, true, COLORS.ink);
-    renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 8, 12, true, COLORS.ink, "right");
-    y += 12;
+    fill(doc, ML, y, W, 14, COLORS.rowAlt);
+    renderText(doc, "MONTO TOTAL PRESTACIONES", ML + 4, y + 8.5, 10, true, COLORS.ink);
+    renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 9, 15, true, COLORS.ink, "right");
+    y += 14;
     hline(doc, ML, y, W, COLORS.borderStr, 0.8);
     y += 8;
 
@@ -247,17 +252,17 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
             y = renderDetailRow(doc, ML, MR, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", formatVES(data.accumulatedInterests), COLORS.ink, localAlt);
         }
 
-        fill(doc, ML, y, W, 12, COLORS.white);
-        renderText(doc, "Monto total acumulado (Garantía o Saldo)", ML + 4, y + 5.5, 7, false, COLORS.inkMed);
-        renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 5.5, 9, false, COLORS.inkMed, "right");
-        renderText(doc, "TOTAL ANTICIPOS ENTREGADOS", ML + 4, y + 9.5, 7, true, COLORS.inkMed);
-        renderMono(doc, `- ${formatVES(data.immediatePayment)}`, MR - 4, y + 9.5, 9, false, COLORS.inkMed, "right");
-        y += 12;
+        fill(doc, ML, y, W, 14, COLORS.white);
+        renderText(doc, "Monto total acumulado (Garantía o Saldo)", ML + 4, y + 6.5, 9.5, false, COLORS.inkMed);
+        renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 6.5, 11, false, COLORS.inkMed, "right");
+        renderText(doc, "TOTAL ANTICIPOS ENTREGADOS", ML + 4, y + 11.5, 9.5, true, COLORS.inkMed);
+        renderMono(doc, `- ${formatVES(data.immediatePayment)}`, MR - 4, y + 11.5, 11, false, COLORS.inkMed, "right");
+        y += 14;
 
-        fill(doc, ML, y, W, 12, COLORS.rowAlt);
-        renderText(doc, "SALDO A FAVOR (PRESTACIONES NETAS)", ML + 4, y + 7.5, 8, true, COLORS.ink);
-        renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 8, 12, true, COLORS.ink, "right");
-        y += 12;
+        fill(doc, ML, y, W, 14, COLORS.rowAlt);
+        renderText(doc, "SALDO A FAVOR (PRESTACIONES NETAS)", ML + 4, y + 8.5, 10, true, COLORS.ink);
+        renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 9, 15, true, COLORS.ink, "right");
+        y += 14;
         hline(doc, ML, y, W, COLORS.borderStr, 0.8);
         y += 8;
     }
@@ -271,7 +276,7 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     }
 
     const legal = "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 días de salario integral por año de servicio (Art. 142.c).";
-    renderText(doc, legal, ML, y, 6, false, COLORS.muted, "left", W);
+    renderText(doc, legal, ML, y, 8.5, false, COLORS.muted, "left", W);
     
     y += 16;
     y = drawSignatures(doc, ML, W, y);
@@ -296,18 +301,18 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 13, true, COLORS.ink);
+        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 15, true, COLORS.ink);
     } else {
-        renderText(doc, data.companyName.toUpperCase(), ML, topY, 13, true, COLORS.ink);
+        renderText(doc, data.companyName.toUpperCase(), ML, topY, 15, true, COLORS.ink);
     }
 
-    renderText(doc, "INTERESES Y ANTICIPO", MR, topY - 1, 9, true, COLORS.ink, "right");
-    renderText(doc, "ART. 143/144 LOTTT", MR, topY + 3, 6, false, COLORS.muted, "right");
+    renderText(doc, "INTERESES Y ANTICIPO", MR, topY - 1, 11, true, COLORS.ink, "right");
+    renderText(doc, "ART. 143/144 LOTTT", MR, topY + 4, 9, false, COLORS.muted, "right");
 
-    renderLabel(doc, "FECHA CORTE", MR, topY + 11, "right");
-    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 15, 9, true, COLORS.inkMed, "right");
+    renderLabel(doc, "FECHA CORTE", MR, topY + 12, "right");
+    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 17, 11, true, COLORS.inkMed, "right");
     
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 20, "right");
+    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 23, "right");
 
     let y = topY + 26;
     hline(doc, ML, y, W, COLORS.border, 0.4);
@@ -315,22 +320,21 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
 
     // ── Employee data ──────────────────────────────────────────────
     const c1x = ML;
-    const c2x = ML + W * 0.40;
-    const c3x = ML + W * 0.70;
+    const c2x = ML + W * 0.38;
 
     renderLabel(doc, "Trabajador", c1x, y);
-    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 5, 9, true, COLORS.ink, "left", c2x - c1x - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 9, 6.5, false, COLORS.muted);
-    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 13.5, 7.5, true, COLORS.inkMed, "left");
+    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 6, 11, true, COLORS.ink, "left", c2x - c1x - 4);
+    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 12, 8.5, false, COLORS.muted);
+    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 17, 9.5, true, COLORS.inkMed, "left");
 
     renderLabel(doc, "Antigüedad", c2x, y);
     const antStr = `${data.yearsOfService}a ${data.completeMonths % 12}m`;
-    renderMono(doc, antStr, c2x, y + 5, 8.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 9.5, 6.5, false, COLORS.inkMed, "left");
+    renderMono(doc, antStr, c2x, y + 6, 10.5, true, COLORS.ink, "left");
+    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 11.5, 9, false, COLORS.inkMed, "left");
 
-    renderLabel(doc, "Base de Cálculo", c3x, y);
-    renderMono(doc, "Saldo Acumulado", c3x, y + 5, 7, false, COLORS.muted, "left");
-    renderMono(doc, formatVES(data.accumulatedBalance), c3x, y + 9.5, 8.5, true, COLORS.inkMed, "left");
+    renderLabel(doc, "Base de Cálculo", MR, y, "right");
+    renderMono(doc, "Saldo Acumulado", MR, y + 6, 9.5, false, COLORS.muted, "right");
+    renderMono(doc, formatVES(data.accumulatedBalance), MR, y + 11.5, 10.5, true, COLORS.inkMed, "right");
 
     y += 18;
     hline(doc, ML, y, W, COLORS.border, 0.4);
@@ -347,8 +351,8 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     y = renderDetailRow(doc, ML, MR, W, y, "Intereses sobre Prestaciones", `Art. 143 — Tasa aplicada ${rate}%`, formatVES(data.accumulatedInterests), COLORS.green, true);
     
     fill(doc, ML, y, W, 12, COLORS.rowAlt);
-    renderText(doc, "TOTAL ANTICIPOS E INTERESES", ML + 4, y + 7.5, 8, true, COLORS.ink);
-    renderMono(doc, formatVES(data.immediatePayment), MR - 4, y + 8, 12, true, COLORS.ink, "right");
+    renderText(doc, "TOTAL ANTICIPOS E INTERESES", ML + 4, y + 7.5, 10, true, COLORS.ink);
+    renderMono(doc, formatVES(data.immediatePayment), MR - 4, y + 8, 15, true, COLORS.ink, "right");
     y += 12;
     hline(doc, ML, y, W, COLORS.borderStr, 0.8);
     y += 8;
@@ -360,10 +364,10 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     y = renderDetailRow(doc, ML, MR, W, y, "Monto Prestaciones Acumuladas", data.isGuaranteeApplied ? "Se aplicó Garantía Art. 142.c" : "Por días acumulados", formatVES(data.finalAmount), COLORS.inkMed, false);
     y = renderDetailRow(doc, ML, MR, W, y, "Total Deducción (Pago actual)", "Anticipos + Intereses ya entregados", `- ${formatVES(data.immediatePayment)}`, COLORS.inkMed, true);
 
-    fill(doc, ML, y, W, 12, COLORS.rowAlt);
-    renderText(doc, "SALDO PENDIENTE A FAVOR DEL TRABAJADOR", ML + 4, y + 7.5, 8, true, COLORS.ink);
-    renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 8, 12, true, COLORS.green, "right");
-    y += 12;
+    fill(doc, ML, y, W, 14, COLORS.rowAlt);
+    renderText(doc, "SALDO PENDIENTE A FAVOR DEL TRABAJADOR", ML + 4, y + 8.5, 10, true, COLORS.ink);
+    renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 9.5, 15, true, COLORS.green, "right");
+    y += 14;
     hline(doc, ML, y, W, COLORS.borderStr, 0.8);
     y += 8;
 
@@ -376,7 +380,7 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     }
 
     const legal = `Los intereses son calculados conforme al Art. 143 LOTTT. El monto anticipado ha sido depositado y deducido proporcionalmente conforme al Art. 144 LOTTT.`;
-    renderText(doc, legal, ML, y, 6, false, COLORS.muted, "left", W);
+    renderText(doc, legal, ML, y, 8.5, false, COLORS.muted, "left", W);
     
     y += 12;
     y = drawSignatures(doc, ML, W, y);

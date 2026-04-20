@@ -37,9 +37,9 @@ export interface LiquidationOptions {
 // ── Palette (Clean Monochrome) ────────────────────────────────────────────────
 type RGB = [number, number, number];
 const COLORS = {
-    ink:       [32,  32,  40]  as RGB,
-    inkMed:    [70,  70,  80]  as RGB,
-    muted:     [140, 140, 150] as RGB,
+    ink:       [0,   0,   0]   as RGB,
+    inkMed:    [0,   0,   0]   as RGB,
+    muted:     [0,   0,   0]   as RGB,
     border:    [230, 230, 235] as RGB,
     borderStr: [190, 190, 200] as RGB,
     bg:        [255, 255, 255] as RGB,
@@ -68,13 +68,19 @@ const renderText = (doc: Doc, text: string, x: number, y: number, size: number, 
     doc.setFont(font, bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    const opts: Record<string, unknown> = { align };
-    if (maxW) opts.maxWidth = maxW;
-    doc.text(text, x, y, opts);
+
+    // Enforce single-line to avoid vertical overlap (wrapping)
+    let str = text;
+    if (maxW) {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        str = lines[0] || "";
+    }
+
+    doc.text(str, x, y, { align });
 };
 
 const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 6, true, color, align, undefined, "helvetica");
+    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
 
 const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
     renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
@@ -104,20 +110,20 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     const topY = 20;
     if (logoBase64) {
         try { doc.addImage(logoBase64, "JPEG", marginLeft, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, opts.companyName.toUpperCase(), marginLeft + 32, topY, 13, true, COLORS.ink);
-        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft + 32, topY + 4, 7, false, COLORS.muted, "left");
+        renderText(doc, opts.companyName.toUpperCase(), marginLeft + 32, topY, 15, true, COLORS.ink);
+        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft + 32, topY + 5, 9.5, false, COLORS.muted, "left");
     } else {
-        renderText(doc, opts.companyName.toUpperCase(), marginLeft, topY, 13, true, COLORS.ink);
-        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft, topY + 4, 7, false, COLORS.muted, "left");
+        renderText(doc, opts.companyName.toUpperCase(), marginLeft, topY, 15, true, COLORS.ink);
+        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft, topY + 5, 9.5, false, COLORS.muted, "left");
     }
 
-    renderText(doc, "CONSTANCIA DE LIQUIDACIÓN", marginRight, topY - 1, 9, true, COLORS.ink, "right");
-    renderText(doc, "ART. 142 LOTTT — " + (REASON_LABELS[emp.reason] ?? emp.reason).toUpperCase(), marginRight, topY + 3, 6, false, COLORS.muted, "right");
+    renderText(doc, "CONSTANCIA DE LIQUIDACIÓN", marginRight, topY - 1, 11, true, COLORS.ink, "right");
+    renderText(doc, "ART. 142 LOTTT — " + (REASON_LABELS[emp.reason] ?? emp.reason).toUpperCase(), marginRight, topY + 4, 8.5, false, COLORS.muted, "right");
 
-    renderLabel(doc, "FECHA DE EGRESO", marginRight, topY + 11, "right");
-    renderMono(doc, formatDate(emp.terminationDate), marginRight, topY + 15, 9, true, COLORS.inkMed, "right");
+    renderLabel(doc, "FECHA DE EGRESO", marginRight, topY + 12, "right");
+    renderMono(doc, formatDate(emp.terminationDate), marginRight, topY + 17, 11.5, true, COLORS.inkMed, "right");
     
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, marginRight, topY + 20, "right");
+    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, marginRight, topY + 23, "right");
 
     let y = topY + 26;
     hline(doc, marginLeft, y, contentWidth, COLORS.border, 0.4);
@@ -126,27 +132,26 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     // ── EMPLOYEE DATA POINTS ──────────────────────────────────────────────
     const col1X = marginLeft;
     const col2X = marginLeft + contentWidth * 0.40;
-    const col3X = marginLeft + contentWidth * 0.70;
 
     renderLabel(doc, "Trabajador", col1X, y);
-    renderText(doc, emp.name.toUpperCase(), col1X, y + 5, 9, true, COLORS.ink, "left", col2X - col1X - 4);
-    if (emp.role) renderText(doc, emp.role.toUpperCase(), col1X, y + 9, 6.5, false, COLORS.muted);
-    renderMono(doc, "CI " + emp.idNumber, col1X, y + 13.5, 7.5, true, COLORS.inkMed, "left");
+    renderText(doc, emp.name.toUpperCase(), col1X, y + 6, 11, true, COLORS.ink, "left", col2X - col1X - 4);
+    if (emp.role) renderText(doc, emp.role.toUpperCase(), col1X, y + 12, 8.5, false, COLORS.muted);
+    renderMono(doc, "CI " + emp.idNumber, col1X, y + 17, 10.5, true, COLORS.inkMed, "left");
 
     renderLabel(doc, "Antigüedad", col2X, y);
     const seniorityStr = `${emp.yearsOfService}a ${emp.daysOfService % 365}d`;
-    renderMono(doc, seniorityStr, col2X, y + 5, 8.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(emp.hireDate)}`, col2X, y + 9.5, 6.5, false, COLORS.inkMed, "left");
+    renderMono(doc, seniorityStr, col2X, y + 6, 11.5, true, COLORS.ink, "left");
+    renderMono(doc, `Ingreso: ${formatDate(emp.hireDate)}`, col2X, y + 11.5, 9, false, COLORS.inkMed, "left");
 
-    renderLabel(doc, "Salario Base / Día", col3X, y);
+    renderLabel(doc, "Salario Base / Día", marginRight, y, "right");
     const dailySalary = emp.lines.length > 0 && emp.lines[0].salary && emp.lines[0].salary > 0
         ? emp.lines[0].salary
         : (emp.total > 0 ? emp.total / 30 : 0);
-    renderMono(doc, dailySalary > 0 ? formatVES(dailySalary) : "—", col3X, y + 5, 8.5, true, COLORS.ink, "left");
+    renderMono(doc, dailySalary > 0 ? formatVES(dailySalary) : "—", marginRight, y + 6, 11.5, true, COLORS.ink, "right");
 
-    y += 18;
+    y += 22;
     hline(doc, marginLeft, y, contentWidth, COLORS.border, 0.3);
-    y += 8;
+    y += 10;
 
     // ── TABLE HEADER ──────────────────────────────────────────────────────
     const COL_DIAS  = marginRight - 50;
@@ -161,18 +166,18 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     y += 6;
 
     // ── CONCEPT ROWS ──────────────────────────────────────────────────────
-    const ROW_HEIGHT = 10;
+    const ROW_HEIGHT = 12;
     emp.lines.forEach((line) => {
         const isAmber = line.highlight === "amber";
         const titleColor = isAmber ? COLORS.amber : COLORS.ink;
 
-        renderText(doc, line.label.toUpperCase(), marginLeft, y, 7.5, true, titleColor);
+        renderText(doc, line.label.toUpperCase(), marginLeft, y, 10, true, titleColor);
         if (line.formula) {
-            renderText(doc, line.formula.toUpperCase(), marginLeft, y + 3.5, 5.5, false, COLORS.muted);
+            renderText(doc, line.formula.toUpperCase(), marginLeft, y + 4.5, 8.5, false, COLORS.muted);
         }
 
-        if (line.days !== undefined) renderMono(doc, String(line.days), COL_DIAS, y + 1, 8, true, COLORS.muted, "center");
-        renderMono(doc, formatVES(line.amount), COL_MONTO, y + 1, 8.5, true, titleColor, "right");
+        if (line.days !== undefined) renderMono(doc, String(line.days), COL_DIAS, y + 2, 10, true, COLORS.muted, "center");
+        renderMono(doc, formatVES(line.amount), COL_MONTO, y + 2, 10.5, true, titleColor, "right");
 
         y += ROW_HEIGHT;
         hline(doc, marginLeft, y - 4, contentWidth, COLORS.border, 0.2); // Faint line between concepts
@@ -181,21 +186,21 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     y += 6;
 
     // ── TOTAL BAR ─────────────────────────────────────────────────────────
-    fill(doc, marginLeft, y, contentWidth, 14, COLORS.rowAlt);
+    fill(doc, marginLeft, y, contentWidth, 16, COLORS.rowAlt);
     hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.4);
-    hline(doc, marginLeft, y + 14, contentWidth, COLORS.borderStr, 0.4);
+    hline(doc, marginLeft, y + 16, contentWidth, COLORS.borderStr, 0.4);
 
-    renderLabel(doc, "LÍQUIDO A RECIBIR", marginLeft + 4, y + 8, "left", COLORS.inkMed);
-    renderMono(doc, formatVES(emp.total), marginRight - 4, y + 9.5, 12, true, COLORS.ink, "right");
+    renderLabel(doc, "LÍQUIDO A RECIBIR", marginLeft + 4, y + 9, "left", COLORS.inkMed);
+    renderMono(doc, formatVES(emp.total), marginRight - 4, y + 10.5, 14.5, true, COLORS.ink, "right");
 
-    y += 24;
+    y += 28;
 
     // ── LEGAL NOTE ────────────────────────────────────────────────────────
     const legalNote =
         "El presente documento certifica la liquidación y pago de todas las acreencias laborales aplicables al trabajador indicado, calculadas conforme a la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Incluye prestaciones sociales, utilidades, vacaciones y afines" +
         (emp.reason === "despido_injustificado" ? " e indemnización por despido injustificado (Art. 92)." : ".");
     
-    renderText(doc, legalNote, marginLeft, y, 6, false, COLORS.muted, "left", contentWidth, "helvetica");
+    renderText(doc, legalNote, marginLeft, y, 8.5, false, COLORS.muted, "left", contentWidth, "helvetica");
 
     // ── SIGNATURES ────────────────────────────────────────────────────────
     const signatureWidth = 60;
@@ -207,15 +212,15 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     
     // Employer
     doc.line(marginLeft + 5, signatureY, marginLeft + 5 + signatureWidth, signatureY);
-    renderLabel(doc, "REPRESENTANTE DEL EMPLEADOR", marginLeft + 5 + signatureWidth / 2, signatureY + 5, "center");
-    if (opts.companyName) renderText(doc, opts.companyName.toUpperCase(), marginLeft + 5 + signatureWidth / 2, signatureY + 9, 6, false, COLORS.muted, "center", signatureWidth);
+    renderLabel(doc, "REPRESENTANTE DEL EMPLEADOR", marginLeft + 5 + signatureWidth / 2, signatureY + 6, "center");
+    if (opts.companyName) renderText(doc, opts.companyName.toUpperCase(), marginLeft + 5 + signatureWidth / 2, signatureY + 11, 8.5, false, COLORS.muted, "center", signatureWidth);
 
     // Employee
     const cxRight = marginRight - 5 - signatureWidth / 2;
     doc.line(marginRight - 5 - signatureWidth, signatureY, marginRight - 5, signatureY);
 
-    renderLabel(doc, "FIRMA DEL TRABAJADOR", cxRight, signatureY + 5, "center");
-    renderMono(doc, "CI " + emp.idNumber, cxRight, signatureY + 9, 7, false, COLORS.muted, "center");
+    renderLabel(doc, "FIRMA DEL TRABAJADOR", cxRight, signatureY + 6, "center");
+    renderMono(doc, "CI " + emp.idNumber, cxRight, signatureY + 11, 9, false, COLORS.muted, "center");
     
     doc.setLineDashPattern([], 0);
 
@@ -224,7 +229,7 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     renderLabel(doc, "DOCUMENTO DE CONFORMIDAD · ORIGINAL", marginLeft, pageHeight - 9, "left", COLORS.muted);
     
     const randomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    renderMono(doc, "ID " + randomId, marginRight, pageHeight - 9, 6, true, COLORS.muted, "right");
+    renderMono(doc, "ID " + randomId, marginRight, pageHeight - 9, 8.5, true, COLORS.muted, "right");
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────

@@ -58,9 +58,9 @@ export function makePayrollSerial(periodStart: string): string {
 
 type RGB = [number, number, number];
 const COLORS = {
-    ink:       [32,  32,  40]  as RGB,
-    inkMed:    [70,  70,  80]  as RGB,
-    muted:     [140, 140, 150] as RGB,
+    ink:       [0,   0,   0]   as RGB,
+    inkMed:    [0,   0,   0]   as RGB,
+    muted:     [0,   0,   0]   as RGB,
     border:    [230, 230, 235] as RGB,
     borderStr: [190, 190, 200] as RGB,
     bg:        [255, 255, 255] as RGB,
@@ -91,13 +91,19 @@ const renderText = (doc: Doc, text: string, x: number, y: number, size: number, 
     doc.setFont(font, bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    const opts: Record<string, unknown> = { align };
-    if (maxW) opts.maxWidth = maxW;
-    doc.text(text, x, y, opts);
+    
+    // Enforce single-line to avoid vertical overlap (wrapping)
+    let str = text;
+    if (maxW) {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        str = lines[0] || "";
+    }
+
+    doc.text(str, x, y, { align });
 };
 
 const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 6, true, color, align, undefined, "helvetica");
+    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
 
 const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
     renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
@@ -146,7 +152,7 @@ function drawSignatures(doc: Doc, marginLeft: number, contentWidth: number, y: n
     doc.setDrawColor(COLORS.borderStr[0], COLORS.borderStr[1], COLORS.borderStr[2]);
     doc.setLineWidth(0.35);
     doc.rect(cbX, cbY, cbSize, cbSize);          // empty checkbox
-    renderText(doc, "Declaro haber recibido el pago en Bolívares (VES)", cbX + cbSize + 1.5, cbY + cbSize - 0.5, 4.5, false, COLORS.muted, "left", SIG_WIDTH - cbSize - 8, "helvetica");
+    renderText(doc, "Declaro haber recibido el pago en Bolívares (VES)", cbX + cbSize + 1.5, cbY + cbSize - 0.5, 7.5, false, COLORS.muted, "left", SIG_WIDTH - cbSize - 8, "helvetica");
 
     hline(doc, sx2 + 8, y + SIG_HEIGHT - 8, SIG_WIDTH - 16, COLORS.borderStr, 0.4);
     renderLabel(doc, "TRABAJADOR / CONFORME", sx2 + SIG_WIDTH / 2, y + SIG_HEIGHT - 4.5, "center", COLORS.muted);
@@ -156,15 +162,15 @@ function drawSignatures(doc: Doc, marginLeft: number, contentWidth: number, y: n
 
 function drawSection(doc: Doc, x: number, y: number, w: number, title: string, lines: PdfComputedLine[], total: number, sign: "+" | "-", amtColor?: RGB): number {
     fill(doc, x, y, w, 6, COLORS.rowAlt);
-    renderText(doc, title.toUpperCase(), x + 4, y + 4.2, 6.5, true, COLORS.ink);
-    renderMono(doc, `${sign} ${formatVES(total)}`, x + w - 4, y + 4.2, 8, true, amtColor || COLORS.ink, "right");
+    renderText(doc, title.toUpperCase(), x + 4, y + 4.2, 9, true, COLORS.ink);
+    renderMono(doc, `${sign} ${formatVES(total)}`, x + w - 4, y + 4.2, 11, true, amtColor || COLORS.ink, "right");
     y += 6;
     hline(doc, x, y, w, COLORS.borderStr, 0.8);
     y += 6;
 
     if (lines.length === 0) {
-        renderMono(doc, "Sin conceptos", x + 4, y + 2, 6, false, COLORS.muted, "left");
-        y += 6;
+        renderMono(doc, "Sin conceptos", x + 4, y + 2, 8.5, false, COLORS.muted, "left");
+        y += 7;
         return y;
     }
 
@@ -174,10 +180,10 @@ function drawSection(doc: Doc, x: number, y: number, w: number, title: string, l
     y += 5;
 
     lines.forEach((line) => {
-        renderText(doc, line.label, x, y + 2, 6.5, false, COLORS.inkMed, "left", w * 0.4);
-        renderMono(doc, line.formula, x + w * 0.45, y + 2, 6, false, COLORS.muted, "left");
-        renderMono(doc, formatVES(line.amount), x + w, y + 2, 7.5, true, amtColor || COLORS.inkMed, "right");
-        y += 5.5;
+        renderText(doc, line.label, x, y + 2, 9, false, COLORS.inkMed, "left", w * 0.4);
+        renderMono(doc, line.formula, x + w * 0.45, y + 2, 8.5, false, COLORS.muted, "left");
+        renderMono(doc, formatVES(line.amount), x + w, y + 2, 10.5, true, amtColor || COLORS.inkMed, "right");
+        y += 7.5;
     });
 
     y += 4;
@@ -203,37 +209,36 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
         try { doc.addImage(logoBase64, "JPEG", marginLeft, topY - 5, 28, 11); } catch { /* */ }
     }
     
-    renderText(doc, opts.companyName.toUpperCase(), marginLeft + 32, topY, 13, true, COLORS.ink);
-    renderText(doc, "RECIBO DE PAGO DE NÓMINA", marginLeft + 32, topY + 5.5, 7, false, COLORS.muted);
+    renderText(doc, opts.companyName.toUpperCase(), marginLeft + 32, topY, 15, true, COLORS.ink);
+    renderText(doc, "RECIBO DE PAGO DE NÓMINA", marginLeft + 32, topY + 6.5, 9.5, false, COLORS.muted);
 
     renderLabel(doc, "PERÍODO", marginRight, topY, "right");
-    renderMono(doc, periodStr, marginRight, topY + 6, 10, true, COLORS.ink, "right");
+    renderMono(doc, periodStr, marginRight, topY + 7, 12, true, COLORS.ink, "right");
 
     let y = 38;
     hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.5);
     y += 12;
 
     const column1X = marginLeft;
-    const column2X = marginLeft + contentWidth * 0.42;
-    const column3X = marginLeft + contentWidth * 0.70;
+    const column2X = marginLeft + contentWidth * 0.38;
 
     renderLabel(doc, "Trabajador", column1X, y);
-    renderText(doc, emp.nombre.toUpperCase(), column1X, y + 5, 9, true, COLORS.ink, "left", column2X - column1X - 4);
-    if (emp.cargo) renderText(doc, emp.cargo.toUpperCase(), column1X, y + 9, 6.5, false, COLORS.muted);
+    renderText(doc, emp.nombre.toUpperCase(), column1X, y + 5.5, 11, true, COLORS.ink, "left", column2X - column1X - 4);
+    if (emp.cargo) renderText(doc, emp.cargo.toUpperCase(), column1X, y + 11, 8.5, false, COLORS.muted);
 
     renderLabel(doc, "Cédula", column2X, y);
-    renderMono(doc, emp.cedula, column2X, y + 5, 9, true, COLORS.ink, "left");
-    renderMono(doc, `ID Recibo: ${empSerial}`, column2X, y + 9.5, 5.5, false, COLORS.muted, "left");
+    renderMono(doc, emp.cedula, column2X, y + 5.5, 11, true, COLORS.ink, "left");
+    renderMono(doc, `ID Recibo: ${empSerial}`, column2X, y + 11, 8, false, COLORS.muted, "left");
 
-    renderLabel(doc, "Salario", column3X, y);
+    renderLabel(doc, "Salario", marginRight, y, "right");
     
     const effectiveSalaryMode = opts.pdfVisibility?.showAlicuotaBreakdown === false ? "mensual" : opts.salaryMode;
     if (effectiveSalaryMode === "integral") {
-        renderMono(doc, formatVES(emp.salarioIntegral), column3X, y + 5, 8.5, true, COLORS.ink, "left");
-        renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, column3X, y + 9.5, 6.5, false, COLORS.muted, "left");
+        renderMono(doc, formatVES(emp.salarioIntegral), marginRight, y + 5.5, 10.5, true, COLORS.ink, "right");
+        renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, marginRight, y + 11, 8, false, COLORS.muted, "right");
     } else {
-        renderMono(doc, formatVES(emp.salarioMensual), column3X, y + 5, 8.5, true, COLORS.ink, "left");
-        renderMono(doc, "Salario Base Mensual", column3X, y + 9.5, 6.5, false, COLORS.muted, "left");
+        renderMono(doc, formatVES(emp.salarioMensual), marginRight, y + 5.5, 10.5, true, COLORS.ink, "right");
+        renderMono(doc, "Salario Base Mensual", marginRight, y + 11, 8, false, COLORS.muted, "right");
     }
 
     y += 18;
@@ -270,8 +275,8 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     fill(doc, marginLeft, y, contentWidth, 16, COLORS.rowAlt);
     
     // Neto VES — prominent
-    renderText(doc, "NETO A COBRAR (VES)", marginLeft + 4, y + 9.5, 9, true, COLORS.ink);
-    renderMono(doc, formatVES(emp.net), marginRight - 4, y + 10, 14, true, COLORS.ink, "right");
+    renderText(doc, "NETO A COBRAR (VES)", marginLeft + 4, y + 9.5, 11, true, COLORS.ink);
+    renderMono(doc, formatVES(emp.net), marginRight - 4, y + 10, 17, true, COLORS.ink, "right");
     y += 16;
     hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.8);
     y += 8;
@@ -283,7 +288,7 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
         "Ambas partes declaran su conformidad con los montos reflejados en este documento.";
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
+    doc.setFontSize(8);
     doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
     const legalLines: string[] = doc.splitTextToSize(legal, contentWidth);
     legalLines.forEach((line: string, i: number) => {
