@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
         // Try exact date first; if empty (weekend/holiday), fall back up to 7 days prior
         const start = subtractDays(date, 7);
         const res = await fetch(`${BASE}/exchange-rate/list?start=${start}&end=${date}`, {
-            next: { revalidate: 3600 },
+            cache: 'no-store',
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
