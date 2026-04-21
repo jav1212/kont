@@ -32,9 +32,10 @@ export interface BonusRow {
 export type HorasExtrasTipo = "diurna" | "nocturna" | "feriado";
 
 export interface HorasExtrasRow {
-    id:    string;
-    tipo:  HorasExtrasTipo;   // diurna 25% | nocturna 45% | feriado 100%
-    hours: string;             // number of extra hours (string for controlled input)
+    id:     string;
+    tipo:   HorasExtrasTipo;   // diurna 25% | nocturna 45% | feriado 100%
+    hours:  string;            // number of extra hours (string for controlled input)
+    active: boolean;           // only included in payroll when true
 }
 
 // Multipliers per LOTTT Art. 118

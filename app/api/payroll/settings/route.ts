@@ -39,27 +39,26 @@ const PdfVisibilitySchema = z.object({
     showDeductions:        z.boolean(),
     showBonuses:           z.boolean(),
     showOvertime:          z.boolean(),
-    showNightShiftBonus:   z.boolean(),
     showAlicuotaBreakdown: z.boolean(),
 });
 
-const OvertimeDefaultsSchema = z.object({
-    dayOvertimeEnabled:   z.boolean(),
-    nightOvertimeEnabled: z.boolean(),
+const HorasExtrasGlobalDefSchema = z.object({
+    tipo:   z.enum(['diurna', 'nocturna']),
+    hours:  z.string(),
+    active: z.boolean(),
 });
 
 const PayrollSettingsSchema = z.object({
-    earningRowDefs:      z.array(EarningRowDefSchema),
-    deductionRowDefs:    z.array(DeductionRowDefSchema),
-    bonusRowDefs:        z.array(BonusRowDefSchema),
-    diasUtilidades:      z.number().nonnegative(),
-    diasBonoVacacional:  z.number().nonnegative(),
-    salaryMode:          z.enum(['mensual', 'integral']),
-    cestaTicketUSD:      z.number().nonnegative(),
-    bonoNocturnoEnabled: z.boolean(),
-    salarioMinimoRef:    z.number().nonnegative(),
-    overtimeDefaults:    OvertimeDefaultsSchema,
-    pdfVisibility:       PdfVisibilitySchema,
+    earningRowDefs:        z.array(EarningRowDefSchema),
+    deductionRowDefs:      z.array(DeductionRowDefSchema),
+    bonusRowDefs:          z.array(BonusRowDefSchema),
+    diasUtilidades:        z.number().nonnegative(),
+    diasBonoVacacional:    z.number().nonnegative(),
+    salaryMode:            z.enum(['mensual', 'integral']),
+    cestaTicketUSD:        z.number().nonnegative(),
+    salarioMinimoRef:      z.number().nonnegative(),
+    horasExtrasGlobalRows: z.array(HorasExtrasGlobalDefSchema),
+    pdfVisibility:         PdfVisibilitySchema,
 });
 
 const PutBodySchema = z.object({

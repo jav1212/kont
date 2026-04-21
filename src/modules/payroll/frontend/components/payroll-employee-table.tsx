@@ -18,7 +18,7 @@ import {
 import type { EarningRow, DeductionRow, BonusRow, HorasExtrasRow } from "../types/payroll-types";
 import { HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 import { generatePayrollPdf } from "../utils/payroll-pdf";
-import type { PdfVisibility, OvertimeDefaults } from "../../backend/domain/payroll-settings";
+import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 import { computeAportes, downloadAportesCsv } from "../utils/aportes-patronales";
 import { Employee, EmployeeEstado } from "../hooks/use-employee";
 
@@ -68,8 +68,7 @@ function computeEmployee(
     bcvRate:                number,
     diasUtilidades:         number,
     diasBonoVacacional:     number,
-    bonoNocturnoEnabled:    boolean,
-    diasNocturnosQuincena:  number,
+    horasExtrasGlobal:      HorasExtrasRow[],
     salarioMinimo:          number,
     salaryMode:             "mensual" | "integral" = "mensual",
     // quincena is used to apply period-specific deduction rules (e.g. FAOV second-half rule)
@@ -116,7 +115,10 @@ function computeEmployee(
                 amount,
             };
         }),
-        ...overrides.extraHorasExtras
+        ...[
+            ...horasExtrasGlobal.filter((r) => r.active),
+            ...overrides.extraHorasExtras,
+        ]
             .filter((r) => parseFloat(r.hours) > 0)
             .map((r) => {
                 const hrs    = parseFloat(r.hours) || 0;
@@ -129,12 +131,6 @@ function computeEmployee(
                     amount,
                 };
             }),
-        // Bono nocturno global (Art. 117 LOTTT: 30% recargo sobre salario diario)
-        ...(bonoNocturnoEnabled && diasNocturnosQuincena > 0 ? [{
-            label:   "Bono Nocturno",
-            formula: `${diasNocturnosQuincena}d x ${daily.toFixed(2)} x 30%`,
-            amount:  diasNocturnosQuincena * daily * 0.30,
-        }] : []),
     ];
 
     const bonusLines: ComputedLine[] = allBonuses.map((r) => {
@@ -196,13 +192,9 @@ const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 // Derive the stable key for an employee override map entry.
 const getEmployeeKey = (emp: Employee) => emp.cedula;
 
-// Build an initial override, pre-seeding overtime rows from company-level defaults.
-// Rows start with hours="0" so calculations are unaffected until the user edits them.
-function buildDefaultOverride(overtime?: OvertimeDefaults): EmployeeOverride {
-    const extraHorasExtras: HorasExtrasRow[] = [];
-    if (overtime?.dayOvertimeEnabled)   extraHorasExtras.push({ id: uid("xh"), tipo: "diurna",   hours: "0" });
-    if (overtime?.nightOvertimeEnabled) extraHorasExtras.push({ id: uid("xh"), tipo: "nocturna", hours: "0" });
-    return { extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras };
+// Empty override — overtime rows are now global, not per-employee seeded.
+function buildDefaultOverride(): EmployeeOverride {
+    return { extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [] };
 }
 
 const fmt = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -312,7 +304,7 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidad
     const updateXD = (id: string, u: DeductionRow) => onChange({ ...override, extraDeductions: override.extraDeductions.map((r) => r.id === id ? u : r) });
     const removeXD = (id: string)                  => onChange({ ...override, extraDeductions: override.extraDeductions.filter((r) => r.id !== id) });
 
-    const addXH    = () => onChange({ ...override, extraHorasExtras: [...override.extraHorasExtras, { id: uid("xh"), tipo: "diurna" as const, hours: "0" }] });
+    const addXH    = () => onChange({ ...override, extraHorasExtras: [...override.extraHorasExtras, { id: uid("xh"), tipo: "diurna" as const, hours: "0", active: true }] });
     const updateXH = (id: string, u: HorasExtrasRow) => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.map((r) => r.id === id ? u : r) });
     const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id) });
 
@@ -572,8 +564,7 @@ export interface PayrollEmployeeTableProps {
     bcvRate:                  number;
     diasUtilidades:           number;
     diasBonoVacacional:       number;
-    bonoNocturnoEnabled?:     boolean;
-    diasNocturnosQuincena?:   number;
+    horasExtrasGlobal?:       HorasExtrasRow[];
     salarioMinimo?:           number;  // para tope SSO (10 SM)
     companyName:              string;
     companyId?:               string;
@@ -588,19 +579,17 @@ export interface PayrollEmployeeTableProps {
     quincena?:                1 | 2;
     // REQ-005: per-company PDF segment visibility
     pdfVisibility?:           PdfVisibility;
-    // REQ-008: pre-seed overtime rows from company-level defaults
-    overtimeDefaults?:        OvertimeDefaults;
 }
 
 export const PayrollEmployeeTable = ({
     employees, empLoading, empError, onConfirm,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     diasUtilidades, diasBonoVacacional,
-    bonoNocturnoEnabled = false, diasNocturnosQuincena = 0, salarioMinimo = 0,
+    horasExtrasGlobal = [], salarioMinimo = 0,
     companyName, companyId, companyLogoUrl, showLogoInPdf,
     payrollDate, periodStart, periodLabel,
     periodAlreadyConfirmed, salaryMode,
-    quincena = 1, pdfVisibility, overtimeDefaults,
+    quincena = 1, pdfVisibility,
 }: PayrollEmployeeTableProps) => {
 
     const [expandedId,       setExpandedId]       = useState<string | null>(null);
@@ -613,8 +602,8 @@ export const PayrollEmployeeTable = ({
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback(
-        (id: string) => overrides.get(id) ?? buildDefaultOverride(overtimeDefaults),
-        [overrides, overtimeDefaults],
+        (id: string) => overrides.get(id) ?? buildDefaultOverride(),
+        [overrides],
     );
     const setOverride = useCallback((id: string, updated: EmployeeOverride) => {
         setOverrides((prev) => { const next = new Map(prev); next.set(id, updated); return next; });
@@ -631,10 +620,10 @@ export const PayrollEmployeeTable = ({
             emp, earningRows, deductionRows, bonusRows,
             getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate,
             diasUtilidades, diasBonoVacacional,
-            bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo,
+            horasExtrasGlobal, salarioMinimo,
             salaryMode, quincena,
         )),
-        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, bonoNocturnoEnabled, diasNocturnosQuincena, salarioMinimo, salaryMode, quincena, getOverride]
+        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, getOverride]
     );
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);

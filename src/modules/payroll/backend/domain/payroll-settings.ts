@@ -37,13 +37,14 @@ export interface PayrollBonusRowDef {
     amount: string;   // default USD amount
 }
 
-// ── Overtime defaults ─────────────────────────────────────────────────────────
+// ── Horas extras globales (Art. 118 LOTTT) ───────────────────────────────────
 
-// Company-level defaults for overtime calculation (REQ-008).
-// Employee-level overrides can still supersede these per quincena.
-export interface OvertimeDefaults {
-    dayOvertimeEnabled:   boolean;   // H.E. Diurnas enabled by default
-    nightOvertimeEnabled: boolean;   // H.E. Nocturnas enabled by default
+// Company-level overtime rows applied to every employee in a payroll.
+// `active: false` → row is skipped in compute. `hours` is a string for controlled input.
+export interface PayrollHorasExtrasGlobalDef {
+    tipo:   "diurna" | "nocturna";
+    hours:  string;
+    active: boolean;
 }
 
 // ── PDF visibility ────────────────────────────────────────────────────────────
@@ -55,24 +56,22 @@ export interface PdfVisibility {
     showDeductions:        boolean;
     showBonuses:           boolean;
     showOvertime:          boolean;   // H.E. Diurnas / Nocturnas / Feriado lines
-    showNightShiftBonus:   boolean;   // Bono Nocturno line (Art. 117)
     showAlicuotaBreakdown: boolean;   // integral salary breakdown in employee card
 }
 
 // ── Main settings type ────────────────────────────────────────────────────────
 
 export interface PayrollSettings {
-    earningRowDefs:      PayrollEarningRowDef[];
-    deductionRowDefs:    PayrollDeductionRowDef[];
-    bonusRowDefs:        PayrollBonusRowDef[];
-    diasUtilidades:      number;
-    diasBonoVacacional:  number;
-    salaryMode:          "mensual" | "integral";
-    cestaTicketUSD:      number;
-    bonoNocturnoEnabled: boolean;
-    salarioMinimoRef:    number;   // reference minimum salary for SSO cap (10× multiplier)
-    overtimeDefaults:    OvertimeDefaults;
-    pdfVisibility:       PdfVisibility;
+    earningRowDefs:         PayrollEarningRowDef[];
+    deductionRowDefs:       PayrollDeductionRowDef[];
+    bonusRowDefs:           PayrollBonusRowDef[];
+    diasUtilidades:         number;
+    diasBonoVacacional:     number;
+    salaryMode:             "mensual" | "integral";
+    cestaTicketUSD:         number;
+    salarioMinimoRef:       number;   // reference minimum salary for SSO cap (10× multiplier)
+    horasExtrasGlobalRows:  PayrollHorasExtrasGlobalDef[];
+    pdfVisibility:          PdfVisibility;
 }
 
 // ── Defaults ─────────────────────────────────────────────────────────────────
@@ -93,44 +92,40 @@ export function defaultPayrollSettings(): PayrollSettings {
             { label: "Bono Alimentación", amount: "40.00" },
             { label: "Bono Transporte",   amount: "20.00" },
         ],
-        diasUtilidades:      15,
-        diasBonoVacacional:  15,
-        salaryMode:          "mensual",
-        cestaTicketUSD:      40,
-        bonoNocturnoEnabled: false,
-        salarioMinimoRef:    0,
-        overtimeDefaults: {
-            dayOvertimeEnabled:   false,
-            nightOvertimeEnabled: false,
-        },
+        diasUtilidades:     15,
+        diasBonoVacacional: 15,
+        salaryMode:         "mensual",
+        cestaTicketUSD:     40,
+        salarioMinimoRef:   0,
+        horasExtrasGlobalRows: [
+            { tipo: "diurna",   hours: "0", active: false },
+            { tipo: "nocturna", hours: "0", active: false },
+        ],
         pdfVisibility: {
             showEarnings:          true,
             showDeductions:        true,
             showBonuses:           true,
             showOvertime:          true,
-            showNightShiftBonus:   true,
             showAlicuotaBreakdown: true,
         },
     };
 }
 
 // Safe merge — partial stored value is filled with defaults for missing keys.
+// Unknown legacy keys (bonoNocturnoEnabled, overtimeDefaults, showNightShiftBonus)
+// are silently ignored.
 export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollSettings {
     const def = defaultPayrollSettings();
     return {
-        earningRowDefs:      stored.earningRowDefs      ?? def.earningRowDefs,
-        deductionRowDefs:    stored.deductionRowDefs    ?? def.deductionRowDefs,
-        bonusRowDefs:        stored.bonusRowDefs        ?? def.bonusRowDefs,
-        diasUtilidades:      stored.diasUtilidades      ?? def.diasUtilidades,
-        diasBonoVacacional:  stored.diasBonoVacacional  ?? def.diasBonoVacacional,
-        salaryMode:          stored.salaryMode          ?? def.salaryMode,
-        cestaTicketUSD:      stored.cestaTicketUSD      ?? def.cestaTicketUSD,
-        bonoNocturnoEnabled: stored.bonoNocturnoEnabled ?? def.bonoNocturnoEnabled,
-        salarioMinimoRef:    stored.salarioMinimoRef    ?? def.salarioMinimoRef,
-        overtimeDefaults: {
-            ...def.overtimeDefaults,
-            ...(stored.overtimeDefaults ?? {}),
-        },
+        earningRowDefs:        stored.earningRowDefs        ?? def.earningRowDefs,
+        deductionRowDefs:      stored.deductionRowDefs      ?? def.deductionRowDefs,
+        bonusRowDefs:          stored.bonusRowDefs          ?? def.bonusRowDefs,
+        diasUtilidades:        stored.diasUtilidades        ?? def.diasUtilidades,
+        diasBonoVacacional:    stored.diasBonoVacacional    ?? def.diasBonoVacacional,
+        salaryMode:            stored.salaryMode            ?? def.salaryMode,
+        cestaTicketUSD:        stored.cestaTicketUSD        ?? def.cestaTicketUSD,
+        salarioMinimoRef:      stored.salarioMinimoRef      ?? def.salarioMinimoRef,
+        horasExtrasGlobalRows: stored.horasExtrasGlobalRows ?? def.horasExtrasGlobalRows,
         pdfVisibility: {
             ...def.pdfVisibility,
             ...(stored.pdfVisibility ?? {}),

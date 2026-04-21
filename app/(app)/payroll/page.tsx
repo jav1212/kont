@@ -9,9 +9,10 @@ import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payr
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import { EarningsSection, DeductionsSection, BonusesSection } from "@/src/modules/payroll/frontend/components/payroll-accordion-sections";
+import { HorasExtrasGlobalEditor } from "@/src/modules/payroll/frontend/components/payroll-row-editors";
 import { PayrollEmployeeTable } from "@/src/modules/payroll/frontend/components/payroll-employee-table";
 import type { EmployeeResult } from "@/src/modules/payroll/frontend/components/payroll-employee-table";
-import { EarningRow, DeductionRow, BonusRow, EarningValue, DeductionValue, BonusValue } from "@/src/modules/payroll/frontend/types/payroll-types";
+import { EarningRow, DeductionRow, BonusRow, EarningValue, DeductionValue, BonusValue, HorasExtrasRow } from "@/src/modules/payroll/frontend/types/payroll-types";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
@@ -20,10 +21,10 @@ import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/ces
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import type {
     PdfVisibility,
-    OvertimeDefaults,
     PayrollEarningRowDef,
     PayrollDeductionRowDef,
     PayrollBonusRowDef,
+    PayrollHorasExtrasGlobalDef,
     PayrollSettings,
 } from "@/src/modules/payroll/backend/domain/payroll-settings";
 
@@ -150,6 +151,16 @@ function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
     return defs.map((b) => ({ id: uid("b"), label: b.label, amount: b.amount }));
 }
 
+function makeHorasExtrasFromDefs(defs: PayrollHorasExtrasGlobalDef[]): HorasExtrasRow[] {
+    return defs.map((d) => ({ id: uid("xhg"), tipo: d.tipo, hours: d.hours, active: d.active }));
+}
+
+function extractHorasExtrasDefs(rows: HorasExtrasRow[]): PayrollHorasExtrasGlobalDef[] {
+    return rows
+        .filter((r): r is HorasExtrasRow & { tipo: "diurna" | "nocturna" } => r.tipo === "diurna" || r.tipo === "nocturna")
+        .map((r) => ({ tipo: r.tipo, hours: r.hours, active: r.active }));
+}
+
 // Build a PayrollSettings snapshot from current page state.
 function buildSettings(
     earningRows: EarningRow[],
@@ -159,9 +170,8 @@ function buildSettings(
     diasBono: number,
     salaryMode: "mensual" | "integral",
     cestaTicketUSD: number,
-    bonoNocturno: boolean,
     salarioMinimo: number,
-    overtimeDefaults: OvertimeDefaults,
+    horasExtrasGlobal: HorasExtrasRow[],
     pdfVisibility: PdfVisibility,
 ): PayrollSettings {
     return {
@@ -175,9 +185,8 @@ function buildSettings(
         diasBonoVacacional: diasBono,
         salaryMode,
         cestaTicketUSD,
-        bonoNocturnoEnabled: bonoNocturno,
         salarioMinimoRef: salarioMinimo,
-        overtimeDefaults,
+        horasExtrasGlobalRows: extractHorasExtrasDefs(horasExtrasGlobal),
         pdfVisibility,
     };
 }
@@ -306,12 +315,15 @@ export default function PayrollCalculator() {
     // ── Cesta Ticket ───────────────────────────────────────────────────────
     const [cestaTicketUSD, setCestaTicketUSD] = useState(String(savedSettings.cestaTicketUSD));
 
-    // ── Bono nocturno ──────────────────────────────────────────────────────
-    const [bonoNocturnoEnabled, setBonoNocturnoEnabled] = useState(savedSettings.bonoNocturnoEnabled);
-    const [diasNocturnosInput, setDiasNocturnosInput] = useState("");
-
-    // ── Overtime defaults (REQ-008) ─────────────────────────────────────────
-    const [overtimeDefaults, setOvertimeDefaults] = useState<OvertimeDefaults>(savedSettings.overtimeDefaults);
+    // ── Horas extras globales (Art. 118 LOTTT) ──────────────────────────────
+    const [horasExtrasGlobal, setHorasExtrasGlobal] = useState<HorasExtrasRow[]>(
+        () => makeHorasExtrasFromDefs(savedSettings.horasExtrasGlobalRows)
+    );
+    const updateHorasExtrasGlobal = useCallback(
+        (id: string, u: HorasExtrasRow) =>
+            setHorasExtrasGlobal((rs) => rs.map((r) => r.id === id ? u : r)),
+        [],
+    );
 
     // ── Salario mínimo (para tope SSO) ─────────────────────────────────────
     const [salarioMinimoInput, setSalarioMinimoInput] = useState(
@@ -347,9 +359,8 @@ export default function PayrollCalculator() {
         setDiasBonoVacacional(String(savedSettings.diasBonoVacacional));
         setSalaryMode(savedSettings.salaryMode);
         setCestaTicketUSD(String(savedSettings.cestaTicketUSD));
-        setBonoNocturnoEnabled(savedSettings.bonoNocturnoEnabled);
         setSalarioMinimoInput(savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : "");
-        setOvertimeDefaults(savedSettings.overtimeDefaults);
+        setHorasExtrasGlobal(makeHorasExtrasFromDefs(savedSettings.horasExtrasGlobalRows));
         setPdfVisibility(savedSettings.pdfVisibility);
         setDeductionRows(makeDeductionsFromDefs(savedSettings.deductionRowDefs));
         setBonusRows(makeBonusesFromDefs(savedSettings.bonusRowDefs));
@@ -362,7 +373,6 @@ export default function PayrollCalculator() {
 
     // ── Left panel sections open/closed ────────────────────────────────────
     const [openSections, setOpenSections] = useState({
-        nocturno: false,
         alicuotas: true,
         earnings: true,
         deductions: true,
@@ -410,16 +420,15 @@ export default function PayrollCalculator() {
             earningRows, deductionRows, bonusRows,
             diasUtilNum, diasBonoNum, salaryMode,
             parseFloat(cestaTicketUSD) || 40,
-            bonoNocturnoEnabled,
             Math.max(0, parseFloat(salarioMinimoInput) || 0),
-            overtimeDefaults,
+            horasExtrasGlobal,
             pdfVisibility,
         ));
         setSaveLoading(false);
         setSaveMsg(err ? { ok: false, text: err } : { ok: true, text: "Configuración guardada" });
         setTimeout(() => setSaveMsg(null), 3000);
     }, [companyId, earningRows, deductionRows, bonusRows, diasUtilidades, diasBonoVacacional,
-        salaryMode, cestaTicketUSD, bonoNocturnoEnabled, salarioMinimoInput, overtimeDefaults,
+        salaryMode, cestaTicketUSD, salarioMinimoInput, horasExtrasGlobal,
         pdfVisibility, saveSettings]);
 
     // ── Derived ────────────────────────────────────────────────────────────
@@ -431,11 +440,6 @@ export default function PayrollCalculator() {
     const salarioMinimo = useMemo(() => Math.max(0, parseFloat(salarioMinimoInput) || 0), [salarioMinimoInput]);
     const cappedWeeklyBase = useMemo(() => salarioMinimo > 0 ? Math.min(weeklyBase, 10 * salarioMinimo) : weeklyBase, [weeklyBase, salarioMinimo]);
 
-    // Bono nocturno: días efectivos
-    const diasNocturnosQuincena = useMemo(() => {
-        const parsed = parseFloat(diasNocturnosInput);
-        return isNaN(parsed) || diasNocturnosInput === "" ? quincenaInfo.weekdays : Math.max(0, parsed);
-    }, [diasNocturnosInput, quincenaInfo.weekdays]);
 
     // Sprint 2: alícuotas para el salario de referencia (panel izquierdo)
     const diasUtilNum = useMemo(() => Math.max(0, parseFloat(diasUtilidades) || 15), [diasUtilidades]);
@@ -815,85 +819,6 @@ export default function PayrollCalculator() {
 
                         {/* ── Collapsible sections ─────────────────────────────── */}
                         <div className="flex-1">
-                            {/* Turno Nocturno */}
-                            <ConfigSection
-                                title="Turno Nocturno"
-                                badge={bonoNocturnoEnabled ? `${diasNocturnosQuincena}d · 30%` : undefined}
-                                open={openSections.nocturno}
-                                onToggle={() => toggleSection("nocturno")}
-                            >
-                                <div className="py-3 space-y-3">
-                                    <p className="font-mono text-[12px] text-[var(--text-tertiary)] leading-relaxed">
-                                        Art. 117 LOTTT — recargo del 30% sobre el salario diario
-                                        por cada día trabajado en turno nocturno.
-                                    </p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono text-[12px] text-[var(--text-secondary)] uppercase tracking-[0.14em]">Activar para esta nómina</span>
-                                        <button
-                                            onClick={() => setBonoNocturnoEnabled((v) => !v)}
-                                            className={[
-                                                "h-7 px-3 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150",
-                                                bonoNocturnoEnabled
-                                                    ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
-                                                    : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
-                                            ].join(" ")}
-                                        >
-                                            {bonoNocturnoEnabled ? "Activo" : "Inactivo"}
-                                        </button>
-                                    </div>
-                                    {bonoNocturnoEnabled && (
-                                        <div>
-                                            <label className={labelCls}>Días en turno nocturno</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="1"
-                                                placeholder={String(quincenaInfo.weekdays)}
-                                                value={diasNocturnosInput}
-                                                onChange={(e) => setDiasNocturnosInput(e.target.value)}
-                                                className={fieldCls + " text-right"}
-                                            />
-                                            <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1.5">
-                                                Vacío = todos los días normales ({quincenaInfo.weekdays}d)
-                                            </p>
-                                            <div className="mt-2 px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
-                                                <div className="flex justify-between font-mono text-[12px]">
-                                                    <span className="text-[var(--text-tertiary)]">Recargo por empleado</span>
-                                                    <span className="text-primary-500 tabular-nums">
-                                                        +{(diasNocturnosQuincena * (parseFloat(monthlySalary) || 0) / 30 * 0.30)
-                                                            .toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="pt-3 border-t border-border-light space-y-2">
-                                    <SectionHeader label="Horas extras por defecto" />
-                                    {(
-                                        [
-                                            ["dayOvertimeEnabled", "H.E. Diurnas"],
-                                            ["nightOvertimeEnabled", "H.E. Nocturnas"],
-                                        ] as [keyof OvertimeDefaults, string][]
-                                    ).map(([key, label]) => (
-                                        <div key={key} className="flex items-center justify-between">
-                                            <span className="font-mono text-[12px] text-[var(--text-secondary)]">{label}</span>
-                                            <button
-                                                onClick={() => setOvertimeDefaults((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                                className={[
-                                                    "h-7 px-3 rounded-md border font-mono text-[11px] uppercase tracking-[0.12em] transition-colors duration-150",
-                                                    overtimeDefaults[key]
-                                                        ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
-                                                        : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
-                                                ].join(" ")}
-                                            >
-                                                {overtimeDefaults[key] ? "Activo" : "Inactivo"}
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </ConfigSection>
 
                             {/* Alícuotas */}
                             <ConfigSection
@@ -987,6 +912,19 @@ export default function PayrollCalculator() {
                                     dailyRate={dailyRate}
                                     onUpdate={updateEarning} onRemove={removeEarning} onAdd={addEarning}
                                 />
+                                <div className="mt-3 pt-3 border-t border-border-light space-y-2">
+                                    <SectionHeader label="Horas extras — Art. 118 LOTTT" />
+                                    <div className="space-y-2.5">
+                                        {horasExtrasGlobal.map((row) => (
+                                            <HorasExtrasGlobalEditor
+                                                key={row.id}
+                                                row={row}
+                                                dailyRate={dailyRate}
+                                                onChange={(u) => updateHorasExtrasGlobal(row.id, u)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             </ConfigSection>
 
                             <ConfigSection
@@ -1065,7 +1003,6 @@ export default function PayrollCalculator() {
                                             ["showDeductions", "Deducciones"],
                                             ["showBonuses", "Bonificaciones"],
                                             ["showOvertime", "Horas Extras"],
-                                            ["showNightShiftBonus", "Bono Nocturno"],
                                             ["showAlicuotaBreakdown", "Desglose Salario Integral"],
                                         ] as [keyof PdfVisibility, string][]
                                     ).map(([key, label]) => (
@@ -1107,8 +1044,7 @@ export default function PayrollCalculator() {
                                 bcvRate={bcvRate}
                                 diasUtilidades={diasUtilNum}
                                 diasBonoVacacional={diasBonoNum}
-                                bonoNocturnoEnabled={bonoNocturnoEnabled}
-                                diasNocturnosQuincena={diasNocturnosQuincena}
+                                horasExtrasGlobal={horasExtrasGlobal}
                                 salarioMinimo={salarioMinimo}
                                 companyName={company?.name ?? ""}
                                 companyId={company?.id ?? ""}
@@ -1121,7 +1057,6 @@ export default function PayrollCalculator() {
                                 salaryMode={salaryMode}
                                 quincena={selQuincena}
                                 pdfVisibility={pdfVisibility}
-                                overtimeDefaults={overtimeDefaults}
                             />
                         </div>
 

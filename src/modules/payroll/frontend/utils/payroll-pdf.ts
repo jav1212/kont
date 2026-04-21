@@ -374,10 +374,8 @@ function drawReceipt(doc: Doc, emp: PdfEmployeeResult, opts: PdfPayrollOptions, 
     // Filter earning lines by visibility flags before rendering
     const filteredEarningLines = vis
         ? emp.earningLines.filter((l) => {
-              const isOvertime    = l.label.startsWith("H.E.");
-              const isNightBonus  = l.label === "Bono Nocturno";
-              if (isOvertime   && vis.showOvertime         === false) return false;
-              if (isNightBonus && vis.showNightShiftBonus  === false) return false;
+              const isOvertime = l.label.startsWith("H.E.");
+              if (isOvertime && vis.showOvertime === false) return false;
               return true;
           })
         : emp.earningLines;

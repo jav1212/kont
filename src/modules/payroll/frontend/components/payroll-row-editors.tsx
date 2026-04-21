@@ -314,6 +314,61 @@ export const HorasExtrasRowEditor = ({
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HORAS EXTRAS GLOBAL EDITOR  — global row with active/inactive switch
+// Displayed inside the "Asignaciones" sidebar section.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const GLOBAL_TIPO_LABEL: Record<"diurna" | "nocturna", string> = {
+    diurna:   "H.E. Diurnas",
+    nocturna: "H.E. Nocturnas",
+};
+
+export const HorasExtrasGlobalEditor = ({
+    row, onChange, dailyRate,
+}: {
+    row:       HorasExtrasRow;
+    onChange:  (updated: HorasExtrasRow) => void;
+    dailyRate: number; // salarioRef / 30 (used for the preview chip only)
+}) => {
+    const mult       = HORAS_EXTRAS_MULTIPLIER[row.tipo];
+    const hourlyRate = dailyRate / 8;
+    const computed   = row.active ? (parseFloat(row.hours) || 0) * hourlyRate * mult : 0;
+    const label      = row.tipo === "diurna" || row.tipo === "nocturna"
+        ? GLOBAL_TIPO_LABEL[row.tipo]
+        : TIPO_LABELS[row.tipo];
+
+    return (
+        <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+                <span className="flex-1 font-mono text-[12px] text-[var(--text-secondary)]">
+                    {label} <span className="text-[var(--text-disabled)]">×{mult}</span>
+                </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+                <input
+                    type="number"
+                    value={row.hours}
+                    onChange={(e) => onChange({ ...row, hours: e.target.value })}
+                    placeholder="0"
+                    className={numInputCls}
+                    min="0"
+                    step="0.5"
+                    disabled={!row.active}
+                />
+                <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">h</span>
+                <Toggle
+                    active={row.active}
+                    activeLabel="Activo"
+                    inactiveLabel="Inactivo"
+                    onClick={() => onChange({ ...row, active: !row.active })}
+                />
+                <Result value={computed} />
+            </div>
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BONUS ROW EDITOR
 // ─────────────────────────────────────────────────────────────────────────────
 
