@@ -16,7 +16,7 @@ export interface PlanWithModule extends Plan {
 
 export type TenantStatus   = 'trial' | 'active' | 'suspended';
 export type BillingCycle   = 'monthly' | 'quarterly' | 'annual';
-export type PaymentMethod  = 'transfer' | 'cash';
+export type PaymentMethod  = 'transfer' | 'cash' | 'credit';
 export type PaymentStatus  = 'pending' | 'approved' | 'rejected';
 
 export interface Tenant {
@@ -37,6 +37,7 @@ export interface PaymentRequest {
     planId:        string;
     billingCycle:  BillingCycle;
     amountUsd:     number;
+    discountUsd:   number;
     paymentMethod: PaymentMethod;
     receiptUrl:    string | null;
     status:        PaymentStatus;

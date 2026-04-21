@@ -4,7 +4,7 @@
 
 import { Result } from "@/src/core/domain/result";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
-import { IBillingRepository, CreatePaymentRequestInput } from "../../domain/billing-repository";
+import { IBillingRepository, CreatePaymentRequestInput, ApproveAndActivateInput } from "../../domain/billing-repository";
 import { Tenant, Plan, PlanWithModule, PaymentRequest } from "../../domain/tenant";
 import { Subscription, SubscriptionProduct, SubscriptionPlan } from "../../domain/subscription";
 import { TenantCapacity } from "../../domain/capacity";
@@ -63,6 +63,7 @@ interface RawPaymentRequestRow {
     plan_id:        string;
     billing_cycle:  string;
     amount_usd:     number;
+    discount_usd:   number | null;
     payment_method: string;
     receipt_url:    string | null;
     status:         string;
@@ -118,7 +119,8 @@ function normalizePaymentRequest(raw: RawPaymentRequestRow): PaymentRequest {
         tenantId:      raw.tenant_id,
         planId:        raw.plan_id,
         billingCycle:  raw.billing_cycle as PaymentRequest["billingCycle"],
-        amountUsd:     raw.amount_usd,
+        amountUsd:     Number(raw.amount_usd),
+        discountUsd:   Number(raw.discount_usd ?? 0),
         paymentMethod: raw.payment_method as PaymentRequest["paymentMethod"],
         receiptUrl:    raw.receipt_url,
         status:        raw.status as PaymentRequest["status"],
@@ -268,6 +270,7 @@ export class SupabaseBillingRepository implements IBillingRepository {
                 plan_id:        input.planId,
                 billing_cycle:  input.billingCycle,
                 amount_usd:     input.amountUsd,
+                discount_usd:   input.discountUsd ?? 0,
                 payment_method: input.paymentMethod,
                 receipt_url:    input.receiptUrl ?? null,
                 status:         "pending",
@@ -276,6 +279,50 @@ export class SupabaseBillingRepository implements IBillingRepository {
             .single();
 
         if (error) return Result.fail(error.message);
+
+        return Result.success(normalizePaymentRequest(data as unknown as RawPaymentRequestRow));
+    }
+
+    async approveAndActivate(tenantId: string, input: ApproveAndActivateInput): Promise<Result<PaymentRequest>> {
+        const now         = new Date();
+        const periodStart = now;
+        const periodEnd   = new Date(now);
+        if (input.billingCycle === "monthly")   periodEnd.setMonth(periodEnd.getMonth() + 1);
+        if (input.billingCycle === "quarterly") periodEnd.setMonth(periodEnd.getMonth() + 3);
+        if (input.billingCycle === "annual")    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+
+        const { data, error } = await this.source.instance
+            .from("payment_requests")
+            .insert({
+                tenant_id:      tenantId,
+                plan_id:        input.planId,
+                billing_cycle:  input.billingCycle,
+                amount_usd:     0,
+                discount_usd:   Math.round(input.discountUsd * 100) / 100,
+                payment_method: "credit",
+                receipt_url:    null,
+                status:         "approved",
+                reviewed_at:    now.toISOString(),
+            })
+            .select()
+            .single();
+
+        if (error || !data) return Result.fail(error?.message ?? "Insert failed");
+
+        const { error: upErr } = await this.source.instance
+            .from("tenants")
+            .update({
+                status:               "active",
+                plan_id:              input.planId,
+                billing_cycle:        input.billingCycle,
+                last_payment_at:      now.toISOString(),
+                current_period_start: periodStart.toISOString().split("T")[0],
+                current_period_end:   periodEnd.toISOString().split("T")[0],
+                updated_at:           now.toISOString(),
+            })
+            .eq("id", tenantId);
+
+        if (upErr) return Result.fail(upErr.message);
 
         return Result.success(normalizePaymentRequest(data as unknown as RawPaymentRequestRow));
     }

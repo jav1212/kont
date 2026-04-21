@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import { useAvailableCredit } from "@/src/modules/referrals/frontend/hooks/use-referrals";
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 
 // ============================================================================
@@ -133,6 +134,7 @@ const PLAN_ORDER = ["Gratuito", "Estudiante", "Emprendedor", "Contable", "Empres
 
 export default function BillingPage() {
     const { capacity } = useCapacity();
+    const { availableUsd, reload: reloadCredit } = useAvailableCredit();
 
     // ── Data ──────────────────────────────────────────────────────────────
     const [tenant,    setTenant]    = useState<TenantData | null>(null);
@@ -192,7 +194,10 @@ export default function BillingPage() {
 
     // ── Submit payment request ─────────────────────────────────────────────
     const selectedPlan = plans.find((p) => p.id === selPlanId);
-    const amount = selectedPlan ? planPrice(selectedPlan, selCycle) : 0;
+    const amount   = selectedPlan ? planPrice(selectedPlan, selCycle) : 0;
+    const discount = Math.min(availableUsd, amount);
+    const total    = Math.max(0, Math.round((amount - discount) * 100) / 100);
+    const fullyCovered = amount > 0 && total === 0;
 
     const openFormForPlan = (planId: string) => {
         setSelPlanId(planId);
@@ -228,10 +233,10 @@ export default function BillingPage() {
             setSubmitOk(true);
             setFormOpen(false);
             setReceiptUrl("");
-            await loadAll();
+            await Promise.all([loadAll(), reloadCredit()]);
             setTimeout(() => setSubmitOk(false), 4000);
         }
-    }, [selPlanId, selCycle, amount, payMethod, receiptUrl, loadAll]);
+    }, [selPlanId, selCycle, amount, payMethod, receiptUrl, loadAll, reloadCredit]);
 
     // ── Render ─────────────────────────────────────────────────────────────
 
@@ -549,43 +554,67 @@ export default function BillingPage() {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        {/* Amount (read-only) */}
+                                        {/* Amount breakdown */}
                                         <div className="space-y-1.5">
-                                            <p id="amount-label" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Monto a pagar</p>
-                                            <div
-                                                role="status"
-                                                aria-labelledby="amount-label"
-                                                className="h-10 px-4 flex items-center rounded-xl border border-border-light bg-surface-2 font-bold text-[14px] text-foreground tabular-nums"
-                                            >
-                                                ${amount} <span className="text-[10px] text-[var(--text-tertiary)] ml-1.5 font-normal">USD</span>
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Monto a pagar</p>
+                                            <div className="rounded-xl border border-border-light bg-surface-2 px-4 py-3 space-y-1.5">
+                                                <div className="flex items-center justify-between text-[12px] text-[var(--text-secondary)]">
+                                                    <span>Precio del plan</span>
+                                                    <span className="tabular-nums font-medium">${amount.toFixed(2)}</span>
+                                                </div>
+                                                {discount > 0 && (
+                                                    <div className="flex items-center justify-between text-[12px] text-primary-500">
+                                                        <span>Crédito referidos</span>
+                                                        <span className="tabular-nums font-bold">−${discount.toFixed(2)}</span>
+                                                    </div>
+                                                )}
+                                                <div className="border-t border-border-light pt-1.5 flex items-center justify-between">
+                                                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Total</span>
+                                                    <span className="text-[16px] font-bold text-foreground tabular-nums">
+                                                        ${total.toFixed(2)} <span className="text-[10px] text-[var(--text-tertiary)] ml-1 font-normal">USD</span>
+                                                    </span>
+                                                </div>
                                             </div>
+                                            {fullyCovered ? (
+                                                <p className="text-[10px] text-primary-500 font-medium">
+                                                    Tu crédito cubre el total. Al activar, el plan queda al día sin comprobante.
+                                                </p>
+                                            ) : availableUsd > 0 ? (
+                                                <p className="text-[10px] text-[var(--text-tertiary)] font-medium">
+                                                    Tienes <span className="text-primary-500 font-bold">${availableUsd.toFixed(2)}</span> disponibles de referidos. Se aplica al enviar.
+                                                </p>
+                                            ) : null}
                                         </div>
 
                                         {/* Payment method */}
-                                        <div className="space-y-1.5">
-                                            <label htmlFor="sel-method" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Método de pago</label>
-                                            <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
-                                                <option value="transferencia">Transferencia bancaria</option>
-                                                <option value="zelle">Zelle</option>
-                                                <option value="paypal">PayPal</option>
-                                                <option value="binance">Binance Pay</option>
-                                                <option value="efectivo">Efectivo</option>
-                                            </select>
-                                        </div>
+                                        {!fullyCovered && (
+                                            <div className="space-y-1.5">
+                                                <label htmlFor="sel-method" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">Método de pago</label>
+                                                <select id="sel-method" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className={selectCls}>
+                                                    <option value="transferencia">Transferencia bancaria</option>
+                                                    <option value="zelle">Zelle</option>
+                                                    <option value="paypal">PayPal</option>
+                                                    <option value="binance">Binance Pay</option>
+                                                    <option value="efectivo">Efectivo</option>
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Receipt URL */}
-                                    <div className="space-y-1.5">
-                                        <label htmlFor="inp-receipt" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">URL del comprobante (opcional)</label>
-                                        <input
-                                            id="inp-receipt"
-                                            type="url"
-                                            value={receiptUrl}
-                                            onChange={(e) => setReceiptUrl(e.target.value)}
-                                            placeholder="https://drive.google.com/..."
-                                            className={inputCls + " h-10 px-4 rounded-xl"}
-                                        />
-                                    </div>
+                                    {!fullyCovered && (
+                                        <div className="space-y-1.5">
+                                            <label htmlFor="inp-receipt" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">URL del comprobante (opcional)</label>
+                                            <input
+                                                id="inp-receipt"
+                                                type="url"
+                                                value={receiptUrl}
+                                                onChange={(e) => setReceiptUrl(e.target.value)}
+                                                placeholder="https://drive.google.com/..."
+                                                className={inputCls + " h-10 px-4 rounded-xl"}
+                                            />
+                                        </div>
+                                    )}
 
                                     {submitError && (
                                         <div className="flex items-center gap-2 text-error text-[12px] font-medium bg-error/5 p-3 rounded-lg border border-error/20">
@@ -606,7 +635,7 @@ export default function BillingPage() {
                                         variant="primary"
                                         size="md"
                                     >
-                                        Enviar solicitud
+                                        {fullyCovered ? "Activar con crédito" : "Enviar solicitud"}
                                     </BaseButton.Root>
                                 </div>
                             </motion.div>

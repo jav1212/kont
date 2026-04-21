@@ -86,13 +86,39 @@ function bootstrap() {
     });
 
     // Escucha cambios: login, logout, token refresh, callback de email
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange((event, session) => {
         if (session?.user) {
             dispatch({ type: "SET_USER", user: { id: session.user.id, email: session.user.email! } });
+            if (event === "SIGNED_IN") {
+                void attachPendingReferralCode();
+            }
         } else {
             dispatch({ type: "CLEAR_USER" });
         }
     });
+}
+
+// Si hay un código de referido guardado en sessionStorage (porque el usuario
+// llegó al sign-up vía ?ref=CODE), intentamos vincularlo al tenant al primer
+// SIGNED_IN. Silenciamos errores para no romper el login.
+async function attachPendingReferralCode() {
+    if (typeof window === "undefined") return;
+    const code = window.sessionStorage.getItem("kont.ref");
+    if (!code) return;
+
+    try {
+        const res = await fetch("/api/referrals/attach", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ code }),
+        });
+        // Limpiamos sólo en respuestas no-transitorias. 5xx dejamos para reintento.
+        if (res.status < 500) {
+            window.sessionStorage.removeItem("kont.ref");
+        }
+    } catch {
+        // Silenciar: no romper el flujo de login.
+    }
 }
 
 // ── Actions ───────────────────────────────────────────────────────────────────

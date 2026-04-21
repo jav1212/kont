@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-    Loader2, 
-    Rocket, 
-    Building2, 
-    TrendingUp, 
+import { useSearchParams } from "next/navigation";
+import {
+    Loader2,
+    Rocket,
+    Building2,
+    TrendingUp,
     Check,
     Sparkles,
-    Users
+    Users,
+    Gift
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -39,7 +41,18 @@ function validate(name: string, email: string, pass: string, confirm: string, te
 }
 
 export default function SignUpPage() {
+    // useSearchParams requiere estar dentro de un Suspense boundary para que Next
+    // pueda generar la página estática.
+    return (
+        <Suspense fallback={null}>
+            <SignUpPageInner />
+        </Suspense>
+    );
+}
+
+function SignUpPageInner() {
     const { signUp } = useAuth();
+    const searchParams = useSearchParams();
 
     const [name,    setName]    = useState("");
     const [email,   setEmail]   = useState("");
@@ -49,6 +62,17 @@ export default function SignUpPage() {
     const [error,   setError]   = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    // Si viene ?ref=CODE lo guardamos en sessionStorage para vincularlo en el
+    // primer login (ver use-auth.ts → attachPendingReferralCode). El código se
+    // deriva del search param: no hace falta estado porque no muta después.
+    const rawRef  = searchParams.get("ref");
+    const refCode = rawRef ? rawRef.trim().toUpperCase() || null : null;
+
+    useEffect(() => {
+        if (!refCode) return;
+        // Escritura a sessionStorage (sistema externo): uso válido de useEffect.
+        window.sessionStorage.setItem("kont.ref", refCode);
+    }, [refCode]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -103,6 +127,22 @@ export default function SignUpPage() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                            {refCode && (
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary-500/10 border border-primary-500/30">
+                                    <div className="w-8 h-8 rounded-full bg-primary-500/20 text-primary-500 flex items-center justify-center flex-shrink-0">
+                                        <Gift className="w-4 h-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[12px] font-bold text-foreground leading-tight">
+                                            Fuiste invitado a KONT
+                                        </p>
+                                        <p className="text-[11px] text-text-tertiary font-medium">
+                                            Código de referido: <span className="text-primary-500 font-bold">{refCode}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Nombre</label>
                                 <input type="text" placeholder="Tu nombre completo" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} className={INPUT_CLS} />

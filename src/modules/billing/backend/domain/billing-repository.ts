@@ -13,6 +13,13 @@ export interface CreatePaymentRequestInput {
     amountUsd:     number;
     paymentMethod: PaymentMethod;
     receiptUrl:    string | null;
+    discountUsd?:  number;
+}
+
+export interface ApproveAndActivateInput {
+    planId:       string;
+    billingCycle: BillingCycle;
+    discountUsd:  number;
 }
 
 export interface IBillingRepository {
@@ -22,4 +29,8 @@ export interface IBillingRepository {
     getCapacity(userId: string): Promise<Result<TenantCapacity>>;
     getPaymentRequests(tenantId: string): Promise<Result<PaymentRequest[]>>;
     createPaymentRequest(tenantId: string, input: CreatePaymentRequestInput): Promise<Result<PaymentRequest>>;
+
+    // Auto-aprobación: inserta un payment_request approved con amount_usd=0 y
+    // payment_method='credit', y activa al tenant con el período calculado.
+    approveAndActivate(tenantId: string, input: ApproveAndActivateInput): Promise<Result<PaymentRequest>>;
 }

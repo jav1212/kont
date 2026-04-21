@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { requireAdmin } from '@/src/shared/backend/utils/require-admin';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { getReferralsActions } from '@/src/modules/referrals/backend/infrastructure/referrals-factory';
 
 /**
  * PATCH /api/admin/payment-requests/[id]
@@ -13,6 +14,7 @@ import { createServerClient } from '@supabase/ssr';
  *  - tenant.status = 'active'
  *  - tenant.last_payment_at = now
  *  - tenant.current_period_start/end según billing_cycle
+ *  - Si es el primer pago del tenant y tiene referred_by, emite crédito al referidor.
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const adminCheck = await requireAdmin(req);
@@ -51,6 +53,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         const now = new Date();
 
+        // Pre-lectura: estado del tenant antes del update (para detectar primer pago)
+        let isFirstPayment = false;
+        if (action === 'approve') {
+            const { data: tenantRow } = await supabase
+                .from('tenants')
+                .select('last_payment_at')
+                .eq('id', pr.tenant_id)
+                .single();
+            isFirstPayment = !tenantRow?.last_payment_at;
+        }
+
         // Actualizar la solicitud
         await supabase
             .from('payment_requests')
@@ -61,6 +74,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 reviewed_by: user?.id ?? null,
             })
             .eq('id', id);
+
+        // Si se rechaza, devolver cualquier crédito de referido que se haya
+        // consumido en la creación del payment_request.
+        if (action === 'reject') {
+            try {
+                await getReferralsActions().refundCreditsForPayment.execute({ paymentRequestId: id });
+            } catch (err) {
+                console.error('[referrals] refundCreditsForPayment error (reject continued):', err);
+            }
+        }
 
         // Si se aprueba, activar el tenant y calcular período
         if (action === 'approve') {
@@ -83,6 +106,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     updated_at:           now.toISOString(),
                 })
                 .eq('id', pr.tenant_id);
+
+            // Referidos: si es el primer pago y el tenant tiene referidor, emitir crédito.
+            // El monto base es el amount_usd ya cobrado (después de descuentos aplicados).
+            try {
+                await getReferralsActions().grantReferralCredit.execute({
+                    referredTenantId:       pr.tenant_id,
+                    sourcePaymentRequestId: pr.id,
+                    paidAmountUsd:          Number(pr.amount_usd),
+                    isFirstPayment,
+                });
+            } catch (err) {
+                console.error('[referrals] grantReferralCredit error (approval continued):', err);
+            }
         }
 
         return Response.json({ data: { ok: true } });

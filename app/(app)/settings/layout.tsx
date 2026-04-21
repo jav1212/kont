@@ -9,6 +9,7 @@ const NAV_LINKS = [
     { href: "/settings/company", label: "Empresa" },
     { href: "/settings/members", label: "Miembros" },
     { href: "/settings/billing", label: "Facturación" },
+    { href: "/settings/referrals", label: "Referidos" },
     { href: "/settings/apariencia", label: "Apariencia" },
 ];
  

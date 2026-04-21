@@ -11,10 +11,12 @@ import { GetTenantSubscriptionsUseCase } from "./application/queries/get-tenant-
 import { GetPlansUseCase }               from "./application/queries/get-plans.use-case";
 import { GetTenantCapacityUseCase }      from "./application/queries/get-tenant-capacity.use-case";
 import { GetPaymentRequestsUseCase }     from "./application/queries/get-payment-requests.use-case";
+import { getReferralsActions }           from "@/src/modules/referrals/backend/infrastructure/referrals-factory";
 
 export function getBillingActions() {
     const repo     = new SupabaseBillingRepository(new ServerSupabaseSource());
     const eventBus = new LocalEventBus();
+    const referrals = getReferralsActions();
 
     return {
         getTenant:            new GetTenantUseCase(repo),
@@ -22,6 +24,11 @@ export function getBillingActions() {
         getPlans:             new GetPlansUseCase(repo),
         getCapacity:          new GetTenantCapacityUseCase(repo),
         getPaymentRequests:   new GetPaymentRequestsUseCase(repo),
-        createPaymentRequest: new CreatePaymentRequestUseCase(repo, eventBus),
+        createPaymentRequest: new CreatePaymentRequestUseCase(
+            repo,
+            eventBus,
+            referrals.getAvailableCredit,
+            referrals.consumeCredits,
+        ),
     };
 }
