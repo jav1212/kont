@@ -80,7 +80,7 @@ export class RpcChartRepository implements IChartRepository {
                     p_user_id:    this.userId,
                     p_company_id: companyId,
                     p_name:       name,
-                    p_accounts:   JSON.stringify(payload),
+                    p_accounts:   payload,  // pass as array, not stringified — PostgREST serializes to jsonb
                 });
             if (error) return Result.fail(error.message);
             return Result.success(data as string);

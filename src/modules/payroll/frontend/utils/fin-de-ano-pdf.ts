@@ -93,9 +93,9 @@ export function montoEnLetras(monto: number): string {
 type RGB = [number, number, number];
 
 const C = {
-    ink:      [15,  15,  20]  as RGB,
-    inkMed:   [50,  50,  60]  as RGB,
-    muted:    [120, 120, 132] as RGB,
+    ink:      [0,   0,   0]   as RGB,
+    inkMed:   [0,   0,   0]   as RGB,
+    muted:    [0,   0,   0]   as RGB,
     border:   [218, 218, 226] as RGB,
     white:    [255, 255, 255] as RGB,
     primary:  [8,   145, 178] as RGB,
@@ -129,9 +129,15 @@ function txt(
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
-    const opts: Record<string, unknown> = { align };
-    if (maxW) opts.maxWidth = maxW;
-    doc.text(text, x, y, opts);
+
+    // Enforce single-line to avoid vertical overlap (wrapping)
+    let str = text;
+    if (maxW) {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        str = lines[0] || "";
+    }
+
+    doc.text(str, x, y, { align });
 }
 
 function fill(doc: Doc, x: number, y: number, w: number, h: number, c: RGB) {
@@ -162,15 +168,15 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
     fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
 
-    txt(doc, opts.companyName.toUpperCase(), ML + 2, 10, 11, true, "left", C.ink);
+    txt(doc, opts.companyName.toUpperCase(), ML + 2, 11, 13, true, "left", C.ink);
     txt(doc, "BONIFICACIÓN DE FIN DE AÑO — LOTTT Arts. 131, 142, 190, 192",
-        ML + 2, 17, 6, false, "left", C.muted);
+        ML + 2, 18.5, 9.5, false, "left", C.muted);
 
-    txt(doc, "PERÍODO", MR, 9, 5, false, "right", C.muted);
-    txt(doc, `${opts.periodStart} — ${opts.periodEnd}`, MR, 16, 8, true, "right", C.ink);
+    txt(doc, "PERÍODO", MR, 10, 9, false, "right", C.muted);
+    txt(doc, `${opts.periodStart} — ${opts.periodEnd}`, MR, 18, 10.5, true, "right", C.ink);
     txt(doc,
         `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 24, 5.5, false, "right", [100, 100, 118] as RGB);
+        MR, 26, 8.5, false, "right", C.muted);
 
     let y = HDR_H + 8;
 
@@ -190,22 +196,22 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     ].join(" ");
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(11);
     doc.setTextColor(20, 20, 25);
     const introLines: string[] = doc.splitTextToSize(intro, W);
     introLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 4.2);
+        doc.text(line, ML, y + i * 5.2);
     });
-    y += introLines.length * 4.2 + 3;
+    y += introLines.length * 5.2 + 4;
 
     const declaracion = "Por el presente documento declaro haber recibido a mi cabal y entera satisfacción y en moneda de curso legal, la cantidad mencionada por lo cual nada tengo a reclamar por concepto de utilidades y anticipo de Prestaciones Sociales, calculado de la siguiente manera:";
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(11);
     const declLines: string[] = doc.splitTextToSize(declaracion, W);
     declLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 4.2);
+        doc.text(line, ML, y + i * 5.2);
     });
-    y += declLines.length * 4.2 + 5;
+    y += declLines.length * 5.2 + 6;
 
     // ── Table header ──────────────────────────────────────────────────────
     const COL_CONCEPTO = ML;
@@ -215,32 +221,32 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     const COL_W        = COL_DIAS - ML - 2;
 
     // Header row
-    fill(doc, ML, y - 4, W, 6, C.rowAlt);
-    fill(doc, ML, y - 4, 3, 6, C.primary);
+    fill(doc, ML, y - 5, W, 7, C.rowAlt);
+    fill(doc, ML, y - 5, 3, 7, C.primary);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    doc.setFontSize(10);
     doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("CONCEPTOS",  COL_CONCEPTO + 5, y, { align: "left"  });
     doc.text("DÍAS",       COL_DIAS,     y, { align: "center" });
     doc.text("SALARIO",    COL_SALARIO,  y, { align: "center" });
     doc.text("MONTO (Bs)", COL_MONTO,    y, { align: "right"  });
-    y += 5;
+    y += 6;
     hline(doc, ML, y, W, 0.4, C.primary);
-    y += 2;
+    y += 3;
 
     // ── Concept rows ──────────────────────────────────────────────────────
-    const ROW_H = 4.8;
+    const ROW_H = 6.5;
     emp.concepts.forEach((c, i) => {
         if (i % 2 !== 0) {
-            fill(doc, ML, y - 3.5, W, ROW_H, C.rowAlt);
+            fill(doc, ML, y - 4.5, W, ROW_H, C.rowAlt);
         }
 
         doc.setFont("helvetica", c.italic ? "italic" : "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(10.5);
         doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
         const labelLines: string[] = doc.splitTextToSize(c.label, COL_W);
         labelLines.forEach((line: string, li: number) => {
-            doc.text(line, COL_CONCEPTO, y + li * 3.8);
+            doc.text(line, COL_CONCEPTO, y + li * 4.8);
         });
 
         if (c.dias !== null) {
@@ -256,7 +262,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
             doc.text(fmtVES(c.monto), COL_MONTO, y, { align: "right" });
         }
 
-        const rowH = Math.max(ROW_H, labelLines.length * 3.8 + 1);
+        const rowH = Math.max(ROW_H, labelLines.length * 4.8 + 1.5);
         y += rowH;
         hline(doc, ML, y, W, 0.1);
     });
@@ -264,37 +270,37 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     y += 2;
 
     // ── Subtotal ──────────────────────────────────────────────────────────
-    fill(doc, ML, y - 3.5, W, 6, C.subtotal);
-    fill(doc, ML, y - 3.5, 3, 6, C.primary);
+    fill(doc, ML, y - 4.5, W, 7, C.subtotal);
+    fill(doc, ML, y - 4.5, 3, 7, C.primary);
     doc.setDrawColor(C.subtotalBd[0], C.subtotalBd[1], C.subtotalBd[2]);
     doc.setLineWidth(0.3);
-    doc.rect(ML, y - 3.5, W, 6, "D");
+    doc.rect(ML, y - 4.5, W, 7, "D");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
+    doc.setFontSize(11);
     doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
     doc.text("SUBTOTAL", COL_CONCEPTO + 5, y);
     doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
     doc.text(fmtVES(emp.subtotal), COL_MONTO, y, { align: "right" });
-    y += 8;
+    y += 10;
 
     // ── Deductions ────────────────────────────────────────────────────────
-    fill(doc, ML, y - 4, W, 6, C.rowAlt);
-    fill(doc, ML, y - 4, 3, 6, C.primary);
+    fill(doc, ML, y - 5, W, 7, C.rowAlt);
+    fill(doc, ML, y - 5, 3, 7, C.primary);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
+    doc.setFontSize(10);
     doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("DEDUCCIONES", COL_CONCEPTO + 5, y);
     doc.text("MONTO (Bs)", COL_MONTO, y, { align: "right" });
-    y += 5;
+    y += 6;
     hline(doc, ML, y, W, 0.4, C.primary);
-    y += 2;
+    y += 3;
 
     emp.deductions.forEach((d, i) => {
         if (i % 2 !== 0) {
-            fill(doc, ML, y - 3.5, W, ROW_H, C.rowAlt);
+            fill(doc, ML, y - 5, W, ROW_H, C.rowAlt);
         }
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
+        doc.setFontSize(10.5);
         doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
         doc.text(d.label, COL_CONCEPTO, y);
         doc.setFont("helvetica", d.monto > 0 ? "bold" : "normal");
@@ -304,48 +310,48 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
         hline(doc, ML, y, W, 0.1);
     });
 
-    y += 2;
+    y += 3;
 
     // Total deducciones
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
+    doc.setFontSize(11);
     doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
     doc.text("TOTAL DEDUCCIONES", COL_CONCEPTO, y);
     doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
     doc.text(fmtVES(emp.totalDed), COL_MONTO, y, { align: "right" });
-    y += 3;
+    y += 4;
     hline(doc, ML, y, W, 0.5);
-    y += 5;
+    y += 6;
 
     // Total recibido
-    fill(doc, ML, y - 4.5, W, 9, C.white);
+    fill(doc, ML, y - 5.5, W, 11, C.white);
     // Top accent line
     doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setLineWidth(1);
-    doc.line(ML, y - 4.5, ML + W, y - 4.5);
+    doc.setLineWidth(1.2);
+    doc.line(ML, y - 5.5, ML + W, y - 5.5);
     doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
     doc.setLineWidth(0.3);
-    doc.line(ML, y - 4.5 + 9, ML + W, y - 4.5 + 9);
+    doc.line(ML, y - 5.5 + 11, ML + W, y - 5.5 + 11);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
+    doc.setFontSize(13);
     doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("TOTAL RECIBIDO", COL_CONCEPTO + 2, y + 0.5);
+    doc.text("TOTAL RECIBIDO", COL_CONCEPTO + 2, y + 1);
     doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.text(fmtVES(emp.totalRecibido), COL_MONTO, y + 0.5, { align: "right" });
-    y += 12;
+    doc.text(fmtVES(emp.totalRecibido), COL_MONTO, y + 1, { align: "right" });
+    y += 14;
 
     // ── Legal note ────────────────────────────────────────────────────────
     hline(doc, ML, y, W, 0.2);
     y += 4;
     const nota = "La prestación de antigüedad Art. 142 fue cancelada con salario integral, para dar cumplimiento al artículo 122 de la Ley Orgánica del Trabajo.";
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(7.5);
+    doc.setFontSize(10);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     const notaLines: string[] = doc.splitTextToSize(nota, W);
     notaLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 3.8);
+        doc.text(line, ML, y + i * 4.8);
     });
-    y += notaLines.length * 3.8 + 6;
+    y += notaLines.length * 4.8 + 8;
 
     // ── Signatures ────────────────────────────────────────────────────────
     const sigW  = 75;
@@ -358,10 +364,10 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     doc.setLineWidth(0.25);
     doc.rect(ML, y, sigW, sigH, "FD");
     fill(doc, ML, y, sigW, 1.5, C.primary);
-    txt(doc, opts.companyName, ML + sigW / 2, y + 9, 7, true, "center", C.inkMed, sigW - 10);
+    txt(doc, opts.companyName, ML + sigW / 2, y + 9.5, 9.5, true, "center", C.inkMed, sigW - 10);
     hline(doc, ML + sigPd, y + 17, sigW - sigPd * 2, 0.4, C.border);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5);
+    doc.setFontSize(8.5);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text("FIRMA Y SELLO DEL EMPLEADOR", ML + sigW / 2, y + 21, { align: "center" });
 
@@ -372,16 +378,16 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     doc.setLineWidth(0.25);
     doc.rect(esx, y, sigW, sigH, "FD");
     fill(doc, esx, y, sigW, 1.5, C.primary);
-    txt(doc, emp.nombre, esx + sigW / 2, y + 9, 7, true, "center", C.inkMed, sigW - 10);
-    txt(doc, `C.I. V-${emp.cedula}`, esx + sigW / 2, y + 14, 5.5, false, "center", C.muted);
+    txt(doc, emp.nombre, esx + sigW / 2, y + 9.5, 9.5, true, "center", C.inkMed, sigW - 10);
+    txt(doc, `C.I. V-${emp.cedula}`, esx + sigW / 2, y + 14.5, 8.5, false, "center", C.muted);
     hline(doc, esx + sigPd, y + 17, sigW - sigPd * 2, 0.4, C.border);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5);
+    doc.setFontSize(8.5);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     doc.text("FIRMA DEL TRABAJADOR / CONFORME", esx + sigW / 2, y + 21, { align: "center" });
 
     // City + date centred between signatures
-    txt(doc, `${opts.ciudad}, ${opts.fechaDoc}`, PW / 2, y + sigH + 6, 7.5, false, "center", C.inkMed);
+    txt(doc, `${opts.ciudad}, ${opts.fechaDoc}`, PW / 2, y + sigH + 8, 10, false, "center", C.inkMed);
 
     // ── FOOTER ────────────────────────────────────────────────────────────
     fill(doc, 0, PH - 10, PW, 10, C.white);
@@ -389,13 +395,13 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     doc.setLineWidth(0.3);
     doc.line(0, PH - 10, PW, PH - 10);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(opts.companyName.toUpperCase(), ML, PH - 4);
-    doc.text("DOCUMENTO CONFIDENCIAL", PW / 2, PH - 4, { align: "center" });
+    doc.text(opts.companyName.toUpperCase(), ML, PH - 6);
+    doc.text("DOCUMENTO CONFIDENCIAL", PW / 2, PH - 6, { align: "center" });
     doc.text(
         new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase(),
-        MR, PH - 4, { align: "right" }
+        MR, PH - 6, { align: "right" }
     );
 }
 

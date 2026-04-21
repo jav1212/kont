@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { Receipt, TrendingUp, RefreshCw, ChevronDown } from "lucide-react";
+import { Receipt, TrendingUp, RefreshCw, ChevronDown, Calendar, CalendarDays } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
 import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -51,6 +51,72 @@ interface QuincenaInfo {
     startDate: string;
     endDate: string;
     label: string;
+}
+
+type PeriodoMode = "quincenal" | "semanal";
+
+interface WeekInfo {
+    weekdays: number;
+    saturdays: number;
+    sundays: number;
+    mondays: number;   // always 1 — one Monday per week
+    holidays: number;
+    holidayList: Holiday[];
+    startDate: string; // ISO Monday
+    endDate: string;   // ISO Sunday
+    label: string;
+}
+
+// Returns the ISO strings of every Monday in the given month.
+function getMondaysOfMonth(year: number, month: number): string[] {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const mondays: string[] = [];
+    const d = new Date(year, month - 1, 1);
+    while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+    while (d.getMonth() === month - 1) {
+        mondays.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+        d.setDate(d.getDate() + 7);
+    }
+    return mondays;
+}
+
+// Builds a WeekInfo for the 7-day period starting on mondayISO.
+function getWeekInfo(mondayISO: string): WeekInfo {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    const start = new Date(mondayISO + "T00:00:00");
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6); // Sunday
+
+    const startISO = toISO(start);
+    const endISO = toISO(end);
+
+    const holidayList = getHolidaysInRange(startISO, endISO);
+    const holidayDates = new Set(holidayList.map((h) => h.date));
+
+    let weekdays = 0, saturdays = 0, sundays = 0;
+    const cur = new Date(start);
+    while (cur <= end) {
+        const iso = toISO(cur);
+        const wd = cur.getDay();
+        if (wd === 0) sundays++;
+        else if (wd === 6) saturdays++;
+        else if (!holidayDates.has(iso)) weekdays++;
+        cur.setDate(cur.getDate() + 1);
+    }
+
+    const startFmt = start.toLocaleDateString("es-VE", { day: "2-digit", month: "short" });
+    const endFmt   = end.toLocaleDateString("es-VE",   { day: "2-digit", month: "short", year: "numeric" });
+
+    return {
+        weekdays, saturdays, sundays, mondays: 1,
+        holidays: holidayList.length,
+        holidayList,
+        startDate: startISO,
+        endDate: endISO,
+        label: `Sem. ${startFmt} – ${endFmt}`,
+    };
 }
 
 const MONTH_NAMES = [
@@ -263,16 +329,45 @@ export default function PayrollCalculator() {
     const { confirm, runs } = usePayrollHistory(companyId);
     const { settings: savedSettings, loading: settingsLoading, loadedAt: settingsLoadedAt, save: saveSettings } = usePayrollSettings(companyId);
 
-    // ── Quincena ───────────────────────────────────────────────────────────
+    // ── Quincena / Semanal ─────────────────────────────────────────────────
     const now = new Date();
-    const [selYear, setSelYear] = useState(now.getFullYear());
-    const [selMonth, setSelMonth] = useState(now.getMonth() + 1);
+    const [selYear,    setSelYear]    = useState(now.getFullYear());
+    const [selMonth,   setSelMonth]   = useState(now.getMonth() + 1);
     const [selQuincena, setSelQuincena] = useState<Quincena>(now.getDate() <= 15 ? 1 : 2);
+    const [periodoMode, setPeriodoMode] = useState<PeriodoMode>("quincenal");
+
+    // Initialise selWeekMonday to the Monday of the current week.
+    const [selWeekMonday, setSelWeekMonday] = useState<string>(() => {
+        const d = new Date();
+        const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+        d.setDate(d.getDate() + diff);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    });
 
     const quincenaInfo = useMemo(
         () => getQuincenaInfo(selYear, selMonth, selQuincena),
         [selYear, selMonth, selQuincena]
     );
+
+    const mondaysOfMonth = useMemo(() => getMondaysOfMonth(selYear, selMonth), [selYear, selMonth]);
+    const weekInfo       = useMemo(() => getWeekInfo(selWeekMonday),           [selWeekMonday]);
+
+    // When the user switches year/month while in semanal mode, reset to the
+    // first Monday of the new month so the week stays in bounds.
+    useEffect(() => {
+        if (periodoMode !== "semanal") return;
+        const mondays = getMondaysOfMonth(selYear, selMonth);
+        if (mondays.length > 0 && !mondays.includes(selWeekMonday)) {
+            setSelWeekMonday(mondays[0]);
+        }
+    }, [selYear, selMonth, periodoMode, selWeekMonday]);
+
+    // Active period info — drives all downstream calculations.
+    const activePeriodInfo = periodoMode === "quincenal" ? quincenaInfo : weekInfo;
+    // For semanal mode every deduction applies (quincena "second-half" concept
+    // does not exist in weekly payroll; the user can remove FAOV rows manually).
+    const activeQuincena: 1 | 2 = periodoMode === "semanal" ? 2 : selQuincena;
 
     // ── Global params ──────────────────────────────────────────────────────
     const [exchangeRate, setExchangeRate] = useState("79.59");
@@ -366,10 +461,10 @@ export default function PayrollCalculator() {
         setBonusRows(makeBonusesFromDefs(savedSettings.bonusRowDefs));
         setEarningRows(makeEarningsFromDefs(
             savedSettings.earningRowDefs,
-            quincenaInfo.weekdays, quincenaInfo.saturdays,
-            quincenaInfo.sundays, quincenaInfo.holidays,
+            activePeriodInfo.weekdays, activePeriodInfo.saturdays,
+            activePeriodInfo.sundays, activePeriodInfo.holidays,
         ));
-    }, [settingsLoadedAt, settingsLoading, savedSettings, quincenaInfo]);
+    }, [settingsLoadedAt, settingsLoading, savedSettings, activePeriodInfo]);
 
     // ── Left panel sections open/closed ────────────────────────────────────
     const [openSections, setOpenSections] = useState({
@@ -382,7 +477,7 @@ export default function PayrollCalculator() {
     const toggleSection = (key: keyof typeof openSections) =>
         setOpenSections((s) => ({ ...s, [key]: !s[key] }));
 
-    // ── Auto-fill days when quincena changes ───────────────────────────────
+    // ── Auto-fill days when period changes ─────────────────────────────────
     // Rebuilds earning rows from current defs + new calendar values.
     const earningRowsRef = useRef(earningRows);
     earningRowsRef.current = earningRows;
@@ -390,13 +485,12 @@ export default function PayrollCalculator() {
     const handleAutoFill = useCallback(() => {
         setEarningRows(makeEarningsFromDefs(
             extractEarningDefs(earningRowsRef.current),
-            quincenaInfo.weekdays, quincenaInfo.saturdays,
-            quincenaInfo.sundays, quincenaInfo.holidays,
+            activePeriodInfo.weekdays, activePeriodInfo.saturdays,
+            activePeriodInfo.sundays, activePeriodInfo.holidays,
         ));
-    }, [quincenaInfo]);
+    }, [activePeriodInfo]);
 
-    // handleAutoFill updates whenever quincenaInfo (selYear/Month/Quincena) changes,
-    // so depending on the callback is equivalent and satisfies exhaustive-deps.
+    // handleAutoFill updates whenever activePeriodInfo changes (period/mode switches).
     useEffect(() => { handleAutoFill(); }, [handleAutoFill]);
 
     // Fetch BCV rate once on mount. A ref guards against re-runs when fetchBcvRate
@@ -432,7 +526,7 @@ export default function PayrollCalculator() {
         pdfVisibility, saveSettings]);
 
     // ── Derived ────────────────────────────────────────────────────────────
-    const mondaysInMonth = quincenaInfo.mondays;
+    const mondaysInMonth = activePeriodInfo.mondays;
     const dailyRate = useMemo(() => (parseFloat(monthlySalary) || 0) / 30, [monthlySalary]);
     const weeklyRate = useMemo(() => calculateWeeklyFactor(parseFloat(monthlySalary) || 0), [monthlySalary]);
     const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
@@ -460,8 +554,8 @@ export default function PayrollCalculator() {
 
     const deductionValues = useMemo<DeductionValue[]>(() =>
         deductionRows
-            // FAOV rule: exclude "second-half" rows in first quincena
-            .filter((r) => !(r.quincenaRule === "second-half" && selQuincena === 1))
+            // FAOV rule: exclude "second-half" rows in first quincena (not applicable in semanal mode)
+            .filter((r) => !(r.quincenaRule === "second-half" && activeQuincena === 1))
             .map((r) => {
                 if (r.mode === "fixed") return { ...r, computed: parseFloat(r.rate) || 0 };
                 const base = r.base === "weekly-capped" ? cappedWeeklyBase
@@ -469,7 +563,7 @@ export default function PayrollCalculator() {
                         : r.base === "integral" ? integralBase
                             : refSalary;
                 return { ...r, computed: base * ((parseFloat(r.rate) || 0) / 100) };
-            }), [deductionRows, selQuincena, weeklyBase, cappedWeeklyBase, integralBase, refSalary]);
+            }), [deductionRows, activeQuincena, weeklyBase, cappedWeeklyBase, integralBase, refSalary]);
 
     const bonusValues = useMemo<BonusValue[]>(() =>
         bonusRows.map((r) => ({
@@ -496,10 +590,10 @@ export default function PayrollCalculator() {
     const periodAlreadyConfirmed = useMemo(
         () => runs.some(
             (r) => r.companyId === companyId &&
-                r.periodStart === quincenaInfo.startDate &&
-                r.periodEnd === quincenaInfo.endDate,
+                r.periodStart === activePeriodInfo.startDate &&
+                r.periodEnd === activePeriodInfo.endDate,
         ),
-        [runs, companyId, quincenaInfo],
+        [runs, companyId, activePeriodInfo],
     );
 
     // ── Confirm ────────────────────────────────────────────────────────────
@@ -508,8 +602,8 @@ export default function PayrollCalculator() {
         return confirm({
             run: {
                 companyId,
-                periodStart: quincenaInfo.startDate,
-                periodEnd: quincenaInfo.endDate,
+                periodStart: activePeriodInfo.startDate,
+                periodEnd: activePeriodInfo.endDate,
                 exchangeRate: bcvRate,
             },
             receipts: results.map((r) => ({
@@ -535,7 +629,7 @@ export default function PayrollCalculator() {
                 },
             })),
         });
-    }, [companyId, quincenaInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum, confirm]);
+    }, [companyId, activePeriodInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum, confirm]);
 
     // ── Quincena buttons ───────────────────────────────────────────────────
     const qBtnCls = (active: boolean) => [
@@ -562,14 +656,14 @@ export default function PayrollCalculator() {
                     title="Nómina"
                     subtitle={
                         <div className="flex items-center gap-2">
-                            <span>{quincenaInfo.label}</span>
+                            <span>{activePeriodInfo.label}</span>
                             <span className="text-border-light/40">•</span>
                             <span>{employees.filter(e => e.estado === "activo").length} activos</span>
                         </div>
                     }
                 >
                     <div className="flex items-center gap-3">
-                        {selQuincena === 2 && (
+                        {periodoMode === "quincenal" && selQuincena === 2 && (
                             <BaseButton.Root
                                 variant="secondary"
                                 size="sm"
@@ -581,8 +675,8 @@ export default function PayrollCalculator() {
                                         {
                                             companyName: company?.name ?? "",
                                             companyId: company?.id,
-                                            periodLabel: quincenaInfo.label,
-                                            payrollDate: quincenaInfo.endDate,
+                                            periodLabel: activePeriodInfo.label,
+                                            payrollDate: activePeriodInfo.endDate,
                                             montoUSD: parseFloat(cestaTicketUSD) || 40,
                                             bcvRate,
                                         }
@@ -649,15 +743,45 @@ export default function PayrollCalculator() {
                         <div className="px-5 py-4 border-b border-border-light space-y-3">
                             <SectionHeader label="Período" />
 
+                            {/* Periodo mode toggle */}
+                            <div>
+                                <label className={labelCls}>Modalidad</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                        onClick={() => setPeriodoMode("quincenal")} 
+                                        className={[
+                                            "flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all shadow-sm",
+                                            periodoMode === "quincenal" 
+                                                ? "bg-primary-500/10 border-primary-500/40 text-primary-600 font-bold" 
+                                                : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground"
+                                        ].join(" ")}
+                                    >
+                                        <CalendarDays size={14} /> Quincenal
+                                    </button>
+                                    <button 
+                                        onClick={() => setPeriodoMode("semanal")}   
+                                        className={[
+                                            "flex items-center justify-center gap-2 h-9 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all shadow-sm",
+                                            periodoMode === "semanal" 
+                                                ? "bg-primary-500/10 border-primary-500/40 text-primary-600 font-bold" 
+                                                : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground"
+                                        ].join(" ")}
+                                    >
+                                        <Calendar size={14} /> Semanal
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Month + Year */}
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 pt-1">
                                 <div className="flex-1">
                                     <label className={labelCls}>Mes</label>
                                     <div className="relative">
+                                        <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={14} />
                                         <select
                                             value={selMonth}
                                             onChange={(e) => setSelMonth(Number(e.target.value))}
-                                            className={fieldCls}
+                                            className={fieldCls + " pl-9 shadow-sm"}
                                         >
                                             {MONTH_NAMES.map((name, i) => (
                                                 <option key={i + 1} value={i + 1}>{name}</option>
@@ -666,13 +790,13 @@ export default function PayrollCalculator() {
                                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                     </div>
                                 </div>
-                                <div className="w-20">
+                                <div className="w-24">
                                     <label className={labelCls}>Año</label>
                                     <div className="relative">
                                         <select
                                             value={selYear}
                                             onChange={(e) => setSelYear(Number(e.target.value))}
-                                            className={fieldCls}
+                                            className={fieldCls + " pr-9 shadow-sm"}
                                         >
                                             {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map((y) => (
                                                 <option key={y} value={y}>{y}</option>
@@ -683,35 +807,92 @@ export default function PayrollCalculator() {
                                 </div>
                             </div>
 
-                            {/* Quincena toggle */}
-                            <div>
-                                <label className={labelCls}>Quincena</label>
-                                <div className="flex gap-1.5">
-                                    <button onClick={() => setSelQuincena(1)} className={qBtnCls(selQuincena === 1)}>1–15</button>
-                                    <button onClick={() => setSelQuincena(2)} className={qBtnCls(selQuincena === 2)}>16–fin</button>
+                            {/* Quincena toggle (quincenal mode only) */}
+                            {periodoMode === "quincenal" && (
+                                <div className="pt-1">
+                                    <label className={labelCls}>Quincena Select</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button 
+                                            onClick={() => setSelQuincena(1)} 
+                                            className={[
+                                                "flex items-center justify-center h-9 rounded-lg border font-mono text-[12px] uppercase tracking-[0.1em] transition-all shadow-sm",
+                                                selQuincena === 1 
+                                                    ? "bg-primary-500/10 border-primary-500/40 text-primary-600 font-bold" 
+                                                    : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground"
+                                            ].join(" ")}
+                                        >
+                                            1–15
+                                        </button>
+                                        <button 
+                                            onClick={() => setSelQuincena(2)} 
+                                            className={[
+                                                "flex items-center justify-center h-9 rounded-lg border font-mono text-[12px] uppercase tracking-[0.1em] transition-all shadow-sm",
+                                                selQuincena === 2 
+                                                    ? "bg-primary-500/10 border-primary-500/40 text-primary-600 font-bold" 
+                                                    : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground"
+                                            ].join(" ")}
+                                        >
+                                            16–fin
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Week selector (semanal mode only) */}
+                            {periodoMode === "semanal" && (
+                                <div className="pt-1">
+                                    <label className={labelCls}>Semanas del Mes (Inicio Lunes)</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        {mondaysOfMonth.map((monday, i) => {
+                                            const sun = new Date(monday + "T00:00:00");
+                                            sun.setDate(sun.getDate() + 6);
+                                            const endFmt = sun.toLocaleDateString("es-VE", { day: "2-digit", month: "short" });
+                                            const startFmt = new Date(monday + "T00:00:00").toLocaleDateString("es-VE", { day: "2-digit", month: "short" });
+                                            const isSel = selWeekMonday === monday;
+                                            return (
+                                                <button
+                                                    key={monday}
+                                                    onClick={() => setSelWeekMonday(monday)}
+                                                    className={[
+                                                        "flex items-center justify-between px-3 py-2.5 rounded-lg border font-mono transition-all duration-150 shadow-sm",
+                                                        isSel 
+                                                          ? "bg-primary-500/10 border-primary-500/40" 
+                                                          : "bg-surface-1 border-border-light hover:border-border-medium"
+                                                    ].join(" ")}
+                                                >
+                                                    <span className={["text-[12px] font-bold uppercase tracking-wider", isSel ? "text-primary-600" : "text-[var(--text-secondary)]"].join(" ")}>
+                                                        Semana {i + 1}
+                                                    </span>
+                                                    <span className={["text-[11px] tabular-nums", isSel ? "text-primary-600/80" : "text-[var(--text-tertiary)]"].join(" ")}>
+                                                        {startFmt} – {endFmt}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Day summary */}
                             <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-border-light bg-surface-2">
-                                <DayStat label="Norm" value={quincenaInfo.weekdays} />
+                                <DayStat label="Norm" value={activePeriodInfo.weekdays} />
                                 <div className="w-px h-6 bg-border-light" />
-                                <DayStat label="Sáb" value={quincenaInfo.saturdays} />
+                                <DayStat label="Sáb" value={activePeriodInfo.saturdays} />
                                 <div className="w-px h-6 bg-border-light" />
-                                <DayStat label="Dom" value={quincenaInfo.sundays} />
+                                <DayStat label="Dom" value={activePeriodInfo.sundays} />
                                 <div className="w-px h-6 bg-border-light" />
-                                <DayStat label="Lun" value={quincenaInfo.mondays} muted />
-                                {quincenaInfo.holidays > 0 && (
+                                <DayStat label="Lun" value={activePeriodInfo.mondays} muted />
+                                {activePeriodInfo.holidays > 0 && (
                                     <>
                                         <div className="w-px h-6 bg-border-light" />
-                                        <DayStat label="Fer" value={quincenaInfo.holidays} />
+                                        <DayStat label="Fer" value={activePeriodInfo.holidays} />
                                     </>
                                 )}
                             </div>
                             {/* Holiday list */}
-                            {quincenaInfo.holidayList.length > 0 && (
+                            {activePeriodInfo.holidayList.length > 0 && (
                                 <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04] space-y-1">
-                                    {quincenaInfo.holidayList.map((h) => (
+                                    {activePeriodInfo.holidayList.map((h) => (
                                         <div key={h.date} className="flex items-center justify-between">
                                             <span className="font-mono text-[12px] text-[var(--text-secondary)]">{h.name}</span>
                                             <span className="font-mono text-[12px] tabular-nums text-primary-500">
@@ -754,7 +935,7 @@ export default function PayrollCalculator() {
                                         type="number"
                                         step="0.01"
                                         value={exchangeRate}
-                                        onChange={(e) => { setExchangeRate(e.target.value); setBcvFetchedDate(null); }}
+                                        onChange={(e) => { setExchangeRate(e.target.value); }}
                                         className={fieldCls + " pl-8 text-right text-[12px]"}
                                         title="Tasa manual"
                                     />
@@ -763,8 +944,8 @@ export default function PayrollCalculator() {
                             {bcvFetchError && <p className="font-mono text-[10px] text-red-400 mt-1">Error al consultar</p>}
                         </div>
 
-                        {/* ── Cesta Ticket (solo 2ª quincena) ─────────────────── */}
-                        {selQuincena === 2 && (
+                        {/* ── Cesta Ticket (solo 2ª quincena / modo quincenal) ─── */}
+                        {periodoMode === "quincenal" && selQuincena === 2 && (
                             <div className="px-5 py-4 border-b border-border-light space-y-3">
                                 <SectionHeader label="Cesta Ticket · 2ª Quincena" />
                                 <div>
@@ -1050,12 +1231,12 @@ export default function PayrollCalculator() {
                                 companyId={company?.id ?? ""}
                                 companyLogoUrl={company?.logoUrl}
                                 showLogoInPdf={company?.showLogoInPdf}
-                                payrollDate={quincenaInfo.endDate}
-                                periodStart={quincenaInfo.startDate}
-                                periodLabel={quincenaInfo.label}
+                                payrollDate={activePeriodInfo.endDate}
+                                periodStart={activePeriodInfo.startDate}
+                                periodLabel={activePeriodInfo.label}
                                 periodAlreadyConfirmed={periodAlreadyConfirmed}
                                 salaryMode={salaryMode}
-                                quincena={selQuincena}
+                                quincena={activeQuincena}
                                 pdfVisibility={pdfVisibility}
                             />
                         </div>

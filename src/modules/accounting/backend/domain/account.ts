@@ -5,15 +5,16 @@
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 
 export interface Account {
-    id:          string;
-    companyId:   string;
-    chartId:     string | null; // null = standalone (not part of an imported chart)
-    code:        string;        // e.g. "1-01-001"
-    name:        string;
-    type:        AccountType;
-    parentCode:  string | null;
-    isActive:    boolean;
-    isGroup:     boolean;       // true = summary account (cannot post entries directly)
-    createdAt:   string;        // ISO timestamp
-    updatedAt:   string;        // ISO timestamp
+    id:            string;
+    companyId:     string;
+    chartId:       string | null; // null = standalone (not part of an imported chart)
+    code:          string;        // e.g. "1-01-001"
+    name:          string;
+    type:          AccountType;
+    parentCode:    string | null;
+    isActive:      boolean;
+    isGroup:       boolean;       // true = summary account (cannot post entries directly)
+    saldoInicial:  number;        // opening balance
+    createdAt:     string;        // ISO timestamp
+    updatedAt:     string;        // ISO timestamp
 }

@@ -5,6 +5,7 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { invalidateModuleAccessCache } from "@/src/modules/billing/frontend/hooks/use-module-access";
 
 const STORAGE_KEY = "kont-active-tenant-id";
+const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface TenantEntry {
     tenantId:    string;
@@ -29,6 +30,12 @@ export function useActiveTenant(): UseActiveTenantResult {
     const [allTenants, setAllTenants]           = useState<TenantEntry[]>([]);
     const [activeTenantId, setActiveTenantId]   = useState<string | null>(null);
     const [loading, setLoading]                 = useState(true);
+
+    const notifyTenantChange = useCallback(() => {
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event(TENANT_EVENT));
+        }
+    }, []);
 
     // Fetch all accessible tenants
     useEffect(() => {
@@ -85,7 +92,8 @@ export function useActiveTenant(): UseActiveTenantResult {
             localStorage.setItem(STORAGE_KEY, tenantId);
         }
         invalidateModuleAccessCache();
-    }, []);
+        notifyTenantChange();
+    }, [notifyTenantChange]);
 
     const clearActiveTenant = useCallback(() => {
         setActiveTenantId(user?.id ?? null);
@@ -93,7 +101,9 @@ export function useActiveTenant(): UseActiveTenantResult {
             if (user?.id) localStorage.setItem(STORAGE_KEY, user.id);
             else localStorage.removeItem(STORAGE_KEY);
         }
-    }, [user?.id]);
+        invalidateModuleAccessCache();
+        notifyTenantChange();
+    }, [notifyTenantChange, user?.id]);
 
     const activeTenant    = allTenants.find((t) => t.tenantId === activeTenantId) ?? null;
     const isActingOnBehalf = !!activeTenantId && activeTenantId !== user?.id;

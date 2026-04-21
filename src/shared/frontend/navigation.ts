@@ -49,11 +49,12 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/inventory/islr-report",      label: "Reporte ISLR 177",     group: "Reportes"    },
     ],
     accounting: [
-        { href: "/accounting",                 label: "Inicio",           group: null             },
-        { href: "/accounting/accounts",        label: "Plan de cuentas",  group: "Configuración"  },
-        { href: "/accounting/periods",         label: "Períodos",         group: "Configuración"  },
-        { href: "/accounting/integrations",    label: "Integraciones",    group: "Configuración"  },
-        { href: "/accounting/journal",         label: "Libro diario",     group: "Contabilidad"   },
-        { href: "/accounting/trial-balance",   label: "Balance de sumas", group: "Contabilidad"   },
+        { href: "/accounting",                 label: "Inicio",            group: null             },
+        { href: "/accounting/charts",          label: "Planes de cuentas", group: "Configuración"  },
+        { href: "/accounting/accounts",        label: "Cuentas",           group: "Configuración"  },
+        { href: "/accounting/periods",         label: "Períodos",          group: "Configuración"  },
+        { href: "/accounting/integrations",    label: "Integraciones",     group: "Configuración"  },
+        { href: "/accounting/journal",         label: "Libro diario",      group: "Contabilidad"   },
+        { href: "/accounting/trial-balance",   label: "Balance de sumas",  group: "Contabilidad"   },
     ],
 };

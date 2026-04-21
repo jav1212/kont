@@ -9,17 +9,17 @@ import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companie
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
-import { computePrestaciones } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
-import { generatePrestacionesPdf, generateInteresesAnticipoPdf } from "@/src/modules/payroll/frontend/utils/prestaciones-pdf";
+import { calculateSocialBenefits } from "@/src/modules/payroll/frontend/utils/prestaciones-calculator";
+import { generateSocialBenefitsPdf } from "@/src/modules/payroll/frontend/utils/prestaciones-pdf";
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-const fmt = (n: number) =>
+const formatCurrency = (n: number) =>
     "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtN = (n: number) =>
+const formatNumber = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fieldCls = [
@@ -36,38 +36,47 @@ function getErrorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
 }
 
-function formatDateES(iso: string): string {
+function formatDate(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
+    const months = ["enero","febrero","marzo","abril","mayo","junio",
                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-    return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+    return `${parseInt(d)} de ${months[parseInt(m) - 1]} de ${y}`;
+}
+
+function makeDocumentId(...parts: Array<string | number | undefined>): string {
+    const seed = parts.filter(Boolean).join("|");
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+    }
+    return hash.toString(36).toUpperCase().padStart(6, "0").slice(-6);
 }
 
 // ============================================================================
 // CALC RESULT TYPE
 // ============================================================================
 
-interface PrestacionesCalc {
-    salarioVES:            number;
-    salarioDiario:         number;
-    alicuotaUtil:          number;
-    alicuotaBono:          number;
-    salarioIntegralDiario: number;
-    anios:                 number;
-    mesesCompletos:        number;
-    totalDias:             number;
-    diasTrimestrales:      number;
-    diasAdicionales:       number;
-    diasTotales:           number;
-    saldoAcumulado:        number;
-    garantia:              number;
-    montoFinal:            number;
-    aplicaGarantia:        boolean;   // unused, kept for PDF compat
-    anticipoPrestaciones:  number;
-    interesesAcumulados:   number;
-    pagoInmediato:         number;   // anticipo + intereses
-    saldoFavor:            number;   // montoFinal − anticipo − intereses
+interface SocialBenefitsCalculation {
+    salaryVES:              number;
+    dailySalary:            number;
+    profitSharingQuota:     number;
+    vacationBonusQuota:     number;
+    integratedDailySalary:  number;
+    yearsOfService:         number;
+    completeMonths:         number;
+    totalDays:              number;
+    quarterlyDays:          number;
+    extraDays:              number;
+    totalSeniorityDays:     number;
+    accumulatedBalance:     number;
+    seniorityIndemnityGuarantee: number;
+    finalAmount:            number;
+    isGuaranteeApplied:     boolean;
+    socialBenefitsAdvance:  number;
+    accumulatedInterests:   number;
+    immediatePayment:       number;   // advance + interests
+    balanceInFavor:         number;   // finalAmount − advance − interests
 }
 
 // ============================================================================
@@ -101,77 +110,22 @@ function CalcRow({ label, formula, value, accent, dim }: {
 }
 
 // ============================================================================
-// RIGHT PANEL — Constancia Art. 142
+// RIGHT PANEL — Social Benefits Constancy
 // ============================================================================
 
-function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employeeCedula,
-    employeeCargo, companyName, companyLogoUrl, showLogoInPdf, porcentajeAnticipo, tasaIntereses }: {
-    calc: PrestacionesCalc;
-    fechaIngreso: string; fechaCorte: string;
-    employeeName: string; employeeCedula: string; employeeCargo?: string;
+function SocialBenefitsConstancy({ calc, hireDate, cutoffDate, employeeName, employeeIdNumber,
+    employeeRole, companyName, companyLogoUrl, showLogoInPdf, advancePercentageString, interestRateString }: {
+    calc: SocialBenefitsCalculation;
+    hireDate: string; cutoffDate: string;
+    employeeName: string; employeeIdNumber: string; employeeRole?: string;
     companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean;
-    porcentajeAnticipo: string;
-    tasaIntereses: string;
+    advancePercentageString: string;
+    interestRateString: string;
 }) {
-    const pdfBase = {
-        companyName,
-        employee: { nombre: employeeName, cedula: employeeCedula, cargo: employeeCargo },
-        fechaIngreso,
-        fechaCorte,
-        anios:                 calc.anios,
-        mesesCompletos:        calc.mesesCompletos,
-        totalDias:             calc.totalDias,
-        salarioVES:            calc.salarioVES,
-        salarioDiario:         calc.salarioDiario,
-        alicuotaUtil:          calc.alicuotaUtil,
-        alicuotaBono:          calc.alicuotaBono,
-        salarioIntegralDiario: calc.salarioIntegralDiario,
-        diasTrimestrales:      calc.diasTrimestrales,
-        diasAdicionales:       calc.diasAdicionales,
-        diasTotales:           calc.diasTotales,
-        saldoAcumulado:        calc.saldoAcumulado,
-        garantia:              calc.garantia,
-        montoFinal:            calc.montoFinal,
-        aplicaGarantia:        calc.aplicaGarantia,
-        anticipoPrestaciones:  calc.anticipoPrestaciones,
-        interesesAcumulados:   calc.interesesAcumulados,
-        pagoInmediato:         calc.pagoInmediato,
-        saldoFavor:            calc.saldoFavor,
-        porcentajeAnticipo:    parseFloat(porcentajeAnticipo) || 75,
-        tasaIntereses:         parseFloat(tasaIntereses) || 0,
-        logoUrl:               companyLogoUrl,
-        showLogoInPdf:         showLogoInPdf,
-    };
-
-    const [downloadingFull, setDownloadingFull] = useState(false);
-    const [downloadingInt, setDownloadingInt] = useState(false);
-
-    const handlePdf = async () => {
-        try {
-            setDownloadingFull(true);
-            await generatePrestacionesPdf(pdfBase);
-        } catch (err: unknown) {
-            console.error(err);
-            alert("Error al descargar: " + getErrorMessage(err));
-        } finally {
-            setDownloadingFull(false);
-        }
-    };
-    const handlePdfIntereses = async () => {
-        try {
-            setDownloadingInt(true);
-            await generateInteresesAnticipoPdf(pdfBase);
-        } catch (err: unknown) {
-            console.error(err);
-            alert("Error al descargar: " + getErrorMessage(err));
-        } finally {
-            setDownloadingInt(false);
-        }
-    };
-
-    const mesesResto = calc.mesesCompletos % 12;
-    const antiguedad = `${calc.anios} año${calc.anios !== 1 ? "s" : ""}${mesesResto > 0 ? ` ${mesesResto} mes${mesesResto !== 1 ? "es" : ""}` : ""}`;
-    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const monthsRemainder = calc.completeMonths % 12;
+    const seniorityString = `${calc.yearsOfService} año${calc.yearsOfService !== 1 ? "s" : ""}${monthsRemainder > 0 ? ` ${monthsRemainder} mes${monthsRemainder !== 1 ? "es" : ""}` : ""}`;
+    const issuedAt = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const documentId = makeDocumentId(companyName, employeeIdNumber, hireDate, cutoffDate);
 
     return (
         <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
@@ -189,8 +143,8 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Corte al</p>
-                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDateES(fechaCorte)}</p>
-                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {emitido}</p>
+                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDate(cutoffDate)}</p>
+                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {issuedAt}</p>
                 </div>
             </div>
 
@@ -201,13 +155,13 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
                     </div>
                     <div className="flex-1">
                         <p className="text-[16px] font-bold text-foreground tracking-tight">{employeeName}</p>
-                        {employeeCargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{employeeCargo}</p>}
+                        {employeeRole && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{employeeRole}</p>}
                     </div>
                     <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
-                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {employeeCedula}</p>
+                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {employeeIdNumber}</p>
                         <div className="inline-flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-medium bg-surface-2 px-2 py-0.5 rounded border border-border-light">
                             <Clock size={12} className="text-[var(--text-tertiary)]" />
-                            {antiguedad}
+                            {seniorityString}
                         </div>
                     </div>
                 </div>
@@ -215,14 +169,14 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
 
             <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
                 {[
-                    { lbl: "Salario Mensual",  val: fmt(calc.salarioVES), color: "text-foreground" },
-                    { lbl: "Fecha Ingreso", val: formatDateES(fechaIngreso), color: "text-foreground" },
-                    { lbl: "Antigüedad",val: antiguedad, color: "text-primary-500" },
-                    { lbl: "Salario Integral",val: fmt(calc.salarioIntegralDiario) + " /día", color: "text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded inline-flex border border-emerald-500/20" },
+                    { lbl: "Salario Mensual",  val: formatCurrency(calc.salaryVES), color: "text-foreground" },
+                    { lbl: "Fecha Ingreso", val: formatDate(hireDate), color: "text-foreground" },
+                    { lbl: "Antigüedad",val: seniorityString, color: "text-primary-500" },
+                    { lbl: "Salario Integral",val: formatCurrency(calc.integratedDailySalary) + " /día", color: "text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded inline-flex border border-emerald-500/20" },
                 ].map((item, idx) => (
-                    <div key={idx} className="flex flex-col">
-                        <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)] mb-1.5">{item.lbl}</span>
-                        <span className={`font-mono text-[13px] font-medium tabular-nums ${item.color}`}>{item.val}</span>
+                    <div key={idx}>
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{item.lbl}</p>
+                        <p className={`text-[13px] font-bold tabular-nums ${item.color}`}>{item.val}</p>
                     </div>
                 ))}
             </div>
@@ -230,59 +184,66 @@ function ConstanciaArt142({ calc, fechaIngreso, fechaCorte, employeeName, employ
             <div className="px-8 py-5 border-b border-border-light">
                 <SectionHeader label="Prestaciones acumuladas (Art. 142)" />
                 <div className="space-y-1">
-                    <CalcRow label="Saldo Acumulado" formula={`${calc.diasTotales}d totales acumulados`} value={fmt(calc.saldoAcumulado)} />
-                    <CalcRow label="Garantía Art. 142.c" formula={`30 d/año × ${calc.anios} años`} value={fmt(calc.garantia)} />
+                    <CalcRow label="Saldo Acumulado" formula={`${calc.totalSeniorityDays}d totales acumulados`} value={formatCurrency(calc.accumulatedBalance)} />
+                    <CalcRow label="Garantía Art. 142.c" formula={`30 d/año × ${calc.yearsOfService} años`} value={formatCurrency(calc.seniorityIndemnityGuarantee)} />
                 </div>
                 <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-border-light">
                     <div>
                         <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)] block">Monto total prestaciones</span>
                         <span className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1 block">Saldo acumulado + Garantía</span>
                     </div>
-                    <span className="font-mono text-[20px] font-black tabular-nums text-foreground">{fmt(calc.montoFinal)}</span>
+                    <span className="font-mono text-[20px] font-black tabular-nums text-foreground">{formatCurrency(calc.finalAmount)}</span>
                 </div>
             </div>
 
-            {(calc.anticipoPrestaciones > 0 || calc.interesesAcumulados > 0) && (
+            {(calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0) && (
                 <div className="px-8 py-5 border-b border-border-light bg-surface-2/30">
                     <SectionHeader label="Pago inmediato (Art. 143 / 144 LOTTT)" color="amber" />
                     <div className="space-y-1">
-                        <CalcRow label="Adelanto de Prestaciones" formula={`Art. 144 — ${porcentajeAnticipo}%`} value={fmt(calc.anticipoPrestaciones)} accent="amber" />
-                        <CalcRow label="Intereses Acumulados" formula={`Art. 143 — Tasa ${tasaIntereses}%`} value={fmt(calc.interesesAcumulados)} accent="green" />
+                        <CalcRow label="Adelanto de Prestaciones" formula={`Art. 144 — ${advancePercentageString}%`} value={formatCurrency(calc.socialBenefitsAdvance)} accent="amber" />
+                        <CalcRow label="Intereses Acumulados" formula={`Art. 143 — Tasa ${interestRateString}%`} value={formatCurrency(calc.accumulatedInterests)} accent="green" />
                     </div>
                     <div className="flex justify-between items-baseline pt-4 mt-2 border-t border-border-light">
                         <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">Total pago inmediato</span>
-                        <span className="font-mono text-[18px] font-black tabular-nums text-amber-500">{fmt(calc.pagoInmediato)}</span>
+                        <span className="font-mono text-[18px] font-black tabular-nums text-amber-500">{formatCurrency(calc.immediatePayment)}</span>
                     </div>
                 </div>
             )}
 
-            {(calc.anticipoPrestaciones > 0 || calc.interesesAcumulados > 0) && (
-                <div className="px-8 py-6 bg-emerald-500/[0.03]">
-                    <div className="flex justify-between items-baseline mb-1">
-                        <span className="font-mono text-[12px] text-[var(--text-secondary)]">Monto total prestaciones</span>
-                        <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmt(calc.montoFinal)}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline mb-4">
-                        <span className="font-mono text-[12px] text-[var(--text-secondary)]">− Anticipo + Intereses</span>
-                        <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">− {fmt(calc.pagoInmediato)}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline pt-4 border-t border-border-light">
-                        <div>
-                            <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[var(--text-secondary)] block">Saldo a Favor</span>
-                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] mt-1 block">Monto depositado en cuenta de garantía</span>
+            <div className="px-8 py-6">
+                {(calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0) && (
+                    <div className="mb-4">
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="font-mono text-[12px] text-[var(--text-secondary)]">Monto total prestaciones</span>
+                            <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{formatCurrency(calc.finalAmount)}</span>
                         </div>
-                        <span className="font-mono text-[24px] font-black tabular-nums text-emerald-500">{fmt(calc.saldoFavor)}</span>
+                        <div className="flex justify-between items-baseline mb-4 text-amber-500/80">
+                            <span className="font-mono text-[12px]">− Anticipo + Intereses</span>
+                            <span className="font-mono text-[12px] tabular-nums">− {formatCurrency(calc.immediatePayment)}</span>
+                        </div>
+                    </div>
+                )}
+                
+                <div className="mt-4 p-5 rounded-2xl bg-surface-2/60 border border-border-light flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--text-tertiary)] flex items-center gap-2 mb-1">
+                            {calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0 ? "Saldo a Favor" : "Monto total prestaciones"}
+                        </p>
+                        <p className={`text-[24px] font-black tabular-nums leading-none ${calc.socialBenefitsAdvance > 0 || calc.accumulatedInterests > 0 ? "text-emerald-500" : "text-foreground"}`}>
+                            {formatCurrency(calc.balanceInFavor)}
+                        </p>
                     </div>
                 </div>
-            )}
+            </div>
 
-            <div className="px-5 py-4 bg-surface-2/50 border-t border-border-light flex gap-3 justify-end items-center">
-                <BaseButton.Root variant="secondary" onClick={handlePdfIntereses} disabled={downloadingInt} leftIcon={downloadingInt ? <RefreshCw size={14} className="animate-spin" /> : <FileText size={14} />}>
-                    {downloadingInt ? "Generando..." : "Reporte Intereses"}
-                </BaseButton.Root>
-                <BaseButton.Root variant="secondary" onClick={handlePdf} disabled={downloadingFull} leftIcon={downloadingFull ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}>
-                    {downloadingFull ? "Generando..." : "Reporte Completo"}
-                </BaseButton.Root>
+            <div className="bg-surface-2/30 px-8 py-4 border-t border-border-light flex items-center justify-between mt-auto">
+                <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed uppercase tracking-wider font-semibold">
+                    Documento de conformidad · Original
+                </p>
+                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
+                    <FileText size={14} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {documentId}</span>
+                </div>
             </div>
         </div>
     );
@@ -297,168 +258,169 @@ export default function PrestacionesPage() {
     const { employees, loading }  = useEmployee(companyId);
 
     // ── Employee ──────────────────────────────────────────────────────────────
-    const [selectedCedula, setSelectedCedula] = useState<string>("");
-    const [soloActivos,    setSoloActivos]    = useState(true);
+    const [selectedIdNumber, setSelectedIdNumber] = useState<string>("");
+    const [onlyActive,    setOnlyActive]    = useState(true);
 
-    const [salarioOverride, setSalarioOverride] = useState("");
-    const [manualIngreso,   setManualIngreso]   = useState("");
+    const [salaryOverride, setSalaryOverride] = useState("");
+    const [manualHireDate, setManualHireDate] = useState("");
 
     // ── BCV ─────────────────────────────────────────────────────────────────
     const [exchangeRate, setExchangeRate] = useState("79.59");
-    const [bcvLoading, setBcvLoading] = useState(true);
+    const [isBcvLoading, setIsBcvLoading] = useState(true);
     const [bcvError, setBcvError] = useState<string | null>(null);
 
     const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
 
     const fetchBcvRate = useCallback(() => {
-        setBcvLoading(true);
+        setIsBcvLoading(true);
         fetch(`/api/bcv/rate?date=${isoToday()}`)
             .then(r => r.json())
-            .then(d => { 
-                const rate = d.price || d.rate;
+            .then(data => { 
+                const rate = data.price || data.rate;
                 if (rate) { 
                     setExchangeRate(rate.toFixed(2)); 
                     setBcvError(null); 
                 } else setBcvError("No disponible"); 
             })
             .catch(() => setBcvError("Error al obtener tasa"))
-            .finally(() => setBcvLoading(false));
+            .finally(() => setIsBcvLoading(false));
     }, []);
 
     useEffect(() => { fetchBcvRate(); }, [fetchBcvRate]);
 
     // ── Params ────────────────────────────────────────────────────────────────
-    const [fechaCorte,          setFechaCorte]          = useState(isoToday());
-    const [diasUtilidades,      setDiasUtilidades]      = useState("15");
-    const [diasBono,            setDiasBono]            = useState("15");
-    const [tasaIntereses,       setTasaIntereses]       = useState("3");
-    const [porcentajeAnticipo,  setPorcentajeAnticipo]  = useState("75");
+    const [cutoffDate,         setCutoffDate]         = useState(isoToday());
+    const [profitSharingDays,  setProfitSharingDays]  = useState("15");
+    const [vacationBonusDays,  setVacationBonusDays]  = useState("15");
+    const [interestRate,       setInterestRate]       = useState("3");
+    const [advancePercentage,  setAdvancePercentage]  = useState("75");
 
     // ── BATCH PROCESSING ─────────────────────────────────────────────────────
 
-    const filtered = useMemo(() => {
-        const pool = soloActivos ? employees.filter(e => e.estado === "activo") : employees;
-        if (!selectedCedula) return pool;
-        return pool.filter(e => e.cedula === selectedCedula);
-    }, [employees, soloActivos, selectedCedula]);
+    const filteredEmployees = useMemo(() => {
+        const pool = onlyActive ? employees.filter(e => e.estado === "activo") : employees;
+        if (!selectedIdNumber) return pool;
+        return pool.filter(e => e.cedula === selectedIdNumber);
+    }, [employees, onlyActive, selectedIdNumber]);
 
     // Derived for individual manual mode if needed
-    const selectedEmp = useMemo(() => employees.find(e => e.cedula === selectedCedula), [employees, selectedCedula]);
+    const selectedEmp = useMemo(() => employees.find(e => e.cedula === selectedIdNumber), [employees, selectedIdNumber]);
 
     // Salary field auto-populated from employee data, overridable by user.
-    const [salarioSourceKey, setSalarioSourceKey] = useState("");
-    const currentSalarioKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
-    if (salarioSourceKey !== currentSalarioKey) {
-        setSalarioSourceKey(currentSalarioKey);
+    const [salarySourceKey, setSalarySourceKey] = useState("");
+    const currentSalaryKey = `${selectedEmp?.cedula ?? ""}|${bcvRate}`;
+    if (salarySourceKey !== currentSalaryKey) {
+        setSalarySourceKey(currentSalaryKey);
         if (selectedEmp) {
-            const ves = selectedEmp.moneda === "USD"
+            const vesAmount = selectedEmp.moneda === "USD"
                 ? selectedEmp.salarioMensual * bcvRate
                 : selectedEmp.salarioMensual;
-            setSalarioOverride(ves.toFixed(2));
+            setSalaryOverride(vesAmount.toFixed(2));
         } else {
-            setSalarioOverride("");
+            setSalaryOverride("");
         }
     }
 
-    interface PrestResult {
-        emp:  Employee;
-        calc: PrestacionesCalc | null;
-        msg?: string;
+    interface BenefitResult {
+        employee:  Employee;
+        calculation: SocialBenefitsCalculation | null;
+        message?: string;
     }
 
-    const results = useMemo<PrestResult[]>(() => {
-        return filtered.map(emp => {
-            const ves  = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
-            const ing  = emp.fechaIngreso ?? "";
-            const util = parseInt(diasUtilidades) || 15;
-            const bono = parseInt(diasBono)       || 15;
+    const benefitResults = useMemo<BenefitResult[]>(() => {
+        return filteredEmployees.map(emp => {
+            const vesAmount  = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
+            const hire = emp.fechaIngreso ?? "";
+            const psDays = parseInt(profitSharingDays) || 15;
+            const vbDays = parseInt(vacationBonusDays) || 15;
 
-            const res = computePrestaciones({
-                salarioVES: ves,
-                fechaIngreso: ing,
-                fechaCorte,
-                diasUtil: util,
-                diasBonoVac: bono,
+            const res = calculateSocialBenefits({
+                salaryVES: vesAmount,
+                hireDate: hire,
+                cutoffDate: cutoffDate,
+                profitSharingDays: psDays,
+                vacationBonusDays: vbDays,
             });
 
-            if (!res) return { emp, calc: null, msg: "Verificar datos" };
+            if (!res) return { employee: emp, calculation: null, message: "Verificar datos" };
 
-            const salDia = ves / 30;
-            const alUtil = salDia * util / 360;
-            const alBono = salDia * bono / 360;
-            const gar    = 30 * res.salarioIntegralDiario * res.anios;
-            const sld    = res.saldoPrestaciones;
-            const mto    = sld + gar;
-            const pct    = Math.min(100, Math.max(0, parseFloat(porcentajeAnticipo) || 75));
-            const ant    = sld * (pct / 100);
-            const t      = Math.max(0, parseFloat(tasaIntereses) || 0);
-            const ints   = sld * (t / 100) * (res.mesesCompletos / 12);
+            const dailyNormalSalary = vesAmount / 30;
+            const psQuota = dailyNormalSalary * psDays / 360;
+            const vbQuota = dailyNormalSalary * vbDays / 360;
+            const guaranteeAmount = 30 * res.integratedDailySalary * res.yearsOfService;
+            const seniorityBalance = res.seniorityIndemnityBalance;
+            const isGuaranteeApplied = guaranteeAmount > seniorityBalance;
+            const finalAmount = Math.max(seniorityBalance, guaranteeAmount);
+            const advancePctValue = Math.min(100, Math.max(0, parseFloat(advancePercentage) || 75));
+            const advanceValue = seniorityBalance * (advancePctValue / 100);
+            const rateValue = Math.max(0, parseFloat(interestRate) || 0);
+            const interestValue = seniorityBalance * (rateValue / 100) * (res.completeMonths / 12);
 
-            const calc: PrestacionesCalc = {
-                salarioVES: ves,
-                salarioDiario: salDia,
-                alicuotaUtil: alUtil,
-                alicuotaBono: alBono,
-                salarioIntegralDiario: res.salarioIntegralDiario,
-                anios:            res.anios,
-                mesesCompletos:   res.mesesCompletos,
-                totalDias:        res.totalDias,
-                diasTrimestrales: res.diasTrimestrales,
-                diasAdicionales:  res.diasAdicionales,
-                diasTotales:      res.diasTotales,
-                saldoAcumulado:   sld,
-                garantia:         gar,
-                montoFinal:       mto,
-                aplicaGarantia:   false,
-                anticipoPrestaciones: ant,
-                interesesAcumulados:  ints,
-                pagoInmediato:        ant + ints,
-                saldoFavor:           mto - ant - ints,
+            const calculation: SocialBenefitsCalculation = {
+                salaryVES: vesAmount,
+                dailySalary: dailyNormalSalary,
+                profitSharingQuota: psQuota,
+                vacationBonusQuota: vbQuota,
+                integratedDailySalary: res.integratedDailySalary,
+                yearsOfService:   res.yearsOfService,
+                completeMonths:   res.completeMonths,
+                totalDays:        res.totalDays,
+                quarterlyDays:    res.quarterlyDays,
+                extraDays:        res.extraDays,
+                totalSeniorityDays: res.totalSeniorityDays,
+                accumulatedBalance: seniorityBalance,
+                seniorityIndemnityGuarantee: guaranteeAmount,
+                finalAmount:      finalAmount,
+                isGuaranteeApplied,
+                socialBenefitsAdvance: advanceValue,
+                accumulatedInterests:  interestValue,
+                immediatePayment:      advanceValue + interestValue,
+                balanceInFavor:        finalAmount - advanceValue - interestValue,
             };
 
-            return { emp, calc };
+            return { employee: emp, calculation };
         });
-    }, [filtered, bcvRate, diasUtilidades, diasBono, fechaCorte, porcentajeAnticipo, tasaIntereses]);
+    }, [filteredEmployees, bcvRate, profitSharingDays, vacationBonusDays, cutoffDate, advancePercentage, interestRate]);
 
-    const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.saldoFavor ?? 0), 0), [results]);
+    const grandTotal = useMemo(() => benefitResults.reduce((acc, r) => acc + (r.calculation?.balanceInFavor ?? 0), 0), [benefitResults]);
 
-    const salarioVES   = parseFloat(salarioOverride) || 0;
-    const calc = results.length === 1 ? results[0].calc : null;
+    const vesSalary = parseFloat(salaryOverride) || 0;
+    const individualCalculation = benefitResults.length === 1 ? benefitResults[0].calculation : null;
 
-    const [exportingLote, setExportingLote] = useState(false);
-    const handleExportLote = async () => {
-        setExportingLote(true);
+    const [isExportingBatch, setIsExportingBatch] = useState(false);
+    const handleBatchExport = async () => {
+        setIsExportingBatch(true);
         try {
-            for (const r of results) {
-                if (!r.calc) continue;
-                const pct = Math.min(100, Math.max(0, parseFloat(porcentajeAnticipo) || 75));
-                const tasa = Math.max(0, parseFloat(tasaIntereses) || 0);
-                await generatePrestacionesPdf({
+            for (const result of benefitResults) {
+                if (!result.calculation) continue;
+                const advPct = Math.min(100, Math.max(0, parseFloat(advancePercentage) || 75));
+                const rate = Math.max(0, parseFloat(interestRate) || 0);
+                await generateSocialBenefitsPdf({
                     companyName: company?.name ?? "La Empresa",
-                    employee: { nombre: r.emp.nombre, cedula: r.emp.cedula, cargo: r.emp.cargo },
-                    fechaIngreso: r.emp.fechaIngreso ?? "",
-                    fechaCorte,
-                    anios: r.calc.anios,
-                    mesesCompletos: r.calc.mesesCompletos,
-                    totalDias: r.calc.totalDias,
-                    salarioVES: r.calc.salarioVES,
-                    salarioDiario: r.calc.salarioDiario,
-                    alicuotaUtil: r.calc.alicuotaUtil,
-                    alicuotaBono: r.calc.alicuotaBono,
-                    salarioIntegralDiario: r.calc.salarioIntegralDiario,
-                    diasTrimestrales: r.calc.diasTrimestrales,
-                    diasAdicionales: r.calc.diasAdicionales,
-                    diasTotales: r.calc.diasTotales,
-                    saldoAcumulado: r.calc.saldoAcumulado,
-                    garantia: r.calc.garantia,
-                    montoFinal: r.calc.montoFinal,
-                    aplicaGarantia: r.calc.aplicaGarantia,
-                    anticipoPrestaciones: r.calc.anticipoPrestaciones,
-                    interesesAcumulados: r.calc.interesesAcumulados,
-                    pagoInmediato: r.calc.pagoInmediato,
-                    saldoFavor: r.calc.saldoFavor,
-                    porcentajeAnticipo: pct,
-                    tasaIntereses: tasa,
+                    employee: { name: result.employee.nombre, idNumber: result.employee.cedula, role: result.employee.cargo },
+                    hireDate: result.employee.fechaIngreso ?? "",
+                    cutoffDate,
+                    yearsOfService: result.calculation.yearsOfService,
+                    completeMonths: result.calculation.completeMonths,
+                    totalDays: result.calculation.totalDays,
+                    salaryVES: result.calculation.salaryVES,
+                    dailySalary: result.calculation.dailySalary,
+                    profitSharingQuota: result.calculation.profitSharingQuota,
+                    vacationBonusQuota: result.calculation.vacationBonusQuota,
+                    integratedDailySalary: result.calculation.integratedDailySalary,
+                    quarterlyDays: result.calculation.quarterlyDays,
+                    extraDays: result.calculation.extraDays,
+                    totalSeniorityDays: result.calculation.totalSeniorityDays,
+                    accumulatedBalance: result.calculation.accumulatedBalance,
+                    seniorityIndemnityGuarantee: result.calculation.seniorityIndemnityGuarantee,
+                    finalAmount: result.calculation.finalAmount,
+                    isGuaranteeApplied: result.calculation.isGuaranteeApplied,
+                    socialBenefitsAdvance: result.calculation.socialBenefitsAdvance,
+                    accumulatedInterests: result.calculation.accumulatedInterests,
+                    immediatePayment: result.calculation.immediatePayment,
+                    balanceInFavor: result.calculation.balanceInFavor,
+                    advancePercentage: advPct,
+                    interestRate: rate,
                     logoUrl: company?.logoUrl,
                     showLogoInPdf: company?.showLogoInPdf,
                 });
@@ -467,7 +429,7 @@ export default function PrestacionesPage() {
             console.error(err);
             alert("Error al exportar: " + getErrorMessage(err));
         } finally {
-            setExportingLote(false);
+            setIsExportingBatch(false);
         }
     };
 
@@ -480,7 +442,7 @@ export default function PrestacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        {isBcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                     </span>
                     {bcvError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvError} />}
                 </div>
@@ -504,11 +466,11 @@ export default function PrestacionesPage() {
                                 {!loading && employees.length > 0 && (
                                     <div className="relative">
                                         <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" size={14} />
-                                        <select value={selectedCedula} onChange={e => setSelectedCedula(e.target.value)} className={fieldCls + " pl-9"}>
+                                        <select value={selectedIdNumber} onChange={e => setSelectedIdNumber(e.target.value)} className={fieldCls + " pl-9"}>
                                             <option value="">Lote por defecto (Todos)</option>
                                             <optgroup label="Empleados">
                                                 {employees
-                                                    .filter(e => !soloActivos || e.estado === "activo")
+                                                    .filter(e => !onlyActive || e.estado === "activo")
                                                     .sort((a,b) => a.nombre.localeCompare(b.nombre))
                                                     .map(e => (
                                                         <option key={e.cedula} value={e.cedula}>{e.nombre} ({e.cedula})</option>
@@ -539,32 +501,32 @@ export default function PrestacionesPage() {
                                 )}
 
                                 <label className="flex items-center gap-3 cursor-pointer group py-1">
-                                    <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
-                                        className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
-                                        <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                    <div onClick={(e) => { e.preventDefault(); setOnlyActive(v => !v); }}
+                                        className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", onlyActive ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                        <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", onlyActive ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
                                     </div>
                                     <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
                                 </label>
                             </div>
 
-                            {selectedCedula && (
+                            {selectedIdNumber && (
                                 <div className="pt-2">
                                     <label className={labelCls}>Salario mensual (Bs.)</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                        <input type="number" step="0.01" min="0" value={salarioOverride}
-                                            onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
+                                        <input type="number" step="0.01" min="0" value={salaryOverride}
+                                            onChange={e => setSalaryOverride(e.target.value)} placeholder="0.00"
                                             className={fieldCls + " pl-9 text-right"} />
                                     </div>
                                 </div>
                             )}
-                            {!selectedEmp && selectedCedula && (
+                            {!selectedEmp && selectedIdNumber && (
                                 <div>
                                     <label className={labelCls}>Fecha de ingreso</label>
                                     <div className="relative">
                                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={manualIngreso}
-                                            onChange={e => setManualIngreso(e.target.value)} className={fieldCls + " pl-9"} />
+                                        <input type="date" value={manualHireDate}
+                                            onChange={e => setManualHireDate(e.target.value)} className={fieldCls + " pl-9"} />
                                     </div>
                                 </div>
                             )}
@@ -575,10 +537,10 @@ export default function PrestacionesPage() {
                                 <SectionHeader label="Tasa BCV" />
                                 <button 
                                     onClick={fetchBcvRate}
-                                    disabled={bcvLoading}
+                                    disabled={isBcvLoading}
                                     className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
                                 >
-                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
+                                    <RefreshCw size={12} className={isBcvLoading ? "animate-spin" : ""} />
                                 </button>
                             </div>
                             <div className="relative">
@@ -599,8 +561,8 @@ export default function PrestacionesPage() {
                                 <label className={labelCls}>Fecha de corte</label>
                                 <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                    <input type="date" value={fechaCorte}
-                                        onChange={e => setFechaCorte(e.target.value)} className={fieldCls + " pl-9"} />
+                                    <input type="date" value={cutoffDate}
+                                        onChange={e => setCutoffDate(e.target.value)} className={fieldCls + " pl-9"} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 pt-1">
@@ -609,8 +571,8 @@ export default function PrestacionesPage() {
                                     <div className="relative">
                                         <ClipboardCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
                                         <input type="number" min="15" max="120" step="1"
-                                            value={diasUtilidades}
-                                            onChange={e => setDiasUtilidades(e.target.value)}
+                                            value={profitSharingDays}
+                                            onChange={e => setProfitSharingDays(e.target.value)}
                                             className={fieldCls + " pl-9 text-right"} />
                                     </div>
                                 </div>
@@ -619,8 +581,8 @@ export default function PrestacionesPage() {
                                     <div className="relative">
                                         <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
                                         <input type="number" min="15" max="90" step="1"
-                                            value={diasBono}
-                                            onChange={e => setDiasBono(e.target.value)}
+                                            value={vacationBonusDays}
+                                            onChange={e => setVacationBonusDays(e.target.value)}
                                             className={fieldCls + " pl-9 text-right"} />
                                     </div>
                                 </div>
@@ -635,8 +597,8 @@ export default function PrestacionesPage() {
                                     <div className="relative">
                                         <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
                                         <input type="number" step="0.01" min="0" max="100"
-                                            value={tasaIntereses}
-                                            onChange={e => setTasaIntereses(e.target.value)}
+                                            value={interestRate}
+                                            onChange={e => setInterestRate(e.target.value)}
                                             className={fieldCls + " pl-8 text-right"} />
                                     </div>
                                 </div>
@@ -645,8 +607,8 @@ export default function PrestacionesPage() {
                                     <div className="relative">
                                         <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
                                         <input type="number" step="1" min="0" max="75"
-                                            value={porcentajeAnticipo}
-                                            onChange={e => setPorcentajeAnticipo(e.target.value)}
+                                            value={advancePercentage}
+                                            onChange={e => setAdvancePercentage(e.target.value)}
                                             className={fieldCls + " pl-8 text-right"} />
                                     </div>
                                 </div>
@@ -658,60 +620,56 @@ export default function PrestacionesPage() {
                                 <TrendingUp size={11} className="text-primary-500/60" />
                                 Resumen de Cálculo
                             </p>
-                            {calc ? (
+                            {individualCalculation ? (
                                 <div className="rounded-xl border border-border-light bg-surface-2/30 overflow-hidden">
-                                    {/* Salary block */}
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <div className="flex justify-between items-baseline">
                                             <span className="font-mono text-[11px] text-[var(--text-secondary)]">Salario mensual</span>
-                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{fmt(calc.salarioVES)}</span>
+                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{formatCurrency(individualCalculation.salaryVES)}</span>
                                         </div>
                                         <div className="flex justify-between items-baseline">
                                             <span className="font-mono text-[11px] text-[var(--text-tertiary)]">Sal. diario</span>
-                                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmtN(calc.salarioDiario)} /día</span>
+                                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{formatNumber(individualCalculation.dailySalary)} /día</span>
                                         </div>
                                         <div className="flex justify-between items-baseline pt-1 border-t border-dashed border-border-light/60">
                                             <span className="font-mono text-[11px] font-bold text-[var(--text-secondary)]">Sal. integral / día</span>
-                                            <span className="font-mono text-[12px] font-bold tabular-nums text-foreground">{fmtN(calc.salarioIntegralDiario)} /día</span>
+                                            <span className="font-mono text-[12px] font-bold tabular-nums text-foreground">{formatNumber(individualCalculation.integratedDailySalary)} /día</span>
                                         </div>
                                     </div>
-                                    {/* Accumulated block */}
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <div className="flex justify-between items-baseline">
                                             <span className="font-mono text-[11px] text-[var(--text-secondary)]">Saldo acumulado</span>
-                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{fmt(calc.saldoAcumulado)}</span>
+                                            <span className="font-mono text-[12px] font-semibold tabular-nums text-foreground">{formatCurrency(individualCalculation.accumulatedBalance)}</span>
                                         </div>
                                         <div className="flex justify-between items-baseline">
                                             <span className="font-mono text-[11px] text-[var(--text-tertiary)]">Garantía 142.c</span>
-                                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{fmt(calc.garantia)}</span>
+                                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)]">{formatCurrency(individualCalculation.seniorityIndemnityGuarantee)}</span>
                                         </div>
                                     </div>
-                                    {/* Total */}
                                     <div className="px-4 py-3.5 flex justify-between items-center bg-surface-1">
                                         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--text-secondary)]">Saldo a favor</span>
-                                        <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{fmt(calc.saldoFavor)}</span>
+                                        <span className="font-mono text-[18px] font-black tabular-nums text-foreground">{formatCurrency(individualCalculation.balanceInFavor)}</span>
                                     </div>
                                 </div>
                             ) : (
                                 <p className="font-mono text-[11px] text-[var(--text-tertiary)] pt-2">
-                                    {salarioVES <= 0 ? "Ingresa el salario." : "Selecciona un empleado."}
+                                    {vesSalary <= 0 ? "Ingresa el salario." : "Selecciona un empleado."}
                                 </p>
                             )}
                         </div>
                     </div>
 
-                    {/* Totals + export */}
                     <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
-                        {results.length > 0 && (
+                        {benefitResults.length > 0 && (
                             <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
                                 <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
                                     <span className="text-[var(--text-tertiary)]">Empleados</span>
-                                    <span className="text-foreground font-bold">{results.length}</span>
+                                    <span className="text-foreground font-bold">{benefitResults.length}</span>
                                 </div>
                                 
                                 <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
                                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral. (Neto)</span>
-                                    <span className="font-mono text-[15px] font-black tabular-nums text-emerald-500">{fmt(totalGral)}</span>
+                                    <span className="font-mono text-[15px] font-black tabular-nums text-emerald-500">{formatCurrency(grandTotal)}</span>
                                 </div>
                             </div>
                         )}
@@ -719,11 +677,11 @@ export default function PrestacionesPage() {
                         <BaseButton.Root
                             variant="primary"
                             className="w-full"
-                            onClick={handleExportLote}
-                            disabled={results.length === 0 || exportingLote}
-                            leftIcon={exportingLote ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
+                            onClick={handleBatchExport}
+                            disabled={benefitResults.length === 0 || isExportingBatch}
+                            leftIcon={isExportingBatch ? <RefreshCw size={14} className="animate-spin" /> : <Download size={14} />}
                         >
-                            {exportingLote ? `Generando…` : `Generar PDF (${results.filter(r => r.calc).length})`}
+                            {isExportingBatch ? `Generando…` : `Generar PDF (${benefitResults.filter(r => r.calculation).length})`}
                         </BaseButton.Root>
                     </div>
                 </aside>
@@ -736,7 +694,7 @@ export default function PrestacionesPage() {
                             <RefreshCw size={24} className="animate-spin text-primary-500/50" />
                             <span className="text-[13px] font-bold uppercase tracking-widest">Cargando datos…</span>
                         </div>
-                    ) : results.length === 0 ? (
+                    ) : benefitResults.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-5 text-[var(--text-disabled)] max-w-sm mx-auto animate-in fade-in duration-500">
                             <div className="w-20 h-20 rounded-[1.5rem] bg-surface-1 border border-border-light flex items-center justify-center shadow-sm text-border-medium">
                                 <Users strokeWidth={1.5} size={32} />
@@ -750,36 +708,36 @@ export default function PrestacionesPage() {
                         </div>
                     ) : (
                         <div className="max-w-4xl mx-auto space-y-10 pb-12">
-                            {results.map((r, i) => {
-                                if (r.msg || !r.calc) return (
-                                    <div key={r.emp.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
+                            {benefitResults.map((result, i) => {
+                                if (result.message || !result.calculation) return (
+                                    <div key={result.employee.cedula} className="bg-surface-1 rounded-xl p-4 border border-border-light flex justify-between items-center opacity-70">
                                         <div>
-                                            <p className="font-mono text-[13px] font-bold uppercase text-foreground">{r.emp.nombre}</p>
-                                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{r.emp.cargo}</p>
+                                            <p className="font-mono text-[13px] font-bold uppercase text-foreground">{result.employee.nombre}</p>
+                                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{result.employee.cargo}</p>
                                         </div>
-                                        <span className="font-mono text-[10px] text-amber-500 uppercase border border-amber-500/20 px-2 py-0.5 rounded">{r.msg ?? "Error"}</span>
+                                        <span className="font-mono text-[10px] text-amber-500 uppercase border border-amber-500/20 px-2 py-0.5 rounded">{result.message ?? "Error"}</span>
                                     </div>
                                 );
 
                                 return (
                                     <motion.div
-                                        key={r.emp.cedula}
+                                        key={result.employee.cedula}
                                         initial={{ opacity: 0, scale: 0.98, y: 15 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         transition={{ delay: i * 0.05, ease: "easeOut" }}
                                     >
-                                        <ConstanciaArt142
-                                            calc={r.calc}
-                                            fechaIngreso={r.emp.fechaIngreso ?? ""}
-                                            fechaCorte={fechaCorte}
-                                            employeeName={r.emp.nombre}
-                                            employeeCedula={r.emp.cedula}
-                                            employeeCargo={r.emp.cargo}
+                                        <SocialBenefitsConstancy
+                                            calc={result.calculation}
+                                            hireDate={result.employee.fechaIngreso ?? ""}
+                                            cutoffDate={cutoffDate}
+                                            employeeName={result.employee.nombre}
+                                            employeeIdNumber={result.employee.cedula}
+                                            employeeRole={result.employee.cargo}
                                             companyName={company?.name ?? "La Empresa"}
                                             companyLogoUrl={company?.logoUrl}
                                             showLogoInPdf={company?.showLogoInPdf}
-                                            porcentajeAnticipo={porcentajeAnticipo}
-                                            tasaIntereses={tasaIntereses}
+                                            advancePercentageString={advancePercentage}
+                                            interestRateString={interestRate}
                                         />
                                     </motion.div>
                                 );

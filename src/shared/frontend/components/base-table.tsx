@@ -154,6 +154,8 @@ const S = {
         "text-neutral-500 dark:text-neutral-400",
         APP_SIZES.spacing.tableHeader,
         "select-none",
+        "text-left data-[align=center]:text-center data-[align=end]:text-right",
+        "justify-start data-[align=center]:justify-center data-[align=end]:justify-end",
     ].join(" "),
 
     td: [
@@ -732,9 +734,9 @@ export const RenderTable = <T extends object>({
                                     <td colSpan={columns.length}>
                                         <div className={S.empty}>
                                             <EmptyTableIcon />
-                                            <p className={`font-mono ${APP_SIZES.text.emptyState}`}>
+                                             <div className={`font-mono ${APP_SIZES.text.emptyState}`}>
                                                 {emptyContent}
-                                            </p>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -829,9 +831,9 @@ export const RenderTable = <T extends object>({
                     emptyContent={
                         <div className={S.empty}>
                             <EmptyTableIcon />
-                            <p className={`font-mono ${APP_SIZES.text.emptyState}`}>
+                            <div className={`font-mono ${APP_SIZES.text.emptyState}`}>
                                 {emptyContent}
-                            </p>
+                            </div>
                         </div>
                     }
                 >

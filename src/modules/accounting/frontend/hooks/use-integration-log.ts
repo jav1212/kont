@@ -3,6 +3,7 @@
 // Data hook for the accounting integration log.
 import { useEffect, useState, useCallback } from 'react';
 import type { IntegrationLogEntry }          from '../../backend/domain/integration-log';
+import { apiFetch }                          from '@/src/shared/frontend/utils/api-fetch';
 
 export function useIntegrationLog(companyId: string | null, limit = 50) {
     const [data,    setData]    = useState<IntegrationLogEntry[]>([]);
@@ -14,7 +15,7 @@ export function useIntegrationLog(companyId: string | null, limit = 50) {
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/integration-log?companyId=${companyId}&limit=${limit}`);
+            const res  = await apiFetch(`/api/accounting/integration-log?companyId=${companyId}&limit=${limit}`);
             const json = await res.json() as { data?: IntegrationLogEntry[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

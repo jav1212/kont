@@ -19,8 +19,8 @@ import {
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
-import { generateLiquidacionPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
-import type { LiquidacionEmployee, LiquidacionOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
+import { generateLiquidationPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
+import type { LiquidationEmployee, LiquidationOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import { motion } from "framer-motion";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 
@@ -28,10 +28,10 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 // HELPERS
 // ============================================================================
 
-const fmtVES = (n: number) =>
+const formatCurrency = (n: number) =>
     "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtN = (n: number) =>
+const formatNumber = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fieldCls = [
@@ -43,148 +43,143 @@ const fieldCls = [
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 // ============================================================================
-// LIQUIDACIÓN ENGINE
+// LIQUIDATION ENGINE
 // ============================================================================
 
-type Motivo = "renuncia" | "despido_justificado" | "despido_injustificado";
+type LiquidationReason = "renuncia" | "despido_justificado" | "despido_injustificado";
 
-interface EmpLiqResult {
-    employee:            Employee;
-    salarioVES:          number;
-    antiguedadAnios:     number;
-    antiguedadDias:      number;   // días totales desde ingreso
-    diasPrest:           number;
-    diasPrestTrimestr:   number;   // base trimestral (5/mes)
-    diasPrestAdic:       number;   // días adicionales (2/año desde año 2)
-    prestaciones:        number;
-    diasEnAnioActual:    number;   // días trabajados en el año calendario del egreso
-    diasDesdeAniversario: number;  // días del último período incompleto (para vac/bono)
-    utilFrac:            number;
-    vacFrac:             number;
-    bonoVacFrac:         number;
-    indemnizacion:       number;
-    total:               number;
-    warning?:            string;
+interface LiquidationResult {
+    employee:               Employee;
+    salaryVES:              number;
+    yearsOfService:         number;
+    totalDays:              number;   // total days since hire
+    daysSeniority:          number;
+    daysSeniorityQuarterly: number;   // quarterly base (5 days/month)
+    daysSeniorityExtra:     number;   // extra days (2 days/year from year 2)
+    socialBenefits:         number;
+    daysInCurrentYear:      number;   // days worked in the termination calendar year
+    daysSinceAnniversary:   number;   // days since last work anniversary (for vacations/bonus)
+    fractionalProfitSharing: number;
+    fractionalVacations:    number;
+    fractionalVacationBonus: number;
+    terminationIndemnity:   number;
+    total:                  number;
+    warning?:               string;
 }
 
-function calcLiqEmp(
-    emp:      Employee,
-    egreso:   string,
-    motivo:   Motivo,
-    diasUtil: number,
-    diasBono: number,
-    bcvRate:  number,
-): EmpLiqResult {
-    const base: EmpLiqResult = {
-        employee: emp, salarioVES: 0,
-        antiguedadAnios: 0, antiguedadDias: 0,
-        diasPrest: 0, diasPrestTrimestr: 0, diasPrestAdic: 0,
-        prestaciones: 0, diasEnAnioActual: 0, diasDesdeAniversario: 0,
-        utilFrac: 0, vacFrac: 0, bonoVacFrac: 0,
-        indemnizacion: 0, total: 0,
+function calculateLiquidation(
+    employee:         Employee,
+    terminationDate:  string,
+    reason:           LiquidationReason,
+    profitSharingDays: number,
+    vacationBonusDays: number,
+    bcvRate:          number,
+): LiquidationResult {
+    const base: LiquidationResult = {
+        employee, salaryVES: 0,
+        yearsOfService: 0, totalDays: 0,
+        daysSeniority: 0, daysSeniorityQuarterly: 0, daysSeniorityExtra: 0,
+        socialBenefits: 0, daysInCurrentYear: 0, daysSinceAnniversary: 0,
+        fractionalProfitSharing: 0, fractionalVacations: 0, fractionalVacationBonus: 0,
+        terminationIndemnity: 0, total: 0,
     };
 
-    if (!emp.fechaIngreso) return { ...base, warning: "Sin fecha de ingreso" };
-    const ingreso = new Date(emp.fechaIngreso + "T00:00:00");
-    const egresoD = new Date(egreso + "T00:00:00");
-    if (egresoD <= ingreso) return { ...base, warning: "Egreso anterior a ingreso" };
+    if (!employee.fechaIngreso) return { ...base, warning: "Sin fecha de ingreso" };
+    const hireDate = new Date(employee.fechaIngreso + "T00:00:00");
+    const termDate = new Date(terminationDate + "T00:00:00");
+    if (termDate <= hireDate) return { ...base, warning: "Egreso anterior a ingreso" };
 
-    const salarioVES = emp.moneda === "USD" ? emp.salarioMensual * bcvRate : emp.salarioMensual;
-    if (salarioVES <= 0) return { ...base, salarioVES, warning: "Salario cero" };
+    const salaryVES = employee.moneda === "USD" ? employee.salarioMensual * bcvRate : employee.salarioMensual;
+    if (salaryVES <= 0) return { ...base, salaryVES, warning: "Salario cero" };
 
-    const msDay     = 86400000;
-    const totalDias = Math.floor((egresoD.getTime() - ingreso.getTime()) / msDay);
-    const anios     = Math.floor(totalDias / 365);
+    const msPerDay   = 86400000;
+    const totalDays  = Math.floor((termDate.getTime() - hireDate.getTime()) / msPerDay);
+    const yearsOfService = Math.floor(totalDays / 365);
 
-    // ── PRESTACIONES SOCIALES (Art. 142 LOTTT) ────────────────────────────
-    // Base: 15 días por trimestre = 5 días/mes (60 días/año)
-    const totalMeses       = Math.floor(totalDias / 30.4375);
-    const diasPrestTrimestr = totalMeses * 5;
+    // ── SOCIAL BENEFITS (PRESTACIONES) (Art. 142 LOTTT) ──────────────────
+    // Base: 15 days per quarter = 5 days/month (60 days/year)
+    const totalMonths            = Math.floor(totalDays / 30.4375);
+    const daysSeniorityQuarterly = totalMonths * 5;
 
-    // Adicionales: el depósito anual CRECE 2d por año de servicio (acumulativo).
-    // Año 2: +2d, Año 3: +4d, Año 4: +6d ... → total acum = N×(N-1)
-    // Cap: depósito anual máximo 30d (Art. 142b, se alcanza en año 16).
-    const diasUltimoAnio = totalDias % 365;
-    const diasAdicFull   = anios <= 16
-        ? anios * Math.max(0, anios - 1)
-        : 240 + 30 * (anios - 16);
-    const diasPrestAdic  = diasAdicFull
-        + (anios >= 1 && diasUltimoAnio > 182 ? Math.min(30, 2 * anios) : 0);
-    const diasPrest      = diasPrestTrimestr + diasPrestAdic;
+    // Extra days: annual deposit grows by 2 days per year of service (cumulative).
+    const daysOfLastYear = totalDays % 365;
+    const daysExtraFull  = yearsOfService <= 16
+        ? yearsOfService * Math.max(0, yearsOfService - 1)
+        : 240 + 30 * (yearsOfService - 16);
+    const daysSeniorityExtra = daysExtraFull
+        + (yearsOfService >= 1 && daysOfLastYear > 182 ? Math.min(30, 2 * yearsOfService) : 0);
+    const daysSeniority      = daysSeniorityQuarterly + daysSeniorityExtra;
 
-    // Salario integral diario (año comercial 360 días — práctica venezolana)
-    const salarioDiarioPuro = salarioVES / 30;
-    const alicuotaUtil      = salarioDiarioPuro * diasUtil / 360;
-    const alicuotaBono      = salarioDiarioPuro * diasBono / 360;
-    const salarioDiario     = salarioDiarioPuro + alicuotaUtil + alicuotaBono;
+    // Integrated daily salary
+    const baseDailySalary = salaryVES / 30;
+    const profitSharingQuota = baseDailySalary * profitSharingDays / 360;
+    const vacationBonusQuota = baseDailySalary * vacationBonusDays / 360;
+    const integratedDailySalary = baseDailySalary + profitSharingQuota + vacationBonusQuota;
 
-    const prestaciones = diasPrest * salarioDiario;
+    const socialBenefits = daysSeniority * integratedDailySalary;
 
-    // ── UTILIDADES FRACCIONADAS ───────────────────────────────────────────
-    // Días trabajados en el año CALENDARIO del egreso
-    // (desde el 1-ene del año de egreso o ingreso, lo que sea posterior)
-    const inicioAnioCalendario = new Date(egresoD.getFullYear(), 0, 1);
-    const refUtilidades        = ingreso > inicioAnioCalendario ? ingreso : inicioAnioCalendario;
-    const diasEnAnioActual     = Math.floor((egresoD.getTime() - refUtilidades.getTime()) / msDay);
+    // ── FRACTIONAL PROFIT SHARING ─────────────────────────────────────────
+    const yearStart        = new Date(termDate.getFullYear(), 0, 1);
+    const refStartDate      = hireDate > yearStart ? hireDate : yearStart;
+    const daysInCurrentYear = Math.floor((termDate.getTime() - refStartDate.getTime()) / msPerDay);
 
-    const utilFrac = (salarioVES / 30) * diasUtil * (diasEnAnioActual / 365);
+    const fractionalProfitSharing = (salaryVES / 30) * profitSharingDays * (daysInCurrentYear / 365);
 
-    // ── VACACIONES Y BONO FRACCIONADOS ────────────────────────────────────
-    // Basado en el período incompleto DESDE EL ÚLTIMO ANIVERSARIO
-    const diasDesdeAniversario = anios >= 1 ? diasUltimoAnio : totalDias;
-    const diasVacBase          = Math.max(15, 15 + Math.max(0, anios - 1));
+    // ── FRACTIONAL VACATIONS & BONUS ──────────────────────────────────────
+    const daysSinceAnniversary = yearsOfService >= 1 ? daysOfLastYear : totalDays;
+    const baseVacationDays     = Math.max(15, 15 + Math.max(0, yearsOfService - 1));
 
-    const vacFrac     = (salarioVES / 30) * diasVacBase * (diasDesdeAniversario / 365);
-    const bonoVacFrac = (salarioVES / 30) * diasBono   * (diasDesdeAniversario / 365);
+    const fractionalVacations     = (salaryVES / 30) * baseVacationDays * (daysSinceAnniversary / 365);
+    const fractionalVacationBonus = (salaryVES / 30) * vacationBonusDays * (daysSinceAnniversary / 365);
 
-    const indemnizacion = motivo === "despido_injustificado" ? prestaciones : 0;
-    const total = prestaciones + utilFrac + vacFrac + bonoVacFrac + indemnizacion;
+    const terminationIndemnity = reason === "despido_injustificado" ? socialBenefits : 0;
+    const total = socialBenefits + fractionalProfitSharing + fractionalVacations + fractionalVacationBonus + terminationIndemnity;
 
     return {
-        employee: emp, salarioVES,
-        antiguedadAnios: anios, antiguedadDias: totalDias,
-        diasPrest, diasPrestTrimestr, diasPrestAdic,
-        prestaciones, diasEnAnioActual, diasDesdeAniversario,
-        utilFrac, vacFrac, bonoVacFrac, indemnizacion, total,
+        employee, salaryVES,
+        yearsOfService, totalDays,
+        daysSeniority, daysSeniorityQuarterly, daysSeniorityExtra,
+        socialBenefits, daysInCurrentYear, daysSinceAnniversary,
+        fractionalProfitSharing, fractionalVacations, fractionalVacationBonus, terminationIndemnity, total,
     };
 }
 
-function formatDateES(iso: string): string {
+function formatDate(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
+    const months = ["enero","febrero","marzo","abril","mayo","junio",
                    "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-    return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+    return `${parseInt(d)} de ${months[parseInt(m) - 1]} de ${y}`;
 }
 
 // ============================================================================
-// CARD — Constancia de Liquidación (formato visual vacaciones)
+// CARD — Liquidation Constancy
 // ============================================================================
 
-function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, egreso, motivo, diasUtil, diasBono }: {
-    r: EmpLiqResult; companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean; egreso: string; motivo: Motivo;
-    diasUtil: string; diasBono: string;
+function LiquidationConstancy({ result, companyName, companyLogoUrl, showLogoInPdf, terminationDate, reason, profitSharingDays, vacationBonusDays }: {
+    result: LiquidationResult; companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean; terminationDate: string; reason: LiquidationReason;
+    profitSharingDays: string; vacationBonusDays: string;
 }) {
-    const motivoLabel = motivo === "renuncia" ? "Renuncia voluntaria"
-        : motivo === "despido_justificado" ? "Despido justificado"
+    const reasonLabel = reason === "renuncia" ? "Renuncia voluntaria"
+        : reason === "despido_justificado" ? "Despido justificado"
         : "Despido injustificado";
-    const emitido = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
-    const diasVacBase = Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1));
-    const documentId = makeDocumentId(`${r.employee.cedula}|${egreso}|${motivo}`);
+    const issuedAt = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+    const baseVacationDays = Math.max(15, 15 + Math.max(0, result.yearsOfService - 1));
+    const documentId = makeDocumentId(`${result.employee.cedula}|${terminationDate}|${reason}`);
 
     const concepts = [
-        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${r.diasPrestTrimestr}d trim.${r.diasPrestAdic > 0 ? ` + ${r.diasPrestAdic}d adic.` : ""}`, dias: r.diasPrest, monto: r.prestaciones },
-        { label: "Utilidades fraccionadas", sub: `${r.diasEnAnioActual}d en año × ${diasUtil}d util. / 365`, monto: r.utilFrac },
-        { label: "Vacaciones fraccionadas", sub: `${r.diasDesdeAniversario}d / 365 × ${diasVacBase}d vac.`, monto: r.vacFrac },
-        { label: "Bono vacacional fraccionado", sub: `${r.diasDesdeAniversario}d / 365 × ${diasBono}d bono`, monto: r.bonoVacFrac },
-        ...(r.indemnizacion > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto", monto: r.indemnizacion, highlight: true }] : []),
-    ].filter(c => c.monto > 0);
+        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${result.daysSeniorityQuarterly}d trim.${result.daysSeniorityExtra > 0 ? ` + ${result.daysSeniorityExtra}d adic.` : ""}`, days: result.daysSeniority, amount: result.socialBenefits },
+        { label: "Utilidades fraccionadas", sub: `${result.daysInCurrentYear}d en año × ${profitSharingDays}d util. / 365`, amount: result.fractionalProfitSharing },
+        { label: "Vacaciones fraccionadas", sub: `${result.daysSinceAnniversary}d / 365 × ${baseVacationDays}d vac.`, amount: result.fractionalVacations },
+        { label: "Bono vacacional fraccionado", sub: `${result.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`, amount: result.fractionalVacationBonus },
+        ...(result.terminationIndemnity > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto", amount: result.terminationIndemnity, highlight: true }] : []),
+    ].filter(c => c.amount > 0);
 
-    if (r.warning) return (
+    if (result.warning) return (
         <div className="bg-warning/5 rounded-2xl overflow-hidden border border-warning/20 shadow-sm mb-6">
             <div className="px-6 py-4 flex items-center justify-between border-l-4 border-warning">
-                <p className="text-[14px] font-bold uppercase text-foreground">{r.employee.nombre}</p>
-                <span className="text-[12px] text-warning font-bold uppercase tracking-widest bg-warning/10 px-2 py-1 rounded">{r.warning}</span>
+                <p className="text-[14px] font-bold uppercase text-foreground">{result.employee.nombre}</p>
+                <span className="text-[12px] text-warning font-bold uppercase tracking-widest bg-warning/10 px-2 py-1 rounded">{result.warning}</span>
             </div>
         </div>
     );
@@ -200,13 +195,13 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
                     <div>
                         <p className="text-[20px] font-black uppercase tracking-tight text-foreground leading-none">{companyName}</p>
                         <p className="text-[11px] text-[var(--text-tertiary)] mt-2 uppercase tracking-[0.2em] font-semibold">Constancia de Liquidación Laboral</p>
-                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 142 LOTTT — {motivoLabel}</p>
+                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 142 LOTTT — {reasonLabel}</p>
                     </div>
                 </div>
                 <div className="text-right shrink-0">
                     <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Fecha de Egreso</p>
-                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDateES(egreso)}</p>
-                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {emitido}</p>
+                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDate(terminationDate)}</p>
+                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {issuedAt}</p>
                 </div>
             </div>
 
@@ -216,14 +211,14 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
                         <Users size={20} />
                     </div>
                     <div className="flex-1">
-                        <p className="text-[16px] font-bold text-foreground tracking-tight">{r.employee.nombre}</p>
-                        {r.employee.cargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{r.employee.cargo}</p>}
+                        <p className="text-[16px] font-bold text-foreground tracking-tight">{result.employee.nombre}</p>
+                        {result.employee.cargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{result.employee.cargo}</p>}
                     </div>
                     <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
-                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {r.employee.cedula}</p>
+                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {result.employee.cedula}</p>
                         <div className="inline-flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-medium bg-surface-2 px-2 py-0.5 rounded border border-border-light">
                             <Clock size={12} className="text-[var(--text-tertiary)]" />
-                            {r.antiguedadAnios} año{r.antiguedadAnios !== 1 ? "s" : ""}
+                            {result.yearsOfService} año{result.yearsOfService !== 1 ? "s" : ""}
                         </div>
                     </div>
                 </div>
@@ -231,10 +226,10 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
 
             <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
                 {[
-                    { lbl: "Salario Mensual",  val: fmtVES(r.salarioVES), color: "text-foreground" },
-                    { lbl: "Fecha de Ingreso", val: formatDateES(r.employee.fechaIngreso ?? ""), color: "text-foreground" },
-                    { lbl: "Antigüedad",val: `${r.antiguedadAnios}a ${r.antiguedadDias % 365}d`, color: "text-primary-500" },
-                    { lbl: "Salario Base/Día",  val: fmtVES(r.salarioVES / 30), color: "text-foreground" },
+                    { lbl: "Salario Mensual",  val: formatCurrency(result.salaryVES), color: "text-foreground" },
+                    { lbl: "Fecha de Ingreso", val: formatDate(result.employee.fechaIngreso ?? ""), color: "text-foreground" },
+                    { lbl: "Antigüedad",val: `${result.yearsOfService}a ${result.totalDays % 365}d`, color: "text-primary-500" },
+                    { lbl: "Salario Base/Día",  val: formatCurrency(result.salaryVES / 30), color: "text-foreground" },
                 ].map(({ lbl, val, color }) => (
                     <div key={lbl}>
                         <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{lbl}</p>
@@ -260,9 +255,9 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
                                 <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{c.sub}</p>
                             </div>
                             <div className="flex items-center justify-end gap-12 w-48 shrink-0 text-right">
-                                <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{c.dias != null ? c.dias : "—"}</p>
+                                <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{c.days != null ? c.days : "—"}</p>
                                 <p className={`text-[14px] font-bold tabular-nums flex-1 ${c.highlight ? "text-error" : "text-foreground group-hover:text-primary-500 transition-colors"}`}>
-                                    Bs. {fmtN(c.monto)}
+                                    Bs. {formatNumber(c.amount)}
                                 </p>
                             </div>
                         </div>
@@ -275,20 +270,9 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
                             Líquido a recibir
                         </p>
                         <p className="text-[24px] font-black tabular-nums text-foreground leading-none">
-                            Bs. {fmtN(r.total)}
+                            Bs. {formatNumber(result.total)}
                         </p>
                     </div>
-                </div>
-            </div>
-
-            <div className="px-8 pb-8 pt-4">
-                <div className="grid grid-cols-2 gap-12 max-w-lg mx-auto">
-                    {["Representante Empleador", "Firma del Trabajador"].map(role => (
-                        <div key={role} className="flex flex-col items-center">
-                            <div className="w-full h-12 border-b-2 border-dashed border-border-light mb-3" />
-                            <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-secondary)] font-bold text-center">{role}</p>
-                        </div>
-                    ))}
                 </div>
             </div>
 
@@ -306,9 +290,6 @@ function ConstanciaLiquidacion({ r, companyName, companyLogoUrl, showLogoInPdf, 
 }
 
 // ============================================================================
-// CONFIG SECTION
-// ============================================================================
-
 // ============================================================================
 // SHARED UI ATOMS
 // ============================================================================
@@ -330,15 +311,15 @@ export default function LiquidacionesPage() {
 
     const today = getTodayIsoDate();
 
-    const [egreso,      setEgreso]      = useState(today);
-    const [motivo,      setMotivo]      = useState<Motivo>("renuncia");
-    const [diasUtil,    setDiasUtil]    = useState("120");
-    const [diasBono,    setDiasBono]    = useState("15");
-    const [soloActivos, setSoloActivos] = useState(true);
-    const [selectedCedula, setSelectedCedula] = useState<string>("");
+    const [terminationDate, setTerminationDate] = useState(today);
+    const [reason,          setReason]          = useState<LiquidationReason>("renuncia");
+    const [profitSharingDays, setProfitSharingDays] = useState("120");
+    const [vacationBonusDays, setVacationBonusDays] = useState("15");
+    const [onlyActive, setOnlyActive] = useState(true);
+    const [selectedIdNumber, setSelectedIdNumber] = useState<string>("");
     const selectedEmp = useMemo(
-        () => employees.find(e => e.cedula === selectedCedula),
-        [employees, selectedCedula]
+        () => employees.find(e => e.cedula === selectedIdNumber),
+        [employees, selectedIdNumber]
     );
 
     // ── BCV fetch ──────────────────────────────────────────────────────────
@@ -368,84 +349,84 @@ export default function LiquidacionesPage() {
 
     const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
 
-    const filtered = useMemo(() => {
-        const pool = soloActivos ? employees.filter((e) => e.estado === "activo") : employees;
-        if (!selectedCedula) return pool;
-        return pool.filter((e) => e.cedula === selectedCedula);
-    }, [employees, soloActivos, selectedCedula]);
+    const filteredEmployees = useMemo(() => {
+        const pool = onlyActive ? employees.filter((e) => e.estado === "activo") : employees;
+        if (!selectedIdNumber) return pool;
+        return pool.filter((e) => e.cedula === selectedIdNumber);
+    }, [employees, onlyActive, selectedIdNumber]);
 
-    const results = useMemo<EmpLiqResult[]>(() =>
-        filtered.map(emp => calcLiqEmp(
-            emp, egreso, motivo,
-            parseFloat(diasUtil) || 120,
-            parseFloat(diasBono) || 15,
+    const liquidationResults = useMemo<LiquidationResult[]>(() =>
+        filteredEmployees.map(emp => calculateLiquidation(
+            emp, terminationDate, reason,
+            parseFloat(profitSharingDays) || 120,
+            parseFloat(vacationBonusDays) || 15,
             bcvRate,
         )),
-        [filtered, egreso, motivo, diasUtil, diasBono, bcvRate],
+        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate],
     );
 
-    const validResults = useMemo(() => results.filter(r => !r.warning), [results]);
-    const totalGeneral = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
+    const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
+    const totalAmount = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
 
 
     const handlePdf = useCallback(() => {
-        const pdfEmployees: LiquidacionEmployee[] = validResults.map(r => {
-            const salarioDiarioIntegral = r.prestaciones > 0 ? r.prestaciones / r.diasPrest : r.salarioVES / 30;
-            const salarioDiarioSimple   = r.salarioVES / 30;
+        const pdfEmployees: LiquidationEmployee[] = validResults.map(r => {
+            const integratedDailySalary = r.socialBenefits > 0 ? r.socialBenefits / r.daysSeniority : r.salaryVES / 30;
+            const simpleDailySalary      = r.salaryVES / 30;
             const lines = [
                 {
                     label:   "Prestaciones sociales (Art. 142)",
-                    dias:    r.diasPrest,
-                    formula: r.diasPrestAdic > 0
-                        ? `${r.diasPrestTrimestr}d trimestr. + ${r.diasPrestAdic}d adic.`
-                        : `${r.diasPrestTrimestr}d × 5d/mes`,
-                    salario: salarioDiarioIntegral,
-                    monto:   r.prestaciones,
+                    days:    r.daysSeniority,
+                    formula: r.daysSeniorityExtra > 0
+                        ? `${r.daysSeniorityQuarterly}d trimestr. + ${r.daysSeniorityExtra}d adic.`
+                        : `${r.daysSeniorityQuarterly}d × 5d/mes`,
+                    salary:  integratedDailySalary,
+                    amount:   r.socialBenefits,
                 },
                 {
                     label:   "Utilidades fraccionadas",
-                    formula: `${r.diasEnAnioActual}d en año × ${diasUtil}d util / 365`,
-                    monto:   r.utilFrac,
+                    formula: `${r.daysInCurrentYear}d en año × ${profitSharingDays}d util / 365`,
+                    amount:   r.fractionalProfitSharing,
                 },
                 {
                     label:   "Vacaciones fraccionadas",
-                    formula: `${r.diasDesdeAniversario}d / 365 × ${Math.max(15, 15 + Math.max(0, r.antiguedadAnios - 1))}d vac.`,
-                    salario: salarioDiarioSimple,
-                    monto:   r.vacFrac,
+                    formula: `${r.daysSinceAnniversary}d / 365 × ${Math.max(15, 15 + Math.max(0, r.yearsOfService - 1))}d vac.`,
+                    salary:  simpleDailySalary,
+                    amount:   r.fractionalVacations,
                 },
                 {
                     label:   "Bono vacacional fraccionado",
-                    formula: `${r.diasDesdeAniversario}d / 365 × ${diasBono}d bono`,
-                    salario: salarioDiarioSimple,
-                    monto:   r.bonoVacFrac,
+                    formula: `${r.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`,
+                    salary:  simpleDailySalary,
+                    amount:   r.fractionalVacationBonus,
                 },
-                ...(r.indemnizacion > 0
-                    ? [{ label: "Indemnización por despido (Art. 92)", dias: r.diasPrest, salario: salarioDiarioIntegral, monto: r.indemnizacion, highlight: "amber" as const }]
+                ...(r.terminationIndemnity > 0
+                    ? [{ label: "Indemnización por despido (Art. 92)", days: r.daysSeniority, salary: integratedDailySalary, amount: r.terminationIndemnity, highlight: "amber" as const }]
                     : []),
-            ].filter(l => l.monto > 0 || l.dias !== undefined);
+            ].filter(l => l.amount > 0 || l.days !== undefined);
             return {
-                nombre:          r.employee.nombre,
-                cedula:          r.employee.cedula,
-                cargo:           r.employee.cargo,
-                fechaIngreso:    r.employee.fechaIngreso ?? "",
-                fechaEgreso:     egreso,
-                antiguedadAnios: r.antiguedadAnios,
-                antiguedadDias:  r.antiguedadDias,
-                motivo,
+                name:            r.employee.nombre,
+                idNumber:        r.employee.cedula,
+                role:            r.employee.cargo,
+                hireDate:        r.employee.fechaIngreso ?? "",
+                terminationDate: terminationDate,
+                yearsOfService:  r.yearsOfService,
+                daysOfService:   r.totalDays,
+                reason,
                 lines,
                 total: r.total,
             };
         });
-        const opts: LiquidacionOptions = {
+        const opts: LiquidationOptions = {
             companyName:   company?.name ?? "Empresa",
             companyId:     company?.id,
-            fechaDoc:      getTodayIsoDate(),  // ISO format for fmtDate()
+            documentDate:  new Date().toISOString().split("T")[0],
             bcvRate:       bcvRate || undefined,
             logoUrl:       company?.logoUrl,
             showLogoInPdf: company?.showLogoInPdf,
         };
-        generateLiquidacionPdf(pdfEmployees, opts);
-    }, [validResults, egreso, motivo, diasUtil, diasBono, bcvRate, company]);
+        generateLiquidationPdf(pdfEmployees, opts);
+    }, [validResults, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate, company]);
 
     return (
         <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
@@ -480,14 +461,14 @@ export default function LiquidacionesPage() {
                             <div className="relative">
                                 <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                 <select
-                                    value={selectedCedula}
-                                    onChange={(e) => setSelectedCedula(e.target.value)}
+                                    value={selectedIdNumber}
+                                    onChange={(e) => setSelectedIdNumber(e.target.value)}
                                     className={fieldCls + " pl-9"}
                                 >
                                     <option value="">Lote por defecto (Todos)</option>
                                     <optgroup label="Empleados">
                                         {employees
-                                            .filter(e => !soloActivos || e.estado === "activo")
+                                            .filter(e => !onlyActive || e.estado === "activo")
                                             .sort((a,b) => a.nombre.localeCompare(b.nombre))
                                             .map(e => (
                                                 <option key={e.cedula} value={e.cedula}>
@@ -520,9 +501,9 @@ export default function LiquidacionesPage() {
                             )}
 
                             <label className="flex items-center gap-3 cursor-pointer group py-1">
-                                <div onClick={(e) => { e.preventDefault(); setSoloActivos(v => !v); }}
-                                    className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", soloActivos ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
-                                    <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", soloActivos ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
+                                <div onClick={(e) => { e.preventDefault(); setOnlyActive(v => !v); }}
+                                    className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", onlyActive ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
+                                    <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", onlyActive ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
                                 </div>
                                 <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
                             </label>
@@ -537,9 +518,9 @@ export default function LiquidacionesPage() {
                                     <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                     <input 
                                         type="date" 
-                                        value={egreso} 
+                                        value={terminationDate} 
                                         max={today}
-                                        onChange={e => setEgreso(e.target.value)} 
+                                        onChange={e => setTerminationDate(e.target.value)} 
                                         className={fieldCls + " pl-9"} 
                                     />
                                 </div>
@@ -550,8 +531,8 @@ export default function LiquidacionesPage() {
                                 <div className="relative">
                                     <ClipboardCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                                     <select 
-                                        value={motivo} 
-                                        onChange={e => setMotivo(e.target.value as Motivo)} 
+                                        value={reason} 
+                                        onChange={e => setReason(e.target.value as LiquidationReason)} 
                                         className={fieldCls + " pl-9"}
                                     >
                                         <option value="renuncia">Renuncia voluntaria</option>
@@ -571,16 +552,16 @@ export default function LiquidacionesPage() {
                                     <label className={labelCls}>Días util.</label>
                                     <div className="relative">
                                         <ClipboardCheck size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                        <input type="number" min="15" step="1" value={diasUtil}
-                                            onChange={e => setDiasUtil(e.target.value)} className={fieldCls + " pl-8 text-right"} />
+                                        <input type="number" min="15" step="1" value={profitSharingDays}
+                                            onChange={e => setProfitSharingDays(e.target.value)} className={fieldCls + " pl-8 text-right"} />
                                     </div>
                                 </div>
                                 <div>
                                     <label className={labelCls}>Bono vac.</label>
                                     <div className="relative">
                                         <TrendingUp size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                        <input type="number" min="15" step="1" value={diasBono}
-                                            onChange={e => setDiasBono(e.target.value)} className={fieldCls + " pl-8 text-right"} />
+                                        <input type="number" min="15" step="1" value={vacationBonusDays}
+                                            onChange={e => setVacationBonusDays(e.target.value)} className={fieldCls + " pl-8 text-right"} />
                                     </div>
                                 </div>
                             </div>
@@ -617,23 +598,23 @@ export default function LiquidacionesPage() {
                                     <span className="text-foreground font-bold">{validResults.length}</span>
                                 </div>
                                 
-                                {results.length - validResults.length > 0 && (
+                                {liquidationResults.length - validResults.length > 0 && (
                                     <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
                                         <span className="text-[var(--text-tertiary)]">Observaciones</span>
-                                        <span className="text-amber-500 font-bold">{results.length - validResults.length}</span>
+                                        <span className="text-amber-500 font-bold">{liquidationResults.length - validResults.length}</span>
                                     </div>
                                 )}
 
-                                {motivo === "despido_injustificado" && (
+                                {reason === "despido_injustificado" && (
                                     <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider pt-1 border-t border-border-light/30">
                                         <span className="text-[var(--text-tertiary)]">Indemnización</span>
-                                        <span className="text-red-500/70 font-bold">{fmtVES(validResults.reduce((s, r) => s + r.indemnizacion, 0))}</span>
+                                        <span className="text-red-500/70 font-bold">{formatCurrency(validResults.reduce((s, r) => s + r.terminationIndemnity, 0))}</span>
                                     </div>
                                 )}
 
                                 <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
                                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral.</span>
-                                    <span className="font-mono text-[15px] font-black text-primary-500 tabular-nums">{fmtVES(totalGeneral)}</span>
+                                    <span className="font-mono text-[15px] font-black text-primary-500 tabular-nums">{formatCurrency(totalAmount)}</span>
                                 </div>
                             </div>
                         )}
@@ -664,7 +645,7 @@ export default function LiquidacionesPage() {
                             <AlertCircle size={32} />
                             <span className="text-[13px] font-bold uppercase tracking-widest">{error}</span>
                         </div>
-                    ) : results.length === 0 ? (
+                    ) : liquidationResults.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full gap-5 text-[var(--text-disabled)] max-w-sm mx-auto animate-in fade-in duration-500">
                             <div className="w-20 h-20 rounded-[1.5rem] bg-surface-1 border border-border-light flex items-center justify-center shadow-sm text-border-medium">
                                 <Users strokeWidth={1.5} size={32} />
@@ -678,22 +659,22 @@ export default function LiquidacionesPage() {
                         </div>
                     ) : (
                         <div className="max-w-4xl mx-auto space-y-10 pb-12">
-                            {results.map((r, i) => (
+                            {liquidationResults.map((result, i) => (
                                 <motion.div
-                                    key={r.employee.cedula}
+                                    key={result.employee.cedula}
                                     initial={{ opacity: 0, scale: 0.98, y: 15 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     transition={{ delay: i * 0.05, ease: "easeOut" }}
                                 >
-                                    <ConstanciaLiquidacion
-                                        r={r}
+                                    <LiquidationConstancy
+                                        result={result}
                                         companyName={company?.name ?? "La Empresa"}
                                         companyLogoUrl={company?.logoUrl}
                                         showLogoInPdf={company?.showLogoInPdf}
-                                        egreso={egreso}
-                                        motivo={motivo}
-                                        diasUtil={diasUtil}
-                                        diasBono={diasBono}
+                                        terminationDate={terminationDate}
+                                        reason={reason}
+                                        profitSharingDays={profitSharingDays}
+                                        vacationBonusDays={vacationBonusDays}
                                     />
                                 </motion.div>
                             ))}

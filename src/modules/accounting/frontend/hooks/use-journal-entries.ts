@@ -3,6 +3,7 @@
 // Data hook for journal entries, optionally filtered by period.
 import { useEffect, useState, useCallback } from 'react';
 import type { JournalEntry }                 from '../../backend/domain/journal-entry';
+import { apiFetch }                          from '@/src/shared/frontend/utils/api-fetch';
 
 export function useJournalEntries(companyId: string | null, periodId?: string | null) {
     const [data,    setData]    = useState<JournalEntry[]>([]);
@@ -16,7 +17,7 @@ export function useJournalEntries(companyId: string | null, periodId?: string | 
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/entries?${qs.toString()}`);
+            const res  = await apiFetch(`/api/accounting/entries?${qs.toString()}`);
             const json = await res.json() as { data?: JournalEntry[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

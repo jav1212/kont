@@ -1,130 +1,125 @@
 // ============================================================================
-// PRESTACIONES SOCIALES CALCULATOR — Art. 142 LOTTT
-// Computa el balance acumulado de prestaciones, utilidades proyectadas
-// y días de vacaciones ganados por empleado, todo de forma offline.
+// SOCIAL BENEFITS (PRESTACIONES) CALCULATOR — Art. 142 LOTTT
+// Computes the accumulated social benefits balance, projected profit sharing,
+// and earned vacation days per employee, all offline.
 // ============================================================================
 
-export interface PrestacionesResumen {
-    // Antigüedad
-    fechaIngreso:        string;
-    fechaCorte:          string;
-    totalDias:           number;
-    anios:               number;
-    mesesCompletos:      number;
+export interface SocialBenefitsSummary {
+    // Seniority
+    hireDate:            string;
+    cutoffDate:          string;
+    totalDays:           number;
+    yearsOfService:      number;
+    completeMonths:      number;
 
-    // Prestaciones (Art. 142)
-    diasTrimestrales:    number;   // 5d/mes acumulados
-    diasAdicionales:     number;   // 2d/año desde año 2
-    diasTotales:         number;
-    salarioIntegralDiario: number;
-    saldoPrestaciones:   number;   // diasTotales × salarioIntegralDiario
+    // Social Benefits (Art. 142)
+    quarterlyDays:       number;   // 5 days/month accumulated
+    extraDays:           number;   // 2 days/year from year 2
+    totalSeniorityDays:  number;
+    integratedDailySalary: number;
+    seniorityIndemnityBalance: number;   // totalSeniorityDays × integratedDailySalary
 
-    // Vacaciones (Art. 190-196 LOTTT)
-    diasVacBase:         number;   // 15 + 1 por año desde año 2
-    diasVacGanados:      number;   // proporcional al período actual
-    montoVacaciones:     number;
+    // Vacations (Art. 190-196 LOTTT)
+    baseVacationDays:    number;   // 15 + 1 per year from year 2
+    earnedVacationDays:  number;   // proportional to current period
+    vacationAmount:      number;
 
-    // Bono vacacional
-    diasBonoBase:        number;
-    diasBonoGanados:     number;
-    montoBonoVacacional: number;
+    // Vacation Bonus
+    baseVacationBonusDays: number;
+    earnedVacationBonusDays: number;
+    vacationBonusAmount: number;
 
-    // Utilidades (Art. 131 LOTTT)
-    diasUtilidades:      number;
-    utilidadesAnuales:   number;   // proyección año completo
-    utilidadesFracc:     number;   // fracción del año actual
+    // Profit Sharing (Art. 131 LOTTT)
+    profitSharingDays:   number;
+    annualProfitSharing: number;   // full year projection
+    fractionalProfitSharing: number; // fractional part of current year
 
-    // Gran total estimado (prestaciones + vac + bono + util fracc)
-    totalEstimado:       number;
+    // Estimated grand total (seniority + vac + bonus + fractional profit sharing)
+    estimatedTotal:      number;
 }
 
-interface ComputeOptions {
-    salarioVES:         number;
-    fechaIngreso:       string;   // YYYY-MM-DD
-    fechaCorte:         string;   // YYYY-MM-DD (hoy o fecha a consultar)
-    diasUtil:           number;   // días de utilidades del plan (e.g. 15-120)
-    diasBonoVac:        number;   // días de bono vacacional base (e.g. 15)
+interface SocialBenefitsOptions {
+    salaryVES:         number;
+    hireDate:          string;   // YYYY-MM-DD
+    cutoffDate:        string;   // YYYY-MM-DD
+    profitSharingDays: number;   // e.g. 15-120 days
+    vacationBonusDays: number;   // base e.g. 15
 }
 
-export function computePrestaciones(opts: ComputeOptions): PrestacionesResumen | null {
-    const { salarioVES, fechaIngreso, fechaCorte, diasUtil, diasBonoVac } = opts;
-    if (!fechaIngreso || salarioVES <= 0) return null;
+export function calculateSocialBenefits(options: SocialBenefitsOptions): SocialBenefitsSummary | null {
+    const { salaryVES, hireDate, cutoffDate, profitSharingDays, vacationBonusDays } = options;
+    if (!hireDate || salaryVES <= 0) return null;
 
-    const ingreso = new Date(fechaIngreso + "T00:00:00");
-    const corte   = new Date(fechaCorte   + "T00:00:00");
-    if (corte <= ingreso) return null;
+    const hire = new Date(hireDate + "T00:00:00");
+    const cut  = new Date(cutoffDate + "T00:00:00");
+    if (cut <= hire) return null;
 
-    const msDay       = 86400000;
-    const totalDias   = Math.floor((corte.getTime() - ingreso.getTime()) / msDay);
-    const anios       = Math.floor(totalDias / 365);
-    const mesesCompletos = Math.floor(totalDias / 30.4375);
+    const msPerDay    = 86400000;
+    const totalDays   = Math.floor((cut.getTime() - hire.getTime()) / msPerDay);
+    const yearsOfService = Math.floor(totalDays / 365);
+    const completeMonths = Math.floor(totalDays / 30.4375);
 
-    // ── Salario integral diario (año comercial 360 días — práctica venezolana) ──
-    const salarioDiario = salarioVES / 30;
-    const alicuotaUtil  = salarioDiario * diasUtil    / 360;
-    const alicuotaBono  = salarioDiario * diasBonoVac / 360;
-    const salarioIntegralDiario = salarioDiario + alicuotaUtil + alicuotaBono;
+    // ── Integrated daily salary (360-day commercial year practice in Venezuela) ──
+    const baseDailySalary = salaryVES / 30;
+    const profitSharingQuota = baseDailySalary * profitSharingDays / 360;
+    const vacationBonusQuota = baseDailySalary * vacationBonusDays / 360;
+    const integratedDailySalary = baseDailySalary + profitSharingQuota + vacationBonusQuota;
 
-    // ── Prestaciones (Art. 142) ──────────────────────────────────────────────
-    // Trimestral: 5 días/mes acumulados desde el inicio
-    const diasTrimestrales = mesesCompletos * 5;
+    // ── Social Benefits (Art. 142) ───────────────────────────────────────────
+    // Quarterly: 5 days/month accumulated from start
+    const quarterlyDays = completeMonths * 5;
 
-    // Adicionales: el depósito anual CRECE 2 días por año de servicio (acumulativo).
-    // Año 2: +2d, Año 3: +4d, Año 4: +6d ... → total acum = N×(N-1)
-    // Cap Art.142: depósito anual máximo 30d (se alcanza en año 16).
-    const diasUltAnio = totalDias % 365;
-    const diasAdicFull = anios <= 16
-        ? anios * Math.max(0, anios - 1)
-        : 240 + 30 * (anios - 16);
-    const diasAdicionales = diasAdicFull
-        + (anios >= 1 && diasUltAnio > 182 ? Math.min(30, 2 * anios) : 0);
-    const diasTotales      = diasTrimestrales + diasAdicionales;
-    const saldoPrestaciones = diasTotales * salarioIntegralDiario;
+    // Extra: annual deposit grows 2 days per year of service (cumulative).
+    const daysOfLastYear = totalDays % 365;
+    const fullExtraDays  = yearsOfService <= 16
+        ? yearsOfService * Math.max(0, yearsOfService - 1)
+        : 240 + 30 * (yearsOfService - 16);
+    const extraDays = fullExtraDays
+        + (yearsOfService >= 1 && daysOfLastYear > 182 ? Math.min(30, 2 * yearsOfService) : 0);
+    const totalSeniorityDays      = quarterlyDays + extraDays;
+    const seniorityIndemnityBalance = totalSeniorityDays * integratedDailySalary;
 
-    // ── Vacaciones (Art. 190-196) ────────────────────────────────────────────
-    // Días base: 15 en el primer año, +1 por cada año adicional (hasta máx 30 o 15+15)
-    const diasVacBase   = Math.min(30, 15 + Math.max(0, anios - 1));
-    // Días ganados en el período actual (desde último aniversario)
-    const diasDesdeAniv = anios >= 1 ? diasUltAnio : totalDias;
-    const diasVacGanados = diasVacBase * (diasDesdeAniv / 365);
-    const montoVacaciones = (salarioVES / 30) * diasVacGanados;
+    // ── Vacations (Art. 190-196) ─────────────────────────────────────────────
+    const baseVacationDays = Math.min(30, 15 + Math.max(0, yearsOfService - 1));
+    const daysSinceAnniv   = yearsOfService >= 1 ? daysOfLastYear : totalDays;
+    const earnedVacationDays = baseVacationDays * (daysSinceAnniv / 365);
+    const vacationAmount     = (salaryVES / 30) * earnedVacationDays;
 
-    // ── Bono vacacional ──────────────────────────────────────────────────────
-    const diasBonoBase   = Math.min(30, diasBonoVac + Math.max(0, anios - 1));
-    const diasBonoGanados = diasBonoBase * (diasDesdeAniv / 365);
-    const montoBonoVacacional = (salarioVES / 30) * diasBonoGanados;
+    // ── Vacation Bonus ───────────────────────────────────────────────────────
+    const baseVacationBonusDays = Math.min(30, vacationBonusDays + Math.max(0, yearsOfService - 1));
+    const earnedVacationBonusDays = baseVacationBonusDays * (daysSinceAnniv / 365);
+    const vacationBonusAmount     = (salaryVES / 30) * earnedVacationBonusDays;
 
-    // ── Utilidades (Art. 131) ────────────────────────────────────────────────
-    const utilidadesAnuales = (salarioVES / 30) * diasUtil;
-    // Fraccionadas: días trabajados en el año calendario actual
-    const inicioAnio        = new Date(corte.getFullYear(), 0, 1);
-    const refUtil           = ingreso > inicioAnio ? ingreso : inicioAnio;
-    const diasEnAnio        = Math.floor((corte.getTime() - refUtil.getTime()) / msDay);
-    const utilidadesFracc   = (salarioVES / 30) * diasUtil * (diasEnAnio / 365);
+    // ── Profit Sharing (Art. 131) ────────────────────────────────────────────
+    const annualProfitSharing = (salaryVES / 30) * profitSharingDays;
+    const yearStart           = new Date(cut.getFullYear(), 0, 1);
+    const refStartDate        = hire > yearStart ? hire : yearStart;
+    const daysInCurrentYear   = Math.floor((cut.getTime() - refStartDate.getTime()) / msPerDay);
+    const fractionalProfitSharing = (salaryVES / 30) * profitSharingDays * (daysInCurrentYear / 365);
 
-    const totalEstimado = saldoPrestaciones + montoVacaciones + montoBonoVacacional + utilidadesFracc;
+    const estimatedTotal = seniorityIndemnityBalance + vacationAmount + vacationBonusAmount + fractionalProfitSharing;
 
     return {
-        fechaIngreso, fechaCorte, totalDias, anios, mesesCompletos,
-        diasTrimestrales, diasAdicionales, diasTotales,
-        salarioIntegralDiario, saldoPrestaciones,
-        diasVacBase, diasVacGanados, montoVacaciones,
-        diasBonoBase, diasBonoGanados, montoBonoVacacional,
-        diasUtilidades: diasUtil, utilidadesAnuales, utilidadesFracc,
-        totalEstimado,
+        hireDate, cutoffDate, totalDays, yearsOfService, completeMonths,
+        quarterlyDays, extraDays, totalSeniorityDays,
+        integratedDailySalary, seniorityIndemnityBalance,
+        baseVacationDays, earnedVacationDays, vacationAmount,
+        baseVacationBonusDays, earnedVacationBonusDays, vacationBonusAmount,
+        profitSharingDays, annualProfitSharing, fractionalProfitSharing,
+        estimatedTotal,
     };
 }
 
-// ── CSV export ────────────────────────────────────────────────────────────────
+// ── CSV Export ────────────────────────────────────────────────────────────────
 
-interface ExportRow {
-    nombre: string;
-    cedula: string;
-    cargo:  string;
-    resumen: PrestacionesResumen;
+interface SocialBenefitsExportRow {
+    name:     string;
+    idNumber: string;
+    role:     string;
+    summary:  SocialBenefitsSummary;
 }
 
-export function prestacionesToCsv(rows: ExportRow[], fechaCorte: string): string {
+export function socialBenefitsToCsv(rows: SocialBenefitsExportRow[], cutoffDate: string): string {
     const fmt = (n: number) => n.toFixed(2).replace(".", ",");
     const header = [
         "Nombre","Cédula","Cargo","Fecha Ingreso","Antigüedad (años)","Meses",
@@ -136,30 +131,30 @@ export function prestacionesToCsv(rows: ExportRow[], fechaCorte: string): string
         "Total Estimado",
     ].join(";");
 
-    const dataRows = rows.map(({ nombre, cedula, cargo, resumen: r }) => [
-        nombre, cedula, cargo, r.fechaIngreso, r.anios, r.mesesCompletos,
-        r.diasTrimestrales, r.diasAdicionales, r.diasTotales,
-        fmt(r.salarioIntegralDiario), fmt(r.saldoPrestaciones),
-        fmt(r.diasVacGanados), fmt(r.montoVacaciones),
-        fmt(r.diasBonoGanados), fmt(r.montoBonoVacacional),
-        r.diasUtilidades, fmt(r.utilidadesAnuales), fmt(r.utilidadesFracc),
-        fmt(r.totalEstimado),
+    const dataRows = rows.map(({ name, idNumber, role, summary: s }) => [
+        name, idNumber, role, s.hireDate, s.yearsOfService, s.completeMonths,
+        s.quarterlyDays, s.extraDays, s.totalSeniorityDays,
+        fmt(s.integratedDailySalary), fmt(s.seniorityIndemnityBalance),
+        fmt(s.earnedVacationDays), fmt(s.vacationAmount),
+        fmt(s.earnedVacationBonusDays), fmt(s.vacationBonusAmount),
+        s.profitSharingDays, fmt(s.annualProfitSharing), fmt(s.fractionalProfitSharing),
+        fmt(s.estimatedTotal),
     ].join(";"));
 
     return [
-        `# Prestaciones Sociales al ${fechaCorte}`,
+        `# Prestaciones Sociales al ${cutoffDate}`,
         header,
         ...dataRows,
     ].join("\n");
 }
 
-export function downloadPrestacionesCsv(rows: ExportRow[], fechaCorte: string) {
-    const csv  = prestacionesToCsv(rows, fechaCorte);
+export function downloadSocialBenefitsCsv(rows: SocialBenefitsExportRow[], cutoffDate: string) {
+    const csv  = socialBenefitsToCsv(rows, cutoffDate);
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    a.download = `prestaciones_${fechaCorte.replaceAll("-", "")}.csv`;
+    a.download = `prestaciones_${cutoffDate.replaceAll("-", "")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }

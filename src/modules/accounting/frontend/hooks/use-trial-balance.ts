@@ -4,6 +4,7 @@
 // Mirrors the { data, loading, error, reload } contract used by all other accounting hooks.
 import { useEffect, useState, useCallback } from 'react';
 import type { TrialBalanceLine } from '../../backend/domain/repository/journal-entry.repository';
+import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 
 export function useTrialBalance(companyId: string | null, periodId: string | null) {
     const [data,    setData]    = useState<TrialBalanceLine[]>([]);
@@ -17,7 +18,7 @@ export function useTrialBalance(companyId: string | null, periodId: string | nul
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/trial-balance?${qs.toString()}`);
+            const res  = await apiFetch(`/api/accounting/trial-balance?${qs.toString()}`);
             const json = await res.json() as { data?: TrialBalanceLine[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

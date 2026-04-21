@@ -60,10 +60,10 @@ export interface VacFraccionadasPdfData {
 
 type RGB = [number, number, number];
 const C = {
-    ink:      [15,  15,  20]  as RGB,
-    inkMed:   [50,  50,  60]  as RGB,
-    muted:    [120, 120, 132] as RGB,
-    muted2:   [80,  80,  100] as RGB,
+    ink:      [0,   0,   0]   as RGB,
+    inkMed:   [0,   0,   0]   as RGB,
+    muted:    [0,   0,   0]   as RGB,
+    muted2:   [0,   0,   0]   as RGB,
     border:   [218, 218, 226] as RGB,   // #dadae2 — border-light
     bgStripe: [240, 240, 245] as RGB,   // #f0f0f5 — row alt
     bgPage:   [255, 255, 255] as RGB,   // blanco para impresión
@@ -105,10 +105,18 @@ const txt = (
     doc.setFontSize(size);
     doc.setTextColor(color[0], color[1], color[2]);
     doc.setCharSpace(0);
-    const str = maxW ? ((doc.splitTextToSize(text, maxW) as string[])[0] ?? "") : text;
+
+    // Enforce single-line to avoid vertical overlap (wrapping)
+    let str = text;
+    if (maxW) {
+        const lines = doc.splitTextToSize(text, maxW) as string[];
+        str = lines[0] || "";
+    }
+
     let ax = x;
     if (align === "right")  ax = x - doc.getTextWidth(str);
     if (align === "center") ax = x - doc.getTextWidth(str) / 2;
+
     doc.text(str, ax, y);
 };
 
@@ -147,14 +155,14 @@ function drawHeader(
     // Bottom accent line (2mm tall)
     fill(doc, 4, HDR_H - 2, PW - 4, 2, accentBottom);
 
-    txt(doc, companyName.toUpperCase(),  ML + 6, 11,   11, true,  C.ink);
-    txt(doc, titleLine1,                  ML + 6, 18,   6,  false, C.muted);
-    txt(doc, titleLine2,                  ML + 6, 23.5, 5.5,false, C.muted2);
+    txt(doc, companyName.toUpperCase(),  ML + 6, 11,   13, true,  C.ink);
+    txt(doc, titleLine1,                  ML + 6, 19,   9.5,false, C.muted);
+    txt(doc, titleLine2,                  ML + 6, 25,   8,  false, C.muted2);
 
-    txt(doc, rightLabel.toUpperCase(),   MR, 11,   5,  false, C.muted, "right");
-    txt(doc, rightLine1,                  MR, 17.5, 7,  true,  C.ink, "right");
-    if (rightLine2) txt(doc, rightLine2, MR, 23.5, 7,  true,  C.ink, "right");
-    txt(doc, `Emitido: ${emitidoStr()}`, MR, 30,   5,  false, C.muted, "right");
+    txt(doc, rightLabel.toUpperCase(),   MR, 11,   8,  false, C.muted, "right");
+    txt(doc, rightLine1,                  MR, 19,   10, true,  C.ink, "right");
+    if (rightLine2) txt(doc, rightLine2, MR, 25,   10, true,  C.ink, "right");
+    txt(doc, `Emitido: ${emitidoStr()}`, MR, 31,   8,  false, C.muted, "right");
 
     return HDR_H + 5;
 }
@@ -166,18 +174,18 @@ function drawEmployeeCard(
     accentBar: RGB,
     nombre: string, cargo: string | undefined, cedula: string, rightSub: string,
 ): number {
-    const H = 16;
+    const H = 18;
     fill(doc, ML, y, W, H, C.white);
     fill(doc, ML, y, 3, H, accentBar);
     rect(doc, ML, y, W, H, C.border, 0.25);
 
-    txt(doc, nombre.toUpperCase(), ML + 7, y + 6,  10, true,  C.inkMed, "left", W * 0.63);
-    if (cargo) txt(doc, cargo.toUpperCase(), ML + 7, y + 11, 5.5, false, C.muted, "left", W * 0.55);
+    txt(doc, nombre.toUpperCase(), ML + 7, y + 7,  12, true,  C.inkMed, "left", W * 0.63);
+    if (cargo) txt(doc, cargo.toUpperCase(), ML + 7, y + 13, 8.5, false, C.muted, "left", W * 0.55);
 
-    txt(doc, `CI: ${cedula}`,  MR - 3, y + 6,  8,   true,  C.inkMed, "right");
-    txt(doc, rightSub,          MR - 3, y + 11, 5.5, false, C.muted, "right");
+    txt(doc, `CI: ${cedula}`,  MR - 3, y + 7,  10.5, true,  C.inkMed, "right");
+    txt(doc, rightSub,          MR - 3, y + 13, 8.5, false, C.muted, "right");
 
-    return y + H + 4;
+    return y + H + 5;
 }
 
 // ── Shared: params strip (dark) ───────────────────────────────────────────────
@@ -185,7 +193,7 @@ function drawEmployeeCard(
 interface ParamCol { lbl: string; val: string; color: RGB; }
 
 function drawParamsStrip(doc: jsPDF, ML: number, W: number, y: number, cols: ParamCol[]): number {
-    const H = 14;
+    const H = 16;
     fill(doc, ML, y, W, H, C.bgStripe);
     doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
     doc.setLineWidth(0.2);
@@ -193,10 +201,10 @@ function drawParamsStrip(doc: jsPDF, ML: number, W: number, y: number, cols: Par
     const colW = W / cols.length;
     cols.forEach(({ lbl, val }, i) => {
         const cx = ML + i * colW + 4;
-        txt(doc, lbl.toUpperCase(), cx, y + 4.5, 5, false, C.muted);
-        txt(doc, val,               cx, y + 10,  6.5, true, C.inkMed, "left", colW - 6);
+        txt(doc, lbl.toUpperCase(), cx, y + 5.5, 8.5, false, C.muted);
+        txt(doc, val,               cx, y + 12,  10,  true, C.inkMed, "left", colW - 6);
     });
-    return y + H + 1;
+    return y + H + 2;
 }
 
 // ── Shared: concept table ─────────────────────────────────────────────────────
@@ -210,26 +218,26 @@ function drawConceptTable(
     totalAccent: RGB, totalBar: RGB,
 ): number {
     // Table header (light)
-    fill(doc, ML, y, W, 8, C.bgStripe);
+    fill(doc, ML, y, W, 10, C.bgStripe);
     doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
     doc.setLineWidth(0.2);
-    doc.line(ML, y + 8, ML + W, y + 8);
-    txt(doc, "CONCEPTO", ML + 4, y + 5.5, 5.5, true, C.inkMed);
-    txt(doc, "DÍAS",     MR - 38, y + 5.5, 5.5, true, C.inkMed, "right");
-    txt(doc, "MONTO",    MR,      y + 5.5, 5.5, true, C.inkMed, "right");
-    y += 8;
+    doc.line(ML, y + 10, ML + W, y + 10);
+    txt(doc, "CONCEPTO", ML + 4, y + 7, 9, true, C.inkMed);
+    txt(doc, "DÍAS",     MR - 38, y + 7, 9, true, C.inkMed, "right");
+    txt(doc, "MONTO",    MR,      y + 7, 9, true, C.inkMed, "right");
+    y += 10;
 
     // Rows
     for (const { label, subtitle, dias, monto, color, alt } of rows) {
-        const H = 14;
+        const H = 16;
         fill(doc, ML, y, W, H, alt ? C.bgStripe : C.white);
         hline(doc, ML, y + H, W, C.border, 0.15);
 
-        txt(doc, label,    ML + 4, y + 5.5, 8,   true,  C.inkMed);
-        txt(doc, subtitle, ML + 4, y + 10,  5,   false, C.muted, "left", W * 0.56);
+        txt(doc, label,    ML + 4, y + 6.5, 10,   true,  C.inkMed);
+        txt(doc, subtitle, ML + 4, y + 12,  8.5, false, C.muted, "left", W * 0.56);
 
-        txt(doc, `${dias} d`,   MR - 38, y + 7.5, 7, false, C.muted, "right");
-        txt(doc, fmtVES(monto), MR,      y + 8,   9, true,  color,   "right");
+        txt(doc, `${dias} d`,   MR - 38, y + 9.5, 9.5, false, C.muted, "right");
+        txt(doc, fmtVES(monto), MR,      y + 10,  11,  true,  color,   "right");
 
         y += H;
     }
@@ -237,38 +245,38 @@ function drawConceptTable(
     y += 2;
 
     // Total bar (light with top border)
-    fill(doc, ML, y, W, 13, C.white);
-    fill(doc, ML, y, 3,  13, totalBar);
+    fill(doc, ML, y, W, 15, C.white);
+    fill(doc, ML, y, 3,  15, totalBar);
     doc.setDrawColor(totalBar[0], totalBar[1], totalBar[2]);
     doc.setLineWidth(0.8);
     doc.line(ML, y, ML + W, y);
     doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
     doc.setLineWidth(0.2);
-    doc.line(ML, y + 13, ML + W, y + 13);
-    txt(doc, `${totalLabel}  ·  ${totalDias} días`, ML + 7, y + 8.5, 6.5, true, C.inkMed);
-    txt(doc, fmtVES(total), MR, y + 8.5, 11, true, totalAccent, "right");
+    doc.line(ML, y + 15, ML + W, y + 15);
+    txt(doc, `${totalLabel}  ·  ${totalDias} días`, ML + 7, y + 9.5, 10, true, C.inkMed);
+    txt(doc, fmtVES(total), MR, y + 9.5, 13.5, true, totalAccent, "right");
 
-    return y + 13 + 6;
+    return y + 15 + 8;
 }
 
 // ── Shared: signatures ────────────────────────────────────────────────────────
 
 function drawSignatures(doc: jsPDF, ML: number, W: number, y: number): number {
-    txt(doc, "FIRMAS DE CONFORMIDAD", ML, y, 6, true, C.inkMed);
-    y += 6;
+    txt(doc, "FIRMAS DE CONFORMIDAD", ML, y, 10, true, C.inkMed);
+    y += 8;
     const boxW = (W - 14) / 2;
     ["EMPLEADOR", "TRABAJADOR"].forEach((role, i) => {
         const sx = ML + i * (boxW + 14);
         // box
-        fill(doc, sx, y, boxW, 22, C.white);
-        rect(doc, sx, y, boxW, 22, C.border, 0.25);
+        fill(doc, sx, y, boxW, 25, C.white);
+        rect(doc, sx, y, boxW, 25, C.border, 0.25);
         // gray top stripe
         fill(doc, sx, y, boxW, 2, C.muted);
         // signature line
-        hline(doc, sx + 6, y + 17, boxW - 12, C.border, 0.4);
-        txt(doc, role, sx + boxW / 2, y + 21, 5, false, C.muted, "center");
+        hline(doc, sx + 6, y + 19, boxW - 12, C.border, 0.4);
+        txt(doc, role, sx + boxW / 2, y + 23, 8.5, false, C.muted, "center");
     });
-    return y + 22 + 6;
+    return y + 25 + 8;
 }
 
 // ── Shared: legal note ────────────────────────────────────────────────────────
@@ -277,12 +285,12 @@ function drawLegal(doc: jsPDF, ML: number, W: number, y: number, text: string): 
     hline(doc, ML, y, W, C.border, 0.2);
     y += 4;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
     (doc.splitTextToSize(text, W) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 3.5);
+        doc.text(line, ML, y + i * 4.5);
     });
-    return y + 12;
+    return y + 14;
 }
 
 // ── Shared: footer ────────────────────────────────────────────────────────────
@@ -296,9 +304,9 @@ function drawFooter(
     doc.setLineWidth(0.3);
     doc.line(0, PH - 11, PW, PH - 11);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(5);
+    doc.setFontSize(8.5);
     doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(text, PW / 2, PH - 4, { align: "center" });
+    doc.text(text, PW / 2, PH - 6, { align: "center" });
 }
 
 // ============================================================================
@@ -444,15 +452,15 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     ]);
 
     // ── Formula box ──
-    const formulaH = 10;
+    const formulaH = 12;
     fill(doc, ML, y, W, formulaH, C.bgStripe);
     rect(doc, ML, y, W, formulaH, C.border, 0.2);
-    txt(doc, "FÓRMULA (ART. 196):", ML + 4, y + 4, 5, false, C.muted);
+    txt(doc, "FÓRMULA (ART. 196):", ML + 4, y + 4.5, 8.5, false, C.muted);
     txt(doc,
         `\u2308 ${data.diasAnuales} días / 12 meses × ${data.mesesFraccion} meses \u2309  =  ${data.fraccionDisfrute} días`,
-        ML + 4, y + 8.5, 7, true, C.inkMed,
+        ML + 4, y + 9.5, 10, true, C.inkMed,
     );
-    y += formulaH + 3;
+    y += formulaH + 5;
 
     // ── Concept table ──
     y = drawConceptTable(
@@ -479,15 +487,15 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     );
 
     // ── Salary strip (light) ──
-    fill(doc, ML, y, W, 10, C.bgStripe);
-    rect(doc, ML, y, W, 10, C.border, 0.2);
-    txt(doc, "SALARIO MENSUAL:", ML + 4, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.salarioVES), ML + 44, y + 4, 7, true, C.inkMed);
-    txt(doc, "SALARIO DIARIO:", ML + W * 0.5, y + 4, 5, false, C.muted);
-    txt(doc, fmtVES(data.salarioDia), ML + W * 0.5 + 38, y + 4, 7, true, C.inkMed);
+    fill(doc, ML, y, W, 14, C.bgStripe);
+    rect(doc, ML, y, W, 14, C.border, 0.2);
+    txt(doc, "SALARIO MENSUAL:", ML + 4, y + 5, 8.5, false, C.muted);
+    txt(doc, fmtVES(data.salarioVES), ML + 48, y + 5, 11, true, C.inkMed);
+    txt(doc, "SALARIO DIARIO:", ML + W * 0.5, y + 5, 8.5, false, C.muted);
+    txt(doc, fmtVES(data.salarioDia), ML + W * 0.5 + 40, y + 5, 11, true, C.inkMed);
     txt(doc, `Base: salario mensual ÷ 30 = ${fmtVES(data.salarioDia)} / día`,
-        ML + 4, y + 8.5, 5, false, C.muted);
-    y += 14;
+        ML + 4, y + 10.5, 8.5, false, C.muted);
+    y += 18;
 
     // ── Signatures ──
     y = drawSignatures(doc, ML, W, y);

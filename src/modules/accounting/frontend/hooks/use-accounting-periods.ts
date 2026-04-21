@@ -3,6 +3,7 @@
 // Data hook for accounting periods.
 import { useEffect, useState, useCallback } from 'react';
 import type { AccountingPeriod }             from '../../backend/domain/accounting-period';
+import { apiFetch }                         from '@/src/shared/frontend/utils/api-fetch';
 
 export function useAccountingPeriods(companyId: string | null) {
     const [data,    setData]    = useState<AccountingPeriod[]>([]);
@@ -14,7 +15,7 @@ export function useAccountingPeriods(companyId: string | null) {
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch(`/api/accounting/periods?companyId=${companyId}`);
+            const res  = await apiFetch(`/api/accounting/periods?companyId=${companyId}`);
             const json = await res.json() as { data?: AccountingPeriod[]; error?: string };
             if (!res.ok) { setError(json.error ?? 'Error'); return; }
             setData(json.data ?? []);

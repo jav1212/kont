@@ -6,17 +6,18 @@ import { Result }                                  from '@/src/core/domain/resul
 import { Account }                                 from '../../domain/account';
 
 interface RawAccountRow {
-    id:          string;
-    company_id:  string;
-    chart_id:    string | null;
-    code:        string;
-    name:        string;
-    type:        string;
-    parent_code: string | null;
-    is_active:   boolean;
-    is_group:    boolean;
-    created_at:  string;
-    updated_at:  string;
+    id:            string;
+    company_id:    string;
+    chart_id:      string | null;
+    code:          string;
+    name:          string;
+    type:          string;
+    parent_code:   string | null;
+    is_active:     boolean;
+    is_group:      boolean;
+    saldo_inicial: number;
+    created_at:    string;
+    updated_at:    string;
 }
 
 export class RpcAccountRepository implements IAccountRepository {
@@ -45,13 +46,16 @@ export class RpcAccountRepository implements IAccountRepository {
                 .rpc('tenant_accounting_account_upsert', {
                     p_user_id: this.userId,
                     p_account: {
-                        id:          input.id ?? null,
-                        company_id:  input.companyId,
-                        code:        input.code,
-                        name:        input.name,
-                        type:        input.type,
-                        parent_code: input.parentCode,
-                        is_active:   input.isActive,
+                        id:            input.id ?? null,
+                        company_id:    input.companyId,
+                        chart_id:      input.chartId,
+                        code:          input.code,
+                        name:          input.name,
+                        type:          input.type,
+                        parent_code:   input.parentCode,
+                        is_active:     input.isActive,
+                        is_group:      input.isGroup,
+                        saldo_inicial: input.saldoInicial,
                     },
                 });
             if (error) return Result.fail(error.message);
@@ -77,17 +81,18 @@ export class RpcAccountRepository implements IAccountRepository {
 
     private mapToDomain(row: RawAccountRow): Account {
         return {
-            id:         row.id,
-            companyId:  row.company_id,
-            chartId:    row.chart_id,
-            code:       row.code,
-            name:       row.name,
-            type:       row.type as Account['type'],
-            parentCode: row.parent_code,
-            isActive:   row.is_active,
-            isGroup:    row.is_group,
-            createdAt:  row.created_at,
-            updatedAt:  row.updated_at,
+            id:           row.id,
+            companyId:    row.company_id,
+            chartId:      row.chart_id,
+            code:         row.code,
+            name:         row.name,
+            type:         row.type as Account['type'],
+            parentCode:   row.parent_code,
+            isActive:     row.is_active,
+            isGroup:      row.is_group,
+            saldoInicial: Number(row.saldo_inicial ?? 0),
+            createdAt:    row.created_at,
+            updatedAt:    row.updated_at,
         };
     }
 }

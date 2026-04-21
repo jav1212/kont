@@ -14,6 +14,7 @@ import { SupabaseDocumentRepository }       from './repository/supabase-document
 import { SupabaseDocumentStorageRepository } from './repository/supabase-document-storage.repository';
 import { CreateFolderUseCase }              from '../application/commands/create-folder.use-case';
 import { DeleteFolderUseCase }              from '../application/commands/delete-folder.use-case';
+import { UpdateFolderUseCase }              from '../application/commands/update-folder.use-case';
 import { RegisterDocumentUseCase }          from '../application/commands/register-document.use-case';
 import { DeleteDocumentUseCase }            from '../application/commands/delete-document.use-case';
 import { GetFoldersUseCase }                from '../application/queries/get-folders.use-case';
@@ -34,6 +35,7 @@ export function getDocumentsActions(ownerId: string) {
     return {
         getFolders:       new GetFoldersUseCase(folderRepo),
         createFolder:     new CreateFolderUseCase(folderRepo, eventBus),
+        updateFolder:     new UpdateFolderUseCase(folderRepo),
         deleteFolder:     new DeleteFolderUseCase(folderRepo, eventBus),
         getDocuments:     new GetDocumentsUseCase(documentRepo),
         registerDocument: new RegisterDocumentUseCase(documentRepo, eventBus),

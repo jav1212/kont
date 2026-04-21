@@ -26,6 +26,11 @@ export interface ConfirmReceiptPayload {
         gross:          number;
         netUsd:         number;
         mondaysInMonth: number;
+        diasUtilidades?: number;
+        diasBonoVacacional?: number;
+        alicuotaUtil?: number;
+        alicuotaBono?: number;
+        salarioIntegral?: number;
     };
 }
 
