@@ -1,6 +1,8 @@
 "use client";
 
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronDown } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 
 interface Props {
     value: string | null;
@@ -11,26 +13,51 @@ interface Props {
 export function DatePickerRate({ value, onChange, maxDate }: Props) {
     return (
         <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2 h-10 rounded-lg border border-border-light bg-surface-2 px-3">
-                <Calendar size={14} className="text-foreground/50" />
+            <label
+                className={[
+                    "group inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-lg",
+                    "border border-border-light bg-surface-1",
+                    "hover:border-border-medium hover:bg-surface-2",
+                    "focus-within:border-primary-500",
+                    "transition-colors duration-150",
+                    "cursor-pointer",
+                ].join(" ")}
+            >
+                <Calendar size={13} className="text-foreground/50 group-focus-within:text-primary-500 transition-colors duration-150" />
                 <input
                     type="date"
                     value={value ?? ""}
                     onChange={(e) => onChange(e.target.value || null)}
                     max={maxDate}
-                    className="bg-transparent text-[13px] font-mono focus:outline-none"
+                    className="bg-transparent text-[12px] font-mono tabular-nums text-foreground focus:outline-none [color-scheme:light] dark:[color-scheme:dark] cursor-pointer"
                     aria-label="Fecha de la tasa"
                 />
-            </div>
-            {value && (
-                <button
-                    type="button"
-                    onClick={() => onChange(null)}
-                    className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 hover:bg-surface-2 text-[11px] font-mono uppercase tracking-[0.14em] text-foreground/70 hover:text-foreground transition-colors"
-                >
-                    Hoy
-                </button>
-            )}
+                <ChevronDown
+                    size={11}
+                    aria-hidden
+                    className="text-foreground/35 group-hover:text-foreground/60 transition-colors duration-150 shrink-0"
+                />
+            </label>
+            <AnimatePresence initial={false}>
+                {value && (
+                    <motion.div
+                        key="today-btn"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: "auto" }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="overflow-hidden"
+                    >
+                        <BaseButton.Root
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onChange(null)}
+                        >
+                            Hoy
+                        </BaseButton.Root>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
