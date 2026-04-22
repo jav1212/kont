@@ -3,6 +3,7 @@ export const APP_MODULES = [
     { id: "employees",   label: "Empleados",     href: "/payroll/employees",      desktopOnly: false, paid: false, parentId: "payroll" },
     { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: true,  paid: true              },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },
+    { id: "tools",       label: "Herramientas",  href: "/tools",                  desktopOnly: false, paid: false             },
     { id: "companies",   label: "Empresas",      href: "/companies",              desktopOnly: false, paid: false             },
     { id: "documents",   label: "Documentos",    href: "/documents",              desktopOnly: false, paid: false             },
 ] as const;
@@ -56,5 +57,9 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/accounting/integrations",    label: "Integraciones",     group: "Configuración"  },
         { href: "/accounting/journal",         label: "Libro diario",      group: "Contabilidad"   },
         { href: "/accounting/trial-balance",   label: "Balance de sumas",  group: "Contabilidad"   },
+    ],
+    tools: [
+        { href: "/tools",          label: "Tablero",      group: null           },
+        { href: "/tools/divisas",  label: "Divisas BCV",  group: "Conversores"  },
     ],
 };

@@ -14,6 +14,7 @@ interface Plan {
     priceMonthlyUsd:        number;
     priceQuarterlyUsd:      number | null;
     priceAnnualUsd:         number | null;
+    isContactOnly?:         boolean;
 }
 
 type Cycle = "monthly" | "quarterly" | "annual";
@@ -35,6 +36,13 @@ const FREE_MODULE_FEATURES: Record<string, string[]> = {
 const FREE_MODULE_FEATURES_FALLBACK = ["Sin costo adicional"];
 
 const PANEL_ID = "pricing-panel";
+
+const PLAN_ORDER = ["Gratuito", "Estudiante", "Emprendedor", "Contable", "Empresarial"];
+
+function planOrderIndex(name: string): number {
+    const idx = PLAN_ORDER.indexOf(name);
+    return idx === -1 ? 999 : idx;
+}
 
 export default function LandingPage() {
 
@@ -66,7 +74,10 @@ export default function LandingPage() {
     }, []);
 
     const visiblePlans = useMemo(() => {
-        return plans.filter((p) => p.moduleSlug === activeModule || p.moduleSlug === null);
+        return plans
+            .filter((p) => p.moduleSlug === activeModule || p.moduleSlug === null)
+            .slice()
+            .sort((a, b) => planOrderIndex(a.name) - planOrderIndex(b.name));
     }, [plans, activeModule]);
 
     const activeModuleIsFree = !plansLoading && !plansError && visiblePlans.length === 0;
@@ -151,6 +162,12 @@ export default function LandingPage() {
                             Comenzar Ahora
                         </BaseButton.Root>
 
+                        <Link href="/herramientas/divisas" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
+                            Herramientas públicas →
+                        </Link>
+                    </div>
+
+                    <div className="mt-8 sm:mt-10">
                         <div className="flex items-center gap-3">
                             {/* Real Avatars */}
                             <div className="flex -space-x-3">
@@ -505,14 +522,25 @@ export default function LandingPage() {
                                             )}
                                             
                                             <h3 className="text-[22px] font-bold text-foreground mb-4">{plan.name}</h3>
-                                            <div className="mb-2 flex items-end">
-                                                <span className="text-[48px] font-black leading-[0.85]">${price}</span>
-                                                <span className="text-[14px] font-medium text-text-tertiary ml-2 bottom-1 relative">/ {cycle === "monthly" ? "mes" : cycle === "quarterly" ? "trim." : "año"}</span>
-                                            </div>
-                                            {savings ? (
-                                                <span className="inline-block px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold mb-6 w-fit">Ahorras {savings}</span>
+                                            {plan.isContactOnly ? (
+                                                <>
+                                                    <div className="mb-2 flex items-end">
+                                                        <span className="text-[36px] md:text-[40px] font-black leading-[0.85] text-foreground">Contactar</span>
+                                                    </div>
+                                                    <span className="text-[13px] font-medium text-text-tertiary mb-6 inline-block">Precio personalizado</span>
+                                                </>
                                             ) : (
-                                                <div className="h-6 mb-6" /> // spacer
+                                                <>
+                                                    <div className="mb-2 flex items-end">
+                                                        <span className="text-[48px] font-black leading-[0.85]">${price}</span>
+                                                        <span className="text-[14px] font-medium text-text-tertiary ml-2 bottom-1 relative">/ {cycle === "monthly" ? "mes" : cycle === "quarterly" ? "trim." : "año"}</span>
+                                                    </div>
+                                                    {savings ? (
+                                                        <span className="inline-block px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold mb-6 w-fit">Ahorras {savings}</span>
+                                                    ) : (
+                                                        <div className="h-6 mb-6" /> // spacer
+                                                    )}
+                                                </>
                                             )}
 
                                             <div className="flex-1 flex flex-col gap-4 text-left border-t border-border-light pt-8 mb-8 mt-auto text-[14px] text-text-secondary font-medium">
@@ -534,8 +562,13 @@ export default function LandingPage() {
                                                 </div>
                                             </div>
 
-                                            <BaseButton.Root as={Link} href="/sign-up" variant={highlighted ? "primary" : "outline"} className="w-full rounded-full h-12 font-bold text-[14px]">
-                                                Seleccionar
+                                            <BaseButton.Root
+                                                as={plan.isContactOnly ? "a" : Link}
+                                                href={plan.isContactOnly ? "mailto:contacto@kont.app" : "/sign-up"}
+                                                variant={highlighted ? "primary" : "outline"}
+                                                className="w-full rounded-full h-12 font-bold text-[14px]"
+                                            >
+                                                {plan.isContactOnly ? "Contactar" : "Seleccionar"}
                                             </BaseButton.Root>
                                         </div>
                                     )

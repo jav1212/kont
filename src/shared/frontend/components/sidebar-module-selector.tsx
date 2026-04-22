@@ -61,6 +61,15 @@ const MODULE_ICONS: Record<string, React.ReactNode> = {
             </svg>
         </div>
     ),
+    tools: (
+        <div className="w-5 h-5 flex items-center justify-center shrink-0">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8.5 1.5a2.5 2.5 0 0 1 2.47 2.9l-2.47.9-1.8-1.8.9-2.47a2.5 2.5 0 0 1 .9-.03z" />
+                <path d="M7.8 4.5L2 10.3a1.2 1.2 0 0 0 1.7 1.7L9.5 6.2" />
+                <circle cx="3.2" cy="10.8" r="0.4" fill="currentColor" />
+            </svg>
+        </div>
+    ),
 };
 
 const CheckIcon = () => (

@@ -19,7 +19,9 @@ const isAppRoute    = (p: string) =>
     p.startsWith('/companies') ||
     p.startsWith('/billing') ||
     p.startsWith('/documents') ||
-    p.startsWith('/settings');
+    p.startsWith('/settings') ||
+    p.startsWith('/tools');
+const isMarketing   = (p: string) => p.startsWith('/herramientas');
 const isAdminRoute  = (p: string) => p.startsWith('/admin');
 const isAdminPublic = (p: string) =>
     p === '/admin/sign-in' ||
@@ -80,6 +82,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin', request.url));
     }
 
+    // ── Marketing pages (ruta pública, accesible con o sin login) ────────
+    // Ej: /herramientas/divisas. No redirigir usuarios autenticados.
+    if (isMarketing(pathname)) {
+        return response;
+    }
+
     // ── Protección de rutas de app regular ───────────────────────────────
     if (!user && isAppRoute(pathname)) {
         return NextResponse.redirect(new URL('/sign-in', request.url));
@@ -124,6 +132,8 @@ export const config = {
         '/billing/:path*',
         '/documents/:path*',
         '/settings/:path*',
+        '/tools/:path*',
+        '/herramientas/:path*',
         '/admin',
         '/admin/:path*',
     ],
