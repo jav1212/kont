@@ -4,7 +4,7 @@
 // first free utility. Built for easy expansion to more free tools.
 
 import Link from "next/link";
-import { ArrowRight, Coins, RefreshCw } from "lucide-react";
+import { ArrowRight, Coins, RefreshCw, Activity } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useBcvRates } from "@/src/modules/tools/frontend/hooks/use-bcv-rates";
@@ -82,6 +82,24 @@ export default function ToolsDashboard() {
                                 </div>
                                 <p className="text-[13px] text-foreground/60 leading-relaxed">
                                     Convierte entre bolívares y divisas con tasa oficial BCV. Lista de todas las monedas, histórico de 30 días y conversión cruzada.
+                                </p>
+                            </div>
+                        </Link>
+
+                        <Link
+                            href="/tools/status"
+                            className="group rounded-2xl border border-border-light bg-surface-1 hover:border-primary-500/40 hover:shadow-md transition-all px-6 py-5 flex items-start gap-4"
+                        >
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                <Activity size={22} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="text-[15px] font-bold text-foreground">Estatus de Portales VE</h3>
+                                    <ArrowRight size={16} className="text-foreground/30 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                                <p className="text-[13px] text-foreground/60 leading-relaxed">
+                                    Verifica en tiempo real si SENIAT, IVSS, INCES, BANAVIH, SAREN y otros portales gubernamentales están operativos antes de declarar.
                                 </p>
                             </div>
                         </Link>
