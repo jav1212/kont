@@ -134,6 +134,68 @@ export function wasReportedRecently(fingerprint: string, slug: string): boolean 
     return false;
 }
 
+export interface ServerCheckResult {
+    skipped:              boolean;
+    inserted?:            number;
+    cooldownRemainingSec?: number;
+}
+
+/**
+ * Run health checks against all active services in parallel and persist results.
+ * Respects a cooldown: if the most recent server-source check is within cooldownSec,
+ * returns { skipped: true } without running checks. Awaits insertion so callers can
+ * safely re-query status_checks afterward and see the fresh rows.
+ */
+export async function runServerChecks(
+    supabase: SupabaseClient,
+    opts: { cooldownSec: number },
+): Promise<ServerCheckResult> {
+    const { data: services, error } = await supabase
+        .from("status_services")
+        .select("*")
+        .eq("active", true)
+        .order("display_order", { ascending: true });
+
+    if (error || !services?.length) return { skipped: true };
+
+    const { data: lastCheck } = await supabase
+        .from("status_checks")
+        .select("checked_at")
+        .eq("source", "server")
+        .order("checked_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (lastCheck?.checked_at) {
+        const ageSec = (Date.now() - new Date(lastCheck.checked_at).getTime()) / 1000;
+        if (ageSec < opts.cooldownSec) {
+            return { skipped: true, cooldownRemainingSec: Math.round(opts.cooldownSec - ageSec) };
+        }
+    }
+
+    const results = await Promise.allSettled(
+        (services as StatusService[]).map((svc) => checkService(svc).then((r) => ({ svc, r })))
+    );
+
+    const rows = results
+        .map((res) => res.status === "fulfilled" ? res.value : null)
+        .filter((x): x is { svc: StatusService; r: Awaited<ReturnType<typeof checkService>> } => x !== null)
+        .map(({ svc, r }) => ({
+            service_id:       svc.id,
+            status:           r.status,
+            response_time_ms: r.response_time_ms,
+            http_status:      r.http_status,
+            error_message:    r.error_message,
+            source:           "server" as const,
+        }));
+
+    if (rows.length) {
+        await supabase.from("status_checks").insert(rows);
+    }
+
+    return { skipped: false, inserted: rows.length };
+}
+
 /** Aggregate an array of checks into a single status + latency for a time bucket. */
 export function aggregateBucket(checks: { status: ServiceStatus; response_time_ms: number | null }[]): {
     status: ServiceStatus | null;

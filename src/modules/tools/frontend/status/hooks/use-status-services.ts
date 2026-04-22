@@ -34,8 +34,11 @@ export function useStatusServices(initialData?: ServicesResponse | null): UseSta
     const [loading, setLoading] = useState<boolean>(!cache && !initialData);
     const [error, setError] = useState<string | null>(null);
 
-    const load = useCallback(async (force = false) => {
-        if (!force && cache && Date.now() - cache.at < CACHE_TTL_MS) {
+    const load = useCallback(async (opts?: { bypassClientCache?: boolean; forceServerCheck?: boolean }) => {
+        const bypassClientCache = opts?.bypassClientCache ?? false;
+        const forceServerCheck  = opts?.forceServerCheck  ?? false;
+
+        if (!bypassClientCache && cache && Date.now() - cache.at < CACHE_TTL_MS) {
             setPayload(cache.payload);
             setLoading(false);
             return;
@@ -43,7 +46,8 @@ export function useStatusServices(initialData?: ServicesResponse | null): UseSta
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch("/api/status/services", { cache: "no-store" });
+            const url  = forceServerCheck ? "/api/status/services?force=1" : "/api/status/services";
+            const res  = await fetch(url, { cache: "no-store" });
             const body = await res.json();
             if (!res.ok) {
                 setError(body.error ?? "No se pudo cargar el estatus.");
@@ -59,17 +63,17 @@ export function useStatusServices(initialData?: ServicesResponse | null): UseSta
         }
     }, []);
 
-    useEffect(() => { void load(false); }, [load]);
+    useEffect(() => { void load(); }, [load]);
 
     useEffect(() => {
-        const id = setInterval(() => void load(true), 60_000);
+        const id = setInterval(() => void load({ bypassClientCache: true }), 60_000);
         return () => clearInterval(id);
     }, [load]);
 
     useEffect(() => {
         function onVisible() {
             if (document.visibilityState === "visible") {
-                if (!cache || Date.now() - cache.at >= CACHE_TTL_MS) void load(false);
+                if (!cache || Date.now() - cache.at >= CACHE_TTL_MS) void load();
             }
         }
         document.addEventListener("visibilitychange", onVisible);
@@ -82,6 +86,6 @@ export function useStatusServices(initialData?: ServicesResponse | null): UseSta
         lastServerCheckAt: payload?.lastServerCheckAt ?? null,
         loading,
         error,
-        refresh: () => void load(true),
+        refresh: () => void load({ bypassClientCache: true, forceServerCheck: true }),
     };
 }

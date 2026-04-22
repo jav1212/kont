@@ -4,9 +4,10 @@
 // no bloquea la respuesta si falla).
 
 import { NextResponse } from "next/server";
-import { getSupabaseServer, aggregateBucket, type ServiceStatus } from "../_lib";
+import { getSupabaseServer, aggregateBucket, runServerChecks, type ServiceStatus } from "../_lib";
 
-const AUTO_CHECK_COOLDOWN_SEC = 120;
+const AUTO_CHECK_COOLDOWN_SEC   = 120; // cooldown para el trigger automático best-effort
+const MANUAL_CHECK_COOLDOWN_SEC = 10;  // cooldown anti-spam cuando el usuario pide refresh manual
 const BUCKETS_DAYS = 90;
 
 export interface ServiceWithStatus {
@@ -33,6 +34,13 @@ export interface ServicesResponse {
 
 export async function GET(req: Request) {
     const supabase = getSupabaseServer();
+
+    // Manual refresh: run a fresh server-side check and await it so the returned
+    // lastServerCheckAt reflects "just now" instead of the 2-minute-old auto-check.
+    const force = new URL(req.url).searchParams.get("force") === "1";
+    if (force) {
+        await runServerChecks(supabase, { cooldownSec: MANUAL_CHECK_COOLDOWN_SEC });
+    }
 
     const { data: services, error } = await supabase
         .from("status_services")
@@ -104,7 +112,8 @@ export async function GET(req: Request) {
         .maybeSingle();
 
     // Trigger background check if cooldown elapsed. Best-effort: we don't await.
-    maybeTriggerCheck(lastServerCheck?.checked_at ?? null, req);
+    // Skip when force=1 ran an awaited check above — no sense re-triggering.
+    if (!force) maybeTriggerCheck(lastServerCheck?.checked_at ?? null, req);
 
     const response: ServicesResponse = {
         services: enriched,
