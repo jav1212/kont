@@ -59,7 +59,8 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/accounting/trial-balance",   label: "Balance de sumas",  group: "Contabilidad"   },
     ],
     tools: [
-        { href: "/tools",          label: "Tablero",      group: null           },
-        { href: "/tools/divisas",  label: "Divisas BCV",  group: "Conversores"  },
+        { href: "/tools",          label: "Tablero",         group: null             },
+        { href: "/tools/divisas",  label: "Divisas BCV",     group: "Conversores"    },
+        { href: "/tools/status",   label: "Estatus Portales", group: "Monitoreo"     },
     ],
 };
