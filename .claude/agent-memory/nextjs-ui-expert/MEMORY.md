@@ -1,0 +1,2 @@
+- [Design tokens and UI conventions](design_tokens.md) — KONT's CSS vars, Base* wrappers, mono-font terminal aesthetic, flat-UI rules, Flag component, tools module conventions
+- [Flat UI preference — no alpha fills, no shadows](feedback_flat_ui.md) — User rejected alpha/shadow-heavy look; stick to solid colors and border-based separation

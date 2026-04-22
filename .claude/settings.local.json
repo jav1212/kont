@@ -41,7 +41,20 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(git push:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git commit *)",
+      "Bash(supabase --version)",
+      "Bash(command -v psql)",
+      "Bash(command -v docker)",
+      "Bash(command -v npx)",
+      "Bash(npx supabase *)",
+      "Bash(grep -r \"usePlanName\\\\|hasAccess\\\\|paid\" /c/Users/hmolina/Desktop/kont/src/modules/billing -type f -name \"*.ts\" -o -name \"*.tsx\")",
+      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
+      "Bash(git -C /c/Users/hmolina/Desktop/kont log --oneline --all)",
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -E \"\\\\.\\(png|jpg|jpeg|gif|svg\\)$\")",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -30 {}')"
     ]
   },
   "enableAllProjectMcpServers": true,
