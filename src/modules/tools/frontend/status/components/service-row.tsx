@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ExternalLink, Server, Users, ChevronRight } from "lucide-react";
+import { Tooltip } from "@heroui/react";
 import type { ServiceWithStatus } from "../hooks/use-status-services";
 import { StatusBadge } from "./status-badge";
 import { UptimeBars } from "./uptime-bars";
@@ -17,11 +18,11 @@ interface Props {
 export function ServiceRow({ service, hrefBase }: Props) {
     const s = service;
     return (
-        <div className="group relative rounded-xl border border-border-light bg-surface-1 hover:border-primary-500/40 hover:shadow-sm transition-all">
+        <div className="group relative rounded-xl border border-border-light bg-surface-1 hover:border-border-medium transition-all duration-200 ease-out motion-safe:hover:-translate-y-0.5">
             <Link
                 href={`${hrefBase}/${s.slug}`}
                 aria-label={`Ver detalle de ${s.name}`}
-                className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             />
             <div className="relative z-10 flex items-center gap-4 px-5 py-4 pointer-events-none">
                 <div className="flex-1 min-w-0">
@@ -29,12 +30,28 @@ export function ServiceRow({ service, hrefBase }: Props) {
                         <h3 className="text-[14px] font-mono font-bold text-foreground">{s.name}</h3>
                         <StatusBadge status={s.lastStatus} size="sm" pulse />
                         {s.lastSource && (
-                            <span
-                                className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-[0.1em] text-foreground/40"
-                                title={s.lastSource === "server" ? "Último dato: nuestro servidor" : "Último dato: aporte de un visitante"}
-                            >
-                                {s.lastSource === "server" ? <Server size={10} /> : <Users size={10} />}
-                                {s.lastSource === "server" ? "srv" : "crowd"}
+                            <span className="pointer-events-auto relative z-20">
+                                <Tooltip
+                                    delay={200}
+                                    closeDelay={50}
+                                    placement="top"
+                                    content={
+                                        <span className="text-[11px] font-mono">
+                                            {s.lastSource === "server" ? "Desde nuestro servidor" : "Desde un usuario"}
+                                        </span>
+                                    }
+                                    classNames={{
+                                        base: "bg-transparent",
+                                        content: "bg-background border border-border-light rounded-lg px-2.5 py-1.5 text-foreground",
+                                    }}
+                                >
+                                    <span
+                                        className="inline-flex items-center text-foreground/40"
+                                        aria-label={s.lastSource === "server" ? "Desde nuestro servidor" : "Desde un usuario"}
+                                    >
+                                        {s.lastSource === "server" ? <Server size={12} /> : <Users size={12} />}
+                                    </span>
+                                </Tooltip>
                             </span>
                         )}
                     </div>
@@ -42,12 +59,23 @@ export function ServiceRow({ service, hrefBase }: Props) {
                         <p className="text-[12px] text-foreground/50 mt-0.5 truncate">{s.description}</p>
                     )}
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-foreground/40 font-mono">
-                        {s.lastResponseMs != null && <span className="tabular-nums">{s.lastResponseMs} ms</span>}
+                        {s.lastResponseMs != null && (
+                            <span className="inline-flex items-center gap-1.5">
+                                <span
+                                    className={[
+                                        "w-1.5 h-1.5 rounded-full",
+                                        latencyDotColor(s.lastResponseMs),
+                                    ].join(" ")}
+                                    aria-hidden
+                                />
+                                <span className="tabular-nums">{s.lastResponseMs} ms</span>
+                            </span>
+                        )}
                         {s.lastCheckedAt && <span>· {formatRelative(s.lastCheckedAt)}</span>}
                     </div>
                 </div>
 
-                <div className="hidden sm:block shrink-0">
+                <div className="hidden sm:block shrink-0 pointer-events-auto relative z-20">
                     <UptimeBars buckets={s.uptimeBuckets} compact />
                 </div>
 
@@ -55,7 +83,7 @@ export function ServiceRow({ service, hrefBase }: Props) {
                     href={s.url}
                     target="_blank"
                     rel="noreferrer nofollow"
-                    className="pointer-events-auto relative z-20 shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-2 text-foreground/40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                    className="pointer-events-auto relative z-20 shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-2 text-foreground/40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     aria-label={`Abrir ${s.name} en nueva pestaña`}
                     title="Abrir portal"
                 >
@@ -65,6 +93,12 @@ export function ServiceRow({ service, hrefBase }: Props) {
             </div>
         </div>
     );
+}
+
+function latencyDotColor(ms: number): string {
+    if (ms < 1000) return "bg-emerald-500";
+    if (ms < 3000) return "bg-amber-500";
+    return "bg-red-500";
 }
 
 function formatRelative(iso: string): string {

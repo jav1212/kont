@@ -42,7 +42,7 @@ export default async function Page({ params }: Props) {
     if (!service) notFound();
 
     return (
-        <div className="max-w-[1000px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
+        <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12">
             <ServiceDetail slug={slug} hrefBase="/herramientas/status" backLabel="Volver al estatus" />
         </div>
     );
