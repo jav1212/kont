@@ -19,7 +19,9 @@ export function PublicHeader() {
     if (isAuthPage) return null;
 
     return (
-        <header className="relative z-10 flex items-center justify-between px-6 sm:px-8 py-4 border-b border-border-light bg-background/50 backdrop-blur-md sticky top-0">
+        <header
+            style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+            className="relative z-10 flex items-center justify-between px-6 sm:px-8 pb-4 border-b border-border-light bg-background/50 backdrop-blur-md sticky top-0">
             <Link href="/" className="hover:opacity-80 transition-opacity">
                 <LogoFull size={40} className="text-foreground" />
             </Link>

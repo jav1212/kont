@@ -658,7 +658,7 @@ export default function LandingPage() {
                         </p>
                         
                         <div className="relative z-10 bg-white/10 p-2 rounded-full border border-white/20 backdrop-blur-sm">
-                            <BaseButton.Root as={Link} href="/sign-up" className="rounded-full h-14 px-10 text-[16px] bg-white text-primary-500 hover:bg-neutral-100 font-bold transition-all shadow-lg hover:shadow-2xl hover:scale-105 active:scale-[0.98]">
+                            <BaseButton.Root as={Link} href="/sign-up" className="rounded-full h-12 sm:h-14 px-6 sm:px-10 text-[15px] sm:text-[16px] bg-white text-primary-500 hover:bg-neutral-100 font-bold transition-all shadow-lg hover:shadow-2xl hover:scale-105 active:scale-[0.98]">
                                 Solicitar un Demo Gratis
                             </BaseButton.Root>
                         </div>

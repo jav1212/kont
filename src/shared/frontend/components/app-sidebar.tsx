@@ -211,10 +211,12 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             ].join(" ")}
         >
             {/* ── Logo ──────────────────────────────────────────────────── */}
-            <div className={[
-                "flex items-center gap-3",
-                isCollapsed ? "justify-center py-6 px-2" : "px-6 py-6",
-            ].join(" ")}>
+            <div
+                style={{ paddingTop: "calc(1.5rem + env(safe-area-inset-top))" }}
+                className={[
+                    "flex items-center gap-3",
+                    isCollapsed ? "justify-center pb-6 px-2" : "px-6 pb-6",
+                ].join(" ")}>
                 <LogoMark size={44} className="text-primary-500" />
             </div>
 
@@ -296,7 +298,9 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             )}
 
             {/* ── Bottom actions ─────────────────────────────────────────── */}
-            <div className="px-4 py-6 space-y-4 border-t border-sidebar-border/40">
+            <div
+                style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+                className="px-4 pt-6 space-y-4 border-t border-sidebar-border/40">
                 <Link href="/profile"
                     aria-current={profileActive ? "page" : undefined}
                     className="block group outline-none font-mono">
