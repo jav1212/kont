@@ -8,10 +8,11 @@ const STORAGE_KEY = "kont-active-tenant-id";
 const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface TenantEntry {
-    tenantId:    string;
-    role:        "owner" | "admin" | "contable";
-    tenantEmail: string;
-    isOwn:       boolean;
+    tenantId:        string;
+    role:            "owner" | "admin" | "contable";
+    tenantEmail:     string;
+    tenantAvatarUrl: string | null;
+    isOwn:           boolean;
 }
 
 export interface UseActiveTenantResult {

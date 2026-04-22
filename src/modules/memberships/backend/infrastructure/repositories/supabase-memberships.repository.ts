@@ -57,11 +57,24 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             }
         }
 
+        const avatarMap: Record<string, string | null> = {};
+        const tenantIds = rows.map((r) => r.tenant_id);
+        if (tenantIds.length > 0) {
+            const { data: profiles } = await this.source.instance
+                .from("profiles")
+                .select("id, avatar_url")
+                .in("id", tenantIds);
+            for (const p of ((profiles ?? []) as Array<{ id: string; avatar_url: string | null }>)) {
+                avatarMap[p.id] = p.avatar_url;
+            }
+        }
+
         const result: UserMembership[] = rows.map((row) => ({
-            tenantId:    row.tenant_id,
-            role:        row.role as MemberRole,
-            tenantEmail: emailMap[row.tenant_id] ?? row.tenant_id,
-            isOwn:       row.tenant_id === userId,
+            tenantId:        row.tenant_id,
+            role:            row.role as MemberRole,
+            tenantEmail:     emailMap[row.tenant_id] ?? row.tenant_id,
+            tenantAvatarUrl: avatarMap[row.tenant_id] ?? null,
+            isOwn:           row.tenant_id === userId,
         }));
 
         result.sort((a, b) => {

@@ -2,19 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useActiveTenantContext } from "../context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 
-function TenantAvatar({ email }: { email?: string }) {
+function TenantAvatar({ email, avatarUrl }: { email?: string; avatarUrl?: string | null }) {
     return (
         <div
             aria-hidden="true"
-            className="w-5 h-5 rounded-md bg-primary-500/10 flex items-center justify-center flex-shrink-0"
+            className="relative w-5 h-5 rounded-md bg-primary-500/10 overflow-hidden flex items-center justify-center flex-shrink-0"
         >
-            <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
-                {email?.[0] ?? "?"}
-            </span>
+            {avatarUrl ? (
+                <Image src={avatarUrl} alt="" fill unoptimized sizes="20px" className="object-cover" />
+            ) : (
+                <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
+                    {email?.[0] ?? "?"}
+                </span>
+            )}
         </div>
     );
 }
@@ -77,7 +82,7 @@ export function TenantSwitcher() {
                 aria-label={`Tenant activo: ${activeTenant?.tenantEmail ?? "Propio"}. Cambiar tenant`}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border text-left"
             >
-                <TenantAvatar email={activeTenant?.tenantEmail} />
+                <TenantAvatar email={activeTenant?.tenantEmail} avatarUrl={activeTenant?.tenantAvatarUrl} />
                 <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1`}>
                     {activeTenant?.isOwn ? "Mi cuenta" : (activeTenant?.tenantEmail ?? "Seleccionar…")}
                 </span>
@@ -127,7 +132,7 @@ export function TenantSwitcher() {
                                                     : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                             ].join(" ")}
                                         >
-                                            <TenantAvatar email={t.tenantEmail} />
+                                            <TenantAvatar email={t.tenantEmail} avatarUrl={t.tenantAvatarUrl} />
                                             <span className="truncate flex-1">
                                                 {t.isOwn ? "Mi cuenta" : t.tenantEmail}
                                             </span>

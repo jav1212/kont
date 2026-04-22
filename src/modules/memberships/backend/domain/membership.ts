@@ -16,8 +16,9 @@ export interface Membership {
 }
 
 export interface UserMembership {
-    tenantId:    string;
-    role:        MemberRole;
-    tenantEmail: string;
-    isOwn:       boolean;
+    tenantId:        string;
+    role:            MemberRole;
+    tenantEmail:     string;
+    tenantAvatarUrl: string | null;
+    isOwn:           boolean;
 }
