@@ -105,10 +105,24 @@ export async function middleware(request: NextRequest) {
             .eq('id', user.id)
             .single();
 
-        // Sesión huérfana (tenant eliminado) → cerrar sesión
         if (!tenant) {
-            await supabase.auth.signOut();
-            return NextResponse.redirect(new URL('/sign-in', request.url));
+            // Sin tenant propio: aceptar si el usuario es miembro invitado
+            // (admin/contable) de algún tenant con membresía aceptada y vigente.
+            const { data: memberships } = await supabase
+                .from('tenant_memberships')
+                .select('tenant_id')
+                .eq('member_id', user.id)
+                .not('accepted_at', 'is', null)
+                .is('revoked_at', null)
+                .limit(1);
+
+            if (!memberships || memberships.length === 0) {
+                // Sesión realmente huérfana → cerrar sesión
+                await supabase.auth.signOut();
+                return NextResponse.redirect(new URL('/sign-in', request.url));
+            }
+            // Miembro invitado: ActiveTenantProvider seleccionará el tenant activo.
+            return response;
         }
 
         if (tenant.status === 'suspended' && !pathname.startsWith('/billing')) {
