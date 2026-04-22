@@ -90,4 +90,31 @@ export class SupabaseAuthRepository implements IAuthRepository {
             return Result.fail('Unexpected error during password reset');
         }
     }
+
+    async resendConfirmation(email: string, emailRedirectTo?: string): Promise<Result<void>> {
+        try {
+            const { error } = await this.source.instance.auth.resend({
+                type: 'signup',
+                email,
+                options: {
+                    ...(emailRedirectTo ? { emailRedirectTo } : {}),
+                },
+            });
+
+            if (error) {
+                const raw = error.message.toLowerCase();
+                if (raw.includes('rate') || raw.includes('seconds')) {
+                    return Result.fail('Espera un momento antes de pedir otro correo.');
+                }
+                if (raw.includes('already') && raw.includes('confirm')) {
+                    return Result.fail('Este correo ya está confirmado. Intenta iniciar sesión.');
+                }
+                return Result.fail('No se pudo reenviar el correo de confirmación.');
+            }
+
+            return Result.success();
+        } catch {
+            return Result.fail('No se pudo reenviar el correo de confirmación.');
+        }
+    }
 }

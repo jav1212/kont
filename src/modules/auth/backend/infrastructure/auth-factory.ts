@@ -6,6 +6,7 @@ import { SignUpUseCase } from '../application/sign-up.use-case';
 import { SignOutUseCase } from '../application/sign-out.use-case';
 import { GetCurrentUserUseCase } from '../application/get-current-user.use-case';
 import { ResetPasswordUseCase } from '../application/reset-password.use-case';
+import { ResendConfirmationUseCase } from '../application/resend-confirmation.use-case';
 import { CheckIsAdminUseCase } from '../application/check-is-admin.use-case';
 import { SupabaseSource } from '@/src/shared/backend/source/infra/supabase';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
@@ -25,6 +26,7 @@ export function getAuthActions() {
         signOut: new SignOutUseCase(authRepository),
         me: new GetCurrentUserUseCase(authRepository),
         resetPassword: new ResetPasswordUseCase(authRepository),
+        resendConfirmation: new ResendConfirmationUseCase(authRepository),
         checkIsAdmin: new CheckIsAdminUseCase(adminCheckRepository),
     };
 }

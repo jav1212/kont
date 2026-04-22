@@ -165,6 +165,12 @@ async function resetPassword(email: string): Promise<string | null> {
     return null;
 }
 
+async function resendConfirmation(email: string): Promise<string | null> {
+    const { ok, json } = await apiFetch("/api/auth/resend-confirmation", { email });
+    if (!ok) return json.error;
+    return null;
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useAuth() {
@@ -186,5 +192,6 @@ export function useAuth() {
         signUp:          useCallback((email: string, password: string, name?: string) => signUp(email, password, name), []),
         signOut:         useCallback(() => signOut(), []),
         resetPassword:   useCallback((email: string) => resetPassword(email), []),
+        resendConfirmation: useCallback((email: string) => resendConfirmation(email), []),
     };
 }

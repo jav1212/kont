@@ -1,20 +1,31 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { 
-    Loader2, 
-    Briefcase, 
-    BarChart3, 
-    Receipt, 
-    Package, 
-    Banknote, 
-    Folder 
+import {
+    Loader2,
+    MailCheck,
+    Briefcase,
+    BarChart3,
+    Receipt,
+    Package,
+    Banknote,
+    Folder
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { LogoMark } from "@/src/shared/frontend/components/logo";
+
+const RESEND_COOLDOWN_SECONDS = 30;
+
+function isUnconfirmedEmailError(msg: string): boolean {
+    const lower = msg.toLowerCase();
+    return lower.includes("email not confirmed")
+        || lower.includes("not confirmed")
+        || lower.includes("confirm your email")
+        || lower.includes("correo no confirmado");
+}
 
 const INPUT_CLS = [
     "w-full h-11 px-4 rounded-xl",
@@ -26,20 +37,58 @@ const INPUT_CLS = [
 ].join(" ");
 
 function SignInFormContent() {
-    const { signIn } = useAuth();
+    const { signIn, resendConfirmation } = useAuth();
     const router       = useRouter();
     const searchParams = useSearchParams();
 
-    const [email,   setEmail]   = useState("");
-    const [pass,    setPass]    = useState("");
-    const [error,   setError]   = useState<string | null>(
-        searchParams.get("error")
-    );
-    const [loading, setLoading] = useState(false);
+    const rawErrorParam = searchParams.get("error");
+    const rawReason     = searchParams.get("reason");
+
+    const [email,    setEmail]    = useState(searchParams.get("email") ?? "");
+    const [pass,     setPass]     = useState("");
+    const [error,    setError]    = useState<string | null>(rawErrorParam);
+    const [loading,  setLoading]  = useState(false);
+
+    const [needsConfirmation, setNeedsConfirmation] = useState(rawReason === "expired");
+    const [resendLoading,     setResendLoading]     = useState(false);
+    const [resendSent,        setResendSent]        = useState(false);
+    const [cooldownUntil,     setCooldownUntil]     = useState(0);
+    const [now,               setNow]               = useState(() => Date.now());
+
+    useEffect(() => {
+        if (cooldownUntil <= now) return;
+        const id = window.setInterval(() => setNow(Date.now()), 1000);
+        return () => window.clearInterval(id);
+    }, [cooldownUntil, now]);
+
+    const cooldownRemaining = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+
+    async function handleResend() {
+        if (!email.trim()) {
+            setError("Escribe tu correo para reenviar el enlace.");
+            return;
+        }
+        if (cooldownRemaining > 0 || resendLoading) return;
+
+        setResendLoading(true);
+        const err = await resendConfirmation(email.trim());
+        setResendLoading(false);
+
+        if (err) {
+            setError(err);
+            setResendSent(false);
+            return;
+        }
+        setError(null);
+        setResendSent(true);
+        setCooldownUntil(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
+        setNow(Date.now());
+    }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
+        setResendSent(false);
 
         if (!email.trim()) { setError("El correo es requerido."); return; }
         if (!pass)         { setError("La contraseña es requerida."); return; }
@@ -48,7 +97,11 @@ function SignInFormContent() {
         const err = await signIn(email, pass);
         setLoading(false);
 
-        if (err) { setError(err); return; }
+        if (err) {
+            setError(err);
+            if (isUnconfirmedEmailError(err)) setNeedsConfirmation(true);
+            return;
+        }
 
         const redirectTo = searchParams.get("redirectTo") ?? "/documents";
         router.replace(redirectTo);
@@ -99,6 +152,41 @@ function SignInFormContent() {
                     <p className="text-[13px] text-red-500 font-medium leading-relaxed">
                         {error}
                     </p>
+                </div>
+            )}
+
+            {needsConfirmation && (
+                <div className="px-4 py-4 border border-amber-500/30 rounded-xl bg-amber-500/5 space-y-3">
+                    <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center flex-shrink-0">
+                            <MailCheck className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[12px] font-bold text-foreground leading-tight mb-1">
+                                Tu correo aún no está confirmado
+                            </p>
+                            <p className="text-[12px] text-text-tertiary font-medium leading-relaxed">
+                                {resendSent
+                                    ? <>Enviamos un nuevo enlace a <span className="text-foreground font-bold">{email}</span>. Revisa tu bandeja y carpeta de spam.</>
+                                    : <>Te podemos enviar un nuevo enlace de confirmación {email && <>a <span className="text-foreground font-bold">{email}</span></>}.</>}
+                            </p>
+                        </div>
+                    </div>
+                    <BaseButton.Root
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendLoading || cooldownRemaining > 0}
+                        variant="secondary"
+                        className="w-full h-10 rounded-lg text-[12px] font-bold flex items-center justify-center gap-2"
+                    >
+                        {resendLoading
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
+                            : cooldownRemaining > 0
+                                ? `Reintentar en ${cooldownRemaining}s`
+                                : resendSent
+                                    ? "Reenviar otra vez"
+                                    : "Reenviar correo de confirmación"}
+                    </BaseButton.Root>
                 </div>
             )}
 

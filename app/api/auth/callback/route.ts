@@ -8,14 +8,16 @@ export async function GET(request: Request) {
     if (code) {
         const source = new SupabaseSource();
         const { error } = await source.instance.auth.exchangeCodeForSession(code);
-        
+
         if (!error) {
             return NextResponse.redirect(`${origin}/documents`);
         }
 
-        // Si hay error (ej. código expirado), redirigir al sign-in con mensaje
-        return NextResponse.redirect(`${origin}/sign-in?error=${encodeURIComponent("El enlace de confirmación expiró. Intenta iniciar sesión o regístrate de nuevo.")}`);
+        // Si hay error (ej. código expirado), redirigir a la página de reenvío
+        return NextResponse.redirect(`${origin}/resend-confirmation?reason=expired`);
     }
 
-    return NextResponse.redirect(`${origin}/pages/un-auth?error_description=No+auth+code+found`);
+    // Sin code: típicamente el usuario clickeó un link expirado de Supabase; el hash
+    // fragment (#error_code=otp_expired) se lee client-side en /resend-confirmation.
+    return NextResponse.redirect(`${origin}/resend-confirmation?reason=expired`);
 }
