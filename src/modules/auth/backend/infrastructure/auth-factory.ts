@@ -15,9 +15,9 @@ import { SupabaseAdminCheckRepository } from './repository/supabase-admin-check.
 
 export function getAuthActions() {
     const source = new SupabaseSource();
-    const authRepository = new SupabaseAuthRepository(source);
-
     const serviceSource = new ServerSupabaseSource();
+    const authRepository = new SupabaseAuthRepository(source, serviceSource);
+
     const adminCheckRepository = new SupabaseAdminCheckRepository(serviceSource);
 
     return {

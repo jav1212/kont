@@ -1,14 +1,19 @@
 // Infrastructure layer — Supabase adapter for IAuthRepository.
 // Implements auth operations against Supabase Auth API.
-// Uses the client-side PKCE source (SupabaseSource), not service-role.
-import { SupabaseClient } from '@supabase/supabase-js';
+// `source` is the client-side PKCE client (anon); `adminSource` (optional) is the
+// service-role client used for admin-only ops like resendConfirmation.
+import { SupabaseClient, User } from '@supabase/supabase-js';
 import { IAuthRepository } from '../../domain/repository/auth.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Auth } from '../../domain/auth';
 import { Result } from "@/src/core/domain/result";
+import { sendConfirmationEmail } from '@/src/shared/backend/utils/send-confirmation-email';
 
 export class SupabaseAuthRepository implements IAuthRepository {
-    constructor(private readonly source: ISource<SupabaseClient>) { }
+    constructor(
+        private readonly source: ISource<SupabaseClient>,
+        private readonly adminSource?: ISource<SupabaseClient>,
+    ) { }
 
     async signIn(email: string, pass: string): Promise<Result<Auth>> {
         try {
@@ -92,29 +97,62 @@ export class SupabaseAuthRepository implements IAuthRepository {
     }
 
     async resendConfirmation(email: string, emailRedirectTo?: string): Promise<Result<void>> {
-        try {
-            const { error } = await this.source.instance.auth.resend({
-                type: 'signup',
-                email,
-                options: {
-                    ...(emailRedirectTo ? { emailRedirectTo } : {}),
-                },
-            });
+        if (!this.adminSource) {
+            console.warn('[resendConfirmation] Admin source not configured');
+            return Result.fail('Servicio no disponible en este momento.');
+        }
 
-            if (error) {
-                const raw = error.message.toLowerCase();
-                if (raw.includes('rate') || raw.includes('seconds')) {
-                    return Result.fail('Espera un momento antes de pedir otro correo.');
+        const admin = this.adminSource.instance;
+        const normalized = email.trim().toLowerCase();
+
+        try {
+            // 1. Buscar al usuario por email. listUsers pagina de 1000 en 1000; iteramos
+            //    hasta 10 páginas como tope de seguridad (cubre ~10k cuentas).
+            let foundUser: User | null = null;
+            for (let page = 1; page <= 10; page++) {
+                const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+                if (error) {
+                    console.warn('[resendConfirmation] listUsers error', { msg: error.message, status: error.status });
+                    return Result.fail('No pudimos verificar tu cuenta. Intenta de nuevo.');
                 }
-                if (raw.includes('already') && raw.includes('confirm')) {
-                    return Result.fail('Este correo ya está confirmado. Intenta iniciar sesión.');
-                }
-                return Result.fail('No se pudo reenviar el correo de confirmación.');
+                const match = data.users.find(u => u.email?.toLowerCase() === normalized);
+                if (match) { foundUser = match; break; }
+                if (data.users.length < 1000) break;
             }
 
+            if (!foundUser) {
+                return Result.fail('No encontramos una cuenta con ese correo. Regístrate primero.');
+            }
+
+            if (foundUser.email_confirmed_at) {
+                return Result.fail('Este correo ya está confirmado. Intenta iniciar sesión.');
+            }
+
+            // 2. Generar un magic link: al usarlo confirma el email y loguea al usuario.
+            const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+                type: 'magiclink',
+                email: foundUser.email!,
+                ...(emailRedirectTo ? { options: { redirectTo: emailRedirectTo } } : {}),
+            });
+
+            if (linkErr) {
+                console.warn('[resendConfirmation] generateLink error', { msg: linkErr.message, status: linkErr.status });
+                return Result.fail('No pudimos generar el enlace. Intenta de nuevo.');
+            }
+
+            const actionLink = linkData?.properties?.action_link;
+            if (!actionLink) {
+                console.warn('[resendConfirmation] generateLink returned no action_link', linkData);
+                return Result.fail('No pudimos generar el enlace. Intenta de nuevo.');
+            }
+
+            // 3. Enviar el email vía Resend (evita el SMTP nativo de Supabase, rate-limited).
+            await sendConfirmationEmail({ to: foundUser.email!, actionLink });
+
             return Result.success();
-        } catch {
-            return Result.fail('No se pudo reenviar el correo de confirmación.');
+        } catch (e) {
+            console.warn('[resendConfirmation] Unexpected error', e);
+            return Result.fail('Error inesperado al reenviar el correo.');
         }
     }
 }
