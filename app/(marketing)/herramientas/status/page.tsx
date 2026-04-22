@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { StatusShell } from "@/src/modules/tools/frontend/status/components/status-shell";
+import { StatusShell, type StatusFilter } from "@/src/modules/tools/frontend/status/components/status-shell";
 import { getSupabaseServer, aggregateBucket, type ServiceStatus } from "@/app/api/status/_lib";
 import type { ServicesResponse, ServiceWithStatus } from "@/app/api/status/services/route";
+
+const VALID_FILTERS: readonly StatusFilter[] = ["operational", "degraded", "down"];
 
 export const revalidate = 60;
 
@@ -131,8 +133,17 @@ async function getInitialData(): Promise<ServicesResponse | null> {
     }
 }
 
-export default async function Page() {
+interface PageProps {
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function Page({ searchParams }: PageProps) {
     const initial = await getInitialData();
+    const params = await searchParams;
+    const rawFilter = typeof params?.filter === "string" ? params.filter : null;
+    const filter: StatusFilter | null = VALID_FILTERS.includes(rawFilter as StatusFilter)
+        ? (rawFilter as StatusFilter)
+        : null;
 
     const jsonLd = {
         "@context": "https://schema.org",
@@ -205,7 +216,7 @@ export default async function Page() {
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
 
-            <StatusShell variant="public" initialData={initial} />
+            <StatusShell variant="public" initialData={initial} filter={filter} />
         </>
     );
 }

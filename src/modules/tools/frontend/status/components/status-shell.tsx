@@ -1,16 +1,20 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, X } from "lucide-react";
 import type { ServicesResponse } from "@/app/api/status/services/route";
-import { useStatusServices } from "../hooks/use-status-services";
+import { useStatusServices, type ServiceWithStatus } from "../hooks/use-status-services";
 import { StatusSummary } from "./status-summary";
 import { CategorySection } from "./category-section";
 import { StatusBanner } from "./status-banner";
 import { ClientVerifier } from "./client-verifier";
 
+export type StatusFilter = "operational" | "degraded" | "down";
+
 interface Props {
     variant: "public" | "authed";
     initialData?: ServicesResponse | null;
+    filter?: StatusFilter | null;
 }
 
 const CATEGORY_TITLES: Record<"fiscal" | "laboral" | "mercantil", string> = {
@@ -19,14 +23,24 @@ const CATEGORY_TITLES: Record<"fiscal" | "laboral" | "mercantil", string> = {
     mercantil: "Portales Mercantiles y Financieros",
 };
 
-export function StatusShell({ variant, initialData }: Props) {
+const FILTER_LABELS: Record<StatusFilter, { label: string; tone: string }> = {
+    operational: { label: "Disponibles", tone: "text-emerald-700 dark:text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
+    degraded:    { label: "Degradados",  tone: "text-amber-700 dark:text-amber-400 border-amber-500/40 bg-amber-500/10"       },
+    down:        { label: "Caídos",      tone: "text-red-700 dark:text-red-400 border-red-500/40 bg-red-500/10"               },
+};
+
+export function StatusShell({ variant, initialData, filter }: Props) {
     const { services, summary, lastServerCheckAt, loading, error, refresh } = useStatusServices(initialData);
 
     const hrefBase = variant === "public" ? "/herramientas/status" : "/tools/status";
+    const filteredServices: ServiceWithStatus[] = filter
+        ? services.filter((s) => s.lastStatus === filter)
+        : services;
+
     const byCategory = {
-        fiscal:    services.filter((s) => s.category === "fiscal"),
-        laboral:   services.filter((s) => s.category === "laboral"),
-        mercantil: services.filter((s) => s.category === "mercantil"),
+        fiscal:    filteredServices.filter((s) => s.category === "fiscal"),
+        laboral:   filteredServices.filter((s) => s.category === "laboral"),
+        mercantil: filteredServices.filter((s) => s.category === "mercantil"),
     };
 
     const wrapperClass = variant === "public"
@@ -65,10 +79,37 @@ export function StatusShell({ variant, initialData }: Props) {
                 </div>
             )}
 
+            {filter && (
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-[11px] font-mono uppercase tracking-[0.12em] text-foreground/50">
+                        Filtrando por
+                    </span>
+                    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-mono font-bold uppercase tracking-[0.1em] ${FILTER_LABELS[filter].tone}`}>
+                        {FILTER_LABELS[filter].label}
+                        <span className="text-foreground/40 font-normal">({filteredServices.length})</span>
+                    </span>
+                    <Link
+                        href={hrefBase}
+                        className="inline-flex items-center gap-1 text-[11px] font-mono uppercase tracking-[0.1em] text-foreground/50 hover:text-foreground transition-colors"
+                    >
+                        <X size={12} />
+                        Quitar filtro
+                    </Link>
+                </div>
+            )}
+
             <div className="flex flex-col gap-6">
-                <CategorySection title={CATEGORY_TITLES.fiscal}    services={byCategory.fiscal}    hrefBase={hrefBase} />
-                <CategorySection title={CATEGORY_TITLES.laboral}   services={byCategory.laboral}   hrefBase={hrefBase} />
-                <CategorySection title={CATEGORY_TITLES.mercantil} services={byCategory.mercantil} hrefBase={hrefBase} />
+                {filter && filteredServices.length === 0 ? (
+                    <div className="rounded-xl border border-border-light bg-surface-1 px-6 py-10 text-center text-[12px] text-foreground/50 uppercase tracking-[0.12em]">
+                        No hay portales en este estado
+                    </div>
+                ) : (
+                    <>
+                        <CategorySection title={CATEGORY_TITLES.fiscal}    services={byCategory.fiscal}    hrefBase={hrefBase} />
+                        <CategorySection title={CATEGORY_TITLES.laboral}   services={byCategory.laboral}   hrefBase={hrefBase} />
+                        <CategorySection title={CATEGORY_TITLES.mercantil} services={byCategory.mercantil} hrefBase={hrefBase} />
+                    </>
+                )}
             </div>
 
             {variant === "public" && (

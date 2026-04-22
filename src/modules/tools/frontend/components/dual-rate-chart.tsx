@@ -4,24 +4,31 @@
 // Uses two Y-axes (USD left, EUR right) since absolute prices differ in scale.
 // Designed for the /tools dashboard overview.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useBcvHistory } from "../hooks/use-bcv-history";
 import { formatRate, formatIsoDateEs } from "../utils/format-number";
 
 const WIDTH = 720;
 const HEIGHT = 220;
-const PADDING = { top: 18, right: 56, bottom: 28, left: 56 };
+const PADDING = { top: 28, right: 56, bottom: 28, left: 56 };
 const INNER_W = WIDTH - PADDING.left - PADDING.right;
 const INNER_H = HEIGHT - PADDING.top - PADDING.bottom;
 
 const COLORS = {
-    usd: { stroke: "rgb(16, 185, 129)",  area: "rgba(16, 185, 129, 0.08)" },   // emerald-500
-    eur: { stroke: "rgb(59, 130, 246)",  area: "rgba(59, 130, 246, 0.08)" },   // blue-500
+    usd: { stroke: "rgb(16, 185, 129)" },   // emerald-500
+    eur: { stroke: "rgb(59, 130, 246)" },   // blue-500
 } as const;
 
 type Series = { code: "USD" | "EUR"; label: string; points: { date: string; sell: number }[]; min: number; max: number };
 
-export function DualRateChart() {
+interface Props {
+    /** Optional callback invoked whenever the chart's internal loading state changes.
+     *  Useful for parent spinners that want to reflect chart loading too. */
+    onLoadingChange?: (loading: boolean) => void;
+}
+
+export function DualRateChart({ onLoadingChange }: Props = {}) {
     const [days, setDays] = useState<number>(30);
     const usd = useBcvHistory("USD", days);
     const eur = useBcvHistory("EUR", days);
@@ -29,6 +36,8 @@ export function DualRateChart() {
 
     const loading = usd.loading || eur.loading;
     const error = usd.error ?? eur.error;
+
+    useEffect(() => { onLoadingChange?.(loading); }, [loading, onLoadingChange]);
 
     // Align both series on a shared ordered date axis
     const dates = useMemo(() => {
@@ -121,10 +130,20 @@ export function DualRateChart() {
         ? { date: dates[hover.idx], usd: series.usd.points[hover.idx]?.sell, eur: series.eur.points[hover.idx]?.sell }
         : null;
 
-    const latestUsd = series?.usd.points.findLast?.((p) => isFinite(p.sell))?.sell
-        ?? series?.usd.points.slice().reverse().find((p) => isFinite(p.sell))?.sell;
-    const latestEur = series?.eur.points.findLast?.((p) => isFinite(p.sell))?.sell
-        ?? series?.eur.points.slice().reverse().find((p) => isFinite(p.sell))?.sell;
+    const latestUsd = series
+        ? [...series.usd.points].reverse().find((p) => isFinite(p.sell))?.sell
+        : undefined;
+    const latestEur = series
+        ? [...series.eur.points].reverse().find((p) => isFinite(p.sell))?.sell
+        : undefined;
+
+    // Clamp tooltip horizontal position at edges to prevent overflow.
+    const tooltipAnchor = hover ? tooltipPositioning(hover.x) : null;
+
+    function handleRetry() {
+        usd.refresh();
+        eur.refresh();
+    }
 
     return (
         <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm shadow-black/5">
@@ -158,15 +177,25 @@ export function DualRateChart() {
             </div>
 
             {/* Mobile legend row — duplicate of header legend for small screens */}
-            <div className="sm:hidden flex items-center justify-start gap-4 px-5 pt-3 text-[11px] font-mono border-b border-border-light/60">
+            <div className="sm:hidden flex items-center justify-start gap-4 px-5 pt-3 text-[11px] font-mono border-b border-border-light">
                 <LegendItem color={COLORS.usd.stroke} label="USD" value={latestUsd} />
                 <LegendItem color={COLORS.eur.stroke} label="EUR" value={latestEur} />
             </div>
 
             <div className="p-4 relative">
                 {error ? (
-                    <div className="py-12 text-center text-[12px] text-foreground/50 uppercase tracking-[0.12em]">
-                        {error}
+                    <div className="py-10 flex flex-col items-center gap-3 text-center">
+                        <p className="text-[13px] text-foreground/70">
+                            No se pudo cargar el histórico de tasas.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={handleRetry}
+                            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-border-light bg-surface-2 hover:bg-surface-1 text-[12px] font-mono uppercase tracking-[0.12em] text-foreground/80 hover:text-foreground transition-colors"
+                        >
+                            <RefreshCw size={12} />
+                            Reintentar
+                        </button>
                     </div>
                 ) : loading && !series ? (
                     <div className="aspect-[3/1] bg-surface-2/50 rounded-lg animate-pulse" />
@@ -175,14 +204,29 @@ export function DualRateChart() {
                         Sin datos disponibles
                     </div>
                 ) : (
-                    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full h-auto" role="img" aria-label={`Histórico USD vs EUR ${days} días`}>
+                    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full h-auto" role="img" aria-labelledby="dual-chart-title" aria-describedby="dual-chart-desc">
+                        <title id="dual-chart-title">Histórico USD vs EUR últimos {days} días</title>
+                        <desc id="dual-chart-desc">
+                            {`Dólar (USD, eje izquierdo): Bs. ${latestUsd != null && isFinite(latestUsd) ? formatRate(latestUsd) : "—"}. `}
+                            {`Euro (EUR, eje derecho): Bs. ${latestEur != null && isFinite(latestEur) ? formatRate(latestEur) : "—"}. `}
+                            Ambas series corresponden a la tasa de venta oficial del Banco Central de Venezuela.
+                        </desc>
+
+                        {/* Axis titles — anchored above each Y axis so the dual-scale is explicit */}
+                        <text x={PADDING.left - 8} y={PADDING.top - 12} textAnchor="end" fontSize={10} fontWeight={700} fill={COLORS.usd.stroke} fontFamily="ui-monospace, monospace" letterSpacing={1}>
+                            USD (Bs.)
+                        </text>
+                        <text x={WIDTH - PADDING.right + 8} y={PADDING.top - 12} textAnchor="start" fontSize={10} fontWeight={700} fill={COLORS.eur.stroke} fontFamily="ui-monospace, monospace" letterSpacing={1}>
+                            EUR (Bs.)
+                        </text>
+
                         {/* Y ticks (USD left) */}
                         {yTicks(geom.usdDomain.lo, geom.usdDomain.hi).map((v, i) => {
                             const y = geom.yUsd(v);
                             return (
                                 <g key={`uy-${i}`}>
                                     <line x1={PADDING.left} x2={WIDTH - PADDING.right} y1={y} y2={y} stroke="currentColor" strokeOpacity={0.06} />
-                                    <text x={PADDING.left - 8} y={y + 3} textAnchor="end" fontSize={10} fill={COLORS.usd.stroke} fillOpacity={0.8} fontFamily="ui-monospace, monospace">
+                                    <text x={PADDING.left - 8} y={y + 3} textAnchor="end" fontSize={10} fill={COLORS.usd.stroke} fontFamily="ui-monospace, monospace">
                                         {formatRate(v)}
                                     </text>
                                 </g>
@@ -193,7 +237,7 @@ export function DualRateChart() {
                         {yTicks(geom.eurDomain.lo, geom.eurDomain.hi).map((v, i) => {
                             const y = geom.yEur(v);
                             return (
-                                <text key={`ey-${i}`} x={WIDTH - PADDING.right + 8} y={y + 3} textAnchor="start" fontSize={10} fill={COLORS.eur.stroke} fillOpacity={0.8} fontFamily="ui-monospace, monospace">
+                                <text key={`ey-${i}`} x={WIDTH - PADDING.right + 8} y={y + 3} textAnchor="start" fontSize={10} fill={COLORS.eur.stroke} fontFamily="ui-monospace, monospace">
                                     {formatRate(v)}
                                 </text>
                             );
@@ -206,9 +250,9 @@ export function DualRateChart() {
                             </text>
                         ))}
 
-                        {/* USD area + line */}
+                        {/* USD line */}
                         <path d={geom.usdPath} fill="none" stroke={COLORS.usd.stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-                        {/* EUR area + line */}
+                        {/* EUR line */}
                         <path d={geom.eurPath} fill="none" stroke={COLORS.eur.stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
                         {/* Hover guide + markers */}
@@ -237,13 +281,13 @@ export function DualRateChart() {
                     </svg>
                 )}
 
-                {active && hover && (
+                {active && hover && tooltipAnchor && (
                     <div
-                        className="absolute pointer-events-none rounded-lg border border-border-light bg-surface-1 shadow-lg px-3 py-2 text-[12px] font-mono"
+                        className="absolute pointer-events-none rounded-lg border border-border-light bg-surface-1 shadow-lg px-3 py-2 text-[12px] font-mono whitespace-nowrap"
                         style={{
-                            left: `${(hover.x / WIDTH) * 100}%`,
-                            top: `${PADDING.top / HEIGHT * 100}%`,
-                            transform: "translate(-50%, -100%)",
+                            left: `${tooltipAnchor.leftPct}%`,
+                            top: `${(PADDING.top / HEIGHT) * 100}%`,
+                            transform: tooltipAnchor.transform,
                         }}
                     >
                         <div className="text-foreground/50 text-[10px] uppercase tracking-[0.1em] mb-0.5">
@@ -264,6 +308,24 @@ export function DualRateChart() {
             </div>
         </div>
     );
+}
+
+/**
+ * Decide how to anchor the tooltip near the cursor so it never overflows the
+ * chart container. Returns the percentage left + the CSS transform to apply.
+ */
+function tooltipPositioning(svgX: number): { leftPct: number; transform: string } {
+    const pct = (svgX / WIDTH) * 100;
+    const margin = 12; // percent
+    if (pct < margin) {
+        // Near left edge — anchor to the left of the hover point
+        return { leftPct: pct, transform: "translate(0, -110%)" };
+    }
+    if (pct > 100 - margin) {
+        // Near right edge — anchor to the right of the hover point
+        return { leftPct: pct, transform: "translate(-100%, -110%)" };
+    }
+    return { leftPct: pct, transform: "translate(-50%, -110%)" };
 }
 
 function LegendItem({ color, label, value }: { color: string; label: string; value: number | undefined }) {

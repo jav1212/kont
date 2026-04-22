@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useState } from "react";
 import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { DualRateChart } from "@/src/modules/tools/frontend/components/dual-rate-chart";
@@ -10,8 +11,10 @@ import { useStatusServices } from "@/src/modules/tools/frontend/status/hooks/use
 export default function ToolsDashboard() {
     const { loading: ratesLoading, refresh: refreshRates } = useBcvRates();
     const { summary, loading: statusLoading, refresh: refreshStatus } = useStatusServices();
+    const [chartLoading, setChartLoading] = useState(false);
+    const onChartLoadingChange = useCallback((l: boolean) => setChartLoading(l), []);
 
-    const refreshing = ratesLoading || statusLoading;
+    const refreshing = ratesLoading || statusLoading || chartLoading;
     function refreshAll() {
         refreshRates();
         refreshStatus();
@@ -54,7 +57,7 @@ export default function ToolsDashboard() {
                             <ArrowRight size={12} />
                         </Link>
                     </div>
-                    <DualRateChart />
+                    <DualRateChart onLoadingChange={onChartLoadingChange} />
                 </section>
 
                 {/* ── Estatus de Portales ─────────────────────────────────── */}
@@ -72,7 +75,7 @@ export default function ToolsDashboard() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <StatusStatCard
-                            href="/tools/status"
+                            href="/tools/status?filter=operational"
                             icon={<CheckCircle2 size={22} strokeWidth={2.25} />}
                             label="Disponibles"
                             value={operational}
@@ -81,7 +84,7 @@ export default function ToolsDashboard() {
                             loading={statusLoading && !summary}
                         />
                         <StatusStatCard
-                            href="/tools/status"
+                            href="/tools/status?filter=degraded"
                             icon={<AlertTriangle size={22} strokeWidth={2.25} />}
                             label="Degradados"
                             value={degraded}
@@ -90,7 +93,7 @@ export default function ToolsDashboard() {
                             loading={statusLoading && !summary}
                         />
                         <StatusStatCard
-                            href="/tools/status"
+                            href="/tools/status?filter=down"
                             icon={<XCircle size={22} strokeWidth={2.25} />}
                             label="Caídos"
                             value={down}

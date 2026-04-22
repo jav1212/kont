@@ -11,14 +11,19 @@ interface Props {
     hrefBase: string; // "/herramientas/status" | "/tools/status"
 }
 
+// Uses the "overlay Link" pattern: the card is a div, with a full-surface
+// Link stretched absolutely behind the content and an external-link <a>
+// positioned on top. This avoids nesting <a> inside <a> (invalid HTML).
 export function ServiceRow({ service, hrefBase }: Props) {
     const s = service;
     return (
-        <Link
-            href={`${hrefBase}/${s.slug}`}
-            className="group block rounded-xl border border-border-light bg-surface-1 hover:border-primary-500/40 hover:shadow-sm transition-all"
-        >
-            <div className="flex items-center gap-4 px-5 py-4">
+        <div className="group relative rounded-xl border border-border-light bg-surface-1 hover:border-primary-500/40 hover:shadow-sm transition-all">
+            <Link
+                href={`${hrefBase}/${s.slug}`}
+                aria-label={`Ver detalle de ${s.name}`}
+                className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+            />
+            <div className="relative z-10 flex items-center gap-4 px-5 py-4 pointer-events-none">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-[14px] font-mono font-bold text-foreground">{s.name}</h3>
@@ -50,16 +55,15 @@ export function ServiceRow({ service, hrefBase }: Props) {
                     href={s.url}
                     target="_blank"
                     rel="noreferrer nofollow"
-                    onClick={(e) => e.stopPropagation()}
-                    className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-2 text-foreground/40 hover:text-foreground transition-colors"
-                    aria-label={`Abrir ${s.name}`}
+                    className="pointer-events-auto relative z-20 shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-2 text-foreground/40 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                    aria-label={`Abrir ${s.name} en nueva pestaña`}
                     title="Abrir portal"
                 >
                     <ExternalLink size={14} />
                 </a>
                 <ChevronRight size={16} className="shrink-0 text-foreground/30 group-hover:text-foreground/60 group-hover:translate-x-0.5 transition-all" />
             </div>
-        </Link>
+        </div>
     );
 }
 
