@@ -550,7 +550,7 @@ export default function CompaniesPage() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-surface-2 border border-border-light/50 flex items-center justify-center shrink-0">
+                                                                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-surface-2 border border-border-light/50 flex items-center justify-center shrink-0">
                                                                         {company.logoUrl ? (
                                                                             <Image src={company.logoUrl} alt={company.name} fill unoptimized sizes="32px" className="object-cover" />
                                                                         ) : (
