@@ -1,32 +1,51 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useState } from "react";
-import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+    Activity,
+    Calculator,
+    CalendarDays,
+    DollarSign,
+    RefreshCw,
+    TrendingDown,
+    TrendingUp,
+    Minus,
+} from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { DualRateChart } from "@/src/modules/tools/frontend/components/dual-rate-chart";
-import { useBcvRates } from "@/src/modules/tools/frontend/hooks/use-bcv-rates";
+import { Flag } from "@/src/modules/tools/frontend/components/flag";
+import { ToolCard } from "@/src/modules/tools/frontend/components/tool-card";
+import { ToolCardStatusMetrics } from "@/src/modules/tools/frontend/components/tool-card-status-metrics";
+import { ToolHighlight } from "@/src/modules/tools/frontend/components/tool-highlight";
+import { useBcvRates, type BcvRate } from "@/src/modules/tools/frontend/hooks/use-bcv-rates";
 import { useStatusServices } from "@/src/modules/tools/frontend/status/hooks/use-status-services";
+import { formatPercentage, formatRate } from "@/src/modules/tools/frontend/utils/format-number";
+
+// Stagger step (s) + entry preset — mirrors `tools-shell.tsx`.
+const STAGGER_STEP = 0.08;
+const section = (i: number) => ({
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.35, delay: i * STAGGER_STEP, ease: "easeOut" as const },
+});
 
 export default function ToolsDashboard() {
-    const { loading: ratesLoading, refresh: refreshRates } = useBcvRates();
+    const { rates, loading: ratesLoading, refresh: refreshRates } = useBcvRates();
     const { summary, loading: statusLoading, refresh: refreshStatus } = useStatusServices();
     const [chartLoading, setChartLoading] = useState(false);
     const onChartLoadingChange = useCallback((l: boolean) => setChartLoading(l), []);
 
     const refreshing = ratesLoading || statusLoading || chartLoading;
-    function refreshAll() {
+    const refreshAll = useCallback(() => {
         refreshRates();
         refreshStatus();
-    }
+    }, [refreshRates, refreshStatus]);
 
-    const total = summary?.total ?? 0;
-    const operational = summary?.operational ?? 0;
-    const degraded = summary?.degraded ?? 0;
-    const down = summary?.down ?? 0;
+    const usd = rates.find((r) => r.code === "USD") ?? null;
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30">
+        <div className="flex flex-col min-h-full bg-surface-2">
             <PageHeader
                 title="Herramientas"
                 subtitle="Selecciona una utilidad para comenzar"
@@ -43,115 +62,123 @@ export default function ToolsDashboard() {
                 </button>
             </PageHeader>
 
-            <div className="flex flex-col gap-8 px-8 py-8 max-w-[1400px] mx-auto w-full">
+            <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-8 flex flex-col gap-8">
+                {/* Bloque destacado ────────────────────────────────────── */}
+                <motion.section
+                    {...section(0)}
+                    aria-labelledby="highlight-heading"
+                    className="flex flex-col gap-3"
+                >
+                    <SectionHeading id="highlight-heading" label="Bloque destacado" />
+                    <ToolHighlight
+                        icon={<DollarSign size={20} strokeWidth={2.25} />}
+                        label="Divisas BCV"
+                        title="Calculadora de divisas BCV"
+                        description="Tasa oficial del Banco Central de Venezuela con histórico de 30 días y conversores directo y cruzado."
+                        href="/tools/divisas"
+                        ctaLabel="Abrir calculadora"
+                        meta={<MiniUsdRate usd={usd} loading={ratesLoading && !usd} />}
+                    >
+                        <DualRateChart onLoadingChange={onChartLoadingChange} />
+                    </ToolHighlight>
+                </motion.section>
 
-                {/* ── Divisas BCV ─────────────────────────────────────────── */}
-                <section aria-labelledby="divisas-heading" className="flex flex-col gap-3">
-                    <div className="flex items-baseline justify-between flex-wrap gap-2">
-                        <h2 id="divisas-heading" className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground/70 flex items-center gap-2">
-                            <span className="w-1 h-3 rounded-full bg-emerald-500/60" />
-                            Divisas BCV
-                        </h2>
-                        <Link href="/tools/divisas" className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-foreground/50 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1">
-                            Abrir calculadora
-                            <ArrowRight size={12} />
-                        </Link>
-                    </div>
-                    <DualRateChart onLoadingChange={onChartLoadingChange} />
-                </section>
-
-                {/* ── Estatus de Portales ─────────────────────────────────── */}
-                <section aria-labelledby="status-heading" className="flex flex-col gap-3">
-                    <div className="flex items-baseline justify-between flex-wrap gap-2">
-                        <h2 id="status-heading" className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground/70 flex items-center gap-2">
-                            <span className="w-1 h-3 rounded-full bg-blue-500/60" />
-                            Estatus de Portales
-                        </h2>
-                        <Link href="/tools/status" className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-foreground/50 hover:text-blue-600 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1">
-                            Ver detalle
-                            <ArrowRight size={12} />
-                        </Link>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <StatusStatCard
-                            href="/tools/status?filter=operational"
-                            icon={<CheckCircle2 size={22} strokeWidth={2.25} />}
-                            label="Disponibles"
-                            value={operational}
-                            total={total}
-                            tone="emerald"
-                            loading={statusLoading && !summary}
+                {/* Todas las herramientas ───────────────────────────────── */}
+                <motion.section
+                    {...section(1)}
+                    aria-labelledby="all-tools-heading"
+                    className="flex flex-col gap-3"
+                >
+                    <SectionHeading id="all-tools-heading" label="Todas las herramientas" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <ToolCard
+                            variant="active"
+                            icon={<Activity size={20} strokeWidth={2.25} />}
+                            title="Status de Portales"
+                            description="Monitorea SENIAT, IVSS y el resto de portales oficiales en tiempo real."
+                            href="/tools/status"
+                            metrics={
+                                <ToolCardStatusMetrics
+                                    summary={summary}
+                                    loading={statusLoading && !summary}
+                                />
+                            }
                         />
-                        <StatusStatCard
-                            href="/tools/status?filter=degraded"
-                            icon={<AlertTriangle size={22} strokeWidth={2.25} />}
-                            label="Degradados"
-                            value={degraded}
-                            total={total}
-                            tone="amber"
-                            loading={statusLoading && !summary}
+                        <ToolCard
+                            variant="soon"
+                            icon={<CalendarDays size={20} strokeWidth={2.25} />}
+                            title="Calendario Tributario SENIAT"
+                            description="Fechas clave de ISLR, IVA y retenciones 2026 del SENIAT a la mano."
                         />
-                        <StatusStatCard
-                            href="/tools/status?filter=down"
-                            icon={<XCircle size={22} strokeWidth={2.25} />}
-                            label="Caídos"
-                            value={down}
-                            total={total}
-                            tone="red"
-                            loading={statusLoading && !summary}
+                        <ToolCard
+                            variant="soon"
+                            icon={<Calculator size={20} strokeWidth={2.25} />}
+                            title="Prestaciones Rápidas"
+                            description="Simula prestaciones LOTTT sin abrir un caso de nómina completo."
                         />
                     </div>
-                </section>
-
+                </motion.section>
             </div>
         </div>
     );
 }
 
-interface StatusStatCardProps {
-    href: string;
-    icon: React.ReactNode;
-    label: string;
-    value: number;
-    total: number;
-    tone: "emerald" | "amber" | "red";
-    loading?: boolean;
+// ── Section heading ────────────────────────────────────────────────────────
+
+function SectionHeading({ id, label }: { id: string; label: string }) {
+    return (
+        <h2
+            id={id}
+            className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-foreground/55"
+        >
+            {label}
+        </h2>
+    );
 }
 
-function StatusStatCard({ href, icon, label, value, total, tone, loading }: StatusStatCardProps) {
-    const toneClasses = {
-        emerald: { border: "hover:border-emerald-500/40", bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400" },
-        amber:   { border: "hover:border-amber-500/40",   bg: "bg-amber-500/10",   text: "text-amber-600 dark:text-amber-400"    },
-        red:     { border: "hover:border-red-500/40",     bg: "bg-red-500/10",     text: "text-red-600 dark:text-red-400"        },
-    }[tone];
+// ── Mini USD rate (sidebar meta in the highlight card) ─────────────────────
+// Kept local to the page since it's the only consumer. Mirrors the QuickRate
+// treatment from `tools-shell.tsx` but compacted for the 280px sidebar.
 
+function MiniUsdRate({ usd, loading }: { usd: BcvRate | null; loading: boolean }) {
     if (loading) {
-        return <div className="rounded-2xl border border-border-light bg-surface-1 h-[110px] animate-pulse" aria-busy="true" />;
+        return (
+            <div
+                aria-busy="true"
+                className="h-[54px] rounded-lg border border-border-light bg-surface-2 animate-pulse"
+            />
+        );
     }
 
+    const pct = usd?.percentageChange ?? null;
+    const trend = pct == null ? 0 : pct > 0 ? 1 : pct < 0 ? -1 : 0;
+
     return (
-        <Link
-            href={href}
-            aria-label={`${label}: ${value} de ${total} portales`}
-            className={[
-                "group rounded-2xl border border-border-light bg-surface-1 px-5 py-4 flex items-center gap-4 transition-all hover:bg-surface-2",
-                toneClasses.border,
-            ].join(" ")}
-        >
-            <div className={["flex h-12 w-12 items-center justify-center rounded-xl shrink-0", toneClasses.bg, toneClasses.text].join(" ")}>
-                {icon}
+        <div className="rounded-lg border border-border-light bg-surface-2 px-3 py-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+                <Flag code="US" size={14} />
+                <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-foreground/55 leading-none">
+                        USD · Venta
+                    </span>
+                    <span className="text-[15px] font-mono font-bold tabular-nums text-foreground leading-tight mt-0.5">
+                        {usd ? `Bs. ${formatRate(usd.sell)}` : "—"}
+                    </span>
+                </div>
             </div>
-            <div className="flex-1 min-w-0">
-                <p className={["text-[11px] font-bold uppercase tracking-[0.12em]", toneClasses.text].join(" ")}>
-                    {label}
-                </p>
-                <p className="text-[24px] font-mono font-bold tabular-nums text-foreground leading-tight mt-0.5">
-                    {value}
-                    <span className="text-[13px] font-normal text-foreground/40 ml-1">/ {total}</span>
-                </p>
-            </div>
-            <ArrowRight size={14} className="text-foreground/20 group-hover:text-foreground/50 group-hover:translate-x-0.5 transition-all shrink-0" />
-        </Link>
+            {pct != null && (
+                <span
+                    className={[
+                        "inline-flex items-center gap-0.5 text-[10px] font-mono tabular-nums font-bold px-1.5 py-0.5 rounded shrink-0",
+                        trend > 0 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" : "",
+                        trend < 0 ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" : "",
+                        trend === 0 ? "bg-surface-1 text-foreground/55" : "",
+                    ].join(" ")}
+                >
+                    {trend > 0 ? <TrendingUp size={10} /> : trend < 0 ? <TrendingDown size={10} /> : <Minus size={10} />}
+                    {formatPercentage(pct)}
+                </span>
+            )}
+        </div>
     );
 }
