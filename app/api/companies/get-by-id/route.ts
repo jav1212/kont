@@ -2,8 +2,9 @@ import { getCompanyActions } from "@/src/modules/companies/backend/infrastructur
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const GET = withTenant(async (req, { userId }) => {
+export const GET = withTenant(async (req, { userId, actingAs }) => {
     const id = new URL(req.url).searchParams.get('id');
-    const result = await getCompanyActions(userId).getById.execute(id!);
+    const ownerId = actingAs?.ownerId ?? userId;
+    const result = await getCompanyActions(ownerId).getById.execute(id!);
     return handleResult(result);
 });

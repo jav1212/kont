@@ -11,12 +11,13 @@ import { BillingCycle, PaymentMethod } from '@/src/modules/billing/backend/domai
  * Body: { planId, billingCycle, amountUsd, paymentMethod, receiptUrl? }
  * Submits a new payment request for review.
  */
-export const GET = withTenant(async (_req, { userId }) => {
-    const result = await getBillingActions().getPaymentRequests.execute({ tenantId: userId });
+export const GET = withTenant(async (_req, { userId, actingAs }) => {
+    const tenantId = actingAs?.ownerId ?? userId;
+    const result = await getBillingActions().getPaymentRequests.execute({ tenantId });
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId }) => {
+export const POST = withTenant(async (req, { userId, actingAs }) => {
     const body = await req.json() as {
         planId?:        string;
         billingCycle?:  BillingCycle;
@@ -25,8 +26,9 @@ export const POST = withTenant(async (req, { userId }) => {
         receiptUrl?:    string | null;
     };
 
+    const tenantId = actingAs?.ownerId ?? userId;
     const result = await getBillingActions().createPaymentRequest.execute({
-        tenantId:      userId,
+        tenantId,
         planId:        body.planId        ?? "",
         billingCycle:  body.billingCycle  ?? "monthly",
         amountUsd:     body.amountUsd     ?? 0,

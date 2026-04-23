@@ -53,21 +53,49 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
     }
 
     const userId = user.id;
-
-    // Si no hay request, o no tiene header X-Tenant-Id → comportamiento original
-    if (!req) {
-        return { userId, schemaName: tenantSchemaName(userId), actingAs: null };
-    }
-
-    const targetId = req.headers.get('X-Tenant-Id');
-
-    // Header ausente o igual al propio userId → own tenant, sin cambio
-    if (!targetId || targetId === userId) {
-        return { userId, schemaName: tenantSchemaName(userId), actingAs: null };
-    }
-
-    // Target diferente → verificar membresía
     const server = new ServerSupabaseSource();
+
+    const targetId = req?.headers.get('X-Tenant-Id') ?? null;
+
+    // ── Caso 1: header ausente o apunta al userId propio ─────────────────
+    // Puede ser un owner (tiene fila en public.tenants con id = userId)
+    // o un invitado sin tenant propio (sólo existe como miembro en otros).
+    if (!targetId || targetId === userId) {
+        const { data: ownTenant } = await server.instance
+            .from('tenants')
+            .select('id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (ownTenant) {
+            return { userId, schemaName: tenantSchemaName(userId), actingAs: null };
+        }
+
+        // Invitado sin tenant propio → actuar sobre el primer tenant del
+        // que es miembro activo (el dueño que lo invitó).
+        const { data: firstMembership } = await server.instance
+            .from('tenant_memberships')
+            .select('tenant_id, role')
+            .eq('member_id', userId)
+            .not('accepted_at', 'is', null)
+            .is('revoked_at', null)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (!firstMembership) {
+            throw new TenantForbiddenError();
+        }
+
+        const mb = firstMembership as { tenant_id: string; role: string };
+        return {
+            userId,
+            schemaName: tenantSchemaName(mb.tenant_id),
+            actingAs:   { ownerId: mb.tenant_id, role: mb.role as ActingAs['role'] },
+        };
+    }
+
+    // ── Caso 2: header apunta a otro tenant → verificar membresía ────────
     const { data: membership, error: mbError } = await server.instance
         .from('tenant_memberships')
         .select('role')

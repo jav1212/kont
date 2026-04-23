@@ -65,16 +65,25 @@ export function useActiveTenant(): UseActiveTenantResult {
 
                 setAllTenants(list);
 
-                // Resolve active tenant from localStorage, fallback to own
+                // Resolve active tenant from localStorage.
+                // Fallback order: own tenant → first available membership → null.
+                // Invited users (no own tenant) act on behalf of the tenant that
+                // invited them; they don't have a tenant of their own until they
+                // call activate_own_tenant() to upgrade into a paying owner.
                 const stored = typeof window !== "undefined"
                     ? localStorage.getItem(STORAGE_KEY)
                     : null;
 
-                const isValid = stored && list.some((t) => t.tenantId === stored);
-                const resolved = isValid ? stored : (user!.id ?? null);
+                const isValid  = stored && list.some((t) => t.tenantId === stored);
+                const ownEntry = list.find((t) => t.isOwn);
+                const resolved = isValid
+                    ? stored
+                    : (ownEntry?.tenantId ?? list[0]?.tenantId ?? null);
 
                 if (resolved) {
                     localStorage.setItem(STORAGE_KEY, resolved);
+                } else if (typeof window !== "undefined") {
+                    localStorage.removeItem(STORAGE_KEY);
                 }
                 setActiveTenantId(resolved);
             } finally {
@@ -97,14 +106,18 @@ export function useActiveTenant(): UseActiveTenantResult {
     }, [notifyTenantChange]);
 
     const clearActiveTenant = useCallback(() => {
-        setActiveTenantId(user?.id ?? null);
+        // Reset to own tenant if the user has one; otherwise first membership.
+        const ownEntry = allTenants.find((t) => t.isOwn);
+        const fallback = ownEntry?.tenantId ?? allTenants[0]?.tenantId ?? null;
+
+        setActiveTenantId(fallback);
         if (typeof window !== "undefined") {
-            if (user?.id) localStorage.setItem(STORAGE_KEY, user.id);
-            else localStorage.removeItem(STORAGE_KEY);
+            if (fallback) localStorage.setItem(STORAGE_KEY, fallback);
+            else          localStorage.removeItem(STORAGE_KEY);
         }
         invalidateModuleAccessCache();
         notifyTenantChange();
-    }, [notifyTenantChange, user?.id]);
+    }, [notifyTenantChange, allTenants]);
 
     const activeTenant    = allTenants.find((t) => t.tenantId === activeTenantId) ?? null;
     const isActingOnBehalf = !!activeTenantId && activeTenantId !== user?.id;

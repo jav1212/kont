@@ -86,11 +86,18 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
 
     const reload = useCallback(async () => {
         if (!user?.id) return;
+        // Don't query until the active tenant is known. An invited user has no
+        // tenant of their own, so falling back to user.id would hit an RPC with
+        // a schema that doesn't exist and return 400.
+        if (!activeTenantId) {
+            setCompanies([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError(null);
 
-        // When acting on behalf, fetch companies of the active tenant owner
-        const ownerId = activeTenantId ?? user.id;
+        const ownerId = activeTenantId;
         const res  = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
         const text = await res.text();
         const json: ApiJsonResult = parseJsonSafe(text, `Error del servidor (${res.status})`);
