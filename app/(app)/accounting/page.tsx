@@ -5,7 +5,7 @@
 // Uses the same shared dashboard primitives as Nómina, Inventario, and Documentos.
 // Constraint: read-only; all mutations happen inside the specific sub-pages.
 
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader }              from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }        from "@/src/shared/frontend/components/dashboard-kpi-card";
 import { DashboardQuickActions }   from "@/src/shared/frontend/components/dashboard-quick-actions";

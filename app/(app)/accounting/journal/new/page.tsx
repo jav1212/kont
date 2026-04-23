@@ -4,8 +4,8 @@
 // Builds a draft entry with dynamic debit/credit lines, then saves or posts it.
 // Uses canonical HeroUI primitives and design tokens throughout.
 import { useId, useState, useCallback } from 'react';
-import { useRouter }                    from 'next/navigation';
-import Link                             from 'next/link';
+import { useContextRouter as useRouter } from '@/src/shared/frontend/hooks/use-url-context';
+import { ContextLink as Link }          from '@/src/shared/frontend/components/context-link';
 import { PageHeader }                   from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                   from '@/src/shared/frontend/components/base-button';
 import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/components/accounting-access-guard';

@@ -25,8 +25,11 @@ export interface UseActiveTenantResult {
     clearActiveTenant: () => void;
 }
 
-export function useActiveTenant(): UseActiveTenantResult {
+// urlTenantId — when present, takes priority over localStorage for resolution.
+// This enables URL-based context sharing (e.g. ?tid=xxx).
+export function useActiveTenant(urlTenantId?: string | null): UseActiveTenantResult {
     const { user, isAuthenticated } = useAuth();
+    const userId = user?.id ?? null;
 
     const [allTenants, setAllTenants]           = useState<TenantEntry[]>([]);
     const [activeTenantId, setActiveTenantId]   = useState<string | null>(null);
@@ -40,7 +43,7 @@ export function useActiveTenant(): UseActiveTenantResult {
 
     // Fetch all accessible tenants
     useEffect(() => {
-        if (!isAuthenticated || !user?.id) {
+        if (!isAuthenticated || !userId) {
             // Clear stale tenant selection on sign-out so the next user starts fresh
             if (typeof window !== "undefined") {
                 localStorage.removeItem(STORAGE_KEY);
@@ -65,20 +68,18 @@ export function useActiveTenant(): UseActiveTenantResult {
 
                 setAllTenants(list);
 
-                // Resolve active tenant from localStorage.
-                // Fallback order: own tenant → first available membership → null.
-                // Invited users (no own tenant) act on behalf of the tenant that
-                // invited them; they don't have a tenant of their own until they
-                // call activate_own_tenant() to upgrade into a paying owner.
+                // Resolution order: URL param > localStorage > own tenant > first membership
+                const fromUrl = urlTenantId && list.some((t) => t.tenantId === urlTenantId)
+                    ? urlTenantId : null;
+
                 const stored = typeof window !== "undefined"
                     ? localStorage.getItem(STORAGE_KEY)
                     : null;
+                const fromStorage = stored && list.some((t) => t.tenantId === stored)
+                    ? stored : null;
 
-                const isValid  = stored && list.some((t) => t.tenantId === stored);
                 const ownEntry = list.find((t) => t.isOwn);
-                const resolved = isValid
-                    ? stored
-                    : (ownEntry?.tenantId ?? list[0]?.tenantId ?? null);
+                const resolved = fromUrl ?? fromStorage ?? ownEntry?.tenantId ?? list[0]?.tenantId ?? null;
 
                 if (resolved) {
                     localStorage.setItem(STORAGE_KEY, resolved);
@@ -93,8 +94,7 @@ export function useActiveTenant(): UseActiveTenantResult {
 
         fetchTenants();
         return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, user?.id]);
+    }, [isAuthenticated, userId, urlTenantId]);
 
     const switchTenant = useCallback((tenantId: string) => {
         setActiveTenantId(tenantId);

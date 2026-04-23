@@ -4,7 +4,7 @@
 // Lists all journal entries for a company, optionally filtered by period.
 // Posting an entry uses a HeroUI modal confirmation — this action is irreversible.
 import { useId, useState }           from 'react';
-import Link                          from 'next/link';
+import { ContextLink as Link }       from '@/src/shared/frontend/components/context-link';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { PageHeader }                from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                from '@/src/shared/frontend/components/base-button';

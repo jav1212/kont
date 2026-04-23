@@ -5,7 +5,7 @@
 // All identifiers are in English; GUI text remains in Spanish per product requirements.
 
 import { useEffect, useState, useCallback, useRef, startTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";

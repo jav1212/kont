@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 
 const MonitorIcon = () => (

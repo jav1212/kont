@@ -7,6 +7,7 @@
 import Link from "next/link";
 import type { SubNavItem } from "@/src/shared/frontend/navigation";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 
 // ── Connecting-line indicator (Tree style) ────────────────────────────────────
 // Fixed vertical line with horizontal branches for each item.
@@ -40,6 +41,8 @@ interface SidebarSubnavProps {
 }
 
 export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
+    const { buildContextHref } = useUrlContext();
+
     if (subnav.length === 0) return null;
 
     const seenGroups = new Set<string>();
@@ -59,7 +62,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                             </p>
                         )}
                         <Link
-                            href={href}
+                            href={buildContextHref(href)}
                             aria-current={isActive ? "page" : undefined}
                             className={[ITEM_BASE, isActive ? ITEM_ACTIVE : ITEM_IDLE].join(" ")}
                         >

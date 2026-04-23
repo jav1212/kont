@@ -43,11 +43,18 @@ BEGIN
     -- companies
     EXECUTE format($tbl$
         CREATE TABLE IF NOT EXISTS %I.companies (
-            id         text        PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            owner_id   text        NOT NULL,
-            name       text        NOT NULL,
-            created_at timestamptz NOT NULL DEFAULT now(),
-            updated_at timestamptz NOT NULL DEFAULT now()
+            id               text        PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            owner_id         text        NOT NULL,
+            name             text        NOT NULL,
+            rif              text,
+            phone            text,
+            address          text,
+            logo_url         text,
+            show_logo_in_pdf boolean     NOT NULL DEFAULT false,
+            sector           text,
+            inventory_config jsonb       NOT NULL DEFAULT '{}'::jsonb,
+            created_at       timestamptz NOT NULL DEFAULT now(),
+            updated_at       timestamptz NOT NULL DEFAULT now()
         )
     $tbl$, v_schema);
 
@@ -105,10 +112,12 @@ BEGIN
     -- inventario_departamentos
     EXECUTE format($tbl$
         CREATE TABLE IF NOT EXISTS %I.inventario_departamentos (
-            id         text PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            empresa_id text NOT NULL REFERENCES %I.companies(id) ON DELETE CASCADE,
-            nombre     text NOT NULL,
-            created_at timestamptz NOT NULL DEFAULT now()
+            id          text    PRIMARY KEY DEFAULT gen_random_uuid()::text,
+            empresa_id  text    NOT NULL REFERENCES %I.companies(id) ON DELETE CASCADE,
+            nombre      text    NOT NULL,
+            descripcion text    NOT NULL DEFAULT '',
+            activo      boolean NOT NULL DEFAULT true,
+            created_at  timestamptz NOT NULL DEFAULT now()
         )
     $tbl$, v_schema, v_schema);
 
@@ -128,6 +137,7 @@ BEGIN
             costo_promedio   numeric(14,4) NOT NULL DEFAULT 0,
             iva_tipo         text    NOT NULL DEFAULT 'general',
             activo           boolean NOT NULL DEFAULT true,
+            custom_fields    jsonb   NOT NULL DEFAULT '{}'::jsonb,
             created_at       timestamptz NOT NULL DEFAULT now(),
             updated_at       timestamptz NOT NULL DEFAULT now()
         )

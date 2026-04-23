@@ -6,7 +6,7 @@
 // Constraint: read-only; all mutations happen inside the specific sub-pages.
 
 import { useEffect } from "react";
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { 
     Calculator, 
     Users, 

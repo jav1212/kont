@@ -3,7 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { ICompanyRepository } from '../../domain/repository/company.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { Company } from '../../domain/company';
+import { Company, InventoryConfig, BusinessSector, BUSINESS_SECTORS } from '../../domain/company';
 
 // Raw DB row shape returned by tenant_company_* RPCs — never exported beyond this file.
 interface RawCompanyRow {
@@ -15,6 +15,8 @@ interface RawCompanyRow {
     address:          string | null;
     logo_url:         string | null;
     show_logo_in_pdf: boolean | null;
+    sector:           string | null;
+    inventory_config: Record<string, unknown> | null;
     created_at:       string | null;
     updated_at:       string | null;
 }
@@ -30,7 +32,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
             const { data, error } = await this.source.instance
                 .rpc('tenant_companies_get_all', { p_user_id: this.userId });
             if (error) return Result.fail(error.message);
-            return Result.success(((data as RawCompanyRow[]) ?? []).map(this.mapToDomain));
+            return Result.success(((data as RawCompanyRow[]) ?? []).map((row: RawCompanyRow) => this.mapToDomain(row)));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error fetching companies');
         }
@@ -60,6 +62,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_phone:    company.phone    ?? null,
                     p_address:  company.address  ?? null,
                     p_logo_url: company.logoUrl  ?? null,
+                    p_sector:   company.sector   ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success();
@@ -89,6 +92,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_address:           (company.address      !== undefined ? company.address : current.address) ?? null,
                     p_logo_url:          (company.logoUrl      !== undefined ? company.logoUrl : current.logoUrl) ?? null,
                     p_show_logo_in_pdf:  (company.showLogoInPdf!== undefined ? company.showLogoInPdf : current.showLogoInPdf) ?? null,
+                    p_sector:            (company.sector       !== undefined ? company.sector : current.sector) ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
@@ -108,18 +112,70 @@ export class RpcCompanyRepository implements ICompanyRepository {
         }
     }
 
+    async getInventoryConfig(companyId: string): Promise<Result<InventoryConfig>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_company_get_inventory_config', {
+                    p_user_id:    this.userId,
+                    p_company_id: companyId,
+                });
+            if (error) return Result.fail(error.message);
+            const raw = (data ?? {}) as Record<string, unknown>;
+            return Result.success({
+                customFields:          (raw.customFields as InventoryConfig['customFields']) ?? [],
+                visibleColumns:        (raw.visibleColumns as string[]) ?? undefined,
+                defaultMeasureUnit:    (raw.defaultMeasureUnit as string) ?? undefined,
+                defaultValuationMethod:(raw.defaultValuationMethod as string) ?? undefined,
+            });
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error fetching inventory config');
+        }
+    }
+
+    async saveInventoryConfig(companyId: string, config: InventoryConfig): Promise<Result<void>> {
+        try {
+            const { error } = await this.source.instance
+                .rpc('tenant_company_save_inventory_config', {
+                    p_user_id:    this.userId,
+                    p_company_id: companyId,
+                    p_config:     config,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success();
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error saving inventory config');
+        }
+    }
+
+    private parseSector(raw: string | null): BusinessSector | undefined {
+        if (!raw) return undefined;
+        return BUSINESS_SECTORS.includes(raw as BusinessSector) ? (raw as BusinessSector) : undefined;
+    }
+
+    private parseInventoryConfig(raw: Record<string, unknown> | null): InventoryConfig | undefined {
+        if (!raw || Object.keys(raw).length === 0) return undefined;
+        return {
+            customFields:          (raw.customFields as InventoryConfig['customFields']) ?? [],
+            visibleColumns:        (raw.visibleColumns as string[]) ?? undefined,
+            defaultMeasureUnit:    (raw.defaultMeasureUnit as string) ?? undefined,
+            defaultValuationMethod:(raw.defaultValuationMethod as string) ?? undefined,
+        };
+    }
+
     private mapToDomain(row: RawCompanyRow): Company {
         return {
-            id:            row.id,
-            ownerId:       row.owner_id,
-            name:          row.name,
-            rif:           row.rif              ?? undefined,
-            phone:         row.phone            ?? undefined,
-            address:       row.address          ?? undefined,
-            logoUrl:       row.logo_url         ?? undefined,
-            showLogoInPdf: row.show_logo_in_pdf ?? false,
-            createdAt:     row.created_at ? new Date(row.created_at) : undefined,
-            updatedAt:     row.updated_at ? new Date(row.updated_at) : undefined,
+            id:              row.id,
+            ownerId:         row.owner_id,
+            name:            row.name,
+            rif:             row.rif              ?? undefined,
+            phone:           row.phone            ?? undefined,
+            address:         row.address          ?? undefined,
+            logoUrl:         row.logo_url         ?? undefined,
+            showLogoInPdf:   row.show_logo_in_pdf ?? false,
+            sector:          this.parseSector(row.sector),
+            inventoryConfig: this.parseInventoryConfig(row.inventory_config),
+            createdAt:       row.created_at ? new Date(row.created_at) : undefined,
+            updatedAt:       row.updated_at ? new Date(row.updated_at) : undefined,
         };
     }
 }

@@ -5,7 +5,8 @@ import { useState, useRef, useCallback } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import type { Company } from "@/src/modules/companies/frontend/hooks/use-companies";
+import type { Company, BusinessSector } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { SECTOR_LABELS, BUSINESS_SECTORS } from "@/src/modules/companies/backend/domain/company";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
@@ -58,7 +59,7 @@ const IconPaste = () => <ClipboardPaste size={14} />;
 // ============================================================================
 
 export default function CompaniesPage() {
-    const { companies, loading, error, save, update, remove } = useCompany();
+    const { companies, loading, error, save, update, remove, applySector } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
     const { user } = useAuth();
     const atCompanyLimit = !canAddCompany();
@@ -69,6 +70,7 @@ export default function CompaniesPage() {
     const [editPhone, setEditPhone] = useState("");
     const [editAddress, setEditAddress] = useState("");
     const [editLogoUrl, setEditLogoUrl] = useState<string | undefined>(undefined);
+    const [editSector, setEditSector] = useState<BusinessSector | undefined>(undefined);
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoUploadSuccess, setLogoUploadSuccess] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
@@ -117,6 +119,7 @@ export default function CompaniesPage() {
         setEditPhone(company.phone ?? "");
         setEditAddress(company.address ?? "");
         setEditLogoUrl(company.logoUrl);
+        setEditSector(company.sector);
         setEditError(null);
     }, []);
 
@@ -126,6 +129,7 @@ export default function CompaniesPage() {
         setEditPhone("");
         setEditAddress("");
         setEditLogoUrl(undefined);
+        setEditSector(undefined);
         setEditError(null);
         setLogoUploadSuccess(false);
     }, []);
@@ -134,15 +138,28 @@ export default function CompaniesPage() {
         if (!editingId || !editName.trim()) return;
         setEditSaving(true);
         setEditError(null);
+
+        // Find the original company to detect sector change
+        const original = companies.find(c => c.id === editingId);
+        const sectorChanged = editSector !== original?.sector;
+
         const err = await update(editingId, {
             name: editName.trim(),
             phone: editPhone.trim() || undefined,
             address: editAddress.trim() || undefined,
             logoUrl: editLogoUrl,
+            sector: editSector,
         });
+
+        // If sector changed, apply the sector template (auto-create departments, set config)
+        if (!err && sectorChanged && editSector) {
+            const sectorErr = await applySector(editingId, editSector);
+            if (sectorErr) { setEditSaving(false); setEditError(sectorErr); return; }
+        }
+
         setEditSaving(false);
         if (err) { setEditError(err); } else { cancelEdit(); }
-    }, [editingId, editName, editPhone, editAddress, editLogoUrl, update, cancelEdit]);
+    }, [editingId, editName, editPhone, editAddress, editLogoUrl, editSector, companies, update, applySector, cancelEdit]);
 
     const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -385,10 +402,10 @@ export default function CompaniesPage() {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-surface-2/50 border-b border-border-light">
-                                            {["RIF", "Nombre", "Teléfono", "Dirección", "Creada", ""].map((h) => (
+                                            {["RIF", "Nombre", "Teléfono", "Dirección", "Sector", "Creada", ""].map((h) => (
                                                 <th key={h} className={[
                                                     "px-5 py-3.5 font-medium text-[var(--text-tertiary)] uppercase tracking-wider text-[11px]",
-                                                    (h === "Creada" || h === "Teléfono" || h === "Dirección") ? "hidden sm:table-cell" : "",
+                                                    (h === "Creada" || h === "Teléfono" || h === "Dirección" || h === "Sector") ? "hidden sm:table-cell" : "",
                                                 ].join(" ")}>
                                                     {h}
                                                 </th>
@@ -431,7 +448,10 @@ export default function CompaniesPage() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                {/* Teléfono / Dirección — empty on new row */}
+                                                {/* Teléfono / Dirección / Sector — empty on new row */}
+                                                <td className="px-5 py-4 hidden sm:table-cell">
+                                                    <span className="text-[11px] text-[var(--text-disabled)]">—</span>
+                                                </td>
                                                 <td className="px-5 py-4 hidden sm:table-cell">
                                                     <span className="text-[11px] text-[var(--text-disabled)]">—</span>
                                                 </td>
@@ -461,7 +481,7 @@ export default function CompaniesPage() {
                                         {/* Existing rows */}
                                         {filtered.length === 0 && !showNew ? (
                                             <tr>
-                                                <td colSpan={6} className="px-5 py-24 text-center">
+                                                <td colSpan={7} className="px-5 py-24 text-center">
                                                     <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
                                                         <Building2 size={40} strokeWidth={1} />
                                                         <p className="text-[13px] uppercase tracking-widest font-medium">
@@ -579,6 +599,26 @@ export default function CompaniesPage() {
                                                                 <input className={cellInput} value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
                                                             ) : (
                                                                 <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[150px] inline-block">{company.address ?? "—"}</span>
+                                                            )}
+                                                        </td>
+
+                                                        {/* Sector */}
+                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                            {isEditing ? (
+                                                                <select
+                                                                    className={cellInput}
+                                                                    value={editSector ?? ""}
+                                                                    onChange={(e) => setEditSector((e.target.value || undefined) as BusinessSector | undefined)}
+                                                                >
+                                                                    <option value="">Sin sector</option>
+                                                                    {BUSINESS_SECTORS.map((s) => (
+                                                                        <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : (
+                                                                <span className="text-[13px] text-[var(--text-secondary)]">
+                                                                    {company.sector ? SECTOR_LABELS[company.sector] : "—"}
+                                                                </span>
                                                             )}
                                                         </td>
 

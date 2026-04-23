@@ -4,8 +4,9 @@
 // First asks the user to select an existing chart.
 // Then shows a split view: Form to add account (left), and File Tree of accounts (right).
 
-import { useId, useState, useMemo, useEffect }  from 'react';
+import { useState, useMemo }  from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ContextLink as Link } from '@/src/shared/frontend/components/context-link';
 import { Folder, FileText, ArrowLeft, Plus, Trash2, ChevronRight, Check, X } from 'lucide-react';
 import { PageHeader }                from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                from '@/src/shared/frontend/components/base-button';
@@ -15,7 +16,7 @@ import { useAccounts }               from '@/src/modules/accounting/frontend/hoo
 import { useCharts }                 from '@/src/modules/accounting/frontend/hooks/use-charts';
 import type { Account }              from '@/src/modules/accounting/backend/domain/account';
 import { APP_SIZES }                 from '@/src/shared/frontend/sizes';
-import type { AccountChart }         from '@/src/modules/accounting/backend/domain/account-chart';
+
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -93,13 +94,16 @@ function AccountTreeNode({
     const isGroup = account.isGroup || children.length > 0;
     const [isExpanded, setIsExpanded] = useState(true);
 
-    useEffect(() => {
-        if (expandSignal > 0) setIsExpanded(true);
-    }, [expandSignal]);
-
-    useEffect(() => {
-        if (collapseSignal > 0) setIsExpanded(false);
-    }, [collapseSignal]);
+    // Sync parent expand/collapse signals via render-time state adjustment
+    const [prevSignals, setPrevSignals] = useState({ expand: expandSignal, collapse: collapseSignal });
+    if (prevSignals.expand !== expandSignal && expandSignal > 0) {
+        setPrevSignals(p => ({ ...p, expand: expandSignal }));
+        setIsExpanded(true);
+    }
+    if (prevSignals.collapse !== collapseSignal && collapseSignal > 0) {
+        setPrevSignals(p => ({ ...p, collapse: collapseSignal }));
+        setIsExpanded(false);
+    }
     
     return (
         <div className="flex flex-col">
@@ -312,9 +316,9 @@ export default function AccountsPage() {
                 <div className="flex flex-col items-center justify-center p-12 bg-surface-1 rounded-2xl border border-dashed border-border-light gap-4">
                     <Folder size={32} className="text-[var(--text-tertiary)]" />
                     <span className="font-mono text-[13px] text-[var(--text-secondary)]">No tienes ningún plan de cuentas</span>
-                    <a href="/accounting/charts" className="font-mono text-[12px] text-primary-500 hover:underline">
+                    <Link href="/accounting/charts" className="font-mono text-[12px] text-primary-500 hover:underline">
                         Ir a crear un plan de cuentas &rarr;
-                    </a>
+                    </Link>
                 </div>
             )}
 

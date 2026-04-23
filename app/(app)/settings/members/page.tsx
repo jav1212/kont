@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";

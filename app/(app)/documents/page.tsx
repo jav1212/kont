@@ -5,7 +5,7 @@
 // Shows document indicators and fast access to key document operations.
 // Constraint: read-only; all uploads and mutations happen inside /documents.
 
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader }            from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";
 import { DashboardQuickActions } from "@/src/shared/frontend/components/dashboard-quick-actions";

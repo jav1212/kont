@@ -5,7 +5,7 @@
 // Draft entries can be posted from here using a modal confirmation.
 import { useEffect, useState, useCallback } from 'react';
 import { useParams }                        from 'next/navigation';
-import Link                                 from 'next/link';
+import { ContextLink as Link }              from '@/src/shared/frontend/components/context-link';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { PageHeader }                       from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                       from '@/src/shared/frontend/components/base-button';

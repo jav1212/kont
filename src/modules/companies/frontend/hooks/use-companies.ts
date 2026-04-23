@@ -11,9 +11,29 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { apiFetch as tenantApiFetch, type ApiJsonResult } from "@/src/shared/frontend/utils/api-fetch";
+import { apiFetch as tenantApiFetch, fetchJson as tenantFetchJson, type ApiJsonResult } from "@/src/shared/frontend/utils/api-fetch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+// Sector type and custom field definition — mirrors backend domain types.
+export type BusinessSector =
+    | 'farmacia' | 'supermercado' | 'panaderia' | 'repuestos'
+    | 'ferreteria' | 'restaurante' | 'tienda_ropa' | 'licoreria' | 'otro';
+
+export interface CustomFieldDefinition {
+    key: string;
+    label: string;
+    type: 'text' | 'number' | 'date' | 'select';
+    options?: string[];
+    required?: boolean;
+}
+
+export interface InventoryConfig {
+    customFields: CustomFieldDefinition[];
+    visibleColumns?: string[];
+    defaultMeasureUnit?: string;
+    defaultValuationMethod?: string;
+}
 
 export interface Company {
     id:              string;
@@ -24,6 +44,8 @@ export interface Company {
     address?:        string;
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
+    sector?:         BusinessSector;
+    inventoryConfig?:InventoryConfig;
     createdAt?:      string;
     updatedAt?:      string;
 }
@@ -35,19 +57,23 @@ export interface CompanyUpdateData {
     address?:        string;
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
+    sector?:         BusinessSector;
 }
 
 export interface UseCompanyResult {
-    companies:     Company[];
-    company:       Company | null;
-    companyId:     string | null;
-    loading:       boolean;
-    error:         string | null;
-    reload:        () => Promise<void>;
-    selectCompany: (id: string) => void;
-    save:          (data: { id: string; name: string; rif?: string }) => Promise<string | null>;
-    update:        (id: string, data: CompanyUpdateData)              => Promise<string | null>;
-    remove:        (id: string)                                       => Promise<string | null>;
+    companies:          Company[];
+    company:            Company | null;
+    companyId:          string | null;
+    loading:            boolean;
+    error:              string | null;
+    reload:             () => Promise<void>;
+    selectCompany:      (id: string) => void;
+    save:               (data: { id: string; name: string; rif?: string }) => Promise<string | null>;
+    update:             (id: string, data: CompanyUpdateData)              => Promise<string | null>;
+    remove:             (id: string)                                       => Promise<string | null>;
+    applySector:        (companyId: string, sector: BusinessSector)        => Promise<string | null>;
+    getInventoryConfig: (companyId: string) => Promise<InventoryConfig | null>;
+    saveInventoryConfig:(companyId: string, config: InventoryConfig) => Promise<string | null>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -73,7 +99,9 @@ export const CompanyContext = createContext<UseCompanyResult | null>(null);
 
 // ── Internal hook — used only by CompanyProvider ──────────────────────────────
 
-export function useCompanyState(activeTenantId?: string | null): UseCompanyResult {
+// urlCompanyId — when present, takes priority over localStorage for resolution.
+// Enables URL-based context sharing (e.g. ?cid=xxx).
+export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: string | null): UseCompanyResult {
     const { user, isAuthenticated } = useAuth();
 
     const [companies,         setCompanies]         = useState<Company[]>([]);
@@ -109,8 +137,11 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
             const list: Company[] = (json.data as Company[]) ?? [];
             setCompanies(list);
             setSelectedCompanyId((prev) => {
-                const valid = list.find((c) => c.id === prev);
-                const next  = valid ? prev : (list[0]?.id ?? null);
+                // Resolution: URL param > current state > localStorage > first company
+                const fromUrl = urlCompanyId && list.some((c) => c.id === urlCompanyId)
+                    ? urlCompanyId : null;
+                const fromPrev = prev && list.some((c) => c.id === prev) ? prev : null;
+                const next = fromUrl ?? fromPrev ?? (list[0]?.id ?? null);
                 if (next) localStorage.setItem(STORAGE_KEY, next);
                 else      localStorage.removeItem(STORAGE_KEY);
                 return next;
@@ -118,7 +149,7 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         }
 
         setLoading(false);
-    }, [user, activeTenantId]);
+    }, [user, activeTenantId, urlCompanyId]);
 
     useEffect(() => {
         if (!isAuthenticated || !user?.id) {
@@ -168,6 +199,36 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         localStorage.setItem(STORAGE_KEY, id);
     }, []);
 
+    const applySector = useCallback(async (companyId: string, sector: BusinessSector): Promise<string | null> => {
+        const { ok, json } = await tenantFetchJson("/api/companies/apply-sector", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ companyId, sector }),
+        });
+        if (!ok) return json.error ?? "Error al aplicar sector";
+        await reload();
+        return null;
+    }, [reload]);
+
+    const getInventoryConfig = useCallback(async (companyId: string): Promise<InventoryConfig | null> => {
+        const res  = await tenantApiFetch(`/api/companies/inventory-config?companyId=${companyId}`);
+        const text = await res.text();
+        const json = parseJsonSafe(text, "Error al obtener configuración de inventario");
+        if (!res.ok) return null;
+        return (json.data as InventoryConfig) ?? null;
+    }, []);
+
+    const saveInventoryConfig = useCallback(async (companyId: string, config: InventoryConfig): Promise<string | null> => {
+        const { ok, json } = await tenantFetchJson("/api/companies/inventory-config", {
+            method:  "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ companyId, config }),
+        });
+        if (!ok) return json.error ?? "Error al guardar configuración";
+        await reload();
+        return null;
+    }, [reload]);
+
     const hasSession = isAuthenticated && !!user?.id;
     const visibleCompanies = hasSession ? companies : [];
     const visibleCompanyId = hasSession ? selectedCompanyId : null;
@@ -184,6 +245,9 @@ export function useCompanyState(activeTenantId?: string | null): UseCompanyResul
         save,
         update,
         remove,
+        applySector,
+        getInventoryConfig,
+        saveInventoryConfig,
     };
 }
 

@@ -21,6 +21,7 @@ export interface Product {
   departmentId?: string;
   departmentName?: string;
   vatType: VatType;
+  customFields?: Record<string, unknown>;  // sector-specific and user-defined extra data
   createdAt?: string;
   updatedAt?: string;
 }

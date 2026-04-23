@@ -6,8 +6,8 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, use, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";

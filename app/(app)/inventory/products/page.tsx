@@ -4,7 +4,9 @@
 // Uses English domain types (Product) and English useInventory() API.
 
 import { useEffect, useRef, useState } from "react";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -91,12 +93,15 @@ function TipoBadge({ tipo }: { tipo: string }) {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function ProductosPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const {
         products, loadingProducts, error, setError,
         loadProducts, saveProduct, deleteProduct,
         departments, loadingDepartments, loadDepartments,
     } = useInventory();
+
+    // Custom fields from company inventory config (sector template + user-defined)
+    const customFields: CustomFieldDefinition[] = company?.inventoryConfig?.customFields ?? [];
 
     const [form, setForm] = useState<Product | null>(null);
     const [saving, setSaving] = useState(false);
@@ -229,6 +234,11 @@ export default function ProductosPage() {
                     Importar archivo
                 </BaseButton.Root>
                 <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+                <Link href="/inventory/import">
+                    <BaseButton.Root variant="secondary" size="sm">
+                        Importar Excel
+                    </BaseButton.Root>
+                </Link>
                 <BaseButton.Root variant="primary" size="sm" onClick={openNew}>
                     + Nuevo producto
                 </BaseButton.Root>
@@ -401,6 +411,51 @@ export default function ProductosPage() {
                             </div>
                         </div>
 
+                        {/* Custom fields from sector template */}
+                        {customFields.length > 0 && (
+                            <div className="mb-4">
+                                <p className={labelCls + " mb-3"}>Campos adicionales</p>
+                                <div className="grid grid-cols-3 gap-4">
+                                    {customFields.map((cf) => {
+                                        const cfVal = (form.customFields ?? {})[cf.key] ?? "";
+                                        return (
+                                            <div key={cf.key}>
+                                                <label className={labelCls}>{cf.label}</label>
+                                                {cf.type === "select" ? (
+                                                    <select
+                                                        className={fieldCls}
+                                                        value={String(cfVal)}
+                                                        onChange={(e) => setForm(f => f ? {
+                                                            ...f,
+                                                            customFields: { ...(f.customFields ?? {}), [cf.key]: e.target.value || null },
+                                                        } : f)}
+                                                    >
+                                                        <option value="">—</option>
+                                                        {(cf.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
+                                                    </select>
+                                                ) : (
+                                                    <input
+                                                        className={fieldCls}
+                                                        type={cf.type === "number" ? "number" : cf.type === "date" ? "date" : "text"}
+                                                        value={String(cfVal)}
+                                                        onChange={(e) => setForm(f => f ? {
+                                                            ...f,
+                                                            customFields: {
+                                                                ...(f.customFields ?? {}),
+                                                                [cf.key]: cf.type === "number"
+                                                                    ? (e.target.value === "" ? null : Number(e.target.value))
+                                                                    : (e.target.value || null),
+                                                            },
+                                                        } : f)}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mb-4">
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -448,8 +503,10 @@ export default function ProductosPage() {
                                             }}
                                         />
                                     </th>
-                                    {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Existencia", "Estado", ""].map((h) => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
+                                    {["Código", "Nombre", "Departamento", "IVA", "Tipo", "Unidad", "Existencia", "Estado",
+                                      ...customFields.map(cf => cf.label),
+                                      ""].map((h, idx) => (
+                                        <th key={idx} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
                                             {h}
                                         </th>
                                     ))}
@@ -490,6 +547,11 @@ export default function ProductosPage() {
                                                     : <span className="text-text-tertiary text-[11px] uppercase tracking-[0.10em]">Inactivo</span>
                                                 }
                                             </td>
+                                            {customFields.map(cf => (
+                                                <td key={cf.key} className="px-4 py-2.5 text-[var(--text-secondary)]">
+                                                    {p.customFields?.[cf.key] != null ? String(p.customFields[cf.key]) : "—"}
+                                                </td>
+                                            ))}
                                             <td className="px-4 py-2.5">
                                                 <div className="flex items-center gap-2">
                                                     <button

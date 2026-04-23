@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 // Note: Link is passed as polymorphic `as` prop to BaseButton, not used as JSX directly.

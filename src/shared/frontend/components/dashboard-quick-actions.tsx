@@ -5,7 +5,7 @@
 // Designed for both web and PWA/mobile usage — touch targets are >= 44px tall.
 // Constraint: navigation only, no mutation or side effects.
 
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 

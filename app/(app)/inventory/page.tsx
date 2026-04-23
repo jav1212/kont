@@ -4,7 +4,7 @@
 // Shows KPI cards and a product snapshot for the current period.
 
 import { useEffect, useMemo } from "react";
-import Link from "next/link";
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { 
     Package, 
     ArrowDownLeft, 

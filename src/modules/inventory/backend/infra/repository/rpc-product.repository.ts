@@ -23,6 +23,7 @@ interface ProductRpcRow {
   departamento_id: string | null;
   departamento_nombre: string | null;
   iva_tipo: VatType | null;
+  custom_fields: Record<string, unknown> | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -63,6 +64,7 @@ export class RpcProductRepository implements IProductRepository {
                 activo:           product.active,
                 departamento_id:  product.departmentId ?? null,
                 iva_tipo:         product.vatType ?? 'general',
+                custom_fields:    product.customFields ?? {},
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_productos_upsert', {
@@ -106,6 +108,7 @@ export class RpcProductRepository implements IProductRepository {
             departmentId:   row.departamento_id ?? undefined,
             departmentName: row.departamento_nombre ?? undefined,
             vatType:        (row.iva_tipo === 'exento' ? 'exento' : 'general') as VatType,
+            customFields:   (row.custom_fields && Object.keys(row.custom_fields).length > 0) ? row.custom_fields : undefined,
             createdAt:      row.created_at ?? undefined,
             updatedAt:      row.updated_at ?? undefined,
         };

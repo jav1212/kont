@@ -24,6 +24,7 @@ import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
 import { SidebarModuleSelector } from "@/src/shared/frontend/components/sidebar-module-selector";
 import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
+import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 
 // ── Small icon helpers (used only inside this file) ────────────────────────────
 
@@ -79,6 +80,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { hasAccess: hasPayroll } = useModuleAccess("payroll");
     const { hasAccess: hasAccounting } = useModuleAccess("accounting");
     useActiveTenantContext();
+    const { buildContextHref } = useUrlContext();
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
     const isDesktop = useIsDesktop();
@@ -123,7 +125,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     function handleSelectModule(id: string, href: string) {
         setStoredModuleId(id);
         localStorage.setItem(STORAGE_MODULE, id);
-        router.push(href);
+        router.push(buildContextHref(href));
     }
 
     // ── Resizable sidebar (desktop only, disabled when collapsed) ─────────────
@@ -286,7 +288,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label/60 tracking-widest`}>
                         Preferences
                     </p>
-                    <Link href="/settings/members"
+                    <Link href={buildContextHref("/settings/members")}
                         className={[NAV_ITEM_BASE, pathname.startsWith("/settings") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}>
                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <circle cx="6.5" cy="6.5" r="1.5" />
@@ -301,7 +303,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             <div
                 style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
                 className="px-4 pt-6 space-y-4 border-t border-sidebar-border/40">
-                <Link href="/profile"
+                <Link href={buildContextHref("/profile")}
                     aria-current={profileActive ? "page" : undefined}
                     className="block group outline-none font-mono">
                     <ProfileSection

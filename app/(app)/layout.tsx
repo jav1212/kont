@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AppSidebar }           from "@/src/shared/frontend/components/app-sidebar";
 import { MobileTopBar }         from "@/src/shared/frontend/components/mobile-topbar";
 import { CompanyProvider }      from "@/src/modules/companies/frontend/components/company-provider";
@@ -19,7 +19,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return () => mq.removeEventListener("change", handleChange);
     }, []);
 
+    // Suspense boundary required because useSearchParams() is used inside
+    // ActiveTenantProvider and CompanyProvider for URL-based context params.
     return (
+        <Suspense>
         <ActiveTenantProvider>
             <CompanyProvider>
                 <div className="flex h-dvh bg-surface-2 overflow-hidden">
@@ -46,5 +49,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </CompanyProvider>
         </ActiveTenantProvider>
+        </Suspense>
     );
 }
