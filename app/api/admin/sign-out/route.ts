@@ -24,9 +24,11 @@ export async function POST() {
 
     await supabase.auth.signOut();
 
-    // Eliminar la cookie de ruteo admin
+    // Eliminar la cookie de ruteo admin (mismos flags que en sign-in
+    // para que el browser aplique el overwrite correctamente)
     cookieStore.set("kont-admin", "", {
         httpOnly: true,
+        secure:   true,
         sameSite: "lax",
         path:     "/",
         maxAge:   0,

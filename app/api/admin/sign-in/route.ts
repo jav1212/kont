@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient }       from "@supabase/supabase-js";
 import { cookies }            from "next/headers";
+import { rateLimit }          from "@/src/shared/backend/utils/rate-limit";
 
 /**
  * POST /api/admin/sign-in
@@ -11,6 +12,10 @@ import { cookies }            from "next/headers";
  * que el middleware usa para separar las rutas admin / usuario.
  */
 export async function POST(req: Request) {
+    // El panel admin es superficie crítica — cuota más agresiva que en login normal.
+    const denied = await rateLimit(req, { bucket: "admin-sign-in", limit: 5, windowSec: 60 });
+    if (denied) return denied;
+
     let email: string, password: string;
     try {
         ({ email, password } = await req.json());
@@ -43,7 +48,7 @@ export async function POST(req: Request) {
         await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError || !signInData.user) {
-        console.error("[admin/sign-in] signInWithPassword failed:", signInError?.message);
+        console.warn("[admin/sign-in] invalid_credentials");
         return Response.json(
             { error: "Correo o contraseña incorrectos." },
             { status: 401 }
@@ -57,14 +62,14 @@ export async function POST(req: Request) {
         { auth: { persistSession: false } }
     );
 
-    const { data: adminRow, error: adminError } = await service
+    const { data: adminRow } = await service
         .from("admin_users")
         .select("id")
         .eq("id", signInData.user.id)
         .single();
 
     if (!adminRow) {
-        console.error("[admin/sign-in] user not in admin_users. userId:", signInData.user.id, "error:", adminError?.message);
+        console.warn("[admin/sign-in] not_admin");
         await supabase.auth.signOut();
         return Response.json(
             { error: "Correo o contraseña incorrectos." },
@@ -72,12 +77,15 @@ export async function POST(req: Request) {
         );
     }
 
-    // 3. Marcar la sesión como admin con una cookie httpOnly de ruteo
+    // 3. Marcar la sesión como admin con una cookie httpOnly de ruteo.
+    //    secure=true → nunca viaja en HTTP. sameSite=lax → cross-site links OK
+    //    pero no form-submission cross-site. maxAge 12h con rotación al login.
     cookieStore.set("kont-admin", "1", {
         httpOnly: true,
+        secure:   true,
         sameSite: "lax",
         path:     "/",
-        // Sin maxAge → dura lo mismo que la sesión del navegador
+        maxAge:   60 * 60 * 12,
     });
 
     return Response.json({ data: { ok: true } });

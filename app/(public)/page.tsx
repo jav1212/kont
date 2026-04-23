@@ -162,9 +162,14 @@ export default function LandingPage() {
                             Comenzar Ahora
                         </BaseButton.Root>
 
-                        <Link href="/herramientas/divisas" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
-                            Herramientas públicas →
-                        </Link>
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <Link href="/herramientas/divisas" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
+                                Divisas BCV →
+                            </Link>
+                            <Link href="/herramientas/calendario-seniat" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
+                                Calendario SENIAT →
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="mt-8 sm:mt-10">

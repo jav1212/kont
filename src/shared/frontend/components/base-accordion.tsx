@@ -86,9 +86,10 @@ export abstract class BaseAccordion {
 // FACTORY FUNCTION
 //
 // Converts AccordionItemInput (title: string) → AccordionItemProps (title: ReactNode)
-// Spread the result onto <BaseAccordion.Item>:
+// Spread the result onto <BaseAccordion.Item>, and pass `key` directly as a JSX
+// attribute (React forbids `key` in spread props):
 //
-//   <BaseAccordion.Item {...accordionItemProps({ key: "a", title: "Section" })}>
+//   <BaseAccordion.Item key="a" {...accordionItemProps({ title: "Section" })}>
 //     ...
 //   </BaseAccordion.Item>
 // ============================================================================
@@ -97,8 +98,11 @@ export function accordionItemProps({
     title,
     subtitle,
     classNames,
+    // Absorb `key` if callers accidentally pass it — it must live on JSX, not in spread props.
+    key: _key,
     ...rest
-}: AccordionItemInput): AccordionItemProps {
+}: AccordionItemInput & { key?: React.Key }): Omit<AccordionItemProps, "key"> {
+    void _key;
     return {
         indicator: <ChevronIcon />,
         classNames: itemClassNames(classNames),

@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 
 const TOOLS = [
-    { href: "/herramientas/divisas", label: "Divisas BCV" },
-    { href: "/herramientas/status",  label: "Estatus Portales" },
+    { href: "/herramientas/divisas",           label: "Divisas BCV"        },
+    { href: "/herramientas/status",             label: "Estatus Portales"   },
+    { href: "/herramientas/calendario-seniat",  label: "Calendario SENIAT"  },
 ];
 
 export function MarketingHeader() {
@@ -59,6 +60,7 @@ export function MarketingFooter() {
             <div className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)]">
                 <Link href="/herramientas/divisas" className="hover:text-foreground transition-colors">Divisas</Link>
                 <Link href="/herramientas/status" className="hover:text-foreground transition-colors">Estatus</Link>
+                <Link href="/herramientas/calendario-seniat" className="hover:text-foreground transition-colors">SENIAT</Link>
                 <Link href="/sign-up" className="hover:text-foreground transition-colors">Registrarse</Link>
                 <Link href="/sign-in" className="hover:text-foreground transition-colors">Ingresar</Link>
             </div>

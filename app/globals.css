@@ -709,3 +709,49 @@ body {
 /* .hover\:text-foreground\/60 etc. are kept as-is because hover states     */
 /* that reveal more visible text on interaction are intentional progressive  */
 /* disclosure — the non-hover state is just visually de-emphasized.         */
+
+/* ============================================================================
+   SENIAT CALENDAR TOOL — Custom animations and export overrides
+   ============================================================================ */
+
+/* Pulse animation for countdown banner icon (≤3 days severity) */
+@keyframes icon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-icon-pulse {
+  animation: icon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Reduced motion: disable all custom animations */
+@media (prefers-reduced-motion: reduce) {
+  .animate-icon-pulse,
+  .animate-pulse {
+    animation: none;
+  }
+}
+
+/* Force light mode for PNG export — applied temporarily to the capture node */
+.force-light,
+.force-light * {
+  --background: #EEF0F7;
+  --foreground: #111525;
+  --surface-1: #FFFFFF;
+  --surface-2: #E8EBF5;
+  --surface-3: #DDE0EE;
+  --text-primary: #111525;
+  --text-secondary: #464D66;
+  --text-tertiary: #5F6780;
+  --text-disabled: #858EAA;
+  --border-light: #BDC4D8;
+  --badge-info-bg: #EFF6FF;
+  --badge-info-border: #BFDBFE;
+  --badge-warning-bg: #FEF3C7;
+  --badge-warning-border: #FCD34D;
+  --badge-error-bg: #FEE2E2;
+  --badge-error-border: #FCA5A5;
+  --badge-success-bg: #D1FAE5;
+  --badge-success-border: #6EE7B7;
+  color-scheme: light;
+}

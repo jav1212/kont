@@ -2,14 +2,42 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 // ============================================================================
-// MIDDLEWARE — route protection + role separation
+// MIDDLEWARE — route protection + role separation + security headers
 //
 // Reglas:
 //   - Usuario con sesión de cliente  → nunca puede ver rutas /admin/*
 //   - Usuario con cookie kont-admin  → nunca puede ver rutas de app/públicas
 //   - Sin sesión en /admin/*         → /admin/sign-in
 //   - Sin sesión en app routes       → /sign-in
+//
+// Headers de seguridad aplicados a toda respuesta:
+//   - Content-Security-Policy: default restrictivo, sobrescrito en el embed
+//     de /herramientas/calendario-seniat/embed (allow frame-ancestors *).
+//   - X-Frame-Options: DENY (mismo efecto que frame-ancestors 'none',
+//     cobertura extra para browsers viejos que no entienden CSP level 2).
+// Headers globales sin excepciones viven en vercel.json (HSTS, nosniff,
+// Referrer-Policy, Permissions-Policy).
 // ============================================================================
+
+// CSP estricto para la app: permite recursos propios + Supabase (auth/realtime/storage)
+// + BCV proxy + Unsplash para imágenes marketing. `unsafe-inline` en script/style es
+// necesario para Next.js y HeroUI; en el roadmap queda migrar a nonces.
+const DEFAULT_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://va.vercel-scripts.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://vercel.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-monitor-bcv.vercel.app https://vercel.live",
+    "frame-src 'self' https://vercel.live",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "upgrade-insecure-requests",
+].join("; ");
 
 const PUBLIC_PATHS  = ['/', '/sign-in', '/sign-up', '/forgot-password', '/reset-password'];
 const isPublic      = (p: string) => PUBLIC_PATHS.includes(p);
@@ -34,6 +62,11 @@ export async function middleware(request: NextRequest) {
 
     // Crear respuesta que puede propagar cookies (necesario para signOut)
     const response = NextResponse.next({ request });
+
+    // ── Security headers por-request ──────────────────────────────────────
+    // Aplica a todo salvo la ruta de embed que los sobrescribe más abajo.
+    response.headers.set("Content-Security-Policy", DEFAULT_CSP);
+    response.headers.set("X-Frame-Options", "DENY");
 
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,6 +118,12 @@ export async function middleware(request: NextRequest) {
     // ── Marketing pages (ruta pública, accesible con o sin login) ────────
     // Ej: /herramientas/divisas. No redirigir usuarios autenticados.
     if (isMarketing(pathname)) {
+        // Embed route — permite iframe desde cualquier origen.
+        // Sobrescribe el CSP por-request y elimina X-Frame-Options.
+        if (pathname.startsWith("/herramientas/calendario-seniat/embed")) {
+            response.headers.delete("X-Frame-Options");
+            response.headers.set("Content-Security-Policy", "frame-ancestors *;");
+        }
         return response;
     }
 

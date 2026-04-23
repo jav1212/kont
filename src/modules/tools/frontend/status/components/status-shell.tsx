@@ -317,27 +317,27 @@ function PublicFaq() {
             </div>
             <div className="rounded-2xl border border-border-light bg-surface-1 p-2">
                 <BaseAccordion.Root selectionMode="single" defaultExpandedKeys={["metodologia"]}>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "metodologia", title: "¿Cómo se verifica si un portal está operativo?" })}>
+                    <BaseAccordion.Item key="metodologia" {...accordionItemProps({ title: "¿Cómo se verifica si un portal está operativo?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Combinamos dos fuentes: chequeos desde nuestro servidor en la nube y reportes anónimos de visitantes desde Venezuela. Tu navegador envía un ping silencioso al portal mientras lees esta página. Esto permite detectar caídas que desde servidores fuera del país no serían visibles.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "frequency", title: "¿Con qué frecuencia se actualiza?" })}>
+                    <BaseAccordion.Item key="frequency" {...accordionItemProps({ title: "¿Con qué frecuencia se actualiza?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Cada vez que alguien visita esta página. Si hace más de 2 minutos del último check, disparamos uno nuevo automáticamente. Los datos de visitantes se registran al instante.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "colors", title: "¿Qué significan los colores?" })}>
+                    <BaseAccordion.Item key="colors" {...accordionItemProps({ title: "¿Qué significan los colores?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Verde = operacional, ámbar = degradado (lento o con errores 4xx), rojo = caído (timeout, error 5xx, sin respuesta), gris = sin datos para ese día.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "free", title: "¿Es gratis?" })}>
+                    <BaseAccordion.Item key="free" {...accordionItemProps({ title: "¿Es gratis?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Sí, 100% gratis y sin registro. Formamos parte de las herramientas gratuitas de Konta para contadores y empresas venezolanas.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "sources", title: "¿De dónde salen los datos que veo?" })}>
+                    <BaseAccordion.Item key="sources" {...accordionItemProps({ title: "¿De dónde salen los datos que veo?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Las verificaciones combinan chequeos desde nuestro servidor más aportes anónimos de visitantes desde Venezuela. Si ves un portal como caído desde tu conexión, al cargar esta página tu navegador ayuda a confirmarlo automáticamente.
                         </p>

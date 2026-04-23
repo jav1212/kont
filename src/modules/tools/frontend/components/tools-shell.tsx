@@ -324,22 +324,22 @@ function PublicFaq() {
             </div>
             <div className="rounded-2xl border border-border-light bg-surface-1 p-2">
                 <BaseAccordion.Root selectionMode="single" defaultExpandedKeys={["bcv"]}>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "bcv", title: "¿Qué es la tasa BCV?" })}>
+                    <BaseAccordion.Item key="bcv" {...accordionItemProps({ title: "¿Qué es la tasa BCV?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Es la tasa oficial de cambio publicada por el Banco Central de Venezuela. Es la referencia legal para operaciones contables y fiscales en el país.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "frequency", title: "¿Con qué frecuencia se actualiza?" })}>
+                    <BaseAccordion.Item key="frequency" {...accordionItemProps({ title: "¿Con qué frecuencia se actualiza?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             El BCV publica tasas en días hábiles. Esta calculadora sincroniza automáticamente con la última publicación disponible.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "free", title: "¿Es gratuita?" })}>
+                    <BaseAccordion.Item key="free" {...accordionItemProps({ title: "¿Es gratuita?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Sí. La calculadora de divisas BCV es 100% gratis y no requiere registro.
                         </p>
                     </BaseAccordion.Item>
-                    <BaseAccordion.Item {...accordionItemProps({ key: "currencies", title: "¿Qué monedas están disponibles?" })}>
+                    <BaseAccordion.Item key="currencies" {...accordionItemProps({ title: "¿Qué monedas están disponibles?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
                             Las que publica el BCV: USD, EUR, CNY, GBP, JPY, CAD, MXN, BRL, AED, TRY y RUB, entre otras.
                         </p>

@@ -60,7 +60,18 @@
       "Bash(grep -E \"\\\\.tsx?$\")",
       "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" src/shared/frontend/components/app-sidebar.tsx src/shared/frontend/components/sidebar-module-list.tsx src/shared/frontend/components/sidebar-subnav.tsx src/shared/frontend/components/sidebar-footer-row.tsx src/shared/frontend/components/sidebar-account-card.tsx src/shared/frontend/components/sidebar-workspace-card.tsx src/shared/frontend/components/sidebar-identity-panel.tsx src/shared/frontend/components/pwa-install-button.tsx src/shared/frontend/components/mobile-topbar.tsx src/modules/memberships/frontend/components/tenant-switcher.tsx)",
       "Bash(git checkout *)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "Bash(vercel --version)",
+      "Bash(pnpm dlx *)",
+      "mcp__claude_ai_Vercel__get_project",
+      "PowerShell(Resolve-DnsName *)",
+      "mcp__resend__list-domains",
+      "mcp__resend__list-api-keys",
+      "Bash(git status *)"
     ]
   },
   "enableAllProjectMcpServers": true,
