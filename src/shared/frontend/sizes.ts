@@ -15,6 +15,21 @@
  * Button sizes match a standard 3-step scale that keeps touch targets generous:
  *   sm → h-8  (32 px),  md → h-9  (36 px),  lg → h-10 (40 px)
  *
+ * TYPOGRAPHY POLICY (mono vs sans)
+ * ─────────────────────────────────
+ * The app's visual identity is monospace-first (Geist Mono on body). Keep that for:
+ *   - Tables (numbers, IDs, dates)
+ *   - Inputs (values, placeholders over numeric fields)
+ *   - Labels and chrome-like uppercase text
+ *   - Badges, pagination, button text (tracking + uppercase = mono aesthetic)
+ * Use Darker Grotesque (`font-sans`) for PROSE that benefits from proportional spacing:
+ *   - Helper / error messages ("La cédula debe tener 10 dígitos")
+ *   - Empty-state descriptions
+ *   - Long-form placeholders in free-text fields
+ *   - Tooltips with explanatory copy
+ *   - Marketing / onboarding body text
+ * Tokens below that embed `font-sans` or `font-mono` encode this policy.
+ *
  * HOW TO USE
  * ──────────
  * Import and interpolate into your className strings:
@@ -56,8 +71,8 @@ export const APP_SIZES = {
         /** Placeholder text inside inputs — mirrors input size */
         placeholder: "text-[15px]",
 
-        /** Helper text and inline validation error messages */
-        helper: "text-[12px]",
+        /** Helper text and inline validation error messages (prose → sans) */
+        helper: "text-[12px] font-sans",
 
         /** Badge / chip content (status indicators, filter chips) */
         badge: "text-[11px] tracking-wide",

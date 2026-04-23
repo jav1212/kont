@@ -41,7 +41,7 @@ export default heroui({
                     200:     "#8C2208",
                     300:     "#B22C0B",
                     400:     "#D93A10",
-                    500:     "#FF4A18",   // 5.89:1 on dark surface — excellent
+                    500:     "#FF4A18",   // 4.62:1 on surface-1 dark (AA, narrow margin). 3.43:1 on surface-2 — avoid as text on surface-2/3.
                     600:     "#FF7450",
                     700:     "#FFA085",
                     800:     "#FFC9B5",
