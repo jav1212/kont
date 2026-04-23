@@ -79,7 +79,7 @@ export async function sendConfirmationEmail({
 </html>`;
 
     await resend.emails.send({
-        from:    process.env.RESEND_FROM_EMAIL ?? "kont <onboarding@resend.dev>",
+        from:    process.env.RESEND_FROM_EMAIL ?? "konta <no-reply@kontave.com>",
         to,
         subject: "Confirma tu correo en kont",
         html,

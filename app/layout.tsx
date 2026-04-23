@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Darker_Grotesque, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./provider";
+import { Toaster } from "sonner";
 
 const darkerGrotesque = Darker_Grotesque({
   variable: "--font-darker-grotesque",
@@ -27,9 +28,30 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Konta",
-  description: "Sistema de gestión empresarial — Venezuela",
+  metadataBase: new URL("https://kontave.com"),
+  title: {
+    default:  "Konta — Nómina, Inventario y Contabilidad para Venezuela",
+    template: "%s | Konta",
+  },
+  description: "Plataforma SaaS para contadores y empresas en Venezuela: nómina quincenal, inventario con kardex, contabilidad, calendario SENIAT y más.",
+  applicationName: "Konta",
+  keywords: [
+    "nómina Venezuela",
+    "software contable Venezuela",
+    "calendario SENIAT",
+    "inventario kardex",
+    "prestaciones sociales",
+    "LOTTT",
+    "contribuyentes especiales",
+    "SaaS contable",
+  ],
+  authors: [{ name: "Konta" }],
+  creator: "Konta",
+  publisher: "Konta",
   manifest: "/manifest.json",
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
@@ -45,15 +67,33 @@ export const metadata: Metadata = {
     title: "Konta",
   },
   openGraph: {
-    title: "Konta",
-    description: "Sistema de gestión empresarial — Venezuela",
-    type: "website",
-    locale: "es_VE",
+    title:       "Konta — Nómina, Inventario y Contabilidad para Venezuela",
+    description: "Plataforma SaaS para contadores y empresas en Venezuela: nómina quincenal, inventario con kardex, contabilidad y calendario SENIAT.",
+    url:         "https://kontave.com",
+    siteName:    "Konta",
+    type:        "website",
+    locale:      "es_VE",
+  },
+  twitter: {
+    card:        "summary_large_image",
+    title:       "Konta — Nómina, Inventario y Contabilidad para Venezuela",
+    description: "Plataforma SaaS para contadores y empresas en Venezuela.",
+  },
+  robots: {
+    index:  true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet":       -1,
+      "max-video-preview": -1,
+    },
   },
   formatDetection: {
     telephone: false,
-    email: false,
-    address: false,
+    email:     false,
+    address:   false,
   },
 };
 
@@ -78,6 +118,18 @@ export default function RootLayout({
       <body className={`${darkerGrotesque.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: "var(--surface-1)",
+                border: "1px solid var(--border-light)",
+                color: "var(--text-primary)",
+                fontFamily: "var(--font-geist-mono)",
+                fontSize: "13px",
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>

@@ -92,7 +92,7 @@ export async function sendInviteEmail({
 </html>`;
 
     await resend.emails.send({
-        from:    process.env.RESEND_FROM_EMAIL ?? "konta <onboarding@resend.dev>",
+        from:    process.env.RESEND_FROM_EMAIL ?? "konta <no-reply@kontave.com>",
         to,
         subject: `Invitación a konta — ${tenantName}`,
         html,
