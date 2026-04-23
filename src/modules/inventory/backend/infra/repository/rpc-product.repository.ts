@@ -2,7 +2,7 @@
 // Role: infrastructure — implements IProductRepository via Postgres RPC.
 // Invariant: all DB RPC function names are unchanged (DB contract).
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IProductRepository } from '../../domain/repository/product.repository';
+import { IProductRepository, DeleteProductOutcome } from '../../domain/repository/product.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
 import { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from '../../domain/product';
@@ -78,15 +78,16 @@ export class RpcProductRepository implements IProductRepository {
         }
     }
 
-    async delete(id: string): Promise<Result<void>> {
+    async delete(id: string): Promise<Result<DeleteProductOutcome>> {
         try {
-            const { error } = await this.source.instance
+            const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_productos_delete', {
                     p_user_id: this.userId,
                     p_id:      id,
                 });
             if (error) return Result.fail(error.message);
-            return Result.success();
+            const softDeleted = Boolean((data as { soft_deleted?: boolean } | null)?.soft_deleted);
+            return Result.success({ softDeleted });
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Failed to delete product');
         }

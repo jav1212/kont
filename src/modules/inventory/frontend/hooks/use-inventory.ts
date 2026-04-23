@@ -98,17 +98,24 @@ export function useInventory() {
         }
     }, []);
 
-    const deleteProduct = useCallback(async (id: string): Promise<boolean> => {
+    const deleteProduct = useCallback(async (id: string): Promise<{ ok: boolean; softDeleted?: boolean }> => {
         setError(null);
         try {
             const res = await apiFetch(`/api/inventory/products/${id}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar producto'); return false; }
-            setProducts((prev) => prev.filter((p) => p.id !== id));
-            return true;
+            if (!res.ok) { setError(json.error ?? 'Error al eliminar producto'); return { ok: false }; }
+            const softDeleted = Boolean(json.data?.softDeleted);
+            if (softDeleted) {
+                setProducts((prev) =>
+                    prev.map((p) => (p.id === id ? { ...p, active: false } : p))
+                );
+            } else {
+                setProducts((prev) => prev.filter((p) => p.id !== id));
+            }
+            return { ok: true, softDeleted };
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
-            return false;
+            return { ok: false };
         }
     }, []);
 

@@ -116,6 +116,7 @@ export default function ProductosPage() {
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [bulkDeleting, setBulkDeleting] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
 
     useEffect(() => {
         if (companyId) {
@@ -152,19 +153,29 @@ export default function ProductosPage() {
 
     async function handleDelete(id: string) {
         setDeletingId(id);
-        await deleteProduct(id);
+        setNotice(null);
+        const result = await deleteProduct(id);
         setDeletingId(null);
         setConfirmDelete(null);
+        if (result.ok && result.softDeleted) {
+            setNotice("El producto tiene historial (movimientos, facturas o producción) y no puede eliminarse. Se marcó como inactivo.");
+        }
     }
 
     async function handleBulkDelete() {
         setBulkDeleting(true);
+        setNotice(null);
+        let softCount = 0;
         for (const id of selected) {
-            await deleteProduct(id);
+            const r = await deleteProduct(id);
+            if (r.ok && r.softDeleted) softCount++;
         }
         setBulkDeleting(false);
         setSelected(new Set());
         setConfirmBulkDelete(false);
+        if (softCount > 0) {
+            setNotice(`${softCount} producto(s) con historial fueron marcados como inactivos en lugar de eliminados.`);
+        }
     }
 
     const set = (k: keyof Product, v: string | number | boolean | null) =>
@@ -277,6 +288,20 @@ export default function ProductosPage() {
                 {error && (
                     <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
                         {error}
+                    </div>
+                )}
+
+                {/* Notice (soft-delete, etc.) */}
+                {notice && (
+                    <div className="px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.05] text-amber-600 text-[13px] flex items-start gap-3">
+                        <span className="flex-1">{notice}</span>
+                        <button
+                            type="button"
+                            onClick={() => setNotice(null)}
+                            className="text-[11px] uppercase tracking-[0.12em] text-amber-600/70 hover:text-amber-600 transition-colors"
+                        >
+                            Cerrar
+                        </button>
                     </div>
                 )}
 

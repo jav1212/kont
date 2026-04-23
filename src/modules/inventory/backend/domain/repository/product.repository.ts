@@ -3,8 +3,12 @@
 import { Result } from '@/src/core/domain/result';
 import { Product } from '../product';
 
+export interface DeleteProductOutcome {
+  softDeleted: boolean;
+}
+
 export interface IProductRepository {
   findByCompany(companyId: string): Promise<Result<Product[]>>;
   upsert(product: Product): Promise<Result<Product>>;
-  delete(id: string): Promise<Result<void>>;
+  delete(id: string): Promise<Result<DeleteProductOutcome>>;
 }
