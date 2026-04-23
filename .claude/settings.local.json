@@ -54,7 +54,13 @@
       "Bash(xargs grep *)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(grep -E \"\\\\.\\(png|jpg|jpeg|gif|svg\\)$\")",
-      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -30 {}')"
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -30 {}')",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -30 \"{}\"')",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -50 \"{}\"')",
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" src/shared/frontend/components/app-sidebar.tsx src/shared/frontend/components/sidebar-module-list.tsx src/shared/frontend/components/sidebar-subnav.tsx src/shared/frontend/components/sidebar-footer-row.tsx src/shared/frontend/components/sidebar-account-card.tsx src/shared/frontend/components/sidebar-workspace-card.tsx src/shared/frontend/components/sidebar-identity-panel.tsx src/shared/frontend/components/pwa-install-button.tsx src/shared/frontend/components/mobile-topbar.tsx src/modules/memberships/frontend/components/tenant-switcher.tsx)",
+      "Bash(git checkout *)",
+      "Bash(git reset *)"
     ]
   },
   "enableAllProjectMcpServers": true,
