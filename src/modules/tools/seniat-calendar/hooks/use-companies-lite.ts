@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import type { Company } from "@/src/modules/companies/backend/domain/company";
+import type { Company, TaxpayerType } from "@/src/modules/companies/backend/domain/company";
+import { validateRif } from "../utils/rif";
 
 export interface CompanyLite {
     id: string;
     name: string;
     rif?: string;
+    taxpayerType: TaxpayerType;
     disabled: boolean;
     disabledReason?: string;
 }
@@ -88,13 +90,18 @@ export function useCompaniesLite(): State {
         fetchCompanies(user.id)
             .then((raw) => {
                 if (!isMounted.current) return;
-                const lite: CompanyLite[] = raw.map((c) => ({
-                    id: c.id,
-                    name: c.name,
-                    rif: c.rif,
-                    disabled: !c.rif,
-                    disabledReason: !c.rif ? "Agrega un RIF en Configuración" : undefined,
-                }));
+                const lite: CompanyLite[] = raw.map((c) => {
+                    // Legacy companies store the RIF as the id instead of in the rif column
+                    const effectiveRif = c.rif ?? (validateRif(c.id) ? c.id : undefined);
+                    return {
+                        id: c.id,
+                        name: c.name,
+                        rif: effectiveRif,
+                        taxpayerType: c.taxpayerType ?? "ordinario",
+                        disabled: !effectiveRif,
+                        disabledReason: !effectiveRif ? "Agrega un RIF en Configuración" : undefined,
+                    };
+                });
                 setCompanies(lite);
                 setLoading(false);
                 setError(null);

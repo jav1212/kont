@@ -61,9 +61,10 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
             const first = companies.find((c) => c.rif && !c.disabled);
             if (first?.rif) {
                 setRif(first.rif);
+                setTaxpayerType(first.taxpayerType);
             }
         }
-    }, [companies, rif, setRif]);
+    }, [companies, rif, setRif, setTaxpayerType]);
 
     const isEmbed = variant === "embed";
     const isAuthed = variant === "authed";
@@ -126,7 +127,10 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                                             selectedId={companies.find((c) => c.rif === rif)?.id ?? null}
                                             onSelect={(id) => {
                                                 const company = companies.find((c) => c.id === id);
-                                                if (company?.rif) setRif(company.rif);
+                                                if (company?.rif) {
+                                                    setRif(company.rif);
+                                                    setTaxpayerType(company.taxpayerType);
+                                                }
                                             }}
                                         />
                                     )}
