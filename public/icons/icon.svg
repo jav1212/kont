@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Konta">
-  <title>Konta</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kontave">
+  <title>Kontave</title>
   <!-- App icon background — dark, matches sidebar -->
   <rect width="512" height="512" rx="88" fill="#0B0C14"/>
   <!-- K letter — white, bold sans-serif, fills the space -->
@@ -12,6 +12,6 @@
     fill="white"
     letter-spacing="-8"
   >K</text>
-  <!-- Orange dot (#FF4A18) — the Konta brand accent -->
+  <!-- Orange dot (#FF4A18) — the Kontave brand accent -->
   <circle cx="408" cy="416" r="56" fill="#FF4A18"/>
 </svg>

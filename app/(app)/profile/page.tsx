@@ -247,7 +247,7 @@ export default function ProfilePage() {
 
                         <div className="px-5 py-3 border-t border-border-light bg-surface-2">
                             <p className="font-sans text-[12px] text-foreground/50 leading-snug">
-                                Tu perfil es privado y solo visible para ti en Konta.
+                                Tu perfil es privado y solo visible para ti en Kontave.
                             </p>
                         </div>
                     </section>

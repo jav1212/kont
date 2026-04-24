@@ -55,7 +55,7 @@ export function MarketingFooter() {
     return (
         <footer className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3 px-8 py-6 border-t border-foreground/[0.07] mt-auto">
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                © {new Date().getFullYear()} Konta · Hecho en Venezuela
+                © {new Date().getFullYear()} Kontave · Hecho en Venezuela
             </span>
             <div className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)]">
                 <Link href="/herramientas/divisas" className="hover:text-foreground transition-colors">Divisas</Link>

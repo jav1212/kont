@@ -1,7 +1,7 @@
 {
-  "name": "Konta",
-  "short_name": "Konta",
-  "description": "Sistema de gestión empresarial — Venezuela",
+  "name": "Kontave",
+  "short_name": "Kontave",
+  "description": "Software contable para Venezuela",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

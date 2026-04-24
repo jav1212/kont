@@ -50,7 +50,7 @@ export function PublicFooter() {
     return (
         <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
-                © {new Date().getFullYear()} Konta
+                © {new Date().getFullYear()} Kontave
             </span>
         </footer>
     );

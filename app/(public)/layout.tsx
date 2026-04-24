@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
 import { PublicHeader, PublicFooter } from "./_components/public-navigation";
 
-export const metadata: Metadata = {
-    title:       "Konta · Acceso",
-    description: "Sistema de gestión contable — Venezuela",
-};
+// NOTA: este layout NO define metadata para no sobrescribir el del root
+// (app/layout.tsx). El home (/) usa la metadata raíz para máximo brand SEO
+// de "Kontave". Cada página de auth define su propio title si lo necesita.
+
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
     return (

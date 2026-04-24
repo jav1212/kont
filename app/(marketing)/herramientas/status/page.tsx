@@ -8,7 +8,7 @@ const VALID_FILTERS: readonly StatusFilter[] = ["operational", "degraded", "down
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-    title: "Estatus de SENIAT, IVSS, INCES y otros portales venezolanos | Konta",
+    title: "Estatus de SENIAT, IVSS, INCES y otros portales venezolanos | Kontave",
     description:
         "Disponibilidad en tiempo real de SENIAT, IVSS, INCES, BANAVIH, MinTra, SAREN, SUDEBAN y BCV. Verifica si el portal está caído antes de declarar. Gratis, sin registro.",
     keywords: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
         locale: "es_VE",
         title: "Estatus de portales gubernamentales venezolanos",
         description: "¿SENIAT está caído? Disponibilidad en tiempo real de los portales más usados por contadores en Venezuela.",
-        siteName: "Konta",
+        siteName: "Kontave",
     },
     twitter: {
         card: "summary_large_image",
@@ -162,9 +162,9 @@ export default async function Page({ searchParams }: PageProps) {
             {
                 "@type": "BreadcrumbList",
                 itemListElement: [
-                    { "@type": "ListItem", position: 1, name: "Konta", item: "/" },
-                    { "@type": "ListItem", position: 2, name: "Herramientas", item: "/herramientas" },
-                    { "@type": "ListItem", position: 3, name: "Estatus", item: "/herramientas/status" },
+                    { "@type": "ListItem", position: 1, name: "Kontave", item: "https://kontave.com/" },
+                    { "@type": "ListItem", position: 2, name: "Herramientas", item: "https://kontave.com/herramientas" },
+                    { "@type": "ListItem", position: 3, name: "Estatus", item: "https://kontave.com/herramientas/status" },
                 ],
             },
             {

@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 
 // ── LogoFull ──────────────────────────────────────────────────────────────────
-// Renders the full "konta." wordmark using HTML + Tailwind only.
+// Renders the full "kontave." wordmark using HTML + Tailwind only.
 //
 // Props:
 //   size      — font-size in pixels (default 20). Controls the rendered size
@@ -17,7 +17,7 @@ export function LogoFull({ size = 30, className, style, ...rest }: LogoFullProps
     return (
         <span
             role="img"
-            aria-label="Konta"
+            aria-label="Kontave"
             className={[
                 "inline-flex items-end leading-none select-none",
                 "font-sans font-black tracking-[-0.03em]",
@@ -29,7 +29,7 @@ export function LogoFull({ size = 30, className, style, ...rest }: LogoFullProps
             {...rest}
         >
             {/* Wordmark — inherits currentColor from className (e.g. text-foreground) */}
-            <span>konta</span>
+            <span>kontave</span>
             {/* Orange dot — brand accent, hardcoded #FF4A18 intentionally.
                 The Tailwind token text-primary-500 resolves to #D93A10 (WCAG-safe
                 dark orange) in light mode — not the raw brand orange. */}
@@ -50,7 +50,7 @@ export function LogoMark({ size = 30, className, style, ...rest }: LogoMarkProps
     return (
         <span
             role="img"
-            aria-label="Konta"
+            aria-label="Kontave"
             className={[
                 "inline-flex items-end leading-none select-none",
                 "font-sans font-black tracking-[-0.03em]",

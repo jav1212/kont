@@ -150,11 +150,11 @@ export default function LandingPage() {
                     </div>
                     
                     <h1 className="text-[32px] sm:text-[56px] lg:text-[64px] font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-foreground mb-6">
-                        Transparencia y Precisión <span className="text-primary-500 block sm:inline">Konta Suite</span>
+                        Transparencia y Precisión <span className="text-primary-500 block sm:inline">Kontave</span>
                     </h1>
                     
                     <p className="text-[16px] sm:text-[18px] text-text-tertiary leading-relaxed mb-8 sm:mb-10 max-w-lg">
-                        Konta Suite es una solución contable de nueva generación que unifica y acelera tú negocio en Venezuela. Nómina y cálculos en tiempo real.
+                        Kontave es una solución contable de nueva generación que unifica y acelera tu negocio en Venezuela: contabilidad, nómina, inventario y documentos en una sola plataforma.
                     </p>
                     
                     <div className="flex flex-col sm:flex-row items-center gap-6 w-full sm:w-auto">
@@ -201,7 +201,7 @@ export default function LandingPage() {
                     <div className="relative aspect-square w-full rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] md:shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden border border-border-light group">
                         <Image 
                             src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" 
-                            alt="Sistema Contable Konta" 
+                            alt="Sistema Contable Kontave"
                             fill
                             sizes="(min-width: 1024px) 40vw, 100vw"
                             className="object-cover transition-transform duration-700 group-hover:scale-105"
@@ -221,6 +221,74 @@ export default function LandingPage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            {/* 1b. FREE TOOLS SECTION — internal linking + brand topical authority */}
+            <section className="max-w-7xl mx-auto w-full px-6 py-16 md:py-20">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
+                    <div>
+                        <span className="inline-block font-mono text-[11px] uppercase tracking-[0.2em] text-primary-500 mb-3">
+                            Gratis · Sin registro
+                        </span>
+                        <h2 className="text-[26px] md:text-[38px] font-bold text-foreground leading-[1.1] max-w-2xl">
+                            Herramientas gratuitas de <span className="text-primary-500">Kontave</span>
+                        </h2>
+                        <p className="text-[15px] text-text-tertiary leading-relaxed mt-3 max-w-xl">
+                            Diseñadas para facilitar el día a día de contadores y empresas en Venezuela.
+                            Úsalas sin crear cuenta.
+                        </p>
+                    </div>
+                    <Link
+                        href="/herramientas"
+                        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap"
+                    >
+                        Ver todas las herramientas →
+                    </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    <Link
+                        href="/herramientas/divisas"
+                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
+                    >
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Tasa oficial BCV</span>
+                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Calculadora de Divisas BCV</h3>
+                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
+                            Convierte Bolívares a USD, EUR, CNY y más con la tasa oficial del BCV. Histórico y conversión cruzada.
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
+                            Abrir calculadora →
+                        </span>
+                    </Link>
+
+                    <Link
+                        href="/herramientas/calendario-seniat"
+                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
+                    >
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Personalizado por RIF</span>
+                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Calendario Tributario SENIAT 2026</h3>
+                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
+                            Consulta fechas de IVA, ISLR e IGTF según el último dígito de tu RIF. Contribuyentes Ordinarios y Especiales.
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
+                            Ver calendario →
+                        </span>
+                    </Link>
+
+                    <Link
+                        href="/herramientas/status"
+                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
+                    >
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Tiempo real</span>
+                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Estatus de Portales Venezolanos</h3>
+                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
+                            ¿SENIAT, IVSS o INCES caído? Verifica la disponibilidad en tiempo real antes de declarar.
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
+                            Ver estatus →
+                        </span>
+                    </Link>
                 </div>
             </section>
 
@@ -292,7 +360,7 @@ export default function LandingPage() {
                             </div>
                             <div>
                                 <h3 className="text-[20px] font-bold text-foreground mb-2">Flexibilidad de uso</h3>
-                                <p className="text-[16px] text-text-tertiary leading-relaxed">Puedes utilizar Konta según tu capacidad. Accede de inmediato a los módulos contables adaptables a cualquier dispositivo.</p>
+                                <p className="text-[16px] text-text-tertiary leading-relaxed">Puedes utilizar Kontave según tu capacidad. Accede de inmediato a los módulos contables adaptables a cualquier dispositivo.</p>
                             </div>
                         </div>
                     </div>
@@ -323,7 +391,7 @@ export default function LandingPage() {
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
-                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta HR</span>
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Kontave HR</span>
                                 <h3 className="text-[22px] font-bold text-foreground mb-4">Programa Inteligente de Nómina</h3>
                                 <p className="text-[15px] text-text-tertiary leading-relaxed">
                                     Automatiza el cálculo de utilidades, liquidaciones y recibos, blindando a tu empresa contra riesgos legales bajo las nuevas directrices.
@@ -338,7 +406,7 @@ export default function LandingPage() {
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
-                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta Inventories</span>
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Kontave Inventories</span>
                                 <h3 className="text-[22px] font-bold text-foreground mb-4">Módulo General de Inventarios</h3>
                                 <p className="text-[15px] text-text-tertiary leading-relaxed">
                                     Control de existencia basado en lotes. Define el coste en USD con total visibilidad en las conversiones funcionales del momento.
@@ -353,7 +421,7 @@ export default function LandingPage() {
                                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-500" />
                             </div>
                             <div className="p-8">
-                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Konta Docs</span>
+                                <span className="text-primary-500 font-bold text-[11px] tracking-wider uppercase mb-2 block">Kontave Docs</span>
                                 <h3 className="text-[22px] font-bold text-foreground mb-4">Archivo y Organización Global</h3>
                                 <p className="text-[15px] text-text-tertiary leading-relaxed">
                                     Lleva toda tu organización en la nube. Visualiza instantáneamente los soportes contables, facturas y registros para mantener todo legal.
@@ -439,7 +507,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
                         <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">Planes Modernos</span>
-                        <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Negocios Que Descubren Su Poder Con Konta</h2>
+                        <h2 className="text-[28px] md:text-[44px] font-bold text-foreground leading-[1.1] mb-6">Negocios Que Descubren Su Poder Con Kontave</h2>
                         <p className="text-[16px] md:text-[18px] text-text-tertiary leading-relaxed">Una cuenta para gestionar todo desde tu navegador preferido. Comienza con nuestro paquete base o expande las transacciones a nivel gerencial.</p>
                     </div>
 
@@ -624,7 +692,7 @@ export default function LandingPage() {
                          <div className="w-full h-full rounded-[40px] border border-border-light relative overflow-hidden flex flex-col items-center justify-end shadow-lg">
                              <Image 
                                 src="https://images.unsplash.com/photo-1590650516494-0c8e4a4dd67e?auto=format&fit=crop&w=600&q=80" 
-                                alt="Soporte Konta" 
+                                alt="Soporte Kontave"
                                 fill
                                 sizes="(min-width: 1024px) 40vw, 100vw"
                                 className="object-cover absolute inset-0 transition-transform duration-[1500ms] group-hover:scale-105"

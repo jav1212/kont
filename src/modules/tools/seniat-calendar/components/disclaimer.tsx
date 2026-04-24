@@ -18,7 +18,7 @@ export function Disclaimer() {
                 >
                     www.seniat.gob.ve
                 </a>
-                . Konta no asume responsabilidad por incumplimientos derivados del uso de esta
+                . Kontave no asume responsabilidad por incumplimientos derivados del uso de esta
                 herramienta. Consulte a su asesor fiscal antes de tomar decisiones basadas en esta
                 información.
             </p>

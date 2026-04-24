@@ -63,7 +63,7 @@ function AcceptInviteVisual() {
                     </div>
                     <div className="text-center px-8 max-w-sm">
                         <h2 className="text-white text-[26px] font-black leading-tight mb-3">Trabajo en <span className="text-white/70">Equipo</span></h2>
-                        <p className="text-white/60 text-[13px] leading-relaxed">Únete a tu organización en Konta y colabora en tiempo real con todos tus colegas de forma segura.</p>
+                        <p className="text-white/60 text-[13px] leading-relaxed">Únete a tu organización en Kontave y colabora en tiempo real con todos tus colegas de forma segura.</p>
                     </div>
                 </div>
             </div>
@@ -157,7 +157,7 @@ function AcceptInviteInner() {
                     <div className="w-14 h-14 rounded-2xl bg-primary-500 flex items-center justify-center mb-6 shadow-lg shadow-primary-500/30">
                         <LogoMark size={24} className="text-white" />
                     </div>
-                    <h1 className="text-[26px] font-bold text-foreground mb-3">Únete a Konta</h1>
+                    <h1 className="text-[26px] font-bold text-foreground mb-3">Únete a Kontave</h1>
                     <p className="text-[14px] text-text-tertiary leading-relaxed mb-10 max-w-[300px]">
                         Se ha solicitado tu colaboración. Crea tu cuenta o inicia sesión para aceptar la invitación al equipo.
                     </p>

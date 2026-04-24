@@ -30,24 +30,28 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://kontave.com"),
   title: {
-    default:  "Konta — Nómina, Inventario y Contabilidad para Venezuela",
-    template: "%s | Konta",
+    default:  "Kontave — Software contable para Venezuela",
+    template: "%s | Kontave",
   },
-  description: "Plataforma SaaS para contadores y empresas en Venezuela: nómina quincenal, inventario con kardex, contabilidad, calendario SENIAT y más.",
-  applicationName: "Konta",
+  description: "Kontave es el software contable todo-en-uno para contadores y empresas en Venezuela: contabilidad, nómina quincenal, inventario con kardex, calendario SENIAT y herramientas gratuitas.",
+  applicationName: "Kontave",
   keywords: [
-    "nómina Venezuela",
+    "Kontave",
+    "kontave.com",
     "software contable Venezuela",
+    "sistema contable Venezuela",
+    "nómina Venezuela",
     "calendario SENIAT",
+    "calculadora divisas BCV",
+    "estatus SENIAT",
     "inventario kardex",
-    "prestaciones sociales",
-    "LOTTT",
+    "prestaciones sociales LOTTT",
     "contribuyentes especiales",
-    "SaaS contable",
+    "SaaS contable Venezuela",
   ],
-  authors: [{ name: "Konta" }],
-  creator: "Konta",
-  publisher: "Konta",
+  authors: [{ name: "Kontave" }],
+  creator: "Kontave",
+  publisher: "Kontave",
   manifest: "/manifest.json",
   alternates: {
     canonical: "/",
@@ -64,20 +68,20 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Konta",
+    title: "Kontave",
   },
   openGraph: {
-    title:       "Konta — Nómina, Inventario y Contabilidad para Venezuela",
-    description: "Plataforma SaaS para contadores y empresas en Venezuela: nómina quincenal, inventario con kardex, contabilidad y calendario SENIAT.",
+    title:       "Kontave — Software contable para Venezuela",
+    description: "Software contable todo-en-uno para Venezuela: contabilidad, nómina quincenal, inventario, calendario SENIAT y herramientas gratuitas para contadores.",
     url:         "https://kontave.com",
-    siteName:    "Konta",
+    siteName:    "Kontave",
     type:        "website",
     locale:      "es_VE",
   },
   twitter: {
     card:        "summary_large_image",
-    title:       "Konta — Nómina, Inventario y Contabilidad para Venezuela",
-    description: "Plataforma SaaS para contadores y empresas en Venezuela.",
+    title:       "Kontave — Software contable para Venezuela",
+    description: "Software contable todo-en-uno para Venezuela: contabilidad, nómina, inventario, calendario SENIAT y más.",
   },
   robots: {
     index:  true,
@@ -97,6 +101,61 @@ export const metadata: Metadata = {
   },
 };
 
+const brandJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://kontave.com/#organization",
+      name: "Kontave",
+      alternateName: ["Kontave.", "Konta", "Kontave Venezuela"],
+      url: "https://kontave.com",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://kontave.com/icon-512.png",
+        width: 512,
+        height: 512,
+      },
+      description:
+        "Software contable todo-en-uno para contadores y empresas en Venezuela: contabilidad, nómina, inventario, calendario SENIAT y herramientas gratuitas.",
+      areaServed: {
+        "@type": "Country",
+        name: "Venezuela",
+      },
+      knowsLanguage: "es-VE",
+      sameAs: [
+        // Agregar aquí las redes sociales cuando estén creadas:
+        // "https://www.linkedin.com/company/kontave",
+        // "https://twitter.com/kontave",
+        // "https://www.instagram.com/kontave",
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://kontave.com/#website",
+      url: "https://kontave.com",
+      name: "Kontave",
+      description: "Software contable para Venezuela",
+      publisher: { "@id": "https://kontave.com/#organization" },
+      inLanguage: "es-VE",
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://kontave.com/#software",
+      name: "Kontave",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "AccountingSoftware",
+      operatingSystem: "Web",
+      url: "https://kontave.com",
+      publisher: { "@id": "https://kontave.com/#organization" },
+      description:
+        "Software contable todo-en-uno para Venezuela con módulos de contabilidad, nómina, inventario y documentos, más herramientas gratuitas (divisas BCV, calendario SENIAT, estatus de portales).",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      inLanguage: "es-VE",
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -105,6 +164,11 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
+        {/* Brand entity (Organization + WebSite + SoftwareApplication) for Google knowledge graph */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(brandJsonLd) }}
+        />
         {/* Anti-flash: apply theme class before paint */}
         <script dangerouslySetInnerHTML={{
           __html: `

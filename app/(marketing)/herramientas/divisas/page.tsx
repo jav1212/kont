@@ -6,7 +6,7 @@ import { formatRate } from "@/src/modules/tools/frontend/utils/format-number";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: "Calculadora de Divisas BCV | Tasa Oficial USD, EUR, CNY | Konta",
+    title: "Calculadora de Divisas BCV | Tasa Oficial USD, EUR, CNY | Kontave",
     description:
         "Convierte Bolívares a USD, EUR, CNY, GBP, JPY y más con la tasa oficial del BCV actualizada diariamente. Histórico de 30 días, conversión cruzada y tabla de equivalencias en tiempo real. Gratis.",
     keywords: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         locale: "es_VE",
         title: "Calculadora de Divisas BCV en tiempo real",
         description: "Tasa oficial BCV para 10+ monedas. Actualizada diariamente. Gratis, sin registro.",
-        siteName: "Konta",
+        siteName: "Kontave",
     },
     twitter: {
         card: "summary_large_image",
@@ -70,9 +70,9 @@ export default async function Page() {
             {
                 "@type": "BreadcrumbList",
                 itemListElement: [
-                    { "@type": "ListItem", position: 1, name: "Konta", item: "/" },
-                    { "@type": "ListItem", position: 2, name: "Herramientas", item: "/herramientas" },
-                    { "@type": "ListItem", position: 3, name: "Calculadora de Divisas", item: "/herramientas/divisas" },
+                    { "@type": "ListItem", position: 1, name: "Kontave", item: "https://kontave.com/" },
+                    { "@type": "ListItem", position: 2, name: "Herramientas", item: "https://kontave.com/herramientas" },
+                    { "@type": "ListItem", position: 3, name: "Calculadora de Divisas", item: "https://kontave.com/herramientas/divisas" },
                 ],
             },
             {

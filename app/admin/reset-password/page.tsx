@@ -91,8 +91,8 @@ export default function AdminResetPasswordPage() {
 
                 {/* Logo */}
                 <div className="flex flex-col gap-1 mb-10">
-                    <div className="flex items-end leading-none gap-0" aria-label="Konta">
-                        <span className="font-sans font-black text-[20px] leading-none tracking-[-0.03em] text-foreground">Konta</span>
+                    <div className="flex items-end leading-none gap-0" aria-label="Kontave">
+                        <span className="font-sans font-black text-[20px] leading-none tracking-[-0.03em] text-foreground">Kontave</span>
                         <span className="font-black text-[20px] leading-none" style={{ color: '#FF4A18' }}>.</span>
                     </div>
                     <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-red-500/70">Administración</span>

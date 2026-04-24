@@ -16,16 +16,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         .eq("slug", slug)
         .maybeSingle();
 
-    if (!service) return { title: "Servicio no encontrado | Konta" };
+    if (!service) return { title: "Servicio no encontrado | Kontave" };
 
-    const title = `Estatus de ${service.name} | Konta`;
+    const title = `Estatus de ${service.name} | Kontave`;
     const description = service.description ?? `Disponibilidad y latencia de ${service.name} en tiempo real.`;
 
     return {
         title,
         description,
         alternates: { canonical: `/herramientas/status/${slug}` },
-        openGraph: { title, description, type: "website", locale: "es_VE", siteName: "Konta" },
+        openGraph: { title, description, type: "website", locale: "es_VE", siteName: "Kontave" },
         robots: { index: true, follow: true },
     };
 }

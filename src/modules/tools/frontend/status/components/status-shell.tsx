@@ -334,7 +334,7 @@ function PublicFaq() {
                     </BaseAccordion.Item>
                     <BaseAccordion.Item key="free" {...accordionItemProps({ title: "¿Es gratis?" })}>
                         <p className="text-[13px] text-foreground/70 leading-relaxed font-mono">
-                            Sí, 100% gratis y sin registro. Formamos parte de las herramientas gratuitas de Konta para contadores y empresas venezolanas.
+                            Sí, 100% gratis y sin registro. Formamos parte de las herramientas gratuitas de Kontave para contadores y empresas venezolanas.
                         </p>
                     </BaseAccordion.Item>
                     <BaseAccordion.Item key="sources" {...accordionItemProps({ title: "¿De dónde salen los datos que veo?" })}>

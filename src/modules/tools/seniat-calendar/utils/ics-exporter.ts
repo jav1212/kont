@@ -80,12 +80,12 @@ export function exportAsIcs(
     const lines: string[] = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        `PRODID:-//Konta//Calendario SENIAT ${year}//ES`,
+        `PRODID:-//Kontave//Calendario SENIAT ${year}//ES`,
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         `X-WR-CALNAME:${calName}`,
         "X-WR-TIMEZONE:America/Caracas",
-        "X-WR-CALDESC:Obligaciones tributarias SENIAT Venezuela generadas por Konta",
+        "X-WR-CALDESC:Obligaciones tributarias SENIAT Venezuela generadas por Kontave",
     ];
 
     for (const entry of entries) {
@@ -106,7 +106,7 @@ export function exportAsIcs(
             `Base legal: ${entry.legalBasis}`,
             entry.rolled ? `Fecha original: ${entry.originalDate} (ajustada por feriado/fin de semana)` : "",
             "",
-            "Generado por Konta — konta.app/herramientas/calendario-seniat",
+            "Generado por Kontave — kontave.com/herramientas/calendario-seniat",
         ].filter(Boolean).join("\\n");
 
         lines.push("BEGIN:VEVENT");

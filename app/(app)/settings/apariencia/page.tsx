@@ -52,7 +52,7 @@ export default function AparienciaPage() {
 
                 <div className="pt-6 border-t border-border-light">
                     <p className="text-[10px] text-foreground/30 leading-relaxed uppercase tracking-wider">
-                        Configura cómo prefieres ver Konta. Estos ajustes se guardan localmente en tu navegador.
+                        Configura cómo prefieres ver Kontave. Estos ajustes se guardan localmente en tu navegador.
                     </p>
                 </div>
             </div>

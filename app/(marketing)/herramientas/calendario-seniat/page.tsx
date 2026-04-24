@@ -5,7 +5,7 @@ import { buildCalendar } from "@/src/modules/tools/seniat-calendar/utils/calenda
 import { MONTHS_ES_FULL } from "@/src/modules/tools/seniat-calendar/utils/date-helpers";
 
 export const metadata: Metadata = {
-    title: "Calendario Tributario SENIAT 2026 | Fechas por RIF | Konta",
+    title: "Calendario Tributario SENIAT 2026 | Fechas por RIF | Kontave",
     description:
         "Consulta el calendario tributario SENIAT 2026 personalizado según el último dígito de tu RIF. Contribuyentes Ordinarios y Sujetos Pasivos Especiales. Exporta a PDF, imagen o Google Calendar. Gratis, sin registro.",
     keywords: [
@@ -22,10 +22,10 @@ export const metadata: Metadata = {
     openGraph: {
         type: "website",
         locale: "es_VE",
-        title: "Calendario Tributario SENIAT 2026 — Konta",
+        title: "Calendario Tributario SENIAT 2026 — Kontave",
         description:
             "Consulta tus fechas de declaración y pago de IVA, ISLR, IGTF y más para Venezuela 2026. Personalizado por RIF. Gratis, sin registro.",
-        siteName: "Konta",
+        siteName: "Kontave",
     },
     twitter: {
         card: "summary_large_image",
@@ -51,7 +51,7 @@ const jsonLd = {
         {
             "@type": "WebApplication",
             name: "Calendario Tributario SENIAT 2026",
-            url: "https://konta.app/herramientas/calendario-seniat",
+            url: "https://kontave.com/herramientas/calendario-seniat",
             applicationCategory: "FinanceApplication",
             operatingSystem: "Web",
             description:
@@ -62,13 +62,13 @@ const jsonLd = {
         {
             "@type": "BreadcrumbList",
             itemListElement: [
-                { "@type": "ListItem", position: 1, name: "Konta", item: "https://konta.app/" },
-                { "@type": "ListItem", position: 2, name: "Herramientas", item: "https://konta.app/herramientas" },
+                { "@type": "ListItem", position: 1, name: "Kontave", item: "https://kontave.com/" },
+                { "@type": "ListItem", position: 2, name: "Herramientas", item: "https://kontave.com/herramientas" },
                 {
                     "@type": "ListItem",
                     position: 3,
                     name: "Calendario Tributario SENIAT",
-                    item: "https://konta.app/herramientas/calendario-seniat",
+                    item: "https://kontave.com/herramientas/calendario-seniat",
                 },
             ],
         },
@@ -96,7 +96,7 @@ const jsonLd = {
                     name: "¿Es gratis esta herramienta?",
                     acceptedAnswer: {
                         "@type": "Answer",
-                        text: "Sí, el Calendario Tributario SENIAT de Konta es 100% gratuito y no requiere registro para consultar las fechas.",
+                        text: "Sí, el Calendario Tributario SENIAT de Kontave es 100% gratuito y no requiere registro para consultar las fechas.",
                     },
                 },
                 {
@@ -113,8 +113,8 @@ const jsonLd = {
             "@type": "Dataset",
             name: "Calendario Tributario SENIAT 2026",
             description: "Fechas de obligaciones tributarias para Venezuela 2026 según la Providencia Administrativa SNAT/2025/000091 publicada en Gaceta Oficial Nº 43.273 del 09/12/2025",
-            url: "https://konta.app/herramientas/calendario-seniat",
-            creator: { "@type": "Organization", name: "Konta", url: "https://konta.app" },
+            url: "https://kontave.com/herramientas/calendario-seniat",
+            creator: { "@type": "Organization", name: "Kontave", url: "https://kontave.com" },
             license: "https://creativecommons.org/licenses/by/4.0/",
             temporalCoverage: "2026",
             spatialCoverage: "Venezuela",

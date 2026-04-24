@@ -137,7 +137,7 @@ function SignUpPageInner() {
                             Crear cuenta
                         </h1>
                         <p className="text-[13px] text-text-tertiary text-center max-w-[240px] leading-relaxed">
-                            Habilita tu acceso completo al sistema de gestión de Konta.
+                            Habilita tu acceso completo al sistema de gestión de Kontave.
                         </p>
                     </div>
 
