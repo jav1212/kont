@@ -74,14 +74,12 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
 
     const selected = suppliers.find((s) => s.id === supplierId);
 
-    const filtered = suppliers
-        .filter(
-            (s) =>
-                s.active !== false &&
-                (s.name.toLowerCase().includes(search.toLowerCase()) ||
-                    (s.rif ?? "").toLowerCase().includes(search.toLowerCase())),
-        )
-        .slice(0, 12);
+    const filtered = suppliers.filter(
+        (s) =>
+            s.active !== false &&
+            (s.name.toLowerCase().includes(search.toLowerCase()) ||
+                (s.rif ?? "").toLowerCase().includes(search.toLowerCase())),
+    );
 
     useEffect(() => {
         if (!listRef.current) return;

@@ -62,14 +62,12 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
 
     const selected = products.find((p) => p.id === productId);
 
-    const filtered = products
-        .filter(
-            (p) =>
-                p.active &&
-                (p.name.toLowerCase().includes(search.toLowerCase()) ||
-                    p.code.toLowerCase().includes(search.toLowerCase())),
-        )
-        .slice(0, 12);
+    const filtered = products.filter(
+        (p) =>
+            p.active &&
+            (p.name.toLowerCase().includes(search.toLowerCase()) ||
+                p.code.toLowerCase().includes(search.toLowerCase())),
+    );
 
     useEffect(() => {
         if (!listRef.current) return;

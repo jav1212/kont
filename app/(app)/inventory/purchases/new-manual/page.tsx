@@ -95,9 +95,9 @@ function ProductCombo({
     const listRef = useRef<HTMLUListElement>(null);
 
     const selected = products.find((p) => p.id === value);
-    const filtered = products
-        .filter((p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()))
-        .slice(0, 12);
+    const filtered = products.filter(
+        (p) => p.active !== false && p.name.toLowerCase().includes(search.toLowerCase()),
+    );
 
     useEffect(() => {
         const el = listRef.current?.children[hiIdx] as HTMLElement | undefined;
