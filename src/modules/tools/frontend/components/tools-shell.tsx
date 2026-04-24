@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useBcvRates, type BcvRate } from "../hooks/use-bcv-rates";
@@ -12,6 +12,7 @@ import { DatePickerRate } from "./date-picker-rate";
 import { RateCard } from "./rate-card";
 import { Flag } from "./flag";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseAccordion, accordionItemProps } from "@/src/shared/frontend/components/base-accordion";
 import { formatRate, formatPercentage, formatIsoDateEs } from "../utils/format-number";
 
@@ -19,6 +20,13 @@ interface Props {
     variant: "public" | "authed";
     initialData?: { date: string; rates: BcvRate[] } | null;
 }
+
+// Shared precision setting for both converters. Persisted across visits so
+// accountants don't have to re-set it every time they load the page.
+const DEFAULT_DECIMALS = 2;
+const MIN_DECIMALS = 0;
+const MAX_DECIMALS = 8;
+const DECIMALS_STORAGE_KEY = "kont:tools:divisas:decimals";
 
 // Stagger step (ms → Framer seconds) and common entry preset.
 const STAGGER_STEP = 0.08;
@@ -31,6 +39,25 @@ const section = (i: number) => ({
 export function ToolsShell({ variant, initialData }: Props) {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
     const { rates, date, loading, error, refresh } = useBcvRates(selectedDate, initialData);
+
+    // Initialized to the default on both server and client; localStorage is
+    // read post-mount to avoid an SSR hydration mismatch on the public page.
+    const [decimals, setDecimals] = useState<number>(DEFAULT_DECIMALS);
+    useEffect(() => {
+        try {
+            const raw = window.localStorage.getItem(DECIMALS_STORAGE_KEY);
+            if (raw != null) {
+                const n = parseInt(raw, 10);
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage read must run post-mount to keep SSR output identical on the public page
+                if (!isNaN(n)) setDecimals(Math.max(MIN_DECIMALS, Math.min(MAX_DECIMALS, n)));
+            }
+        } catch {}
+    }, []);
+    const applyDecimals = useCallback((n: number) => {
+        const clamped = Math.max(MIN_DECIMALS, Math.min(MAX_DECIMALS, Math.round(isFinite(n) ? n : DEFAULT_DECIMALS)));
+        setDecimals(clamped);
+        try { window.localStorage.setItem(DECIMALS_STORAGE_KEY, String(clamped)); } catch {}
+    }, []);
 
     const usd = rates.find((r) => r.code === "USD") ?? null;
     const eur = rates.find((r) => r.code === "EUR") ?? null;
@@ -55,6 +82,8 @@ export function ToolsShell({ variant, initialData }: Props) {
                         onRefresh={refresh}
                         loading={loading}
                         today={today}
+                        decimals={decimals}
+                        onDecimalsChange={applyDecimals}
                     />
                 ) : (
                     <AuthedHeader
@@ -66,6 +95,8 @@ export function ToolsShell({ variant, initialData }: Props) {
                         onRefresh={refresh}
                         loading={loading}
                         today={today}
+                        decimals={decimals}
+                        onDecimalsChange={applyDecimals}
                     />
                 )}
             </motion.div>
@@ -108,12 +139,12 @@ export function ToolsShell({ variant, initialData }: Props) {
 
             {/* Converter — primary action */}
             <motion.div {...section(2)}>
-                <CurrencyConverter rates={rates} rateDate={date} />
+                <CurrencyConverter rates={rates} rateDate={date} decimals={decimals} />
             </motion.div>
 
             {/* Cross converter */}
             <motion.div {...section(3)}>
-                <CrossConverter rates={rates} />
+                <CrossConverter rates={rates} decimals={decimals} />
             </motion.div>
 
             {/* History chart */}
@@ -145,9 +176,11 @@ interface HeroProps {
     onRefresh: () => void;
     loading: boolean;
     today: string;
+    decimals: number;
+    onDecimalsChange: (n: number) => void;
 }
 
-function PublicHero({ usd, date, selectedDate, onDateChange, onRefresh, loading, today }: HeroProps) {
+function PublicHero({ usd, date, selectedDate, onDateChange, onRefresh, loading, today, decimals, onDecimalsChange }: HeroProps) {
     const pct = usd?.percentageChange ?? null;
     const trend = pct == null ? 0 : pct > 0 ? 1 : pct < 0 ? -1 : 0;
     const isHistorical = !!selectedDate;
@@ -221,15 +254,18 @@ function PublicHero({ usd, date, selectedDate, onDateChange, onRefresh, loading,
                         </span>
                     )}
                 </div>
-                <BaseButton.Root
-                    variant="secondary"
-                    size="sm"
-                    onClick={onRefresh}
-                    isDisabled={loading}
-                    leftIcon={<RefreshCw size={12} className={loading ? "animate-spin" : ""} />}
-                >
-                    Actualizar
-                </BaseButton.Root>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <DecimalsStepper value={decimals} onChange={onDecimalsChange} />
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={onRefresh}
+                        isDisabled={loading}
+                        leftIcon={<RefreshCw size={12} className={loading ? "animate-spin" : ""} />}
+                    >
+                        Actualizar
+                    </BaseButton.Root>
+                </div>
             </div>
         </header>
     );
@@ -237,7 +273,7 @@ function PublicHero({ usd, date, selectedDate, onDateChange, onRefresh, loading,
 
 // ── Authed compact strip ────────────────────────────────────────────────────
 
-function AuthedHeader({ usd, eur, date, selectedDate, onDateChange, onRefresh, loading, today }: HeroProps & { eur: BcvRate | null }) {
+function AuthedHeader({ usd, eur, date, selectedDate, onDateChange, onRefresh, loading, today, decimals, onDecimalsChange }: HeroProps & { eur: BcvRate | null }) {
     return (
         <div
             className={[
@@ -262,6 +298,7 @@ function AuthedHeader({ usd, eur, date, selectedDate, onDateChange, onRefresh, l
                 )}
             </div>
             <div className="flex items-center gap-2 flex-wrap col-span-2 md:col-auto justify-start md:justify-end">
+                <DecimalsStepper value={decimals} onChange={onDecimalsChange} />
                 <DatePickerRate value={selectedDate} onChange={onDateChange} maxDate={today} />
                 <BaseButton.Root
                     variant="secondary"
@@ -273,6 +310,30 @@ function AuthedHeader({ usd, eur, date, selectedDate, onDateChange, onRefresh, l
                     Actualizar
                 </BaseButton.Root>
             </div>
+        </div>
+    );
+}
+
+// Compact number stepper for decimal precision. Rendered inside the controls
+// strip of both hero variants; uses BaseInput.Field with a minimal prefix so
+// it matches the look of DatePickerRate.
+function DecimalsStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+    return (
+        <div className="w-[110px] shrink-0">
+            <BaseInput.Field
+                type="number"
+                value={String(value)}
+                onValueChange={(v) => {
+                    const n = Number(v);
+                    onChange(isFinite(n) ? n : DEFAULT_DECIMALS);
+                }}
+                prefix="Dec"
+                min={MIN_DECIMALS}
+                max={MAX_DECIMALS}
+                step={1}
+                inputClassName="text-center"
+                aria-label="Decimales para la conversión"
+            />
         </div>
     );
 }

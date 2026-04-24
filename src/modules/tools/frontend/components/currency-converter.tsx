@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDownUp, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { VES, currencyMeta } from "../utils/currency-codes";
-import { formatRate, formatVes, formatPercentage, parseUserNumber } from "../utils/format-number";
+import { formatVes, formatPercentage, parseUserNumber, roundToDecimals } from "../utils/format-number";
 import type { BcvRate } from "../hooks/use-bcv-rates";
 import { CurrencyInlineSelect } from "./currency-inline-select";
 import { AnimatedNumber } from "./animated-number";
@@ -14,6 +14,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 interface Props {
     rates: BcvRate[];
     rateDate: string | null;
+    decimals: number;
 }
 
 type Direction = "to-ves" | "from-ves";
@@ -21,7 +22,7 @@ type Direction = "to-ves" | "from-ves";
 // Currency display order inside the equivalences grid: majors first, then rest.
 const EQUIVALENCE_PRIORITY = ["USD", "EUR", "CNY"];
 
-export function CurrencyConverter({ rates, rateDate }: Props) {
+export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
     const [code, setCode] = useState<string>("USD");
     const [direction, setDirection] = useState<Direction>("to-ves");
     const [amount, setAmount] = useState<string>("100");
@@ -29,11 +30,12 @@ export function CurrencyConverter({ rates, rateDate }: Props) {
     const amountNum = parseUserNumber(amount);
     const activeRate = useMemo(() => rates.find((r) => r.code === code) ?? null, [rates, code]);
     const rate = activeRate?.sell ?? NaN;
+    const effectiveRate = useMemo(() => roundToDecimals(rate, decimals), [rate, decimals]);
 
     const converted = useMemo(() => {
-        if (!isFinite(amountNum) || !isFinite(rate)) return NaN;
-        return direction === "to-ves" ? amountNum * rate : amountNum / rate;
-    }, [amountNum, rate, direction]);
+        if (!isFinite(amountNum) || !isFinite(effectiveRate)) return NaN;
+        return direction === "to-ves" ? amountNum * effectiveRate : effectiveRate === 0 ? NaN : amountNum / effectiveRate;
+    }, [amountNum, effectiveRate, direction]);
 
     const originMeta = direction === "to-ves" ? currencyMeta(code) : VES;
     const targetMeta = direction === "to-ves" ? VES : currencyMeta(code);
@@ -41,9 +43,9 @@ export function CurrencyConverter({ rates, rateDate }: Props) {
     const toggleDirection = () => setDirection((d) => (d === "to-ves" ? "from-ves" : "to-ves"));
 
     const amountInVes = useMemo(() => {
-        if (!isFinite(amountNum) || !isFinite(rate)) return NaN;
-        return direction === "to-ves" ? amountNum * rate : amountNum;
-    }, [amountNum, rate, direction]);
+        if (!isFinite(amountNum) || !isFinite(effectiveRate)) return NaN;
+        return direction === "to-ves" ? amountNum * effectiveRate : amountNum;
+    }, [amountNum, effectiveRate, direction]);
 
     const orderedRates = useMemo(() => {
         const priority = rates.filter((r) => EQUIVALENCE_PRIORITY.includes(r.code))
@@ -87,7 +89,7 @@ export function CurrencyConverter({ rates, rateDate }: Props) {
                             1 {code}
                         </span>
                         <span className="text-[11px] font-mono font-bold tabular-nums text-foreground">
-                            Bs. {formatRate(rate)}
+                            Bs. {formatVes(effectiveRate, decimals)}
                         </span>
                         {ratePct != null && (
                             <span
@@ -185,7 +187,7 @@ export function CurrencyConverter({ rates, rateDate }: Props) {
                                 aria-live="polite"
                             >
                                 <AnimatedNumber
-                                    value={isFinite(converted) ? formatVes(converted, 2) : "—"}
+                                    value={isFinite(converted) ? formatVes(converted, decimals) : "—"}
                                     className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
                                 />
                             </div>
@@ -201,25 +203,26 @@ export function CurrencyConverter({ rates, rateDate }: Props) {
                                 Equivalente en todas las monedas
                             </p>
                             <p className="text-[10px] font-mono text-foreground/45 tabular-nums">
-                                {formatVes(amountInVes, 2)} Bs.
+                                {formatVes(amountInVes, decimals)} Bs.
                             </p>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                             <EquivalenceCell
                                 countryCode="VE"
                                 code="VES"
-                                value={formatVes(amountInVes, 2)}
+                                value={formatVes(amountInVes, decimals)}
                                 highlight={direction === "to-ves"}
                             />
                             {orderedRates.map((r) => {
                                 const m = currencyMeta(r.code);
-                                const eq = r.sell > 0 ? amountInVes / r.sell : NaN;
+                                const sellR = roundToDecimals(r.sell, decimals);
+                                const eq = sellR > 0 ? amountInVes / sellR : NaN;
                                 return (
                                     <EquivalenceCell
                                         key={r.code}
                                         countryCode={m.countryCode}
                                         code={r.code}
-                                        value={isFinite(eq) ? formatVes(eq, 2) : "—"}
+                                        value={isFinite(eq) ? formatVes(eq, decimals) : "—"}
                                         highlight={r.code === code}
                                     />
                                 );

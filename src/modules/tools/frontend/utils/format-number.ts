@@ -9,6 +9,13 @@ export function formatVes(n: number, digits: number = 2): string {
     });
 }
 
+/** Round a value to `digits` decimals. Returns NaN on non-finite input. */
+export function roundToDecimals(n: number, digits: number): number {
+    if (!isFinite(n)) return NaN;
+    const factor = Math.pow(10, digits);
+    return Math.round(n * factor) / factor;
+}
+
 export function formatRate(n: number): string {
     // BCV rates are sometimes > 100 Bs/$, sometimes < 1 Bs (JPY, RUB).
     // Auto-adjust precision: 2 decimals if ≥ 1, 4 decimals if < 1.

@@ -4,30 +4,33 @@ import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { motion } from "framer-motion";
 import type { BcvRate } from "../hooks/use-bcv-rates";
-import { formatVes, parseUserNumber } from "../utils/format-number";
+import { formatVes, parseUserNumber, roundToDecimals } from "../utils/format-number";
 import { CurrencyInlineSelect } from "./currency-inline-select";
 import { AnimatedNumber } from "./animated-number";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 interface Props {
     rates: BcvRate[];
+    decimals: number;
 }
 
-export function CrossConverter({ rates }: Props) {
+export function CrossConverter({ rates, decimals }: Props) {
     const [from, setFrom] = useState<string>("USD");
     const [to, setTo] = useState<string>("EUR");
     const [amount, setAmount] = useState<string>("100");
 
     const fromRate = rates.find((r) => r.code === from)?.sell ?? NaN;
     const toRate = rates.find((r) => r.code === to)?.sell ?? NaN;
+    const fromRateR = roundToDecimals(fromRate, decimals);
+    const toRateR = roundToDecimals(toRate, decimals);
     const amountNum = parseUserNumber(amount);
 
     const result = useMemo(() => {
-        if (!isFinite(amountNum) || !isFinite(fromRate) || !isFinite(toRate) || toRate === 0) return NaN;
-        return (amountNum * fromRate) / toRate;
-    }, [amountNum, fromRate, toRate]);
+        if (!isFinite(amountNum) || !isFinite(fromRateR) || !isFinite(toRateR) || toRateR === 0) return NaN;
+        return (amountNum * fromRateR) / toRateR;
+    }, [amountNum, fromRateR, toRateR]);
 
-    const crossRate = isFinite(fromRate) && isFinite(toRate) && toRate !== 0 ? fromRate / toRate : NaN;
+    const crossRate = isFinite(fromRateR) && isFinite(toRateR) && toRateR !== 0 ? fromRateR / toRateR : NaN;
 
     const swap = () => {
         setFrom(to);
@@ -112,7 +115,7 @@ export function CrossConverter({ rates }: Props) {
                                 aria-live="polite"
                             >
                                 <AnimatedNumber
-                                    value={isFinite(result) ? formatVes(result, 2) : "—"}
+                                    value={isFinite(result) ? formatVes(result, decimals) : "—"}
                                     className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
                                 />
                             </div>
@@ -127,7 +130,7 @@ export function CrossConverter({ rates }: Props) {
                                 Tasa cruzada
                             </span>
                             <span className="text-[12px] font-mono font-bold tabular-nums text-foreground">
-                                1 {from} ≈ {formatVes(crossRate, 4)} {to}
+                                1 {from} ≈ {formatVes(crossRate, decimals)} {to}
                             </span>
                             <span className="text-[10px] text-foreground/40">· vía BCV</span>
                         </div>

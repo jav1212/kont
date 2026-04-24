@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { LiveToolsStrip } from "./_components/live-tools-strip";
 
 interface Plan {
     id:                     string;
@@ -139,158 +140,96 @@ export default function LandingPage() {
                 </div>
             )}
 
-            {/* 1. HERO SECTION (Split Left/Right) */}
-            <section className="relative px-6 pt-32 pb-20 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8 overflow-visible">
-                
-                {/* Left Side: Text Content */}
+            {/* 1. HERO SECTION — tight top padding to sit flush under the
+                   scroll-aware header. Right-side photography replaced with a
+                   Konta-style product mock (receipt + kardex + SENIAT tiles) per
+                   konta-design: "the brand's visual story is its type scale +
+                   orange dot, nothing else." */}
+            <section className="relative px-6 pt-14 md:pt-20 pb-20 md:pb-28 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-between gap-14 lg:gap-16 overflow-visible">
+
+                {/* Left — copy */}
                 <div className="flex-1 w-full max-w-2xl flex flex-col items-start text-left shrink-0 z-10">
-                    <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 bg-surface-2 rounded-full border border-border-default">
-                        <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-                        <span className="text-[12px] uppercase tracking-wide text-text-secondary font-bold">Sistema Contable Integral</span>
+
+                    {/* Eyebrow — product-specific, not generic SaaS-speak */}
+                    <div className="inline-flex items-center gap-2.5 mb-7 h-7 px-3 rounded-full bg-surface-1 border border-border-default shadow-sm">
+                        <span className="relative flex w-2 h-2">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-primary-500/60 animate-ping" />
+                            <span className="relative inline-flex rounded-full w-2 h-2 bg-primary-500" />
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold text-text-secondary">
+                            Hecho en Venezuela
+                        </span>
                     </div>
-                    
-                    <h1 className="text-[32px] sm:text-[56px] lg:text-[64px] font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-foreground mb-6">
-                        Transparencia y Precisión <span className="text-primary-500 block sm:inline">Kontave</span>
+
+                    {/* H1 — sans, tight tracking, "Venezuela." with orange dot */}
+                    <h1 className="font-sans text-[40px] sm:text-[56px] lg:text-[64px] font-black leading-[1.05] tracking-[-0.03em] text-foreground mb-6">
+                        La consola contable para{" "}
+                        <span className="whitespace-nowrap">
+                            <span className="text-primary-500">Venezuela</span>
+                            <span className="text-primary-500">.</span>
+                        </span>
                     </h1>
-                    
-                    <p className="text-[16px] sm:text-[18px] text-text-tertiary leading-relaxed mb-8 sm:mb-10 max-w-lg">
-                        Kontave es una solución contable de nueva generación que unifica y acelera tu negocio en Venezuela: contabilidad, nómina, inventario y documentos en una sola plataforma.
-                    </p>
-                    
-                    <div className="flex flex-col sm:flex-row items-center gap-6 w-full sm:w-auto">
-                        <BaseButton.Root as={Link} href="/sign-in" variant="primary" className="h-12 px-8 text-[14px] rounded-full shadow-lg shadow-primary-500/25 w-full sm:w-auto">
-                            Comenzar Ahora
-                        </BaseButton.Root>
 
-                        <div className="flex items-center gap-4 flex-wrap">
-                            <Link href="/herramientas/divisas" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
-                                Divisas BCV →
-                            </Link>
-                            <Link href="/herramientas/calendario-seniat" className="text-[14px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap">
-                                Calendario SENIAT →
-                            </Link>
-                        </div>
+                    {/* Sub — terse, product-shaped */}
+                    <p className="font-sans text-[17px] sm:text-[19px] text-text-tertiary leading-relaxed mb-10 max-w-xl">
+                        Calcula la quincena con la tasa BCV del día, lleva kardex por producto y emite recibos en PDF. Nómina, inventario y contabilidad integrados — sin Excel y sin dobles turnos.
+                    </p>
+
+                    {/* CTAs — one primary, one secondary. Tools links live in the header now */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                        <BaseButton.Root
+                            as={Link}
+                            href="/sign-up"
+                            variant="primary"
+                            className="h-12 px-7 rounded-full font-mono text-[13px] uppercase tracking-[0.14em] font-bold shadow-md shadow-primary-500/30"
+                        >
+                            Comenzar gratis
+                        </BaseButton.Root>
+                        <Link
+                            href="/#planes"
+                            className="inline-flex items-center justify-center h-12 px-5 rounded-full border border-border-default bg-surface-1 font-mono text-[13px] uppercase tracking-[0.14em] font-bold text-foreground hover:bg-surface-2 transition-colors"
+                        >
+                            Ver planes
+                        </Link>
                     </div>
 
-                    <div className="mt-8 sm:mt-10">
-                        <div className="flex items-center gap-3">
-                            {/* Real Avatars */}
-                            <div className="flex -space-x-3">
-                                {[
-                                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
-                                    "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80",
-                                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80"
-                                ].map((url, i) => (
-                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-background overflow-hidden relative shadow-sm">
-                                        <Image src={url} alt="Usuario" fill sizes="40px" className="object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                            <span className="text-[13px] text-text-secondary font-bold">
-                                +1,200 Contadores
+                    {/* Social proof — mono chrome, replaces the old sans bold blob */}
+                    <div className="mt-10 sm:mt-12 flex items-center gap-4">
+                        <div className="flex -space-x-2.5">
+                            {[
+                                "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
+                                "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80",
+                                "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80",
+                            ].map((url, i) => (
+                                <div key={i} className="w-9 h-9 rounded-full border-2 border-background overflow-hidden relative shadow-sm">
+                                    <Image src={url} alt="Contador Kontave" fill sizes="36px" className="object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex flex-col leading-tight">
+                            <span className="font-mono text-[12px] tabular-nums font-bold text-foreground">
+                                +1.200 contadores
+                            </span>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary mt-0.5">
+                                confían en Kontave
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Side: Real Photographic Image */}
-                <div className="flex-1 w-full max-w-lg lg:max-w-xl shrink-0 relative z-0">
-                    {/* Circle Background */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-surface-2 via-background to-background rounded-full -z-10 blur-xl opacity-80" />
-                    
-                    <div className="relative aspect-square w-full rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.15)] md:shadow-[0_20px_60px_rgba(0,0,0,0.4)] overflow-hidden border border-border-light group">
-                        <Image 
-                            src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80" 
-                            alt="Sistema Contable Kontave"
-                            fill
-                            sizes="(min-width: 1024px) 40vw, 100vw"
-                            className="object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-primary-500/10 mix-blend-color pointer-events-none" />
-                        
-                        {/* Interactive UI highlight attached to image */}
-                        <div className="absolute inset-x-4 sm:inset-x-8 bottom-4 sm:bottom-8 p-4 sm:p-6 bg-background/80 backdrop-blur-md rounded-2xl border border-border-light shadow-xl text-foreground">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </div>
-                                <span className="font-bold text-[16px]">Cierre Contable Aprobado</span>
-                            </div>
-                            <div className="w-full bg-surface-2 h-2 rounded-full overflow-hidden mt-4">
-                                <div className="bg-primary-500 w-[100%] h-full rounded-full" />
-                            </div>
-                        </div>
-                    </div>
+                {/* Right — product mock */}
+                <div className="flex-1 w-full max-w-lg lg:max-w-[520px] shrink-0 relative z-0">
+                    <HeroProductMock />
                 </div>
             </section>
 
-            {/* 1b. FREE TOOLS SECTION — internal linking + brand topical authority */}
-            <section className="max-w-7xl mx-auto w-full px-6 py-16 md:py-20">
-                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
-                    <div>
-                        <span className="inline-block font-mono text-[11px] uppercase tracking-[0.2em] text-primary-500 mb-3">
-                            Gratis · Sin registro
-                        </span>
-                        <h2 className="text-[26px] md:text-[38px] font-bold text-foreground leading-[1.1] max-w-2xl">
-                            Herramientas gratuitas de <span className="text-primary-500">Kontave</span>
-                        </h2>
-                        <p className="text-[15px] text-text-tertiary leading-relaxed mt-3 max-w-xl">
-                            Diseñadas para facilitar el día a día de contadores y empresas en Venezuela.
-                            Úsalas sin crear cuenta.
-                        </p>
-                    </div>
-                    <Link
-                        href="/herramientas"
-                        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-foreground hover:text-primary-500 underline underline-offset-4 decoration-primary-500/40 hover:decoration-primary-500 transition-colors whitespace-nowrap"
-                    >
-                        Ver todas las herramientas →
-                    </Link>
-                </div>
+            {/* 1b. LIVE TOOLS STRIP — reconverted from promo cards to live data
+                   fragments. The header dropdown already lists these tools, so
+                   here we show the product *working*: the BCV feed, the SENIAT
+                   countdown, and the portal uptime — real numbers, not pitch. */}
+            <LiveToolsStrip />
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                    <Link
-                        href="/herramientas/divisas"
-                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
-                    >
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Tasa oficial BCV</span>
-                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Calculadora de Divisas BCV</h3>
-                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
-                            Convierte Bolívares a USD, EUR, CNY y más con la tasa oficial del BCV. Histórico y conversión cruzada.
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
-                            Abrir calculadora →
-                        </span>
-                    </Link>
 
-                    <Link
-                        href="/herramientas/calendario-seniat"
-                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
-                    >
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Personalizado por RIF</span>
-                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Calendario Tributario SENIAT 2026</h3>
-                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
-                            Consulta fechas de IVA, ISLR e IGTF según el último dígito de tu RIF. Contribuyentes Ordinarios y Especiales.
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
-                            Ver calendario →
-                        </span>
-                    </Link>
-
-                    <Link
-                        href="/herramientas/status"
-                        className="group relative flex flex-col rounded-2xl border border-border-light bg-surface-1 p-6 hover:border-primary-500/40 hover:bg-surface-2 transition-colors"
-                    >
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-primary-500 mb-3">Tiempo real</span>
-                        <h3 className="text-[18px] font-bold text-foreground leading-tight mb-2">Estatus de Portales Venezolanos</h3>
-                        <p className="text-[13px] text-text-tertiary leading-relaxed flex-1 mb-4">
-                            ¿SENIAT, IVSS o INCES caído? Verifica la disponibilidad en tiempo real antes de declarar.
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-foreground group-hover:text-primary-500 transition-colors">
-                            Ver estatus →
-                        </span>
-                    </Link>
-                </div>
-            </section>
 
             {/* 2. TARGET AUDIENCE RIBBON */}
             <section className="max-w-5xl mx-auto w-full px-6 py-8 pb-16 flex flex-col items-center justify-center text-center border-b border-border-light">
@@ -503,7 +442,7 @@ export default function LandingPage() {
             </section>
 
             {/* 6. PRICING GRID (Smart Integration of the Plans) */}
-            <section className="bg-background pt-8 pb-32">
+            <section id="planes" className="bg-background pt-8 pb-32 scroll-mt-24">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
                         <span className="text-text-tertiary font-bold text-[11px] tracking-widest uppercase mb-3 inline-block border border-border-medium px-3 py-1 rounded-full">Planes Modernos</span>
@@ -739,6 +678,149 @@ export default function LandingPage() {
                 </div>
             </section>
 
+        </div>
+    );
+}
+
+// ----------------------------------------------------------------------------
+// Hero product mock — replaces the stock photograph. Three floating cards on
+// an ambient orange glow:
+//
+//   1. Back tile  (Kardex)       — tilted +2°, partially behind receipt
+//   2. Main card  (Recibo Q1)    — the product's signature view: mono labels,
+//                                  tabular numbers, dual Bs./USD, orange dot
+//                                  on the decimal of the net total.
+//   3. Front tile (SENIAT · IVA) — tilted -2°, anchored lower-left to balance.
+//
+// A floating BCV pill sits over the receipt's top-left — the same pill pattern
+// the app uses inside payroll screens. The mock is intentionally static; no
+// animation beyond the header's ambient behavior. Per konta-design: "no
+// illustrations, no 3D renders. Type scale + orange dot is the story."
+// ----------------------------------------------------------------------------
+
+function HeroProductMock() {
+    const lineItems = [
+        { label: "Salario quincenal",      ves: "13.250,00" },
+        { label: "Bono asistencia",        ves: "1.500,00"  },
+        { label: "IVSS (4%)",              ves: "-530,00", neg: true },
+    ];
+
+    return (
+        <div className="relative w-full aspect-[4/5] sm:aspect-[4/4.5] flex items-center justify-center">
+            {/* Ambient orange glow behind the stack */}
+            <div aria-hidden className="absolute inset-[12%] bg-primary-500/15 blur-3xl rounded-full pointer-events-none" />
+
+            {/* Back tile — Kardex */}
+            <div className="absolute top-4 -right-2 sm:-right-4 w-[62%] sm:w-[54%] p-4 rounded-2xl bg-surface-1 border border-border-light shadow-md rotate-[2.5deg] hidden sm:flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-tertiary font-semibold">
+                        Kardex · Abril
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                </div>
+                <p className="font-mono text-[22px] tabular-nums font-bold text-foreground leading-none tracking-[-0.01em]">
+                    248 <span className="text-[10px] text-text-tertiary font-normal">mov.</span>
+                </p>
+                <p className="font-sans text-[11px] text-text-tertiary mt-2 leading-tight">
+                    Entradas · Salidas · Ajustes
+                </p>
+            </div>
+
+            {/* Main receipt card */}
+            <div className="relative z-10 w-full max-w-md rounded-2xl bg-surface-1 border border-border-default shadow-[0_30px_60px_-20px_rgba(8,9,16,0.35)] overflow-hidden">
+                {/* BCV pill floating over the header strip */}
+                <div className="absolute -top-3 left-5 z-10 inline-flex items-center gap-2 h-7 px-3 rounded-full bg-surface-1 border border-border-default shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold text-text-secondary">
+                        BCV
+                    </span>
+                    <span className="font-mono text-[11px] tabular-nums font-bold text-foreground">
+                        79,59
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-tertiary">
+                        24 abr
+                    </span>
+                </div>
+
+                {/* Header strip */}
+                <div className="flex items-center justify-between px-5 h-11 bg-surface-2 border-b border-border-light pt-3">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary font-semibold">
+                        Recibo · Q1 Abril 2026
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        Confirmado
+                    </span>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">
+                                Empleado
+                            </p>
+                            <p className="font-mono text-[13px] font-semibold text-foreground">
+                                Juan C. Pérez
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">
+                                Cédula
+                            </p>
+                            <p className="font-mono text-[12px] tabular-nums text-text-secondary">
+                                V-12.845.320
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-border-light pt-3 space-y-2">
+                        {lineItems.map(row => (
+                            <div key={row.label} className="flex items-center justify-between">
+                                <span className="font-mono text-[11px] text-text-secondary">
+                                    {row.label}
+                                </span>
+                                <span className={`font-mono text-[12px] tabular-nums ${row.neg ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                                    {row.neg ? "" : "Bs. "}{row.ves}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-border-light pt-3">
+                        <div className="flex items-end justify-between">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary font-semibold pb-0.5">
+                                Neto a Pagar
+                            </span>
+                            <div className="text-right">
+                                <p className="font-mono text-[22px] tabular-nums font-bold text-foreground leading-none tracking-[-0.01em]">
+                                    Bs. 14.220<span className="text-primary-500">,00</span>
+                                </p>
+                                <p className="font-mono text-[11px] tabular-nums text-text-tertiary mt-1">
+                                    $178,67 USD
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Front tile — SENIAT IVA deadline */}
+            <div className="absolute -bottom-4 -left-2 sm:-left-4 w-[58%] sm:w-[52%] p-4 rounded-2xl bg-surface-1 border border-border-default shadow-lg rotate-[-2deg] hidden sm:flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-tertiary font-semibold">
+                        SENIAT · IVA
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-primary-500 font-bold">
+                        Hoy
+                    </span>
+                </div>
+                <p className="font-mono text-[16px] tabular-nums font-bold text-foreground leading-none">
+                    Vence 26 abr
+                </p>
+                <p className="font-sans text-[11px] text-text-tertiary mt-2 leading-tight">
+                    Contribuyente ordinario
+                </p>
+            </div>
         </div>
     );
 }

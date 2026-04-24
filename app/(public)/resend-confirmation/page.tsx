@@ -9,17 +9,14 @@ import {
     Send,
     ChevronLeft,
     AlertCircle,
-    Inbox,
-    RotateCcw,
     Clock,
-    ShieldCheck,
-    Mail,
+    RotateCcw,
     RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
-import { LogoMark } from "@/src/shared/frontend/components/logo";
+import { AuthShell, AuthHeader, AuthVisual } from "../_components/auth-shell";
 
 const COOLDOWN_SECONDS = 30;
 
@@ -42,15 +39,14 @@ function ResendConfirmationInner() {
     const { resendConfirmation } = useAuth();
     const searchParams = useSearchParams();
 
-    const [email,       setEmail]       = useState(searchParams.get("email") ?? "");
-    const [loading,     setLoading]     = useState(false);
-    const [error,       setError]       = useState<string | null>(null);
-    const [sent,        setSent]        = useState(false);
+    const [email,         setEmail]         = useState(searchParams.get("email") ?? "");
+    const [loading,       setLoading]       = useState(false);
+    const [error,         setError]         = useState<string | null>(null);
+    const [sent,          setSent]          = useState(false);
     const [cooldownUntil, setCooldownUntil] = useState(0);
-    const [now,         setNow]         = useState(() => Date.now());
+    const [now,           setNow]           = useState(() => Date.now());
 
-    // Supabase agrega errores al hash fragment (p.ej. #error_code=otp_expired).
-    // useSyncExternalStore evita el pattern de "setState dentro de useEffect".
+    // Supabase agrega errores al hash fragment (#error_code=otp_expired).
     const hash = useSyncExternalStore(subscribeToHash, getHashSnapshot, getHashServerSnapshot);
     const hashDetected = (() => {
         const raw = hash?.replace(/^#/, "") ?? "";
@@ -89,194 +85,123 @@ function ResendConfirmationInner() {
 
     const showExpiredBadge = hashDetected || reason === "expired";
 
+    const visual = (
+        <AuthVisual
+            heading={<>Un enlace fresco,<br /><span className="text-white/70">directo a tu bandeja.</span></>}
+            copy="Los enlaces de confirmación de Supabase duran unas horas. Reenvía uno nuevo en segundos."
+        />
+    );
+
     return (
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        <AuthShell visual={visual}>
+            <AuthHeader
+                icon={<MailCheck className="w-5 h-5 text-white" />}
+                title="Reenviar confirmación"
+                subtitle="Te enviaremos un nuevo enlace para confirmar tu correo."
+            />
 
-            {/* ── Form Side (Left) ─────────────────────────────────────── */}
-            <div className="flex-1 flex flex-col items-center justify-center px-8 py-16 lg:px-20 overflow-y-auto hidden-scrollbar">
-                <div className="w-full max-w-[380px]">
+            {showExpiredBadge && !sent && (
+                <div className="flex items-start gap-3 px-4 py-3 mb-4 rounded-xl bg-amber-500/[0.08] border border-amber-500/30">
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                    <div className="min-w-0">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.12em] font-bold text-foreground leading-tight">
+                            El enlace anterior expiró
+                        </p>
+                        <p className="font-sans text-[11.5px] text-text-tertiary leading-relaxed mt-1">
+                            Pide uno nuevo abajo para completar la confirmación.
+                        </p>
+                    </div>
+                </div>
+            )}
 
-                    <div className="flex flex-col items-center mb-8">
-                        <div className="w-14 h-14 rounded-2xl bg-primary-500 flex items-center justify-center mb-5 shadow-lg shadow-primary-500/30">
-                            <LogoMark size={24} className="text-white" />
+            {sent ? (
+                <div className="space-y-6">
+                    <div className="p-6 border border-emerald-500/30 rounded-2xl bg-emerald-500/[0.08] space-y-3 text-center">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-3">
+                            <Send className="w-6 h-6" />
                         </div>
-                        <h1 className="text-[26px] font-bold text-foreground tracking-tight mb-2 text-center">
-                            Reenviar confirmación
-                        </h1>
-                        <p className="text-[13px] text-text-tertiary text-center max-w-[300px] leading-relaxed">
-                            Te enviaremos un nuevo enlace para confirmar tu correo.
+                        <h3 className="font-sans font-bold text-emerald-700 dark:text-emerald-400 text-[17px]">
+                            Nuevo correo en camino
+                        </h3>
+                        <p className="font-sans text-[13px] text-text-tertiary leading-relaxed">
+                            Enviamos un enlace fresco a <span className="text-foreground font-semibold">{email}</span>. Revisa tu bandeja y la carpeta de spam.
                         </p>
                     </div>
 
-                    {showExpiredBadge && !sent && (
-                        <div className="flex items-start gap-3 px-4 py-3 mb-4 rounded-xl bg-amber-500/5 border border-amber-500/30">
-                            <Clock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[12px] font-bold text-foreground leading-tight">
-                                    El enlace anterior expiró
-                                </p>
-                                <p className="text-[11px] text-text-tertiary font-medium leading-relaxed mt-1">
-                                    Los enlaces de Supabase duran unas horas. Pide uno nuevo abajo.
-                                </p>
-                            </div>
-                        </div>
-                    )}
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                        <BaseButton.Root
+                            type="submit"
+                            disabled={loading || cooldownRemaining > 0}
+                            variant="secondary"
+                            className="w-full h-11 rounded-xl"
+                        >
+                            {loading
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
+                                : cooldownRemaining > 0
+                                    ? <><RefreshCw className="w-3.5 h-3.5" /> Reintentar en {cooldownRemaining}s</>
+                                    : <><RotateCcw className="w-3.5 h-3.5" /> Enviar otra vez</>}
+                        </BaseButton.Root>
+                        {error && (
+                            <p className="font-sans text-[11.5px] text-red-600 dark:text-red-400 text-center">{error}</p>
+                        )}
+                    </form>
 
-                    {sent ? (
-                        <div className="space-y-6">
-                            <div className="p-6 border border-emerald-500/30 rounded-2xl bg-emerald-500/10 space-y-3 text-center">
-                                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto mb-3">
-                                    <Send className="w-6 h-6" />
-                                </div>
-                                <h3 className="font-bold text-emerald-600 dark:text-emerald-400 text-[17px]">
-                                    Nuevo correo en camino
-                                </h3>
-                                <p className="text-[13px] text-text-tertiary font-medium leading-relaxed">
-                                    Enviamos un enlace fresco a <span className="text-foreground font-bold">{email}</span>. Revisa tu bandeja y la carpeta de spam.
-                                </p>
-                            </div>
-
-                            <form onSubmit={handleSubmit} className="space-y-3">
-                                <BaseButton.Root
-                                    type="submit"
-                                    disabled={loading || cooldownRemaining > 0}
-                                    variant="secondary"
-                                    className="w-full h-11 rounded-xl text-[12px] font-bold flex items-center justify-center gap-2"
-                                >
-                                    {loading
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
-                                        : cooldownRemaining > 0
-                                            ? <><RefreshCw className="w-3.5 h-3.5" /> Reintentar en {cooldownRemaining}s</>
-                                            : <><RotateCcw className="w-3.5 h-3.5" /> Enviar otra vez</>}
-                                </BaseButton.Root>
-                                {error && (
-                                    <p className="text-[11px] text-red-500 font-medium text-center">{error}</p>
-                                )}
-                            </form>
-
-                            <Link
-                                href="/sign-in"
-                                className="flex items-center justify-center gap-2 text-[13px] font-bold text-primary-500 hover:text-primary-600 transition-colors"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                                Volver al login
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                                <BaseInput.Field
-                                    label="Correo"
-                                    type="email"
-                                    autoComplete="email"
-                                    placeholder="usuario@empresa.com"
-                                    value={email}
-                                    onValueChange={setEmail}
-                                    isDisabled={loading}
-                                />
-
-                                {error && (
-                                    <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/10">
-                                        <p className="text-[13px] text-red-500 font-medium">
-                                            {error}
-                                        </p>
-                                    </div>
-                                )}
-
-                                <BaseButton.Root
-                                    type="submit"
-                                    disabled={loading || cooldownRemaining > 0}
-                                    variant="primary"
-                                    className="w-full h-11 mt-1 rounded-xl text-[13px] font-bold shadow-md shadow-primary-500/20 flex items-center justify-center gap-2"
-                                >
-                                    {loading
-                                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
-                                        : cooldownRemaining > 0
-                                            ? `Reintentar en ${cooldownRemaining}s`
-                                            : "Enviar nuevo enlace"}
-                                </BaseButton.Root>
-                            </form>
-
-                            <div className="p-4 border border-border-default rounded-xl bg-surface-1/50 shadow-sm mt-2">
-                                <p className="text-[12px] text-text-tertiary flex items-start gap-3 leading-relaxed">
-                                    <AlertCircle className="w-4 h-4 text-primary-400 mt-0.5 shrink-0" />
-                                    <span>Solo funciona si aún no has confirmado tu correo. Si ya lo confirmaste, usa <Link href="/sign-in" className="text-primary-500 font-bold hover:underline">iniciar sesión</Link>.</span>
-                                </p>
-                            </div>
-
-                            <div className="pt-4 flex justify-center">
-                                <Link href="/sign-in" className="flex items-center gap-2 text-[13px] font-bold text-text-tertiary hover:text-foreground transition-colors">
-                                    <ChevronLeft className="w-4 h-4" />
-                                    Volver al login
-                                </Link>
-                            </div>
-                        </div>
-                    )}
+                    <Link
+                        href="/sign-in"
+                        className="flex items-center justify-center gap-2 font-mono text-[12px] uppercase tracking-[0.1em] font-semibold text-primary-500 hover:text-primary-600 transition-colors"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        Volver al login
+                    </Link>
                 </div>
-            </div>
+            ) : (
+                <div className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                        <BaseInput.Field
+                            label="Correo"
+                            type="email"
+                            autoComplete="email"
+                            placeholder="usuario@empresa.com"
+                            value={email}
+                            onValueChange={setEmail}
+                            isDisabled={loading}
+                        />
 
-            {/* ── Visual Side (Right) ──────────────────────────────────── */}
-            <div className="hidden md:flex flex-1 relative p-6 items-center justify-center">
-                <div className="w-full h-full rounded-[28px] relative overflow-hidden flex flex-col items-center justify-center bg-gradient-to-br from-primary-500 via-primary-600 to-orange-600">
-
-                    <div className="absolute top-[-20%] left-[-10%] w-[70%] h-[70%] rounded-full bg-white/10 blur-[80px] pointer-events-none" />
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-black/20 blur-[80px] pointer-events-none" />
-
-                    <div
-                        className="absolute inset-0 opacity-[0.07] pointer-events-none"
-                        style={{
-                            backgroundImage: "linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)",
-                            backgroundSize: "40px 40px",
-                        }}
-                    />
-
-                    <div className="relative z-10 flex flex-col items-center">
-                        <div className="relative w-64 h-64 flex items-center justify-center mb-10">
-                            <div className="absolute inset-0 rounded-full border border-white/20" />
-                            <div className="absolute inset-8 rounded-full border border-white/15" />
-                            <div className="absolute inset-16 rounded-full border border-white/15" />
-
-                            <div className="relative z-10 w-20 h-20 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-2xl">
-                                <MailCheck size={32} className="text-white" />
+                        {error && (
+                            <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07]">
+                                <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
                             </div>
+                        )}
 
-                            {[
-                                { icon: <Mail       className="w-5 h-5 text-white" />, angle: 0   },
-                                { icon: <Send       className="w-5 h-5 text-white" />, angle: 60  },
-                                { icon: <Inbox      className="w-5 h-5 text-white" />, angle: 120 },
-                                { icon: <ShieldCheck className="w-5 h-5 text-white" />, angle: 180 },
-                                { icon: <Clock      className="w-5 h-5 text-white" />, angle: 240 },
-                                { icon: <RotateCcw  className="w-5 h-5 text-white" />, angle: 300 },
-                            ].map(({ icon, angle }) => {
-                                const rad = (angle * Math.PI) / 180;
-                                const r   = 104;
-                                const x   = Math.round(Math.cos(rad) * r);
-                                const y   = Math.round(Math.sin(rad) * r);
-                                return (
-                                    <div
-                                        key={angle}
-                                        className="absolute w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg"
-                                        style={{ transform: `translate(${x}px, ${y}px)` }}
-                                    >
-                                        {icon}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <BaseButton.Root
+                            type="submit"
+                            disabled={loading || cooldownRemaining > 0}
+                            variant="primary"
+                            className="w-full h-11 mt-1 rounded-xl shadow-sm"
+                        >
+                            {loading
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando…</>
+                                : cooldownRemaining > 0
+                                    ? `Reintentar en ${cooldownRemaining}s`
+                                    : "Enviar nuevo enlace"}
+                        </BaseButton.Root>
+                    </form>
 
-                        <div className="text-center px-8 max-w-sm">
-                            <h2 className="text-white text-[26px] font-black leading-tight mb-3">
-                                Un enlace{" "}
-                                <span className="text-white/70">fresco</span>
-                                , directo a tu bandeja.
-                            </h2>
-                            <p className="text-white/60 text-[13px] leading-relaxed">
-                                Reenvía tu correo de confirmación en segundos y retoma tu acceso a kont.
-                            </p>
-                        </div>
+                    <div className="p-3.5 border border-border-light rounded-xl bg-surface-1 shadow-sm mt-2">
+                        <p className="font-sans text-[12px] text-text-tertiary flex items-start gap-2.5 leading-relaxed">
+                            <AlertCircle className="w-4 h-4 text-primary-500 mt-0.5 shrink-0" />
+                            <span>Solo funciona si aún no has confirmado tu correo. Si ya lo confirmaste, usa <Link href="/sign-in" className="text-primary-500 font-semibold hover:underline">iniciar sesión</Link>.</span>
+                        </p>
+                    </div>
+
+                    <div className="pt-3 flex justify-center">
+                        <Link href="/sign-in" className="flex items-center gap-2 font-mono text-[12px] uppercase tracking-[0.1em] font-semibold text-text-tertiary hover:text-foreground transition-colors">
+                            <ChevronLeft className="w-4 h-4" />
+                            Volver al login
+                        </Link>
                     </div>
                 </div>
-            </div>
-        </div>
+            )}
+        </AuthShell>
     );
 }
