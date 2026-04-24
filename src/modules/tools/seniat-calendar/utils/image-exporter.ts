@@ -44,8 +44,13 @@ export async function exportAsPng(
         const dataUrl = await toPng(node, {
             pixelRatio,
             backgroundColor,
-            // Skip external images that may fail CORS
             skipFonts: false,
+            filter: (el) => {
+                if (el instanceof HTMLElement && el.dataset.exportExclude === "true") {
+                    return false;
+                }
+                return true;
+            },
         });
 
         const a = document.createElement("a");

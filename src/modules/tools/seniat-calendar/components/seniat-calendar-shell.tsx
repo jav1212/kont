@@ -23,11 +23,10 @@ import { ObligationsList } from "./obligations-list";
 import { ExportActions } from "./export-actions";
 import { ReminderOptIn } from "./reminder-opt-in";
 import { FaqSeniat } from "./faq-seniat";
-import { Disclaimer } from "./disclaimer";
 import { EmptyState } from "./empty-state";
 import { EmbedBadge } from "./embed-badge";
 
-// ── Stagger animation pattern (copied from tools-shell.tsx) ──────────────────
+// ── Stagger animation pattern (from tools-shell.tsx) ─────────────────────────
 const STAGGER_STEP = 0.08;
 const section = (i: number) => ({
     initial: { opacity: 0, y: 8 },
@@ -36,7 +35,7 @@ const section = (i: number) => ({
 });
 
 interface SeniatCalendarShellProps {
-    variant: "public" | "embed";
+    variant: "public" | "embed" | "authed";
 }
 
 export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
@@ -67,39 +66,53 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
     }, [companies, rif, setRif]);
 
     const isEmbed = variant === "embed";
+    const isAuthed = variant === "authed";
+    const isPublic = variant === "public";
+
     const containerCls = isEmbed
         ? "max-w-[1200px] mx-auto w-full px-4 py-4 flex flex-col gap-4"
-        : "max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-6";
+        : isAuthed
+            ? "max-w-[1400px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-8 flex flex-col gap-6"
+            : "max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 flex flex-col gap-6";
 
     const showCalendar = rifValid && entries.length > 0;
     const showEmpty = !rifValid && !rifTouched;
     const showError = rifTouched && !rifValid && rif.length > 0;
 
-    // Find company name for the selected RIF
     const companyName = companies.find((c) => c.rif === rif)?.name;
 
     return (
         <div className={containerCls}>
             {/* Skip to content */}
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 z-50 px-3 py-1.5 bg-surface-1 border border-border-light rounded-lg text-[12px] font-mono">
+            <a
+                href="#main-content"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 z-50 px-3 py-1.5 bg-surface-1 border border-border-light rounded-lg text-[12px] font-mono"
+            >
                 Saltar al contenido
             </a>
 
-            <main id="main-content">
+            <main id="main-content" className="flex flex-col gap-6">
                 {/* ── Hero (public only) ─────────────────────────────────────── */}
-                {!isEmbed && (
+                {isPublic && (
                     <motion.div {...section(0)}>
                         <Hero nextEntry={nextEntry} hasRif={rifValid} />
                     </motion.div>
                 )}
 
                 {/* ── Controls strip ─────────────────────────────────────────── */}
-                <motion.div {...section(isEmbed ? 0 : 1)}>
-                    <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                        <div className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
-                            {/* RIF input + company selector */}
+                <motion.div {...section(isPublic ? 1 : 0)}>
+                    <div className="rounded-2xl border border-border-light bg-surface-1 shadow-[var(--shadow-sm)]">
+
+                        {/*
+                         * Top row — RIF input / company selector / type toggle / year
+                         *
+                         * Layout strategy (avoids min-w collisions):
+                         *   - Mobile (<md):  stack vertically, each row wraps naturally
+                         *   - md+:           flex-row with flex-wrap
+                         */}
+                        <div className="px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
                             {!isEmbed && (
-                                <div className="flex items-start gap-2 flex-wrap">
+                                <>
                                     <RifInput
                                         value={rifFormatted}
                                         onChange={setRif}
@@ -117,34 +130,30 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                                             }}
                                         />
                                     )}
-                                </div>
-                            )}
-
-                            {/* Taxpayer type + Year */}
-                            <div className="flex items-center gap-2 flex-wrap">
-                                {!isEmbed && (
                                     <TaxpayerTypeToggle
                                         value={taxpayerType}
                                         onChange={setTaxpayerType}
                                     />
-                                )}
-                                <YearSelector
-                                    value={year}
-                                    onChange={setYear}
-                                    years={availableYears}
-                                />
-                            </div>
+                                </>
+                            )}
+                            <YearSelector
+                                value={year}
+                                onChange={setYear}
+                                years={availableYears}
+                            />
                         </div>
 
-                        {/* Bottom strip: filters + view + export */}
-                        <div className="border-t border-border-light bg-surface-2 px-4 sm:px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
+                        {/* Bottom strip: filters + view + actions */}
+                        <div className="border-t border-border-light bg-surface-2/60 rounded-b-2xl px-4 sm:px-5 py-3 flex items-center justify-between gap-4 min-w-0 flex-wrap">
                             <div className="flex-1 min-w-0">
                                 <FilterChips
                                     activeCategories={filters.categories}
                                     onChange={(cats) => setFilters({ categories: cats })}
                                 />
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
+
+                            {/* Actions cluster — wraps on very narrow screens */}
+                            <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
                                 <ViewToggle value={view} onChange={setView} />
                                 <ExportActions
                                     entries={entries}
@@ -164,7 +173,7 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
 
                 {/* ── Countdown banner ───────────────────────────────────────── */}
                 {countdown.severity !== "none" && entries.length > 0 && (
-                    <motion.div {...section(isEmbed ? 1 : 2)}>
+                    <motion.div {...section(isPublic ? 2 : 1)}>
                         <CountdownBanner countdown={countdown} />
                     </motion.div>
                 )}
@@ -175,14 +184,14 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                 </span>
 
                 {/* ── Main calendar area ─────────────────────────────────────── */}
-                <motion.div {...section(isEmbed ? 2 : 3)}>
+                <motion.div {...section(isPublic ? 3 : 2)}>
                     <div
                         id="seniat-calendar-exportable"
                         className="force-light-vars"
                     >
                         {/* Export-only header (hidden normally, visible during PNG export) */}
                         <div className="hidden seniat-export-header p-4 mb-4 rounded-xl border border-border-light bg-surface-1">
-                            <p className="font-mono text-[12px] text-text-tertiary">
+                            <p className="font-mono text-[12px] text-foreground/50">
                                 Calendario Tributario SENIAT {year} · {rif} ·{" "}
                                 {taxpayerType === "especial" ? "Sujeto Pasivo Especial" : "Contribuyente Ordinario"}
                             </p>
@@ -254,18 +263,12 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                 </motion.div>
 
                 {/* ── FAQ (public only) ──────────────────────────────────────── */}
-                {!isEmbed && (
+                {isPublic && (
                     <motion.div {...section(4)}>
                         <FaqSeniat />
                     </motion.div>
                 )}
 
-                {/* ── Disclaimer (public only) ───────────────────────────────── */}
-                {!isEmbed && (
-                    <motion.div {...section(5)}>
-                        <Disclaimer />
-                    </motion.div>
-                )}
             </main>
 
             {/* Embed badge */}

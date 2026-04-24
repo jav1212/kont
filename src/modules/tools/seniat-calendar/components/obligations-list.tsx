@@ -30,7 +30,7 @@ export function ObligationsList({ entries, nextEntryId }: ObligationsListProps) 
     if (entries.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                <p className="text-[13px] font-mono text-text-tertiary">
+                <p className="text-[13px] font-mono text-foreground/50">
                     No hay obligaciones para los filtros seleccionados.
                 </p>
             </div>
@@ -38,7 +38,7 @@ export function ObligationsList({ entries, nextEntryId }: ObligationsListProps) 
     }
 
     return (
-        <div id="obligation-list-panel" role="tabpanel" className="flex flex-col gap-6">
+        <div id="obligation-list-panel" role="tabpanel" className="flex flex-col gap-5">
             <AnimatePresence mode="wait">
                 {Array.from(grouped.entries()).map(([month, group]) => (
                     <motion.div
@@ -47,12 +47,15 @@ export function ObligationsList({ entries, nextEntryId }: ObligationsListProps) 
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.22, ease: "easeOut" }}
-                        className="flex flex-col gap-3"
+                        className="flex flex-col gap-2.5"
                     >
                         {/* Sticky month header */}
-                        <div className="sticky top-0 z-10 py-2 bg-background border-b border-border-light">
-                            <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-text-tertiary">
+                        <div className="sticky top-0 z-10 py-2 px-0.5 bg-background/95 backdrop-blur-sm border-b border-border-light flex items-center justify-between gap-3">
+                            <span className="text-[11px] font-mono uppercase tracking-[0.18em] text-text-secondary font-semibold">
                                 {group.label}
+                            </span>
+                            <span className="inline-flex items-center justify-center h-4 min-w-[20px] px-1.5 rounded-full bg-surface-2 border border-border-light text-[9px] font-mono text-text-tertiary tabular-nums font-medium flex-shrink-0">
+                                {group.entries.length}
                             </span>
                         </div>
 

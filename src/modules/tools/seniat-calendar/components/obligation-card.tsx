@@ -12,9 +12,7 @@ interface ObligationCardProps {
 
 export function ObligationCard({ entry, variant, compact = false }: ObligationCardProps) {
     const today = todayLocalIso();
-    const resolvedVariant = variant ?? (
-        entry.dueDate < today ? "past" : "upcoming"
-    );
+    const resolvedVariant = variant ?? (entry.dueDate < today ? "past" : "upcoming");
     const style = CATEGORY_STYLES[entry.category];
     const Icon = style.icon;
 
@@ -22,60 +20,97 @@ export function ObligationCard({ entry, variant, compact = false }: ObligationCa
     const monthName = MONTHS_ES_SHORT[parseInt(monthStr, 10) - 1];
     const day = parseInt(dayStr, 10);
     const daysLeft = daysBetween(today, entry.dueDate);
-    const daysLabel = daysLeft < 0
-        ? `hace ${Math.abs(daysLeft)} d.`
-        : daysLeft === 0
-        ? "hoy"
-        : daysLeft === 1
-        ? "mañana"
-        : `${daysLeft} días`;
+    const daysLabel =
+        daysLeft < 0
+            ? `hace ${Math.abs(daysLeft)} d.`
+            : daysLeft === 0
+            ? "hoy"
+            : daysLeft === 1
+            ? "mañana"
+            : `${daysLeft} d.`;
 
     const containerCls = {
-        upcoming: "rounded-xl border border-border-light bg-surface-1 px-4 py-3 flex items-start gap-4 transition-all duration-200 hover:border-border-medium hover:shadow-md hover:-translate-y-px",
-        past: "rounded-xl border border-border-light bg-surface-2 px-4 py-3 flex items-start gap-4 opacity-55",
-        next: "rounded-xl border border-primary-500 bg-primary-50 px-4 py-3 flex items-start gap-4 shadow-sm dark:bg-primary-50/8 dark:border-primary-500",
+        upcoming:
+            "rounded-xl border border-border-light bg-surface-1 transition-[border-color,box-shadow,opacity] duration-150 ease-out hover:border-border-default hover:shadow-[var(--shadow-sm)]",
+        past:
+            "rounded-xl border border-border-light bg-surface-2 opacity-45",
+        next:
+            "rounded-xl border border-primary-400 bg-primary-50 dark:bg-primary-50/8 dark:border-primary-400/60 shadow-[var(--shadow-sm),0_0_0_1px_var(--primary-400)_inset]",
     }[resolvedVariant];
 
     return (
-        <div className={`${containerCls} min-h-[80px]`}>
+        <div className={`${containerCls} px-3.5 py-3 flex items-start gap-3`}>
             {/* Date column */}
-            <div className="flex flex-col items-center w-12 flex-shrink-0 text-center">
-                <span className={`${compact ? "text-[18px]" : "text-[22px] sm:text-[28px]"} font-mono font-bold tabular-nums leading-none text-text-primary`}>
+            <div className="flex flex-col items-center justify-center w-10 flex-shrink-0 text-center pt-0.5">
+                <span
+                    className={[
+                        "font-mono font-bold tabular-nums leading-none",
+                        compact ? "text-[20px]" : "text-[22px] sm:text-[26px]",
+                        resolvedVariant === "next" ? "text-primary-600 dark:text-primary-400" : "text-foreground",
+                    ].join(" ")}
+                >
                     {day}
                 </span>
-                <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-text-tertiary">
+                <span className="text-[9px] font-mono uppercase tracking-[0.14em] text-foreground/40 mt-0.5">
                     {monthName}
                 </span>
             </div>
 
             {/* Vertical divider */}
-            <div className="w-px self-stretch bg-border-light flex-shrink-0" />
+            <div
+                className={[
+                    "w-px self-stretch flex-shrink-0",
+                    resolvedVariant === "next" ? "bg-primary-200 dark:bg-primary-800" : "bg-border-light",
+                ].join(" ")}
+            />
 
             {/* Content */}
-            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+                {/* Top row: badge + days */}
                 <div className="flex items-center justify-between gap-2">
-                    {/* Badge */}
                     <span
-                        className={`inline-flex items-center gap-1 h-5 px-2 rounded-md border text-[10px] font-mono uppercase tracking-[0.14em] ${style.borderClass} ${style.bgClass} ${style.textClass}`}
+                        className={[
+                            "inline-flex items-center gap-1 h-5 px-1.5 rounded border",
+                            "text-[10px] font-mono uppercase tracking-[0.14em]",
+                            style.borderClass, style.bgClass, style.textClass,
+                        ].join(" ")}
                     >
-                        <Icon size={10} strokeWidth={2} />
+                        <Icon size={9} strokeWidth={2.5} aria-hidden />
                         {style.label}
                     </span>
-                    {/* Days to */}
-                    <span className="text-[10px] font-mono tabular-nums text-text-tertiary whitespace-nowrap">
+                    <span
+                        className={[
+                            "text-[10px] font-mono tabular-nums whitespace-nowrap font-medium",
+                            resolvedVariant === "next"
+                                ? "text-primary-600 dark:text-primary-400"
+                                : "text-foreground/45",
+                        ].join(" ")}
+                    >
                         {daysLabel}
                     </span>
                 </div>
-                <p className="text-[13px] font-sans font-semibold text-text-primary leading-snug truncate">
+
+                {/* Title */}
+                <p
+                    className={[
+                        "text-[13px] font-mono font-semibold leading-snug",
+                        compact ? "truncate" : "line-clamp-2",
+                        resolvedVariant === "next" ? "text-foreground" : "text-foreground",
+                    ].join(" ")}
+                >
                     {entry.title}
                 </p>
-                {!compact && (
-                    <p className="text-[11px] font-mono text-text-tertiary leading-snug line-clamp-2">
+
+                {/* Legal basis (non-compact only) */}
+                {!compact && entry.legalBasis && (
+                    <p className="text-[11px] font-mono text-foreground/45 leading-snug line-clamp-2">
                         {entry.legalBasis}
                     </p>
                 )}
+
+                {/* Rolled note */}
                 {entry.rolled && (
-                    <p className="text-[10px] font-mono text-text-disabled">
+                    <p className="text-[10px] font-mono text-foreground/35">
                         Orig. {entry.originalDate} — ajustada por feriado/fin de semana
                     </p>
                 )}

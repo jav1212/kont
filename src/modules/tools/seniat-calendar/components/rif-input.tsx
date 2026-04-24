@@ -22,13 +22,12 @@ export function RifInput({ value, onChange, touched, valid }: RifInputProps) {
     );
 
     function handleChange(raw: string) {
-        // Apply mask as the user types
         const masked = formatRifMask(raw);
         onChange(masked);
     }
 
     return (
-        <div className="min-w-[200px] max-w-[260px]">
+        <div className="w-full sm:w-[260px]">
             <BaseInput.Field
                 aria-label="RIF de la empresa a consultar"
                 aria-describedby="rif-helper"

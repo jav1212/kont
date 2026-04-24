@@ -68,6 +68,7 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                 isOpen={open}
                 onOpenChange={setOpen}
                 placement="center"
+                hideCloseButton
                 classNames={{
                     base:     "rounded-2xl border border-border-light bg-surface-1 shadow-xl max-w-[440px] w-full",
                     backdrop: "backdrop-blur-sm bg-black/30",

@@ -105,10 +105,11 @@ export default function ToolsDashboard() {
                             }
                         />
                         <ToolCard
-                            variant="soon"
+                            variant="active"
                             icon={<CalendarDays size={20} strokeWidth={2.25} />}
                             title="Calendario Tributario SENIAT"
-                            description="Fechas clave de ISLR, IVA y retenciones 2026 del SENIAT a la mano."
+                            description="Fechas clave de ISLR, IVA y retenciones 2026 del SENIAT según último dígito del RIF."
+                            href="/tools/calendario-seniat"
                         />
                         <ToolCard
                             variant="soon"

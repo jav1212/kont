@@ -13,7 +13,7 @@ interface CompanySelectorProps {
 export function CompanySelector({ companies, loading, selectedId, onSelect }: CompanySelectorProps) {
     if (loading) {
         return (
-            <div className="animate-pulse bg-surface-2 rounded-lg h-10 w-[200px]" />
+            <div className="animate-pulse bg-surface-2 rounded-lg h-10 w-full sm:w-[240px]" />
         );
     }
 
@@ -36,7 +36,7 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
             }}
             selectionMode="single"
             classNames={{
-                base: "min-w-[200px] max-w-[280px]",
+                base: "w-full sm:w-[240px]",
                 trigger: [
                     "min-h-[38px] h-auto py-1.5 px-3",
                     "bg-surface-1 border border-border-light rounded-lg",
@@ -46,7 +46,7 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
                     "data-[open=true]:border-primary-400",
                     "data-[open=true]:ring-2 data-[open=true]:ring-primary-500/10",
                 ].join(" "),
-                value: "font-mono text-[13px] text-text-primary",
+                value: "font-mono text-[13px] text-foreground",
                 popoverContent: [
                     "bg-surface-1 border border-border-light shadow-lg rounded-xl overflow-hidden z-[9999]",
                 ].join(" "),
@@ -71,10 +71,10 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
                             {company.name[0]?.toUpperCase() ?? "?"}
                         </div>
                         <div className="min-w-0">
-                            <p className="font-mono text-[12px] font-medium text-text-primary truncate">
+                            <p className="font-mono text-[12px] font-medium text-foreground truncate">
                                 {company.name}
                             </p>
-                            <p className="font-mono text-[10px] text-text-tertiary truncate">
+                            <p className="font-mono text-[10px] text-foreground/45 truncate">
                                 {company.rif ?? company.disabledReason ?? "Sin RIF"}
                             </p>
                         </div>

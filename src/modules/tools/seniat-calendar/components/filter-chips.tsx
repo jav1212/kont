@@ -35,22 +35,23 @@ export function FilterChips({ activeCategories, onChange }: FilterChipsProps) {
 
     return (
         <div
-            className="relative"
             role="group"
             aria-label="Filtrar por categoría tributaria"
         >
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <div className="flex flex-wrap gap-1.5">
                 {/* All chip */}
                 <button
                     role="checkbox"
                     aria-checked={isAllActive}
                     onClick={toggleAll}
                     className={[
-                        "inline-flex items-center gap-1.5 h-7 px-3 rounded-full border whitespace-nowrap cursor-pointer transition-colors duration-150 text-[11px] font-mono uppercase tracking-[0.12em] flex-shrink-0",
-                        "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1 outline-none",
+                        "inline-flex items-center h-6 px-2.5 rounded-full border whitespace-nowrap cursor-pointer",
+                        "transition-[background-color,border-color,box-shadow] duration-150 flex-shrink-0",
+                        "text-[10px] font-mono uppercase tracking-[0.12em] font-medium",
+                        "focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 outline-none",
                         isAllActive
-                            ? "border-primary-500 bg-primary-50 text-text-link dark:bg-primary-50/10"
-                            : "border-border-light bg-surface-1 text-text-tertiary hover:border-border-medium hover:bg-surface-2",
+                            ? "border-primary-400 bg-primary-50 text-primary-600 shadow-[0_0_0_1px_var(--primary-400)] dark:bg-primary-50/10 dark:text-primary-400 dark:border-primary-400/60"
+                            : "border-border-light bg-surface-1 text-text-tertiary hover:border-border-default hover:bg-surface-2 hover:text-text-secondary",
                     ].join(" ")}
                 >
                     Todos
@@ -67,21 +68,21 @@ export function FilterChips({ activeCategories, onChange }: FilterChipsProps) {
                             aria-checked={isActive}
                             onClick={() => toggleCategory(cat)}
                             className={[
-                                "inline-flex items-center gap-1.5 h-7 px-3 rounded-full border whitespace-nowrap cursor-pointer transition-colors duration-150 text-[11px] font-mono uppercase tracking-[0.12em] flex-shrink-0",
-                                "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1 outline-none",
+                                "inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full border whitespace-nowrap cursor-pointer",
+                                "transition-[background-color,border-color,box-shadow,opacity] duration-150 flex-shrink-0",
+                                "text-[10px] font-mono uppercase tracking-[0.12em] font-medium",
+                                "focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 outline-none",
                                 isActive
-                                    ? `${style.borderClass} ${style.bgClass} ${style.textClass}`
-                                    : "border-border-light bg-surface-1 text-text-tertiary hover:border-border-medium hover:bg-surface-2",
+                                    ? `${style.borderClass} ${style.bgClass} ${style.textClass} shadow-[0_0_0_1px_currentColor/20]`
+                                    : "border-border-light bg-surface-1 text-text-tertiary hover:border-border-default hover:bg-surface-2 hover:text-text-secondary",
                             ].join(" ")}
                         >
-                            <Icon size={10} strokeWidth={2} />
+                            <Icon size={9} strokeWidth={2.5} aria-hidden />
                             {style.label}
                         </button>
                     );
                 })}
             </div>
-            {/* Fade gradient on right edge for mobile scroll indicator */}
-            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent" />
         </div>
     );
 }
