@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import type { Supplier } from "@/src/modules/inventory/backend/domain/supplier";
 import {
@@ -167,12 +168,12 @@ export default function ProveedoresPage() {
             <div className="px-8 py-6 space-y-4">
                 {/* Search + bulk actions */}
                 <div className="flex items-center gap-3">
-                    <input
+                    <BaseInput.Field
                         type="text"
                         placeholder="Buscar…"
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                        className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-text-tertiary focus:border-primary-500/60 hover:border-border-medium transition-colors w-64"
+                        onValueChange={(v) => { setSearch(v); setSelected(new Set()); }}
+                        className="w-64"
                     />
                     {selected.size > 0 && (
                         confirmBulkDelete ? (
@@ -267,34 +268,50 @@ export default function ProveedoresPage() {
                         </h2>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label className={labelCls}>RIF</label>
-                                <input className={fieldCls} value={form.rif} onChange={(e) => set("rif", e.target.value)} placeholder="J-12345678-9" />
-                            </div>
-                            <div className="col-span-2">
-                                <label className={labelCls}>Nombre *</label>
-                                <input className={fieldCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
-                            </div>
+                            <BaseInput.Field
+                                label="RIF"
+                                type="text"
+                                value={form.rif}
+                                onValueChange={(v) => set("rif", v)}
+                                placeholder="J-12345678-9"
+                            />
+                            <BaseInput.Field
+                                label="Nombre *"
+                                type="text"
+                                value={form.name}
+                                onValueChange={(v) => set("name", v)}
+                                className="col-span-2"
+                            />
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label className={labelCls}>Contacto</label>
-                                <input className={fieldCls} value={form.contact} onChange={(e) => set("contact", e.target.value)} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Teléfono</label>
-                                <input className={fieldCls} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Email</label>
-                                <input className={fieldCls} type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-                            </div>
+                            <BaseInput.Field
+                                label="Contacto"
+                                type="text"
+                                value={form.contact}
+                                onValueChange={(v) => set("contact", v)}
+                            />
+                            <BaseInput.Field
+                                label="Teléfono"
+                                type="text"
+                                value={form.phone}
+                                onValueChange={(v) => set("phone", v)}
+                            />
+                            <BaseInput.Field
+                                label="Email"
+                                type="email"
+                                value={form.email}
+                                onValueChange={(v) => set("email", v)}
+                            />
                         </div>
 
                         <div className="mb-4">
-                            <label className={labelCls}>Dirección</label>
-                            <input className={fieldCls} value={form.address} onChange={(e) => set("address", e.target.value)} />
+                            <BaseInput.Field
+                                label="Dirección"
+                                type="text"
+                                value={form.address}
+                                onValueChange={(v) => set("address", v)}
+                            />
                         </div>
 
                         <div className="mb-4">

@@ -7,17 +7,7 @@
 // ============================================================================
 
 import { BonusRow, DeductionRow, EarningRow, HorasExtrasRow, HorasExtrasTipo, HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
-
-// ── Shared styles ─────────────────────────────────────────────────────────────
-
-const inputCls = [
-    "h-8 px-2.5 rounded-md border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[12px] text-foreground tabular-nums",
-    "focus:border-primary-500/60 hover:border-border-medium",
-    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
-].join(" ");
-
-const numInputCls = inputCls + " text-center w-16";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 // ── Add row button ─────────────────────────────────────────────────────────────
 
@@ -100,32 +90,34 @@ export const EarningRowEditor = ({
         <div className="space-y-1.5">
             {/* Row 1: Concepto + remove */}
             <div className="flex items-center gap-1.5">
-                <input
+                <BaseInput.Field
                     type="text"
                     value={row.label}
-                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    onValueChange={(v) => onChange({ ...row, label: v })}
                     placeholder="Concepto"
-                    className={inputCls + " flex-1"}
+                    className="flex-1"
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: Qty | Factor | Modo | → result */}
             <div className="flex items-center gap-1.5">
-                <input
+                <BaseInput.Field
                     type="number"
                     value={row.quantity}
-                    onChange={(e) => onChange({ ...row, quantity: e.target.value })}
+                    onValueChange={(v) => onChange({ ...row, quantity: v })}
                     placeholder="0"
-                    className={numInputCls}
+                    className="w-20"
+                    inputClassName="text-center"
                 />
                 {row.useDaily && (
-                    <input
+                    <BaseInput.Field
                         type="number"
                         value={row.multiplier}
-                        onChange={(e) => onChange({ ...row, multiplier: e.target.value })}
+                        onValueChange={(v) => onChange({ ...row, multiplier: v })}
                         placeholder="1.0"
-                        className={numInputCls}
-                        step="0.5"
+                        className="w-20"
+                        inputClassName="text-center"
+                        step={0.5}
                     />
                 )}
                 <Toggle
@@ -194,30 +186,27 @@ export const DeductionRowEditor = ({
         <div className="space-y-1.5">
             {/* Row 1: Concepto + remove */}
             <div className="flex items-center gap-1.5">
-                <input
+                <BaseInput.Field
                     type="text"
                     value={row.label}
-                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    onValueChange={(v) => onChange({ ...row, label: v })}
                     placeholder="Concepto"
-                    className={inputCls + " flex-1"}
+                    className="flex-1"
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: amount/rate | base | mode toggle | → result */}
             <div className="flex items-center gap-1.5">
-                <div className="relative">
-                    <input
-                        type="number"
-                        value={row.rate}
-                        onChange={(e) => onChange({ ...row, rate: e.target.value })}
-                        placeholder="0"
-                        className={numInputCls}
-                        step={isFixed ? "10" : "0.5"}
-                    />
-                    {!isFixed && (
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 font-mono text-[11px] text-[var(--text-tertiary)] pointer-events-none">%</span>
-                    )}
-                </div>
+                <BaseInput.Field
+                    type="number"
+                    value={row.rate}
+                    onValueChange={(v) => onChange({ ...row, rate: v })}
+                    placeholder="0"
+                    className={isFixed ? "w-24" : "w-24"}
+                    inputClassName="text-center"
+                    step={isFixed ? 10 : 0.5}
+                    suffix={!isFixed ? "%" : undefined}
+                />
                 {!isFixed && (
                     <button
                         onClick={cycleBase}
@@ -297,14 +286,15 @@ export const HorasExtrasRowEditor = ({
             >
                 {TIPO_LABELS[row.tipo]}
             </button>
-            <input
+            <BaseInput.Field
                 type="number"
                 value={row.hours}
-                onChange={(e) => onChange({ ...row, hours: e.target.value })}
+                onValueChange={(v) => onChange({ ...row, hours: v })}
                 placeholder="0"
-                className={numInputCls}
-                min="0"
-                step="0.5"
+                className="w-20"
+                inputClassName="text-center"
+                min={0}
+                step={0.5}
             />
             <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">h</span>
             <RemoveButton onClick={onRemove} disabled={!canRemove} />
@@ -345,15 +335,16 @@ export const HorasExtrasGlobalEditor = ({
                 </span>
             </div>
             <div className="flex items-center gap-1.5">
-                <input
+                <BaseInput.Field
                     type="number"
                     value={row.hours}
-                    onChange={(e) => onChange({ ...row, hours: e.target.value })}
+                    onValueChange={(v) => onChange({ ...row, hours: v })}
                     placeholder="0"
-                    className={numInputCls}
-                    min="0"
-                    step="0.5"
-                    disabled={!row.active}
+                    className="w-20"
+                    inputClassName="text-center"
+                    min={0}
+                    step={0.5}
+                    isDisabled={!row.active}
                 />
                 <span className="font-mono text-[11px] text-[var(--text-tertiary)] shrink-0">h</span>
                 <Toggle
@@ -387,28 +378,27 @@ export const BonusRowEditor = ({
         <div className="space-y-1.5">
             {/* Row 1: Concepto + remove */}
             <div className="flex items-center gap-1.5">
-                <input
+                <BaseInput.Field
                     type="text"
                     value={row.label}
-                    onChange={(e) => onChange({ ...row, label: e.target.value })}
+                    onValueChange={(v) => onChange({ ...row, label: v })}
                     placeholder="Concepto"
-                    className={inputCls + " flex-1"}
+                    className="flex-1"
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: Monto USD | → VES result */}
             <div className="flex items-center gap-1.5">
-                <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[11px] text-[var(--text-tertiary)] pointer-events-none">$</span>
-                    <input
-                        type="number"
-                        value={row.amount}
-                        onChange={(e) => onChange({ ...row, amount: e.target.value })}
-                        placeholder="0.00"
-                        className={numInputCls + " pl-5 w-24"}
-                        step="5"
-                    />
-                </div>
+                <BaseInput.Field
+                    type="number"
+                    value={row.amount}
+                    onValueChange={(v) => onChange({ ...row, amount: v })}
+                    placeholder="0.00"
+                    className="w-28"
+                    inputClassName="text-right"
+                    prefix="$"
+                    step={5}
+                />
                 <Result value={computed} />
             </div>
         </div>

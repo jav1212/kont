@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BaseButton } from '@/src/shared/frontend/components/base-button';
+import { BaseInput } from '@/src/shared/frontend/components/base-input';
 
 interface FolderData {
     id: string;
@@ -88,13 +89,12 @@ export function FolderTree({
                         onSubmit={handleCreate}
                         className="p-3 rounded-2xl bg-surface-2/50 border border-primary-500/20 shadow-sm space-y-3"
                     >
-                        <input
+                        <BaseInput.Field
                             autoFocus
                             type="text"
                             placeholder="Nombre de la carpeta…"
-                            className="w-full bg-surface-1 border border-border-light rounded-xl px-3 py-2 text-[12px] focus:outline-none focus:ring-1 focus:ring-primary-500/30 transition-shadow transition-colors"
                             value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onValueChange={setNewName}
                         />
                         <div className="flex gap-2">
                             <BaseButton.Root
@@ -206,16 +206,16 @@ function FolderItem({ label, isSelected, onSelect, onRename, onDelete, isRoot }:
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-1 px-1"
             >
-                <input
+                <BaseInput.Field
                     ref={inputRef}
                     type="text"
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
+                    onValueChange={setEditName}
                     onKeyDown={(e) => {
                         if (e.key === 'Escape') cancelEdit();
                         if (e.key === 'Enter') { e.preventDefault(); void saveRename(); }
                     }}
-                    className="flex-1 bg-surface-1 border border-primary-500/40 rounded-lg px-2 py-1.5 text-[12px] font-mono focus:outline-none focus:ring-1 focus:ring-primary-500/30 min-w-0"
+                    className="flex-1 min-w-0"
                     aria-label={`Renombrar carpeta ${label}`}
                 />
                 <button

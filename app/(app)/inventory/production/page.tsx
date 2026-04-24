@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -142,15 +143,20 @@ export default function ProductionPage() {
                         )}
 
                         <div className="space-y-3">
-                            <div>
-                                <label className={labelCls}>Descripción *</label>
-                                <input className={fieldCls} value={form.description} onChange={(e) => setF("description", e.target.value)} placeholder="Ej: Lote producción 001" />
-                            </div>
+                            <BaseInput.Field
+                                label="Descripción *"
+                                type="text"
+                                value={form.description}
+                                onValueChange={(v) => setF("description", v)}
+                                placeholder="Ej: Lote producción 001"
+                            />
 
-                            <div>
-                                <label className={labelCls}>Fecha</label>
-                                <input type="date" className={fieldCls} value={form.date} onChange={(e) => setF("date", e.target.value)} />
-                            </div>
+                            <BaseInput.Field
+                                label="Fecha"
+                                type="date"
+                                value={form.date}
+                                onValueChange={(v) => setF("date", v)}
+                            />
 
                             <div>
                                 <label className={labelCls}>Producto terminado</label>
@@ -162,14 +168,14 @@ export default function ProductionPage() {
                                 </select>
                             </div>
 
-                            <div>
-                                <label className={labelCls}>Cantidad producida</label>
-                                <input
-                                    type="number" min="0" step="0.0001" className={fieldCls}
-                                    value={form.producedQuantity || ""}
-                                    onChange={(e) => setF("producedQuantity", parseFloat(e.target.value) || 0)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Cantidad producida"
+                                type="number"
+                                min={0}
+                                step={0.0001}
+                                value={form.producedQuantity ? String(form.producedQuantity) : ""}
+                                onValueChange={(v) => setF("producedQuantity", parseFloat(v) || 0)}
+                            />
 
                             {/* Inputs (raw material consumption) */}
                             <div>
@@ -197,17 +203,25 @@ export default function ProductionPage() {
                                                     <option key={p.id} value={p.id}>{p.name}</option>
                                                 ))}
                                             </select>
-                                            <input
-                                                type="number" min="0.0001" step="0.0001" placeholder="Cant."
-                                                className="w-20 h-8 px-2 rounded border border-border-light bg-surface-1 text-[11px] text-foreground tabular-nums outline-none"
-                                                value={c.quantity || ""}
-                                                onChange={(e) => setInput(idx, "quantity", parseFloat(e.target.value) || 0)}
+                                            <BaseInput.Field
+                                                type="number"
+                                                min={0.0001}
+                                                step={0.0001}
+                                                placeholder="Cant."
+                                                className="w-20"
+                                                inputClassName="text-right"
+                                                value={c.quantity ? String(c.quantity) : ""}
+                                                onValueChange={(v) => setInput(idx, "quantity", parseFloat(v) || 0)}
                                             />
-                                            <input
-                                                type="number" min="0" step="0.0001" placeholder="Costo U."
-                                                className="w-24 h-8 px-2 rounded border border-border-light bg-surface-1 text-[11px] text-foreground tabular-nums outline-none"
-                                                value={c.unitCost || ""}
-                                                onChange={(e) => setInput(idx, "unitCost", parseFloat(e.target.value) || 0)}
+                                            <BaseInput.Field
+                                                type="number"
+                                                min={0}
+                                                step={0.0001}
+                                                placeholder="Costo U."
+                                                className="w-24"
+                                                inputClassName="text-right"
+                                                value={c.unitCost ? String(c.unitCost) : ""}
+                                                onValueChange={(v) => setInput(idx, "unitCost", parseFloat(v) || 0)}
                                             />
                                             <button onClick={() => removeInput(idx)} className="text-[var(--text-tertiary)] hover:text-red-500 transition-colors text-[13px]">
                                                 ×
@@ -225,10 +239,12 @@ export default function ProductionPage() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className={labelCls}>Notas</label>
-                                <input className={fieldCls} value={form.notes} onChange={(e) => setF("notes", e.target.value)} />
-                            </div>
+                            <BaseInput.Field
+                                label="Notas"
+                                type="text"
+                                value={form.notes}
+                                onValueChange={(v) => setF("notes", v)}
+                            />
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-border-light">

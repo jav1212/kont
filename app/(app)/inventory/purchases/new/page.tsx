@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -117,15 +118,14 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
 
     return (
         <div ref={wrapRef} className="relative flex-1" onBlur={handleBlur}>
-            <input
-                className={fieldCls}
+            <BaseInput.Field
                 value={displayValue}
                 placeholder={open ? "Buscar proveedor…" : "Seleccionar proveedor…"}
-                onChange={(e) => { setSearch(e.target.value); setHiIdx(0); }}
+                onValueChange={(v) => { setSearch(v); setHiIdx(0); }}
                 onFocus={openDropdown}
                 onKeyDown={handleKeyDown}
                 autoComplete="off"
-                spellCheck={false}
+                spellCheck="false"
             />
             {open && (
                 <div className="absolute left-0 top-full z-50 min-w-full mt-0.5 rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden">
@@ -461,58 +461,44 @@ export default function NuevaFacturaPage() {
                                         </button>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className={labelCls}>Nº Factura</label>
-                                    <input
-                                        className={fieldCls}
-                                        value={invoiceNumber}
-                                        onChange={(e) => setInvoiceNumber(e.target.value)}
-                                        placeholder="Ej. 0001-00123456"
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Nº Factura"
+                                    value={invoiceNumber}
+                                    onValueChange={setInvoiceNumber}
+                                    placeholder="Ej. 0001-00123456"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <BaseInput.Field
+                                    label="Nº Control"
+                                    value={controlNumber}
+                                    onValueChange={setControlNumber}
+                                    placeholder="Ej. 00-00123456"
+                                />
+                                <BaseInput.Field
+                                    label="Fecha"
+                                    type="date"
+                                    value={date}
+                                    onValueChange={setDate}
+                                />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label className={labelCls}>Nº Control</label>
-                                    <input
-                                        className={fieldCls}
-                                        value={controlNumber}
-                                        onChange={(e) => setControlNumber(e.target.value)}
-                                        placeholder="Ej. 00-00123456"
+                                    <BaseInput.Field
+                                        label="Tasa BCV (Bs/USD)"
+                                        type="number"
+                                        min={0}
+                                        step={0.0001}
+                                        value={dollarRate}
+                                        onValueChange={(v) => { setDollarRate(v); setRateDateBcv(null); }}
+                                        placeholder={rateLoading ? "Consultando BCV…" : "Ej. 46.50"}
+                                        isDisabled={rateLoading}
+                                        endContent={rateLoading ? (
+                                            <span className="text-[11px] text-[var(--text-tertiary)] animate-pulse">···</span>
+                                        ) : undefined}
                                     />
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Fecha</label>
-                                    <input
-                                        type="date"
-                                        className={fieldCls}
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className={labelCls}>Tasa BCV (Bs/USD)</label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.0001"
-                                            className={`${fieldCls} pr-8`}
-                                            value={dollarRate}
-                                            onChange={(e) => { setDollarRate(e.target.value); setRateDateBcv(null); }}
-                                            placeholder={rateLoading ? "Consultando BCV…" : "Ej. 46.50"}
-                                            disabled={rateLoading}
-                                        />
-                                        {rateLoading && (
-                                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] animate-pulse">
-                                                ···
-                                            </span>
-                                        )}
-                                    </div>
                                     {rateDateBcv && !rateLoading && (
                                         <p className="mt-1 text-[11px] text-green-500 uppercase tracking-[0.12em]">
                                             BCV {rateDateBcv}
@@ -694,26 +680,20 @@ export default function NuevaFacturaPage() {
             {qcMode === 'supplier' && (
                 <QuickModal title="Nuevo Proveedor" onClose={() => setQcMode(null)}>
                     <div className="space-y-3">
-                        <div>
-                            <label className={labelCls}>Nombre *</label>
-                            <input
-                                autoFocus
-                                className={fieldCls}
-                                value={qcSupplier.name}
-                                onChange={(e) => setQcSupplier(s => ({ ...s, name: e.target.value }))}
-                                placeholder="Nombre del proveedor"
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleQcSupplier(); }}
-                            />
-                        </div>
-                        <div>
-                            <label className={labelCls}>RIF</label>
-                            <input
-                                className={fieldCls}
-                                value={qcSupplier.rif}
-                                onChange={(e) => setQcSupplier(s => ({ ...s, rif: e.target.value }))}
-                                placeholder="J-12345678-9"
-                            />
-                        </div>
+                        <BaseInput.Field
+                            autoFocus
+                            label="Nombre *"
+                            value={qcSupplier.name}
+                            onValueChange={(v) => setQcSupplier(s => ({ ...s, name: v }))}
+                            placeholder="Nombre del proveedor"
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleQcSupplier(); }}
+                        />
+                        <BaseInput.Field
+                            label="RIF"
+                            value={qcSupplier.rif}
+                            onValueChange={(v) => setQcSupplier(s => ({ ...s, rif: v }))}
+                            placeholder="J-12345678-9"
+                        />
                         {error && <p className="text-[13px] text-red-500">{error}</p>}
                         <div className="flex gap-2 pt-2">
                             <button
@@ -738,25 +718,19 @@ export default function NuevaFacturaPage() {
             {qcMode === 'product' && (
                 <QuickModal title="Nuevo Producto" onClose={() => setQcMode(null)}>
                     <div className="space-y-3">
-                        <div>
-                            <label className={labelCls}>Nombre *</label>
-                            <input
-                                autoFocus
-                                className={fieldCls}
-                                value={qcProduct.name}
-                                onChange={(e) => setQcProduct(p => ({ ...p, name: e.target.value }))}
-                                placeholder="Nombre del producto"
-                            />
-                        </div>
-                        <div>
-                            <label className={labelCls}>Código</label>
-                            <input
-                                className={fieldCls}
-                                value={qcProduct.code}
-                                onChange={(e) => setQcProduct(p => ({ ...p, code: e.target.value }))}
-                                placeholder="Ej. 001"
-                            />
-                        </div>
+                        <BaseInput.Field
+                            autoFocus
+                            label="Nombre *"
+                            value={qcProduct.name}
+                            onValueChange={(v) => setQcProduct(p => ({ ...p, name: v }))}
+                            placeholder="Nombre del producto"
+                        />
+                        <BaseInput.Field
+                            label="Código"
+                            value={qcProduct.code}
+                            onValueChange={(v) => setQcProduct(p => ({ ...p, code: v }))}
+                            placeholder="Ej. 001"
+                        />
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className={labelCls}>Tipo</label>
@@ -810,11 +784,11 @@ export default function NuevaFacturaPage() {
                         {qcDeptOpen && (
                             <div className="flex gap-2 items-center px-1 py-2 rounded-lg border border-border-light bg-surface-2">
                                 <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] whitespace-nowrap pl-1">Nuevo depto.</span>
-                                <input
+                                <BaseInput.Field
                                     autoFocus
-                                    className="flex-1 h-8 px-2 rounded-md border border-border-light bg-surface-1 outline-none font-mono text-[12px] text-foreground focus:border-primary-500/60"
+                                    className="flex-1"
                                     value={qcDeptName}
-                                    onChange={(e) => setQcDeptName(e.target.value)}
+                                    onValueChange={setQcDeptName}
                                     placeholder="Nombre del departamento"
                                     onKeyDown={(e) => { if (e.key === 'Enter') handleQcDepartment(); if (e.key === 'Escape') setQcDeptOpen(false); }}
                                 />

@@ -16,16 +16,8 @@ import {
     CheckCircle2
 } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { LogoMark } from "@/src/shared/frontend/components/logo";
-
-const INPUT_CLS = [
-    "w-full h-11 px-4 rounded-xl",
-    "bg-surface-2 border border-border-medium hover:border-border-default",
-    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    "transition-all duration-200",
-].join(" ");
 
 export default function ForgotPasswordPage() {
     const [email,   setEmail]   = useState("");
@@ -92,19 +84,14 @@ export default function ForgotPasswordPage() {
                     ) : (
                         <div className="space-y-4">
                             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                                <div>
-                                    <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
-                                        Correo Corporativo
-                                    </label>
-                                    <input
-                                        type="email"
-                                        placeholder="usuario@empresa.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        disabled={loading}
-                                        className={INPUT_CLS}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Correo Corporativo"
+                                    type="email"
+                                    placeholder="usuario@empresa.com"
+                                    value={email}
+                                    onValueChange={setEmail}
+                                    isDisabled={loading}
+                                />
 
                                 {error && (
                                     <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/10">

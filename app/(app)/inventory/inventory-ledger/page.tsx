@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InventoryLedgerRow } from "@/src/modules/inventory/backend/domain/inventory-ledger";
@@ -102,13 +103,13 @@ export default function LibroInventariosPage() {
                     <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                         Año
                     </label>
-                    <input
+                    <BaseInput.Field
                         type="number"
                         min={2000}
                         max={2100}
-                        value={year}
-                        onChange={(e) => { searchedRef.current = false; setYear(Number(e.target.value)); }}
-                        className="h-8 w-24 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                        value={String(year)}
+                        onValueChange={(v) => { searchedRef.current = false; setYear(Number(v)); }}
+                        className="w-24"
                     />
                 </div>
                 <BaseButton.Root

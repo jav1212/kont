@@ -7,6 +7,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
 import type { Column }   from "@/src/shared/frontend/components/base-table";
+import { BaseInput }     from "@/src/shared/frontend/components/base-input";
 import { AuditContainer, AuditRow } from "@/src/shared/frontend/components/base-audit";
 import {
     EarningRowEditor,
@@ -940,22 +941,17 @@ export const PayrollEmployeeTable = ({
 
             {/* Search */}
             {showTable && (
-                <div className="relative">
-                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre, cédula o cargo…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className={[
-                            "w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-                            "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
-                            "focus:border-primary-500/50 hover:border-border-medium transition-colors duration-150",
-                        ].join(" ")}
-                    />
-                </div>
+                <BaseInput.Field
+                    type="text"
+                    placeholder="Buscar por nombre, cédula o cargo…"
+                    value={search}
+                    onValueChange={setSearch}
+                    startContent={
+                        <svg className="text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="5.5" cy="5.5" r="4" /><path d="M10.5 10.5l-2.5-2.5" />
+                        </svg>
+                    }
+                />
             )}
 
             {/* Table */}

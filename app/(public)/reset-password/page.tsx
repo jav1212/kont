@@ -18,16 +18,8 @@ import {
     UserCheck
 } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { LogoMark } from "@/src/shared/frontend/components/logo";
-
-const INPUT_CLS = [
-    "w-full h-11 px-4 rounded-xl",
-    "bg-surface-2 border border-border-medium hover:border-border-default",
-    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    "transition-all duration-200",
-].join(" ");
 
 type Stage = "loading" | "ready" | "success" | "invalid";
 
@@ -142,33 +134,23 @@ export default function ResetPasswordPage() {
 
                     {stage === "ready" && (
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                            <div>
-                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
-                                    Contraseña Nueva
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Mínimo 8 caracteres"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Contraseña Nueva"
+                                type="password"
+                                placeholder="Mínimo 8 caracteres"
+                                value={password}
+                                onValueChange={setPassword}
+                                isDisabled={loading}
+                            />
 
-                            <div>
-                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
-                                    Verificar Clave
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Repite la contraseña"
-                                    value={confirm}
-                                    onChange={(e) => setConfirm(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Verificar Clave"
+                                type="password"
+                                placeholder="Repite la contraseña"
+                                value={confirm}
+                                onValueChange={setConfirm}
+                                isDisabled={loading}
+                            />
 
                             {error && (
                                 <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/10 flex items-start gap-3">

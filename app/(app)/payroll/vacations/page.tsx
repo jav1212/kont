@@ -15,6 +15,7 @@ import {
     Info,
     Clock
 } from "lucide-react";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -747,24 +748,27 @@ export default function VacacionesPage() {
 
                             {selectedCedula && (
                                 <div className="pt-2">
-                                    <label className={labelCls}>Salario mensual (Bs.)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                        <input type="number" step="0.01" min="0" value={salarioOverride}
-                                            onChange={e => setSalarioOverride(e.target.value)} placeholder="0.00"
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Salario mensual (Bs.)"
+                                        type="number"
+                                        step={0.01}
+                                        min={0}
+                                        value={salarioOverride}
+                                        onValueChange={setSalarioOverride}
+                                        placeholder="0.00"
+                                        prefix="Bs."
+                                        inputClassName="text-right"
+                                    />
                                 </div>
                             )}
                             {!selectedEmp && selectedCedula && (
-                                <div>
-                                    <label className={labelCls}>Fecha de ingreso</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={manualIngreso}
-                                            onChange={e => setManualIngreso(e.target.value)} className={fieldCls + " pl-9"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha de ingreso"
+                                    type="date"
+                                    value={manualIngreso}
+                                    onValueChange={setManualIngreso}
+                                    startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                />
                             )}
                         </div>
 
@@ -781,51 +785,53 @@ export default function VacacionesPage() {
                                     <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
                                 </button>
                             </div>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={exchangeRate}
-                                    onChange={e => setExchangeRate(e.target.value)} 
-                                    className={fieldCls + " pl-9 text-right"} 
-                                />
-                            </div>
+                            <BaseInput.Field
+                                type="number"
+                                step={0.01}
+                                value={exchangeRate}
+                                onValueChange={setExchangeRate}
+                                prefix="Bs."
+                                inputClassName="text-right"
+                            />
                         </div>
 
                         {/* ── Parámetros Temporales ───────────────────────────── */}
                         <div className="px-5 py-5 space-y-4">
                             {mode === "completas" ? (<>
                                 <SectionHeader label="Fechas de Disfrute" />
-                                <div>
-                                    <label className={labelCls}>Fecha Inicio</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={fechaInicio} onChange={e => handleInicioChange(e.target.value)} className={fieldCls + " pl-9"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha Inicio"
+                                    type="date"
+                                    value={fechaInicio}
+                                    onValueChange={handleInicioChange}
+                                    startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                />
                                 {selectedCedula && (
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className={labelCls}>Culminación</label>
-                                            <input type="date" value={fechaCulminacion || (datesDisplay?.end ?? "")} onChange={e => handleCulminacionChange(e.target.value)} className={fieldCls} />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Reintegro</label>
-                                            <input type="date" value={fechaReintegro || (datesDisplay?.rest ?? "")} onChange={e => setFechaReintegro(e.target.value)} className={fieldCls} />
-                                        </div>
+                                        <BaseInput.Field
+                                            label="Culminación"
+                                            type="date"
+                                            value={fechaCulminacion || (datesDisplay?.end ?? "")}
+                                            onValueChange={handleCulminacionChange}
+                                        />
+                                        <BaseInput.Field
+                                            label="Reintegro"
+                                            type="date"
+                                            value={fechaReintegro || (datesDisplay?.rest ?? "")}
+                                            onValueChange={setFechaReintegro}
+                                        />
                                     </div>
                                 )}
                             </>) : (
                                 <>
                                     <SectionHeader label="Egreso" />
-                                    <div>
-                                        <label className={labelCls}>Fecha de Egreso</label>
-                                        <div className="relative">
-                                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                            <input type="date" value={fechaEgreso} onChange={e => setFechaEgreso(e.target.value)} className={fieldCls + " pl-9"} />
-                                        </div>
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Fecha de Egreso"
+                                        type="date"
+                                        value={fechaEgreso}
+                                        onValueChange={setFechaEgreso}
+                                        startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                    />
                                 </>
                             )}
                         </div>

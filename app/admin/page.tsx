@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Fragment } from "react";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 // ============================================================================
 // TYPES
@@ -430,13 +431,6 @@ export default function AdminPage() {
     }, [expandedTenantId, membersByTenant]);
 
     // ── Styles ─────────────────────────────────────────────────────────────
-    const inputCls = [
-        "w-full h-8 px-3 rounded-lg border bg-surface-1 outline-none",
-        "font-mono text-[11px] text-foreground",
-        "border-border-light focus:border-primary-500/60",
-        "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
-    ].join(" ");
-
     const tabBtn = (active: boolean) => [
         "h-8 px-4 rounded-lg font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-150 border",
         active
@@ -612,14 +606,11 @@ export default function AdminPage() {
                                                                     <td colSpan={8} className="px-4 py-3">
                                                                         <div className="flex items-end gap-3">
                                                                             <div className="flex-1">
-                                                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
-                                                                                    Nota (opcional)
-                                                                                </label>
-                                                                                <input
-                                                                                    className={inputCls}
+                                                                                <BaseInput.Field
+                                                                                    label="Nota (opcional)"
                                                                                     placeholder="Motivo de rechazo, observaciones…"
                                                                                     value={actionNote}
-                                                                                    onChange={(e) => setActionNote(e.target.value)}
+                                                                                    onValueChange={setActionNote}
                                                                                 />
                                                                             </div>
                                                                             <button
@@ -867,30 +858,20 @@ export default function AdminPage() {
 
                                     <div className="px-5 py-4 space-y-3">
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
-                                                    Correo electrónico
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    value={newAdminEmail}
-                                                    onChange={(e) => setNewAdminEmail(e.target.value)}
-                                                    placeholder="admin@ejemplo.com"
-                                                    className={inputCls}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">
-                                                    Contraseña
-                                                </label>
-                                                <input
-                                                    type="password"
-                                                    value={newAdminPassword}
-                                                    onChange={(e) => setNewAdminPassword(e.target.value)}
-                                                    placeholder="Mín. 8 caracteres"
-                                                    className={inputCls}
-                                                />
-                                            </div>
+                                            <BaseInput.Field
+                                                label="Correo electrónico"
+                                                type="email"
+                                                value={newAdminEmail}
+                                                onValueChange={setNewAdminEmail}
+                                                placeholder="admin@ejemplo.com"
+                                            />
+                                            <BaseInput.Field
+                                                label="Contraseña"
+                                                type="password"
+                                                value={newAdminPassword}
+                                                onValueChange={setNewAdminPassword}
+                                                placeholder="Mín. 8 caracteres"
+                                            />
                                         </div>
 
                                         {newAdminError && (
@@ -1022,32 +1003,29 @@ export default function AdminPage() {
                                         </div>
                                         <div className="px-5 py-4 space-y-4">
                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Ej: Pro, Premium…"
-                                                        value={newPlanDraft.name ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, name: e.target.value }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Empresas máx.</label>
-                                                    <input type="number" min="0" placeholder="∞"
-                                                        value={newPlanDraft.maxCompanies ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxCompanies: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Empleados máx.</label>
-                                                    <input type="number" min="0" placeholder="∞"
-                                                        value={newPlanDraft.maxEmployeesPerCompany ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, maxEmployeesPerCompany: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
+                                                <BaseInput.Field
+                                                    label="Nombre"
+                                                    type="text"
+                                                    placeholder="Ej: Pro, Premium…"
+                                                    value={newPlanDraft.name ?? ""}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, name: v }))}
+                                                />
+                                                <BaseInput.Field
+                                                    label="Empresas máx."
+                                                    type="number"
+                                                    min={0}
+                                                    placeholder="∞"
+                                                    value={newPlanDraft.maxCompanies == null ? "" : String(newPlanDraft.maxCompanies)}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, maxCompanies: v === "" ? undefined : Number(v) }))}
+                                                />
+                                                <BaseInput.Field
+                                                    label="Empleados máx."
+                                                    type="number"
+                                                    min={0}
+                                                    placeholder="∞"
+                                                    value={newPlanDraft.maxEmployeesPerCompany == null ? "" : String(newPlanDraft.maxEmployeesPerCompany)}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, maxEmployeesPerCompany: v === "" ? undefined : Number(v) }))}
+                                                />
                                                 <div>
                                                     <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Solo contacto</label>
                                                     <select
@@ -1061,30 +1039,33 @@ export default function AdminPage() {
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-3 gap-3">
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio mensual (USD) *</label>
-                                                    <input type="number" min="0" step="0.01" placeholder="0.00"
-                                                        value={newPlanDraft.priceMonthlyUsd ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceMonthlyUsd: Number(e.target.value) }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio trimestral (USD)</label>
-                                                    <input type="number" min="0" step="0.01" placeholder="—"
-                                                        value={newPlanDraft.priceQuarterlyUsd ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceQuarterlyUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Precio anual (USD)</label>
-                                                    <input type="number" min="0" step="0.01" placeholder="—"
-                                                        value={newPlanDraft.priceAnnualUsd ?? ""}
-                                                        onChange={(e) => setNewPlanDraft((p) => ({ ...p, priceAnnualUsd: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                                                        className={inputCls}
-                                                    />
-                                                </div>
+                                                <BaseInput.Field
+                                                    label="Precio mensual (USD) *"
+                                                    type="number"
+                                                    min={0}
+                                                    step={0.01}
+                                                    placeholder="0.00"
+                                                    value={newPlanDraft.priceMonthlyUsd == null ? "" : String(newPlanDraft.priceMonthlyUsd)}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, priceMonthlyUsd: Number(v) }))}
+                                                />
+                                                <BaseInput.Field
+                                                    label="Precio trimestral (USD)"
+                                                    type="number"
+                                                    min={0}
+                                                    step={0.01}
+                                                    placeholder="—"
+                                                    value={newPlanDraft.priceQuarterlyUsd == null ? "" : String(newPlanDraft.priceQuarterlyUsd)}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, priceQuarterlyUsd: v === "" ? undefined : Number(v) }))}
+                                                />
+                                                <BaseInput.Field
+                                                    label="Precio anual (USD)"
+                                                    type="number"
+                                                    min={0}
+                                                    step={0.01}
+                                                    placeholder="—"
+                                                    value={newPlanDraft.priceAnnualUsd == null ? "" : String(newPlanDraft.priceAnnualUsd)}
+                                                    onValueChange={(v) => setNewPlanDraft((p) => ({ ...p, priceAnnualUsd: v === "" ? undefined : Number(v) }))}
+                                                />
                                             </div>
                                             {newPlanError && <p className="font-mono text-[10px] text-red-500">{newPlanError}</p>}
                                             <div className="flex items-center gap-2">
@@ -1134,24 +1115,21 @@ export default function AdminPage() {
                                                     const d = isEditing ? planDraft : {};
 
                                                     const numInput = (field: keyof PlanRow, label: string, nullable?: boolean) => (
-                                                        <div>
-                                                            <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">{label}</label>
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.01"
-                                                                value={(d[field] ?? plan[field] ?? "") as string | number}
-                                                                onChange={(e) => {
-                                                                    const raw = e.target.value;
-                                                                    setPlanDraft((prev) => ({
-                                                                        ...prev,
-                                                                        [field]: raw === "" && nullable ? null : Number(raw),
-                                                                    }));
-                                                                }}
-                                                                placeholder={nullable ? "∞" : "0"}
-                                                                className={inputCls + " w-24"}
-                                                            />
-                                                        </div>
+                                                        <BaseInput.Field
+                                                            label={label}
+                                                            type="number"
+                                                            min={0}
+                                                            step={0.01}
+                                                            value={String(d[field] ?? plan[field] ?? "")}
+                                                            onValueChange={(raw) => {
+                                                                setPlanDraft((prev) => ({
+                                                                    ...prev,
+                                                                    [field]: raw === "" && nullable ? null : Number(raw),
+                                                                }));
+                                                            }}
+                                                            placeholder={nullable ? "∞" : "0"}
+                                                            className="w-24"
+                                                        />
                                                     );
 
                                                     return (
@@ -1221,15 +1199,12 @@ export default function AdminPage() {
                                                                     <td colSpan={9} className="px-4 py-4">
                                                                         <div className="space-y-4">
                                                                             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                                                                                <div>
-                                                                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nombre</label>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        value={(d.name ?? plan.name) as string}
-                                                                                        onChange={(e) => setPlanDraft((prev) => ({ ...prev, name: e.target.value }))}
-                                                                                        className={inputCls}
-                                                                                    />
-                                                                                </div>
+                                                                                <BaseInput.Field
+                                                                                    label="Nombre"
+                                                                                    type="text"
+                                                                                    value={(d.name ?? plan.name) as string}
+                                                                                    onValueChange={(v) => setPlanDraft((prev) => ({ ...prev, name: v }))}
+                                                                                />
                                                                                 {numInput("maxCompanies", "Empresas máx.", true)}
                                                                                 {numInput("maxEmployeesPerCompany", "Empleados máx.", true)}
                                                                                 <div>

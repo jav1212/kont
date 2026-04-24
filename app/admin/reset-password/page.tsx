@@ -3,15 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
-
-const INPUT_CLS = [
-    "w-full h-10 px-3 rounded-lg",
-    "bg-foreground/[0.04] border border-foreground/10",
-    "font-mono text-[12px] text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-red-500/50 focus:bg-foreground/[0.06]",
-    "disabled:opacity-40 disabled:cursor-not-allowed",
-    "transition-colors duration-150",
-].join(" ");
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 const Spinner = () => (
     <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -144,36 +136,26 @@ export default function AdminResetPasswordPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                    Nueva contraseña
-                                </label>
-                                <input
-                                    type="password"
-                                    autoFocus
-                                    autoComplete="new-password"
-                                    placeholder="Mín. 8 caracteres"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Nueva contraseña"
+                                type="password"
+                                autoFocus
+                                autoComplete="new-password"
+                                placeholder="Mín. 8 caracteres"
+                                value={password}
+                                onValueChange={setPassword}
+                                isDisabled={loading}
+                            />
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                    Confirmar contraseña
-                                </label>
-                                <input
-                                    type="password"
-                                    autoComplete="new-password"
-                                    placeholder="Repite la contraseña"
-                                    value={confirm}
-                                    onChange={(e) => setConfirm(e.target.value)}
-                                    disabled={loading}
-                                    className={INPUT_CLS}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Confirmar contraseña"
+                                type="password"
+                                autoComplete="new-password"
+                                placeholder="Repite la contraseña"
+                                value={confirm}
+                                onValueChange={setConfirm}
+                                isDisabled={loading}
+                            />
 
                             {error && (
                                 <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">

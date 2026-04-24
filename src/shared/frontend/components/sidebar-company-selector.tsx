@@ -1,37 +1,71 @@
 "use client";
 
-// SidebarCompanySelector — dropdown to switch the active company.
-// Manages its own open/search state; receives company data as props (business-agnostic).
-// Collapsed mode: avatar-only trigger, dropdown opens to the right of the rail.
+// SidebarCompanySelector — card-style trigger to switch the active company.
+// Shares visual pattern with SidebarModuleSelector:
+//   card ▸ avatar ▸ name + meta subtitle ▸ chevron
+// Avatar: dark neutral tile with 2-letter initials (white) + tiny orange sync
+// dot in the bottom-right (the "tenant synced with Konta" signal). Click →
+// floating listbox menu with search.
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 // ── Local sub-components ──────────────────────────────────────────────────────
 
-function CompanyAvatar({ name, logoUrl }: { name?: string; logoUrl?: string | null }) {
+function initialsFor(name?: string | null): string {
+    if (!name) return "?";
+    const words = name.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return "?";
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+/**
+ * Card-avatar used in the trigger: 36×36 dark neutral tile with large
+ * uppercase initials and a tiny orange sync dot at the bottom-right.
+ */
+function CompanyCardAvatar({ name, logoUrl }: { name?: string; logoUrl?: string | null }) {
     return (
-        <div
+        <span
             aria-hidden="true"
-            className="relative w-5 h-5 rounded-md bg-primary-500/20 overflow-hidden flex items-center justify-center shrink-0"
+            className="relative flex items-center justify-center w-9 h-9 rounded-md bg-neutral-900 dark:bg-neutral-700 text-white shrink-0 overflow-visible"
         >
             {logoUrl ? (
-                <Image
-                    src={logoUrl}
-                    alt=""
-                    fill
-                    unoptimized
-                    sizes="20px"
-                    className="object-cover"
-                />
+                <span className="relative w-full h-full overflow-hidden rounded-md">
+                    <Image src={logoUrl} alt="" fill unoptimized sizes="36px" className="object-cover" />
+                </span>
             ) : (
-                <span className={`font-mono ${APP_SIZES.nav.companyAvatar} font-bold text-primary-400 uppercase`}>
-                    {name?.[0] ?? "?"}
+                <span className="font-mono text-[11px] font-bold uppercase tracking-[0.04em]">
+                    {initialsFor(name).slice(0, 2)}
                 </span>
             )}
-        </div>
+            {/* Sync dot — warm orange #FF4A18 */}
+            <span
+                aria-hidden="true"
+                className="absolute -bottom-[3px] -right-[3px] w-2.5 h-2.5 rounded-full bg-[#FF4A18] ring-2 ring-sidebar-bg"
+            />
+        </span>
+    );
+}
+
+/** Compact 20×20 avatar used inside dropdown rows (keeps rows dense). */
+function CompanyRowAvatar({ name, logoUrl }: { name?: string; logoUrl?: string | null }) {
+    return (
+        <span
+            aria-hidden="true"
+            className="relative w-6 h-6 rounded-md bg-neutral-900 dark:bg-neutral-700 text-white overflow-hidden flex items-center justify-center shrink-0"
+        >
+            {logoUrl ? (
+                <Image src={logoUrl} alt="" fill unoptimized sizes="24px" className="object-cover" />
+            ) : (
+                <span className="font-mono text-[10px] font-bold uppercase">
+                    {initialsFor(name).slice(0, 2)}
+                </span>
+            )}
+        </span>
     );
 }
 
@@ -44,7 +78,13 @@ const CheckIcon = () => (
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type CompanyEntry = { id: string; name: string; logoUrl?: string | null };
+export type CompanyEntry = {
+    id:            string;
+    name:          string;
+    logoUrl?:      string | null;
+    rif?:          string | null;
+    taxpayerType?: "ordinario" | "especial" | null;
+};
 
 interface SidebarCompanySelectorProps {
     companies: CompanyEntry[];
@@ -52,6 +92,18 @@ interface SidebarCompanySelectorProps {
     loading: boolean;
     isCollapsed: boolean;
     onSelect: (id: string) => void;
+}
+
+// ── Subtitle helper ───────────────────────────────────────────────────────────
+
+function buildCompanySubtitle(c?: CompanyEntry | null): string | null {
+    if (!c) return null;
+    const ridLabel = c.rif ?? c.id;  // id is already the RIF per domain model
+    const typeLabel = c.taxpayerType === "especial" ? "Esp."
+                    : c.taxpayerType === "ordinario" ? "Ord."
+                    : null;
+    if (ridLabel && typeLabel) return `${ridLabel} · ${typeLabel}`;
+    return ridLabel ?? null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -68,6 +120,7 @@ export function SidebarCompanySelector({
     const ref = useRef<HTMLDivElement>(null);
 
     const selected = companies.find((c) => c.id === selectedId) ?? companies[0] ?? null;
+    const subtitle = buildCompanySubtitle(selected);
 
     // Outside click
     useEffect(() => {
@@ -99,19 +152,19 @@ export function SidebarCompanySelector({
     }
 
     const dropdownClass = isCollapsed
-        ? "absolute left-full top-0 ml-2 w-52 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
+        ? "absolute left-full top-0 ml-2 w-60 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
         : "absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden";
-
-    const ICON_BTN      = "flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-    const ICON_BTN_OPEN = "text-sidebar-active-fg bg-sidebar-active-bg/60";
 
     const filtered = companies.filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase()),
     );
 
-    // ── Collapsed: icon-only trigger ──────────────────────────────────────────
+    // ── Collapsed: avatar-only trigger ────────────────────────────────────────
 
     if (isCollapsed) {
+        const ICON_BTN      = "flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-150 hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
+        const ICON_BTN_OPEN = "bg-sidebar-bg-hover";
+
         return (
             <div className="relative" ref={ref}>
                 <button
@@ -121,7 +174,7 @@ export function SidebarCompanySelector({
                     aria-label={`Empresa: ${selected?.name ?? "Ninguna"}. Cambiar empresa`}
                     className={[ICON_BTN, open ? ICON_BTN_OPEN : ""].join(" ")}
                 >
-                    <CompanyAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
+                    <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
                 </button>
 
                 {open && (
@@ -132,29 +185,37 @@ export function SidebarCompanySelector({
                             </p>
                         </div>
                         <div className="p-2 border-b border-sidebar-border">
-                            <input
-                                type="text"
+                            <BaseInput.Field
+                                type="search"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onValueChange={setSearch}
                                 placeholder="Buscar empresa…"
                                 autoFocus
-                                className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
+                                className="w-full"
                             />
                         </div>
-                        <ul role="listbox" aria-label="Empresas disponibles" className="max-h-48 overflow-y-auto">
+                        <ul role="listbox" aria-label="Empresas disponibles" className="max-h-56 overflow-y-auto">
                             {filtered.map((c) => {
                                 const isSelected = c.id === selectedId;
+                                const rowSub = buildCompanySubtitle(c);
                                 return (
                                     <li key={c.id} role="option" aria-selected={isSelected}>
                                         <button
                                             onClick={() => handleSelect(c.id)}
                                             className={[
-                                                `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                                `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
                                                 isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                             ].join(" ")}
                                         >
-                                            <CompanyAvatar name={c.name} logoUrl={c.logoUrl} />
-                                            <span className="truncate flex-1">{c.name}</span>
+                                            <CompanyRowAvatar name={c.name} logoUrl={c.logoUrl} />
+                                            <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                                                <span className="truncate">{c.name}</span>
+                                                {rowSub && (
+                                                    <span className="text-[10px] text-sidebar-label truncate mt-0.5">
+                                                        {rowSub}
+                                                    </span>
+                                                )}
+                                            </span>
                                             {isSelected && <CheckIcon />}
                                         </button>
                                     </li>
@@ -167,30 +228,51 @@ export function SidebarCompanySelector({
         );
     }
 
-    // ── Expanded ──────────────────────────────────────────────────────────────
+    // ── Expanded: card trigger ────────────────────────────────────────────────
 
     if (loading) {
         return (
-            <div className="px-2 py-1.5">
-                <div className="h-3 rounded bg-foreground/6 animate-pulse w-3/4" />
+            <div className="p-2 rounded-lg border border-sidebar-border bg-sidebar-bg-hover/60">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-md bg-foreground/6 animate-pulse shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                        <div className="h-3 rounded bg-foreground/6 animate-pulse w-3/4" />
+                        <div className="h-2 rounded bg-foreground/6 animate-pulse w-1/2" />
+                    </div>
+                </div>
             </div>
         );
     }
 
     if (companies.length === 0) {
         return (
-            <p className={`px-2 font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
-                Sin empresas
-            </p>
+            <div className="p-2 rounded-lg border border-sidebar-border bg-sidebar-bg-hover/60">
+                <p className={`font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
+                    Sin empresas
+                </p>
+            </div>
         );
     }
 
+    const triggerCommon = [
+        "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+    ].join(" ");
+
+    // Single-company variant: same card shape, non-interactive.
     if (companies.length === 1) {
         return (
-            <div className="px-2 py-1.5 flex items-center gap-2">
-                <CompanyAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
-                <span className={`font-mono ${APP_SIZES.nav.companyName} truncate text-sidebar-fg`}>
-                    {selected?.name}
+            <div className={[triggerCommon, "bg-sidebar-bg-hover/60 border-sidebar-border cursor-default"].join(" ")}>
+                <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
+                <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate">
+                        {selected?.name}
+                    </span>
+                    {subtitle && (
+                        <span className="font-mono text-[10px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                            {subtitle}
+                        </span>
+                    )}
                 </span>
             </div>
         );
@@ -203,11 +285,23 @@ export function SidebarCompanySelector({
                 aria-expanded={open}
                 aria-haspopup="listbox"
                 aria-label={`Empresa seleccionada: ${selected?.name ?? "Ninguna"}. Cambiar empresa`}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                className={[
+                    triggerCommon,
+                    open
+                        ? "bg-sidebar-bg-hover border-border-medium"
+                        : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
+                ].join(" ")}
             >
-                <CompanyAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
-                <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
-                    {selected?.name ?? "Seleccionar…"}
+                <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
+                <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate">
+                        {selected?.name ?? "Seleccionar empresa"}
+                    </span>
+                    {subtitle && (
+                        <span className="font-mono text-[10px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                            {subtitle}
+                        </span>
+                    )}
                 </span>
                 <ChevronIcon open={open} />
             </button>
@@ -215,29 +309,37 @@ export function SidebarCompanySelector({
             {open && (
                 <div className={dropdownClass}>
                     <div className="p-2 border-b border-sidebar-border">
-                        <input
-                            type="text"
+                        <BaseInput.Field
+                            type="search"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onValueChange={setSearch}
                             placeholder="Buscar empresa…"
                             autoFocus
-                            className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
+                            className="w-full"
                         />
                     </div>
-                    <ul role="listbox" aria-label="Empresas disponibles" className="max-h-48 overflow-y-auto">
+                    <ul role="listbox" aria-label="Empresas disponibles" className="max-h-56 overflow-y-auto">
                         {filtered.map((c) => {
                             const isSelected = c.id === selectedId;
+                            const rowSub = buildCompanySubtitle(c);
                             return (
                                 <li key={c.id} role="option" aria-selected={isSelected}>
                                     <button
                                         onClick={() => handleSelect(c.id)}
                                         className={[
-                                            `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                            `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
                                             isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                         ].join(" ")}
                                     >
-                                        <CompanyAvatar name={c.name} logoUrl={c.logoUrl} />
-                                        <span className="truncate flex-1">{c.name}</span>
+                                        <CompanyRowAvatar name={c.name} logoUrl={c.logoUrl} />
+                                        <span className="flex-1 min-w-0 flex flex-col leading-tight">
+                                            <span className="truncate">{c.name}</span>
+                                            {rowSub && (
+                                                <span className="text-[10px] text-sidebar-label truncate mt-0.5">
+                                                    {rowSub}
+                                                </span>
+                                            )}
+                                        </span>
                                         {isSelected && <CheckIcon />}
                                     </button>
                                 </li>

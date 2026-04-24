@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, ChevronDown, Check, Building2 } from "lucide-react";
 import type { CompanyLite } from "../hooks/use-companies-lite";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 interface CompanySelectorProps {
     companies: CompanyLite[];
@@ -15,7 +16,6 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
 
     const selected = useMemo(
         () => companies.find((c) => c.id === selectedId) ?? null,
@@ -58,12 +58,6 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
         }
         document.addEventListener("keydown", handle);
         return () => document.removeEventListener("keydown", handle);
-    }, [open]);
-
-    useEffect(() => {
-        if (open) {
-            requestAnimationFrame(() => inputRef.current?.focus());
-        }
     }, [open]);
 
     if (loading) {
@@ -123,15 +117,15 @@ export function CompanySelector({ companies, loading, selectedId, onSelect }: Co
                 <div
                     className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-border-light bg-surface-1 shadow-lg overflow-hidden"
                 >
-                    <div className="flex items-center gap-2 px-2.5 py-2 border-b border-border-light bg-surface-2/60">
-                        <Search size={13} strokeWidth={1.75} className="text-text-tertiary flex-shrink-0" aria-hidden />
-                        <input
-                            ref={inputRef}
-                            type="text"
+                    <div className="px-2.5 py-2 border-b border-border-light bg-surface-2/60">
+                        <BaseInput.Field
+                            type="search"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onValueChange={setSearch}
                             placeholder="Buscar empresa o RIF..."
-                            className="w-full bg-transparent font-mono text-[12px] text-foreground placeholder:text-text-tertiary focus:outline-none"
+                            autoFocus
+                            startContent={<Search size={14} className="text-[var(--text-tertiary)]" />}
+                            className="w-full"
                             aria-label="Buscar empresa por nombre o RIF"
                         />
                     </div>

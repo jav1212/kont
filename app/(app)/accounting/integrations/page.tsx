@@ -9,6 +9,7 @@ import { useId, useState }              from 'react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { PageHeader }                   from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                   from '@/src/shared/frontend/components/base-button';
+import { BaseInput }                    from '@/src/shared/frontend/components/base-input';
 import { BaseTable }                    from '@/src/shared/frontend/components/base-table';
 import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                   from '@/src/modules/companies/frontend/hooks/use-companies';
@@ -314,22 +315,14 @@ export default function IntegrationsPage() {
                                 </div>
 
                                 {/* Description */}
-                                <div className="flex flex-col sm:col-span-2">
-                                    <label htmlFor={`${formId}-desc`} className={labelCls}>
-                                        Descripción del asiento
-                                        <span className="ml-1 normal-case tracking-normal text-neutral-400">
-                                            (usa {'{{period}}'} o {'{{ref}}'})
-                                        </span>
-                                    </label>
-                                    <input
-                                        id={`${formId}-desc`}
-                                        required
-                                        placeholder="Ej. Nómina {{period}}"
-                                        value={form.description}
-                                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                                        className={fieldCls}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    className="sm:col-span-2"
+                                    label="Descripción del asiento (usa {{period}} o {{ref}})"
+                                    isRequired
+                                    placeholder="Ej. Nómina {{period}}"
+                                    value={form.description}
+                                    onValueChange={(v) => setForm((f) => ({ ...f, description: v }))}
+                                />
                             </div>
 
                             {formErr && (

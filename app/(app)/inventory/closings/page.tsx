@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 
@@ -89,14 +90,6 @@ export default function CierresPage() {
         }
     }
 
-    const fieldCls = [
-        "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-        "font-mono text-[14px] text-foreground",
-        "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-    ].join(" ");
-
-    const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
-
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Cierres de período" subtitle="Gestión de períodos cerrados" />
@@ -122,27 +115,24 @@ export default function CierresPage() {
                         </div>
 
                         <div className="space-y-3">
-                            <div>
-                                <label className={labelCls}>Período a cerrar</label>
-                                <input
-                                    type="month"
-                                    className={fieldCls}
-                                    value={closingPeriod}
-                                    onChange={(e) => { setClosingPeriod(e.target.value); setConfirm(false); }}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Período a cerrar"
+                                type="month"
+                                value={closingPeriod}
+                                onValueChange={(v) => { setClosingPeriod(v); setConfirm(false); }}
+                            />
 
                             <div>
-                                <label className={labelCls}>Tasa BCV (Bs/USD)</label>
-                                <input
+                                <BaseInput.Field
+                                    label="Tasa BCV (Bs/USD)"
                                     type="number"
-                                    min="0"
-                                    step="0.0001"
-                                    className={fieldCls}
+                                    min={0}
+                                    step={0.0001}
+                                    prefix="Bs."
                                     value={closingTasa}
-                                    onChange={(e) => setClosingTasa(e.target.value)}
+                                    onValueChange={setClosingTasa}
                                     placeholder="Ej. 46.50"
-                                    disabled={tasaBcvLoading}
+                                    isDisabled={tasaBcvLoading}
                                 />
                                 {tasaBcvLoading && (
                                     <p className="mt-1 text-[11px] text-[var(--text-tertiary)] animate-pulse">Consultando BCV…</p>
@@ -155,15 +145,13 @@ export default function CierresPage() {
                                 )}
                             </div>
 
-                            <div>
-                                <label className={labelCls}>Notas</label>
-                                <input
-                                    className={fieldCls}
-                                    value={closingNotas}
-                                    onChange={(e) => setClosingNotas(e.target.value)}
-                                    placeholder="Opcional…"
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Notas"
+                                type="text"
+                                value={closingNotas}
+                                onValueChange={setClosingNotas}
+                                placeholder="Opcional…"
+                            />
                         </div>
 
                         {isClosed ? (

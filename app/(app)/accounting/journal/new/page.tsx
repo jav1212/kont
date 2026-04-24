@@ -8,6 +8,7 @@ import { useContextRouter as useRouter } from '@/src/shared/frontend/hooks/use-u
 import { ContextLink as Link }          from '@/src/shared/frontend/components/context-link';
 import { PageHeader }                   from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                   from '@/src/shared/frontend/components/base-button';
+import { BaseInput }                    from '@/src/shared/frontend/components/base-input';
 import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                   from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccounts }                  from '@/src/modules/accounting/frontend/hooks/use-accounts';
@@ -136,18 +137,12 @@ export default function NewJournalEntryPage() {
                         aria-label="Datos del asiento"
                         className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 border border-border-light rounded-xl bg-surface-1"
                     >
-                        <div className="flex flex-col">
-                            <label htmlFor={`${formId}-date`} className={labelCls}>
-                                Fecha
-                            </label>
-                            <input
-                                id={`${formId}-date`}
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className={fieldCls}
-                            />
-                        </div>
+                        <BaseInput.Field
+                            label="Fecha"
+                            type="date"
+                            value={date}
+                            onValueChange={setDate}
+                        />
 
                         <div className="flex flex-col">
                             <label htmlFor={`${formId}-period`} className={labelCls}>
@@ -174,18 +169,12 @@ export default function NewJournalEntryPage() {
                             )}
                         </div>
 
-                        <div className="flex flex-col">
-                            <label htmlFor={`${formId}-desc`} className={labelCls}>
-                                Descripción
-                            </label>
-                            <input
-                                id={`${formId}-desc`}
-                                placeholder="Descripción del asiento"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className={fieldCls}
-                            />
-                        </div>
+                        <BaseInput.Field
+                            label="Descripción"
+                            placeholder="Descripción del asiento"
+                            value={description}
+                            onValueChange={setDescription}
+                        />
                     </section>
 
                     {/* ── Entry lines ────────────────────────────────── */}
@@ -223,23 +212,22 @@ export default function NewJournalEntryPage() {
                                         <option value="credit">Crédito</option>
                                     </select>
 
-                                    <input
+                                    <BaseInput.Field
                                         type="number"
-                                        min="0"
-                                        step="0.01"
+                                        min={0}
+                                        step={0.01}
                                         placeholder="0,00"
                                         aria-label={`Monto de línea ${idx + 1}`}
                                         value={line.amount}
-                                        onChange={(e) => updateLine(idx, { amount: e.target.value })}
-                                        className={fieldCls}
+                                        onValueChange={(v) => updateLine(idx, { amount: v })}
+                                        inputClassName="text-right"
                                     />
 
-                                    <input
+                                    <BaseInput.Field
                                         placeholder="Nota (opcional)"
                                         aria-label={`Nota de línea ${idx + 1}`}
                                         value={line.description}
-                                        onChange={(e) => updateLine(idx, { description: e.target.value })}
-                                        className={fieldCls}
+                                        onValueChange={(v) => updateLine(idx, { description: v })}
                                     />
 
                                     <button

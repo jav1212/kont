@@ -5,16 +5,38 @@
 // Reused across Payroll, Inventory, Documents, Accounting, and future module dashboards.
 // Constraint: renders only display — no click or mutation logic.
 
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface DashboardKpiCardProps {
-    label:    string;
-    value:    string | number;
-    color?:   "primary" | "success" | "danger" | "warning" | "default";
-    loading?: boolean;
-    icon?:    LucideIcon;
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type TrendDirection = "up" | "down" | "flat";
+
+interface TrendValue {
+    direction: TrendDirection;
+    /** Already-formatted string, e.g. "4,2%" — shown as-is in mono tabular-nums. */
+    label: string;
 }
+
+interface DashboardKpiCardProps {
+    label:      string;
+    value:      string | number;
+    color?:     "primary" | "success" | "danger" | "warning" | "default";
+    loading?:   boolean;
+    icon?:      LucideIcon;
+    /** Small secondary line under the value ("de 25 empleados"). */
+    sublabel?:  string;
+    /** Delta indicator rendered on the top-right of the card. */
+    trend?:     TrendValue;
+    /** Explanatory hint rendered as sans-serif footer ("Actualizado hace 3 h"). */
+    hint?:      string;
+}
+
+// ============================================================================
+// STYLE MAP — token-driven colour system, light/dark parity via CSS vars
+// ============================================================================
 
 const COLOR_CONFIG: Record<
     NonNullable<DashboardKpiCardProps["color"]>,
@@ -52,12 +74,25 @@ const COLOR_CONFIG: Record<
     },
 };
 
+const TREND_CONFIG: Record<TrendDirection, { icon: LucideIcon; cls: string }> = {
+    up:   { icon: TrendingUp,   cls: "text-text-success" },
+    down: { icon: TrendingDown, cls: "text-text-error" },
+    flat: { icon: Minus,        cls: "text-[var(--text-tertiary)]" },
+};
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
 export function DashboardKpiCard({
     label,
     value,
-    color   = "default",
-    loading = false,
+    color    = "default",
+    loading  = false,
     icon: Icon,
+    sublabel,
+    trend,
+    hint,
 }: DashboardKpiCardProps) {
     const config = COLOR_CONFIG[color];
 
@@ -67,37 +102,89 @@ export function DashboardKpiCard({
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -2 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className={`relative overflow-hidden rounded-2xl border ${config.border} bg-surface-1 p-5 transition-all duration-300 hover:shadow-lg ${config.glow}`}
+            className={[
+                "relative overflow-hidden rounded-2xl border bg-surface-1 p-5",
+                // shadow-lg is reserved for modals — hover on cards stays at shadow-md
+                "transition-shadow duration-300 hover:shadow-md",
+                config.border,
+                config.glow,
+            ].join(" ")}
             aria-label={label}
             aria-busy={loading}
         >
-            {/* Subtle background gradient */}
-            <div className={`absolute -right-4 -top-4 h-24 w-24 rounded-full ${config.bg} blur-3xl`} />
+            {/* Ambient tinted bloom — one per card, subtle */}
+            <div
+                aria-hidden="true"
+                className={`absolute -right-4 -top-4 h-24 w-24 rounded-full ${config.bg} blur-3xl`}
+            />
 
-            <div className="flex items-start justify-between">
-                <div className="flex flex-col gap-1">
-                    <p className="text-[12px] font-medium uppercase tracking-[0.1em] text-[var(--text-tertiary)]">
+            <div className="relative flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1.5 min-w-0">
+                    {/* ── label — mono 12 px uppercase 0.14em (canon) ───── */}
+                    <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                         {label}
                     </p>
+
+                    {/* ── value — kpi token: 28 px mono, tabular, tight ── */}
                     <p
-                        className={`text-[28px] font-bold tabular-nums tracking-tight ${config.text}`}
+                        className={`font-mono text-[28px] font-bold tabular-nums tracking-[-0.02em] leading-[1] ${config.text}`}
                         aria-live="polite"
                     >
                         {loading ? (
                             <span
-                                className="inline-block h-8 w-16 rounded bg-surface-2 animate-pulse"
+                                className="inline-block h-7 w-24 rounded bg-surface-2 animate-pulse"
                                 aria-hidden="true"
                             />
                         ) : value}
                     </p>
+
+                    {/* ── sublabel — sans, muted (prose-style) ─────────── */}
+                    {sublabel && !loading && (
+                        <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
+                            {sublabel}
+                        </p>
+                    )}
                 </div>
 
-                {Icon && (
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${config.bg} ${config.text} border ${config.border}`}>
-                        <Icon size={20} strokeWidth={2.5} />
-                    </div>
-                )}
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    {Icon && (
+                        <div
+                            className={[
+                                "flex h-10 w-10 items-center justify-center rounded-xl border",
+                                config.bg, config.text, config.border,
+                            ].join(" ")}
+                            aria-hidden="true"
+                        >
+                            {/* canon: strokeWidth 2.0 for icons > 16 px */}
+                            <Icon size={20} strokeWidth={2} />
+                        </div>
+                    )}
+
+                    {trend && !loading && (() => {
+                        const { icon: TrendIcon, cls } = TREND_CONFIG[trend.direction];
+                        return (
+                            <span
+                                className={[
+                                    "inline-flex items-center gap-1",
+                                    "font-mono text-[11px] font-semibold tracking-wide tabular-nums",
+                                    cls,
+                                ].join(" ")}
+                                aria-label={`Tendencia ${trend.direction} ${trend.label}`}
+                            >
+                                <TrendIcon size={11} strokeWidth={2.2} />
+                                {trend.label}
+                            </span>
+                        );
+                    })()}
+                </div>
             </div>
+
+            {/* ── hint — footer line, prose, 1 sentence max ───────────── */}
+            {hint && !loading && (
+                <p className="relative mt-3 pt-3 border-t border-border-light font-sans text-[11px] text-[var(--text-tertiary)] leading-snug">
+                    {hint}
+                </p>
+            )}
         </motion.div>
     );
 }

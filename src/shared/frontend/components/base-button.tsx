@@ -34,16 +34,17 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
         "bg-primary-500 text-white",
         "border border-primary-500",
         "hover:bg-primary-600 hover:border-primary-600",
-        "active:bg-primary-700",
-        "shadow-[0_1px_2px_rgba(0,0,0,.08)]",
+        "active:bg-primary-700 active:border-primary-700",
+        "shadow-sm",
     ].join(" "),
 
+    // Interactive surface → border-default (3.18:1, WCAG 1.4.11)
     secondary: [
-        "bg-surface-2 text-foreground",
-        "border border-border-light",
-        "hover:bg-neutral-100 dark:hover:bg-neutral-800",
-        "hover:border-border-medium",
+        "bg-surface-1 text-foreground",
+        "border border-border-default",
+        "hover:bg-surface-2 hover:border-border-medium",
         "active:bg-neutral-200 dark:active:bg-neutral-700",
+        "shadow-sm",
     ].join(" "),
 
     ghost: [
@@ -59,12 +60,13 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
         "border border-error",
         "hover:bg-error/90 hover:border-error/90",
         "active:bg-error/80",
-        "shadow-[0_1px_2px_rgba(0,0,0,.08)]",
+        "shadow-sm",
     ].join(" "),
 
+    // Interactive surface → border-default (same rule as secondary)
     outline: [
         "bg-transparent text-foreground",
-        "border border-border-light",
+        "border border-border-default",
         "hover:border-border-medium",
         "hover:bg-neutral-50 dark:hover:bg-neutral-900/40",
         "active:bg-neutral-100 dark:active:bg-neutral-900",
@@ -73,8 +75,8 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
     // Soft red outline — used for destructive bulk actions before confirmation.
     dangerOutline: [
         "bg-red-500/5 text-red-500",
-        "border border-red-500/30",
-        "hover:bg-red-500/10 hover:border-red-500/40",
+        "border border-red-500/40",
+        "hover:bg-red-500/10 hover:border-red-500/50",
         "active:bg-red-500/15",
     ].join(" "),
 };

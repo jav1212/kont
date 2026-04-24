@@ -1,76 +1,84 @@
 "use client";
 
-// SidebarModuleSelector — compact dropdown to switch the active module.
-// Manages its own open state; informs parent via onSelect.
-// Collapsed mode: icon-only trigger, dropdown opens to the right of the rail.
+// SidebarModuleSelector — card-style trigger to switch the active module.
+// Visual pattern (shared with SidebarCompanySelector):
+//   card ▸ avatar ▸ name + meta subtitle ▸ chevron
+// Avatar uses a primary-tinted tile (primary-500/10 bg + primary-500/20 border)
+// with the module's glyph inside. Click → floating listbox menu.
 
 import { useEffect, useRef, useState } from "react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 
 // ── Module icons ───────────────────────────────────────────────────────────────
+// Rendered at two sizes: 13px inside the dropdown rows, 16px inside the avatar tile.
 
-const MODULE_ICONS: Record<string, React.ReactNode> = {
-    payroll: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="1" y="1" width="11" height="11" rx="1.5" />
-                <path d="M4 5h5M4 7.5h3" />
-            </svg>
-        </div>
-    ),
-    companies: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="1" y="4" width="11" height="8" rx="1" />
-                <path d="M4 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4" />
-                <path d="M5 8h3M6.5 6.5v3" />
-            </svg>
-        </div>
-    ),
-    inventory: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />
-                <path d="M6.5 1v11M1 4l5.5 3 5.5-3" />
-            </svg>
-        </div>
-    ),
-    billing: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="1" y="3" width="11" height="7" rx="1" />
-                <path d="M1 6h11M4.5 8.5h2" />
-            </svg>
-        </div>
-    ),
-    documents: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M3 1h5l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z" />
-                <path d="M8 1v3h3M5 7h3M5 9.5h2" />
-            </svg>
-        </div>
-    ),
-    accounting: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="1" y="1" width="11" height="11" rx="1.5" />
-                <path d="M4 4h2M4 6.5h5M4 9h3" />
-                <path d="M8.5 3.5l1 1-1 1" />
-            </svg>
-        </div>
-    ),
-    tools: (
-        <div className="w-5 h-5 flex items-center justify-center shrink-0">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8.5 1.5a2.5 2.5 0 0 1 2.47 2.9l-2.47.9-1.8-1.8.9-2.47a2.5 2.5 0 0 1 .9-.03z" />
-                <path d="M7.8 4.5L2 10.3a1.2 1.2 0 0 0 1.7 1.7L9.5 6.2" />
-                <circle cx="3.2" cy="10.8" r="0.4" fill="currentColor" />
-            </svg>
-        </div>
-    ),
-};
+function renderModuleIcon(id: string, size: number) {
+    const s = size;
+    const props = {
+        width: s, height: s, viewBox: "0 0 16 16",
+        fill: "none", stroke: "currentColor",
+        strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const,
+        "aria-hidden": true,
+    };
+    switch (id) {
+        case "payroll":
+            // Bullseye / target — represents the current payroll period focus
+            return (
+                <svg {...props}>
+                    <circle cx="8" cy="8" r="6.2" />
+                    <circle cx="8" cy="8" r="3.3" />
+                    <circle cx="8" cy="8" r="1" fill="currentColor" />
+                </svg>
+            );
+        case "companies":
+            return (
+                <svg {...props}>
+                    <rect x="2" y="5" width="12" height="9" rx="1" />
+                    <path d="M5 5V3.2a.6.6 0 0 1 .6-.6h4.8a.6.6 0 0 1 .6.6V5" />
+                    <path d="M6 10h4M8 8.5v3" />
+                </svg>
+            );
+        case "inventory":
+            return (
+                <svg {...props}>
+                    <path d="M2 4.7l6-3 6 3v6l-6 3-6-3v-6z" />
+                    <path d="M8 1.7v12M2 4.7l6 3 6-3" />
+                </svg>
+            );
+        case "billing":
+            return (
+                <svg {...props}>
+                    <rect x="2" y="3.5" width="12" height="8" rx="1" />
+                    <path d="M2 7h12M5.5 9.5h2.5" />
+                </svg>
+            );
+        case "documents":
+            return (
+                <svg {...props}>
+                    <path d="M4 1.5h5.5L13 5v8.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2.5a1 1 0 0 1 1-1z" />
+                    <path d="M9.5 1.5v3.5H13M6 8h4M6 10.5h3" />
+                </svg>
+            );
+        case "accounting":
+            return (
+                <svg {...props}>
+                    <rect x="2" y="2" width="12" height="12" rx="1.5" />
+                    <path d="M5 5h3M5 8h5M5 11h3" />
+                    <path d="M10 4.5l1.2 1.2L10 7" />
+                </svg>
+            );
+        case "tools":
+            return (
+                <svg {...props}>
+                    <path d="M10 2a3 3 0 0 1 2.9 3.4l-2.9 1.1-2.1-2.1L9 1.5A3 3 0 0 1 10 2z" />
+                    <path d="M9 5L2.5 11.5a1.4 1.4 0 0 0 2 2L11 7" />
+                </svg>
+            );
+        default:
+            return null;
+    }
+}
 
 const CheckIcon = () => (
     <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 10 10"
@@ -88,6 +96,8 @@ interface SidebarModuleSelectorProps {
     activeModuleId: string | null;
     isCollapsed: boolean;
     onSelect: (id: string, href: string) => void;
+    /** Optional meta line rendered under the module name (e.g. "Quincena 2 · Abril 2026"). */
+    subtitle?: string | null;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -97,6 +107,7 @@ export function SidebarModuleSelector({
     activeModuleId,
     isCollapsed,
     onSelect,
+    subtitle,
 }: SidebarModuleSelectorProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -129,13 +140,15 @@ export function SidebarModuleSelector({
     }
 
     const dropdownClass = isCollapsed
-        ? "absolute left-full top-0 ml-2 w-52 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
+        ? "absolute left-full top-0 ml-2 w-56 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
         : "absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden";
 
-    const ICON_BTN       = "flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-    const ICON_BTN_OPEN  = "text-sidebar-active-fg bg-sidebar-active-bg/60";
+    // ── Collapsed: icon-only trigger ──────────────────────────────────────────
 
     if (isCollapsed) {
+        const ICON_BTN      = "flex items-center justify-center w-9 h-9 rounded-md border border-primary-500/20 bg-primary-500/10 text-primary-500 transition-colors duration-150 hover:bg-primary-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
+        const ICON_BTN_OPEN = "bg-primary-500/20";
+
         return (
             <div className="relative" ref={ref}>
                 <button
@@ -145,7 +158,7 @@ export function SidebarModuleSelector({
                     aria-label={`Módulo: ${activeModule?.label ?? "Ninguno"}. Cambiar módulo`}
                     className={[ICON_BTN, open ? ICON_BTN_OPEN : ""].join(" ")}
                 >
-                    {activeModuleId && MODULE_ICONS[activeModuleId]}
+                    {activeModuleId && renderModuleIcon(activeModuleId, 16)}
                 </button>
 
                 {open && (
@@ -162,11 +175,16 @@ export function SidebarModuleSelector({
                                     <button
                                         onClick={() => handleSelect(mod.id, mod.href)}
                                         className={[
-                                            `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                            `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
                                             isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                         ].join(" ")}
                                     >
-                                        {MODULE_ICONS[mod.id]}
+                                        <span className={[
+                                            "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
+                                            isSelected ? "bg-primary-500/15 text-primary-500" : "bg-sidebar-bg-hover text-sidebar-fg",
+                                        ].join(" ")}>
+                                            {renderModuleIcon(mod.id, 13)}
+                                        </span>
                                         <span className="truncate flex-1">{mod.label}</span>
                                         {isSelected && <CheckIcon />}
                                     </button>
@@ -179,6 +197,8 @@ export function SidebarModuleSelector({
         );
     }
 
+    // ── Expanded: card trigger ────────────────────────────────────────────────
+
     return (
         <div className="relative" ref={ref}>
             <button
@@ -186,12 +206,34 @@ export function SidebarModuleSelector({
                 aria-expanded={open}
                 aria-haspopup="listbox"
                 aria-label={`Módulo activo: ${activeModule?.label ?? "Ninguno"}. Cambiar módulo`}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 text-sidebar-fg hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                className={[
+                    "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
+                    open
+                        ? "bg-sidebar-bg-hover border-border-medium"
+                        : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
+                ].join(" ")}
             >
-                {activeModuleId && MODULE_ICONS[activeModuleId]}
-                <span className={`font-mono ${APP_SIZES.nav.companyName} truncate flex-1 text-left`}>
-                    {activeModule?.label ?? "Seleccionar…"}
+                {/* Avatar — primary-tinted tile */}
+                <span
+                    aria-hidden="true"
+                    className="flex items-center justify-center w-9 h-9 rounded-md bg-primary-500/10 border border-primary-500/20 text-primary-500 shrink-0"
+                >
+                    {activeModuleId && renderModuleIcon(activeModuleId, 16)}
                 </span>
+
+                {/* Name + subtitle */}
+                <span className="flex-1 min-w-0 flex flex-col">
+                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate leading-tight">
+                        {activeModule?.label ?? "Seleccionar módulo"}
+                    </span>
+                    {subtitle && (
+                        <span className="font-mono text-[10px] tracking-[0.02em] text-sidebar-label truncate leading-tight mt-0.5">
+                            {subtitle}
+                        </span>
+                    )}
+                </span>
+
                 <ChevronIcon open={open} />
             </button>
 
@@ -204,11 +246,16 @@ export function SidebarModuleSelector({
                                 <button
                                     onClick={() => handleSelect(mod.id, mod.href)}
                                     className={[
-                                        `w-full flex items-center gap-2 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
+                                        `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
                                         isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                     ].join(" ")}
                                 >
-                                    {MODULE_ICONS[mod.id]}
+                                    <span className={[
+                                        "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
+                                        isSelected ? "bg-primary-500/15 text-primary-500" : "bg-sidebar-bg-hover text-sidebar-fg",
+                                    ].join(" ")}>
+                                        {renderModuleIcon(mod.id, 13)}
+                                    </span>
                                     <span className="truncate flex-1">{mod.label}</span>
                                     {isSelected && <CheckIcon />}
                                 </button>

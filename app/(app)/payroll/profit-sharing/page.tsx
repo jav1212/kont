@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { FileText, Download, RefreshCw, Users, Calendar, ClipboardCheck, Info, HandCoins, TrendingUp, ChevronDown, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -671,28 +672,28 @@ export default function UtilidadesPage() {
 
                             {selectedIdNumber && (
                                 <div className="pt-2">
-                                    <label className={labelCls}>
-                                        Salario mensual (Bs.)
-                                        <span className="ml-1 text-[var(--text-link)]">— editable</span>
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                        <input type="number" step="0.01" min="0" value={salaryOverride}
-                                            onChange={e => setSalaryOverride(e.target.value)} placeholder="0.00"
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Salario mensual (Bs.)"
+                                        type="number"
+                                        step={0.01}
+                                        min={0}
+                                        value={salaryOverride}
+                                        onValueChange={setSalaryOverride}
+                                        placeholder="0.00"
+                                        prefix="Bs."
+                                        inputClassName="text-right"
+                                    />
                                 </div>
                             )}
 
                             {!selectedEmp && selectedIdNumber && (
-                                <div>
-                                    <label className={labelCls}>Fecha de ingreso</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={manualHireDate}
-                                            onChange={e => setManualHireDate(e.target.value)} className={fieldCls + " pl-9"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha de ingreso"
+                                    type="date"
+                                    value={manualHireDate}
+                                    onValueChange={setManualHireDate}
+                                    startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                />
                             )}
                         </div>
 
@@ -709,16 +710,14 @@ export default function UtilidadesPage() {
                                     <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
                                 </button>
                             </div>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={exchangeRate}
-                                    onChange={e => setExchangeRate(e.target.value)} 
-                                    className={fieldCls + " pl-9 text-right"} 
-                                />
-                            </div>
+                            <BaseInput.Field
+                                type="number"
+                                step={0.01}
+                                value={exchangeRate}
+                                onValueChange={setExchangeRate}
+                                prefix="Bs."
+                                inputClassName="text-right"
+                            />
                             {bcvError && <p className="font-mono text-[10px] text-red-500 mt-1.5">{bcvError}</p>}
                         </div>
 
@@ -726,26 +725,28 @@ export default function UtilidadesPage() {
                         <div className="px-5 py-5 space-y-4">
                             <SectionHeader label="Configuración Fiscal" />
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className={labelCls}>Año fiscal</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" min="2000" max="2100" step="1"
-                                            value={fiscalYear}
-                                            onChange={e => setFiscalYear(e.target.value)}
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Días util.</label>
-                                    <div className="relative">
-                                        <HandCoins className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" min="15" max="120" step="1"
-                                            value={profitSharingDays}
-                                            onChange={e => setProfitSharingDays(e.target.value)}
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Año fiscal"
+                                    type="number"
+                                    min={2000}
+                                    max={2100}
+                                    step={1}
+                                    value={fiscalYear}
+                                    onValueChange={setFiscalYear}
+                                    startContent={<Calendar size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
+                                <BaseInput.Field
+                                    label="Días util."
+                                    type="number"
+                                    min={15}
+                                    max={120}
+                                    step={1}
+                                    value={profitSharingDays}
+                                    onValueChange={setProfitSharingDays}
+                                    startContent={<HandCoins size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
                             </div>
                             <p className="font-mono text-[10px] text-[var(--text-disabled)] leading-relaxed">
                                 <Info size={10} className="inline mr-1 -mt-0.5" />
@@ -783,11 +784,13 @@ export default function UtilidadesPage() {
                         {mode === "fraccionadas" && (
                             <div className="px-5 py-4 space-y-0.5">
                                 <div className="mb-4">
-                                    <label className={labelCls}>Fecha de corte</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={cutoffDate} onChange={e => setCutoffDate(e.target.value)} className={fieldCls + " pl-9"} />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Fecha de corte"
+                                        type="date"
+                                        value={cutoffDate}
+                                        onValueChange={setCutoffDate}
+                                        startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                    />
                                 </div>
                                 {fractionalCalculation && (
                                     <>

@@ -8,6 +8,7 @@
 import { useCallback, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import {
   parseExcelSheet,
   parseExcelFileWithProfiles,
@@ -387,28 +388,26 @@ export function ExcelImportWizard() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>Periodo</label>
-              <input
-                className={fieldCls}
+              <BaseInput.Field
                 type="month"
                 value={importConfig.period}
-                onChange={e => setImportConfig(prev => ({ ...prev, period: e.target.value }))}
+                onValueChange={v => setImportConfig(prev => ({ ...prev, period: v }))}
               />
             </div>
             <div>
               <label className={labelCls}>Fecha de movimientos</label>
-              <input
-                className={fieldCls}
+              <BaseInput.Field
                 type="date"
                 value={importConfig.date}
-                onChange={e => setImportConfig(prev => ({ ...prev, date: e.target.value }))}
+                onValueChange={v => setImportConfig(prev => ({ ...prev, date: v }))}
               />
             </div>
             <div>
               <label className={labelCls}>Referencia</label>
-              <input
-                className={fieldCls}
+              <BaseInput.Field
+                type="text"
                 value={importConfig.reference}
-                onChange={e => setImportConfig(prev => ({ ...prev, reference: e.target.value }))}
+                onValueChange={v => setImportConfig(prev => ({ ...prev, reference: v }))}
               />
             </div>
           </div>

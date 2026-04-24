@@ -9,6 +9,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
@@ -258,12 +259,12 @@ export default function ProductosPage() {
             <div className="px-8 py-6 space-y-4">
                 {/* Search + bulk actions */}
                 <div className="flex items-center gap-3">
-                    <input
+                    <BaseInput.Field
                         type="text"
                         placeholder="Buscar…"
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                        className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-text-tertiary focus:border-primary-500/60 hover:border-border-medium transition-colors w-64"
+                        onValueChange={(v) => { setSearch(v); setSelected(new Set()); }}
+                        className="w-64"
                     />
                     {selected.size > 0 && (
                         confirmBulkDelete ? (
@@ -377,19 +378,28 @@ export default function ProductosPage() {
                         </h2>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label className={labelCls}>Código</label>
-                                <input className={fieldCls} value={form.code} onChange={(e) => set("code", e.target.value)} />
-                            </div>
-                            <div className="col-span-2">
-                                <label className={labelCls}>Nombre *</label>
-                                <input className={fieldCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
-                            </div>
+                            <BaseInput.Field
+                                label="Código"
+                                type="text"
+                                value={form.code}
+                                onValueChange={(v) => set("code", v)}
+                            />
+                            <BaseInput.Field
+                                label="Nombre *"
+                                type="text"
+                                value={form.name}
+                                onValueChange={(v) => set("name", v)}
+                                className="col-span-2"
+                            />
                         </div>
 
                         <div className="mb-4">
-                            <label className={labelCls}>Descripción</label>
-                            <input className={fieldCls} value={form.description} onChange={(e) => set("description", e.target.value)} />
+                            <BaseInput.Field
+                                label="Descripción"
+                                type="text"
+                                value={form.description}
+                                onValueChange={(v) => set("description", v)}
+                            />
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 mb-4">
@@ -459,17 +469,16 @@ export default function ProductosPage() {
                                                         {(cf.options ?? []).map(o => <option key={o} value={o}>{o}</option>)}
                                                     </select>
                                                 ) : (
-                                                    <input
-                                                        className={fieldCls}
+                                                    <BaseInput.Field
                                                         type={cf.type === "number" ? "number" : cf.type === "date" ? "date" : "text"}
                                                         value={String(cfVal)}
-                                                        onChange={(e) => setForm(f => f ? {
+                                                        onValueChange={(v) => setForm(f => f ? {
                                                             ...f,
                                                             customFields: {
                                                                 ...(f.customFields ?? {}),
                                                                 [cf.key]: cf.type === "number"
-                                                                    ? (e.target.value === "" ? null : Number(e.target.value))
-                                                                    : (e.target.value || null),
+                                                                    ? (v === "" ? null : Number(v))
+                                                                    : (v || null),
                                                             },
                                                         } : f)}
                                                     />

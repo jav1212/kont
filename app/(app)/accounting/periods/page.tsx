@@ -7,12 +7,12 @@ import { useId, useState }                from 'react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react';
 import { PageHeader }                     from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                     from '@/src/shared/frontend/components/base-button';
+import { BaseInput }                      from '@/src/shared/frontend/components/base-input';
 import { BaseTable }                      from '@/src/shared/frontend/components/base-table';
 import { AccountingAccessGuard }          from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                     from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccountingPeriods }           from '@/src/modules/accounting/frontend/hooks/use-accounting-periods';
 import type { AccountingPeriod }          from '@/src/modules/accounting/backend/domain/accounting-period';
-import { APP_SIZES }                      from '@/src/shared/frontend/sizes';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -21,15 +21,6 @@ const EMPTY_FORM = { name: '', startDate: '', endDate: '' };
 function formatDate(iso: string) {
     return new Date(iso + 'T00:00:00').toLocaleDateString('es-VE');
 }
-
-const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-    "placeholder:text-neutral-400",
-].join(" ");
-
-const labelCls = `font-mono ${APP_SIZES.text.label} uppercase text-neutral-500 dark:text-neutral-400 block mb-1.5`;
 
 // ── Status badge ───────────────────────────────────────────────────────────────
 
@@ -144,49 +135,31 @@ export default function PeriodsPage() {
                         <form id={formId} onSubmit={(e) => { void handleSubmit(e); }} className="flex flex-col gap-4">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {/* Name */}
-                                <div className="flex flex-col">
-                                    <label htmlFor={`${formId}-name`} className={labelCls}>
-                                        Nombre
-                                    </label>
-                                    <input
-                                        id={`${formId}-name`}
-                                        required
-                                        placeholder="Ej. Enero 2026"
-                                        value={form.name}
-                                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                                        className={fieldCls}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Nombre"
+                                    isRequired
+                                    placeholder="Ej. Enero 2026"
+                                    value={form.name}
+                                    onValueChange={(v) => setForm((f) => ({ ...f, name: v }))}
+                                />
 
                                 {/* Start date */}
-                                <div className="flex flex-col">
-                                    <label htmlFor={`${formId}-start`} className={labelCls}>
-                                        Fecha inicio
-                                    </label>
-                                    <input
-                                        id={`${formId}-start`}
-                                        required
-                                        type="date"
-                                        value={form.startDate}
-                                        onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                                        className={fieldCls}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha inicio"
+                                    isRequired
+                                    type="date"
+                                    value={form.startDate}
+                                    onValueChange={(v) => setForm((f) => ({ ...f, startDate: v }))}
+                                />
 
                                 {/* End date */}
-                                <div className="flex flex-col">
-                                    <label htmlFor={`${formId}-end`} className={labelCls}>
-                                        Fecha fin
-                                    </label>
-                                    <input
-                                        id={`${formId}-end`}
-                                        required
-                                        type="date"
-                                        value={form.endDate}
-                                        onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                                        className={fieldCls}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha fin"
+                                    isRequired
+                                    type="date"
+                                    value={form.endDate}
+                                    onValueChange={(v) => setForm((f) => ({ ...f, endDate: v }))}
+                                />
                             </div>
 
                             {formErr && (

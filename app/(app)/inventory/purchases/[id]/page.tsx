@@ -10,6 +10,7 @@ import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-u
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
@@ -287,18 +288,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <label className={labelCls + " mb-0"}>Cant.</label>
-                                            <input
+                                            <BaseInput.Field
                                                 type="number"
-                                                min="0"
+                                                min={0}
                                                 max={item.origQty}
-                                                step="0.001"
-                                                className="w-20 h-8 px-2 rounded-lg border border-border-light bg-surface-2 text-[12px] text-foreground outline-none focus:border-primary-500/60 text-right tabular-nums"
-                                                value={item.returnQty === 0 ? "" : item.returnQty}
+                                                step={0.001}
+                                                className="w-20"
+                                                inputClassName="text-right"
+                                                value={item.returnQty === 0 ? "" : String(item.returnQty)}
                                                 placeholder="0"
-                                                onChange={(e) => {
-                                                    const v = parseFloat(e.target.value) || 0;
+                                                onValueChange={(v) => {
+                                                    const n = parseFloat(v) || 0;
                                                     setReturnItems((prev) =>
-                                                        prev.map((it, i) => i === idx ? { ...it, returnQty: Math.min(v, it.origQty) } : it)
+                                                        prev.map((it, i) => i === idx ? { ...it, returnQty: Math.min(n, it.origQty) } : it)
                                                     );
                                                 }}
                                             />
@@ -318,15 +320,12 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             )}
 
                             {/* Date */}
-                            <div>
-                                <label className={labelCls}>Fecha de devolución</label>
-                                <input
-                                    type="date"
-                                    className={fieldCls}
-                                    value={returnDate}
-                                    onChange={(e) => setReturnDate(e.target.value)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Fecha de devolución"
+                                type="date"
+                                value={returnDate}
+                                onValueChange={setReturnDate}
+                            />
 
                             {/* Notes */}
                             <div>
@@ -403,36 +402,42 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     )}
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Nº Factura</label>
                                     {isDraft ? (
-                                        <input className={fieldCls} value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                                        <BaseInput.Field label="Nº Factura" value={invoiceNumber} onValueChange={setInvoiceNumber} />
                                     ) : (
-                                        <div className={readonlyCls + " flex items-center"}>
-                                            {invoice.invoiceNumber || "—"}
-                                        </div>
+                                        <>
+                                            <label className={labelCls}>Nº Factura</label>
+                                            <div className={readonlyCls + " flex items-center"}>
+                                                {invoice.invoiceNumber || "—"}
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label className={labelCls}>Nº Control</label>
                                     {isDraft ? (
-                                        <input className={fieldCls} value={controlNumber} onChange={(e) => setControlNumber(e.target.value)} placeholder="Ej. 00-00123456" />
+                                        <BaseInput.Field label="Nº Control" value={controlNumber} onValueChange={setControlNumber} placeholder="Ej. 00-00123456" />
                                     ) : (
-                                        <div className={readonlyCls + " flex items-center"}>
-                                            {invoice.controlNumber || "—"}
-                                        </div>
+                                        <>
+                                            <label className={labelCls}>Nº Control</label>
+                                            <div className={readonlyCls + " flex items-center"}>
+                                                {invoice.controlNumber || "—"}
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Fecha</label>
                                     {isDraft ? (
-                                        <input type="date" className={fieldCls} value={date} onChange={(e) => setDate(e.target.value)} />
+                                        <BaseInput.Field label="Fecha" type="date" value={date} onValueChange={setDate} />
                                     ) : (
-                                        <div className={readonlyCls + " flex items-center"}>
-                                            {fmtDate(invoice.date)}
-                                        </div>
+                                        <>
+                                            <label className={labelCls}>Fecha</label>
+                                            <div className={readonlyCls + " flex items-center"}>
+                                                {fmtDate(invoice.date)}
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>

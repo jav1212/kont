@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { LogoMark } from "@/src/shared/frontend/components/logo";
 
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -26,15 +27,6 @@ function isUnconfirmedEmailError(msg: string): boolean {
         || lower.includes("confirm your email")
         || lower.includes("correo no confirmado");
 }
-
-const INPUT_CLS = [
-    "w-full h-11 px-4 rounded-xl",
-    "bg-surface-2 border border-border-medium hover:border-border-default",
-    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    "transition-all duration-200",
-].join(" ");
 
 function SignInFormContent() {
     const { signIn, resendConfirmation } = useAuth();
@@ -109,24 +101,19 @@ function SignInFormContent() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            <div>
-                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">
-                    Correo
-                </label>
-                <input
-                    type="email"
-                    autoComplete="email"
-                    placeholder="usuario@empresa.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    className={INPUT_CLS}
-                />
-            </div>
+            <BaseInput.Field
+                label="Correo"
+                type="email"
+                autoComplete="email"
+                placeholder="usuario@empresa.com"
+                value={email}
+                onValueChange={setEmail}
+                isDisabled={loading}
+            />
 
             <div>
                 <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[12px] font-bold text-text-secondary uppercase tracking-wider">
+                    <label className="block font-mono text-[11px] uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400">
                         Contraseña
                     </label>
                     <Link
@@ -136,14 +123,13 @@ function SignInFormContent() {
                         ¿Olvidaste la tuya?
                     </Link>
                 </div>
-                <input
+                <BaseInput.Field
                     type="password"
                     autoComplete="current-password"
                     placeholder="••••••••"
                     value={pass}
-                    onChange={(e) => setPass(e.target.value)}
-                    disabled={loading}
-                    className={INPUT_CLS}
+                    onValueChange={setPass}
+                    isDisabled={loading}
                 />
             </div>
 

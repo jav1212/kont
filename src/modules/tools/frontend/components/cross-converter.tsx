@@ -7,6 +7,7 @@ import type { BcvRate } from "../hooks/use-bcv-rates";
 import { formatVes, parseUserNumber } from "../utils/format-number";
 import { CurrencyInlineSelect } from "./currency-inline-select";
 import { AnimatedNumber } from "./animated-number";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 interface Props {
     rates: BcvRate[];
@@ -58,18 +59,12 @@ export function CrossConverter({ rates }: Props) {
                                 ariaLabel="Moneda origen"
                                 size="lg"
                             />
-                            <input
+                            <BaseInput.Field
                                 type="text"
-                                inputMode="decimal"
                                 value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                className={[
-                                    "flex-1 min-w-0 h-12 rounded-lg border border-border-light bg-surface-2 px-4",
-                                    "text-[18px] font-mono font-bold tabular-nums text-foreground",
-                                    "focus:outline-none focus:border-primary-500 focus:bg-surface-1",
-                                    "transition-colors duration-150",
-                                ].join(" ")}
+                                onValueChange={setAmount}
                                 placeholder="0,00"
+                                className="flex-1 min-w-0"
                             />
                         </div>
                     </div>

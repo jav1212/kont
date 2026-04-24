@@ -12,28 +12,46 @@ type ValueChangeHandler = (value: string) => void;
 
 interface BaseInputFields extends Omit<InputProps, "onValueChange"> {
     helperText?: string;
-    error?: string;
-    value?: string;
+    error?:      string;
+    value?:      string;
     onValueChange?: ValueChangeHandler;
+    /**
+     * Small uppercase affix rendered inside the input wrapper, left side.
+     * Classic Konta use: `Bs.`, `USD`, `V-`, `RIF`, `%`.
+     * Takes a short string (≤4 chars) — for icons pass startContent instead.
+     */
+    prefix?: string;
+    /** Same as prefix but rendered on the right side. */
+    suffix?: string;
+    /**
+     * Extra classes merged onto the inner <input> element (after the canonical
+     * ones). Typical use: `text-right` for numeric fields, `tracking-wide` for
+     * codes. Avoid using this to override colors/borders — the wrapper owns that.
+     */
+    inputClassName?: string;
 }
 
 // ============================================================================
-// STYLES — aligned to canon: border-light, rounded-lg, mono, minimal
+// STYLES — canon: border-default (interactive), rounded-lg, mono, minimal
 // ============================================================================
 
 const INPUT_STYLES = {
     inputWrapper: [
         "bg-surface-1",
-        "border border-border-light",
+        // HeroUI's `bordered` variant ships `border-medium` (2px). Force 1px
+        // with `!important` so our width wins — a 2px border antialiased over
+        // rounded-lg reads as a double stroke on high-DPI displays.
+        "!border !border-solid !border-border-default",
         "rounded-lg",
-        "shadow-[inset_0_1px_2px_rgba(0,0,0,.03)]",
-        "dark:shadow-[inset_0_1px_2px_rgba(0,0,0,.15)]",
-        "transition-all duration-150",
-        "hover:border-border-medium",
-        "group-data-[focus=true]:border-primary-400",
-        "group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-primary-500/10",
-        "group-data-[invalid=true]:border-error/60",
-        "group-data-[invalid=true]:ring-2 group-data-[invalid=true]:ring-error/10",
+        "!shadow-none",
+        "transition-colors duration-150",
+        "hover:!border-border-medium",
+        // Focus indicator = color shift on the 1px border. No ring, no outline.
+        "group-data-[focus=true]:!border-primary-500",
+        "group-data-[focus=true]:data-[hover=true]:!border-primary-500",
+        "group-data-[focus-visible=true]:!outline-none",
+        "group-data-[invalid=true]:!border-error/70",
+        "group-data-[invalid=true]:data-[hover=true]:!border-error/70",
         "group-data-[disabled=true]:opacity-50 group-data-[disabled=true]:cursor-not-allowed",
     ].join(" "),
 
@@ -45,10 +63,18 @@ const INPUT_STYLES = {
         "transition-colors duration-150",
         "tabular-nums",
     ].join(" "),
+
+    /** Affix tile rendered inside the input wrapper. */
+    affix: [
+        "inline-flex items-center justify-center h-full px-2",
+        "font-mono text-[12px] font-semibold uppercase tracking-[0.12em]",
+        "text-[var(--text-tertiary)]",
+        "select-none",
+    ].join(" "),
 } as const;
 
 // ============================================================================
-// ICONS — minimal, thin stroke
+// ICONS — minimal, thin stroke (parity with BaseButton spinner language)
 // ============================================================================
 
 const ErrorIcon = () => (
@@ -86,8 +112,12 @@ const InputField = ({
     onValueChange,
     type = "text",
     className = "",
+    inputClassName,
     startContent,
     endContent,
+    prefix,
+    suffix,
+    isRequired,
     ...props
 }: BaseInputFields) => {
     const id = useId();
@@ -106,6 +136,19 @@ const InputField = ({
         [isControlled, onValueChange]
     );
 
+    // Build affix nodes that merge with any passed startContent/endContent.
+    const prefixNode = prefix ? (
+        <span className={INPUT_STYLES.affix} aria-hidden="true">{prefix}</span>
+    ) : null;
+    const suffixNode = suffix ? (
+        <span className={INPUT_STYLES.affix} aria-hidden="true">{suffix}</span>
+    ) : null;
+
+    const resolvedStart = prefixNode ?? startContent;
+    const resolvedEnd   = isInvalid && !endContent && !suffixNode
+        ? <ErrorIcon />
+        : (suffixNode ?? endContent);
+
     return (
         <div className={`flex flex-col gap-0 w-full ${className}`}>
 
@@ -122,6 +165,9 @@ const InputField = ({
                     ].join(" ")}
                 >
                     {label}
+                    {isRequired && (
+                        <span className="text-error/80 ml-1" aria-hidden="true">*</span>
+                    )}
                 </label>
             )}
 
@@ -133,13 +179,16 @@ const InputField = ({
                 onChange={handleChange}
                 placeholder={placeholder}
                 isInvalid={isInvalid}
+                isRequired={isRequired}
                 variant="bordered"
-                startContent={startContent}
-                endContent={isInvalid && !endContent ? <ErrorIcon /> : endContent}
+                startContent={resolvedStart}
+                endContent={resolvedEnd}
                 classNames={{
                     inputWrapper: INPUT_STYLES.inputWrapper,
-                    input: INPUT_STYLES.input,
-                    label: "hidden",
+                    input:        inputClassName
+                        ? `${INPUT_STYLES.input} ${inputClassName}`
+                        : INPUT_STYLES.input,
+                    label:        "hidden",
                     innerWrapper: "gap-2",
                 }}
                 className="group min-h-[40px]"
@@ -151,10 +200,11 @@ const InputField = ({
                 <div className={`flex items-start gap-1.5 ${APP_SIZES.spacing.helperTop}`}>
                     {error ? <ErrorIcon /> : <InfoIcon />}
                     <p className={[
-                        `font-mono ${APP_SIZES.text.helper} leading-snug`,
+                        // helper copy is prose → sans; `APP_SIZES.text.helper` embeds font-sans
+                        `${APP_SIZES.text.helper} leading-snug`,
                         error
                             ? "text-error/80"
-                            : "text-neutral-400 dark:text-neutral-500",
+                            : "text-neutral-500 dark:text-neutral-400",
                     ].join(" ")}>
                         {error || helperText}
                     </p>

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useCallback } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { Company, BusinessSector, TaxpayerType } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -33,13 +34,6 @@ import type { InlineSelectOption } from "@/src/shared/frontend/components/inline
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-
-const cellInput = [
-    "w-full h-8 px-2.5 rounded-lg border bg-surface-1 outline-none",
-    "font-mono text-base sm:text-[12px] text-foreground",
-    "border-border-light focus:border-primary-500/60 hover:border-border-medium",
-    "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
-].join(" ");
 
 // ── Inline select options ─────────────────────────────────────────────────────
 
@@ -431,21 +425,13 @@ export default function CompaniesPage() {
                 ) : (
                     <div className="space-y-4">
                         {/* Search */}
-                        <div className="relative group max-w-md">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] group-focus-within:text-primary-500 transition-colors"
-                                size={15}
-                            />
-                            <input
-                                type="text"
+                        <div className="max-w-md">
+                            <BaseInput.Field
+                                type="search"
                                 placeholder="Buscar por nombre o RIF…"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className={[
-                                    "w-full h-10 pl-10 pr-4 rounded-xl border border-border-light bg-surface-1 outline-none",
-                                    "font-mono text-[13px] text-foreground placeholder:text-[var(--text-disabled)]",
-                                    "focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5 hover:border-border-medium transition-all duration-200",
-                                ].join(" ")}
+                                onValueChange={setSearch}
+                                startContent={<Search size={14} className="text-[var(--text-tertiary)]" />}
                             />
                         </div>
 
@@ -470,12 +456,12 @@ export default function CompaniesPage() {
                                             <tr className="bg-primary-500/[0.03]">
                                                 {/* RIF */}
                                                 <td className="px-5 py-4 w-40">
-                                                    <input
+                                                    <BaseInput.Field
                                                         autoFocus
-                                                        className={cellInput}
+                                                        className="w-full"
                                                         placeholder="J-12345678-9"
                                                         value={newRif}
-                                                        onChange={(e) => setNewRif(e.target.value)}
+                                                        onValueChange={setNewRif}
                                                         onKeyDown={(e) => {
                                                             if (e.key === "Enter") saveNew();
                                                             if (e.key === "Escape") cancelNew();
@@ -485,11 +471,11 @@ export default function CompaniesPage() {
                                                 {/* Nombre */}
                                                 <td className="px-5 py-4">
                                                     <div>
-                                                        <input
-                                                            className={cellInput}
+                                                        <BaseInput.Field
+                                                            className="w-full"
                                                             placeholder="Razón social"
                                                             value={newName}
-                                                            onChange={(e) => setNewName(e.target.value)}
+                                                            onValueChange={setNewName}
                                                             onKeyDown={(e) => {
                                                                 if (e.key === "Enter") saveNew();
                                                                 if (e.key === "Escape") cancelNew();
@@ -606,11 +592,11 @@ export default function CompaniesPage() {
                                                                             {logoUploading && <div className="absolute inset-0 flex items-center justify-center bg-white/60"><Spinner /></div>}
                                                                             {!logoUploading && <div className="absolute bottom-0 right-0 p-0.5 bg-surface-1 rounded-tl-md text-primary-500 shadow-sm"><IconCamera /></div>}
                                                                         </button>
-                                                                        <input
+                                                                        <BaseInput.Field
                                                                             autoFocus
-                                                                            className={cellInput}
+                                                                            className="w-full"
                                                                             value={editName}
-                                                                            onChange={(e) => setEditName(e.target.value)}
+                                                                            onValueChange={setEditName}
                                                                             onKeyDown={(e) => {
                                                                                 if (e.key === "Enter") saveEdit();
                                                                                 if (e.key === "Escape") cancelEdit();
@@ -619,8 +605,8 @@ export default function CompaniesPage() {
                                                                     </div>
                                                                     {editError && <p className="text-[10px] text-red-500">{editError}</p>}
                                                                     <div className="sm:hidden grid grid-cols-2 gap-2">
-                                                                        <input className={cellInput} placeholder="Teléfono" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-                                                                        <input className={cellInput} placeholder="Dirección" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+                                                                        <BaseInput.Field className="w-full" placeholder="Teléfono" value={editPhone} onValueChange={setEditPhone} />
+                                                                        <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />
                                                                     </div>
                                                                     <input
                                                                         ref={logoInputRef}
@@ -649,7 +635,7 @@ export default function CompaniesPage() {
                                                         {/* Teléfono */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
                                                             {isEditing ? (
-                                                                <input className={cellInput} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                                                                <BaseInput.Field className="w-full" value={editPhone} onValueChange={setEditPhone} />
                                                             ) : (
                                                                 <span className="text-[13px] text-[var(--text-secondary)]">{company.phone ?? "—"}</span>
                                                             )}
@@ -658,7 +644,7 @@ export default function CompaniesPage() {
                                                         {/* Dirección */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
                                                             {isEditing ? (
-                                                                <input className={cellInput} value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+                                                                <BaseInput.Field className="w-full" value={editAddress} onValueChange={setEditAddress} />
                                                             ) : (
                                                                 <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[150px] inline-block">{company.address ?? "—"}</span>
                                                             )}

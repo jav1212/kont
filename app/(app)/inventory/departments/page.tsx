@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import type { Department } from "@/src/modules/inventory/backend/domain/department";
 import {
@@ -17,14 +18,6 @@ import {
 } from "@/src/modules/inventory/frontend/utils/inventory-csv";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-
-const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-].join(" ");
-
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function emptyDepartment(companyId: string): Department {
     return { companyId, name: "", description: "", active: true };
@@ -157,12 +150,12 @@ export default function DepartamentosPage() {
             <div className="px-8 py-6 space-y-4">
                 {/* Search + bulk actions */}
                 <div className="flex items-center gap-3">
-                    <input
+                    <BaseInput.Field
                         type="text"
                         placeholder="Buscar…"
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                        className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-text-tertiary focus:border-primary-500/60 hover:border-border-medium transition-colors w-64"
+                        onValueChange={(v) => { setSearch(v); setSelected(new Set()); }}
+                        className="w-64"
                     />
                     {selected.size > 0 && (
                         confirmBulkDelete ? (
@@ -258,23 +251,19 @@ export default function DepartamentosPage() {
                         </h2>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className={labelCls}>Nombre *</label>
-                                <input
-                                    className={fieldCls}
-                                    value={form.name}
-                                    onChange={(e) => set("name", e.target.value.toUpperCase())}
-                                    placeholder="Ej: PANADERÍA"
-                                />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Descripción</label>
-                                <input
-                                    className={fieldCls}
-                                    value={form.description ?? ""}
-                                    onChange={(e) => set("description", e.target.value)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Nombre *"
+                                type="text"
+                                value={form.name}
+                                onValueChange={(v) => set("name", v.toUpperCase())}
+                                placeholder="Ej: PANADERÍA"
+                            />
+                            <BaseInput.Field
+                                label="Descripción"
+                                type="text"
+                                value={form.description ?? ""}
+                                onValueChange={(v) => set("description", v)}
+                            />
                         </div>
 
                         <div className="mb-4">

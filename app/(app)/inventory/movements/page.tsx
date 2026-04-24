@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -312,13 +313,15 @@ export default function MovementsPage() {
                         {/* Tasa BCV */}
                         <div className="mb-4 flex items-center gap-3 flex-wrap">
                             <label className={labelCls + " mb-0 whitespace-nowrap"}>Tasa BCV (Bs/USD)</label>
-                            <input
-                                type="number" min="0" step="0.0001"
-                                className="h-8 w-36 px-3 rounded-lg border border-border-light bg-surface-2 outline-none font-mono text-[12px] text-foreground focus:border-primary-500/60 transition-colors disabled:opacity-60"
+                            <BaseInput.Field
+                                type="number"
+                                min={0}
+                                step={0.0001}
+                                className="w-36"
                                 value={dollarRateStr}
-                                onChange={(e) => { setDollarRateStr(e.target.value); setBcvDate(null); }}
+                                onValueChange={(v) => { setDollarRateStr(v); setBcvDate(null); }}
                                 placeholder={bcvLoading ? 'Consultando…' : 'Ej. 46.50'}
-                                disabled={bcvLoading}
+                                isDisabled={bcvLoading}
                             />
                             {bcvLoading && <span className="text-[11px] text-[var(--text-tertiary)] animate-pulse">···</span>}
                             {bcvDate && !bcvLoading && <span className="text-[11px] text-green-500 uppercase tracking-[0.12em]">BCV {bcvDate}</span>}
@@ -359,23 +362,22 @@ export default function MovementsPage() {
                                 </select>
                             </div>
 
-                            <div>
-                                <label className={labelCls}>Fecha</label>
-                                <input
-                                    type="date" className={fieldCls}
-                                    value={form.date}
-                                    onChange={(e) => setF("date", e.target.value)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Fecha"
+                                type="date"
+                                value={form.date}
+                                onValueChange={(v) => setF("date", v)}
+                            />
 
-                            <div>
-                                <label className={labelCls}>Cantidad *</label>
-                                <input
-                                    type="number" min="0.0001" step="0.0001" className={fieldCls}
-                                    value={form.quantity || ""}
-                                    onChange={(e) => setF("quantity", parseFloat(e.target.value) || 0)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Cantidad *"
+                                type="number"
+                                min={0.0001}
+                                step={0.0001}
+                                value={form.quantity ? String(form.quantity) : ""}
+                                onValueChange={(v) => setF("quantity", parseFloat(v) || 0)}
+                            />
+
 
                             <div>
                                 <label className={labelCls}>Moneda</label>
@@ -391,11 +393,14 @@ export default function MovementsPage() {
 
                             {form.currency === 'D' ? (
                                 <div>
-                                    <label className={labelCls}>Costo USD</label>
-                                    <input
-                                        type="number" min="0" step="0.0001" className={fieldCls}
-                                        value={form.currencyCost || ""}
-                                        onChange={(e) => setF("currencyCost", parseFloat(e.target.value) || 0)}
+                                    <BaseInput.Field
+                                        label="Costo USD"
+                                        type="number"
+                                        min={0}
+                                        step={0.0001}
+                                        prefix="$"
+                                        value={form.currencyCost ? String(form.currencyCost) : ""}
+                                        onValueChange={(v) => setF("currencyCost", parseFloat(v) || 0)}
                                         placeholder="Costo en dólares"
                                     />
                                     {dollarRate && form.currencyCost > 0 && (
@@ -411,42 +416,40 @@ export default function MovementsPage() {
                                     )}
                                 </div>
                             ) : (
-                                <div>
-                                    <label className={labelCls}>Costo unitario (Bs)</label>
-                                    <input
-                                        type="number" min="0" step="0.0001" className={fieldCls}
-                                        value={form.unitCost || ""}
-                                        onChange={(e) => setF("unitCost", parseFloat(e.target.value) || 0)}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Costo unitario (Bs)"
+                                    type="number"
+                                    min={0}
+                                    step={0.0001}
+                                    prefix="Bs."
+                                    value={form.unitCost ? String(form.unitCost) : ""}
+                                    onValueChange={(v) => setF("unitCost", parseFloat(v) || 0)}
+                                />
                             )}
 
-                            <div>
-                                <label className={labelCls}>Costo total Bs (calculado)</label>
-                                <input
-                                    readOnly className={fieldCls + " cursor-default opacity-70"}
-                                    value={fmtN(computedTotalCost)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Costo total Bs (calculado)"
+                                type="text"
+                                isDisabled
+                                prefix="Bs."
+                                value={fmtN(computedTotalCost)}
+                                onValueChange={() => {}}
+                            />
 
-                            <div>
-                                <label className={labelCls}>Referencia</label>
-                                <input
-                                    className={fieldCls}
-                                    value={form.reference}
-                                    onChange={(e) => setF("reference", e.target.value)}
-                                    placeholder="Nro. factura, orden, etc."
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Referencia"
+                                type="text"
+                                value={form.reference}
+                                onValueChange={(v) => setF("reference", v)}
+                                placeholder="Nro. factura, orden, etc."
+                            />
 
-                            <div>
-                                <label className={labelCls}>Notas</label>
-                                <input
-                                    className={fieldCls}
-                                    value={form.notes}
-                                    onChange={(e) => setF("notes", e.target.value)}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Notas"
+                                type="text"
+                                value={form.notes}
+                                onValueChange={(v) => setF("notes", v)}
+                            />
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-border-light">
@@ -521,21 +524,21 @@ export default function MovementsPage() {
                                     </div>
                                 )}
 
-                                <div>
-                                    <label className={labelCls}>Fecha</label>
-                                    <input
-                                        type="date" className={fieldCls}
-                                        value={acForm.date}
-                                        onChange={(e) => setAc("date", e.target.value)}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha"
+                                    type="date"
+                                    value={acForm.date}
+                                    onValueChange={(v) => setAc("date", v)}
+                                />
 
                                 <div>
-                                    <label className={labelCls}>Cantidad a retirar *</label>
-                                    <input
-                                        type="number" min="0.0001" step="0.0001" className={fieldCls}
-                                        value={acForm.quantity || ""}
-                                        onChange={(e) => setAc("quantity", parseFloat(e.target.value) || 0)}
+                                    <BaseInput.Field
+                                        label="Cantidad a retirar *"
+                                        type="number"
+                                        min={0.0001}
+                                        step={0.0001}
+                                        value={acForm.quantity ? String(acForm.quantity) : ""}
+                                        onValueChange={(v) => setAc("quantity", parseFloat(v) || 0)}
                                     />
                                     {!acStockOk && acForm.quantity > 0 && (
                                         <p className="mt-1 text-[11px] text-red-500">
@@ -544,15 +547,13 @@ export default function MovementsPage() {
                                     )}
                                 </div>
 
-                                <div>
-                                    <label className={labelCls}>Motivo / Notas</label>
-                                    <input
-                                        className={fieldCls}
-                                        value={acForm.notes}
-                                        onChange={(e) => setAc("notes", e.target.value)}
-                                        placeholder="Ej. Uso interno, muestra, pérdida…"
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Motivo / Notas"
+                                    type="text"
+                                    value={acForm.notes}
+                                    onValueChange={(v) => setAc("notes", v)}
+                                    placeholder="Ej. Uso interno, muestra, pérdida…"
+                                />
 
                                 {/* IVA preview */}
                                 {acProduct && acForm.quantity > 0 && (
@@ -664,10 +665,11 @@ export default function MovementsPage() {
                             </p>
                             <div className="flex items-center gap-2">
                                 <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Período</label>
-                                <input
-                                    type="month" className="h-8 px-2 rounded border border-border-light bg-surface-2 text-[12px] text-foreground outline-none"
+                                <BaseInput.Field
+                                    type="month"
+                                    className="w-40"
                                     value={period}
-                                    onChange={(e) => setPeriod(e.target.value)}
+                                    onValueChange={setPeriod}
                                 />
                             </div>
                         </div>

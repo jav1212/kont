@@ -10,6 +10,7 @@ import { ContextLink as Link } from '@/src/shared/frontend/components/context-li
 import { Folder, FileText, ArrowLeft, Plus, Trash2, ChevronRight, Check, X } from 'lucide-react';
 import { PageHeader }                from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                from '@/src/shared/frontend/components/base-button';
+import { BaseInput }                 from '@/src/shared/frontend/components/base-input';
 import { AccountingAccessGuard }     from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccounts }               from '@/src/modules/accounting/frontend/hooks/use-accounts';
@@ -382,22 +383,20 @@ export default function AccountsPage() {
                         </div>
                         
                         <form onSubmit={(e) => { void handleSubmit(e); }} className="flex flex-col gap-3">
-                            <div className="flex flex-col">
-                                <label htmlFor="acc-code" className={labelCls}>Código</label>
-                                <input
-                                    id="acc-code" required placeholder="Ej: 1.1.01.001" value={form.code}
-                                    onChange={(e) => setForm(f => ({ ...f, code: e.target.value }))}
-                                    className={fieldCls}
-                                />
-                            </div>
-                            <div className="flex flex-col">
-                                <label htmlFor="acc-name" className={labelCls}>Descripción</label>
-                                <input
-                                    id="acc-name" required placeholder="Ej: Banco Mercantil" value={form.name}
-                                    onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                                    className={fieldCls}
-                                />
-                            </div>
+                            <BaseInput.Field
+                                label="Código"
+                                isRequired
+                                placeholder="Ej: 1.1.01.001"
+                                value={form.code}
+                                onValueChange={(v) => setForm(f => ({ ...f, code: v }))}
+                            />
+                            <BaseInput.Field
+                                label="Descripción"
+                                isRequired
+                                placeholder="Ej: Banco Mercantil"
+                                value={form.name}
+                                onValueChange={(v) => setForm(f => ({ ...f, name: v }))}
+                            />
                             {!form.isGroup && (
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="flex flex-col">
@@ -411,14 +410,15 @@ export default function AccountsPage() {
                                             <option value="haber">Haber</option>
                                         </select>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label htmlFor="acc-saldo" className={labelCls}>Saldo Inic.</label>
-                                        <input
-                                            id="acc-saldo" type="text" inputMode="decimal" placeholder="0,00" value={form.saldoInicial}
-                                            onChange={(e) => setForm(f => ({ ...f, saldoInicial: e.target.value }))}
-                                            className={fieldCls}
-                                        />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Saldo Inic."
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="0,00"
+                                        value={form.saldoInicial}
+                                        onValueChange={(v) => setForm(f => ({ ...f, saldoInicial: v }))}
+                                        inputClassName="text-right"
+                                    />
                                 </div>
                             )}
                             

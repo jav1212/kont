@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { Receipt, TrendingUp, RefreshCw, ChevronDown, Calendar, CalendarDays } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
 import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
@@ -919,27 +920,24 @@ export default function PayrollCalculator() {
                             </div>
 
                             <div className="flex gap-2">
-                                <input
+                                <BaseInput.Field
                                     type="date"
                                     value={bcvDate}
                                     max={getTodayIsoDate()}
-                                    onChange={(e) => { setBcvDate(e.target.value); setBcvFetchError(null); }}
-                                    className={fieldCls + " flex-1 text-[12px] px-2.5"}
+                                    onValueChange={(v) => { setBcvDate(v); setBcvFetchError(null); }}
+                                    className="flex-1"
                                     title="Fecha sugerida"
                                 />
-                                <div className="relative w-28 shrink-0">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
-                                        Bs.
-                                    </span>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={exchangeRate}
-                                        onChange={(e) => { setExchangeRate(e.target.value); }}
-                                        className={fieldCls + " pl-8 text-right text-[12px]"}
-                                        title="Tasa manual"
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    type="number"
+                                    step={0.01}
+                                    value={exchangeRate}
+                                    onValueChange={setExchangeRate}
+                                    prefix="Bs."
+                                    inputClassName="text-right"
+                                    className="w-28 shrink-0"
+                                    title="Tasa manual"
+                                />
                             </div>
                             {bcvFetchError && <p className="font-mono text-[10px] text-red-400 mt-1">Error al consultar</p>}
                         </div>
@@ -948,22 +946,17 @@ export default function PayrollCalculator() {
                         {periodoMode === "quincenal" && selQuincena === 2 && (
                             <div className="px-5 py-4 border-b border-border-light space-y-3">
                                 <SectionHeader label="Cesta Ticket · 2ª Quincena" />
-                                <div>
-                                    <label className={labelCls}>Monto por empleado (USD)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
-                                            $
-                                        </span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={cestaTicketUSD}
-                                            onChange={(e) => setCestaTicketUSD(e.target.value)}
-                                            className={fieldCls + " pl-7 text-right"}
-                                        />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Monto por empleado (USD)"
+                                    type="number"
+                                    step={0.01}
+                                    min={0}
+                                    value={cestaTicketUSD}
+                                    onValueChange={setCestaTicketUSD}
+                                    prefix="$"
+                                    inputClassName="text-right"
+                                />
+
                                 <div className="px-3 py-2 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
                                     <div className="flex justify-between font-mono text-[12px]">
                                         <span className="text-[var(--text-tertiary)]">Equiv. por empleado</span>
@@ -978,21 +971,15 @@ export default function PayrollCalculator() {
                         {/* ── Reference salary ────────────────────────────────── */}
                         <div className="px-5 py-4 border-b border-border-light space-y-2">
                             <SectionHeader label="Referencia mensual" />
-                            <div>
-                                <label className={labelCls}>Salario mensual base (Bs.)</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">
-                                        Bs.
-                                    </span>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={monthlySalary}
-                                        onChange={(e) => setMonthlySalary(e.target.value)}
-                                        className={fieldCls + " pl-7 text-right"}
-                                    />
-                                </div>
-                            </div>
+                            <BaseInput.Field
+                                label="Salario mensual base (Bs.)"
+                                type="number"
+                                step={0.01}
+                                value={monthlySalary}
+                                onValueChange={setMonthlySalary}
+                                prefix="Bs."
+                                inputClassName="text-right"
+                            />
                             <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1.5 leading-relaxed">
                                 Usado <span className="text-[var(--text-secondary)]">solo para previsualizar</span> fórmulas. Cada empleado usará el salario asignado en su ficha.
                             </p>
@@ -1032,24 +1019,24 @@ export default function PayrollCalculator() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <label className={labelCls}>Días Utilidades</label>
-                                            <input
-                                                type="number" min="15" step="1"
-                                                value={diasUtilidades}
-                                                onChange={(e) => setDiasUtilidades(e.target.value)}
-                                                className={fieldCls + " text-right"}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Días Bono Vac.</label>
-                                            <input
-                                                type="number" min="15" step="1"
-                                                value={diasBonoVacacional}
-                                                onChange={(e) => setDiasBonoVacacional(e.target.value)}
-                                                className={fieldCls + " text-right"}
-                                            />
-                                        </div>
+                                        <BaseInput.Field
+                                            label="Días Utilidades"
+                                            type="number"
+                                            min={15}
+                                            step={1}
+                                            value={diasUtilidades}
+                                            onValueChange={setDiasUtilidades}
+                                            inputClassName="text-right"
+                                        />
+                                        <BaseInput.Field
+                                            label="Días Bono Vac."
+                                            type="number"
+                                            min={15}
+                                            step={1}
+                                            value={diasBonoVacacional}
+                                            onValueChange={setDiasBonoVacacional}
+                                            inputClassName="text-right"
+                                        />
                                     </div>
                                     <div className="px-3 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] space-y-1.5">
                                         {/* Resultado */}
@@ -1124,13 +1111,13 @@ export default function PayrollCalculator() {
                                 {/* Salario mínimo para tope SSO */}
                                 <div className="mt-3 pt-3 border-t border-border-light space-y-2">
                                     <SectionHeader label="Tope SSO (10 × salario mínimo)" />
-                                    <input
+                                    <BaseInput.Field
                                         type="number"
-                                        step="0.01"
+                                        step={0.01}
                                         placeholder="Salario mínimo Bs."
                                         value={salarioMinimoInput}
-                                        onChange={(e) => setSalarioMinimoInput(e.target.value)}
-                                        className={fieldCls + " text-right"}
+                                        onValueChange={setSalarioMinimoInput}
+                                        inputClassName="text-right"
                                     />
                                     {salarioMinimo > 0 && (
                                         <p className="font-mono text-[12px] text-[var(--text-tertiary)]">

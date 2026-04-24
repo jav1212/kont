@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { CustomFieldDefinition, InventoryConfig } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { Trash2, Plus } from "lucide-react";
 
@@ -161,15 +162,13 @@ export default function InventoryConfigPage() {
                                 Agregar campo
                             </h2>
                             <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <label className={labelCls}>Etiqueta</label>
-                                    <input
-                                        className={fieldCls}
-                                        placeholder="Ej: Marca"
-                                        value={newLabel}
-                                        onChange={(e) => setNewLabel(e.target.value)}
-                                    />
-                                </div>
+                                <BaseInput.Field
+                                    label="Etiqueta"
+                                    type="text"
+                                    placeholder="Ej: Marca"
+                                    value={newLabel}
+                                    onValueChange={setNewLabel}
+                                />
                                 <div>
                                     <label className={labelCls}>Tipo</label>
                                     <select
@@ -183,15 +182,13 @@ export default function InventoryConfigPage() {
                                     </select>
                                 </div>
                                 {newType === "select" && (
-                                    <div>
-                                        <label className={labelCls}>Opciones (coma)</label>
-                                        <input
-                                            className={fieldCls}
-                                            placeholder="Opción 1, Opción 2"
-                                            value={newOptions}
-                                            onChange={(e) => setNewOptions(e.target.value)}
-                                        />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Opciones (coma)"
+                                        type="text"
+                                        placeholder="Opción 1, Opción 2"
+                                        value={newOptions}
+                                        onValueChange={setNewOptions}
+                                    />
                                 )}
                             </div>
                             <BaseButton.Root

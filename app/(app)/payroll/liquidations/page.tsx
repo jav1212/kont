@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { 
     FileText, 
     Download, 
@@ -512,19 +513,14 @@ export default function LiquidacionesPage() {
                         {/* ── Parámetros de Egreso ────────────────────────────── */}
                         <div className="px-5 py-5 space-y-4">
                             <SectionHeader label="Egreso" />
-                            <div>
-                                <label className={labelCls}>Fecha de egreso</label>
-                                <div className="relative">
-                                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                    <input 
-                                        type="date" 
-                                        value={terminationDate} 
-                                        max={today}
-                                        onChange={e => setTerminationDate(e.target.value)} 
-                                        className={fieldCls + " pl-9"} 
-                                    />
-                                </div>
-                            </div>
+                            <BaseInput.Field
+                                label="Fecha de egreso"
+                                type="date"
+                                value={terminationDate}
+                                max={today}
+                                onValueChange={setTerminationDate}
+                                startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                            />
 
                             <div>
                                 <label className={labelCls}>Motivo de Egreso</label>
@@ -548,22 +544,26 @@ export default function LiquidacionesPage() {
                         <div className="px-5 py-5 space-y-4">
                             <SectionHeader label="Parámetros de Cálculo" />
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className={labelCls}>Días util.</label>
-                                    <div className="relative">
-                                        <ClipboardCheck size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                        <input type="number" min="15" step="1" value={profitSharingDays}
-                                            onChange={e => setProfitSharingDays(e.target.value)} className={fieldCls + " pl-8 text-right"} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Bono vac.</label>
-                                    <div className="relative">
-                                        <TrendingUp size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                        <input type="number" min="15" step="1" value={vacationBonusDays}
-                                            onChange={e => setVacationBonusDays(e.target.value)} className={fieldCls + " pl-8 text-right"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Días util."
+                                    type="number"
+                                    min={15}
+                                    step={1}
+                                    value={profitSharingDays}
+                                    onValueChange={setProfitSharingDays}
+                                    startContent={<ClipboardCheck size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
+                                <BaseInput.Field
+                                    label="Bono vac."
+                                    type="number"
+                                    min={15}
+                                    step={1}
+                                    value={vacationBonusDays}
+                                    onValueChange={setVacationBonusDays}
+                                    startContent={<TrendingUp size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
                             </div>
                         </div>
 
@@ -580,11 +580,14 @@ export default function LiquidacionesPage() {
                                     <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
                                 </button>
                             </div>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input type="number" step="0.01" value={exchangeRate}
-                                    onChange={e => setExchangeRate(e.target.value)} className={fieldCls + " pl-9 text-right"} />
-                            </div>
+                            <BaseInput.Field
+                                type="number"
+                                step={0.01}
+                                value={exchangeRate}
+                                onValueChange={setExchangeRate}
+                                prefix="Bs."
+                                inputClassName="text-right"
+                            />
                         </div>
                     </div>
 

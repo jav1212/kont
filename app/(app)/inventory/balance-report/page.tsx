@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { BalanceReportRow } from "@/src/modules/inventory/backend/domain/balance-report";
@@ -119,11 +120,11 @@ export default function BalanceReportPage() {
                     <label className="text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                         Período
                     </label>
-                    <input
+                    <BaseInput.Field
                         type="month"
                         value={period}
-                        onChange={(e) => { fetchedRef.current = false; setPeriod(e.target.value); }}
-                        className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 text-[12px] text-foreground outline-none focus:border-primary-500/60"
+                        onValueChange={(v) => { fetchedRef.current = false; setPeriod(v); }}
+                        className="w-40"
                     />
                 </div>
                 <BaseButton.Root

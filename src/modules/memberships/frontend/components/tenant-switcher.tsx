@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useActiveTenantContext } from "../context/active-tenant-context";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 function TenantAvatar({ email, avatarUrl }: { email?: string; avatarUrl?: string | null }) {
     return (
@@ -103,13 +104,13 @@ export function TenantSwitcher() {
                 >
                     {/* Search */}
                     <div className="p-2 border-b border-sidebar-border">
-                        <input
-                            type="text"
+                        <BaseInput.Field
+                            type="search"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onValueChange={setSearch}
                             placeholder="Buscar cuenta…"
                             autoFocus
-                            className={`w-full px-2 py-1.5 rounded-md bg-sidebar-bg-hover font-mono ${APP_SIZES.nav.companyName} text-sidebar-fg placeholder:text-sidebar-fg/40 focus:outline-none`}
+                            className="w-full"
                         />
                     </div>
 

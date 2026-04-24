@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -149,12 +150,13 @@ function EmployeeRow({
             {/* Cédula */}
             <td className={tdCls + " w-32"}>
                 {mode === "new" ? (
-                    <input
-                        className={cellInput}
+                    <BaseInput.Field
+                        type="text"
+                        className="w-full"
                         placeholder="V-12345678"
                         autoFocus
                         value={draft.cedula}
-                        onChange={(e) => onDraftChange("cedula", e.target.value)}
+                        onValueChange={(v) => onDraftChange("cedula", v)}
                     />
                 ) : (
                     <span className="font-mono text-[12px] text-[var(--text-secondary)] tracking-tight">
@@ -166,11 +168,12 @@ function EmployeeRow({
             {/* Nombre */}
             <td className={tdCls}>
                 {isEditing ? (
-                    <input
-                        className={cellInput}
+                    <BaseInput.Field
+                        type="text"
+                        className="w-full"
                         placeholder="Nombre completo"
                         value={draft.nombre}
-                        onChange={(e) => onDraftChange("nombre", e.target.value)}
+                        onValueChange={(v) => onDraftChange("nombre", v)}
                     />
                 ) : (
                     <span className="text-[14px] font-medium text-foreground tracking-tight">
@@ -182,11 +185,12 @@ function EmployeeRow({
             {/* Cargo */}
             <td className={tdCls + " w-40"}>
                 {isEditing ? (
-                    <input
-                        className={cellInput}
+                    <BaseInput.Field
+                        type="text"
+                        className="w-full"
                         placeholder="Cargo"
                         value={draft.cargo}
-                        onChange={(e) => onDraftChange("cargo", e.target.value)}
+                        onValueChange={(v) => onDraftChange("cargo", v)}
                     />
                 ) : (
                     <span className="text-[13px] text-[var(--text-secondary)]">
@@ -209,10 +213,16 @@ function EmployeeRow({
                             </select>
                             <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                         </div>
-                        <input
-                            className="flex-1 min-w-0 bg-transparent px-2.5 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
-                            type="number" step="0.01" min="0" placeholder="0.00"
-                            value={draft.salarioMensual} onChange={(e) => onDraftChange("salarioMensual", e.target.value)} />
+                        <BaseInput.Field
+                            className="flex-1 min-w-0"
+                            inputClassName="text-right"
+                            type="number"
+                            step={0.01}
+                            min={0}
+                            placeholder="0.00"
+                            value={draft.salarioMensual}
+                            onValueChange={(v) => onDraftChange("salarioMensual", v)}
+                        />
                     </div>
                 ) : (
                     <div className="flex items-center gap-2">
@@ -234,11 +244,11 @@ function EmployeeRow({
             {/* Fecha de ingreso */}
             <td className={tdCls + " w-36"}>
                 {isEditing ? (
-                    <input
-                        className={cellInput}
+                    <BaseInput.Field
                         type="date"
+                        className="w-full"
                         value={draft.fechaIngreso}
-                        onChange={(e) => onDraftChange("fechaIngreso", e.target.value)}
+                        onValueChange={(v) => onDraftChange("fechaIngreso", v)}
                     />
                 ) : (
                     <div className="flex flex-col gap-0.5">
@@ -723,21 +733,13 @@ export default function EmployeesPage() {
                 ) : (
                     <div className="space-y-4">
                         {/* Search bar section */}
-                        <div className="relative group max-w-md">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] group-focus-within:text-primary-500 transition-colors"
-                                size={15}
-                            />
-                            <input
+                        <div className="max-w-md">
+                            <BaseInput.Field
                                 type="text"
                                 placeholder="Buscar por nombre, cédula o cargo…"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className={[
-                                    "w-full h-10 pl-10 pr-4 rounded-xl border border-border-light bg-surface-1 outline-none",
-                                    "text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
-                                    "focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5 hover:border-border-medium transition-all duration-200",
-                                ].join(" ")}
+                                onValueChange={setSearch}
+                                startContent={<Search size={15} className="text-[var(--text-tertiary)]" />}
                             />
                         </div>
 
@@ -778,28 +780,31 @@ export default function EmployeesPage() {
                                                         <div className="w-4 h-4 rounded border-2 border-dashed border-primary-500/20 mx-auto" />
                                                     </td>
                                                     <td className="px-5 py-4 w-32">
-                                                        <input
-                                                            className={cellInput}
+                                                        <BaseInput.Field
+                                                            type="text"
+                                                            className="w-full"
                                                             placeholder="V-12345678"
                                                             autoFocus
                                                             value={row.draft.cedula}
-                                                            onChange={(e) => updateNewDraft(row.id, "cedula", e.target.value)}
+                                                            onValueChange={(v) => updateNewDraft(row.id, "cedula", v)}
                                                         />
                                                     </td>
                                                     <td className="px-5 py-4">
-                                                        <input
-                                                            className={cellInput}
+                                                        <BaseInput.Field
+                                                            type="text"
+                                                            className="w-full"
                                                             placeholder="Nombre completo"
                                                             value={row.draft.nombre}
-                                                            onChange={(e) => updateNewDraft(row.id, "nombre", e.target.value)}
+                                                            onValueChange={(v) => updateNewDraft(row.id, "nombre", v)}
                                                         />
                                                     </td>
                                                     <td className="px-5 py-4 w-40">
-                                                        <input
-                                                            className={cellInput}
+                                                        <BaseInput.Field
+                                                            type="text"
+                                                            className="w-full"
                                                             placeholder="Cargo"
                                                             value={row.draft.cargo}
-                                                            onChange={(e) => updateNewDraft(row.id, "cargo", e.target.value)}
+                                                            onValueChange={(v) => updateNewDraft(row.id, "cargo", v)}
                                                         />
                                                     </td>
                                                     <td className="px-5 py-4 w-52">
@@ -811,19 +816,24 @@ export default function EmployeesPage() {
                                                                 <option value="VES">VES</option>
                                                                 <option value="USD">USD</option>
                                                             </select>
-                                                            <input
-                                                                className="flex-1 min-w-0 bg-transparent px-2.5 font-mono text-[13px] text-right tabular-nums text-foreground outline-none"
-                                                                type="number" step="0.01" min="0" placeholder="0.00"
+                                                            <BaseInput.Field
+                                                                className="flex-1 min-w-0"
+                                                                inputClassName="text-right"
+                                                                type="number"
+                                                                step={0.01}
+                                                                min={0}
+                                                                placeholder="0.00"
                                                                 value={row.draft.salarioMensual}
-                                                                onChange={(e) => updateNewDraft(row.id, "salarioMensual", e.target.value)} />
+                                                                onValueChange={(v) => updateNewDraft(row.id, "salarioMensual", v)}
+                                                            />
                                                         </div>
                                                     </td>
                                                     <td className="px-5 py-4 w-36">
-                                                        <input
-                                                            className={cellInput}
+                                                        <BaseInput.Field
                                                             type="date"
+                                                            className="w-full"
                                                             value={row.draft.fechaIngreso}
-                                                            onChange={(e) => updateNewDraft(row.id, "fechaIngreso", e.target.value)}
+                                                            onValueChange={(v) => updateNewDraft(row.id, "fechaIngreso", v)}
                                                         />
                                                     </td>
                                                     <td className="px-5 py-4 w-32">

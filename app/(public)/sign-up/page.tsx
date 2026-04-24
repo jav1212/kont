@@ -15,19 +15,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { LogoMark } from "@/src/shared/frontend/components/logo";
 
 const RESEND_UNLOCK_SECONDS = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
-
-const INPUT_CLS = [
-    "w-full h-11 px-4 rounded-xl",
-    "bg-surface-2 border border-border-medium hover:border-border-default",
-    "text-[14px] font-medium text-foreground placeholder:text-[var(--text-disabled)]",
-    "outline-none focus:border-primary-500 focus:ring-[3px] focus:ring-primary-500/15",
-    "disabled:opacity-50 disabled:cursor-not-allowed",
-    "transition-all duration-200",
-].join(" ");
 
 function validate(name: string, email: string, pass: string, confirm: string, terms: boolean): string | null {
     if (!name.trim())                         return "El nombre es requerido.";
@@ -215,25 +207,13 @@ function SignUpPageInner() {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Nombre</label>
-                                <input type="text" placeholder="Tu nombre completo" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} className={INPUT_CLS} />
-                            </div>
+                            <BaseInput.Field label="Nombre" type="text" placeholder="Tu nombre completo" value={name} onValueChange={setName} isDisabled={loading} />
 
-                            <div>
-                                <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Correo</label>
-                                <input type="email" placeholder="usuario@empresa.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} className={INPUT_CLS} />
-                            </div>
+                            <BaseInput.Field label="Correo" type="email" placeholder="usuario@empresa.com" value={email} onValueChange={setEmail} isDisabled={loading} />
 
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Clave</label>
-                                    <input type="password" placeholder="••••••••" value={pass} onChange={(e) => setPass(e.target.value)} disabled={loading} className={INPUT_CLS} />
-                                </div>
-                                <div>
-                                    <label className="block text-[12px] font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Repetir</label>
-                                    <input type="password" placeholder="••••••••" value={confirm} onChange={(e) => setConfirm(e.target.value)} disabled={loading} className={INPUT_CLS} />
-                                </div>
+                                <BaseInput.Field label="Clave" type="password" placeholder="••••••••" value={pass} onValueChange={setPass} isDisabled={loading} />
+                                <BaseInput.Field label="Repetir" type="password" placeholder="••••••••" value={confirm} onValueChange={setConfirm} isDisabled={loading} />
                             </div>
 
                             <label className="flex items-start gap-3 cursor-pointer p-3 border border-border-default rounded-xl hover:bg-surface-1 transition-colors">

@@ -1,8 +1,9 @@
 // Dynamic form input for sector-specific and user-defined custom fields.
-// Renders the appropriate HeroUI input based on CustomFieldDefinition.type.
+// Renders the appropriate input based on CustomFieldDefinition.type.
 "use client";
 
-import { Input, Select, SelectItem } from "@heroui/react";
+import { Select, SelectItem } from "@heroui/react";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 
 interface CustomFieldInputProps {
@@ -19,7 +20,7 @@ export function CustomFieldInput({ field, value, onChange, isReadOnly }: CustomF
   switch (field.type) {
     case "text":
       return (
-        <Input
+        <BaseInput.Field
           label={field.label}
           value={strValue}
           onValueChange={(v) => onChange(field.key, v)}
@@ -31,7 +32,7 @@ export function CustomFieldInput({ field, value, onChange, isReadOnly }: CustomF
 
     case "number":
       return (
-        <Input
+        <BaseInput.Field
           label={field.label}
           type="number"
           value={strValue}
@@ -44,7 +45,7 @@ export function CustomFieldInput({ field, value, onChange, isReadOnly }: CustomF
 
     case "date":
       return (
-        <Input
+        <BaseInput.Field
           label={field.label}
           type="date"
           value={strValue}

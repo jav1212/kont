@@ -11,6 +11,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
@@ -19,12 +20,6 @@ import type { Product } from "@/src/modules/inventory/backend/domain/product";
 const todayStr = () => getTodayIsoDate();
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtN = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fieldCls = [
-    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[14px] text-foreground tabular-nums",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-].join(" ");
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
@@ -134,15 +129,15 @@ function ProductCombo({
     return (
         <div ref={wrapRef} className="relative w-full" onBlur={handleBlur}>
             <div className="flex items-center gap-1.5">
-                <input
-                    className={fieldCls}
+                <BaseInput.Field
+                    className="w-full"
                     value={displayValue}
                     placeholder={open ? "Buscar producto…" : "Seleccionar producto…"}
-                    onChange={(e) => { setSearch(e.target.value); setHiIdx(0); }}
+                    onValueChange={(v) => { setSearch(v); setHiIdx(0); }}
                     onFocus={() => { setSearch(""); setHiIdx(0); setOpen(true); }}
                     onKeyDown={handleKeyDown}
                     autoComplete="off"
-                    spellCheck={false}
+                    spellCheck="false"
                 />
                 {selected && (
                     <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
@@ -407,12 +402,11 @@ export default function NuevaDevolucionPage() {
 
                         {/* Fecha */}
                         <div>
-                            <label className={labelCls}>Fecha *</label>
-                            <input
+                            <BaseInput.Field
+                                label="Fecha *"
                                 type="date"
-                                className={fieldCls}
                                 value={date}
-                                onChange={(e) => setDate(e.target.value)}
+                                onValueChange={setDate}
                             />
                         </div>
 
@@ -420,13 +414,13 @@ export default function NuevaDevolucionPage() {
                         <div>
                             <label className={labelCls}>Tasa BCV (Bs/USD)</label>
                             <div className="flex items-center gap-2">
-                                <input
+                                <BaseInput.Field
                                     type="number"
-                                    className={fieldCls}
-                                    value={dollarRate ?? ""}
-                                    onChange={(e) => setDollarRate(e.target.value ? Number(e.target.value) : null)}
+                                    className="w-full"
+                                    value={dollarRate !== null ? String(dollarRate) : ""}
+                                    onValueChange={(v) => setDollarRate(v ? Number(v) : null)}
                                     placeholder="0.00"
-                                    step="0.01"
+                                    step={0.01}
                                 />
                                 {rateLoading && (
                                     <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
@@ -480,24 +474,22 @@ export default function NuevaDevolucionPage() {
 
                         {/* Referencia */}
                         <div>
-                            <label className={labelCls}>Referencia del documento original</label>
-                            <input
+                            <BaseInput.Field
+                                label="Referencia del documento original"
                                 type="text"
-                                className={fieldCls}
                                 value={reference}
-                                onChange={(e) => setReference(e.target.value)}
+                                onValueChange={setReference}
                                 placeholder="Nro. factura, guía de despacho…"
                             />
                         </div>
 
                         {/* Notas */}
                         <div>
-                            <label className={labelCls}>Notas</label>
-                            <input
+                            <BaseInput.Field
+                                label="Notas"
                                 type="text"
-                                className={fieldCls}
                                 value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
+                                onValueChange={setNotes}
                                 placeholder="Motivo, observaciones…"
                             />
                         </div>
@@ -549,31 +541,29 @@ export default function NuevaDevolucionPage() {
                                     />
 
                                     {/* Cantidad */}
-                                    <input
+                                    <BaseInput.Field
                                         type="number"
-                                        className={fieldCls + (stockOk ? "" : " border-red-500/40 focus:border-red-500/60") + " text-right"}
-                                        value={item.quantity || ""}
-                                        onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) || 0 })}
+                                        className="w-full"
+                                        inputClassName={stockOk ? "text-right" : "text-right !text-red-500"}
+                                        value={item.quantity ? String(item.quantity) : ""}
+                                        onValueChange={(v) => updateItem(idx, { quantity: Number(v) || 0 })}
                                         placeholder="0"
-                                        min="0.0001"
-                                        step="0.0001"
+                                        min={0.0001}
+                                        step={0.0001}
                                     />
 
                                     {/* Costo */}
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            className={fieldCls + " text-right pr-10"}
-                                            value={item.currencyCost || ""}
-                                            onChange={(e) => updateItem(idx, { currencyCost: Number(e.target.value) || 0 })}
-                                            placeholder="0.00"
-                                            min="0"
-                                            step="0.01"
-                                        />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--text-tertiary)] pointer-events-none">
-                                            {item.currency === "D" ? "USD" : "Bs"}
-                                        </span>
-                                    </div>
+                                    <BaseInput.Field
+                                        type="number"
+                                        className="w-full"
+                                        inputClassName="text-right"
+                                        value={item.currencyCost ? String(item.currencyCost) : ""}
+                                        onValueChange={(v) => updateItem(idx, { currencyCost: Number(v) || 0 })}
+                                        placeholder="0.00"
+                                        min={0}
+                                        step={0.01}
+                                        suffix={item.currency === "D" ? "USD" : "Bs"}
+                                    />
 
                                     {/* Moneda toggle */}
                                     <div className="flex rounded-lg border border-border-light overflow-hidden h-10 text-[12px]">

@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Percent, Info, ClipboardCheck, ChevronDown, Clock } from "lucide-react";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { FileText, Download, RefreshCw, Users, Calendar, TrendingUp, Info, ClipboardCheck, ChevronDown, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
@@ -27,8 +28,6 @@ const fieldCls = [
     "font-mono text-[13px] text-foreground tabular-nums appearance-none",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
-
-const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
 
 function isoToday(): string { return getTodayIsoDate(); }
 
@@ -511,24 +510,27 @@ export default function PrestacionesPage() {
 
                             {selectedIdNumber && (
                                 <div className="pt-2">
-                                    <label className={labelCls}>Salario mensual (Bs.)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                        <input type="number" step="0.01" min="0" value={salaryOverride}
-                                            onChange={e => setSalaryOverride(e.target.value)} placeholder="0.00"
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
+                                    <BaseInput.Field
+                                        label="Salario mensual (Bs.)"
+                                        type="number"
+                                        step={0.01}
+                                        min={0}
+                                        value={salaryOverride}
+                                        onValueChange={setSalaryOverride}
+                                        placeholder="0.00"
+                                        prefix="Bs."
+                                        inputClassName="text-right"
+                                    />
                                 </div>
                             )}
                             {!selectedEmp && selectedIdNumber && (
-                                <div>
-                                    <label className={labelCls}>Fecha de ingreso</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                        <input type="date" value={manualHireDate}
-                                            onChange={e => setManualHireDate(e.target.value)} className={fieldCls + " pl-9"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Fecha de ingreso"
+                                    type="date"
+                                    value={manualHireDate}
+                                    onValueChange={setManualHireDate}
+                                    startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                                />
                             )}
                         </div>
 
@@ -543,75 +545,76 @@ export default function PrestacionesPage() {
                                     <RefreshCw size={12} className={isBcvLoading ? "animate-spin" : ""} />
                                 </button>
                             </div>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--text-tertiary)] pointer-events-none select-none">Bs.</span>
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={exchangeRate}
-                                    onChange={e => setExchangeRate(e.target.value)} 
-                                    className={fieldCls + " pl-9 text-right"} 
-                                />
-                            </div>
+                            <BaseInput.Field
+                                type="number"
+                                step={0.01}
+                                value={exchangeRate}
+                                onValueChange={setExchangeRate}
+                                prefix="Bs."
+                                inputClassName="text-right"
+                            />
                         </div>
 
                         <div className="px-5 py-5 space-y-4">
                             <SectionHeader label="Configuración Temporal" />
-                            <div>
-                                <label className={labelCls}>Fecha de corte</label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={14} />
-                                    <input type="date" value={cutoffDate}
-                                        onChange={e => setCutoffDate(e.target.value)} className={fieldCls + " pl-9"} />
-                                </div>
-                            </div>
+                            <BaseInput.Field
+                                label="Fecha de corte"
+                                type="date"
+                                value={cutoffDate}
+                                onValueChange={setCutoffDate}
+                                startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
+                            />
                             <div className="grid grid-cols-2 gap-3 pt-1">
-                                <div>
-                                    <label className={labelCls}>Días Util.</label>
-                                    <div className="relative">
-                                        <ClipboardCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" min="15" max="120" step="1"
-                                            value={profitSharingDays}
-                                            onChange={e => setProfitSharingDays(e.target.value)}
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Bono Vac.</label>
-                                    <div className="relative">
-                                        <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" min="15" max="90" step="1"
-                                            value={vacationBonusDays}
-                                            onChange={e => setVacationBonusDays(e.target.value)}
-                                            className={fieldCls + " pl-9 text-right"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Días Util."
+                                    type="number"
+                                    min={15}
+                                    max={120}
+                                    step={1}
+                                    value={profitSharingDays}
+                                    onValueChange={setProfitSharingDays}
+                                    startContent={<ClipboardCheck size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
+                                <BaseInput.Field
+                                    label="Bono Vac."
+                                    type="number"
+                                    min={15}
+                                    max={90}
+                                    step={1}
+                                    value={vacationBonusDays}
+                                    onValueChange={setVacationBonusDays}
+                                    startContent={<TrendingUp size={13} className="text-[var(--text-tertiary)]" />}
+                                    inputClassName="text-right"
+                                />
                             </div>
                         </div>
 
                         <div className="px-5 py-5 space-y-4 bg-surface-2/[0.03]">
                             <SectionHeader label="Ajustes de Ley" />
                             <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className={labelCls}>Tasa Int.</label>
-                                    <div className="relative">
-                                        <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" step="0.01" min="0" max="100"
-                                            value={interestRate}
-                                            onChange={e => setInterestRate(e.target.value)}
-                                            className={fieldCls + " pl-8 text-right"} />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Anticipo</label>
-                                    <div className="relative">
-                                        <Percent className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" size={13} />
-                                        <input type="number" step="1" min="0" max="75"
-                                            value={advancePercentage}
-                                            onChange={e => setAdvancePercentage(e.target.value)}
-                                            className={fieldCls + " pl-8 text-right"} />
-                                    </div>
-                                </div>
+                                <BaseInput.Field
+                                    label="Tasa Int."
+                                    type="number"
+                                    step={0.01}
+                                    min={0}
+                                    max={100}
+                                    value={interestRate}
+                                    onValueChange={setInterestRate}
+                                    suffix="%"
+                                    inputClassName="text-right"
+                                />
+                                <BaseInput.Field
+                                    label="Anticipo"
+                                    type="number"
+                                    step={1}
+                                    min={0}
+                                    max={75}
+                                    value={advancePercentage}
+                                    onValueChange={setAdvancePercentage}
+                                    suffix="%"
+                                    inputClassName="text-right"
+                                />
                             </div>
                         </div>
 

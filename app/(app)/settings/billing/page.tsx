@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAvailableCredit } from "@/src/modules/referrals/frontend/hooks/use-referrals";
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 // ============================================================================
 // TYPES
@@ -603,17 +604,13 @@ export default function BillingPage() {
 
                                     {/* Receipt URL */}
                                     {!fullyCovered && (
-                                        <div className="space-y-1.5">
-                                            <label htmlFor="inp-receipt" className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-tertiary)]">URL del comprobante (opcional)</label>
-                                            <input
-                                                id="inp-receipt"
-                                                type="url"
-                                                value={receiptUrl}
-                                                onChange={(e) => setReceiptUrl(e.target.value)}
-                                                placeholder="https://drive.google.com/..."
-                                                className={inputCls + " h-10 px-4 rounded-xl"}
-                                            />
-                                        </div>
+                                        <BaseInput.Field
+                                            label="URL del comprobante (opcional)"
+                                            type="url"
+                                            value={receiptUrl}
+                                            onValueChange={setReceiptUrl}
+                                            placeholder="https://drive.google.com/..."
+                                        />
                                     )}
 
                                     {submitError && (

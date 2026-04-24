@@ -7,6 +7,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
@@ -26,13 +27,6 @@ function currentPeriod() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-
-const fieldCls = [
-    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-].join(" ");
-const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-text-tertiary mb-1.5 block";
 
 // ── EditModal ─────────────────────────────────────────────────────────────────
 // Allows editing date, reference, and notes without affecting inventory balance.
@@ -62,35 +56,26 @@ function EditModal({
                     Solo se pueden editar fecha, referencia y notas sin afectar el saldo del inventario.
                 </p>
                 <div className="space-y-4">
-                    <div>
-                        <label className={labelCls}>Fecha *</label>
-                        <input
-                            type="date"
-                            className={fieldCls}
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Referencia</label>
-                        <input
-                            type="text"
-                            className={fieldCls}
-                            value={reference}
-                            onChange={(e) => setReference(e.target.value)}
-                            placeholder="Referencia interna…"
-                        />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Notas</label>
-                        <input
-                            type="text"
-                            className={fieldCls}
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Observaciones…"
-                        />
-                    </div>
+                    <BaseInput.Field
+                        label="Fecha *"
+                        type="date"
+                        value={date}
+                        onValueChange={setDate}
+                    />
+                    <BaseInput.Field
+                        label="Referencia"
+                        type="text"
+                        value={reference}
+                        onValueChange={setReference}
+                        placeholder="Referencia interna…"
+                    />
+                    <BaseInput.Field
+                        label="Notas"
+                        type="text"
+                        value={notes}
+                        onValueChange={setNotes}
+                        placeholder="Observaciones…"
+                    />
                 </div>
                 <div className="flex items-center justify-end gap-3 mt-6">
                     <BaseButton.Root
@@ -241,11 +226,11 @@ export default function LibroEntradasPage() {
 
             <PageHeader title="Libro de Entradas" subtitle="Movimientos de entradas por período">
                 <label className="text-[11px] uppercase tracking-[0.12em] text-text-tertiary">Período</label>
-                <input
+                <BaseInput.Field
                     type="month"
-                    className="h-9 px-3 rounded-lg border border-border-light bg-surface-1 text-[13px] text-foreground outline-none focus:border-primary-500/60"
+                    className="w-40"
                     value={period}
-                    onChange={(e) => setPeriod(e.target.value)}
+                    onValueChange={setPeriod}
                 />
             </PageHeader>
 

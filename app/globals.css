@@ -410,11 +410,22 @@ body {
   scrollbar-color: var(--border-medium) transparent;
 }
 
-/* ── Focus ring ────────────────────────────────────────────────────────── */
+/* ── Focus ring ──────────────────────────────────────────────────────────
+   Global focus indicator for links, buttons, tabs, and other "raw" interactive
+   elements. Form fields (input/textarea/select) are excluded because they
+   always live inside a wrapper (HeroUI, BaseInput, BaseSelect) that draws its
+   own focus border on the wrapper — applying the global outline on top of the
+   wrapper border produced a doubled stroke with a 2px gap. */
 :focus-visible {
   outline: 2px solid var(--primary-500);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
 }
 
 /* Smooth theme swap — animate only bg + color globally.

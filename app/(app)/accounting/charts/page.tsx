@@ -10,6 +10,7 @@ import { AnimatePresence, motion }                     from 'framer-motion';
 import { X, Upload, Trash2, Download, ArrowLeft, Pencil, Check } from 'lucide-react';
 import { PageHeader }                            from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                            from '@/src/shared/frontend/components/base-button';
+import { BaseInput }                             from '@/src/shared/frontend/components/base-input';
 import { AccountingAccessGuard }                 from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { BaseTable }                             from '@/src/shared/frontend/components/base-table';
 import { useCompany }                            from '@/src/modules/companies/frontend/hooks/use-companies';
@@ -47,13 +48,6 @@ function downloadExample() {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-    "placeholder:text-neutral-400 focus:ring-2 focus:ring-primary-500/20",
-].join(" ");
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary block mb-1.5";
 
@@ -286,17 +280,17 @@ export default function ChartsPage() {
                                     label: 'Nombre del Plan',
                                     render: (_value, item) => editingId === item.id ? (
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <input
+                                            <BaseInput.Field
                                                 autoFocus
                                                 type="text"
                                                 value={editingName}
-                                                onChange={(e) => setEditingName(e.target.value)}
+                                                onValueChange={setEditingName}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter')  { void confirmRename(item); }
                                                     if (e.key === 'Escape') { cancelEdit(); }
                                                 }}
-                                                disabled={renaming}
-                                                className="h-7 px-2 rounded-md border border-border-light bg-surface-1 font-mono text-[13px] text-foreground focus:border-primary-500/60 focus:ring-2 focus:ring-primary-500/20 outline-none transition-colors min-w-0 flex-1 disabled:opacity-50"
+                                                isDisabled={renaming}
+                                                className="min-w-0 flex-1"
                                             />
                                             <button
                                                 type="button"
@@ -420,20 +414,13 @@ export default function ChartsPage() {
                                     </div>
 
                                     <div className="p-6 space-y-5 overflow-y-auto">
-                                        <div className="flex flex-col">
-                                            <label htmlFor={`${modalId}-name`} className={labelCls}>
-                                                Nombre del plan
-                                                <span className="ml-1 normal-case tracking-normal text-text-tertiary opacity-70">(opcional)</span>
-                                            </label>
-                                            <input
-                                                id={`${modalId}-name`}
-                                                type="text"
-                                                placeholder="Nombre del archivo por defecto"
-                                                value={importName}
-                                                onChange={(e) => setImportName(e.target.value)}
-                                                className={fieldCls}
-                                            />
-                                        </div>
+                                        <BaseInput.Field
+                                            label="Nombre del plan (opcional)"
+                                            type="text"
+                                            placeholder="Nombre del archivo por defecto"
+                                            value={importName}
+                                            onValueChange={setImportName}
+                                        />
 
                                         <div className="flex flex-col gap-2">
                                             <label htmlFor={`${modalId}-file`} className={labelCls}>
