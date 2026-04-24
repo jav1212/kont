@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, startTransition } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, startTransition } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -8,6 +8,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
@@ -187,10 +188,21 @@ export default function NuevoAutoconsumoPage() {
     const [destino, setDestino] = useState("");
     const [notas, setNotas] = useState("");
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
-    const [tasaDolar, setTasaDolar] = useState<number | null>(null);
+    const {
+        rate: tasaDolarStr,
+        decimals: tasaDecimals,
+        setRateFromApi: setTasaFromApi,
+        setRateTyped: setTasaTyped,
+        applyDecimals: applyTasaDecimals,
+    } = useBcvRate();
     const [tasaFechaBcv, setTasaFechaBcv] = useState<string | null>(null);
     const [tasaLoading, setTasaLoading] = useState(false);
     const [tasaError, setTasaError] = useState<string | null>(null);
+
+    const tasaDolar = useMemo<number | null>(() => {
+        const r = parseRateStr(tasaDolarStr);
+        return isFinite(r) ? roundRateValue(r, tasaDecimals) : null;
+    }, [tasaDolarStr, tasaDecimals]);
     const [items, setItems] = useState<AutoconsumoItem[]>([emptyAutoconsumoItem()]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -212,7 +224,7 @@ export default function NuevoAutoconsumoPage() {
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setTasaDolar(json.rate);
+                    setTasaFromApi(json.rate, tasaDecimals);
                     setTasaFechaBcv(json.date);
                     setTasaError(null);
                 } else {
@@ -361,28 +373,15 @@ export default function NuevoAutoconsumoPage() {
                         </div>
 
                         {/* Tasa BCV */}
-                        <div>
-                            <label className={labelCls}>Tasa BCV (Bs/USD)</label>
-                            <div className="flex items-center gap-2">
-                                <BaseInput.Field
-                                    type="number"
-                                    className="w-full"
-                                    value={tasaDolar !== null ? String(tasaDolar) : ""}
-                                    onValueChange={(v) => setTasaDolar(v ? Number(v) : null)}
-                                    placeholder="0.00"
-                                    step={0.01}
-                                />
-                                {tasaLoading && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
-                                )}
-                                {!tasaLoading && tasaFechaBcv && (
-                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {tasaFechaBcv}</span>
-                                )}
-                                {!tasaLoading && !tasaFechaBcv && tasaError && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{tasaError}</span>
-                                )}
-                            </div>
-                        </div>
+                        <BcvRateInput
+                            rate={tasaDolarStr}
+                            onRateChange={(v) => { setTasaTyped(v); setTasaFechaBcv(null); }}
+                            decimals={tasaDecimals}
+                            onDecimalsChange={applyTasaDecimals}
+                            loading={tasaLoading}
+                            bcvDate={tasaFechaBcv}
+                            error={tasaError}
+                        />
 
                         {/* Tratamiento IVA */}
                         <div className="col-span-2">

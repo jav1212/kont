@@ -10,6 +10,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { MovementType } from "@/src/modules/inventory/backend/domain/movement";
 
@@ -105,7 +106,13 @@ export default function MovementsPage() {
 
     const [period, setPeriod] = useState(currentPeriod());
     const [saving, setSaving] = useState(false);
-    const [dollarRateStr, setDollarRateStr] = useState<string>("");
+    const {
+        rate: dollarRateStr,
+        decimals: rateDecimals,
+        setRateFromApi,
+        setRateTyped,
+        applyDecimals,
+    } = useBcvRate();
     const [bcvLoading, setBcvLoading] = useState(false);
     const [bcvDate, setBcvDate] = useState<string | null>(null);
     const [bcvError, setBcvError] = useState<string | null>(null);
@@ -154,7 +161,7 @@ export default function MovementsPage() {
     // Pre-fill dollar rate from last period close
     useEffect(() => {
         if (currentDollarRate != null && dollarRateStr === "") {
-            setDollarRateStr(String(currentDollarRate));
+            setRateFromApi(currentDollarRate, rateDecimals);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDollarRate]);
@@ -171,7 +178,7 @@ export default function MovementsPage() {
             .then(json => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setDollarRateStr(String(json.rate));
+                    setRateFromApi(json.rate, rateDecimals);
                     setBcvDate(json.date);
                 } else {
                     setBcvError(json.error ?? 'Sin datos BCV para esta fecha');
@@ -198,9 +205,10 @@ export default function MovementsPage() {
     }, [form.productId, products, companyId]);
 
     const dollarRate = useMemo(() => {
-        const v = parseFloat(dollarRateStr.replace(",", "."));
-        return isNaN(v) || v <= 0 ? null : v;
-    }, [dollarRateStr]);
+        const v = parseRateStr(dollarRateStr);
+        if (!isFinite(v) || v <= 0) return null;
+        return roundRateValue(v, rateDecimals);
+    }, [dollarRateStr, rateDecimals]);
 
     const effectiveUnitCost = useMemo(() => {
         if (form.currency === 'D' && form.currencyCost > 0 && dollarRate) {
@@ -311,21 +319,16 @@ export default function MovementsPage() {
                         </h2>
 
                         {/* Tasa BCV */}
-                        <div className="mb-4 flex items-center gap-3 flex-wrap">
-                            <label className={labelCls + " mb-0 whitespace-nowrap"}>Tasa BCV (Bs/USD)</label>
-                            <BaseInput.Field
-                                type="number"
-                                min={0}
-                                step={0.0001}
-                                className="w-36"
-                                value={dollarRateStr}
-                                onValueChange={(v) => { setDollarRateStr(v); setBcvDate(null); }}
-                                placeholder={bcvLoading ? 'Consultando…' : 'Ej. 46.50'}
-                                isDisabled={bcvLoading}
+                        <div className="mb-4 max-w-sm">
+                            <BcvRateInput
+                                rate={dollarRateStr}
+                                onRateChange={(v) => { setRateTyped(v); setBcvDate(null); }}
+                                decimals={rateDecimals}
+                                onDecimalsChange={applyDecimals}
+                                loading={bcvLoading}
+                                bcvDate={bcvDate}
+                                error={bcvError}
                             />
-                            {bcvLoading && <span className="text-[11px] text-[var(--text-tertiary)] animate-pulse">···</span>}
-                            {bcvDate && !bcvLoading && <span className="text-[11px] text-green-500 uppercase tracking-[0.12em]">BCV {bcvDate}</span>}
-                            {bcvError && !bcvLoading && <span className="text-[11px] text-amber-500">{bcvError}</span>}
                         </div>
 
                         <div className="space-y-3">

@@ -451,6 +451,24 @@ export function useInventory() {
         }
     }, []);
 
+    const unconfirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
+        setError(null);
+        try {
+            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/unconfirm`, {
+                method: 'POST',
+            });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al desconfirmar factura'); return null; }
+            const unconfirmed: PurchaseInvoice = json.data;
+            setPurchaseInvoices((prev) => prev.map((f) => (f.id === unconfirmed.id ? unconfirmed : f)));
+            setCurrentPurchaseInvoice(unconfirmed);
+            return unconfirmed;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return null;
+        }
+    }, []);
+
     // ── Departments ────────────────────────────────────────────────────────────
 
     const loadDepartments = useCallback(async (companyId: string) => {
@@ -670,7 +688,7 @@ export function useInventory() {
         loadTransformations, saveTransformation,
         loadPeriodCloses, savePeriodClose,
         loadSuppliers, saveSupplier, deleteSupplier,
-        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, deletePurchaseInvoice,
+        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, deletePurchaseInvoice,
         loadDepartments, saveDepartment, deleteDepartment,
         loadPeriodReport,
         loadPurchaseLedger,

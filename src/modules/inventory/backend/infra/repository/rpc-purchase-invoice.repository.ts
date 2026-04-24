@@ -23,6 +23,8 @@ interface InvoiceRpcRow {
   iva_monto: number | null;
   total: number | null;
   notas: string | null;
+  tasa_dolar: number | string | null;
+  tasa_decimales: number | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   created_at: string | null;
@@ -90,6 +92,8 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 fecha:          invoice.date,
                 iva_porcentaje: invoice.vatPercentage,
                 notas:          invoice.notes,
+                tasa_dolar:     invoice.dollarRate   != null ? String(invoice.dollarRate)   : '',
+                tasa_decimales: invoice.rateDecimals != null ? String(invoice.rateDecimals) : '',
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -142,6 +146,20 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
         }
     }
 
+    async unconfirm(invoiceId: string): Promise<Result<PurchaseInvoice>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_inventario_factura_desconfirmar', {
+                    p_user_id:    this.userId,
+                    p_factura_id: invoiceId,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(this.mapToDomain(data as InvoiceRpcRow));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Failed to unconfirm purchase invoice');
+        }
+    }
+
     private mapToDomain(row: InvoiceRpcRow): PurchaseInvoice {
         const items: PurchaseInvoiceItem[] | undefined = Array.isArray(row.items)
             ? row.items.map((i) => ({
@@ -174,6 +192,8 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             vatAmount:     Number(row.iva_monto ?? 0),
             total:         Number(row.total ?? 0),
             notes:         row.notas ?? '',
+            dollarRate:    row.tasa_dolar     != null ? Number(row.tasa_dolar)     : null,
+            rateDecimals:  row.tasa_decimales != null ? Number(row.tasa_decimales) : null,
             confirmedAt:   row.confirmada_at ?? null,
             items,
             createdAt:     row.created_at ?? undefined,

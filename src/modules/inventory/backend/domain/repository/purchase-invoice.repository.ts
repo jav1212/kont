@@ -8,5 +8,6 @@ export interface IPurchaseInvoiceRepository {
   findById(invoiceId: string): Promise<Result<PurchaseInvoice>>;
   save(invoice: PurchaseInvoice, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>>;
   confirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
+  unconfirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
   delete(invoiceId: string): Promise<Result<void>>;
 }

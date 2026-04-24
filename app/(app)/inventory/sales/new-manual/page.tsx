@@ -4,7 +4,7 @@
 // Architectural role: inventory page — creates 'salida' type Movement records one at a time.
 // All identifiers are in English; GUI text remains in Spanish per product requirements.
 
-import { useEffect, useState, useCallback, useRef, startTransition } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, startTransition } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -12,6 +12,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
@@ -192,10 +193,21 @@ export default function NuevaSalidaManualPage() {
     const [date, setDate] = useState(todayStr());
     const [notes, setNotes] = useState("");
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
-    const [dollarRate, setDollarRate] = useState<number | null>(null);
+    const {
+        rate: dollarRateStr,
+        decimals: rateDecimals,
+        setRateFromApi,
+        setRateTyped,
+        applyDecimals,
+    } = useBcvRate();
     const [bcvRateDate, setBcvRateDate] = useState<string | null>(null);
     const [rateLoading, setRateLoading] = useState(false);
     const [rateError, setRateError] = useState<string | null>(null);
+
+    const dollarRate = useMemo<number | null>(() => {
+        const r = parseRateStr(dollarRateStr);
+        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+    }, [dollarRateStr, rateDecimals]);
     const [items, setItems] = useState<OutboundItem[]>([emptyOutboundItem()]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -217,7 +229,7 @@ export default function NuevaSalidaManualPage() {
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setDollarRate(json.rate);
+                    setRateFromApi(json.rate, rateDecimals);
                     setBcvRateDate(json.date);
                     setRateError(null);
                 } else {
@@ -365,28 +377,15 @@ export default function NuevaSalidaManualPage() {
                         </div>
 
                         {/* Tasa BCV */}
-                        <div>
-                            <label className={labelCls}>Tasa BCV (Bs/USD)</label>
-                            <div className="flex items-center gap-2">
-                                <BaseInput.Field
-                                    type="number"
-                                    className="w-full"
-                                    value={dollarRate !== null ? String(dollarRate) : ""}
-                                    onValueChange={(v) => setDollarRate(v ? Number(v) : null)}
-                                    placeholder="0.00"
-                                    step={0.01}
-                                />
-                                {rateLoading && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">Cargando…</span>
-                                )}
-                                {!rateLoading && bcvRateDate && (
-                                    <span className="text-[11px] text-green-600 whitespace-nowrap">BCV {bcvRateDate}</span>
-                                )}
-                                {!rateLoading && !bcvRateDate && rateError && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)] whitespace-nowrap">{rateError}</span>
-                                )}
-                            </div>
-                        </div>
+                        <BcvRateInput
+                            rate={dollarRateStr}
+                            onRateChange={(v) => { setRateTyped(v); setBcvRateDate(null); }}
+                            decimals={rateDecimals}
+                            onDecimalsChange={applyDecimals}
+                            loading={rateLoading}
+                            bcvDate={bcvRateDate}
+                            error={rateError}
+                        />
 
                         {/* Tratamiento IVA */}
                         <div className="col-span-2">

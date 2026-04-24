@@ -10,8 +10,9 @@ import { DeleteSupplierUseCase }         from '../app/delete-supplier.use-case';
 import { ListPurchaseInvoicesUseCase }   from '../app/list-purchase-invoices.use-case';
 import { GetPurchaseInvoiceUseCase }     from '../app/get-purchase-invoice.use-case';
 import { SavePurchaseInvoiceUseCase }    from '../app/save-purchase-invoice.use-case';
-import { ConfirmPurchaseInvoiceUseCase } from '../app/confirm-purchase-invoice.use-case';
-import { DeletePurchaseInvoiceUseCase }  from '../app/delete-purchase-invoice.use-case';
+import { ConfirmPurchaseInvoiceUseCase }   from '../app/confirm-purchase-invoice.use-case';
+import { UnconfirmPurchaseInvoiceUseCase } from '../app/unconfirm-purchase-invoice.use-case';
+import { DeletePurchaseInvoiceUseCase }    from '../app/delete-purchase-invoice.use-case';
 
 export function getInventorySuppliersActions(userId: string) {
     const source       = new ServerSupabaseSource();
@@ -25,7 +26,8 @@ export function getInventorySuppliersActions(userId: string) {
         listPurchaseInvoices:   new ListPurchaseInvoicesUseCase(invoiceRepo),
         getPurchaseInvoice:     new GetPurchaseInvoiceUseCase(invoiceRepo),
         savePurchaseInvoice:    new SavePurchaseInvoiceUseCase(invoiceRepo),
-        confirmPurchaseInvoice: new ConfirmPurchaseInvoiceUseCase(invoiceRepo),
-        deletePurchaseInvoice:  new DeletePurchaseInvoiceUseCase(invoiceRepo),
+        confirmPurchaseInvoice:   new ConfirmPurchaseInvoiceUseCase(invoiceRepo),
+        unconfirmPurchaseInvoice: new UnconfirmPurchaseInvoiceUseCase(invoiceRepo),
+        deletePurchaseInvoice:    new DeletePurchaseInvoiceUseCase(invoiceRepo),
     };
 }

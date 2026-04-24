@@ -35,6 +35,18 @@ export interface PurchaseInvoice {
   vatAmount: number;
   total: number;
   notes: string;
+  /**
+   * Header-level BCV rate the user locked in for this invoice — drives the
+   * USD→Bs conversion for every `currency='D'` line item. Nullable for legacy
+   * invoices saved before migration 068 and for all-Bs invoices.
+   */
+  dollarRate?: number | null;
+  /**
+   * Decimal precision the user chose for the BCV rate. Persisted so the edit
+   * modal can restore the exact display (e.g. `414.0500` vs `414.05`) when
+   * the accountant reopens the invoice. Nullable for legacy invoices.
+   */
+  rateDecimals?: number | null;
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
   createdAt?: string;

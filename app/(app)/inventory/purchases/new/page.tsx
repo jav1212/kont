@@ -15,10 +15,8 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
+import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
-
-const fmtTasa = (n: number | null) =>
-    n == null ? "" : String(n);
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -189,7 +187,13 @@ export default function NuevaFacturaPage() {
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate] = useState(todayStr());
     const [notes, setNotes] = useState("");
-    const [dollarRate, setDollarRate] = useState<string>("");
+    const {
+        rate: dollarRate,
+        decimals: rateDecimals,
+        setRateFromApi,
+        setRateTyped,
+        applyDecimals,
+    } = useBcvRate();
     const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
     const [rateLoading, setRateLoading] = useState(false);
     const [rateError, setRateError] = useState<string | null>(null);
@@ -226,7 +230,7 @@ export default function NuevaFacturaPage() {
     // Pre-fill rate from last period close when closes load (only if BCV hasn't filled it)
     useEffect(() => {
         if (currentDollarRate != null && dollarRate === "" && !rateLoading) {
-            setDollarRate(fmtTasa(currentDollarRate));
+            setRateFromApi(currentDollarRate, rateDecimals);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDollarRate]);
@@ -242,7 +246,7 @@ export default function NuevaFacturaPage() {
             .then((json) => {
                 if (cancelled) return;
                 if (json.rate) {
-                    setDollarRate(String(json.rate));
+                    setRateFromApi(json.rate, rateDecimals);
                     setRateDateBcv(json.date);
                 } else {
                     setRateError(json.error ?? "Sin datos BCV para esta fecha");
@@ -257,6 +261,8 @@ export default function NuevaFacturaPage() {
             })
             .finally(() => { if (!cancelled) setRateLoading(false); });
         return () => { cancelled = true; };
+    // Auto-fetch on date change only; `rateDecimals` shouldn't retrigger a fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date]);
 
     // Derived totals — computed per-item from vatRate
@@ -268,6 +274,11 @@ export default function NuevaFacturaPage() {
     const vat16         = Math.round(baseTaxed16 * 16 / 100 * 100) / 100;
     const vatAmount     = vat8 + vat16;
     const total         = subtotal + vatAmount;
+
+    const effectiveDollarRate = (() => {
+        const r = parseRateStr(dollarRate);
+        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+    })();
 
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         companyId:     companyId!,
@@ -282,7 +293,9 @@ export default function NuevaFacturaPage() {
         vatAmount,
         total,
         notes,
-    }), [companyId, supplierId, invoiceNumber, controlNumber, date, subtotal, vatAmount, total, notes]);
+        dollarRate:    effectiveDollarRate,
+        rateDecimals,
+    }), [companyId, supplierId, invoiceNumber, controlNumber, date, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals]);
 
     function validate(): boolean {
         if (!supplierId) { setError("Selecciona un proveedor"); return false; }
@@ -483,31 +496,15 @@ export default function NuevaFacturaPage() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <BaseInput.Field
-                                        label="Tasa BCV (Bs/USD)"
-                                        type="number"
-                                        min={0}
-                                        step={0.0001}
-                                        value={dollarRate}
-                                        onValueChange={(v) => { setDollarRate(v); setRateDateBcv(null); }}
-                                        placeholder={rateLoading ? "Consultando BCV…" : "Ej. 46.50"}
-                                        isDisabled={rateLoading}
-                                        endContent={rateLoading ? (
-                                            <span className="text-[11px] text-[var(--text-tertiary)] animate-pulse">···</span>
-                                        ) : undefined}
-                                    />
-                                    {rateDateBcv && !rateLoading && (
-                                        <p className="mt-1 text-[11px] text-green-500 uppercase tracking-[0.12em]">
-                                            BCV {rateDateBcv}
-                                        </p>
-                                    )}
-                                    {rateError && !rateLoading && (
-                                        <p className="mt-1 text-[11px] text-amber-500 uppercase tracking-[0.10em]">
-                                            {rateError} — ingresa manualmente
-                                        </p>
-                                    )}
-                                </div>
+                                <BcvRateInput
+                                    rate={dollarRate}
+                                    onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
+                                    decimals={rateDecimals}
+                                    onDecimalsChange={applyDecimals}
+                                    loading={rateLoading}
+                                    bcvDate={rateDateBcv}
+                                    error={rateError}
+                                />
                             </div>
 
                             <div>
@@ -540,7 +537,7 @@ export default function NuevaFacturaPage() {
                                 items={items}
                                 products={products}
                                 onChange={setItems}
-                                dollarRate={dollarRate ? parseFloat(dollarRate.replace(",", ".")) || null : null}
+                                dollarRate={effectiveDollarRate}
                                 onRequestCreateProduct={(search) => {
                                     setQcProduct(p => ({ ...p, name: search }));
                                     setQcMode('product');
