@@ -3,7 +3,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { ICompanyRepository } from '../../domain/repository/company.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { Company, InventoryConfig, BusinessSector, BUSINESS_SECTORS } from '../../domain/company';
+import { Company, InventoryConfig, BusinessSector, BUSINESS_SECTORS, TaxpayerType, TAXPAYER_TYPES } from '../../domain/company';
 
 // Raw DB row shape returned by tenant_company_* RPCs — never exported beyond this file.
 interface RawCompanyRow {
@@ -16,6 +16,7 @@ interface RawCompanyRow {
     logo_url:         string | null;
     show_logo_in_pdf: boolean | null;
     sector:           string | null;
+    taxpayer_type:    string | null;
     inventory_config: Record<string, unknown> | null;
     created_at:       string | null;
     updated_at:       string | null;
@@ -54,15 +55,16 @@ export class RpcCompanyRepository implements ICompanyRepository {
         try {
             const { error } = await this.source.instance
                 .rpc('tenant_company_save', {
-                    p_user_id:  this.userId,
-                    p_id:       company.id,
-                    p_owner_id: company.ownerId,
-                    p_name:     company.name,
-                    p_rif:      company.rif      ?? null,
-                    p_phone:    company.phone    ?? null,
-                    p_address:  company.address  ?? null,
-                    p_logo_url: company.logoUrl  ?? null,
-                    p_sector:   company.sector   ?? null,
+                    p_user_id:       this.userId,
+                    p_id:            company.id,
+                    p_owner_id:      company.ownerId,
+                    p_name:          company.name,
+                    p_rif:           company.rif           ?? null,
+                    p_phone:         company.phone         ?? null,
+                    p_address:       company.address       ?? null,
+                    p_logo_url:      company.logoUrl       ?? null,
+                    p_sector:        company.sector        ?? null,
+                    p_taxpayer_type: company.taxpayerType  ?? 'ordinario',
                 });
             if (error) return Result.fail(error.message);
             return Result.success();
@@ -93,6 +95,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_logo_url:          (company.logoUrl      !== undefined ? company.logoUrl : current.logoUrl) ?? null,
                     p_show_logo_in_pdf:  (company.showLogoInPdf!== undefined ? company.showLogoInPdf : current.showLogoInPdf) ?? null,
                     p_sector:            (company.sector       !== undefined ? company.sector : current.sector) ?? null,
+                    p_taxpayer_type:     company.taxpayerType  !== undefined ? company.taxpayerType : null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
@@ -152,6 +155,11 @@ export class RpcCompanyRepository implements ICompanyRepository {
         return BUSINESS_SECTORS.includes(raw as BusinessSector) ? (raw as BusinessSector) : undefined;
     }
 
+    private parseTaxpayerType(raw: string | null): TaxpayerType {
+        if (raw && TAXPAYER_TYPES.includes(raw as TaxpayerType)) return raw as TaxpayerType;
+        return 'ordinario';
+    }
+
     private parseInventoryConfig(raw: Record<string, unknown> | null): InventoryConfig | undefined {
         if (!raw || Object.keys(raw).length === 0) return undefined;
         return {
@@ -173,6 +181,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
             logoUrl:         row.logo_url         ?? undefined,
             showLogoInPdf:   row.show_logo_in_pdf ?? false,
             sector:          this.parseSector(row.sector),
+            taxpayerType:    this.parseTaxpayerType(row.taxpayer_type),
             inventoryConfig: this.parseInventoryConfig(row.inventory_config),
             createdAt:       row.created_at ? new Date(row.created_at) : undefined,
             updatedAt:       row.updated_at ? new Date(row.updated_at) : undefined,

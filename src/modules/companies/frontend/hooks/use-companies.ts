@@ -20,6 +20,16 @@ export type BusinessSector =
     | 'farmacia' | 'supermercado' | 'panaderia' | 'repuestos'
     | 'ferreteria' | 'restaurante' | 'tienda_ropa' | 'licoreria' | 'otro';
 
+// Re-export taxpayer classification from domain — mirrors SENIAT categories.
+export type TaxpayerType = 'ordinario' | 'especial';
+
+export const TAXPAYER_TYPES: readonly TaxpayerType[] = ['ordinario', 'especial'] as const;
+
+export const TAXPAYER_TYPE_LABELS: Record<TaxpayerType, string> = {
+    ordinario: 'Contribuyente Ordinario',
+    especial:  'Sujeto Pasivo Especial',
+};
+
 export interface CustomFieldDefinition {
     key: string;
     label: string;
@@ -45,6 +55,7 @@ export interface Company {
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
+    taxpayerType?:   TaxpayerType;
     inventoryConfig?:InventoryConfig;
     createdAt?:      string;
     updatedAt?:      string;
@@ -58,6 +69,7 @@ export interface CompanyUpdateData {
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
+    taxpayerType?:   TaxpayerType;
 }
 
 export interface UseCompanyResult {
@@ -68,7 +80,7 @@ export interface UseCompanyResult {
     error:              string | null;
     reload:             () => Promise<void>;
     selectCompany:      (id: string) => void;
-    save:               (data: { id: string; name: string; rif?: string }) => Promise<string | null>;
+    save:               (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }) => Promise<string | null>;
     update:             (id: string, data: CompanyUpdateData)              => Promise<string | null>;
     remove:             (id: string)                                       => Promise<string | null>;
     applySector:        (companyId: string, sector: BusinessSector)        => Promise<string | null>;
@@ -164,7 +176,7 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         }
     }, [isAuthenticated, user?.id, activeTenantId, reload]);
 
-    const save = useCallback(async (data: { id: string; name: string; rif?: string }): Promise<string | null> => {
+    const save = useCallback(async (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";
         const { ok, json } = await apiFetch("/api/companies/save", {
             method:  "POST",

@@ -7,6 +7,18 @@ export interface ConfigFiscal {
     contabilidad_activa: boolean;
 }
 
+// Taxpayer classification per SENIAT (Venezuela).
+// 'ordinario': Contribuyente Ordinario — standard monthly deadlines.
+// 'especial':  Sujeto Pasivo Especial — digit-based calendar + IVA retention agent.
+export type TaxpayerType = 'ordinario' | 'especial';
+
+export const TAXPAYER_TYPES: readonly TaxpayerType[] = ['ordinario', 'especial'] as const;
+
+export const TAXPAYER_TYPE_LABELS: Record<TaxpayerType, string> = {
+    ordinario: 'Contribuyente Ordinario',
+    especial:  'Sujeto Pasivo Especial',
+};
+
 // Business sector — determines the default inventory template for a company.
 // Validated at app layer, stored as nullable text in DB (no PG enum).
 export type BusinessSector =
@@ -74,6 +86,7 @@ export interface Company {
     showLogoInPdf?: boolean;
     configFiscal?: Partial<ConfigFiscal>;
     sector?: BusinessSector;
+    taxpayerType?: TaxpayerType;
     inventoryConfig?: InventoryConfig;
     createdAt?: Date;
     updatedAt?: Date;
