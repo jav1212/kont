@@ -919,13 +919,12 @@ export default function PayrollCalculator() {
                                 </button>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex flex-col gap-2">
                                 <BaseInput.Field
                                     type="date"
                                     value={bcvDate}
                                     max={getTodayIsoDate()}
                                     onValueChange={(v) => { setBcvDate(v); setBcvFetchError(null); }}
-                                    className="flex-1"
                                     title="Fecha sugerida"
                                 />
                                 <BaseInput.Field
@@ -935,7 +934,6 @@ export default function PayrollCalculator() {
                                     onValueChange={setExchangeRate}
                                     prefix="Bs."
                                     inputClassName="text-right"
-                                    className="w-28 shrink-0"
                                     title="Tasa manual"
                                 />
                             </div>
