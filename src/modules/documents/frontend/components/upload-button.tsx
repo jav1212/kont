@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Check, X } from 'lucide-react';
 import { BaseButton } from '@/src/shared/frontend/components/base-button';
 
 interface UploadProgress {
@@ -89,20 +89,29 @@ export function UploadButton({ onUpload, disabled }: UploadButtonProps) {
                                 <span className="font-mono text-[10px] text-foreground/60 truncate max-w-[160px]">
                                     {p.file}
                                 </span>
-                                <span className="font-mono text-[10px] text-foreground/40 flex-shrink-0">
-                                    {p.error ? '✗' : p.done ? '✓' : `${p.percent}%`}
+                                <span
+                                    className={`inline-flex items-center justify-center flex-shrink-0 font-mono text-[10px] tabular-nums ${
+                                        p.error ? 'text-error' : p.done ? 'text-text-success' : 'text-foreground/40'
+                                    }`}
+                                    aria-label={p.error ? 'Error' : p.done ? 'Completado' : `${p.percent}% subido`}
+                                >
+                                    {p.error
+                                        ? <X size={12} strokeWidth={2.4} />
+                                        : p.done
+                                            ? <Check size={12} strokeWidth={2.4} />
+                                            : `${p.percent}%`}
                                 </span>
                             </div>
                             <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-300 ${
-                                        p.error ? 'bg-red-500' : p.done ? 'bg-primary-500' : 'bg-primary-500/60'
+                                        p.error ? 'bg-error' : p.done ? 'bg-primary-500' : 'bg-primary-500/60'
                                     }`}
                                     style={{ width: `${p.error ? 100 : p.percent}%` }}
                                 />
                             </div>
                             {p.error && (
-                                <p className="font-mono text-[10px] text-red-500">{p.error}</p>
+                                <p className="font-sans text-[11px] text-error">{p.error}</p>
                             )}
                         </li>
                     ))}

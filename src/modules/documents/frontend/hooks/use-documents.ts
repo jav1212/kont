@@ -156,6 +156,32 @@ export function useDocuments(companyId?: string | null) {
         setDocuments((prev) => prev.filter((d) => d.id !== id));
     }, []);
 
+    const moveDocument = useCallback(async (id: string, folderId: string | null) => {
+        const res = await apiFetch(`/api/documents/${id}`, {
+            method:  'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ folderId }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? 'Error al mover documento');
+
+        const moved = json.data as Document;
+
+        setDocuments((prev) => {
+            // If the currently selected view no longer contains this document, drop it.
+            const stillVisible =
+                selectedFolderId === null
+                    ? true
+                    : moved.folderId === selectedFolderId;
+            if (stillVisible) {
+                return prev.map((d) => (d.id === moved.id ? moved : d));
+            }
+            return prev.filter((d) => d.id !== moved.id);
+        });
+
+        return moved;
+    }, [selectedFolderId]);
+
     const getDownloadUrl = useCallback(async (id: string): Promise<string> => {
         const res  = await apiFetch(`/api/documents/${id}/download-url`);
         const json = await res.json();
@@ -186,6 +212,7 @@ export function useDocuments(companyId?: string | null) {
         deleteFolder,
         uploadDocument,
         deleteDocument,
+        moveDocument,
         getDownloadUrl,
         replicateFolders,
         reload: () => {

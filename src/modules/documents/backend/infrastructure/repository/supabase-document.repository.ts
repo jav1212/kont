@@ -77,6 +77,23 @@ export class SupabaseDocumentRepository implements IDocumentRepository {
         }
     }
 
+    async updateFolder(id: string, folderId: string | null): Promise<Result<Document>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_documents_update_folder', {
+                    p_user_id:   this.userId,
+                    p_id:        id,
+                    p_folder_id: folderId ?? null,
+                });
+            if (error) return Result.fail(error.message);
+            const row = Array.isArray(data) ? data[0] : data;
+            if (!row) return Result.fail('No se pudo mover el documento');
+            return Result.success(this.mapToDomain(row));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error al mover documento');
+        }
+    }
+
     async delete(id: string): Promise<Result<void>> {
         try {
             const { error } = await this.source.instance

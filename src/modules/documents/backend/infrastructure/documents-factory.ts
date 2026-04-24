@@ -17,6 +17,7 @@ import { DeleteFolderUseCase }              from '../application/commands/delete
 import { UpdateFolderUseCase }              from '../application/commands/update-folder.use-case';
 import { RegisterDocumentUseCase }          from '../application/commands/register-document.use-case';
 import { DeleteDocumentUseCase }            from '../application/commands/delete-document.use-case';
+import { MoveDocumentUseCase }              from '../application/commands/move-document.use-case';
 import { GetFoldersUseCase }                from '../application/queries/get-folders.use-case';
 import { GetDocumentsUseCase }              from '../application/queries/get-documents.use-case';
 import { GetUploadUrlUseCase }              from '../application/queries/get-upload-url.use-case';
@@ -40,6 +41,7 @@ export function getDocumentsActions(ownerId: string) {
         getDocuments:     new GetDocumentsUseCase(documentRepo),
         registerDocument: new RegisterDocumentUseCase(documentRepo, eventBus),
         deleteDocument:   new DeleteDocumentUseCase(documentRepo, storageRepo, eventBus),
+        moveDocument:     new MoveDocumentUseCase(documentRepo),
         getUploadUrl:     new GetUploadUrlUseCase(storageRepo),
         getDownloadUrl:   new GetDownloadUrlUseCase(documentRepo, storageRepo),
         findDocumentById: new FindDocumentByIdUseCase(documentRepo),
