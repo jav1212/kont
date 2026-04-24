@@ -96,7 +96,7 @@ function drawHeader(
 function drawFooter(doc: Doc, pw: number, ph: number, pageNum: number, totalPages: number) {
     fill(doc, 0, ph - 10, pw, 10, C.rowAlt);
     hline(doc, 0, ph - 10, pw, C.border, 0.2);
-    text(doc, `konta.app/herramientas/calendario-seniat`, 16, ph - 4.5, 7, false, C.muted);
+    text(doc, `kontave.com/herramientas/calendario-seniat`, 16, ph - 4.5, 7, false, C.muted);
     text(doc, `Página ${pageNum} de ${totalPages}`, pw - 16, ph - 4.5, 7, false, C.muted, "right");
 }
 

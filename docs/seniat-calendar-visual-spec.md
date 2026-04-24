@@ -468,7 +468,7 @@ className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 h-8 px-3
            text-[10px] font-mono uppercase tracking-[0.14em] text-text-tertiary
            hover:text-text-secondary hover:border-border-medium transition-colors duration-150"
 ```
-Icono: logo Konta (svg, 14px) + "Powered by Konta". Enlace a `https://konta.app`.
+Icono: logo Konta (svg, 14px) + "Powered by Konta". Enlace a `https://kontave.com`.
 
 ---
 
@@ -693,7 +693,7 @@ Activada en la ruta `/herramientas/calendario-seniat/embed`.
 **Dimensiones recomendadas del iframe:**
 ```html
 <iframe
-  src="https://konta.app/herramientas/calendario-seniat/embed?rif=J-12345678-9"
+  src="https://kontave.com/herramientas/calendario-seniat/embed?rif=J-12345678-9"
   width="100%"
   height="720"
   style="border: none; border-radius: 12px;"
