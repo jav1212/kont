@@ -9,6 +9,18 @@ import type { SubNavItem } from "@/src/shared/frontend/navigation";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 
+// ── ActiveBar — 2 px orange left edge on the active subnav item ───────────────
+
+function ActiveBar({ visible }: { visible: boolean }) {
+    if (!visible) return null;
+    return (
+        <span
+            aria-hidden="true"
+            className="absolute left-0 inset-y-0 w-0.5 rounded-full bg-sidebar-active-fg"
+        />
+    );
+}
+
 // ── Connecting-line indicator (Tree style) ────────────────────────────────────
 // Fixed vertical line with horizontal branches for each item.
 
@@ -31,9 +43,12 @@ function SubnavIndicator({ isLast }: { isLast?: boolean }) {
     );
 }
 
-const ITEM_BASE   = `group relative flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.subItem}`;
-const ITEM_IDLE   = "text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-const ITEM_ACTIVE = "text-sidebar-active-fg bg-sidebar-active-bg/40";
+// `overflow-hidden` is required for the absolute-positioned ActiveBar.
+// `border` lives in the base so both states stay layout-stable (no reflow on hover/active).
+const ITEM_BASE   = `group relative overflow-hidden flex items-center gap-2.5 px-3 py-1.5 rounded-lg border transition-colors duration-150 font-mono ${APP_SIZES.nav.subItem}`;
+const ITEM_IDLE   = "text-sidebar-fg border-transparent hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
+// Full token, no /40 wash, with warm border for solid affordance.
+const ITEM_ACTIVE = "text-sidebar-active-fg bg-sidebar-active-bg border-sidebar-active-border shadow-sm";
 
 interface SidebarSubnavProps {
     subnav: SubNavItem[];
@@ -57,7 +72,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                 return (
                     <div key={href} className="flex flex-col">
                         {showGroup && (
-                            <p className={`px-3 pt-4 pb-1 font-mono ${APP_SIZES.nav.group} uppercase text-sidebar-label/60 tracking-wider`}>
+                            <p className={`px-3 pt-4 pb-1 font-mono ${APP_SIZES.nav.group} text-sidebar-label`}>
                                 {group}
                             </p>
                         )}
@@ -66,6 +81,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                             aria-current={isActive ? "page" : undefined}
                             className={[ITEM_BASE, isActive ? ITEM_ACTIVE : ITEM_IDLE].join(" ")}
                         >
+                            <ActiveBar visible={isActive} />
                             <SubnavIndicator isLast={isLast} />
                             <span className="truncate flex-1">{label}</span>
                         </Link>

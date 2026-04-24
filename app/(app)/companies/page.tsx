@@ -5,8 +5,8 @@ import { useState, useRef, useCallback } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import type { Company, BusinessSector } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { SECTOR_LABELS, BUSINESS_SECTORS } from "@/src/modules/companies/backend/domain/company";
+import type { Company, BusinessSector, TaxpayerType } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { SECTOR_LABELS, BUSINESS_SECTORS, TAXPAYER_TYPES, TAXPAYER_TYPE_LABELS } from "@/src/modules/companies/backend/domain/company";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
@@ -27,6 +27,8 @@ import {
     Loader2
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { InlineSelect } from "@/src/shared/frontend/components/inline-select";
+import type { InlineSelectOption } from "@/src/shared/frontend/components/inline-select";
 
 // ============================================================================
 // CONSTANTS
@@ -38,6 +40,18 @@ const cellInput = [
     "border-border-light focus:border-primary-500/60 hover:border-border-medium",
     "transition-colors duration-150 placeholder:text-[var(--text-disabled)]",
 ].join(" ");
+
+// ── Inline select options ─────────────────────────────────────────────────────
+
+const TAXPAYER_OPTIONS: InlineSelectOption<TaxpayerType>[] = TAXPAYER_TYPES.map((t) => ({
+    value: t,
+    label: TAXPAYER_TYPE_LABELS[t],
+}));
+
+const SECTOR_OPTIONS: InlineSelectOption<BusinessSector>[] = BUSINESS_SECTORS.map((s) => ({
+    value: s,
+    label: SECTOR_LABELS[s],
+}));
 
 // ============================================================================
 // ICONS
@@ -53,6 +67,38 @@ const IconCamera = () => <Camera size={10} />;
 const IconImport = () => <Upload size={14} />;
 const IconExport = () => <Download size={14} />;
 const IconPaste = () => <ClipboardPaste size={14} />;
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+const TAXPAYER_BADGE_STYLES: Record<TaxpayerType, string> = {
+    ordinario: [
+        "bg-[var(--badge-info-bg)] border border-[var(--badge-info-border)]",
+        "text-[var(--text-info)]",
+    ].join(" "),
+    especial: [
+        "bg-[var(--badge-warning-bg)] border border-[var(--badge-warning-border)]",
+        "text-[var(--text-warning)]",
+    ].join(" "),
+};
+
+const TAXPAYER_BADGE_LABELS: Record<TaxpayerType, string> = {
+    ordinario: "Ordinario",
+    especial:  "Especial",
+};
+
+function TaxpayerTypeBadge({ type }: { type: TaxpayerType }) {
+    return (
+        <span className={[
+            "inline-flex items-center px-2 py-0.5 rounded-sm",
+            "font-mono text-[11px] uppercase tracking-[0.12em]",
+            TAXPAYER_BADGE_STYLES[type],
+        ].join(" ")}>
+            {TAXPAYER_BADGE_LABELS[type]}
+        </span>
+    );
+}
 
 // ============================================================================
 // PAGE
@@ -71,6 +117,7 @@ export default function CompaniesPage() {
     const [editAddress, setEditAddress] = useState("");
     const [editLogoUrl, setEditLogoUrl] = useState<string | undefined>(undefined);
     const [editSector, setEditSector] = useState<BusinessSector | undefined>(undefined);
+    const [editTaxpayerType, setEditTaxpayerType] = useState<TaxpayerType>("ordinario");
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoUploadSuccess, setLogoUploadSuccess] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
@@ -81,6 +128,7 @@ export default function CompaniesPage() {
     const [showNew, setShowNew] = useState(false);
     const [newRif, setNewRif] = useState("");
     const [newName, setNewName] = useState("");
+    const [newTaxpayerType, setNewTaxpayerType] = useState<TaxpayerType>("ordinario");
     const [newSaving, setNewSaving] = useState(false);
     const [newError, setNewError] = useState<string | null>(null);
 
@@ -120,6 +168,7 @@ export default function CompaniesPage() {
         setEditAddress(company.address ?? "");
         setEditLogoUrl(company.logoUrl);
         setEditSector(company.sector);
+        setEditTaxpayerType(company.taxpayerType ?? "ordinario");
         setEditError(null);
     }, []);
 
@@ -130,6 +179,7 @@ export default function CompaniesPage() {
         setEditAddress("");
         setEditLogoUrl(undefined);
         setEditSector(undefined);
+        setEditTaxpayerType("ordinario");
         setEditError(null);
         setLogoUploadSuccess(false);
     }, []);
@@ -149,6 +199,7 @@ export default function CompaniesPage() {
             address: editAddress.trim() || undefined,
             logoUrl: editLogoUrl,
             sector: editSector,
+            taxpayerType: editTaxpayerType,
         });
 
         // If sector changed, apply the sector template (auto-create departments, set config)
@@ -159,7 +210,7 @@ export default function CompaniesPage() {
 
         setEditSaving(false);
         if (err) { setEditError(err); } else { cancelEdit(); }
-    }, [editingId, editName, editPhone, editAddress, editLogoUrl, editSector, companies, update, applySector, cancelEdit]);
+    }, [editingId, editName, editPhone, editAddress, editLogoUrl, editSector, editTaxpayerType, companies, update, applySector, cancelEdit]);
 
     const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -203,15 +254,16 @@ export default function CompaniesPage() {
         if (!newName.trim()) { setNewError("El nombre es obligatorio"); return; }
         setNewSaving(true);
         setNewError(null);
-        const err = await save({ id: newRif.trim().toUpperCase(), name: newName.trim() });
+        const err = await save({ id: newRif.trim().toUpperCase(), name: newName.trim(), taxpayerType: newTaxpayerType });
         setNewSaving(false);
-        if (err) { setNewError(err); } else { setShowNew(false); setNewRif(""); setNewName(""); }
-    }, [newRif, newName, save]);
+        if (err) { setNewError(err); } else { setShowNew(false); setNewRif(""); setNewName(""); setNewTaxpayerType("ordinario"); }
+    }, [newRif, newName, newTaxpayerType, save]);
 
     const cancelNew = useCallback(() => {
         setShowNew(false);
         setNewRif("");
         setNewName("");
+        setNewTaxpayerType("ordinario");
         setNewError(null);
     }, []);
 
@@ -248,7 +300,7 @@ export default function CompaniesPage() {
         }
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre });
+            const err = await save({ id: row.rif, name: row.nombre, taxpayerType: row.tipoContribuyente });
             if (err && !firstErr) firstErr = err;
         }
         if (firstErr) setCsvError(firstErr);
@@ -272,7 +324,7 @@ export default function CompaniesPage() {
         setPasteImporting(true);
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre });
+            const err = await save({ id: row.rif, name: row.nombre, taxpayerType: row.tipoContribuyente });
             if (err && !firstErr) firstErr = err;
         }
         setPasteImporting(false);
@@ -391,7 +443,7 @@ export default function CompaniesPage() {
                                 onChange={(e) => setSearch(e.target.value)}
                                 className={[
                                     "w-full h-10 pl-10 pr-4 rounded-xl border border-border-light bg-surface-1 outline-none",
-                                    "text-[14px] text-foreground placeholder:text-[var(--text-disabled)]",
+                                    "font-mono text-[13px] text-foreground placeholder:text-[var(--text-disabled)]",
                                     "focus:border-primary-500/50 focus:ring-4 focus:ring-primary-500/5 hover:border-border-medium transition-all duration-200",
                                 ].join(" ")}
                             />
@@ -402,10 +454,10 @@ export default function CompaniesPage() {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="bg-surface-2/50 border-b border-border-light">
-                                            {["RIF", "Nombre", "Teléfono", "Dirección", "Sector", "Creada", ""].map((h) => (
+                                            {["RIF", "Nombre", "Teléfono", "Dirección", "Sector", "Tipo", "Creada", ""].map((h) => (
                                                 <th key={h} className={[
-                                                    "px-5 py-3.5 font-medium text-[var(--text-tertiary)] uppercase tracking-wider text-[11px]",
-                                                    (h === "Creada" || h === "Teléfono" || h === "Dirección" || h === "Sector") ? "hidden sm:table-cell" : "",
+                                                    "px-5 py-3.5 font-mono font-medium text-[var(--text-tertiary)] uppercase tracking-wider text-[11px]",
+                                                    (h === "Creada" || h === "Teléfono" || h === "Dirección" || h === "Sector" || h === "Tipo") ? "hidden sm:table-cell" : "",
                                                 ].join(" ")}>
                                                     {h}
                                                 </th>
@@ -458,6 +510,16 @@ export default function CompaniesPage() {
                                                 <td className="px-5 py-4 hidden sm:table-cell">
                                                     <span className="text-[11px] text-[var(--text-disabled)]">—</span>
                                                 </td>
+                                                {/* Tipo — selectable on new row */}
+                                                <td className="px-5 py-4 hidden sm:table-cell">
+                                                    <InlineSelect
+                                                        value={newTaxpayerType}
+                                                        onChange={(v) => setNewTaxpayerType(v)}
+                                                        options={TAXPAYER_OPTIONS}
+                                                        ariaLabel="Tipo de contribuyente"
+                                                        size="sm"
+                                                    />
+                                                </td>
                                                 <td className="px-5 py-4 hidden sm:table-cell">
                                                     <span className="text-[11px] text-[var(--text-disabled)]">—</span>
                                                 </td>
@@ -481,15 +543,15 @@ export default function CompaniesPage() {
                                         {/* Existing rows */}
                                         {filtered.length === 0 && !showNew ? (
                                             <tr>
-                                                <td colSpan={7} className="px-5 py-24 text-center">
+                                                <td colSpan={8} className="px-5 py-24 text-center">
                                                     <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
                                                         <Building2 size={40} strokeWidth={1} />
-                                                        <p className="text-[13px] uppercase tracking-widest font-medium">
+                                                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] font-medium text-foreground">
                                                             {companies.length === 0
                                                                 ? "Sin empresas registradas"
                                                                 : "Búsqueda sin resultados"}
                                                         </p>
-                                                        <p className="text-[11px] normal-case tracking-normal">
+                                                        <p className="font-sans text-[13px] normal-case tracking-normal text-[var(--text-secondary)] max-w-[260px] text-center leading-snug">
                                                             {companies.length === 0
                                                                 ? "Crea una nueva empresa para comenzar a gestionar tu nómina."
                                                                 : "Intenta con otro término de búsqueda."}
@@ -605,20 +667,42 @@ export default function CompaniesPage() {
                                                         {/* Sector */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
                                                             {isEditing ? (
-                                                                <select
-                                                                    className={cellInput}
-                                                                    value={editSector ?? ""}
-                                                                    onChange={(e) => setEditSector((e.target.value || undefined) as BusinessSector | undefined)}
-                                                                >
-                                                                    <option value="">Sin sector</option>
-                                                                    {BUSINESS_SECTORS.map((s) => (
-                                                                        <option key={s} value={s}>{SECTOR_LABELS[s]}</option>
-                                                                    ))}
-                                                                </select>
+                                                                <InlineSelect
+                                                                    value={editSector}
+                                                                    onChange={(v) => setEditSector((v || undefined) as BusinessSector | undefined)}
+                                                                    options={SECTOR_OPTIONS}
+                                                                    ariaLabel="Sector de la empresa"
+                                                                    size="sm"
+                                                                    clearable
+                                                                    clearLabel="Sin sector"
+                                                                />
                                                             ) : (
-                                                                <span className="text-[13px] text-[var(--text-secondary)]">
-                                                                    {company.sector ? SECTOR_LABELS[company.sector] : "—"}
-                                                                </span>
+                                                                company.sector ? (
+                                                                    <span className={[
+                                                                        "inline-flex items-center px-2 py-0.5 rounded-sm",
+                                                                        "font-mono text-[11px] uppercase tracking-[0.10em]",
+                                                                        "bg-surface-2 border border-border-light text-[var(--text-secondary)]",
+                                                                    ].join(" ")}>
+                                                                        {SECTOR_LABELS[company.sector]}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="font-mono text-[12px] text-[var(--text-disabled)]">—</span>
+                                                                )
+                                                            )}
+                                                        </td>
+
+                                                        {/* Tipo (Contribuyente) */}
+                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                            {isEditing ? (
+                                                                <InlineSelect
+                                                                    value={editTaxpayerType}
+                                                                    onChange={(v) => setEditTaxpayerType(v)}
+                                                                    options={TAXPAYER_OPTIONS}
+                                                                    ariaLabel="Tipo de contribuyente"
+                                                                    size="sm"
+                                                                />
+                                                            ) : (
+                                                                <TaxpayerTypeBadge type={company.taxpayerType ?? "ordinario"} />
                                                             )}
                                                         </td>
 
@@ -697,7 +781,7 @@ export default function CompaniesPage() {
                                         Importar Datos
                                     </h2>
                                     <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-wider">
-                                        CSV · Columnas: rif, nombre
+                                        CSV · Columnas: rif, nombre, tipo_contribuyente (opcional)
                                     </p>
                                 </div>
                                 <BaseButton.Icon variant="ghost" size="sm" onClick={closePasteModal}>
@@ -712,7 +796,7 @@ export default function CompaniesPage() {
                                     rows={8}
                                     value={pasteText}
                                     onChange={(e) => handlePasteChange(e.target.value)}
-                                    placeholder={`"rif","nombre"\n"J-12345678-9","Mi Empresa S.A."`}
+                                    placeholder={`"rif","nombre","tipo_contribuyente"\n"J-12345678-9","Mi Empresa S.A.","ordinario"`}
                                     className={[
                                         "w-full resize-none rounded-xl border bg-surface-2/50 outline-none p-4",
                                         "font-mono text-[12px] text-foreground leading-relaxed",

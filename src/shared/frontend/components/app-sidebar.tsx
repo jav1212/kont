@@ -35,18 +35,32 @@ const SignOutIcon = () => (
 );
 
 // ── Nav item class constants ───────────────────────────────────────────────────
-// `relative` is required on NAV_ITEM_BASE for the absolute-positioned ActiveBar.
+// `relative` and `overflow-hidden` are required on NAV_ITEM_BASE for the
+// absolute-positioned ActiveBar (2 px orange left edge on active state).
 
 const NAV_ITEM_BASE =
-    `relative flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border`;
+    `relative overflow-hidden flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border`;
 
 const NAV_ITEM_IDLE =
     "text-sidebar-fg border-transparent hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
 
+// Active: full token (no /40 wash), warm border, subtle shadow.
 const NAV_ITEM_ACTIVE =
-    "text-sidebar-active-fg bg-sidebar-active-bg/40 border-transparent shadow-sm";
+    "text-sidebar-active-fg bg-sidebar-active-bg border-sidebar-active-border shadow-sm";
 
 // Icon-only button for the collapsed bottom section
+// ── ActiveBar — 2 px orange left edge that marks the active nav item ──────────
+
+function ActiveBar({ visible }: { visible: boolean }) {
+    if (!visible) return null;
+    return (
+        <span
+            aria-hidden="true"
+            className="absolute left-0 inset-y-0 w-0.5 rounded-full bg-sidebar-active-fg"
+        />
+    );
+}
+
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
 const STORAGE_WIDTH = "sidebar-width";
@@ -219,30 +233,34 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     "flex items-center gap-3",
                     isCollapsed ? "justify-center pb-6 px-2" : "px-6 pb-6",
                 ].join(" ")}>
-                <LogoMark size={44} className="text-primary-500" />
+                <LogoMark size={isCollapsed ? 36 : 44} className="text-primary-500" />
             </div>
 
             {/* ── Sections ────────────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col min-h-0 overflow-visible">
-                {/* ── Cuenta ────────────────────────────────────────────── */}
-                <div className="px-4 py-2 border-t border-sidebar-border/40">
+
+                {/* ── Bloque superior: Cuenta / Empresa / Módulo ──────────
+                    Sin separadores internos entre estas tres — forman un grupo
+                    visual cohesivo. El único border-t es el que separa el logo
+                    de este bloque. ──────────────────────────────────────── */}
+                <div className="border-t border-sidebar-border px-4 pt-3 pb-2 flex flex-col gap-1">
+                    {/* Cuenta */}
                     {!isCollapsed && (
-                        <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label/60 tracking-widest`}>
+                        <p className={`px-2 mb-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
                             Cuenta
                         </p>
                     )}
                     <div className={isCollapsed ? "flex justify-center" : ""}>
                         <TenantSwitcher />
                     </div>
-                </div>
 
-                {/* ── Empresa ───────────────────────────────────────────── */}
-                <div className="px-4 py-2 border-t border-sidebar-border/40">
+                    {/* Empresa */}
                     {!isCollapsed && (
-                        <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label/60 tracking-widest`}>
+                        <p className={`px-2 mt-2 mb-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
                             Empresa
                         </p>
                     )}
+                    {isCollapsed && <div className="h-1" />}
                     <div className={isCollapsed ? "flex justify-center" : ""}>
                         <SidebarCompanySelector
                             companies={companies}
@@ -252,15 +270,14 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                             onSelect={selectCompany}
                         />
                     </div>
-                </div>
 
-                {/* ── Módulo ────────────────────────────────────────────── */}
-                <div className="px-4 py-2 border-t border-sidebar-border/40">
+                    {/* Módulo */}
                     {!isCollapsed && (
-                        <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label/60 tracking-widest`}>
+                        <p className={`px-2 mt-2 mb-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
                             Módulo
                         </p>
                     )}
+                    {isCollapsed && <div className="h-1" />}
                     <div className={isCollapsed ? "flex justify-center" : ""}>
                         <SidebarModuleSelector
                             modules={selectableModules}
@@ -273,7 +290,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
                 {/* ── Sub-navigation ─────────────────────────────────────── */}
                 {!isCollapsed && (
-                    <nav className="flex-1 px-3 py-4 overflow-y-auto" aria-label="Secciones del módulo">
+                    <nav
+                        className="flex-1 px-3 py-4 overflow-y-auto"
+                        style={{ scrollbarGutter: "stable" }}
+                        aria-label="Secciones del módulo"
+                    >
                         <SidebarSubnav subnav={subnav ?? []} pathname={pathname} />
                     </nav>
                 )}
@@ -282,19 +303,26 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             {/* Spacer — keeps bottom section flush to the bottom when collapsed */}
             {isCollapsed && <div className="flex-1" />}
 
-            {/* ── Preferences ────────────────────────────────────────────── */}
+            {/* ── Ajustes ─────────────────────────────────────────────────
+                Separador más visible que los internos del bloque superior —
+                marca la transición entre navegación primaria y configuración. */}
             {!isCollapsed && (
-                <div className="px-4 py-2 border-t border-sidebar-border/40">
-                    <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label/60 tracking-widest`}>
-                        Preferences
+                <div className="px-4 py-2 border-t border-sidebar-border">
+                    <p className={`px-2 mb-2 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
+                        Ajustes
                     </p>
-                    <Link href={buildContextHref("/settings/members")}
-                        className={[NAV_ITEM_BASE, pathname.startsWith("/settings") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}>
+                    <Link
+                        href={buildContextHref("/settings/members")}
+                        className={[NAV_ITEM_BASE, pathname.startsWith("/settings") ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE].join(" ")}
+                    >
+                        <ActiveBar visible={pathname.startsWith("/settings")} />
                         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="6.5" cy="6.5" r="1.5" />
-                            <path d="M11.5 6.5h-1M2.5 6.5h-1M6.5 1.5v1M6.5 11.5v1M10 3l-.7.7M3.7 9.3l-.7.7M10 10l-.7-.7M3.7 3.7l-.7-.7" />
+                            <circle cx="5" cy="4" r="1.8" />
+                            <path d="M1.5 11c0-2 1.6-3 3.5-3s3.5 1 3.5 3" />
+                            <circle cx="9.5" cy="4.5" r="1.4" />
+                            <path d="M9.5 7.5c1.2 0 2 .7 2 2" />
                         </svg>
-                        Configuración
+                        Miembros
                     </Link>
                 </div>
             )}
@@ -302,7 +330,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             {/* ── Bottom actions ─────────────────────────────────────────── */}
             <div
                 style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
-                className="px-4 pt-6 space-y-4 border-t border-sidebar-border/40">
+                className="px-4 pt-4 space-y-3 border-t border-sidebar-border"
+            >
                 <Link href={buildContextHref("/profile")}
                     aria-current={profileActive ? "page" : undefined}
                     className="block group outline-none font-mono">
@@ -319,16 +348,23 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     <div className="space-y-1">
                         <PWAInstallButton navItemBase={NAV_ITEM_BASE} navItemIdle={NAV_ITEM_IDLE} />
 
-                        <button onClick={handleSignOut} aria-label="Cerrar sesión"
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40`}>
+                        <button
+                            onClick={handleSignOut}
+                            aria-label="Cerrar sesión"
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 font-mono ${APP_SIZES.nav.item} border border-transparent text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40`}
+                        >
                             <SignOutIcon />
-                            Log Out
+                            Cerrar sesión
                         </button>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center gap-2">
-                        <button onClick={handleSignOut} aria-label="Cerrar sesión"
-                            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40">
+                        <button
+                            onClick={handleSignOut}
+                            aria-label="Cerrar sesión"
+                            title="Cerrar sesión"
+                            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150 text-sidebar-fg hover:text-red-500 hover:bg-red-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                        >
                             <SignOutIcon />
                         </button>
                     </div>
@@ -337,8 +373,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
             {/* ── Resize handle (desktop, hidden when collapsed) ─────────── */}
             {isDesktop && !isCollapsed && (
-                <div aria-hidden="true" onMouseDown={handleResizeStart}
-                    className="absolute inset-y-0 right-0 w-1 cursor-col-resize group z-10">
+                <div
+                    aria-hidden="true"
+                    onMouseDown={handleResizeStart}
+                    className="absolute inset-y-0 right-0 w-2 cursor-col-resize group z-10"
+                >
                     <div className="absolute inset-y-0 right-0 w-px bg-sidebar-border transition-colors duration-150 group-hover:bg-primary-500/50 group-active:bg-primary-500" />
                 </div>
             )}
@@ -354,7 +393,7 @@ function UserAvatar({ avatarUrl, email, size = 32 }: { avatarUrl?: string | null
         <div aria-hidden="true" style={{ width: size, height: size }}
             className="relative rounded-full bg-primary-500/10 border border-primary-500/20 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
             {avatarUrl
-                ? <Image src={avatarUrl} alt="" fill unoptimized sizes="36px" className="object-cover" />
+                ? <Image src={avatarUrl} alt="" fill unoptimized sizes="32px" className="object-cover" />
                 : <span className="font-mono text-xs font-bold text-primary-500 uppercase">{initial}</span>}
         </div>
     );
@@ -369,24 +408,27 @@ function ProfileSection({ profile, email, active, isCollapsed, planName }: { pro
     if (isCollapsed) {
         return (
             <div className="relative flex justify-center py-2">
-                <UserAvatar avatarUrl={profile.avatarUrl} email={email} />
+                <UserAvatar avatarUrl={profile.avatarUrl} email={email} size={32} />
             </div>
         );
     }
 
     return (
         <div className={[
-            "relative flex items-center gap-3 px-3 py-3 rounded-xl transition-colors duration-150 border border-transparent",
-            active ? "bg-sidebar-active-bg/40 shadow-sm" : "hover:bg-sidebar-bg-hover"
+            "relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150 border border-transparent",
+            active ? "bg-sidebar-active-bg border-sidebar-active-border shadow-sm" : "hover:bg-sidebar-bg-hover"
         ].join(" ")}>
-            <UserAvatar avatarUrl={profile.avatarUrl} email={email} size={36} />
+            <ActiveBar visible={active} />
+            <UserAvatar avatarUrl={profile.avatarUrl} email={email} size={32} />
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-sidebar-fg truncate">
+                <p className={`font-mono ${APP_SIZES.nav.item} font-semibold text-sidebar-fg truncate`}>
                     {profile.name ?? email?.split("@")[0] ?? "Usuario"}
                 </p>
-                <p className="text-[10px] text-sidebar-label font-medium uppercase tracking-wider">
-                    {planName ?? "—"}
-                </p>
+                {planName && (
+                    <span className="inline-flex items-center mt-0.5 px-1.5 py-px rounded-sm font-mono text-[9px] uppercase tracking-[0.12em] bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border/60">
+                        {planName}
+                    </span>
+                )}
             </div>
         </div>
     );
