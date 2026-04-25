@@ -375,34 +375,35 @@ export default function CompaniesPage() {
                     >
                         Importar
                     </BaseButton.Root>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv"
-                            className="sr-only"
-                            onChange={handleImportFile}
-                            disabled={atCompanyLimit}
-                        />
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        className="sr-only"
+                        onChange={handleImportFile}
+                        disabled={atCompanyLimit}
+                    />
 
-                        <BaseButton.Root
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setPasteOpen(true)}
-                            isDisabled={atCompanyLimit}
-                            title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
-                            leftIcon={<IconPaste />}
-                        >
-                            Pegar
-                        </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setPasteOpen(true)}
+                        isDisabled={atCompanyLimit}
+                        title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
+                        leftIcon={<IconPaste />}
+                    >
+                        Pegar
+                    </BaseButton.Root>
 
-                        <BaseButton.Root
-                            variant="primary"
-                            size="sm"
-                            onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
-                            isDisabled={showNew || atCompanyLimit}
-                            title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
-                            leftIcon={<IconPlus />}
-                        >
+                    <BaseButton.Root
+                        variant="primary"
+                        size="sm"
+                        onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
+                        isDisabled={showNew || atCompanyLimit}
+                        title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
+                        leftIcon={<IconPlus />}
+                    >
+                        Nueva empresa
                     </BaseButton.Root>
                 </div>
             </PageHeader>

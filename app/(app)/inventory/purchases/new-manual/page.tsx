@@ -6,6 +6,7 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, useCallback, useMemo, useRef, startTransition } from "react";
+import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator, Info } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -312,14 +313,18 @@ export default function NuevaEntradaManualPage() {
                 </div>
                 <div className="px-8 py-10 flex flex-col items-center">
                     <div className="rounded-xl border border-green-500/20 bg-green-500/[0.05] px-8 py-8 text-center max-w-md w-full">
-                        <div className="text-green-500 text-[13px] font-bold uppercase tracking-[0.12em] mb-2">Entrada registrada</div>
-                        <p className="text-[var(--text-secondary)] text-[13px] mb-6">
+                        <div className="flex items-center justify-center gap-2 text-green-500 mb-2">
+                            <CheckCircle2 size={16} strokeWidth={2} />
+                            <span className="text-[13px] font-bold uppercase tracking-[0.14em]">Entrada registrada</span>
+                        </div>
+                        <p className="text-[var(--text-secondary)] text-[13px] mb-6 font-sans">
                             Las existencias han sido actualizadas exitosamente.
                         </p>
                         <div className="flex items-center justify-center gap-3">
                             <BaseButton.Root
                                 variant="primary"
                                 size="md"
+                                rightIcon={<ArrowRight size={14} strokeWidth={2} />}
                                 onClick={() => router.push("/inventory/purchases")}
                             >
                                 Ver entradas
@@ -341,247 +346,305 @@ export default function NuevaEntradaManualPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Entrada Manual de Inventario" subtitle="Registro directo de aumento de existencias">
-                <BaseButton.Root variant="secondary" size="md" onClick={() => router.back()}>
-                    ← Volver
+                <BaseButton.Root
+                    variant="secondary"
+                    size="md"
+                    leftIcon={<ChevronLeft size={14} strokeWidth={2} />}
+                    onClick={() => router.back()}
+                >
+                    Volver
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6 space-y-5 max-w-4xl">
+            <div className="px-8 py-6">
                 {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
+                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
                         {error}
                     </div>
                 )}
 
-                {/* Datos de la entrada */}
-                <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                    <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
-                        Datos de la entrada
-                    </h2>
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Fecha */}
-                        <BaseInput.Field
-                            label="Fecha *"
-                            type="date"
-                            value={date}
-                            onValueChange={setDate}
-                        />
-
-                        {/* Tasa BCV */}
-                        <BcvRateInput
-                            rate={dollarRateStr}
-                            onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
-                            decimals={rateDecimals}
-                            onDecimalsChange={applyDecimals}
-                            loading={rateLoading}
-                            bcvDate={rateDateBcv}
-                            error={rateError}
-                        />
-
-                        {/* Tratamiento IVA */}
-                        <div className="col-span-2">
-                            <label className={labelCls}>Tratamiento de IVA</label>
-                            <div className="flex gap-3 items-center">
-                                <div className="flex rounded-lg border border-border-light overflow-hidden h-10 text-[12px] w-64">
-                                    <button
-                                        type="button"
-                                        className={[
-                                            "flex-1 px-4 transition-colors",
-                                            ivaMode === "agregado"
-                                                ? "bg-primary-500 text-white"
-                                                : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
-                                        ].join(" ")}
-                                        onClick={() => setIvaMode("agregado")}
-                                    >
-                                        IVA Agregado
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={[
-                                            "flex-1 px-4 transition-colors",
-                                            ivaMode === "incluido"
-                                                ? "bg-primary-500 text-white"
-                                                : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
-                                        ].join(" ")}
-                                        onClick={() => setIvaMode("incluido")}
-                                    >
-                                        IVA Incluido
-                                    </button>
+                <div className="space-y-4">
+                    {/* Row 1 — Datos de la entrada + Resumen */}
+                    <div className="flex gap-6 items-start">
+                        {/* Datos de la entrada */}
+                        <div className="flex-1 min-w-0 rounded-xl border border-border-light bg-surface-1 p-6">
+                            <div className="flex items-center gap-2 mb-5">
+                                <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
+                                    <FileText size={14} strokeWidth={2} />
                                 </div>
-                                <span className="text-[11px] text-[var(--text-tertiary)]">
-                                    {ivaMode === "agregado"
-                                        ? "El precio ingresado es la base — el IVA se calcula y suma encima."
-                                        : "El precio ingresado ya incluye IVA — se extrae la base para el inventario."}
-                                </span>
+                                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
+                                    Datos de la entrada
+                                </h2>
                             </div>
-                        </div>
 
-                        {/* Notas */}
-                        <div className="col-span-2">
-                            <BaseInput.Field
-                                label="Notas"
-                                type="text"
-                                value={notes}
-                                onValueChange={setNotes}
-                                placeholder="Motivo, referencia interna, etc."
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Items */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                        <h2 className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground">
-                            Productos
-                        </h2>
-                        <button
-                            onClick={addRow}
-                            className="text-[12px] text-primary-500 hover:text-primary-600 uppercase tracking-[0.12em] transition-colors"
-                            type="button"
-                        >
-                            + Agregar fila
-                        </button>
-                    </div>
-
-                    {/* Column headers */}
-                    <div className="grid grid-cols-[1fr_120px_160px_90px_36px] gap-2 px-4 py-2 border-b border-border-light bg-surface-2">
-                        {["Producto", "Cantidad", priceLabel, "Moneda", ""].map((h, i) => (
-                            <span key={i} className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{h}</span>
-                        ))}
-                    </div>
-
-                    {/* Rows */}
-                    <div className="divide-y divide-border-light/50">
-                        {items.map((item, idx) => (
-                            <div key={idx} className="grid grid-cols-[1fr_120px_160px_90px_36px] gap-2 px-4 py-2 items-center">
-                                {/* Product + VAT badge */}
-                                <ProductCombo
-                                    value={item.productId}
-                                    products={products}
-                                    onChange={(id, name, vatRate) => updateItem(idx, { productId: id, productName: name, vatRate })}
-                                />
-
-                                {/* Quantity */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <BaseInput.Field
-                                    type="number"
-                                    className="w-full"
-                                    inputClassName="text-right"
-                                    value={item.quantity ? String(item.quantity) : ""}
-                                    onValueChange={(v) => updateItem(idx, { quantity: Number(v) || 0 })}
-                                    placeholder="0"
-                                    min={0}
-                                    step={1}
+                                    label="Fecha *"
+                                    type="date"
+                                    value={date}
+                                    onValueChange={setDate}
                                 />
-
-                                {/* Price */}
-                                <BaseInput.Field
-                                    type="number"
-                                    className="w-full"
-                                    inputClassName="text-right"
-                                    value={item.currencyCost ? String(item.currencyCost) : ""}
-                                    onValueChange={(v) => updateItem(idx, { currencyCost: Number(v) || 0 })}
-                                    placeholder="0.00"
-                                    min={0}
-                                    step={0.01}
-                                    suffix={item.currency === "D" ? "USD" : "Bs"}
+                                <BcvRateInput
+                                    rate={dollarRateStr}
+                                    onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
+                                    decimals={rateDecimals}
+                                    onDecimalsChange={applyDecimals}
+                                    loading={rateLoading}
+                                    bcvDate={rateDateBcv}
+                                    error={rateError}
                                 />
-
-                                {/* Currency toggle */}
-                                <div className="flex rounded-lg border border-border-light overflow-hidden h-10 text-[12px]">
-                                    <button
-                                        type="button"
-                                        className={[
-                                            "flex-1 transition-colors",
-                                            item.currency === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
-                                        ].join(" ")}
-                                        onClick={() => updateItem(idx, { currency: "B" })}
-                                    >
-                                        Bs
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={[
-                                            "flex-1 transition-colors",
-                                            item.currency === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
-                                        ].join(" ")}
-                                        onClick={() => updateItem(idx, { currency: "D" })}
-                                    >
-                                        USD
-                                    </button>
-                                </div>
-
-                                {/* Delete */}
-                                <button
-                                    type="button"
-                                    onClick={() => removeRow(idx)}
-                                    disabled={items.length === 1}
-                                    className="w-9 h-10 flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-30 disabled:hover:text-[var(--text-tertiary)] transition-colors text-[16px]"
-                                >
-                                    ×
-                                </button>
                             </div>
-                        ))}
-                    </div>
 
-                    {/* Footer totals */}
-                    <div className="px-4 py-3 border-t border-border-light bg-surface-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
-                                {items.length} {items.length === 1 ? "producto" : "productos"}
-                            </span>
-                            <div className="flex items-center gap-6">
-                                {items.some((i) => i.currency === "D") && dollarRate && (
-                                    <span className="text-[12px] text-[var(--text-tertiary)]">
-                                        Tasa: {fmtN(dollarRate)} Bs/USD
+                            {/* Tratamiento IVA */}
+                            <div className="mb-4">
+                                <label className={labelCls}>Tratamiento de IVA</label>
+                                <div className="flex flex-wrap gap-3 items-center">
+                                    <div className="inline-flex rounded-lg border border-border-default bg-surface-1 overflow-hidden h-10 text-[12px] shadow-sm">
+                                        <button
+                                            type="button"
+                                            className={[
+                                                "px-4 transition-colors uppercase tracking-[0.10em]",
+                                                ivaMode === "agregado"
+                                                    ? "bg-primary-500 text-white"
+                                                    : "text-[var(--text-secondary)] hover:bg-surface-2",
+                                            ].join(" ")}
+                                            onClick={() => setIvaMode("agregado")}
+                                        >
+                                            IVA Agregado
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={[
+                                                "px-4 border-l border-border-default transition-colors uppercase tracking-[0.10em]",
+                                                ivaMode === "incluido"
+                                                    ? "bg-primary-500 text-white"
+                                                    : "text-[var(--text-secondary)] hover:bg-surface-2",
+                                            ].join(" ")}
+                                            onClick={() => setIvaMode("incluido")}
+                                        >
+                                            IVA Incluido
+                                        </button>
+                                    </div>
+                                    <span className="font-sans text-[12px] text-[var(--text-tertiary)] flex-1 leading-snug">
+                                        {ivaMode === "agregado"
+                                            ? "El precio ingresado es la base — el IVA se calcula y suma encima."
+                                            : "El precio ingresado ya incluye IVA — se extrae la base para el inventario."}
                                     </span>
-                                )}
-                                {hasVat ? (
-                                    <div className="flex items-center gap-4 text-[12px] tabular-nums">
-                                        <span className="text-[var(--text-tertiary)]">
-                                            Base <span className="text-foreground font-medium">Bs {fmtN(totals.subtotal)}</span>
-                                        </span>
-                                        <span className="text-[var(--text-tertiary)]">
-                                            IVA <span className="text-amber-600 font-medium">Bs {fmtN(totals.vat)}</span>
-                                        </span>
-                                        <span className="text-[13px] font-bold text-foreground">
-                                            Total Bs {fmtN(totals.total)}
+                                </div>
+                            </div>
+
+                            {/* Notas */}
+                            <div>
+                                <label className={labelCls}>Notas</label>
+                                <textarea
+                                    className="w-full px-3 py-2 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors resize-y min-h-[60px]"
+                                    rows={2}
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    placeholder="Motivo, referencia interna, etc."
+                                />
+                            </div>
+                        </div>
+
+                        {/* Resumen — same row as Datos */}
+                        <div className="w-72 flex-shrink-0">
+                            <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
+                                <div className="px-5 py-4 border-b border-border-light flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
+                                        <Calculator size={14} strokeWidth={2} />
+                                    </div>
+                                    <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">
+                                        Resumen
+                                    </h3>
+                                </div>
+
+                                <div className="px-5 py-4 space-y-3 text-[13px]">
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Fecha</span>
+                                        <span className="text-foreground tabular-nums">{date || "—"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Tratamiento</span>
+                                        <span className="text-foreground uppercase tracking-[0.10em] text-[11px]">
+                                            {ivaMode === "agregado" ? "Agregado" : "Incluido"}
                                         </span>
                                     </div>
-                                ) : (
-                                    <span className="text-[13px] font-bold text-foreground tabular-nums">
-                                        Total Bs {fmtN(totals.subtotal)}
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Productos</span>
+                                        <span className="text-foreground tabular-nums">{items.filter((i) => i.productId).length}</span>
+                                    </div>
+                                </div>
+
+                                <div className="px-5 py-4 border-t border-border-light bg-surface-2/40 space-y-2 text-[13px]">
+                                    <div className="flex justify-between">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base</span>
+                                        <span className="tabular-nums text-[var(--text-primary)]">{fmtN(totals.subtotal)}</span>
+                                    </div>
+                                    {hasVat && (
+                                        <div className="flex justify-between">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
+                                            <span className="tabular-nums text-amber-600">{fmtN(totals.vat)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="px-5 py-4 border-t border-border-light">
+                                    <div className="flex items-baseline justify-between">
+                                        <span className="text-foreground uppercase tracking-[0.12em] text-[11px] font-semibold">Total</span>
+                                        <span className="tabular-nums font-bold text-foreground text-[20px]">
+                                            Bs. {fmtN(hasVat ? totals.total : totals.subtotal)}
+                                        </span>
+                                    </div>
+                                    {dollarRate && totals.subtotal > 0 && (
+                                        <div className="flex items-baseline justify-between mt-1">
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ USD</span>
+                                            <span className="tabular-nums text-[var(--text-tertiary)] text-[12px]">
+                                                ${fmtN((hasVat ? totals.total : totals.subtotal) / dollarRate)}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2 — Productos (full width) */}
+                    <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
+                            <div className="px-5 py-4 border-b border-border-light flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
+                                        <Boxes size={14} strokeWidth={2} />
+                                    </div>
+                                    <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
+                                        Productos
+                                    </h2>
+                                </div>
+                                <button
+                                    onClick={addRow}
+                                    className="h-8 px-3 rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] shadow-sm"
+                                    type="button"
+                                >
+                                    <Plus size={12} strokeWidth={2} />
+                                    Agregar fila
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                {/* Column headers */}
+                                <div className="grid grid-cols-[minmax(220px,1fr)_120px_160px_110px_36px] gap-2 px-4 py-2 border-b border-border-light bg-surface-2/50 min-w-[700px]">
+                                    {["Producto", "Cantidad", priceLabel, "Moneda", ""].map((h, i) => (
+                                        <span key={i} className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{h}</span>
+                                    ))}
+                                </div>
+
+                                {/* Rows */}
+                                <div className="divide-y divide-border-light/50 min-w-[700px]">
+                                    {items.map((item, idx) => (
+                                        <div key={idx} className="grid grid-cols-[minmax(220px,1fr)_120px_160px_110px_36px] gap-2 px-4 py-2 items-center hover:bg-surface-2/40 transition-colors">
+                                            <ProductCombo
+                                                value={item.productId}
+                                                products={products}
+                                                onChange={(id, name, vatRate) => updateItem(idx, { productId: id, productName: name, vatRate })}
+                                            />
+                                            <BaseInput.Field
+                                                type="number"
+                                                className="w-full"
+                                                inputClassName="text-right"
+                                                value={item.quantity ? String(item.quantity) : ""}
+                                                onValueChange={(v) => updateItem(idx, { quantity: Number(v) || 0 })}
+                                                placeholder="0"
+                                                min={0}
+                                                step={1}
+                                            />
+                                            <BaseInput.Field
+                                                type="number"
+                                                className="w-full"
+                                                inputClassName="text-right"
+                                                value={item.currencyCost ? String(item.currencyCost) : ""}
+                                                onValueChange={(v) => updateItem(idx, { currencyCost: Number(v) || 0 })}
+                                                placeholder="0.00"
+                                                min={0}
+                                                step={0.01}
+                                                suffix={item.currency === "D" ? "USD" : "Bs"}
+                                            />
+                                            <div className="inline-flex rounded-lg border border-border-default overflow-hidden h-10 text-[12px] shadow-sm">
+                                                <button
+                                                    type="button"
+                                                    className={[
+                                                        "flex-1 px-1 transition-colors uppercase tracking-[0.10em]",
+                                                        item.currency === "B" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                    ].join(" ")}
+                                                    onClick={() => updateItem(idx, { currency: "B" })}
+                                                >
+                                                    Bs
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={[
+                                                        "flex-1 px-1 border-l border-border-default transition-colors uppercase tracking-[0.10em]",
+                                                        item.currency === "D" ? "bg-primary-500 text-white" : "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2",
+                                                    ].join(" ")}
+                                                    onClick={() => updateItem(idx, { currency: "D" })}
+                                                >
+                                                    USD
+                                                </button>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeRow(idx)}
+                                                disabled={items.length === 1}
+                                                className="w-9 h-10 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 disabled:opacity-30 disabled:hover:text-[var(--text-tertiary)] disabled:hover:bg-transparent transition-colors"
+                                                aria-label="Eliminar fila"
+                                            >
+                                                <X size={14} strokeWidth={2} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-4 py-3 border-t border-border-light bg-surface-2/40 flex items-center justify-between">
+                                <span className="text-[11px] text-[var(--text-tertiary)] uppercase tracking-[0.12em] tabular-nums">
+                                    {items.length} {items.length === 1 ? "fila" : "filas"}
+                                </span>
+                                {items.some((i) => i.currency === "D") && dollarRate && (
+                                    <span className="font-sans text-[12px] text-[var(--text-tertiary)] tabular-nums">
+                                        Conversión USD → Bs.: <span className="font-mono text-foreground">{fmtN(dollarRate)}</span>
                                     </span>
                                 )}
                             </div>
                         </div>
+
+                        {/* Info note */}
+                        <div className="px-4 py-3 rounded-lg border border-border-light bg-surface-1 font-sans text-[13px] text-[var(--text-tertiary)] leading-relaxed flex items-start gap-2">
+                            <Info size={14} strokeWidth={2} className="text-[var(--text-tertiary)] flex-shrink-0 mt-0.5" />
+                            <span>
+                                Esta entrada se registra directamente en el inventario sin asociarse a una factura de proveedor.
+                                Si tienes una factura, usa <strong className="font-mono uppercase tracking-[0.06em] text-foreground">Nueva factura</strong> para incluir datos de IVA y proveedor.
+                            </span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-3 pb-2">
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="md"
+                                onClick={() => router.back()}
+                                disabled={saving}
+                            >
+                                Cancelar
+                            </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="primary"
+                            size="md"
+                            leftIcon={<Save size={14} strokeWidth={2} />}
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? "Registrando…" : "Registrar entrada"}
+                        </BaseButton.Root>
                     </div>
-                </div>
-
-                {/* Info note */}
-                <div className="px-4 py-3 rounded-lg border border-border-light bg-surface-1 text-[12px] text-[var(--text-tertiary)]">
-                    Esta entrada se registra directamente en el inventario sin asociarse a una factura de proveedor.
-                    Si tienes una factura, usa <strong className="text-foreground">Nueva factura</strong> para incluir datos de IVA y proveedor.
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pb-8">
-                    <BaseButton.Root
-                        variant="secondary"
-                        size="md"
-                        onClick={() => router.back()}
-                        disabled={saving}
-                    >
-                        Cancelar
-                    </BaseButton.Root>
-                    <BaseButton.Root
-                        variant="primary"
-                        size="md"
-                        onClick={handleSave}
-                        disabled={saving}
-                    >
-                        {saving ? "Registrando…" : "Registrar entrada"}
-                    </BaseButton.Root>
                 </div>
             </div>
         </div>

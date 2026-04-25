@@ -8,6 +8,7 @@
 //   - Delete (with confirmation).
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, Plus, Search, Pencil, Trash2, X } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -32,6 +33,18 @@ const fmtDate = (d: string) => {
     if (!d) return "—";
     const [y, m, day] = d.split("T")[0].split("-");
     return `${day}/${m}/${y}`;
+};
+
+const MONTHS_SHORT = [
+    "ene", "feb", "mar", "abr", "may", "jun",
+    "jul", "ago", "sep", "oct", "nov", "dic",
+] as const;
+
+const fmtPeriod = (period: string) => {
+    if (!period) return "—";
+    const [y, m] = period.split("-");
+    const month = MONTHS_SHORT[(Number(m) - 1) | 0] ?? "";
+    return `${month} ${y}`;
 };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -233,9 +246,10 @@ function EditRateModal({ invoiceId, onClose, onSaved }: EditModalProps) {
                     <button
                         onClick={onClose}
                         disabled={saving}
-                        className="w-7 h-7 flex items-center justify-center text-[var(--text-tertiary)] hover:text-foreground text-[16px] rounded disabled:opacity-40"
+                        className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors disabled:opacity-40"
+                        aria-label="Cerrar"
                     >
-                        ×
+                        <X size={14} strokeWidth={2} />
                     </button>
                 </div>
 
@@ -344,6 +358,14 @@ function EditRateModal({ invoiceId, onClose, onSaved }: EditModalProps) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+type StatusFilter = "all" | InvoiceStatus;
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    { value: "all",        label: "Todas" },
+    { value: "borrador",   label: "Borradores" },
+    { value: "confirmada", label: "Confirmadas" },
+];
+
 export default function PurchaseInvoicesPage() {
     const { companyId } = useCompany();
     const {
@@ -355,10 +377,35 @@ export default function PurchaseInvoicesPage() {
     const [confirmDeleteConfirmada, setConfirmDeleteConfirmada] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
     useEffect(() => {
         if (companyId) loadPurchaseInvoices(companyId);
     }, [companyId, loadPurchaseInvoices]);
+
+    const counts = useMemo<Record<StatusFilter, number>>(() => ({
+        all:        purchaseInvoices.length,
+        borrador:   purchaseInvoices.filter((f) => f.status === "borrador").length,
+        confirmada: purchaseInvoices.filter((f) => f.status === "confirmada").length,
+    }), [purchaseInvoices]);
+
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return purchaseInvoices
+            .filter((f) => statusFilter === "all" || f.status === statusFilter)
+            .filter((f) => {
+                if (!q) return true;
+                const haystack = [
+                    f.supplierName ?? "",
+                    f.invoiceNumber ?? "",
+                    f.controlNumber ?? "",
+                    f.period ?? "",
+                ].join(" ").toLowerCase();
+                return haystack.includes(q);
+            })
+            .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    }, [purchaseInvoices, statusFilter, search]);
 
     function requestDelete(id: string, status: string) {
         if (status === "confirmada") {
@@ -383,12 +430,24 @@ export default function PurchaseInvoicesPage() {
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            <PageHeader title="Facturas de Compra" subtitle="Registro de compras a proveedores">
-                <BaseButton.Root as={Link} href="/inventory/purchases" variant="secondary" size="sm">
-                    ← Libro de entradas
+            <PageHeader title="Archivo de Facturas" subtitle="Histórico completo · todos los períodos">
+                <BaseButton.Root
+                    as={Link}
+                    href="/inventory/purchases"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<ChevronLeft size={14} strokeWidth={2} />}
+                >
+                    Tablero de entradas
                 </BaseButton.Root>
-                <BaseButton.Root as={Link} href="/inventory/purchases/new" variant="primary" size="sm">
-                    + Nueva factura
+                <BaseButton.Root
+                    as={Link}
+                    href="/inventory/purchases/new"
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<Plus size={14} strokeWidth={2} />}
+                >
+                    Nueva factura
                 </BaseButton.Root>
             </PageHeader>
 
@@ -440,57 +499,146 @@ export default function PurchaseInvoicesPage() {
                 </div>
             )}
 
-            <div className="px-8 py-6 space-y-4">
+            <div className="px-8 py-6 space-y-5">
+                {/* Toolbar: status chips + search */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden">
+                        {STATUS_OPTIONS.map((opt, i) => {
+                            const active = statusFilter === opt.value;
+                            return (
+                                <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => setStatusFilter(opt.value)}
+                                    className={[
+                                        "px-3 h-9 text-[11px] uppercase tracking-[0.12em] transition-colors flex items-center gap-1.5",
+                                        i > 0 ? "border-l border-border-light" : "",
+                                        active
+                                            ? "bg-primary-500/10 text-primary-500"
+                                            : "text-[var(--text-secondary)] hover:bg-surface-2",
+                                    ].join(" ")}
+                                >
+                                    {opt.label}
+                                    <span className={[
+                                        "px-1.5 py-0.5 rounded text-[10px] tabular-nums",
+                                        active ? "bg-primary-500/15 text-primary-500" : "bg-surface-2 text-[var(--text-tertiary)]",
+                                    ].join(" ")}>
+                                        {counts[opt.value]}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="relative flex-1 min-w-[240px] max-w-md">
+                        <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar proveedor, Nº factura, Nº control o período (YYYY-MM)…"
+                            className="w-full h-9 pl-9 pr-9 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
+                        />
+                        {search && (
+                            <button
+                                type="button"
+                                onClick={() => setSearch("")}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded flex items-center justify-center text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
+                                aria-label="Limpiar búsqueda"
+                            >
+                                <X size={12} strokeWidth={2} />
+                            </button>
+                        )}
+                    </div>
+
+                    <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
+                        {filtered.length} {filtered.length === 1 ? "factura" : "facturas"}
+                    </span>
+                </div>
+
                 {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
+                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
                         {error}
                     </div>
                 )}
 
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingPurchaseInvoices ? (
-                        <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">Cargando…</div>
+                        <div className="px-5 py-12 text-center font-sans text-[13px] text-[var(--text-tertiary)]">Cargando facturas…</div>
                     ) : purchaseInvoices.length === 0 ? (
-                        <div className="px-5 py-8 text-center text-[13px] text-[var(--text-tertiary)]">
-                            No hay facturas. Haz clic en &quot;+ Nueva factura&quot; para crear una.
+                        <div className="px-5 py-16 flex flex-col items-center gap-3 text-center">
+                            <p className="text-[12px] uppercase tracking-[0.12em] text-foreground">Sin facturas registradas</p>
+                            <p className="font-sans text-[13px] text-[var(--text-tertiary)] max-w-sm">
+                                Haz clic en <strong className="text-foreground">Nueva factura</strong> para crear la primera.
+                            </p>
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="px-5 py-12 flex flex-col items-center gap-2 text-center">
+                            <p className="text-[12px] uppercase tracking-[0.12em] text-foreground">Sin resultados</p>
+                            <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
+                                Ningún registro coincide con los filtros activos.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                                className="mt-2 text-[11px] uppercase tracking-[0.14em] text-primary-500 hover:text-primary-600 transition-colors"
+                            >
+                                Limpiar filtros
+                            </button>
                         </div>
                     ) : (
-                        <table className="w-full text-[13px]">
-                            <thead>
-                                <tr className="border-b border-border-light">
-                                    {["Fecha", "Proveedor", "Nº Factura", "Tasa", "Subtotal", "IVA", "Total", "Estado", "", ""].map((h, i) => (
-                                        <th key={i} className="px-4 py-2.5 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap">
-                                            {h}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {purchaseInvoices.map((f) => (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[1100px] text-[13px]">
+                                <thead>
+                                    <tr className="border-b border-border-light bg-surface-2/50">
+                                        {[
+                                            { h: "Fecha", align: "left" },
+                                            { h: "Período", align: "left" },
+                                            { h: "Proveedor", align: "left" },
+                                            { h: "Nº Factura", align: "left" },
+                                            { h: "Tasa", align: "right" },
+                                            { h: "Subtotal", align: "right" },
+                                            { h: "IVA", align: "right" },
+                                            { h: "Total", align: "right" },
+                                            { h: "Estado", align: "left" },
+                                            { h: "", align: "left" },
+                                            { h: "", align: "left" },
+                                        ].map((c, i) => (
+                                            <th key={i} className={`px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap text-${c.align}`}>
+                                                {c.h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {filtered.map((f) => (
                                     <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">{fmtDate(f.date)}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
+                                        <td className="px-4 py-2.5 text-[var(--text-tertiary)] uppercase tracking-[0.08em] text-[11px] tabular-nums whitespace-nowrap">{fmtPeriod(f.period)}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{f.supplierName ?? "—"}</td>
                                         <td className="px-4 py-2.5 text-[var(--text-secondary)]">{f.invoiceNumber || "—"}</td>
-                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums">
+                                        <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums text-right">
                                             {f.dollarRate != null
-                                                ? `${f.dollarRate.toLocaleString("es-VE", { maximumFractionDigits: f.rateDecimals ?? 2, minimumFractionDigits: f.rateDecimals ?? 2 })}`
+                                                ? f.dollarRate.toLocaleString("es-VE", { maximumFractionDigits: f.rateDecimals ?? 2, minimumFractionDigits: f.rateDecimals ?? 2 })
                                                 : "—"}
                                         </td>
-                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)]">{fmtN(f.subtotal)}</td>
-                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)]">{fmtN(f.vatAmount)}</td>
-                                        <td className="px-4 py-2.5 tabular-nums font-medium text-foreground">{fmtN(f.total)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-primary)] text-right">{fmtN(f.subtotal)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)] text-right">{fmtN(f.vatAmount)}</td>
+                                        <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right">{fmtN(f.total)}</td>
                                         <td className="px-4 py-2.5"><StatusBadge status={f.status} /></td>
                                         <td className="px-4 py-2.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-1">
                                                 <button
                                                     onClick={() => setEditingId(f.id!)}
-                                                    className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-primary-500 transition-colors"
+                                                    className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
+                                                    title="Editar tasa / fecha"
+                                                    aria-label="Editar"
                                                 >
-                                                    Editar
+                                                    <Pencil size={14} strokeWidth={2} />
                                                 </button>
                                                 <Link
                                                     href={`/inventory/purchases/${f.id}`}
-                                                    className="text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
+                                                    className="px-2 h-7 flex items-center text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
                                                 >
                                                     Ver
                                                 </Link>
@@ -517,16 +665,19 @@ export default function PurchaseInvoicesPage() {
                                             ) : (
                                                 <button
                                                     onClick={() => requestDelete(f.id!, f.status)}
-                                                    className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                    className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                                    title="Eliminar"
+                                                    aria-label="Eliminar"
                                                 >
-                                                    Eliminar
+                                                    <Trash2 size={14} strokeWidth={2} />
                                                 </button>
                                             )}
                                         </td>
                                     </tr>
                                 ))}
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             </div>

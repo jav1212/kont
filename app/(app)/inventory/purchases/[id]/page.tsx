@@ -6,6 +6,7 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, use, useCallback } from "react";
+import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -29,17 +30,17 @@ interface ReturnItem {
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
     "font-mono text-[13px] text-foreground tabular-nums",
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
 const readonlyCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-2 outline-none",
+    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-2 outline-none",
     "font-mono text-[13px] text-[var(--text-secondary)] tabular-nums",
 ].join(" ");
 
-const labelCls = "font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -216,7 +217,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     if (loadingPurchaseInvoice) {
         return (
             <div className="min-h-full bg-surface-2 font-mono flex items-center justify-center">
-                <span className="text-[11px] text-[var(--text-tertiary)]">Cargando…</span>
+                <span className="text-[13px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Cargando…</span>
             </div>
         );
     }
@@ -225,7 +226,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <div className="px-8 py-6">
-                    <p className="text-[11px] text-[var(--text-tertiary)]">Factura no encontrada.</p>
+                    <p className="text-[13px] font-sans text-[var(--text-tertiary)]">Factura no encontrada.</p>
                 </div>
             </div>
         );
@@ -242,38 +243,39 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
             >
                 {isConfirmed ? (
-                    <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-success">
+                    <span className="inline-flex px-2 py-1 rounded border text-[11px] uppercase tracking-[0.08em] font-medium badge-success">
                         Confirmada
                     </span>
                 ) : (
-                    <span className="inline-flex px-2 py-1 rounded border text-[9px] uppercase tracking-[0.12em] font-medium badge-warning">
+                    <span className="inline-flex px-2 py-1 rounded border text-[11px] uppercase tracking-[0.08em] font-medium badge-warning">
                         Borrador
                     </span>
                 )}
-                <BaseButton.Root variant="secondary" size="sm" onClick={() => router.back()}>
-                    ← Volver
+                <BaseButton.Root variant="secondary" size="sm" leftIcon={<ChevronLeft size={14} strokeWidth={2} />} onClick={() => router.back()}>
+                    Volver
                 </BaseButton.Root>
             </PageHeader>
 
             {/* Purchase Return Modal */}
             {showReturnModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div className="bg-surface-1 border border-border-light rounded-xl shadow-xl w-full max-w-lg mx-4">
+                    <div className="bg-surface-1 border border-border-medium rounded-xl shadow-2xl w-full max-w-lg mx-4">
                         <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
-                            <h2 className="text-[12px] font-bold uppercase tracking-[0.16em] text-foreground">
+                            <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
                                 Registrar Devolución de Compra
                             </h2>
                             <button
                                 onClick={() => setShowReturnModal(false)}
-                                className="text-[var(--text-tertiary)] hover:text-foreground text-[11px] uppercase tracking-[0.12em]"
+                                className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
+                                aria-label="Cerrar"
                             >
-                                ✕
+                                <X size={14} strokeWidth={2} />
                             </button>
                         </div>
 
                         <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-                            <p className="text-[10px] text-[var(--text-tertiary)]">
-                                Referencia: DEV-{invoice.invoiceNumber} — solo facturas confirmadas
+                            <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
+                                Referencia: <span className="font-mono uppercase tracking-[0.06em] text-[var(--text-secondary)]">DEV-{invoice.invoiceNumber}</span> — solo facturas confirmadas
                             </p>
 
                             {/* Items */}
@@ -281,8 +283,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 {returnItems.map((item, idx) => (
                                     <div key={item.productId} className="flex items-center gap-3 py-2 border-b border-border-light/50">
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-[11px] text-foreground truncate">{item.name}</p>
-                                            <p className="text-[9px] text-[var(--text-tertiary)]">
+                                            <p className="text-[13px] text-foreground truncate">{item.name}</p>
+                                            <p className="text-[11px] text-[var(--text-tertiary)] tabular-nums">
                                                 Comprado: {item.origQty} × {fmtN(item.unitCost)}
                                             </p>
                                         </div>
@@ -311,10 +313,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                             {/* Totals preview */}
                             {returnItems.some((i) => i.returnQty > 0) && (
-                                <div className="pt-2 text-[10px] text-[var(--text-tertiary)]">
+                                <div className="pt-2 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
                                     Total a devolver:{" "}
                                     <span className="tabular-nums font-bold text-red-500">
-                                        {fmtN(returnItems.reduce((acc, i) => acc + i.returnQty * i.unitCost, 0))} Bs.
+                                        Bs. {fmtN(returnItems.reduce((acc, i) => acc + i.returnQty * i.unitCost, 0))}
                                     </span>
                                 </div>
                             )}
@@ -364,13 +366,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
             <div className="px-8 py-6">
                 {error && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[11px]">
+                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
                         {error}
                     </div>
                 )}
 
                 {justConfirmed && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[11px]">
+                    <div className="mb-4 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px] font-sans flex items-center gap-2">
+                        <CheckCircle2 size={14} strokeWidth={2} />
                         Factura confirmada — entradas de inventario registradas exitosamente.
                     </div>
                 )}
@@ -381,7 +384,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                         {/* Invoice data */}
                         <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                            <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground mb-5">
+                            <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
                                 Datos de la factura
                             </h2>
 
@@ -457,7 +460,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         {/* Items */}
                         <div className="rounded-xl border border-border-light bg-surface-1 p-6">
                             <div className="mb-5">
-                                <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-foreground">
+                                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
                                     Productos
                                 </h2>
                             </div>
@@ -482,50 +485,50 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dVatAmount    = dVat8 + dVat16;
                                 const dTotal        = isDraft ? total : invoice.total;
                                 return (
-                                    <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[11px]">
+                                    <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[13px]">
                                         <div className="flex gap-8 items-center">
-                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Subtotal</span>
-                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-32 text-right">{fmtN(dSubtotal)}</span>
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
+                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-36 text-right">{fmtN(dSubtotal)}</span>
                                         </div>
                                         {dBaseExempt > 0 && (
                                             <div className="flex gap-8 items-center">
-                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base exenta</span>
-                                                <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseExempt)}</span>
+                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base exenta</span>
+                                                <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseExempt)}</span>
                                             </div>
                                         )}
                                         {dBaseTaxed8 > 0 && (
                                             <>
                                                 <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 8%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseTaxed8)}</span>
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 8%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseTaxed8)}</span>
                                                 </div>
                                                 <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 8%</span>
-                                                    <span className="tabular-nums text-amber-600 w-32 text-right">{fmtN(dVat8)}</span>
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 8%</span>
+                                                    <span className="tabular-nums text-amber-600 w-36 text-right">{fmtN(dVat8)}</span>
                                                 </div>
                                             </>
                                         )}
                                         {dBaseTaxed16 > 0 && (
                                             <>
                                                 <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Base gravada 16%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dBaseTaxed16)}</span>
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 16%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseTaxed16)}</span>
                                                 </div>
                                                 <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">IVA 16%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dVat16)}</span>
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 16%</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dVat16)}</span>
                                                 </div>
                                             </>
                                         )}
                                         {dVatAmount > 0 && (
                                             <div className="flex gap-8 items-center">
-                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total IVA</span>
-                                                <span className="tabular-nums text-[var(--text-secondary)] w-32 text-right">{fmtN(dVatAmount)}</span>
+                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Total IVA</span>
+                                                <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dVatAmount)}</span>
                                             </div>
                                         )}
-                                        <div className="flex gap-8 items-center border-t border-border-light pt-1.5">
-                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[9px]">Total</span>
-                                            <span className="tabular-nums font-bold text-foreground w-32 text-right">{fmtN(dTotal)}</span>
+                                        <div className="flex gap-8 items-center border-t border-border-light pt-2 mt-1">
+                                            <span className="text-foreground uppercase tracking-[0.12em] text-[11px] font-semibold">Total</span>
+                                            <span className="tabular-nums font-bold text-foreground w-36 text-right text-[14px]">{fmtN(dTotal)}</span>
                                         </div>
                                     </div>
                                 );
@@ -537,7 +540,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             <div className="flex items-center gap-3">
                                 <BaseButton.Root
                                     variant="secondary"
-                                    size="sm"
+                                    size="md"
+                                    leftIcon={<Save size={14} strokeWidth={2} />}
                                     onClick={handleSaveDraft}
                                     disabled={saving || confirming}
                                 >
@@ -545,7 +549,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </BaseButton.Root>
                                 <BaseButton.Root
                                     variant="primary"
-                                    size="sm"
+                                    size="md"
+                                    leftIcon={<CheckCircle2 size={14} strokeWidth={2} />}
                                     onClick={handleConfirm}
                                     disabled={saving || confirming}
                                 >
@@ -556,15 +561,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                         {isConfirmed && (
                             <div className="flex items-center gap-3">
-                                <Link
+                                <BaseButton.Root
+                                    as={Link}
                                     href={`/inventory/movements?periodo=${invoice.period}`}
-                                    className="h-8 px-4 rounded-lg border border-border-medium bg-surface-1 hover:bg-surface-2 text-foreground text-[11px] uppercase tracking-[0.14em] transition-colors inline-flex items-center"
+                                    variant="secondary"
+                                    size="md"
+                                    rightIcon={<ArrowRight size={14} strokeWidth={2} />}
                                 >
-                                    Ver movimientos →
-                                </Link>
+                                    Ver movimientos
+                                </BaseButton.Root>
                                 <BaseButton.Root
                                     variant="dangerOutline"
-                                    size="sm"
+                                    size="md"
+                                    leftIcon={<RotateCcw size={14} strokeWidth={2} />}
                                     onClick={openReturnModal}
                                 >
                                     Registrar devolución
@@ -573,61 +582,63 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         )}
 
                         {returnSuccess && (
-                            <div className="px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[11px]">
-                                Devolución registrada — movimientos de devolución_compra creados.
+                            <div className="px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px] font-sans flex items-center gap-2">
+                                <CheckCircle2 size={14} strokeWidth={2} />
+                                Devolución registrada — movimientos de devolución de compra creados.
                             </div>
                         )}
                     </div>
 
                     {/* Right panel — summary */}
-                    <div className="w-72 flex-shrink-0 sticky top-6">
+                    <div className="w-64 flex-shrink-0 sticky top-6">
                         <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-4">
-                            <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                            <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                                 Resumen
                             </h3>
-                            <div className="space-y-3 text-[11px]">
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Proveedor</span>
-                                    <span className="text-foreground font-medium truncate ml-4 text-right">
+                            <div className="space-y-3 text-[13px]">
+                                <div className="flex justify-between gap-3">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px] flex-shrink-0">Proveedor</span>
+                                    <span className="text-foreground font-medium truncate text-right">
                                         {invoice.supplierName ?? "—"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Nº Control</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Nº Control</span>
                                     <span className="text-foreground tabular-nums">{invoice.controlNumber || "—"}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Fecha</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Fecha</span>
                                     <span className="text-foreground tabular-nums">{fmtDate(invoice.date)}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Período</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Período</span>
                                     <span className="text-foreground tabular-nums">{invoice.period}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Ítems</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Ítems</span>
                                     <span className="text-foreground tabular-nums">{(invoice.items ?? items).length}</span>
                                 </div>
                             </div>
-                            <div className="pt-3 border-t border-border-light space-y-2 text-[11px]">
+                            <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">Subtotal</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
                                     <span className="tabular-nums text-[var(--text-primary)]">{fmtN(invoice.subtotal)}</span>
                                 </div>
                                 {invoice.vatAmount > 0 && (
                                     <div className="flex justify-between">
-                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[9px]">IVA</span>
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
                                         <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(invoice.vatAmount)}</span>
                                     </div>
                                 )}
-                                <div className="flex justify-between font-bold">
-                                    <span className="text-[var(--text-secondary)] uppercase tracking-[0.12em] text-[9px]">Total</span>
-                                    <span className="tabular-nums text-foreground">{fmtN(invoice.total)}</span>
+                                <div className="flex justify-between font-bold pt-1">
+                                    <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
+                                    <span className="tabular-nums text-foreground text-[14px]">{fmtN(invoice.total)}</span>
                                 </div>
                             </div>
                             {isConfirmed && invoice.confirmedAt && (
-                                <div className="pt-3 border-t border-border-light">
-                                    <span className="text-[9px] uppercase tracking-[0.12em] text-green-500">
+                                <div className="pt-3 border-t border-border-light flex items-center gap-1.5">
+                                    <CheckCircle2 size={12} strokeWidth={2} className="text-green-500" />
+                                    <span className="text-[11px] uppercase tracking-[0.12em] text-green-500">
                                         Confirmada
                                     </span>
                                 </div>

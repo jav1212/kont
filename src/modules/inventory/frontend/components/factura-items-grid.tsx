@@ -344,33 +344,33 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 </div>
             )}
 
-            <table className="w-full text-[13px] border-collapse">
+            <table className="w-full min-w-[860px] text-[13px] border-collapse">
                 <thead>
-                    <tr className="border-b border-border-light">
-                        <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal">
+                    <tr className="border-b border-border-light bg-surface-2/40">
+                        <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal min-w-[220px]">
                             Producto
                         </th>
-                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-24">
+                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-24">
                             Cantidad
                         </th>
-                        <th className="px-2 py-2 text-center text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-16">
+                        <th className="px-2 py-2 text-center text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-20">
                             Moneda
                         </th>
-                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-32">
+                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-36">
                             {anyUsd ? "Costo (en moneda)" : "Costo Unit. Bs"}
                         </th>
                         {anyUsd && (
-                            <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-28">
+                            <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-28">
                                 Costo Bs
                             </th>
                         )}
-                        <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-28">
+                        <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-40">
                             IVA
                         </th>
-                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-normal w-32">
+                        <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-32">
                             Total Bs
                         </th>
-                        {!readOnly && <th className="w-8" />}
+                        {!readOnly && <th className="w-10" />}
                     </tr>
                 </thead>
                 <tbody>
@@ -489,7 +489,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                             tabIndex={-1}
                                             value={item.vatRate ?? "general_16"}
                                             onChange={(e) => updateItem(idx, "vatRate", e.target.value as VatRate)}
-                                            className="w-full h-8 px-1.5 outline-none bg-transparent text-[12px] text-foreground font-mono focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer"
+                                            className="w-full h-8 pl-2 pr-6 outline-none bg-transparent text-[12px] text-foreground font-mono focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer truncate"
                                         >
                                             <option value="exenta">Exenta (0%)</option>
                                             <option value="reducida_8">Reducida (8%)</option>
