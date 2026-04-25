@@ -1,47 +1,40 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
-import { 
-    FileText, 
-    Download, 
-    Users, 
-    Calendar, 
-    ClipboardCheck, 
-    ChevronDown, 
-    RefreshCw, 
-    TrendingUp, 
-    Info,
-    Clock,
-    AlertCircle
+import {
+    Calendar,
+    AlertCircle, Gavel, Scale, UserMinus,
+    Coins, ShieldAlert, PieChart, Plane, Gift,
+    ChevronRight, Users, Wallet, Receipt, TrendingUp,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCompany }  from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import type { Employee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { generateLiquidationPdf } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
 import type { LiquidationEmployee, LiquidationOptions } from "@/src/modules/payroll/frontend/utils/liquidaciones-pdf";
-import { motion } from "framer-motion";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-const formatCurrency = (n: number) =>
-    "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const formatNumber = (n: number) =>
-    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-const fieldCls = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums appearance-none",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
-].join(" ");
-
-const labelCls = "font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block";
+import {
+    formatCurrency,
+    formatNumber,
+    formatUsd,
+    LABEL_CLS,
+    useCalculatorBcv,
+    SectionHeader,
+    CalculatorPanelHeader,
+    OnlyActiveToggle,
+    EmployeeSelect,
+    EmployeeInfoCard,
+    BcvRateField,
+    CalculatorFooter,
+    FooterStat,
+    FooterTotal,
+    CalculatorLoading,
+    CalculatorEmptyState,
+} from "@/src/modules/payroll/frontend/components/calculator";
 
 // ============================================================================
 // LIQUIDATION ENGINE
@@ -52,14 +45,15 @@ type LiquidationReason = "renuncia" | "despido_justificado" | "despido_injustifi
 interface LiquidationResult {
     employee:               Employee;
     salaryVES:              number;
+    integratedDailySalary:  number;
     yearsOfService:         number;
-    totalDays:              number;   // total days since hire
+    totalDays:              number;
     daysSeniority:          number;
-    daysSeniorityQuarterly: number;   // quarterly base (5 days/month)
-    daysSeniorityExtra:     number;   // extra days (2 days/year from year 2)
+    daysSeniorityQuarterly: number;
+    daysSeniorityExtra:     number;
     socialBenefits:         number;
-    daysInCurrentYear:      number;   // days worked in the termination calendar year
-    daysSinceAnniversary:   number;   // days since last work anniversary (for vacations/bonus)
+    daysInCurrentYear:      number;
+    daysSinceAnniversary:   number;
     fractionalProfitSharing: number;
     fractionalVacations:    number;
     fractionalVacationBonus: number;
@@ -69,15 +63,15 @@ interface LiquidationResult {
 }
 
 function calculateLiquidation(
-    employee:         Employee,
-    terminationDate:  string,
-    reason:           LiquidationReason,
+    employee:          Employee,
+    terminationDate:   string,
+    reason:            LiquidationReason,
     profitSharingDays: number,
     vacationBonusDays: number,
-    bcvRate:          number,
+    bcvRate:           number,
 ): LiquidationResult {
     const base: LiquidationResult = {
-        employee, salaryVES: 0,
+        employee, salaryVES: 0, integratedDailySalary: 0,
         yearsOfService: 0, totalDays: 0,
         daysSeniority: 0, daysSeniorityQuarterly: 0, daysSeniorityExtra: 0,
         socialBenefits: 0, daysInCurrentYear: 0, daysSinceAnniversary: 0,
@@ -98,11 +92,9 @@ function calculateLiquidation(
     const yearsOfService = Math.floor(totalDays / 365);
 
     // ── SOCIAL BENEFITS (PRESTACIONES) (Art. 142 LOTTT) ──────────────────
-    // Base: 15 days per quarter = 5 days/month (60 days/year)
     const totalMonths            = Math.floor(totalDays / 30.4375);
     const daysSeniorityQuarterly = totalMonths * 5;
 
-    // Extra days: annual deposit grows by 2 days per year of service (cumulative).
     const daysOfLastYear = totalDays % 365;
     const daysExtraFull  = yearsOfService <= 16
         ? yearsOfService * Math.max(0, yearsOfService - 1)
@@ -111,7 +103,6 @@ function calculateLiquidation(
         + (yearsOfService >= 1 && daysOfLastYear > 182 ? Math.min(30, 2 * yearsOfService) : 0);
     const daysSeniority      = daysSeniorityQuarterly + daysSeniorityExtra;
 
-    // Integrated daily salary
     const baseDailySalary = salaryVES / 30;
     const profitSharingQuota = baseDailySalary * profitSharingDays / 360;
     const vacationBonusQuota = baseDailySalary * vacationBonusDays / 360;
@@ -137,7 +128,7 @@ function calculateLiquidation(
     const total = socialBenefits + fractionalProfitSharing + fractionalVacations + fractionalVacationBonus + terminationIndemnity;
 
     return {
-        employee, salaryVES,
+        employee, salaryVES, integratedDailySalary,
         yearsOfService, totalDays,
         daysSeniority, daysSeniorityQuarterly, daysSeniorityExtra,
         socialBenefits, daysInCurrentYear, daysSinceAnniversary,
@@ -145,161 +136,557 @@ function calculateLiquidation(
     };
 }
 
-function formatDate(iso: string): string {
-    if (!iso) return "—";
-    const [y, m, d] = iso.split("-");
-    const months = ["enero","febrero","marzo","abril","mayo","junio",
-                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-    return `${parseInt(d)} de ${months[parseInt(m) - 1]} de ${y}`;
+// ============================================================================
+// REASON META
+// ============================================================================
+
+type ReasonTone = "neutral" | "amber" | "rose";
+
+const REASON_META: Record<LiquidationReason, {
+    label: string;
+    short: string;
+    tone:  ReasonTone;
+    icon:  typeof UserMinus;
+    note:  string;
+}> = {
+    renuncia: {
+        label: "Renuncia voluntaria",
+        short: "Renuncia",
+        tone:  "neutral",
+        icon:  UserMinus,
+        note:  "Sin indemnización adicional",
+    },
+    despido_justificado: {
+        label: "Despido justificado",
+        short: "Justificado",
+        tone:  "amber",
+        icon:  Gavel,
+        note:  "Sin indemnización (causa justa)",
+    },
+    despido_injustificado: {
+        label: "Despido injustificado",
+        short: "Injustificado",
+        tone:  "rose",
+        icon:  Scale,
+        note:  "+ Indemnización Art. 92 (igual al monto de prestaciones)",
+    },
+};
+
+const REASON_TONE_CLS: Record<ReasonTone, { active: string; activeIcon: string; dotBg: string }> = {
+    neutral: {
+        active:     "bg-primary-500/10 border-primary-500/50 text-primary-600 shadow-sm",
+        activeIcon: "text-primary-500",
+        dotBg:      "bg-primary-500/70",
+    },
+    amber: {
+        active:     "bg-amber-500/10 border-amber-500/50 text-amber-700 shadow-sm",
+        activeIcon: "text-amber-500",
+        dotBg:      "bg-amber-500/70",
+    },
+    rose: {
+        active:     "bg-rose-500/10 border-rose-500/50 text-rose-700 shadow-sm",
+        activeIcon: "text-rose-500",
+        dotBg:      "bg-rose-500/70",
+    },
+};
+
+type IconType = typeof UserMinus;
+
+// ============================================================================
+// KPI TILE — dashboard strip atom
+// ============================================================================
+
+type KpiTone = "default" | "primary" | "rose";
+
+interface KpiTileProps {
+    label:      string;
+    icon:       IconType;
+    tone?:      KpiTone;
+    /** When set, render as a count (no Bs prefix, big tabular number). */
+    countValue?: number;
+    /** Currency value when not in count mode. */
+    valueBs?:   number;
+    bcvRate?:   number;
 }
 
-// ============================================================================
-// CARD — Liquidation Constancy
-// ============================================================================
+function KpiTile({ label, icon: Icon, tone = "default", countValue, valueBs, bcvRate }: KpiTileProps) {
+    const valueCls =
+        tone === "primary" ? "text-primary-500" :
+        tone === "rose"    ? "text-rose-600"    :
+        "text-foreground";
+    const iconWrapCls =
+        tone === "primary" ? "bg-primary-500/10 border-primary-500/30 text-primary-500" :
+        tone === "rose"    ? "bg-rose-500/10 border-rose-500/30 text-rose-500" :
+        "bg-surface-2 border-border-light text-[var(--text-secondary)]";
+    const isCount = countValue !== undefined;
 
-function LiquidationConstancy({ result, companyName, companyLogoUrl, showLogoInPdf, terminationDate, reason, profitSharingDays, vacationBonusDays }: {
-    result: LiquidationResult; companyName: string; companyLogoUrl?: string; showLogoInPdf?: boolean; terminationDate: string; reason: LiquidationReason;
-    profitSharingDays: string; vacationBonusDays: string;
-}) {
-    const reasonLabel = reason === "renuncia" ? "Renuncia voluntaria"
-        : reason === "despido_justificado" ? "Despido justificado"
-        : "Despido injustificado";
-    const issuedAt = new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
-    const baseVacationDays = Math.max(15, 15 + Math.max(0, result.yearsOfService - 1));
-    const documentId = makeDocumentId(`${result.employee.cedula}|${terminationDate}|${reason}`);
-
-    const concepts = [
-        { label: "Prestaciones sociales", sub: `Art. 142 LOTTT · ${result.daysSeniorityQuarterly}d trim.${result.daysSeniorityExtra > 0 ? ` + ${result.daysSeniorityExtra}d adic.` : ""}`, days: result.daysSeniority, amount: result.socialBenefits },
-        { label: "Utilidades fraccionadas", sub: `${result.daysInCurrentYear}d en año × ${profitSharingDays}d util. / 365`, amount: result.fractionalProfitSharing },
-        { label: "Vacaciones fraccionadas", sub: `${result.daysSinceAnniversary}d / 365 × ${baseVacationDays}d vac.`, amount: result.fractionalVacations },
-        { label: "Bono vacacional fraccionado", sub: `${result.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`, amount: result.fractionalVacationBonus },
-        ...(result.terminationIndemnity > 0 ? [{ label: "Indemnización por despido", sub: "Art. 92 LOTTT — igual al monto", amount: result.terminationIndemnity, highlight: true }] : []),
-    ].filter(c => c.amount > 0);
-
-    if (result.warning) return (
-        <div className="bg-warning/5 rounded-2xl overflow-hidden border border-warning/20 shadow-sm mb-6">
-            <div className="px-6 py-4 flex items-center justify-between border-l-4 border-warning">
-                <p className="text-[14px] font-bold uppercase text-foreground">{result.employee.nombre}</p>
-                <span className="text-[12px] text-warning font-bold uppercase tracking-widest bg-warning/10 px-2 py-1 rounded">{result.warning}</span>
+    return (
+        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm p-4 flex flex-col justify-between gap-3 min-h-[104px]">
+            <div className="flex items-center justify-between">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                    {label}
+                </p>
+                <div className={`w-7 h-7 rounded-md border flex items-center justify-center ${iconWrapCls}`}>
+                    <Icon size={13} strokeWidth={2} />
+                </div>
+            </div>
+            <div>
+                {isCount ? (
+                    <p className={`font-mono text-[28px] font-black tabular-nums leading-none tracking-[-0.02em] ${valueCls}`}>
+                        {countValue}
+                    </p>
+                ) : (
+                    <>
+                        <p className={`font-mono text-[20px] font-black tabular-nums leading-none tracking-[-0.01em] ${valueCls}`}>
+                            {valueBs && valueBs > 0
+                                ? `Bs. ${formatNumber(valueBs)}`
+                                : <span className="text-[var(--text-disabled)]">—</span>}
+                        </p>
+                        {bcvRate && bcvRate > 0 && valueBs && valueBs > 0 && (
+                            <p className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)] mt-1.5">
+                                ≈ {formatUsd(valueBs / bcvRate)}
+                            </p>
+                        )}
+                    </>
+                )}
             </div>
         </div>
     );
+}
 
+// ============================================================================
+// KPI TOTAL TILE — primary highlight tile for the grand total
+// ============================================================================
+
+function KpiTotalTile({ valueBs, bcvRate }: { valueBs: number; bcvRate: number }) {
     return (
-        <div className="mb-2 bg-surface-1 rounded-[1.5rem] overflow-hidden shadow-sm shadow-black/5 border border-border-light max-w-3xl mx-auto flex flex-col">
-            <div className="px-8 py-6 border-b border-border-light bg-surface-2/30 flex items-start justify-between gap-6">
-                <div className="flex flex-row items-center gap-4">
-                    {(showLogoInPdf && companyLogoUrl) && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={companyLogoUrl} alt="Logo" className="max-h-12 w-auto object-contain shrink-0" />
-                    )}
-                    <div>
-                        <p className="text-[20px] font-black uppercase tracking-tight text-foreground leading-none">{companyName}</p>
-                        <p className="text-[11px] text-[var(--text-tertiary)] mt-2 uppercase tracking-[0.2em] font-semibold">Constancia de Liquidación Laboral</p>
-                        <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-medium">Art. 142 LOTTT — {reasonLabel}</p>
-                    </div>
-                </div>
-                <div className="text-right shrink-0">
-                    <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-0.5">Fecha de Egreso</p>
-                    <p className="text-[13px] font-bold text-foreground bg-surface-2 px-2.5 py-1 rounded inline-block border border-border-light">{formatDate(terminationDate)}</p>
-                    <p className="text-[9px] text-[var(--text-tertiary)] mt-2 uppercase">Emitido: {issuedAt}</p>
+        <div className="rounded-xl border border-primary-500/30 bg-primary-500/[0.04] shadow-sm p-4 flex flex-col justify-between gap-3 min-h-[104px] relative overflow-hidden">
+            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-primary-500/15 blur-2xl pointer-events-none" />
+            <div className="absolute -left-4 -bottom-4 w-16 h-16 rounded-full bg-primary-500/10 blur-2xl pointer-events-none" />
+            <div className="flex items-center justify-between relative">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-primary-600">
+                    Total Líquido
+                </p>
+                <div className="w-7 h-7 rounded-md bg-primary-500/15 border border-primary-500/40 flex items-center justify-center text-primary-500">
+                    <TrendingUp size={13} strokeWidth={2} />
                 </div>
             </div>
-
-            <div className="px-8 py-5 border-b border-border-light flex flex-col sm:flex-row items-center justify-between bg-surface-1">
-                <div className="flex items-center gap-4 w-full">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center border border-border-light text-[var(--text-tertiary)] group-hover:border-primary-500/50 group-hover:text-primary-500 transition-colors">
-                        <Users size={20} />
-                    </div>
-                    <div className="flex-1">
-                        <p className="text-[16px] font-bold text-foreground tracking-tight">{result.employee.nombre}</p>
-                        {result.employee.cargo && <p className="text-[11px] uppercase tracking-[0.1em] text-[var(--text-secondary)] font-medium mt-0.5">{result.employee.cargo}</p>}
-                    </div>
-                    <div className="text-right shrink-0 pl-5 md:pr-4 border-l border-border-light">
-                        <p className="text-[13px] font-bold text-foreground tabular-nums">CI {result.employee.cedula}</p>
-                        <div className="inline-flex items-center gap-1.5 mt-1 text-[11px] text-[var(--text-secondary)] font-medium bg-surface-2 px-2 py-0.5 rounded border border-border-light">
-                            <Clock size={12} className="text-[var(--text-tertiary)]" />
-                            {result.yearsOfService} año{result.yearsOfService !== 1 ? "s" : ""}
-                        </div>
-                    </div>
-                </div>
+            <div className="relative">
+                <p className="font-mono text-[24px] font-black tabular-nums leading-none tracking-[-0.02em] text-primary-600">
+                    {valueBs > 0 ? `Bs. ${formatNumber(valueBs)}` : <span className="text-primary-500/40">—</span>}
+                </p>
+                {bcvRate > 0 && valueBs > 0 && (
+                    <p className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)] mt-1.5 font-medium">
+                        ≈ {formatUsd(valueBs / bcvRate)}
+                        <span className="text-[var(--text-tertiary)] ml-1.5">· BCV {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}</span>
+                    </p>
+                )}
             </div>
+        </div>
+    );
+}
 
-            <div className="px-8 py-5 grid grid-cols-2 lg:grid-cols-4 gap-6 border-b border-border-light bg-surface-2/20">
-                {[
-                    { lbl: "Salario Mensual",  val: formatCurrency(result.salaryVES), color: "text-foreground" },
-                    { lbl: "Fecha de Ingreso", val: formatDate(result.employee.fechaIngreso ?? ""), color: "text-foreground" },
-                    { lbl: "Antigüedad",val: `${result.yearsOfService}a ${result.totalDays % 365}d`, color: "text-primary-500" },
-                    { lbl: "Salario Base/Día",  val: formatCurrency(result.salaryVES / 30), color: "text-foreground" },
-                ].map(({ lbl, val, color }) => (
-                    <div key={lbl}>
-                        <p className="text-[10px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] mb-1 font-bold">{lbl}</p>
-                        <p className={`text-[13px] font-bold tabular-nums ${color}`}>{val}</p>
+// ============================================================================
+// DISTRIBUTION STRIP — aggregate stacked bar
+// ============================================================================
+
+interface DistributionSegment {
+    key:    string;
+    label:  string;
+    amount: number;
+    bg:     string;
+}
+
+function DistributionStrip({ segments }: { segments: DistributionSegment[] }) {
+    const total = segments.reduce((s, x) => s + x.amount, 0);
+    if (total <= 0) return null;
+    const visible = segments.filter(s => s.amount > 0);
+    return (
+        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm p-4">
+            <div className="flex items-center justify-between mb-3">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)]">
+                    Distribución del egreso
+                </p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] tabular-nums">
+                    {visible.length} concepto{visible.length !== 1 ? "s" : ""}
+                </p>
+            </div>
+            <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-border-light/40 border border-border-light/60">
+                {visible.map((seg) => (
+                    <div
+                        key={seg.key}
+                        className={`${seg.bg} h-full transition-[width] duration-300 ease-out`}
+                        style={{ width: `${(seg.amount / total) * 100}%` }}
+                        title={`${seg.label} · ${((seg.amount / total) * 100).toFixed(1)}%`}
+                    />
+                ))}
+            </div>
+            <div className="mt-3.5 flex flex-wrap gap-x-5 gap-y-2">
+                {visible.map((seg) => (
+                    <div key={seg.key} className="flex items-center gap-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-sm ${seg.bg} shrink-0`} />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-secondary)] truncate font-semibold">
+                            {seg.label}
+                        </span>
+                        <span className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)]">
+                            {((seg.amount / total) * 100).toFixed(1)}%
+                        </span>
                     </div>
                 ))}
             </div>
+        </div>
+    );
+}
 
-            <div className="px-8 py-6">
-                <div className="flex justify-between pb-3 border-b border-border-light/60">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold">Concepto / Cálculo</p>
-                    <div className="flex items-center justify-end gap-12 w-48 shrink-0">
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right w-12">Días</p>
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] font-bold text-right flex-1">Monto Asignado</p>
-                    </div>
+// ============================================================================
+// LIQUIDATIONS TABLE
+// ============================================================================
+
+interface LiquidationsTableProps {
+    results:           LiquidationResult[];
+    bcvRate:           number;
+    showIndem:         boolean;
+    profitSharingDays: string;
+    vacationBonusDays: string;
+}
+
+function LiquidationsTable({ results, bcvRate, showIndem, profitSharingDays, vacationBonusDays }: LiquidationsTableProps) {
+    const cols = showIndem
+        ? "grid-cols-[minmax(180px,1.6fr)_88px_minmax(110px,0.9fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(140px,1.2fr)_28px]"
+        : "grid-cols-[minmax(180px,1.6fr)_88px_minmax(110px,0.9fr)_minmax(130px,1.1fr)_minmax(130px,1.1fr)_minmax(140px,1.2fr)_28px]";
+
+    return (
+        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
+            <div className={`grid ${cols} gap-3 px-5 py-3 bg-surface-2/40 border-b border-border-light`}>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Empleado</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Antig.</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">S.Integral</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Prestaciones</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Fracciones</p>
+                {showIndem && (
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-500 text-right">Indemniz.</p>
+                )}
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Total</p>
+                <span />
+            </div>
+            <div className="divide-y divide-border-light">
+                {results.map((result) => (
+                    <LiquidationsTableRow
+                        key={result.employee.cedula}
+                        result={result}
+                        bcvRate={bcvRate}
+                        showIndem={showIndem}
+                        cols={cols}
+                        profitSharingDays={profitSharingDays}
+                        vacationBonusDays={vacationBonusDays}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+interface LiquidationsTableRowProps {
+    result:            LiquidationResult;
+    bcvRate:           number;
+    showIndem:         boolean;
+    cols:              string;
+    profitSharingDays: string;
+    vacationBonusDays: string;
+}
+
+function LiquidationsTableRow({
+    result, bcvRate, showIndem, cols, profitSharingDays, vacationBonusDays,
+}: LiquidationsTableRowProps) {
+    const [expanded, setExpanded] = useState(false);
+    const fracciones = result.fractionalProfitSharing + result.fractionalVacations + result.fractionalVacationBonus;
+
+    if (result.warning) {
+        return (
+            <div className="px-5 py-3.5 flex items-center justify-between gap-4 bg-amber-500/[0.04]">
+                <div className="min-w-0 flex flex-col gap-0.5">
+                    <span className="font-mono text-[13px] font-bold text-foreground truncate">{result.employee.nombre}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                        CI {result.employee.cedula}
+                        {result.employee.cargo && <span className="text-[var(--text-disabled)]"> · {result.employee.cargo}</span>}
+                    </span>
                 </div>
-                
-                <div className="divide-y divide-border-light/40 pt-1">
-                    {concepts.map((c) => (
-                        <div key={c.label} className="py-3.5 flex items-start justify-between group hover:bg-surface-2/30 -mx-4 px-4 rounded-lg transition-colors">
-                            <div className="pr-4">
-                                <p className="text-[13px] font-bold text-foreground tracking-tight">{c.label}</p>
-                                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">{c.sub}</p>
-                            </div>
-                            <div className="flex items-center justify-end gap-12 w-48 shrink-0 text-right">
-                                <p className="text-[13px] font-medium tabular-nums text-[var(--text-secondary)] w-12">{c.days != null ? c.days : "—"}</p>
-                                <p className={`text-[14px] font-bold tabular-nums flex-1 ${c.highlight ? "text-error" : "text-foreground group-hover:text-primary-500 transition-colors"}`}>
-                                    Bs. {formatNumber(c.amount)}
-                                </p>
-                            </div>
-                        </div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-amber-700 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-md whitespace-nowrap">
+                    {result.warning}
+                </span>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() => setExpanded(v => !v)}
+                aria-expanded={expanded}
+                className={`w-full grid ${cols} gap-3 px-5 py-3.5 items-center text-left transition-colors duration-150 hover:bg-surface-2/40 cursor-pointer ${expanded ? "bg-surface-2/30" : ""}`}
+            >
+                {/* Empleado */}
+                <div className="min-w-0 flex flex-col gap-0.5">
+                    <span className="font-mono text-[13px] font-bold text-foreground truncate">
+                        {result.employee.nombre}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] truncate">
+                        CI {result.employee.cedula}
+                        {result.employee.cargo && <span className="text-[var(--text-disabled)]"> · {result.employee.cargo}</span>}
+                    </span>
+                </div>
+                {/* Antigüedad */}
+                <div className="text-right">
+                    <span className="inline-flex items-center font-mono text-[11px] font-bold tabular-nums text-foreground bg-surface-2 border border-border-light px-2 py-0.5 rounded-md">
+                        {result.yearsOfService}a {result.totalDays % 365}d
+                    </span>
+                </div>
+                {/* Salario integral */}
+                <div className="text-right">
+                    <p className="font-mono text-[12px] font-bold tabular-nums text-foreground leading-none">
+                        {formatCurrency(result.integratedDailySalary)}
+                    </p>
+                    <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mt-1">/ día</p>
+                </div>
+                {/* Prestaciones */}
+                <NumberCell amount={result.socialBenefits} bcvRate={bcvRate} />
+                {/* Fracciones */}
+                <NumberCell amount={fracciones} bcvRate={bcvRate} />
+                {/* Indemnización (condicional) */}
+                {showIndem && (
+                    <NumberCell amount={result.terminationIndemnity} bcvRate={bcvRate} tone="rose" />
+                )}
+                {/* Total */}
+                <NumberCell amount={result.total} bcvRate={bcvRate} bold />
+                {/* Caret */}
+                <ChevronRight
+                    size={14}
+                    className={`justify-self-end text-[var(--text-tertiary)] transition-transform duration-200 ${expanded ? "rotate-90 text-primary-500" : ""}`}
+                />
+            </button>
+            <AnimatePresence initial={false}>
+                {expanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="overflow-hidden"
+                    >
+                        <BreakdownPanel
+                            result={result}
+                            bcvRate={bcvRate}
+                            profitSharingDays={profitSharingDays}
+                            vacationBonusDays={vacationBonusDays}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// ============================================================================
+// NUMBER CELL — dual VES/USD right-aligned cell
+// ============================================================================
+
+function NumberCell({ amount, bcvRate, tone, bold }: {
+    amount:   number;
+    bcvRate:  number;
+    tone?:    "rose";
+    bold?:    boolean;
+}) {
+    const valueCls = tone === "rose" ? "text-rose-600" : "text-foreground";
+    const sizeCls  = bold ? "text-[14px] font-black" : "text-[13px] font-bold";
+    return (
+        <div className="text-right">
+            <p className={`font-mono ${sizeCls} tabular-nums leading-none ${valueCls}`}>
+                {amount > 0 ? `Bs. ${formatNumber(amount)}` : <span className="text-[var(--text-disabled)] font-medium">—</span>}
+            </p>
+            {bcvRate > 0 && amount > 0 && (
+                <p className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)] mt-1">
+                    ≈ {formatUsd(amount / bcvRate)}
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ============================================================================
+// BREAKDOWN PANEL — inline expanded detail per employee
+// ============================================================================
+
+interface BreakdownLineData {
+    icon:      IconType;
+    label:     string;
+    sublabel?: string;
+    formula:   string;
+    chip:      string;
+    amount:    number;
+    tone?:     "rose";
+}
+
+function BreakdownPanel({
+    result, bcvRate, profitSharingDays, vacationBonusDays,
+}: {
+    result:            LiquidationResult;
+    bcvRate:           number;
+    profitSharingDays: string;
+    vacationBonusDays: string;
+}) {
+    const baseDailySalary  = result.salaryVES / 30;
+    const baseVacationDays = Math.max(15, 15 + Math.max(0, result.yearsOfService - 1));
+    const fractionPercent  = result.daysSinceAnniversary > 0
+        ? (result.daysSinceAnniversary / 365) * 100
+        : 0;
+    const yearProgressPercent = result.daysInCurrentYear > 0
+        ? (result.daysInCurrentYear / 365) * 100
+        : 0;
+
+    const lines: BreakdownLineData[] = [];
+    if (result.socialBenefits > 0) {
+        lines.push({
+            icon:     Coins,
+            label:    "Prestaciones sociales",
+            sublabel: "Art. 142 LOTTT",
+            formula:  result.daysSeniorityExtra > 0
+                ? `${result.daysSeniorityQuarterly}d trim. + ${result.daysSeniorityExtra}d adic. × Bs. ${formatNumber(result.integratedDailySalary)} integral`
+                : `${result.daysSeniorityQuarterly}d × Bs. ${formatNumber(result.integratedDailySalary)} integral`,
+            chip:     `${result.daysSeniority} días`,
+            amount:   result.socialBenefits,
+        });
+    }
+    if (result.fractionalProfitSharing > 0) {
+        lines.push({
+            icon:     PieChart,
+            label:    "Utilidades fraccionadas",
+            sublabel: "Art. 131 LOTTT",
+            formula:  `${profitSharingDays} d utilidad × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${yearProgressPercent.toFixed(1)}% del año`,
+            amount:   result.fractionalProfitSharing,
+        });
+    }
+    if (result.fractionalVacations > 0) {
+        lines.push({
+            icon:     Plane,
+            label:    "Vacaciones fraccionadas",
+            sublabel: "Art. 196 LOTTT",
+            formula:  `${baseVacationDays} d vacación × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${fractionPercent.toFixed(1)}% desde aniv.`,
+            amount:   result.fractionalVacations,
+        });
+    }
+    if (result.fractionalVacationBonus > 0) {
+        lines.push({
+            icon:     Gift,
+            label:    "Bono vacacional fraccionado",
+            sublabel: "Art. 192 LOTTT",
+            formula:  `${vacationBonusDays} d bono × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${fractionPercent.toFixed(1)}% desde aniv.`,
+            amount:   result.fractionalVacationBonus,
+        });
+    }
+    if (result.terminationIndemnity > 0) {
+        lines.push({
+            icon:     ShieldAlert,
+            label:    "Indemnización por despido",
+            sublabel: "Art. 92 LOTTT",
+            formula:  "Equivalente al monto de prestaciones sociales",
+            chip:     "Despido injustificado",
+            amount:   result.terminationIndemnity,
+            tone:     "rose",
+        });
+    }
+
+    return (
+        <div className="bg-surface-2/40 border-t border-border-light px-5 py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_240px] gap-5">
+                {/* Líneas de desglose */}
+                <div className="space-y-1">
+                    {lines.length === 0 ? (
+                        <p className="font-sans text-[12px] text-[var(--text-secondary)] text-center py-6">
+                            Sin acreencias devengadas para este empleado.
+                        </p>
+                    ) : lines.map((line, i) => (
+                        <BreakdownLine key={`${result.employee.cedula}-${line.label}-${i}`} {...line} bcvRate={bcvRate} />
                     ))}
                 </div>
-
-                <div className="mt-4 p-5 rounded-2xl bg-surface-2/60 border border-border-light flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--text-tertiary)] flex items-center gap-2 mb-1">
+                {/* Card de salarios + total */}
+                <div className="lg:border-l lg:border-border-light/60 lg:pl-5">
+                    <div className="rounded-lg bg-surface-1 border border-border-light p-3.5">
+                        <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 font-bold">
                             Líquido a recibir
                         </p>
-                        <p className="text-[24px] font-black tabular-nums text-foreground leading-none">
+                        <p className="font-mono text-[20px] font-black tabular-nums leading-none tracking-[-0.01em] text-foreground">
                             Bs. {formatNumber(result.total)}
                         </p>
+                        {bcvRate > 0 && (
+                            <p className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)] mt-2 font-medium">
+                                ≈ {formatUsd(result.total / bcvRate)}
+                            </p>
+                        )}
+                        <div className="mt-3.5 pt-3 border-t border-border-light/60 space-y-1.5">
+                            <div className="flex justify-between items-baseline">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Salario mens.</span>
+                                <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">{formatCurrency(result.salaryVES)}</span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Salario base</span>
+                                <span className="font-mono text-[11px] font-semibold tabular-nums text-[var(--text-secondary)]">{formatCurrency(baseDailySalary)} /d</span>
+                            </div>
+                            <div className="flex justify-between items-baseline">
+                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Salario integral</span>
+                                <span className="font-mono text-[11px] font-bold tabular-nums text-primary-500">{formatCurrency(result.integratedDailySalary)} /d</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <div className="bg-surface-2/30 px-8 py-4 border-t border-border-light flex items-center justify-between mt-auto">
-                <p className="text-[10px] text-[var(--text-tertiary)] leading-relaxed uppercase tracking-wider font-semibold">
-                    Documento de conformidad · Original
-                </p>
-                <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                    <FileText size={14} />
-                    <span className="text-[10px] font-bold tracking-widest uppercase">ID {documentId}</span>
                 </div>
             </div>
         </div>
     );
 }
 
-// ============================================================================
-// ============================================================================
-// SHARED UI ATOMS
-// ============================================================================
-
-function SectionHeader({ label, color }: { label: string; color?: "green" | "amber" }) {
-    const cls = color === "amber" ? "text-amber-500/70"
-              : color === "green" ? "text-emerald-500/70"
-              : "text-[var(--text-tertiary)]";
-    return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
+function BreakdownLine({
+    icon: Icon, label, sublabel, formula, chip, amount, tone, bcvRate,
+}: BreakdownLineData & { bcvRate: number }) {
+    const iconCls = tone === "rose"
+        ? "bg-rose-500/10 border-rose-500/30 text-rose-600"
+        : "bg-surface-1 border-border-light text-[var(--text-secondary)]";
+    const amountCls = tone === "rose" ? "text-rose-600" : "text-foreground";
+    return (
+        <div className="grid grid-cols-[28px_1fr_auto_auto] gap-3 items-center py-2.5 px-1">
+            <div className={`w-7 h-7 rounded-md border flex items-center justify-center ${iconCls}`}>
+                <Icon size={13} strokeWidth={2} />
+            </div>
+            <div className="min-w-0">
+                <p className="font-mono text-[12px] font-bold text-foreground tracking-tight truncate">
+                    {label}
+                    {sublabel && (
+                        <span className="font-medium text-[var(--text-tertiary)] ml-2 text-[10px] uppercase tracking-[0.14em]">
+                            · {sublabel}
+                        </span>
+                    )}
+                </p>
+                <p className="font-mono text-[10.5px] text-[var(--text-tertiary)] mt-0.5 tabular-nums truncate">
+                    {formula}
+                </p>
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] font-bold text-[var(--text-secondary)] bg-surface-1 border border-border-light/80 px-2 py-0.5 rounded-md whitespace-nowrap">
+                {chip}
+            </span>
+            <div className="text-right min-w-[120px]">
+                <p className={`font-mono text-[13px] font-black tabular-nums leading-none ${amountCls}`}>
+                    Bs. {formatNumber(amount)}
+                </p>
+                {bcvRate > 0 && (
+                    <p className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)] mt-1">
+                        ≈ {formatUsd(amount / bcvRate)}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
 }
 
 // ============================================================================
@@ -312,44 +699,25 @@ export default function LiquidacionesPage() {
 
     const today = getTodayIsoDate();
 
-    const [terminationDate, setTerminationDate] = useState(today);
-    const [reason,          setReason]          = useState<LiquidationReason>("renuncia");
+    const [terminationDate,   setTerminationDate]   = useState(today);
+    const [reason,            setReason]            = useState<LiquidationReason>("renuncia");
     const [profitSharingDays, setProfitSharingDays] = useState("120");
     const [vacationBonusDays, setVacationBonusDays] = useState("15");
-    const [onlyActive, setOnlyActive] = useState(true);
-    const [selectedIdNumber, setSelectedIdNumber] = useState<string>("");
+    const [onlyActive,        setOnlyActive]        = useState(true);
+    const [selectedIdNumber,  setSelectedIdNumber]  = useState<string>("");
+
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedIdNumber),
-        [employees, selectedIdNumber]
+        [employees, selectedIdNumber],
     );
 
-    // ── BCV fetch ──────────────────────────────────────────────────────────
-    const [exchangeRate,  setExchangeRate]  = useState("79.59");
-    const [bcvLoading,     setBcvLoading]     = useState(false);
-    const [bcvFetchError,  setBcvFetchError]  = useState<string | null>(null);
+    // ── BCV via shared hook ────────────────────────────────────────────────
+    const {
+        exchangeRate, setExchangeRate,
+        bcvRate, bcvLoading, bcvFetchError, fetchBcvRate,
+    } = useCalculatorBcv();
 
-    const fetchBcvRate = useCallback(async () => {
-        setBcvLoading(true);
-        setBcvFetchError(null);
-        try {
-            const iso = getTodayIsoDate();
-            const res  = await fetch(`/api/bcv/rate?date=${iso}`);
-            const data = await res.json();
-            if (!res.ok) { setBcvFetchError(data.error ?? "No rate found"); return; }
-            setExchangeRate(String(data.price || data.rate));
-        } catch {
-            setBcvFetchError("No se pudo conectar.");
-        } finally {
-            setBcvLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchBcvRate();
-    }, [fetchBcvRate]);
-
-    const bcvRate = useMemo(() => parseFloat(exchangeRate) || 0, [exchangeRate]);
-
+    // ── Filtered batch + results ────────────────────────────────────────────
     const filteredEmployees = useMemo(() => {
         const pool = onlyActive ? employees.filter((e) => e.estado === "activo") : employees;
         if (!selectedIdNumber) return pool;
@@ -367,9 +735,46 @@ export default function LiquidacionesPage() {
     );
 
     const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
-    const totalAmount = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
+    const totalAmount  = useMemo(() => validResults.reduce((s, r) => s + r.total, 0), [validResults]);
+    const observationsCount = liquidationResults.length - validResults.length;
+    const indemnizacionTotal = useMemo(
+        () => validResults.reduce((s, r) => s + r.terminationIndemnity, 0),
+        [validResults],
+    );
+    const totalPrestaciones = useMemo(
+        () => validResults.reduce((s, r) => s + r.socialBenefits, 0),
+        [validResults],
+    );
+    const totalUtilidadesFrac = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalProfitSharing, 0),
+        [validResults],
+    );
+    const totalVacacionesFrac = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalVacations, 0),
+        [validResults],
+    );
+    const totalBonoVacFrac = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalVacationBonus, 0),
+        [validResults],
+    );
+    const totalFracciones = totalUtilidadesFrac + totalVacacionesFrac + totalBonoVacFrac;
 
+    const showIndem = reason === "despido_injustificado";
 
+    const distributionSegments = useMemo<DistributionSegment[]>(() => {
+        const segs: DistributionSegment[] = [
+            { key: "prestaciones", label: "Prestaciones",     amount: totalPrestaciones,  bg: "bg-primary-500" },
+            { key: "utilidades",   label: "Utilidades frac.", amount: totalUtilidadesFrac, bg: "bg-primary-500/70" },
+            { key: "vacaciones",   label: "Vacaciones frac.", amount: totalVacacionesFrac, bg: "bg-primary-500/40" },
+            { key: "bono",         label: "Bono vac. frac.",  amount: totalBonoVacFrac,    bg: "bg-primary-500/25" },
+        ];
+        if (showIndem && indemnizacionTotal > 0) {
+            segs.push({ key: "indemnizacion", label: "Indemnización", amount: indemnizacionTotal, bg: "bg-rose-500/70" });
+        }
+        return segs;
+    }, [totalPrestaciones, totalUtilidadesFrac, totalVacacionesFrac, totalBonoVacFrac, indemnizacionTotal, showIndem]);
+
+    // ── Export ──────────────────────────────────────────────────────────────
     const handlePdf = useCallback(() => {
         const pdfEmployees: LiquidationEmployee[] = validResults.map(r => {
             const integratedDailySalary = r.socialBenefits > 0 ? r.socialBenefits / r.daysSeniority : r.salaryVES / 30;
@@ -382,24 +787,24 @@ export default function LiquidacionesPage() {
                         ? `${r.daysSeniorityQuarterly}d trimestr. + ${r.daysSeniorityExtra}d adic.`
                         : `${r.daysSeniorityQuarterly}d × 5d/mes`,
                     salary:  integratedDailySalary,
-                    amount:   r.socialBenefits,
+                    amount:  r.socialBenefits,
                 },
                 {
                     label:   "Utilidades fraccionadas",
                     formula: `${r.daysInCurrentYear}d en año × ${profitSharingDays}d util / 365`,
-                    amount:   r.fractionalProfitSharing,
+                    amount:  r.fractionalProfitSharing,
                 },
                 {
                     label:   "Vacaciones fraccionadas",
                     formula: `${r.daysSinceAnniversary}d / 365 × ${Math.max(15, 15 + Math.max(0, r.yearsOfService - 1))}d vac.`,
                     salary:  simpleDailySalary,
-                    amount:   r.fractionalVacations,
+                    amount:  r.fractionalVacations,
                 },
                 {
                     label:   "Bono vacacional fraccionado",
                     formula: `${r.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`,
                     salary:  simpleDailySalary,
-                    amount:   r.fractionalVacationBonus,
+                    amount:  r.fractionalVacationBonus,
                 },
                 ...(r.terminationIndemnity > 0
                     ? [{ label: "Indemnización por despido (Art. 92)", days: r.daysSeniority, salary: integratedDailySalary, amount: r.terminationIndemnity, highlight: "amber" as const }]
@@ -410,7 +815,7 @@ export default function LiquidacionesPage() {
                 idNumber:        r.employee.cedula,
                 role:            r.employee.cargo,
                 hireDate:        r.employee.fechaIngreso ?? "",
-                terminationDate: terminationDate,
+                terminationDate,
                 yearsOfService:  r.yearsOfService,
                 daysOfService:   r.totalDays,
                 reason,
@@ -448,71 +853,54 @@ export default function LiquidacionesPage() {
                 {/* ══ LEFT PANEL ══════════════════════════════════════════════ */}
                 <aside className="w-full lg:w-96 shrink-0 flex flex-col border-b lg:border-b-0 lg:border-r border-border-light bg-surface-1 overflow-y-auto">
 
-                    <div className="px-5 py-4 border-b border-border-light bg-surface-2/[0.03]">
-                        <p className="font-mono text-[13px] font-black uppercase tracking-widest text-foreground leading-none flex items-center gap-2">
-                            <TrendingUp size={14} className="text-primary-500" />
-                            Calculadora
-                        </p>
+                    <CalculatorPanelHeader />
+
+                    {/* ── Motivo de Egreso ──────────────────────────────────── */}
+                    <div className="px-5 py-5 border-b border-border-light">
+                        <label className={LABEL_CLS}>Motivo de Egreso</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {(Object.keys(REASON_META) as LiquidationReason[]).map(r => {
+                                const meta   = REASON_META[r];
+                                const Icon   = meta.icon;
+                                const active = reason === r;
+                                const tone   = REASON_TONE_CLS[meta.tone];
+                                return (
+                                    <button
+                                        key={r}
+                                        type="button"
+                                        onClick={() => setReason(r)}
+                                        className={[
+                                            "group flex flex-col items-center justify-center gap-1.5 h-16 rounded-lg border font-mono text-[11px] uppercase tracking-[0.1em] transition-all duration-150",
+                                            active
+                                                ? tone.active
+                                                : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:bg-surface-2/40",
+                                        ].join(" ")}
+                                    >
+                                        <Icon size={15} className={active ? tone.activeIcon : "text-[var(--text-tertiary)] group-hover:text-foreground transition-colors"} />
+                                        <span className="font-bold">{meta.short}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-surface-2/40 border border-border-light/60">
+                            <span className={`mt-0.5 inline-block w-1.5 h-1.5 rounded-full ${REASON_TONE_CLS[REASON_META[reason].tone].dotBg} shrink-0`} />
+                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-secondary)] font-medium leading-relaxed">
+                                {REASON_META[reason].note}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="flex-1 divide-y divide-border-light">
-                        {/* ── Empleado ───────────────────────────────────────── */}
+                        {/* ── Empleados y fecha (merged Alcance + Egreso) ──── */}
                         <div className="px-5 py-4 space-y-4">
-                            <SectionHeader label="Alcance" />
-                            <div className="relative">
-                                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                <select
-                                    value={selectedIdNumber}
-                                    onChange={(e) => setSelectedIdNumber(e.target.value)}
-                                    className={fieldCls + " pl-9"}
-                                >
-                                    <option value="">Lote por defecto (Todos)</option>
-                                    <optgroup label="Empleados">
-                                        {employees
-                                            .filter(e => !onlyActive || e.estado === "activo")
-                                            .sort((a,b) => a.nombre.localeCompare(b.nombre))
-                                            .map(e => (
-                                                <option key={e.cedula} value={e.cedula}>
-                                                    {e.nombre} ({e.cedula})
-                                                </option>
-                                            ))
-                                        }
-                                    </optgroup>
-                                </select>
-                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                            </div>
-
-                            {selectedEmp && (
-                                <div className="p-3.5 rounded-xl border border-border-light bg-surface-2/[0.03] space-y-2.5 relative overflow-hidden">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500/40" />
-                                    {[
-                                        { k: "Cédula", v: selectedEmp.cedula, icon: <Info size={12} /> },
-                                        { k: "Cargo", v: selectedEmp.cargo || "—", icon: <ClipboardCheck size={12} /> },
-                                        { k: "Ingreso", v: selectedEmp.fechaIngreso ?? "—", icon: <Calendar size={12} /> },
-                                    ].map(({ k, v, icon }) => (
-                                        <div key={k} className="flex justify-between items-center font-mono text-[11px]">
-                                            <div className="flex items-center gap-2 text-[var(--text-tertiary)]">
-                                                {icon}
-                                                <span className="uppercase tracking-wider">{k}</span>
-                                            </div>
-                                            <span className="text-foreground font-bold tabular-nums">{v}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <label className="flex items-center gap-3 cursor-pointer group py-1">
-                                <div onClick={(e) => { e.preventDefault(); setOnlyActive(v => !v); }}
-                                    className={["w-8 h-4.5 rounded-full transition-all duration-200 flex items-center px-0.5 cursor-pointer ring-offset-background group-hover:ring-2 ring-primary-500/10", onlyActive ? "bg-primary-500" : "bg-border-medium"].join(" ")}>
-                                    <div className={["w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-200", onlyActive ? "translate-x-3.5" : "translate-x-0"].join(" ")} />
-                                </div>
-                                <span className="font-mono text-[11px] text-[var(--text-secondary)] uppercase tracking-[0.14em] font-medium group-hover:text-foreground">Solo activos</span>
-                            </label>
-                        </div>
-
-                        {/* ── Parámetros de Egreso ────────────────────────────── */}
-                        <div className="px-5 py-5 space-y-4">
-                            <SectionHeader label="Egreso" />
+                            <SectionHeader label="Empleados y fecha" />
+                            <EmployeeSelect
+                                employees={employees}
+                                selectedCedula={selectedIdNumber}
+                                onChange={setSelectedIdNumber}
+                                onlyActive={onlyActive}
+                            />
+                            {selectedEmp && <EmployeeInfoCard employee={selectedEmp} />}
                             <BaseInput.Field
                                 label="Fecha de egreso"
                                 type="date"
@@ -521,176 +909,154 @@ export default function LiquidacionesPage() {
                                 onValueChange={setTerminationDate}
                                 startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
                             />
-
-                            <div>
-                                <label className={labelCls}>Motivo de Egreso</label>
-                                <div className="relative">
-                                    <ClipboardCheck size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                    <select 
-                                        value={reason} 
-                                        onChange={e => setReason(e.target.value as LiquidationReason)} 
-                                        className={fieldCls + " pl-9"}
-                                    >
-                                        <option value="renuncia">Renuncia voluntaria</option>
-                                        <option value="despido_justificado">Despido justificado</option>
-                                        <option value="despido_injustificado">Despido injustificado</option>
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
-                                </div>
-                            </div>
+                            <OnlyActiveToggle checked={onlyActive} onChange={setOnlyActive} />
                         </div>
 
-                        {/* ── Parámetros de Cálculo ──────────────────────────── */}
+                        {/* ── Parámetros LOTTT ─────────────────────────────── */}
                         <div className="px-5 py-5 space-y-4">
-                            <SectionHeader label="Parámetros de Cálculo" />
+                            <SectionHeader label="Parámetros LOTTT" />
                             <div className="grid grid-cols-2 gap-3">
                                 <BaseInput.Field
-                                    label="Días util."
+                                    label="Días utilidad"
                                     type="number"
                                     min={15}
                                     step={1}
                                     value={profitSharingDays}
                                     onValueChange={setProfitSharingDays}
-                                    startContent={<ClipboardCheck size={13} className="text-[var(--text-tertiary)]" />}
+                                    suffix="d"
                                     inputClassName="text-right"
                                 />
                                 <BaseInput.Field
-                                    label="Bono vac."
+                                    label="Días bono vac."
                                     type="number"
                                     min={15}
                                     step={1}
                                     value={vacationBonusDays}
                                     onValueChange={setVacationBonusDays}
-                                    startContent={<TrendingUp size={13} className="text-[var(--text-tertiary)]" />}
+                                    suffix="d"
                                     inputClassName="text-right"
                                 />
                             </div>
+                            <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                                Las utilidades y el bono vacacional se fraccionan proporcional al tiempo trabajado en el año en curso. Mínimos legales: <span className="font-mono font-semibold text-foreground">30d</span> utilidad / <span className="font-mono font-semibold text-foreground">15d</span> bono. Art. 131 / 192 / 196 LOTTT.
+                            </p>
                         </div>
 
-                        {/* ── Tasa BCV ────────────────────────────────────────── */}
+                        {/* ── Tasa BCV ──────────────────────────────────────── */}
                         <div className="px-5 py-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <SectionHeader label="Tasa BCV" />
-                                <button 
-                                    onClick={fetchBcvRate}
-                                    disabled={bcvLoading}
-                                    className="p-1 hover:bg-surface-2 rounded-md transition-colors text-[var(--text-tertiary)] hover:text-primary-500 disabled:opacity-40"
-                                    title="Actualizar tasa"
-                                >
-                                    <RefreshCw size={12} className={bcvLoading ? "animate-spin" : ""} />
-                                </button>
-                            </div>
-                            <BaseInput.Field
-                                type="number"
-                                step={0.01}
+                            <BcvRateField
                                 value={exchangeRate}
-                                onValueChange={setExchangeRate}
-                                prefix="Bs."
-                                inputClassName="text-right"
+                                onChange={setExchangeRate}
+                                onRefresh={fetchBcvRate}
+                                loading={bcvLoading}
+                                error={bcvFetchError}
                             />
                         </div>
                     </div>
 
-
-                    {/* Totals + export */}
-                    <div className="p-5 border-t border-border-light space-y-4 mt-auto bg-surface-2/[0.03]">
+                    {/* ── Footer ────────────────────────────────────────────── */}
+                    <CalculatorFooter
+                        ctaLabel="Generar PDF"
+                        disabled={validResults.length === 0}
+                        onCta={handlePdf}
+                    >
                         {validResults.length > 0 && (
-                            <div className="space-y-2 mb-4 bg-surface-2/40 rounded-xl p-4 border border-border-light/50">
-                                <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
-                                    <span className="text-[var(--text-tertiary)]">Empleados</span>
-                                    <span className="text-foreground font-bold">{validResults.length}</span>
-                                </div>
-                                
-                                {liquidationResults.length - validResults.length > 0 && (
-                                    <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider">
-                                        <span className="text-[var(--text-tertiary)]">Observaciones</span>
-                                        <span className="text-amber-500 font-bold">{liquidationResults.length - validResults.length}</span>
-                                    </div>
+                            <>
+                                <FooterStat label="Empleados" value={String(validResults.length)} />
+                                {observationsCount > 0 && (
+                                    <FooterStat label="Observaciones" value={String(observationsCount)} tone="amber" />
                                 )}
-
-                                {reason === "despido_injustificado" && (
-                                    <div className="flex justify-between font-mono text-[11px] uppercase tracking-wider pt-1 border-t border-border-light/30">
-                                        <span className="text-[var(--text-tertiary)]">Indemnización</span>
-                                        <span className="text-red-500/70 font-bold">{formatCurrency(validResults.reduce((s, r) => s + r.terminationIndemnity, 0))}</span>
-                                    </div>
-                                )}
-
-                                <div className="flex justify-between items-baseline pt-2 border-t border-border-light/30">
-                                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">Total Gral.</span>
-                                    <span className="font-mono text-[15px] font-black text-primary-500 tabular-nums">{formatCurrency(totalAmount)}</span>
-                                </div>
-                            </div>
+                                <FooterTotal label="Total Gral." valueBs={totalAmount} bcvRate={bcvRate} />
+                            </>
                         )}
-
-                        <BaseButton.Root
-                            variant="primary"
-                            className="w-full"
-                            onClick={handlePdf}
-                            disabled={validResults.length === 0}
-                            leftIcon={<Download size={14} />}
-                        >
-                            Generar PDF
-                        </BaseButton.Root>
-                    </div>
+                    </CalculatorFooter>
                 </aside>
 
-                {/* ══ RIGHT PANEL ═════════════════════════════════════════════ */}
-                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-surface-2 lg:bg-surface-2/50 relative">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
-                    <div className="relative z-10 w-full h-full">
+                {/* ══ RIGHT PANEL — DASHBOARD ══════════════════════════════════ */}
+                <main className="flex-1 overflow-y-auto bg-surface-2 p-6 lg:p-8">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-4 text-[var(--text-tertiary)]">
-                            <RefreshCw size={24} className="animate-spin text-primary-500/50" />
-                            <span className="text-[13px] font-bold uppercase tracking-widest">Cargando datos…</span>
-                        </div>
+                        <CalculatorLoading />
                     ) : error ? (
                         <div className="flex flex-col items-center justify-center h-full gap-3 text-error">
                             <AlertCircle size={32} />
-                            <span className="text-[13px] font-bold uppercase tracking-widest">{error}</span>
+                            <span className="font-mono text-[13px] font-bold uppercase tracking-widest">{error}</span>
                         </div>
                     ) : liquidationResults.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-5 text-[var(--text-disabled)] max-w-sm mx-auto animate-in fade-in duration-500">
-                            <div className="w-20 h-20 rounded-[1.5rem] bg-surface-1 border border-border-light flex items-center justify-center shadow-sm text-border-medium">
-                                <Users strokeWidth={1.5} size={32} />
-                            </div>
-                            <div className="text-center space-y-2">
-                                <p className="text-[14px] font-bold uppercase tracking-widest text-foreground">Sistema Listo</p>
-                                <p className="text-[13px] font-medium text-[var(--text-secondary)] leading-relaxed">
-                                    Selecciona un empleado de la lista y ajusta los parámetros de cálculo para previsualizar la constancia de liquidación laboral.
-                                </p>
-                            </div>
-                        </div>
+                        <CalculatorEmptyState
+                            description={
+                                <>
+                                    Selecciona un empleado y ajusta los parámetros para calcular liquidaciones por{" "}
+                                    <strong className="text-foreground">{REASON_META[reason].label.toLowerCase()}</strong>.
+                                </>
+                            }
+                        />
                     ) : (
-                        <div className="max-w-4xl mx-auto space-y-10 pb-12">
-                            {liquidationResults.map((result, i) => (
-                                <motion.div
-                                    key={result.employee.cedula}
-                                    initial={{ opacity: 0, scale: 0.98, y: 15 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    transition={{ delay: i * 0.05, ease: "easeOut" }}
-                                >
-                                    <LiquidationConstancy
-                                        result={result}
-                                        companyName={company?.name ?? "La Empresa"}
-                                        companyLogoUrl={company?.logoUrl}
-                                        showLogoInPdf={company?.showLogoInPdf}
-                                        terminationDate={terminationDate}
-                                        reason={reason}
-                                        profitSharingDays={profitSharingDays}
-                                        vacationBonusDays={vacationBonusDays}
+                        <div className="max-w-7xl mx-auto space-y-5">
+                            {/* ── KPI strip ──────────────────────────────── */}
+                            <motion.div
+                                initial={{ y: 8, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
+                                className={`grid gap-3 grid-cols-2 ${showIndem ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+                            >
+                                <KpiTile
+                                    label="Empleados"
+                                    icon={Users}
+                                    countValue={validResults.length}
+                                />
+                                <KpiTile
+                                    label="Prestaciones"
+                                    icon={Wallet}
+                                    valueBs={totalPrestaciones}
+                                    bcvRate={bcvRate}
+                                />
+                                <KpiTile
+                                    label="Fracciones"
+                                    icon={Receipt}
+                                    valueBs={totalFracciones}
+                                    bcvRate={bcvRate}
+                                />
+                                {showIndem && (
+                                    <KpiTile
+                                        label="Indemnización"
+                                        icon={ShieldAlert}
+                                        valueBs={indemnizacionTotal}
+                                        bcvRate={bcvRate}
+                                        tone="rose"
                                     />
+                                )}
+                                <KpiTotalTile valueBs={totalAmount} bcvRate={bcvRate} />
+                            </motion.div>
+
+                            {/* ── Distribution band ──────────────────────── */}
+                            {totalAmount > 0 && (
+                                <motion.div
+                                    initial={{ y: 8, opacity: 0 }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    transition={{ duration: 0.3, delay: 0.05, ease: "easeOut" }}
+                                >
+                                    <DistributionStrip segments={distributionSegments} />
                                 </motion.div>
-                            ))}
+                            )}
+
+                            {/* ── Tabla de empleados ─────────────────────── */}
+                            <motion.div
+                                initial={{ y: 8, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
+                            >
+                                <LiquidationsTable
+                                    results={liquidationResults}
+                                    bcvRate={bcvRate}
+                                    showIndem={showIndem}
+                                    profitSharingDays={profitSharingDays}
+                                    vacationBonusDays={vacationBonusDays}
+                                />
+                            </motion.div>
                         </div>
                     )}
-                    </div>
                 </main>
             </div>
         </div>
     );
-}
-function makeDocumentId(seed: string): string {
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-    return Math.abs(hash).toString(36).slice(0, 4).toUpperCase().padStart(4, "0");
 }
