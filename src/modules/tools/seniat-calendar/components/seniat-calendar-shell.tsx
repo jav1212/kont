@@ -108,10 +108,12 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                          * Top row — RIF input / company selector / type toggle / year
                          *
                          * Layout strategy (avoids min-w collisions):
-                         *   - Mobile (<md):  stack vertically, each row wraps naturally
-                         *   - md+:           flex-row with flex-wrap
+                         *   - Mobile (<sm): stack vertically, items-start so inline-flex pills
+                         *                   (TaxpayerTypeToggle, YearSelector) don't get stretched
+                         *                   to full width by the default align-items:stretch
+                         *   - sm+:          flex-row with flex-wrap
                          */}
-                        <div className="px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
+                        <div className="px-4 sm:px-5 py-4 flex flex-col items-start sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
                             {!isEmbed && (
                                 <>
                                     <RifInput
@@ -147,9 +149,14 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                             />
                         </div>
 
-                        {/* Bottom strip: filters + view + actions */}
-                        <div className="border-t border-border-light bg-surface-2/60 rounded-b-2xl px-4 sm:px-5 py-3 flex items-center justify-between gap-4 min-w-0 flex-wrap">
-                            <div className="flex-1 min-w-0">
+                        {/* Bottom strip: filters + view + actions
+                         *
+                         * On mobile we stack vertically so the chip area gets the full row width
+                         * (otherwise flex-1 share with the wide action cluster squeezes chips
+                         * into a one-per-line column with the actions floating beside them).
+                         */}
+                        <div className="border-t border-border-light bg-surface-2/60 rounded-b-2xl px-4 sm:px-5 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:flex-wrap min-w-0">
+                            <div className="w-full sm:flex-1 sm:min-w-0">
                                 <FilterChips
                                     activeCategories={filters.categories}
                                     onChange={(cats) => setFilters({ categories: cats })}
@@ -157,7 +164,7 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                             </div>
 
                             {/* Actions cluster — wraps on very narrow screens */}
-                            <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                            <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">
                                 <ViewToggle value={view} onChange={setView} />
                                 <ExportActions
                                     entries={entries}

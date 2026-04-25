@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import type { Company, TaxpayerType } from "@/src/modules/companies/backend/domain/company";
 import { validateRif } from "../utils/rif";
@@ -56,40 +56,28 @@ export function useCompaniesLite(): State {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Track whether the current effect is still relevant
-    const isMounted = useRef(true);
-
     useEffect(() => {
-        isMounted.current = true;
-        return () => { isMounted.current = false; };
-    }, []);
-
-    useEffect(() => {
-        // Wait for auth to settle
         if (authLoading) return;
 
         if (!isAuthenticated || !user) {
-            // Schedule the state update asynchronously to avoid the synchronous-setState-in-effect warning
-            const timer = setTimeout(() => {
-                if (isMounted.current) {
-                    setCompanies([]);
-                    setLoading(false);
-                    setError(null);
-                }
-            }, 0);
-            return () => clearTimeout(timer);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- non-cascading reset; deferring it (e.g. via setTimeout) creates a microtask/macrotask race with cached fetch resolution that pins the loading skeleton permanently
+            setCompanies([]);
+            setLoading(false);
+            setError(null);
+            return;
         }
 
-        // Authenticated — fetch companies
-        const timer = setTimeout(() => {
-            if (!isMounted.current) return;
-            setLoading(true);
-            setError(null);
-        }, 0);
+        // Must be set synchronously: a deferred setLoading(true) (e.g. via
+        // setTimeout(0)) loses the microtask/macrotask race against cached-fetch
+        // .then resolution and pins the loading skeleton permanently.
+        setLoading(true);
+        setError(null);
+
+        let cancelled = false;
 
         fetchCompanies(user.id)
             .then((raw) => {
-                if (!isMounted.current) return;
+                if (cancelled) return;
                 const lite: CompanyLite[] = raw.map((c) => {
                     // Legacy companies store the RIF as the id instead of in the rif column
                     const effectiveRif = c.rif ?? (validateRif(c.id) ? c.id : undefined);
@@ -107,13 +95,13 @@ export function useCompaniesLite(): State {
                 setError(null);
             })
             .catch((err) => {
-                if (!isMounted.current) return;
+                if (cancelled) return;
                 setCompanies([]);
                 setLoading(false);
                 setError(err instanceof Error ? err.message : "Error al cargar empresas");
             });
 
-        return () => clearTimeout(timer);
+        return () => { cancelled = true; };
     }, [isAuthenticated, authLoading, user]);
 
     return { companies, loading, error };
