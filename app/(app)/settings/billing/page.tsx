@@ -20,6 +20,7 @@ import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAvailableCredit } from "@/src/modules/referrals/frontend/hooks/use-referrals";
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 
 // ============================================================================
 // TYPES
@@ -253,46 +254,44 @@ export default function BillingPage() {
     const currentPlanId = tenant?.plan?.id;
 
     return (
-        <div className="max-w-6xl space-y-10 w-full selection:bg-primary-500/30 font-mono">
-            <div className="flex items-center justify-between border-b border-border-light/50 pb-4">
-                <div>
-                     <h2 className="font-mono text-xs font-semibold text-foreground/70 uppercase tracking-[0.14em]">Suscripción y Pagos</h2>
-                     <p className="font-mono text-[11px] text-foreground/40 mt-1">Gestiona tu plan activo y pagos.</p>
-                </div>
-            </div>
-
-            {/* Success banner */}
+        <div className="space-y-6 w-full selection:bg-primary-500/30 font-mono">
             {submitOk && (
-                <div className="px-4 py-3 border rounded-xl badge-success">
-                    <p className="font-mono text-[11px] text-text-success">
+                <div className="flex items-center gap-2 px-4 py-3 border rounded-lg badge-success">
+                    <CheckCircle2 size={14} />
+                    <p className="font-sans text-[12px] text-text-success">
                         Solicitud enviada. Un administrador la revisará pronto.
                     </p>
                 </div>
             )}
 
             {dataError && (
-                <div className="px-4 py-3 border rounded-xl badge-error flex items-center justify-between gap-3">
-                    <p className="font-mono text-[11px] text-text-error">{dataError}</p>
-                    <button onClick={loadAll} className="text-[11px] font-bold text-text-error underline underline-offset-2 hover:no-underline shrink-0">
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border rounded-lg badge-error">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle size={14} />
+                        <p className="font-sans text-[12px] text-text-error">{dataError}</p>
+                    </div>
+                    <button onClick={loadAll} className="font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-text-error underline underline-offset-2 hover:no-underline shrink-0">
                         Reintentar
                     </button>
                 </div>
             )}
 
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3 border border-dashed border-border-light rounded-2xl bg-surface-1/50">
-                    <Spinner />
-                    <span className="text-[12px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">Cargando facturación…</span>
-                </div>
+                <SettingsSection title="Facturación" subtitle="Cargando…">
+                    <div className="flex flex-col items-center justify-center h-40 gap-3">
+                        <Spinner />
+                        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                            Cargando facturación…
+                        </span>
+                    </div>
+                </SettingsSection>
             ) : (
                 <>
                     {/* ── Plan comparison grid ─────────────────────────────── */}
-                    <div className="flex flex-col gap-4">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
-                            <span className="w-1 h-3 rounded-full bg-primary-500/50" />
-                            Planes Disponibles
-                        </h2>
-
+                    <SettingsSection
+                        title="Planes disponibles"
+                        subtitle="Compara los planes y solicita el que mejor se ajuste a tu operación."
+                    >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                             {plans.map((plan, index) => {
                                 const isCurrent  = plan.id === currentPlanId;
@@ -301,25 +300,25 @@ export default function BillingPage() {
 
                                 return (
                                     <motion.div
-                                                        key={plan.id}
+                                        key={plan.id}
                                         initial={{ opacity: 0, y: 12 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.06 }}
                                         className={[
-                                            "relative rounded-2xl border flex flex-col overflow-hidden transition-all duration-200",
+                                            "relative rounded-xl border flex flex-col overflow-hidden transition-colors duration-150",
                                             isFeatured
-                                                ? "border-primary-500/40 bg-primary-500/5 shadow-lg shadow-primary-500/10"
+                                                ? "border-primary-500/40 bg-primary-500/[0.04] shadow-md shadow-primary-500/10"
                                                 : "border-border-light bg-surface-1",
                                             isCurrent && "ring-2 ring-primary-500/30",
                                         ].filter(Boolean).join(" ")}
                                     >
-                                                        {/* Only one banner at a time — current takes priority over featured */}
+                                        {/* Only one banner at a time — current takes priority over featured */}
                                         {isCurrent ? (
-                                            <div className="bg-primary-500/10 border-b border-primary-500/20 text-primary-500 text-[9px] font-bold uppercase tracking-[0.15em] text-center py-1.5">
-                                                Plan Actual
+                                            <div className="bg-primary-500/10 border-b border-primary-500/20 text-primary-500 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-center py-1.5">
+                                                Plan actual
                                             </div>
                                         ) : isFeatured ? (
-                                            <div className="bg-primary-500 text-white text-[9px] font-bold uppercase tracking-[0.15em] text-center py-1.5">
+                                            <div className="bg-primary-500 text-white font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-center py-1.5">
                                                 Popular
                                             </div>
                                         ) : null}
@@ -327,15 +326,15 @@ export default function BillingPage() {
                                         <div className="px-4 pt-5 pb-4 flex flex-col gap-4 flex-1">
                                             {/* Name + price */}
                                             <div>
-                                                <p className="text-[13px] font-bold text-foreground">{plan.name}</p>
+                                                <p className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">{plan.name}</p>
                                                 {plan.isContactOnly ? (
-                                                    <p className="text-[11px] text-[var(--text-tertiary)] mt-1 font-medium">Precio personalizado</p>
+                                                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">Precio personalizado</p>
                                                 ) : plan.priceMonthlyUsd === 0 ? (
-                                                    <p className="text-[22px] font-bold text-foreground tabular-nums mt-1">Gratis</p>
+                                                    <p className="font-mono text-[22px] font-bold text-foreground tabular-nums mt-1">Gratis</p>
                                                 ) : (
-                                                    <div className="mt-1">
-                                                        <span className="text-[22px] font-bold text-foreground tabular-nums">${plan.priceMonthlyUsd}</span>
-                                                        <span className="text-[10px] text-[var(--text-tertiary)] ml-1">USD/mes</span>
+                                                    <div className="mt-1 flex items-baseline">
+                                                        <span className="font-mono text-[22px] font-bold text-foreground tabular-nums">${plan.priceMonthlyUsd}</span>
+                                                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] ml-1.5">USD/mes</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -346,7 +345,7 @@ export default function BillingPage() {
                                                     const val = features[feat.key];
                                                     const isIncluded = val === true || typeof val === "string";
                                                     return (
-                                                        <li key={feat.key} className="flex items-center gap-2 text-[11px]">
+                                                        <li key={feat.key} className="flex items-center gap-2 font-sans text-[12px]">
                                                             {typeof val === "string" ? (
                                                                 <span className="w-3.5 h-3.5 flex items-center justify-center text-primary-500 flex-shrink-0">
                                                                     <Building2 size={12} />
@@ -403,107 +402,110 @@ export default function BillingPage() {
                                 );
                             })}
                         </div>
-                    </div>
+                    </SettingsSection>
 
                     {/* ── Current plan card ────────────────────────────────── */}
-                    <div className="flex flex-col gap-4">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
-                            <span className="w-1 h-3 rounded-full bg-primary-500/50" />
-                            Plan Actual
-                        </h2>
-
+                    <SettingsSection
+                        title="Plan actual"
+                        subtitle="Resumen del plan activo, ciclo de pago y capacidad consumida en tu tenant."
+                        flush
+                    >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="border border-border-light rounded-2xl bg-surface-1 overflow-hidden shadow-sm shadow-black/5 divide-y divide-border-light/60"
+                            className="divide-y divide-border-light/60"
                         >
                             {/* Plan info */}
-                            <div className="px-6 py-6 flex items-start justify-between gap-4">
+                            <div className="px-6 py-5 flex items-start justify-between gap-4">
                                 <div className="flex gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-500 border border-primary-500/20">
-                                        <CreditCard size={24} />
+                                    <div className="w-11 h-11 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-500 border border-primary-500/20 shrink-0">
+                                        <CreditCard size={20} />
                                     </div>
                                     <div>
-                                        <p className="text-[14px] font-bold text-foreground">
+                                        <p className="font-mono text-[14px] font-bold uppercase tracking-[0.1em] text-foreground">
                                             {tenant?.plan?.name ?? "Sin plan activo"}
                                         </p>
-                                        <p className="text-[12px] text-[var(--text-tertiary)] mt-1 font-medium capitalize flex items-center gap-1.5">
+                                        <p className="font-mono text-[12px] text-[var(--text-tertiary)] mt-1 flex items-center gap-1.5">
                                             <Calendar size={12} />
-                                            {CYCLE_LABEL[tenant?.billingCycle ?? ""] ?? "Pago bajo demanda"}
-                                            {tenant?.plan && tenant.plan.priceMonthlyUsd > 0 && ` · $${tenant.plan.priceMonthlyUsd} USD / mes`}
+                                            <span>{CYCLE_LABEL[tenant?.billingCycle ?? ""] ?? "Pago bajo demanda"}</span>
+                                            {tenant?.plan && tenant.plan.priceMonthlyUsd > 0 && (
+                                                <span className="text-[var(--text-tertiary)]">
+                                                    · ${tenant.plan.priceMonthlyUsd} USD/mes
+                                                </span>
+                                            )}
                                         </p>
                                     </div>
                                 </div>
                                 {tenant?.status && (
                                     <span className={[
-                                        "h-6 px-3 rounded-full border text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-1.5",
+                                        "h-6 px-2.5 rounded-md border font-mono text-[10px] font-bold uppercase tracking-[0.1em] flex items-center gap-1.5 shrink-0",
                                         STATUS_CLS[tenant.status] ?? "",
                                     ].join(" ")}>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
                                         {STATUS_LABEL[tenant.status] ?? tenant.status}
                                     </span>
                                 )}
                             </div>
 
                             {/* Period */}
-                            <div className="px-6 py-5 bg-surface-2/30 grid grid-cols-2 gap-8 items-center border-t border-border-light">
+                            <div className="px-6 py-4 bg-surface-2/30 grid grid-cols-2 gap-8 items-center border-t border-border-light">
                                 <div className="flex items-center gap-3">
-                                    <div className="text-[var(--text-tertiary)]"><Clock size={16} /></div>
+                                    <div className="text-[var(--text-tertiary)]"><Clock size={14} /></div>
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-tertiary)] font-bold">Vence en</p>
-                                        <p className="text-[13px] font-bold text-foreground tabular-nums">{formatDate(tenant?.currentPeriodEnd)}</p>
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold">Vence en</p>
+                                        <p className="font-mono text-[13px] font-bold text-foreground tabular-nums mt-0.5">{formatDate(tenant?.currentPeriodEnd)}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <div className="text-[var(--text-tertiary)]"><Receipt size={16} /></div>
+                                    <div className="text-[var(--text-tertiary)]"><Receipt size={14} /></div>
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-[0.1em] text-[var(--text-tertiary)] font-bold">Último Pago</p>
-                                        <p className="text-[13px] font-bold text-foreground tabular-nums">{formatDate(tenant?.lastPaymentAt)}</p>
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold">Último pago</p>
+                                        <p className="font-mono text-[13px] font-bold text-foreground tabular-nums mt-0.5">{formatDate(tenant?.lastPaymentAt)}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Capacity meters */}
                             {capacity && (
-                                <div className="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                    <div className="space-y-3">
+                                <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                    <div className="space-y-2.5">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)] flex items-center gap-2">
+                                            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)] flex items-center gap-2">
                                                 <Building2 size={13} /> Empresas
                                             </p>
-                                            <p className="text-[12px] font-bold text-foreground tabular-nums">
+                                            <p className="font-mono text-[12px] font-bold text-foreground tabular-nums">
                                                 {capacity.companies.used} / {capacity.companies.max ?? "∞"}
                                             </p>
                                         </div>
                                         {capacity.companies.max !== null && (
-                                            <div className="h-2 rounded-full bg-surface-2 overflow-hidden border border-border-light/50">
+                                            <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden border border-border-light/50">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${Math.min(100, (capacity.companies.used / (capacity.companies.max || 1)) * 100)}%` }}
                                                     transition={{ duration: 1, ease: "easeOut" }}
-                                                    className="h-full rounded-full bg-gradient-to-r from-primary-500/80 to-primary-500 shadow-[0_0_8px_rgba(var(--primary-500-rgb),0.3)]"
+                                                    className="h-full rounded-full bg-primary-500"
                                                 />
                                             </div>
                                         )}
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="space-y-2.5">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)] flex items-center gap-2">
+                                            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)] flex items-center gap-2">
                                                 <Users size={13} /> Empleados por empresa
                                             </p>
-                                            <p className="text-[12px] font-bold text-foreground tabular-nums">
+                                            <p className="font-mono text-[12px] font-bold text-foreground tabular-nums">
                                                 {capacity.employeesPerCompany.max ?? "Ilimitados"}
                                             </p>
                                         </div>
-                                        <div className="flex items-center gap-2 text-[12px] text-[var(--text-tertiary)] font-medium bg-surface-2/50 px-3 py-1.5 rounded-lg border border-border-light/50 w-fit">
-                                            <CheckCircle2 size={14} className="text-primary-500" />
+                                        <div className="inline-flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-tertiary)] bg-surface-2/60 px-2.5 py-1 rounded-md border border-border-light/60 w-fit">
+                                            <CheckCircle2 size={12} className="text-primary-500" />
                                             Límite de suscripción activo
                                         </div>
                                     </div>
                                 </div>
                             )}
                         </motion.div>
-                    </div>
+                    </SettingsSection>
 
                     {/* ── Payment form ─────────────────────────────────────── */}
                     <AnimatePresence>
@@ -513,10 +515,10 @@ export default function BillingPage() {
                                 initial={{ opacity: 0, scale: 0.98 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.98 }}
-                                className="border-2 border-primary-500/20 rounded-2xl bg-surface-1 overflow-hidden shadow-xl shadow-primary-500/5 divide-y divide-border-light/60"
+                                className="border-2 border-primary-500/30 rounded-xl bg-surface-1 overflow-hidden shadow-md shadow-primary-500/10 divide-y divide-border-light/60"
                             >
                                 <div className="px-6 py-4 flex items-center justify-between bg-primary-500/5">
-                                    <h2 className="text-[13px] font-bold uppercase tracking-[0.15em] text-foreground">
+                                    <h2 className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-foreground">
                                         Solicitud — {selectedPlan?.name ?? "Plan"}
                                     </h2>
                                     <BaseButton.Icon
@@ -640,78 +642,75 @@ export default function BillingPage() {
                     </AnimatePresence>
 
                     {/* ── Payment history ───────────────────────────────────── */}
-                    <div className="flex flex-col gap-4">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
-                            <span className="w-1 h-3 rounded-full bg-primary-500/50" />
-                            Historial de Pagos
-                        </h2>
-
+                    <SettingsSection
+                        title="Historial de pagos"
+                        subtitle="Solicitudes de pago enviadas y su estado de aprobación."
+                        flush
+                    >
                         {history.length === 0 ? (
-                            <div className="border border-dashed border-border-light rounded-2xl px-4 py-12 text-center bg-surface-1/50">
-                                <p className="text-[12px] font-bold uppercase tracking-widest text-[var(--text-disabled)] mb-1">
+                            <div className="px-4 py-12 text-center">
+                                <p className="font-mono text-[12px] font-bold uppercase tracking-[0.16em] text-[var(--text-disabled)] mb-1">
                                     Sin solicitudes de pago
                                 </p>
-                                <p className="text-[11px] text-[var(--text-tertiary)]">
+                                <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
                                     Tus futuras solicitudes de suscripción aparecerán aquí.
                                 </p>
                             </div>
                         ) : (
-                            <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm shadow-black/5">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="bg-surface-2/30 border-b border-border-light font-bold">
-                                                {["Fecha", "Plan", "Ciclo", "Monto", "Método", "Estado"].map((h) => (
-                                                    <th key={h} className="px-6 py-4 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-                                                        {h}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border-light/60">
-                                            {history.map((req) => {
-                                                const plan = plans.find((p) => p.id === req.plan_id);
-                                                return (
-                                                    <tr key={req.id} className="hover:bg-foreground/[0.02] transition-colors group">
-                                                        <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)] tabular-nums">
-                                                            {formatDate(req.submitted_at)}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-[13px] font-bold text-foreground">
-                                                                {plan?.name ?? req.plan_id}
-                                                            </div>
-                                                            {req.admin_note && (
-                                                                <p className="text-[10px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1 group-hover:line-clamp-none max-w-[180px]" title={req.admin_note}>
-                                                                    Nota: {req.admin_note}
-                                                                </p>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)]">
-                                                            {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-[13px] font-bold text-foreground tabular-nums">
-                                                            ${req.amount_usd}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-[13px] text-[var(--text-secondary)] capitalize">
-                                                            {req.payment_method}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={[
-                                                                "h-6 px-3 rounded-full border text-[10px] font-bold uppercase tracking-[0.1em] inline-flex items-center",
-                                                                STATUS_CLS[req.status] ?? "",
-                                                            ].join(" ")}>
-                                                                {STATUS_LABEL[req.status] ?? req.status}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-surface-2/30 border-b border-border-light">
+                                            {["Fecha", "Plan", "Ciclo", "Monto", "Método", "Estado"].map((h) => (
+                                                <th key={h} className="px-5 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                                    {h}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border-light/60">
+                                        {history.map((req) => {
+                                            const plan = plans.find((p) => p.id === req.plan_id);
+                                            return (
+                                                <tr key={req.id} className="hover:bg-surface-2/40 transition-colors group">
+                                                    <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)] tabular-nums whitespace-nowrap">
+                                                        {formatDate(req.submitted_at)}
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <div className="font-mono text-[13px] font-bold text-foreground">
+                                                            {plan?.name ?? req.plan_id}
+                                                        </div>
+                                                        {req.admin_note && (
+                                                            <p className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 line-clamp-1 group-hover:line-clamp-none max-w-[200px]" title={req.admin_note}>
+                                                                Nota: {req.admin_note}
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)]">
+                                                        {CYCLE_LABEL[req.billing_cycle] ?? req.billing_cycle}
+                                                    </td>
+                                                    <td className="px-5 py-3 font-mono text-[13px] font-bold text-foreground tabular-nums">
+                                                        ${req.amount_usd}
+                                                    </td>
+                                                    <td className="px-5 py-3 font-mono text-[13px] text-[var(--text-secondary)] capitalize">
+                                                        {req.payment_method}
+                                                    </td>
+                                                    <td className="px-5 py-3">
+                                                        <span className={[
+                                                            "h-6 px-2.5 rounded-md border font-mono text-[10px] font-bold uppercase tracking-[0.1em] inline-flex items-center",
+                                                            STATUS_CLS[req.status] ?? "",
+                                                        ].join(" ")}>
+                                                            {STATUS_LABEL[req.status] ?? req.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
-                    </div>
+                    </SettingsSection>
                 </>
             )}
         </div>

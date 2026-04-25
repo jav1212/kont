@@ -7,6 +7,8 @@ import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
+import { AlertCircle, Plus, UserCog, MailCheck, CheckCircle2, Copy } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,11 +27,12 @@ interface Member {
 
 function RoleBadge({ role }: { role: Member["role"] }) {
     return (
-        <span className={`inline-block font-mono text-xs px-2 py-0.5 rounded uppercase ${
+        <span className={[
+            "inline-flex items-center font-mono text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] border",
             role === "owner"
-                ? "bg-primary-500/10 text-primary-400"
-                : "bg-foreground/6 text-foreground/60"
-        }`}>
+                ? "bg-primary-500/10 text-primary-500 border-primary-500/20"
+                : "bg-surface-2 text-[var(--text-secondary)] border-border-light",
+        ].join(" ")}>
             {role}
         </span>
     );
@@ -37,7 +40,7 @@ function RoleBadge({ role }: { role: Member["role"] }) {
 
 function PendingBadge() {
     return (
-        <span className="inline-block font-mono text-xs px-2 py-0.5 rounded uppercase bg-yellow-500/10 text-yellow-500">
+        <span className="inline-flex items-center font-mono text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-[0.1em] border badge-warning">
             Pendiente
         </span>
     );
@@ -102,78 +105,101 @@ export default function MembersPage() {
     const accepted = members.filter((m) => !m.pending);
     const pending  = members.filter((m) => m.pending);
 
+    const inviteButton = canInvite ? (
+        <BaseButton.Root
+            variant="primary"
+            size="sm"
+            onClick={() => setInviteOpen(true)}
+            leftIcon={<Plus size={13} strokeWidth={2.5} />}
+        >
+            <span className="hidden sm:inline">Invitar miembro</span>
+            <span className="sm:hidden">Invitar</span>
+        </BaseButton.Root>
+    ) : null;
+
     return (
-        <div className="w-full min-h-full">
-
-            {/* Header (Action bar) */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    {isActingOnBehalf && (
-                        <p className="font-mono text-xs text-foreground/40 mt-0.5">
-                            Gestionando tenant de cliente
-                        </p>
-                    )}
-                </div>
-                {canInvite && (
-                    <BaseButton.Root
-                        variant="primary"
-                        size="sm"
-                        onClick={() => setInviteOpen(true)}
-                        leftIcon={
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                                <path d="M6 1v10M1 6h10" />
-                            </svg>
-                        }
-                    >
-                        <span className="hidden sm:inline">Invitar miembro</span>
-                        <span className="sm:hidden">Invitar</span>
-                    </BaseButton.Root>
-                )}
-            </div>
-
-            {/* Error */}
-            {error && (
-                <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-500 font-mono text-xs">
-                    {error}
+        <div className="space-y-6">
+            {isActingOnBehalf && (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border-light bg-surface-1">
+                    <UserCog size={13} className="text-[var(--text-tertiary)]" />
+                    <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                        Gestionando tenant de cliente
+                    </p>
                 </div>
             )}
 
-            {/* Content */}
-            {loading ? (
-                <div className="space-y-2">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-16 rounded-xl bg-surface-1 border border-border-light animate-pulse" />
-                    ))}
+            {error && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-error">
+                    <AlertCircle size={14} />
+                    <p className="font-sans text-[12px] text-text-error">{error}</p>
                 </div>
-            ) : members.length === 0 ? (
-                <p className="font-mono text-xs text-[var(--text-tertiary)] px-1">Sin miembros aún.</p>
-            ) : (
-                <div className="space-y-6">
-                    {/* Accepted members */}
-                    {accepted.length > 0 && (
-                        <MembersTable
-                            members={accepted}
-                            canInvite={canInvite}
-                            revoking={revoking}
-                            onRevoke={(m) => handleRevoke(m)}
-                        />
-                    )}
+            )}
 
-                    {/* Pending invitations */}
+            {loading ? (
+                <SettingsSection
+                    title="Miembros activos"
+                    subtitle="Quienes tienen acceso al tenant. Sólo el owner y los admin pueden invitar o revocar."
+                    action={inviteButton}
+                    flush
+                >
+                    <div className="px-6 py-5 space-y-2">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="h-12 rounded-lg bg-surface-2/40 border border-border-light/60 animate-pulse" />
+                        ))}
+                    </div>
+                </SettingsSection>
+            ) : members.length === 0 ? (
+                <SettingsSection
+                    title="Miembros activos"
+                    subtitle="Quienes tienen acceso al tenant."
+                    action={inviteButton}
+                >
+                    <div className="text-center py-10">
+                        <MailCheck size={20} className="mx-auto text-[var(--text-tertiary)] mb-2" />
+                        <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
+                            Aún no has invitado a nadie a tu tenant.
+                        </p>
+                    </div>
+                </SettingsSection>
+            ) : (
+                <>
+                    <SettingsSection
+                        title="Miembros activos"
+                        subtitle="Owner, admin y contables con acceso al tenant. El owner no puede revocarse."
+                        action={inviteButton}
+                        flush
+                    >
+                        {accepted.length > 0 ? (
+                            <MembersTable
+                                members={accepted}
+                                canInvite={canInvite}
+                                revoking={revoking}
+                                onRevoke={(m) => handleRevoke(m)}
+                            />
+                        ) : (
+                            <div className="px-6 py-8 text-center">
+                                <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
+                                    Aún no hay miembros activos. Las invitaciones pendientes están abajo.
+                                </p>
+                            </div>
+                        )}
+                    </SettingsSection>
+
                     {pending.length > 0 && (
-                        <div>
-                            <p className="font-mono text-xs text-foreground/40 mb-2 px-1">
-                                Invitaciones pendientes
-                            </p>
+                        <SettingsSection
+                            title="Invitaciones pendientes"
+                            subtitle="Enlaces enviados que aún no han sido aceptados. Puedes cancelarlos en cualquier momento."
+                            flush
+                        >
                             <MembersTable
                                 members={pending}
                                 canInvite={canInvite}
                                 revoking={revoking}
                                 onRevoke={(m) => handleRevoke(m)}
                             />
-                        </div>
+                        </SettingsSection>
                     )}
-                </div>
+                </>
             )}
 
             {inviteOpen && (
@@ -211,15 +237,15 @@ function MembersTable({
     return (
         <>
             {/* Mobile: card list */}
-            <div className="sm:hidden space-y-2">
+            <div className="sm:hidden divide-y divide-border-light">
                 {members.map((m) => (
-                    <div key={m.id} className="rounded-lg border border-border-light bg-surface-1 px-4 py-3 flex items-center gap-3">
+                    <div key={m.id} className="px-4 py-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0 space-y-1">
-                            <p className="font-mono text-xs text-foreground truncate">{m.email}</p>
+                            <p className="font-mono text-[13px] text-foreground truncate">{m.email}</p>
                             <div className="flex items-center gap-2">
                                 {m.pending ? <PendingBadge /> : <RoleBadge role={m.role} />}
                                 {!m.pending && (
-                                    <span className="font-mono text-xs text-foreground/30">
+                                    <span className="font-mono text-[11px] text-[var(--text-tertiary)] tabular-nums">
                                         {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
                                     </span>
                                 )}
@@ -229,7 +255,7 @@ function MembersTable({
                             <button
                                 onClick={() => onRevoke(m)}
                                 disabled={revoking === m.id}
-                                className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors shrink-0 min-h-11 px-1"
+                                className="font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-text-error hover:text-text-error/80 disabled:opacity-40 transition-colors shrink-0 min-h-11 px-2"
                             >
                                 {revoking === m.id ? "…" : "Revocar"}
                             </button>
@@ -239,25 +265,24 @@ function MembersTable({
             </div>
 
             {/* Desktop: table */}
-            <div className="hidden sm:block rounded-xl border border-border-light overflow-hidden bg-surface-1">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-border-light">
-                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Email</th>
-                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Rol</th>
-                                <th className={`text-left px-4 py-3 font-mono uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Desde</th>
-                                <th className="px-4 py-3" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {members.map((m) => (
-                                <tr key={m.id} className="border-b border-border-light last:border-0 hover:bg-foreground/[0.02] transition-colors">
-                                    <td className="px-4 py-3 font-mono text-xs text-foreground">{m.email}</td>
+            <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-border-light bg-surface-2/30">
+                            <th className={`text-left px-6 py-3 font-mono font-bold uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Email</th>
+                            <th className={`text-left px-4 py-3 font-mono font-bold uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Rol</th>
+                            <th className={`text-left px-4 py-3 font-mono font-bold uppercase text-[var(--text-tertiary)] whitespace-nowrap ${APP_SIZES.text.tableHeader}`}>Desde</th>
+                            <th className="px-4 py-3" />
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-light">
+                        {members.map((m) => (
+                            <tr key={m.id} className="hover:bg-surface-2/40 transition-colors">
+                                <td className="px-6 py-3 font-mono text-[13px] text-foreground">{m.email}</td>
                                 <td className="px-4 py-3">
                                     {m.pending ? <PendingBadge /> : <RoleBadge role={m.role} />}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-xs text-foreground/40">
+                                <td className="px-4 py-3 font-mono text-[12px] text-[var(--text-tertiary)] tabular-nums">
                                     {new Date(m.acceptedAt ?? m.createdAt).toLocaleDateString("es-VE")}
                                 </td>
                                 <td className="px-4 py-3 text-right">
@@ -265,7 +290,7 @@ function MembersTable({
                                         <button
                                             onClick={() => onRevoke(m)}
                                             disabled={revoking === m.id}
-                                            className="font-mono text-xs text-red-500 hover:text-red-400 disabled:opacity-40 transition-colors"
+                                            className="font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-text-error hover:text-text-error/80 disabled:opacity-40 transition-colors"
                                         >
                                             {revoking === m.id ? "Revocando…" : "Revocar"}
                                         </button>
@@ -275,7 +300,6 @@ function MembersTable({
                         ))}
                     </tbody>
                 </table>
-                </div>
             </div>
         </>
     );
@@ -365,38 +389,27 @@ function InviteModal({
                 {acceptUrl ? (
                     <div className="space-y-4">
                         <div className="flex flex-col items-center gap-3 py-2 text-center">
-                            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500" aria-hidden="true">
-                                    <path d="M3 9.5l4 4 8-8" />
-                                </svg>
+                            <div className="w-10 h-10 rounded-full badge-success border flex items-center justify-center">
+                                <CheckCircle2 size={18} strokeWidth={2} />
                             </div>
                             <div>
-                                <p className="font-mono text-sm font-semibold text-foreground">Invitación creada</p>
-                                <p className="font-mono text-xs text-foreground/50 mt-1">
-                                    Comparte este enlace con <span className="text-foreground/80">{email}</span>
+                                <p className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">Invitación creada</p>
+                                <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">
+                                    Comparte este enlace con <span className="text-foreground font-medium">{email}</span>
                                 </p>
                             </div>
                         </div>
 
                         {/* Link copiable */}
                         <div className="rounded-lg border border-border-light bg-surface-2 p-3 space-y-2">
-                            <p className="font-mono text-[10px] text-foreground/30 uppercase tracking-widest">Enlace de invitación</p>
-                            <p className="font-mono text-[10px] text-foreground/70 break-all leading-relaxed">{acceptUrl}</p>
+                            <p className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Enlace de invitación</p>
+                            <p className="font-mono text-[11px] text-foreground break-all leading-relaxed">{acceptUrl}</p>
                             <button
                                 onClick={handleCopy}
-                                className="flex items-center gap-1.5 font-mono text-[10px] text-primary-400 hover:text-primary-300 transition-colors"
+                                className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-primary-500 hover:text-primary-600 transition-colors"
                             >
-                                {copied ? (
-                                    <>
-                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 6.5l3 3 5-6"/></svg>
-                                        Copiado
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V2a1 1 0 0 1 1-1h6"/></svg>
-                                        Copiar enlace
-                                    </>
-                                )}
+                                {copied ? <CheckCircle2 size={11} strokeWidth={2.5} /> : <Copy size={11} strokeWidth={2} />}
+                                {copied ? "Copiado" : "Copiar enlace"}
                             </button>
                         </div>
 

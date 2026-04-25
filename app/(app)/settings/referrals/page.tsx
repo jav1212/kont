@@ -11,9 +11,11 @@ import {
     Copy,
     Share2,
     Link2,
+    AlertCircle,
 } from "lucide-react";
 import { useReferrals } from "@/src/modules/referrals/frontend/hooks/use-referrals";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
 
 const Spinner = () => (
     <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
@@ -70,24 +72,16 @@ export default function ReferralsPage() {
     }
 
     return (
-        <div className="max-w-4xl space-y-10 w-full font-mono">
-            <div className="flex items-center justify-between border-b border-border-light/50 pb-4">
-                <div>
-                    <h2 className="font-mono text-xs font-semibold text-foreground/70 uppercase tracking-[0.14em]">
-                        Programa de Referidos
-                    </h2>
-                    <p className="font-mono text-[11px] text-foreground/40 mt-1">
-                        Invita a otros profesionales y gana 20% del monto que paguen en su primer pago como crédito para tus próximas facturas.
-                    </p>
-                </div>
-            </div>
-
+        <div className="space-y-6 font-mono">
             {error && (
-                <div className="px-4 py-3 border rounded-xl badge-error flex items-center justify-between gap-3">
-                    <p className="font-mono text-[11px] text-text-error">{error}</p>
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border rounded-lg badge-error">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle size={14} />
+                        <p className="font-sans text-[12px] text-text-error">{error}</p>
+                    </div>
                     <button
                         onClick={reload}
-                        className="text-[11px] font-bold text-text-error underline underline-offset-2 hover:no-underline shrink-0"
+                        className="font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-text-error underline underline-offset-2 hover:no-underline shrink-0"
                     >
                         Reintentar
                     </button>
@@ -95,39 +89,41 @@ export default function ReferralsPage() {
             )}
 
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-64 gap-3 border border-dashed border-border-light rounded-2xl bg-surface-1/50">
-                    <Spinner />
-                    <span className="text-[12px] font-bold uppercase tracking-widest text-[var(--text-tertiary)]">
-                        Cargando tu programa de referidos…
-                    </span>
-                </div>
+                <SettingsSection title="Programa de referidos" subtitle="Cargando…">
+                    <div className="flex flex-col items-center justify-center h-40 gap-3">
+                        <Spinner />
+                        <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                            Cargando tu programa…
+                        </span>
+                    </div>
+                </SettingsSection>
             ) : data && (
                 <>
                     {/* ── Código + link ─────────────────────────────────────── */}
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="rounded-2xl border border-primary-500/30 bg-primary-500/5 overflow-hidden shadow-lg shadow-primary-500/10"
+                        className="rounded-xl border border-primary-500/30 bg-primary-500/5 overflow-hidden shadow-sm shadow-primary-500/10"
                     >
-                        <div className="px-6 py-5 flex items-center gap-3 border-b border-primary-500/20 bg-primary-500/5">
-                            <div className="w-10 h-10 rounded-xl bg-primary-500/15 flex items-center justify-center text-primary-500">
-                                <Gift size={18} />
+                        <div className="px-6 py-4 flex items-center gap-3 border-b border-primary-500/20 bg-primary-500/[0.06]">
+                            <div className="w-9 h-9 rounded-lg bg-primary-500/15 border border-primary-500/20 flex items-center justify-center text-primary-500 shrink-0">
+                                <Gift size={16} />
                             </div>
-                            <div>
-                                <p className="text-[13px] font-bold text-foreground">Tu código de referido</p>
-                                <p className="text-[11px] text-[var(--text-tertiary)] font-medium">
-                                    Comparte este código o el enlace personalizado.
+                            <div className="min-w-0">
+                                <p className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Tu código de referido</p>
+                                <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                    Comparte este código o el enlace personalizado para que tus referidos queden vinculados a tu cuenta.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                        <div className="px-6 py-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             {/* Código */}
                             <div className="md:col-span-2 space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Código</p>
+                                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Código</p>
                                 <div className="flex items-center gap-2">
                                     <div
-                                        className="flex-1 h-12 px-4 rounded-xl bg-surface-1 border border-primary-500/20 flex items-center justify-center text-[22px] font-bold tracking-[0.3em] text-primary-500 select-all"
+                                        className="flex-1 h-12 px-4 rounded-lg bg-surface-1 border border-primary-500/20 flex items-center justify-center font-mono text-[22px] font-bold tracking-[0.3em] tabular-nums text-primary-500 select-all"
                                         aria-label="Código de referido"
                                     >
                                         {data.referralCode}
@@ -145,11 +141,11 @@ export default function ReferralsPage() {
 
                             {/* Link */}
                             <div className="md:col-span-3 space-y-2">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Enlace de invitación</p>
+                                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Enlace de invitación</p>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 h-12 px-4 rounded-xl bg-surface-1 border border-border-light flex items-center gap-2 text-[12px] text-foreground truncate">
+                                    <div className="flex-1 h-12 px-4 rounded-lg bg-surface-1 border border-border-light flex items-center gap-2 font-mono text-[12px] text-foreground truncate">
                                         <Link2 size={14} className="text-[var(--text-tertiary)] flex-shrink-0" />
-                                        <span className="truncate font-medium" title={shareUrl}>{shareUrl}</span>
+                                        <span className="truncate" title={shareUrl}>{shareUrl}</span>
                                     </div>
                                     <BaseButton.Icon
                                         onClick={handleCopyLink}
@@ -173,12 +169,10 @@ export default function ReferralsPage() {
                     </motion.div>
 
                     {/* ── Stats ─────────────────────────────────────────────── */}
-                    <div className="flex flex-col gap-4">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2 px-1">
-                            <span className="w-1 h-3 rounded-full bg-primary-500/50" />
-                            Tus métricas
-                        </h2>
-
+                    <SettingsSection
+                        title="Tus métricas"
+                        subtitle="Resumen de los referidos asociados a tu cuenta y el crédito acumulado."
+                    >
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             <StatCard
                                 icon={<Users size={14} />}
@@ -206,20 +200,20 @@ export default function ReferralsPage() {
                                 hint="Se aplica a tu próxima factura"
                             />
                         </div>
-                    </div>
+                    </SettingsSection>
 
                     {/* ── How it works ──────────────────────────────────────── */}
-                    <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-border-light">
-                            <h3 className="text-[12px] font-bold uppercase tracking-[0.12em] text-foreground">Cómo funciona</h3>
-                        </div>
-                        <ol className="px-6 py-5 space-y-3 text-[12px] text-[var(--text-secondary)]">
+                    <SettingsSection
+                        title="Cómo funciona"
+                        subtitle="Cuatro pasos. Sin trámites adicionales."
+                    >
+                        <ol className="space-y-3">
                             <Step n={1}>Comparte tu código o enlace con otro profesional o empresa.</Step>
                             <Step n={2}>Se registran usando tu enlace y quedan vinculados a tu cuenta.</Step>
                             <Step n={3}>Cuando realicen su <span className="font-bold text-foreground">primer pago aprobado</span>, recibes el <span className="font-bold text-primary-500">20%</span> del monto como crédito.</Step>
                             <Step n={4}>El crédito se aplica automáticamente a tus próximas facturas. Si sobra, queda disponible para la siguiente.</Step>
                         </ol>
-                    </div>
+                    </SettingsSection>
                 </>
             )}
         </div>
@@ -237,26 +231,26 @@ function StatCard({
 }) {
     return (
         <div className={[
-            "rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200",
+            "rounded-xl border p-4 flex flex-col gap-2 transition-colors duration-150",
             highlight
-                ? "border-primary-500/30 bg-primary-500/5 shadow-sm shadow-primary-500/10"
-                : "border-border-light bg-surface-1",
+                ? "border-primary-500/30 bg-primary-500/[0.06] shadow-sm shadow-primary-500/10"
+                : "border-border-light bg-surface-2/30 hover:bg-surface-2/60",
         ].join(" ")}>
             <div className={[
-                "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em]",
+                "flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em]",
                 highlight ? "text-primary-500" : "text-[var(--text-tertiary)]",
             ].join(" ")}>
                 {icon}
                 {label}
             </div>
             <div className={[
-                "text-[22px] font-bold tabular-nums",
+                "font-mono text-[22px] font-bold tabular-nums",
                 highlight ? "text-primary-500" : "text-foreground",
             ].join(" ")}>
                 {value}
             </div>
             {hint && (
-                <p className="text-[10px] text-[var(--text-tertiary)] font-medium leading-snug">
+                <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
                     {hint}
                 </p>
             )}
@@ -267,10 +261,10 @@ function StatCard({
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
     return (
         <li className="flex gap-3">
-            <span className="w-5 h-5 rounded-full bg-primary-500/15 text-primary-500 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">
+            <span className="w-5 h-5 rounded-full bg-primary-500/15 text-primary-500 flex items-center justify-center font-mono text-[11px] font-bold tabular-nums flex-shrink-0 mt-0.5">
                 {n}
             </span>
-            <span className="leading-relaxed">{children}</span>
+            <span className="font-sans text-[13px] text-[var(--text-secondary)] leading-relaxed">{children}</span>
         </li>
     );
 }

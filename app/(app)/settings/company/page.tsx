@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
+import { AlertCircle } from "lucide-react";
 
 export default function CompanySettingsPage() {
     const { company, update } = useCompany();
@@ -20,48 +22,53 @@ export default function CompanySettingsPage() {
     }
 
     return (
-        <div className="max-w-2xl space-y-8">
-
-            {/* Reportes PDF */}
-            <section className="border border-border-light rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-border-light bg-surface-2">
-                    <h2 className="font-mono text-xs font-semibold text-foreground/70 uppercase tracking-[0.14em]">
-                        Reportes PDF
-                    </h2>
-                </div>
-
+        <div className="space-y-6">
+            <SettingsSection
+                title="Reportes PDF"
+                subtitle="Personaliza la apariencia de los recibos de nómina, vacaciones, prestaciones y demás documentos generados por el sistema."
+                flush
+            >
                 <div className="divide-y divide-border-light">
                     {/* Logo toggle */}
-                    <div className="flex items-center justify-between gap-4 px-5 py-4">
+                    <div className="flex items-center justify-between gap-6 px-6 py-4">
                         <div className="min-w-0">
-                            <p className="font-mono text-xs text-foreground">Incluir logo en reportes</p>
-                            <p className="font-mono text-[11px] text-foreground/40 mt-0.5">
-                                Muestra el logo de la empresa en los PDFs generados (nómina, vacaciones, etc.)
+                            <p className="font-mono text-[13px] text-foreground">Incluir logo en reportes</p>
+                            <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                Muestra el logo de la empresa en los PDFs generados (nómina, vacaciones, prestaciones, etc.).
                             </p>
                             {!company?.logoUrl && (
-                                <p className="font-mono text-[11px] text-foreground/30 mt-1">
-                                    La empresa no tiene logo configurado.
+                                <p className="font-sans text-[12px] text-[var(--text-disabled)] mt-1 italic">
+                                    La empresa aún no tiene un logo configurado.
                                 </p>
                             )}
                         </div>
                         <button
                             role="switch"
                             aria-checked={showLogoInPdf}
+                            aria-label="Incluir logo en reportes"
                             onClick={handleToggle}
                             disabled={saving || !company}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0
-                                ${showLogoInPdf ? "bg-primary-500" : "bg-foreground/20"}
-                                disabled:opacity-50 disabled:cursor-not-allowed`}
+                            className={[
+                                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-1",
+                                showLogoInPdf ? "bg-primary-500" : "bg-[var(--text-disabled)]/40",
+                                "disabled:opacity-50 disabled:cursor-not-allowed",
+                            ].join(" ")}
                         >
-                            <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform
-                                ${showLogoInPdf ? "translate-x-[19px]" : "translate-x-[2px]"}`} />
+                            <span className={[
+                                "inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform",
+                                showLogoInPdf ? "translate-x-[19px]" : "translate-x-[3px]",
+                            ].join(" ")} />
                         </button>
                     </div>
                 </div>
-            </section>
+            </SettingsSection>
 
             {error && (
-                <p className="font-mono text-xs text-red-500">{error}</p>
+                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-error">
+                    <AlertCircle size={14} />
+                    <p className="font-sans text-[12px] text-text-error">{error}</p>
+                </div>
             )}
         </div>
     );
