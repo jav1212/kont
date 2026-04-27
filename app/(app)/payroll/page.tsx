@@ -370,6 +370,14 @@ export default function PayrollCalculator() {
     // does not exist in weekly payroll; the user can remove FAOV rows manually).
     const activeQuincena: 1 | 2 = periodoMode === "semanal" ? 2 : selQuincena;
 
+    // Cesta ticket es un beneficio mensual: aparece en la 2ª quincena (modo
+    // quincenal) o en la última semana del mes (modo semanal).
+    const isLastWeekOfMonth = periodoMode === "semanal"
+        && mondaysOfMonth.length > 0
+        && selWeekMonday === mondaysOfMonth[mondaysOfMonth.length - 1];
+    const showCestaTicket =
+        (periodoMode === "quincenal" && selQuincena === 2) || isLastWeekOfMonth;
+
     // ── Global params ──────────────────────────────────────────────────────
     const [exchangeRate, setExchangeRate] = useState("79.59");
     const [monthlySalary, setMonthlySalary] = useState("130.00");
@@ -664,7 +672,7 @@ export default function PayrollCalculator() {
                     }
                 >
                     <div className="flex items-center gap-3">
-                        {periodoMode === "quincenal" && selQuincena === 2 && (
+                        {showCestaTicket && (
                             <BaseButton.Root
                                 variant="secondary"
                                 size="sm"
@@ -940,10 +948,14 @@ export default function PayrollCalculator() {
                             {bcvFetchError && <p className="font-mono text-[10px] text-red-400 mt-1">Error al consultar</p>}
                         </div>
 
-                        {/* ── Cesta Ticket (solo 2ª quincena / modo quincenal) ─── */}
-                        {periodoMode === "quincenal" && selQuincena === 2 && (
+                        {/* ── Cesta Ticket — 2ª quincena (quincenal) o última semana (semanal) ─── */}
+                        {showCestaTicket && (
                             <div className="px-5 py-4 border-b border-border-light space-y-3">
-                                <SectionHeader label="Cesta Ticket · 2ª Quincena" />
+                                <SectionHeader
+                                    label={periodoMode === "semanal"
+                                        ? "Cesta Ticket · Última Semana"
+                                        : "Cesta Ticket · 2ª Quincena"}
+                                />
                                 <BaseInput.Field
                                     label="Monto por empleado (USD)"
                                     type="number"
