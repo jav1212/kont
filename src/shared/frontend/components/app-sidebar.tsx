@@ -44,9 +44,9 @@ const STORAGE_COLLAPSED = "sidebar-collapsed";
 
 // ── Size constants ────────────────────────────────────────────────────────────
 
-const MIN_WIDTH       = 200;
+const MIN_WIDTH       = 240;
 const MAX_WIDTH       = 400;
-const DEFAULT_WIDTH   = 256;
+const DEFAULT_WIDTH   = 280;
 const COLLAPSED_WIDTH = 56;
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -364,9 +364,9 @@ function SearchButton() {
             type="button"
             aria-label="Buscar (⌘K)"
             title="Buscar"
-            className="flex items-center justify-center w-8 h-8 rounded-md bg-sidebar-bg-hover text-sidebar-fg hover:bg-sidebar-bg-hover hover:text-sidebar-fg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+            className="flex items-center justify-center w-10 h-10 rounded-md bg-sidebar-bg-hover text-sidebar-fg hover:bg-sidebar-bg-hover hover:text-sidebar-fg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
         >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="7" cy="7" r="4.5" />
                 <path d="M10.3 10.3L13.5 13.5" />
@@ -386,13 +386,13 @@ function UtilityShortcut({ href, active, label, icon }: { href: string; active: 
             aria-current={active ? "page" : undefined}
             className={[
                 "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors duration-150",
-                "font-mono text-[11px] uppercase tracking-[0.14em]",
+                "font-mono text-[13px] uppercase tracking-[0.14em]",
                 active
                     ? "text-sidebar-active-fg bg-sidebar-active-bg/60"
                     : "text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover",
             ].join(" ")}
         >
-            <span className="shrink-0 w-4 h-4 flex items-center justify-center text-sidebar-label group-hover:text-sidebar-fg-hover">
+            <span className="shrink-0 w-5 h-5 flex items-center justify-center text-sidebar-label group-hover:text-sidebar-fg-hover">
                 {icon}
             </span>
             <span>{label}</span>
@@ -402,7 +402,7 @@ function UtilityShortcut({ href, active, label, icon }: { href: string; active: 
 
 function GearIcon() {
     return (
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
             strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="8" cy="8" r="2.2" />
             <path d="M8 1.5v1.5M8 13v1.5M14.5 8H13M3 8H1.5M12.6 3.4l-1.06 1.06M4.46 11.54L3.4 12.6M12.6 12.6l-1.06-1.06M4.46 4.46L3.4 3.4" />
@@ -412,7 +412,7 @@ function GearIcon() {
 
 function HelpIcon() {
     return (
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
             strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="8" cy="8" r="6.2" />
             <path d="M6 6.2a2 2 0 1 1 2.6 1.9c-.6.2-.8.6-.8 1.2v.3" />
@@ -510,16 +510,16 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                 ].join(" ")}
             >
                 <span className="relative shrink-0">
-                    <Avatar avatarUrl={avatarUrl} initial={initial} size={32} />
+                    <Avatar avatarUrl={avatarUrl} initial={initial} size={40} />
                     <StatusDot />
                 </span>
 
                 <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-mono text-[12px] font-semibold text-sidebar-fg-hover truncate">
+                    <span className="font-mono text-[15px] font-semibold text-sidebar-fg-hover truncate">
                         {displayName}
                     </span>
                     {email && email !== displayName && (
-                        <span className="font-mono text-[10px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                        <span className="font-mono text-[13px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
                             {email}
                         </span>
                     )}
@@ -616,12 +616,12 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
         >
             {/* Header with name, email, plan */}
             <div className="px-3 py-2.5 border-b border-sidebar-border">
-                <p className="font-mono text-[12px] font-semibold text-sidebar-fg-hover truncate">{displayName}</p>
+                <p className="font-mono text-[14px] font-semibold text-sidebar-fg-hover truncate">{displayName}</p>
                 {email && (
-                    <p className="font-mono text-[10px] text-sidebar-label truncate mt-0.5">{email}</p>
+                    <p className="font-mono text-[12px] text-sidebar-label truncate mt-0.5">{email}</p>
                 )}
                 {planName && (
-                    <span className="inline-flex items-center mt-1.5 px-1.5 py-px rounded-sm font-mono text-[9px] uppercase tracking-[0.12em] bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
+                    <span className="inline-flex items-center mt-1.5 px-1.5 py-px rounded-sm font-mono text-[11px] uppercase tracking-[0.12em] bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
                         {planName}
                     </span>
                 )}
@@ -676,7 +676,7 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                 <button
                     role="menuitem"
                     onClick={onProfileClick}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[12px] text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[14px] text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
                 >
                     <span className="w-4 h-4 flex items-center justify-center text-sidebar-label">
                         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -689,7 +689,7 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                 <button
                     role="menuitem"
                     onClick={onSignOut}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[12px] text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[14px] text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
                 >
                     <span className="w-4 h-4 flex items-center justify-center">
                         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

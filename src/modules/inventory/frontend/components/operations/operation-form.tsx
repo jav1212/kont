@@ -58,17 +58,17 @@ export function OperationForm({ op, onChangeKind }: Props) {
             <PageHeader title={config.labels.pageTitle} subtitle={config.labels.pageSubtitle}>
                 {onChangeKind && (
                     <BaseButton.Root
-                        variant="secondary"
-                        size="md"
+                        variant="ghost"
+                        size="sm"
                         onClick={onChangeKind}
-                        leftIcon={<RefreshCw size={13} strokeWidth={2} />}
+                        leftIcon={<RefreshCw size={14} strokeWidth={2} />}
                     >
                         Cambiar tipo
                     </BaseButton.Root>
                 )}
                 <BaseButton.Root
                     variant="secondary"
-                    size="md"
+                    size="sm"
                     onClick={() => router.back()}
                     leftIcon={<ChevronLeft size={14} strokeWidth={2} />}
                 >

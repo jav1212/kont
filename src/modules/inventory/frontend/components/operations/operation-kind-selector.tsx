@@ -4,9 +4,11 @@
 // Three cards (Ajuste / Devolución / Autoconsumo). On click, the workspace
 // transitions to the OperationForm with the chosen kind.
 
-import { ArrowRight, Pencil, RotateCcw, PackageMinus, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronLeft, Pencil, RotateCcw, PackageMinus, type LucideIcon } from "lucide-react";
 
+import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { OperationKind } from "./operation-types";
 
 interface KindOption {
@@ -55,7 +57,17 @@ export function OperationKindSelector({ onSelect }: Props) {
             <PageHeader
                 title="Nueva Operación"
                 subtitle="Ajuste · Devolución · Autoconsumo"
-            />
+            >
+                <BaseButton.Root
+                    as={Link}
+                    href="/inventory/operations"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<ChevronLeft size={14} strokeWidth={2} />}
+                >
+                    Tablero de operaciones
+                </BaseButton.Root>
+            </PageHeader>
             <div className="px-8 py-10">
                 <div className="max-w-5xl mx-auto">
                     <div className="flex items-center gap-3 mb-5">

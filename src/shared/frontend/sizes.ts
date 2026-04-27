@@ -150,16 +150,16 @@ export const APP_SIZES = {
 
     nav: {
         /** Top-level module items and action buttons (Sign out, Theme) */
-        item: "text-[13px] uppercase tracking-[0.12em]",
+        item: "text-[15px] uppercase tracking-[0.12em]",
 
         /** Sub-navigation child items (routes within a module) */
-        subItem: "text-[12px] uppercase tracking-[0.10em]",
+        subItem: "text-[14px] uppercase tracking-[0.10em]",
 
         /** Section group headers ("Catálogos", "Operaciones", "Reportes") */
-        group: "text-[11px] uppercase tracking-[0.16em]",
+        group: "text-[13px] uppercase tracking-[0.16em]",
 
         /** Top-level section labels ("Módulos", "Empresa") */
-        sectionLabel: "text-[10px] uppercase tracking-[0.18em]",
+        sectionLabel: "text-[12px] uppercase tracking-[0.18em]",
 
         /** Logo wordmark */
         logoWordmark: "text-[13px] uppercase tracking-[0.18em]",
@@ -168,10 +168,10 @@ export const APP_SIZES = {
         logoSubtitle: "text-[10px] uppercase tracking-[0.16em]",
 
         /** Company name in the selector */
-        companyName: "text-[12px]",
+        companyName: "text-[14px]",
 
         /** Company avatar initials */
-        companyAvatar: "text-[10px]",
+        companyAvatar: "text-[13px]",
     },
 
     // ─────────────────────────────────────────────────────────────────────────

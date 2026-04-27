@@ -1,11 +1,15 @@
 "use client";
 
-// Page: Salidas de Inventario (hub).
-// Mirrors /inventory/purchases (Entradas) tablero so the user lands on a real
-// dashboard with KPIs, period picker, and filterable list of outbound movements
-// instead of a placeholder. Outbound = movement.type ∈ { salida, autoconsumo,
-// devolucion_entrada }. Editing date/reference/notes happens inline (modal);
-// the cross-period record lives at /inventory/sales-ledger.
+// Page: Operaciones de Inventario (hub).
+// Mirrors /inventory/purchases (Entradas) and /inventory/sales (Salidas)
+// dashboards so the three "Operaciones" subnav entries share a consistent
+// landing surface: KPIs, period picker, type filter chips, and a list of
+// operations done in the period. The new-operation workspace lives at
+// /inventory/operations/new and is launched from the primary CTA here.
+//
+// Operation = manual movement that is neither a sale nor a purchase invoice:
+// `ajuste_positivo`, `ajuste_negativo`, `devolucion_entrada`, `devolucion_salida`,
+// `autoconsumo`. Editing date/reference/notes happens inline (modal).
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -15,12 +19,12 @@ import {
     Calendar,
     BookOpen,
     Plus,
-    Sparkles,
     Trash2,
     AlertTriangle,
-    ShoppingCart,
-    Repeat,
-    Wallet,
+    Settings2,
+    Pencil,
+    RotateCcw,
+    PackageMinus,
 } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -69,46 +73,61 @@ function shiftPeriod(key: string, delta: number): string {
 
 // ── Type metadata ─────────────────────────────────────────────────────────────
 
-type OutboundKind = "salida" | "autoconsumo" | "devolucion_entrada";
+type OperationKindFilter = "all" | "adjustment" | "return" | "self-consumption";
 
-function isOutbound(t: MovementType): t is OutboundKind {
-    return t === "salida" || t === "autoconsumo" || t === "devolucion_entrada";
+const OPERATION_TYPES: readonly MovementType[] = [
+    "ajuste_positivo", "ajuste_negativo",
+    "devolucion_entrada", "devolucion_salida",
+    "autoconsumo",
+] as const;
+
+function isOperation(t: MovementType): boolean {
+    return (OPERATION_TYPES as readonly string[]).includes(t);
 }
 
-const TYPE_LABEL: Record<OutboundKind, string> = {
-    salida:             "Venta",
+function operationGroup(t: MovementType): "adjustment" | "return" | "self-consumption" | null {
+    if (t === "ajuste_positivo" || t === "ajuste_negativo") return "adjustment";
+    if (t === "devolucion_entrada" || t === "devolucion_salida") return "return";
+    if (t === "autoconsumo") return "self-consumption";
+    return null;
+}
+
+const TYPE_LABEL: Record<string, string> = {
+    ajuste_positivo:    "Ajuste +",
+    ajuste_negativo:    "Ajuste −",
+    devolucion_entrada: "Dev. proveedor",
+    devolucion_salida:  "Dev. cliente",
     autoconsumo:        "Autoconsumo",
-    devolucion_entrada: "Dev. a proveedor",
 };
 
-const TYPE_BADGE_CLS: Record<OutboundKind, string> = {
-    salida:             "border-red-500/30 text-red-500 bg-red-500/[0.06]",
-    autoconsumo:        "border-primary-500/30 text-primary-500 bg-primary-500/[0.06]",
+const TYPE_BADGE_CLS: Record<string, string> = {
+    ajuste_positivo:    "border-emerald-500/30 text-emerald-600 bg-emerald-500/[0.06]",
+    ajuste_negativo:    "border-red-500/30 text-red-500 bg-red-500/[0.06]",
     devolucion_entrada: "border-amber-500/40 text-amber-600 bg-amber-500/[0.06]",
+    devolucion_salida:  "border-amber-500/40 text-amber-600 bg-amber-500/[0.06]",
+    autoconsumo:        "border-primary-500/30 text-primary-500 bg-primary-500/[0.06]",
 };
 
-function TypeBadge({ type }: { type: OutboundKind }) {
+function TypeBadge({ type }: { type: MovementType }) {
     return (
         <span
             className={[
                 "inline-flex px-1.5 py-0.5 rounded border text-[11px] uppercase tracking-[0.08em] font-medium whitespace-nowrap",
-                TYPE_BADGE_CLS[type],
+                TYPE_BADGE_CLS[type] ?? "border-border-light text-[var(--text-tertiary)]",
             ].join(" ")}
         >
-            {TYPE_LABEL[type]}
+            {TYPE_LABEL[type] ?? type}
         </span>
     );
 }
 
 // ── Type filter chips ─────────────────────────────────────────────────────────
 
-type TypeFilter = "all" | OutboundKind;
-
-const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
-    { value: "all",                label: "Todas" },
-    { value: "salida",             label: "Ventas" },
-    { value: "autoconsumo",        label: "Autoconsumos" },
-    { value: "devolucion_entrada", label: "Devoluciones" },
+const TYPE_OPTIONS: { value: OperationKindFilter; label: string }[] = [
+    { value: "all",              label: "Todas" },
+    { value: "adjustment",       label: "Ajustes" },
+    { value: "return",           label: "Devoluciones" },
+    { value: "self-consumption", label: "Autoconsumos" },
 ];
 
 function TypeFilterChips({
@@ -116,9 +135,9 @@ function TypeFilterChips({
     onChange,
     counts,
 }: {
-    value: TypeFilter;
-    onChange: (v: TypeFilter) => void;
-    counts: Record<TypeFilter, number>;
+    value: OperationKindFilter;
+    onChange: (v: OperationKindFilter) => void;
+    counts: Record<OperationKindFilter, number>;
 }) {
     return (
         <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden">
@@ -202,7 +221,7 @@ function PeriodPicker({
     );
 }
 
-// ── Edit modal (date / reference / notes) ────────────────────────────────────
+// ── Edit modal ────────────────────────────────────────────────────────────────
 
 function EditModal({
     mov,
@@ -226,10 +245,10 @@ function EditModal({
             <div className="bg-surface-1 border border-border-medium rounded-xl shadow-xl w-full max-w-md mx-4">
                 <div className="px-6 py-4 border-b border-border-light">
                     <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                        Editar movimiento
+                        Editar operación
                     </h2>
                     <p className="mt-1 font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
-                        Salida de <strong className="text-foreground">{productName}</strong>. Solo se editan fecha, referencia y notas — el saldo no cambia.
+                        Operación sobre <strong className="text-foreground">{productName}</strong>. Solo se editan fecha, referencia y notas — el saldo no cambia.
                     </p>
                 </div>
                 <div className="px-6 py-5 space-y-4">
@@ -244,7 +263,7 @@ function EditModal({
                         type="text"
                         value={reference}
                         onValueChange={setReference}
-                        placeholder="Nº factura, ticket o referencia interna…"
+                        placeholder="Nº documento, motivo o referencia interna…"
                     />
                     <BaseInput.Field
                         label="Notas"
@@ -272,7 +291,7 @@ function EditModal({
     );
 }
 
-// ── Delete confirm dialog ────────────────────────────────────────────────────
+// ── Delete confirm ────────────────────────────────────────────────────────────
 
 function DeleteConfirm({
     mov,
@@ -287,25 +306,28 @@ function DeleteConfirm({
     onClose: () => void;
     deleting: boolean;
 }) {
+    const reverses = mov.type === "ajuste_positivo" || mov.type === "devolucion_salida"
+        ? "se descontará"
+        : "se incrementará";
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-surface-1 border border-yellow-500/20 rounded-xl shadow-xl w-full max-w-md mx-4">
                 <div className="px-6 py-4 border-b border-yellow-500/20 bg-yellow-500/[0.06] rounded-t-xl flex items-center gap-2">
                     <AlertTriangle size={16} strokeWidth={2} className="text-yellow-600" />
                     <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-yellow-600">
-                        Eliminar salida
+                        Eliminar operación
                     </h2>
                 </div>
                 <div className="px-6 py-5 font-sans text-[14px] text-foreground leading-relaxed">
                     <p>
-                        Vas a eliminar la salida de <strong>{productName}</strong> del{" "}
+                        Vas a eliminar la operación sobre <strong>{productName}</strong> del{" "}
                         <strong className="font-mono uppercase tracking-[0.06em] text-[12px]">{fmtDate(mov.date)}</strong>.
                     </p>
                     <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
                         {fmtN0(mov.quantity)} unidades · Bs {fmtN(mov.totalCost)}
                     </p>
                     <p className="mt-3 text-[13px] text-yellow-700 font-medium">
-                        La existencia del producto se incrementará en {fmtN0(mov.quantity)} unidades. ¿Continuar?
+                        La existencia del producto {reverses} en {fmtN0(mov.quantity)} unidades. ¿Continuar?
                     </p>
                 </div>
                 <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
@@ -323,7 +345,7 @@ function DeleteConfirm({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function SalidasPage() {
+export default function OperationsHubPage() {
     const { companyId } = useCompany();
     const {
         products, movements,
@@ -334,7 +356,7 @@ export default function SalidasPage() {
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
     const [search, setSearch] = useState("");
-    const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+    const [typeFilter, setTypeFilter] = useState<OperationKindFilter>("all");
     const [editingMov, setEditingMov] = useState<Movement | null>(null);
     const [deletingMov, setDeletingMov] = useState<Movement | null>(null);
     const [actionSaving, setActionSaving] = useState(false);
@@ -354,21 +376,21 @@ export default function SalidasPage() {
     }, [products]);
 
     const inPeriod = useMemo(
-        () => movements.filter((m) => isOutbound(m.type) && m.period === period),
+        () => movements.filter((m) => isOperation(m.type) && m.period === period),
         [movements, period],
     );
 
-    const counts = useMemo<Record<TypeFilter, number>>(() => ({
+    const counts = useMemo<Record<OperationKindFilter, number>>(() => ({
         all:                inPeriod.length,
-        salida:             inPeriod.filter((m) => m.type === "salida").length,
-        autoconsumo:        inPeriod.filter((m) => m.type === "autoconsumo").length,
-        devolucion_entrada: inPeriod.filter((m) => m.type === "devolucion_entrada").length,
+        adjustment:         inPeriod.filter((m) => operationGroup(m.type) === "adjustment").length,
+        return:             inPeriod.filter((m) => operationGroup(m.type) === "return").length,
+        "self-consumption": inPeriod.filter((m) => operationGroup(m.type) === "self-consumption").length,
     }), [inPeriod]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return inPeriod
-            .filter((m) => typeFilter === "all" || m.type === typeFilter)
+            .filter((m) => typeFilter === "all" || operationGroup(m.type) === typeFilter)
             .filter((m) => {
                 if (!q) return true;
                 const haystack = [
@@ -382,20 +404,11 @@ export default function SalidasPage() {
     }, [inPeriod, typeFilter, search, productNameById]);
 
     const kpi = useMemo(() => {
-        const ventas       = inPeriod.filter((m) => m.type === "salida");
-        const autoconsumos = inPeriod.filter((m) => m.type === "autoconsumo");
-        const totalVentaBs = ventas.reduce((acc, m) => {
-            const unit = m.precioVentaUnitario ?? 0;
-            return acc + (unit * m.quantity);
-        }, 0);
-        const costoBs = ventas.reduce((acc, m) => acc + (m.totalCost ?? 0), 0)
-                      + autoconsumos.reduce((acc, m) => acc + (m.totalCost ?? 0), 0);
-        return {
-            ventasCount:       ventas.length,
-            autoconsumoCount:  autoconsumos.length,
-            totalVentaBs,
-            costoBs,
-        };
+        const total       = inPeriod.length;
+        const ajustes     = inPeriod.filter((m) => operationGroup(m.type) === "adjustment").length;
+        const devs        = inPeriod.filter((m) => operationGroup(m.type) === "return").length;
+        const autoconsumo = inPeriod.filter((m) => operationGroup(m.type) === "self-consumption").length;
+        return { total, ajustes, devs, autoconsumo };
     }, [inPeriod]);
 
     // ── handlers ───────────────────────────────────────────────────────────────
@@ -423,35 +436,44 @@ export default function SalidasPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader
-                title="Salidas de Inventario"
+                title="Operaciones de Inventario"
                 subtitle={`Tablero · ${periodLabel(period)}`}
             >
                 <BaseButton.Root
                     as={Link}
-                    href="/inventory/sales-ledger"
+                    href="/inventory/movements"
                     variant="ghost"
                     size="sm"
                     leftIcon={<BookOpen size={14} strokeWidth={2} />}
                 >
-                    Libro de salidas
+                    Movimientos
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
-                    href="/inventory/sales/generator"
+                    href="/inventory/operations/new?op=adjustment"
                     variant="secondary"
                     size="sm"
-                    leftIcon={<Sparkles size={14} strokeWidth={2} />}
+                    leftIcon={<Pencil size={13} strokeWidth={2} />}
                 >
-                    Generar por monto/margen
+                    Ajuste
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
-                    href="/inventory/sales/new-manual"
+                    href="/inventory/operations/new?op=return"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<RotateCcw size={13} strokeWidth={2} />}
+                >
+                    Devolución
+                </BaseButton.Root>
+                <BaseButton.Root
+                    as={Link}
+                    href="/inventory/operations/new"
                     variant="primary"
                     size="sm"
                     leftIcon={<Plus size={14} strokeWidth={2} />}
                 >
-                    Salida manual
+                    Nueva operación
                 </BaseButton.Root>
             </PageHeader>
 
@@ -479,35 +501,36 @@ export default function SalidasPage() {
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <DashboardKpiCard
-                        label="Ventas registradas"
-                        value={kpi.ventasCount}
-                        color="success"
-                        icon={ShoppingCart}
+                        label="Operaciones"
+                        value={kpi.total}
+                        color="primary"
+                        icon={Settings2}
                         loading={loading}
                         sublabel={`del período ${periodLabel(period)}`}
                     />
                     <DashboardKpiCard
-                        label="Autoconsumos"
-                        value={kpi.autoconsumoCount}
-                        color={kpi.autoconsumoCount > 0 ? "warning" : "default"}
-                        icon={Repeat}
-                        loading={loading}
-                        sublabel={kpi.autoconsumoCount === 0 ? "ninguno en el período" : "movimientos sin venta"}
-                    />
-                    <DashboardKpiCard
-                        label="Total vendido"
-                        value={`Bs ${fmtN(kpi.totalVentaBs)}`}
-                        color="primary"
-                        icon={Wallet}
-                        loading={loading}
-                        sublabel="suma de ventas s/IVA"
-                    />
-                    <DashboardKpiCard
-                        label="Costo de salidas"
-                        value={`Bs ${fmtN(kpi.costoBs)}`}
+                        label="Ajustes"
+                        value={kpi.ajustes}
                         color="default"
+                        icon={Pencil}
                         loading={loading}
-                        sublabel="costo del inventario egresado"
+                        sublabel={kpi.ajustes === 0 ? "ninguno en el período" : "positivos y negativos"}
+                    />
+                    <DashboardKpiCard
+                        label="Devoluciones"
+                        value={kpi.devs}
+                        color="default"
+                        icon={RotateCcw}
+                        loading={loading}
+                        sublabel={kpi.devs === 0 ? "ninguna en el período" : "a proveedor y de cliente"}
+                    />
+                    <DashboardKpiCard
+                        label="Autoconsumos"
+                        value={kpi.autoconsumo}
+                        color={kpi.autoconsumo > 0 ? "warning" : "default"}
+                        icon={PackageMinus}
+                        loading={loading}
+                        sublabel={kpi.autoconsumo === 0 ? "ninguno en el período" : "uso interno declarado"}
                     />
                 </div>
 
@@ -533,11 +556,11 @@ export default function SalidasPage() {
                     </div>
                 )}
 
-                {/* ── Salidas table ─────────────────────────────────────────── */}
+                {/* ── Operations table ──────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
                         <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">
-                            Salidas del período
+                            Operaciones del período
                         </h2>
                         <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
                             {filtered.length} {filtered.length === 1 ? "registro" : "registros"}
@@ -546,37 +569,46 @@ export default function SalidasPage() {
 
                     {loading ? (
                         <div className="px-5 py-12 text-center font-sans text-[13px] text-[var(--text-tertiary)]">
-                            Cargando salidas…
+                            Cargando operaciones…
                         </div>
                     ) : inPeriod.length === 0 ? (
                         <div className="px-5 py-16 flex flex-col items-center justify-center gap-3 text-center">
                             <div className="w-12 h-12 rounded-xl bg-surface-2 border border-border-light flex items-center justify-center text-[var(--text-tertiary)]">
-                                <ShoppingCart size={20} strokeWidth={1.8} />
+                                <Settings2 size={20} strokeWidth={1.8} />
                             </div>
                             <p className="text-[12px] uppercase tracking-[0.12em] text-foreground">
-                                Sin salidas en {periodLabel(period)}
+                                Sin operaciones en {periodLabel(period)}
                             </p>
                             <p className="font-sans text-[13px] text-[var(--text-tertiary)] max-w-md">
-                                Registra una salida manual para descontar mercancía vendida o autoconsumida, o usa el generador para crear varias ventas a partir de un monto objetivo.
+                                Las operaciones manuales (ajustes, devoluciones, autoconsumos) registran movimientos de inventario sin factura. Crea una para empezar.
                             </p>
                             <div className="flex items-center gap-2 mt-2">
                                 <BaseButton.Root
                                     as={Link}
-                                    href="/inventory/sales/new-manual"
-                                    variant="primary"
+                                    href="/inventory/operations/new?op=adjustment"
+                                    variant="secondary"
                                     size="sm"
-                                    leftIcon={<Plus size={14} strokeWidth={2} />}
+                                    leftIcon={<Pencil size={13} strokeWidth={2} />}
                                 >
-                                    Salida manual
+                                    Ajuste
                                 </BaseButton.Root>
                                 <BaseButton.Root
                                     as={Link}
-                                    href="/inventory/sales/generator"
+                                    href="/inventory/operations/new?op=return"
                                     variant="secondary"
                                     size="sm"
-                                    leftIcon={<Sparkles size={14} strokeWidth={2} />}
+                                    leftIcon={<RotateCcw size={13} strokeWidth={2} />}
                                 >
-                                    Generar por monto
+                                    Devolución
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    as={Link}
+                                    href="/inventory/operations/new?op=self-consumption"
+                                    variant="primary"
+                                    size="sm"
+                                    leftIcon={<PackageMinus size={13} strokeWidth={2} />}
+                                >
+                                    Autoconsumo
                                 </BaseButton.Root>
                             </div>
                         </div>
@@ -602,16 +634,15 @@ export default function SalidasPage() {
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/50">
                                         {[
-                                            { h: "Fecha",         align: "left"  },
-                                            { h: "Tipo",          align: "left"  },
-                                            { h: "Producto",      align: "left"  },
-                                            { h: "Referencia",    align: "left"  },
-                                            { h: "Cantidad",      align: "right" },
-                                            { h: "Precio unit.",  align: "right" },
-                                            { h: "Total venta",   align: "right" },
-                                            { h: "Costo",         align: "right" },
-                                            { h: "",              align: "left"  },
-                                            { h: "",              align: "left"  },
+                                            { h: "Fecha",        align: "left"  },
+                                            { h: "Tipo",         align: "left"  },
+                                            { h: "Producto",     align: "left"  },
+                                            { h: "Referencia",   align: "left"  },
+                                            { h: "Cantidad",     align: "right" },
+                                            { h: "Costo unit.",  align: "right" },
+                                            { h: "Costo total",  align: "right" },
+                                            { h: "",             align: "left"  },
+                                            { h: "",             align: "left"  },
                                         ].map((c, i) => (
                                             <th
                                                 key={i}
@@ -628,15 +659,13 @@ export default function SalidasPage() {
                                 <tbody>
                                     {filtered.map((m) => {
                                         const productName = productNameById.get(m.productId) ?? m.productId;
-                                        const unit = m.precioVentaUnitario ?? null;
-                                        const totalVenta = unit != null ? unit * m.quantity : null;
                                         return (
                                             <tr key={m.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                                 <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">
                                                     {fmtDate(m.date)}
                                                 </td>
                                                 <td className="px-4 py-2.5 whitespace-nowrap">
-                                                    <TypeBadge type={m.type as OutboundKind} />
+                                                    <TypeBadge type={m.type} />
                                                 </td>
                                                 <td className="px-4 py-2.5 text-foreground font-medium max-w-[260px] truncate" title={productName}>
                                                     {productName}
@@ -648,12 +677,9 @@ export default function SalidasPage() {
                                                     {fmtN0(m.quantity)}
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)] text-right whitespace-nowrap">
-                                                    {unit != null ? fmtN(unit) : "—"}
+                                                    {fmtN(m.unitCost)}
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right whitespace-nowrap">
-                                                    {totalVenta != null ? fmtN(totalVenta) : "—"}
-                                                </td>
-                                                <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)] text-right whitespace-nowrap">
                                                     {fmtN(m.totalCost)}
                                                 </td>
                                                 <td className="px-4 py-2.5 whitespace-nowrap">
@@ -685,18 +711,18 @@ export default function SalidasPage() {
                     )}
                 </div>
 
-                {/* ── Footer hint linking to ledger ─────────────────────────── */}
+                {/* ── Footer hint ───────────────────────────────────────────── */}
                 <div className="flex items-center justify-between pt-2 pb-4 font-sans text-[12px] text-[var(--text-tertiary)]">
                     <span>
-                        Las salidas también se reflejan en el{" "}
-                        <Link href="/inventory/sales-ledger" className="text-primary-500 hover:text-primary-600">libro de salidas</Link>
-                        {" "}fiscal con el agrupado por factura y RIF de cliente.
+                        Las operaciones también aparecen en el listado completo de{" "}
+                        <Link href="/inventory/movements" className="text-primary-500 hover:text-primary-600">movimientos</Link>
+                        {" "}junto con entradas y ventas.
                     </span>
                     <Link
-                        href="/inventory/sales-ledger"
+                        href="/inventory/operations/new"
                         className="font-mono uppercase tracking-[0.12em] text-[11px] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                     >
-                        Ver libro de salidas →
+                        Crear nueva operación →
                     </Link>
                 </div>
             </div>
