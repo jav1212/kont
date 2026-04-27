@@ -1,11 +1,11 @@
-// rpc-movement.repository.ts — Supabase RPC adapter for Movement and Kardex.
+// rpc-movement.repository.ts — Supabase RPC adapter for Movement.
 // Role: infrastructure — implements IMovementRepository via Postgres RPC.
 // Invariant: all DB RPC function names are unchanged (DB contract).
 import { SupabaseClient } from '@supabase/supabase-js';
 import { IMovementRepository } from '../../domain/repository/movement.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { Movement, KardexEntry, MovementType } from '../../domain/movement';
+import { Movement, MovementType, MovementAdjustmentKind } from '../../domain/movement';
 
 // Infrastructure DTO — shape of the raw Postgres RPC row.
 interface MovementRpcRow {
@@ -21,14 +21,29 @@ interface MovementRpcRow {
   saldo_cantidad: number | null;
   referencia: string | null;
   notas: string | null;
-  transformacion_id: string | null;
   moneda: string | null;
   costo_moneda: number | null;
   tasa_dolar: number | null;
+  descuento_tipo: string | null;
+  descuento_valor: number | string | null;
+  descuento_monto: number | string | null;
+  recargo_tipo: string | null;
+  recargo_valor: number | string | null;
+  recargo_monto: number | string | null;
+  base_iva: number | string | null;
+  precio_venta_unitario: number | string | null;
   created_at: string | null;
-  // Kardex only
-  producto_nombre?: string | null;
 }
+
+const num = (v: number | string | null | undefined, fallback = 0): number =>
+    v == null || v === '' ? fallback : Number(v);
+
+const adjKind = (v: string | null | undefined): MovementAdjustmentKind | null =>
+    v === 'monto' || v === 'porcentaje' ? v : null;
+
+const stringifyAdj = (v: MovementAdjustmentKind | null | undefined): string => v ?? '';
+const stringifyNum = (v: number | null | undefined): string =>
+    v != null && Number.isFinite(v) && v !== 0 ? String(v) : '';
 
 export class RpcMovementRepository implements IMovementRepository {
     constructor(
@@ -68,10 +83,18 @@ export class RpcMovementRepository implements IMovementRepository {
                 saldo_cantidad:    movement.balanceQuantity,
                 referencia:        movement.reference,
                 notas:             movement.notes,
-                transformacion_id: movement.transformationId ?? null,
                 moneda:            movement.currency ?? 'B',
                 costo_moneda:      movement.currencyCost ?? null,
                 tasa_dolar:        movement.dollarRate ?? null,
+                descuento_tipo:    stringifyAdj(movement.descuentoTipo),
+                descuento_valor:   stringifyNum(movement.descuentoValor),
+                descuento_monto:   stringifyNum(movement.descuentoMonto),
+                recargo_tipo:      stringifyAdj(movement.recargoTipo),
+                recargo_valor:     stringifyNum(movement.recargoValor),
+                recargo_monto:     stringifyNum(movement.recargoMonto),
+                base_iva:          movement.baseIVA != null ? String(movement.baseIVA) : '',
+                precio_venta_unitario:
+                    movement.precioVentaUnitario != null ? String(movement.precioVentaUnitario) : '',
             };
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_movimientos_save', {
@@ -82,21 +105,6 @@ export class RpcMovementRepository implements IMovementRepository {
             return Result.success(this.mapToDomain(data as MovementRpcRow));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Failed to save movement');
-        }
-    }
-
-    async getKardex(companyId: string, productId: string): Promise<Result<KardexEntry[]>> {
-        try {
-            const { data, error } = await this.source.instance
-                .rpc('tenant_inventario_kardex', {
-                    p_user_id:     this.userId,
-                    p_empresa_id:  companyId,
-                    p_producto_id: productId,
-                });
-            if (error) return Result.fail(error.message);
-            return Result.success((data as MovementRpcRow[] ?? []).map(this.mapToKardex));
-        } catch (err) {
-            return Result.fail(err instanceof Error ? err.message : 'Failed to fetch kardex');
         }
     }
 
@@ -112,6 +120,17 @@ export class RpcMovementRepository implements IMovementRepository {
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Failed to delete movement');
         }
+    }
+
+    async getInboundTotal(companyId: string, period: string): Promise<Result<number>> {
+        const result = await this.findByCompany(companyId, period);
+        if (result.isFailure) return Result.fail(result.getError());
+        const movements = result.getValue();
+        const INBOUND_TYPES: MovementType[] = ['entrada', 'devolucion_salida', 'ajuste_positivo'];
+        const total = movements
+            .filter((m) => INBOUND_TYPES.includes(m.type))
+            .reduce((sum, m) => sum + (m.totalCost ?? 0), 0);
+        return Result.success(total);
     }
 
     async updateMeta(id: string, date: string, reference: string, notes: string): Promise<Result<Movement>> {
@@ -139,40 +158,26 @@ export class RpcMovementRepository implements IMovementRepository {
             type:             row.tipo,
             date:             row.fecha,
             period:           row.periodo,
-            quantity:         Number(row.cantidad ?? 0),
-            unitCost:         Number(row.costo_unitario ?? 0),
-            totalCost:        Number(row.costo_total ?? 0),
-            balanceQuantity:  Number(row.saldo_cantidad ?? 0),
+            quantity:         num(row.cantidad),
+            unitCost:         num(row.costo_unitario),
+            totalCost:        num(row.costo_total),
+            balanceQuantity:  num(row.saldo_cantidad),
             reference:        row.referencia ?? '',
             notes:            row.notas ?? '',
-            transformationId: row.transformacion_id ?? null,
             currency:         (row.moneda === 'D' ? 'D' : 'B') as 'B' | 'D',
             currencyCost:     row.costo_moneda != null ? Number(row.costo_moneda) : null,
             dollarRate:       row.tasa_dolar   != null ? Number(row.tasa_dolar)   : null,
+            descuentoTipo:    adjKind(row.descuento_tipo),
+            descuentoValor:   num(row.descuento_valor),
+            descuentoMonto:   num(row.descuento_monto),
+            recargoTipo:      adjKind(row.recargo_tipo),
+            recargoValor:     num(row.recargo_valor),
+            recargoMonto:     num(row.recargo_monto),
+            baseIVA:          num(row.base_iva, num(row.costo_total)),
+            precioVentaUnitario: row.precio_venta_unitario == null || row.precio_venta_unitario === ''
+                ? null
+                : Number(row.precio_venta_unitario),
             createdAt:        row.created_at ?? undefined,
-        };
-    }
-
-    private mapToKardex(row: MovementRpcRow): KardexEntry {
-        return {
-            id:               row.id ?? undefined,
-            companyId:        row.empresa_id,
-            productId:        row.producto_id,
-            type:             row.tipo,
-            date:             row.fecha,
-            period:           row.periodo,
-            quantity:         Number(row.cantidad ?? 0),
-            unitCost:         Number(row.costo_unitario ?? 0),
-            totalCost:        Number(row.costo_total ?? 0),
-            balanceQuantity:  Number(row.saldo_cantidad ?? 0),
-            reference:        row.referencia ?? '',
-            notes:            row.notas ?? '',
-            transformationId: row.transformacion_id ?? null,
-            currency:         (row.moneda === 'D' ? 'D' : 'B') as 'B' | 'D',
-            currencyCost:     row.costo_moneda != null ? Number(row.costo_moneda) : null,
-            dollarRate:       row.tasa_dolar   != null ? Number(row.tasa_dolar)   : null,
-            createdAt:        row.created_at ?? undefined,
-            productName:      row.producto_nombre ?? undefined,
         };
     }
 }

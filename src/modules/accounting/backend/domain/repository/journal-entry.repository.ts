@@ -45,4 +45,5 @@ export interface IJournalEntryRepository {
     save(input: SaveEntryInput): Promise<Result<string>>;
     post(entryId: string): Promise<Result<void>>;
     getTrialBalance(companyId: string, periodId?: string): Promise<Result<TrialBalanceLine[]>>;
+    deleteBySourceRef(companyId: string, source: string, sourceRef: string): Promise<Result<string[]>>;
 }

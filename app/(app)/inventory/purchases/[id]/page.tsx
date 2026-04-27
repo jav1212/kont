@@ -6,7 +6,7 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, use, useCallback } from "react";
-import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X } from "lucide-react";
+import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -16,6 +16,22 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
+import {
+    computeInvoiceTotals,
+    emptyHeaderAdjustments,
+    type HeaderAdjustments,
+    type AdjustmentKind,
+    type LineInput,
+} from "@/src/modules/inventory/shared/totals";
+import { HeaderAdjustmentsSection } from "@/src/modules/inventory/frontend/components/header-adjustments-section";
+import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
+import {
+    BcvRateInput,
+    DEFAULT_RATE_DECIMALS,
+    parseRateStr,
+    roundRateValue,
+    useBcvRate,
+} from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -61,7 +77,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         suppliers, loadSuppliers,
         currentPurchaseInvoice, loadingPurchaseInvoice, loadPurchaseInvoice,
         error, setError,
-        savePurchaseInvoice, confirmPurchaseInvoice, saveMovement,
+        savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, saveMovement,
     } = useInventory();
 
     // Editable form state (only used when draft)
@@ -71,9 +87,24 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [date, setDate] = useState("");
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
+    const [periodo, setPeriodo] = useState<string>("");
+    const [periodoManual, setPeriodoManual] = useState<boolean>(false);
+    const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
+    const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
+    const {
+        rate: dollarRateStr,
+        decimals: rateDecimals,
+        setRateFromApi,
+        setRateTyped,
+        applyDecimals,
+    } = useBcvRate();
+    const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
+    const [rateLoading, setRateLoading] = useState(false);
+    const [rateError, setRateError] = useState<string | null>(null);
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const [unconfirming, setUnconfirming] = useState(false);
     const [justConfirmed, setJustConfirmed] = useState(false);
 
     // ── Purchase return modal ──────────────────────────────────────────────────
@@ -95,6 +126,35 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         if (id) loadPurchaseInvoice(id);
     }, [id, loadPurchaseInvoice]);
 
+    const isDraft = currentPurchaseInvoice?.status === "borrador";
+
+    // Auto-fetch BCV rate when fecha changes — only while in draft. Confirmadas
+    // freeze the rate until the user desconfirma; refetching there would be a
+    // surprise side-effect.
+    useEffect(() => {
+        if (!isDraft || !date) return;
+        let cancelled = false;
+        setRateLoading(true);
+        setRateError(null);
+        fetch(`/api/bcv/rate?date=${date}&code=USD`)
+            .then((r) => r.json())
+            .then((json) => {
+                if (cancelled) return;
+                if (json.rate) {
+                    setRateFromApi(json.rate, rateDecimals);
+                    setRateDateBcv(json.date);
+                } else {
+                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
+                    setRateDateBcv(null);
+                }
+            })
+            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
+            .finally(() => { if (!cancelled) setRateLoading(false); });
+        return () => { cancelled = true; };
+    // Auto-fetch on date change only; rateDecimals shouldn't retrigger the call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [date, isDraft]);
+
     // Populate form when invoice loads — render-phase state update to avoid
     // setState-in-effect cascading renders. React batches all these setters
     // into a single re-render.
@@ -111,18 +171,51 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 ? currentPurchaseInvoice.items.map((i) => ({ ...i }))
                 : [emptyItem()]
         );
+        setPeriodo(currentPurchaseInvoice.period ?? "");
+        setPeriodoManual(currentPurchaseInvoice.periodoManual ?? false);
+        setHeaderAdj({
+            descuentoTipo:  (currentPurchaseInvoice.descuentoTipo ?? null) as AdjustmentKind | null,
+            descuentoValor: currentPurchaseInvoice.descuentoValor ?? 0,
+            recargoTipo:    (currentPurchaseInvoice.recargoTipo ?? null) as AdjustmentKind | null,
+            recargoValor:   currentPurchaseInvoice.recargoValor ?? 0,
+        });
+        const hasAdj =
+            (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
+            (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0);
+        if (hasAdj) setShowHeaderAdj(true);
+        const storedDecimals = currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS;
+        if (currentPurchaseInvoice.dollarRate != null) {
+            setRateFromApi(currentPurchaseInvoice.dollarRate, storedDecimals);
+        }
+        if (currentPurchaseInvoice.rateDecimals != null && currentPurchaseInvoice.rateDecimals !== DEFAULT_RATE_DECIMALS) {
+            applyDecimals(storedDecimals);
+        }
     }
 
-    const isDraft = currentPurchaseInvoice?.status === "borrador";
+    // Derived totals — uses shared math
+    const lineInputs: LineInput[] = items.map((i) => ({
+        quantity: i.quantity ?? 0,
+        unitCost: i.unitCost ?? 0,
+        vatRate:  i.vatRate ?? "general_16",
+        adjustments: {
+            descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
+            descuentoValor: i.descuentoValor ?? 0,
+            recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
+            recargoValor:   i.recargoValor ?? 0,
+        },
+    }));
+    const totals = computeInvoiceTotals(lineInputs, headerAdj);
+    const subtotal  = totals.baseIVA;
+    const vatAmount = totals.ivaMonto;
+    const total     = totals.total;
+    const headerAdjActive =
+        (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
+        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0);
 
-    // Derived totals — computed per-item from vatRate
-    const subtotal      = items.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
-    const baseTaxed8    = items.filter(i => (i.vatRate ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.totalCost, 0);
-    const baseTaxed16   = items.filter(i => (i.vatRate ?? "general_16") === "general_16").reduce((acc, i) => acc + i.totalCost, 0);
-    const vat8          = Math.round(baseTaxed8  * 8  / 100 * 100) / 100;
-    const vat16         = Math.round(baseTaxed16 * 16 / 100 * 100) / 100;
-    const vatAmount     = vat8 + vat16;
-    const total         = subtotal + vatAmount;
+    const effectiveDollarRate = (() => {
+        const r = parseRateStr(dollarRateStr);
+        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+    })();
 
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         id,
@@ -131,14 +224,34 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         invoiceNumber,
         controlNumber,
         date,
-        period:         date.slice(0, 7),
+        period:         periodoManual && periodo ? periodo : date.slice(0, 7),
+        periodoManual,
         status:         "borrador",
         subtotal,
         vatPercentage:  0,
         vatAmount,
         total,
         notes,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, subtotal, vatAmount, total, notes]);
+        dollarRate:     effectiveDollarRate,
+        rateDecimals,
+        descuentoTipo:  headerAdj.descuentoTipo,
+        descuentoValor: headerAdj.descuentoValor,
+        descuentoMonto: totals.descuentoHeader,
+        recargoTipo:    headerAdj.recargoTipo,
+        recargoValor:   headerAdj.recargoValor,
+        recargoMonto:   totals.recargoHeader,
+    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader]);
+
+    // Items con montos resueltos para persistir
+    const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
+        const t = totals.items[idx];
+        return {
+            ...it,
+            descuentoMonto: t.descuentoMonto,
+            recargoMonto:   t.recargoMonto,
+            baseIVA:        t.baseIVAFinal,
+        };
+    });
 
     function openReturnModal() {
         const today = new Date().toISOString().split("T")[0];
@@ -199,7 +312,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         if (!validate()) return;
         setSaving(true);
         setError(null);
-        await savePurchaseInvoice(buildInvoice(), items);
+        await savePurchaseInvoice(buildInvoice(), itemsForSave());
         setSaving(false);
     }
 
@@ -207,11 +320,24 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         if (!validate()) return;
         setConfirming(true);
         setError(null);
-        const saved = await savePurchaseInvoice(buildInvoice(), items);
+        const saved = await savePurchaseInvoice(buildInvoice(), itemsForSave());
         if (!saved) { setConfirming(false); return; }
         const confirmed = await confirmPurchaseInvoice(saved.id!);
         setConfirming(false);
         if (confirmed) setJustConfirmed(true);
+    }
+
+    async function handleUnconfirm() {
+        if (!currentPurchaseInvoice?.id) return;
+        const ok = window.confirm(
+            "Al desconfirmar se revierten los movimientos de inventario y los asientos contables generados. Podrás editar la factura y volver a confirmarla. ¿Continuar?"
+        );
+        if (!ok) return;
+        setUnconfirming(true);
+        setError(null);
+        setJustConfirmed(false);
+        await unconfirmPurchaseInvoice(currentPurchaseInvoice.id);
+        setUnconfirming(false);
     }
 
     if (loadingPurchaseInvoice) {
@@ -378,6 +504,27 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                     </div>
                 )}
 
+                {isConfirmed && !justConfirmed && (
+                    <div className="mb-4 px-4 py-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] text-[13px] font-sans flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-500">
+                            <Lock size={14} strokeWidth={2} />
+                            <span>
+                                Esta factura está confirmada{invoice.confirmedAt ? ` desde el ${fmtDate(invoice.confirmedAt)}` : ""}.
+                                Para corregirla, desconfirma primero — los movimientos y asientos generados se revertirán.
+                            </span>
+                        </div>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={<Unlock size={14} strokeWidth={2} />}
+                            onClick={handleUnconfirm}
+                            disabled={unconfirming}
+                        >
+                            {unconfirming ? "Desconfirmando…" : "Desconfirmar"}
+                        </BaseButton.Root>
+                    </div>
+                )}
+
                 <div className="flex gap-6 items-start">
                     {/* Left panel */}
                     <div className="flex-1 min-w-0 space-y-4">
@@ -388,7 +535,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 Datos de la factura
                             </h2>
 
-                            <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                     <label className={labelCls}>Proveedor</label>
                                     {isDraft ? (
@@ -416,9 +563,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         </>
                                     )}
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     {isDraft ? (
                                         <BaseInput.Field label="Nº Control" value={controlNumber} onValueChange={setControlNumber} placeholder="Ej. 00-00123456" />
@@ -431,6 +575,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         </>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                     {isDraft ? (
                                         <BaseInput.Field label="Fecha" type="date" value={date} onValueChange={setDate} />
@@ -443,15 +590,77 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         </>
                                     )}
                                 </div>
+                                <PeriodoContableInput
+                                    fecha={date}
+                                    periodo={periodo}
+                                    periodoManual={periodoManual}
+                                    onChange={(p, manual) => { setPeriodo(p); setPeriodoManual(manual); }}
+                                    readOnly={!isDraft}
+                                />
+                                <div>
+                                    {isDraft ? (
+                                        <BcvRateInput
+                                            rate={dollarRateStr}
+                                            onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
+                                            decimals={rateDecimals}
+                                            onDecimalsChange={applyDecimals}
+                                            loading={rateLoading}
+                                            bcvDate={rateDateBcv}
+                                            error={rateError}
+                                        />
+                                    ) : (
+                                        <>
+                                            <label className={labelCls}>Tasa BCV (Bs/USD)</label>
+                                            <div className={readonlyCls + " flex items-center"}>
+                                                {invoice.dollarRate != null
+                                                    ? invoice.dollarRate.toLocaleString("es-VE", {
+                                                          minimumFractionDigits: invoice.rateDecimals ?? DEFAULT_RATE_DECIMALS,
+                                                          maximumFractionDigits: invoice.rateDecimals ?? DEFAULT_RATE_DECIMALS,
+                                                      })
+                                                    : "—"}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
 
-                            <div>
+                            <div className="mb-4">
                                 <label className={labelCls}>Notas</label>
                                 {isDraft ? (
                                     <textarea className={`${fieldCls} h-auto py-2`} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
                                 ) : (
                                     <div className={`${readonlyCls} h-auto py-2 min-h-[60px]`}>
                                         {invoice.notes || "—"}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Header adjustments — visible always when there's any active value, editable only in draft */}
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHeaderAdj((v) => !v)}
+                                    className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
+                                >
+                                    <span className={[
+                                        "inline-flex w-4 h-4 items-center justify-center rounded font-mono text-[10px] leading-none",
+                                        headerAdjActive ? "bg-primary-500/15 text-primary-500" : "bg-surface-2 text-[var(--text-tertiary)]",
+                                    ].join(" ")}>
+                                        {showHeaderAdj ? "−" : headerAdjActive ? "●" : "+"}
+                                    </span>
+                                    Ajustes de factura
+                                    {headerAdjActive && !showHeaderAdj && (
+                                        <span className="text-[10px] text-[var(--text-tertiary)] normal-case tracking-normal">
+                                            (descuento/recargo activos)
+                                        </span>
+                                    )}
+                                </button>
+                                {showHeaderAdj && (
+                                    <div className="mt-3 px-4 py-3 rounded-lg border border-border-light bg-surface-2/40">
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                            Se prorratean por línea según base IVA
+                                        </p>
+                                        <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} />
                                     </div>
                                 )}
                             </div>
@@ -470,25 +679,64 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 products={products}
                                 onChange={setItems}
                                 readOnly={!isDraft}
+                                dollarRate={effectiveDollarRate}
                             />
 
                             {/* Totals */}
                             {(() => {
-                                // For confirmed invoices, compute breakdown from stored items
+                                // Use the same shared math for draft and confirmed.
                                 const displayItems = isDraft ? items : (invoice.items ?? []);
-                                const dSubtotal     = displayItems.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
-                                const dBaseExempt   = displayItems.filter(i => (i.vatRate ?? "general_16") === "exenta").reduce((acc, i) => acc + i.totalCost, 0);
-                                const dBaseTaxed8   = displayItems.filter(i => (i.vatRate ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.totalCost, 0);
-                                const dBaseTaxed16  = displayItems.filter(i => (i.vatRate ?? "general_16") === "general_16").reduce((acc, i) => acc + i.totalCost, 0);
-                                const dVat8         = Math.round(dBaseTaxed8  * 8  / 100 * 100) / 100;
-                                const dVat16        = Math.round(dBaseTaxed16 * 16 / 100 * 100) / 100;
-                                const dVatAmount    = dVat8 + dVat16;
-                                const dTotal        = isDraft ? total : invoice.total;
+                                const displayHeader: HeaderAdjustments = isDraft ? headerAdj : {
+                                    descuentoTipo:  (invoice.descuentoTipo ?? null) as AdjustmentKind | null,
+                                    descuentoValor: invoice.descuentoValor ?? 0,
+                                    recargoTipo:    (invoice.recargoTipo ?? null) as AdjustmentKind | null,
+                                    recargoValor:   invoice.recargoValor ?? 0,
+                                };
+                                const dInputs: LineInput[] = displayItems.map((i) => ({
+                                    quantity: i.quantity ?? 0,
+                                    unitCost: i.unitCost ?? 0,
+                                    vatRate:  i.vatRate ?? "general_16",
+                                    adjustments: {
+                                        descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
+                                        descuentoValor: i.descuentoValor ?? 0,
+                                        recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
+                                        recargoValor:   i.recargoValor ?? 0,
+                                    },
+                                }));
+                                const t = computeInvoiceTotals(dInputs, displayHeader);
+                                const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
+                                const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
+                                const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
+                                const dVat8         = t.ivaPorAlicuota.reducida_8;
+                                const dVat16        = t.ivaPorAlicuota.general_16;
+                                const dVatAmount    = t.ivaMonto;
+                                const dTotal        = isDraft ? t.total : invoice.total;
+                                const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
                                 return (
                                     <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[13px]">
+                                        {hasLineOrHeaderAdj && (
+                                            <>
+                                                <div className="flex gap-8 items-center">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal bruto</span>
+                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(t.subtotalBruto)}</span>
+                                                </div>
+                                                {(t.descuentoLinea + t.descuentoHeader) > 0 && (
+                                                    <div className="flex gap-8 items-center">
+                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">− Descuentos</span>
+                                                        <span className="tabular-nums text-error/80 font-medium w-36 text-right">{fmtN(t.descuentoLinea + t.descuentoHeader)}</span>
+                                                    </div>
+                                                )}
+                                                {(t.recargoLinea + t.recargoHeader) > 0 && (
+                                                    <div className="flex gap-8 items-center">
+                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">+ Recargos</span>
+                                                        <span className="tabular-nums text-amber-600 w-36 text-right">{fmtN(t.recargoLinea + t.recargoHeader)}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                         <div className="flex gap-8 items-center">
-                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
-                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-36 text-right">{fmtN(dSubtotal)}</span>
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
+                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-36 text-right">{fmtN(t.baseIVA)}</span>
                                         </div>
                                         {dBaseExempt > 0 && (
                                             <div className="flex gap-8 items-center">
@@ -610,9 +858,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Fecha</span>
                                     <span className="text-foreground tabular-nums">{fmtDate(invoice.date)}</span>
                                 </div>
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Período</span>
-                                    <span className="text-foreground tabular-nums">{invoice.period}</span>
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="text-foreground tabular-nums">{invoice.period}</span>
+                                        {invoice.periodoManual && (
+                                            <span className="px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-600 font-mono text-[8px] uppercase tracking-[0.12em] font-bold">
+                                                Manual
+                                            </span>
+                                        )}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Ítems</span>
@@ -621,7 +876,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
                                     <span className="tabular-nums text-[var(--text-primary)]">{fmtN(invoice.subtotal)}</span>
                                 </div>
                                 {invoice.vatAmount > 0 && (

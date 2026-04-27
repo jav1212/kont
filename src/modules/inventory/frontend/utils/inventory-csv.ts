@@ -179,7 +179,7 @@ const PROD_HEADERS = [
     "iva_tipo", "activo", "departamento_nombre",
 ] as const;
 
-const VALID_TYPES: ProductType[]          = ["mercancia", "materia_prima", "producto_terminado"];
+const VALID_TYPES: ProductType[]          = ["mercancia"];
 const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
 const VALID_METHODS: ValuationMethod[]    = ["promedio_ponderado", "peps"];
 const VALID_VAT_TYPES: VatType[]          = ["exento", "general"];

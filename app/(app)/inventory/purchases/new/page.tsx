@@ -5,8 +5,9 @@
 // Architectural role: Page-level composition using inventory hook and shared domain types.
 // All identifiers use English domain types; JSX user-facing text remains in Spanish.
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator } from "lucide-react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator, ChevronDown, Info } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -18,16 +19,29 @@ import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/invento
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
+import {
+    computeInvoiceTotals,
+    emptyHeaderAdjustments,
+    type HeaderAdjustments,
+    type AdjustmentKind,
+    type LineInput,
+} from "@/src/modules/inventory/shared/totals";
+import { HeaderAdjustmentsSection } from "@/src/modules/inventory/frontend/components/header-adjustments-section";
+import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const fieldCls = [
-    "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
+    "w-full h-10 px-3 rounded-lg border border-border-default bg-surface-1 outline-none",
     "font-mono text-[14px] text-foreground tabular-nums",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
+    "focus:border-primary-500 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
+
+// Subtle uppercase chip used as in-card group label. Reads as chrome — never
+// content. Sits above each subgroup of fields inside the "Datos" card.
+const groupLabelCls = "font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-semibold";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -94,6 +108,9 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
     const [hiIdx, setHiIdx] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
+    // Portal anchor — escapes any ancestor `overflow-hidden` (the surrounding
+    // card uses it to mask rounded corners) so the dropdown never clips.
+    const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
 
     const selected = suppliers.find((s) => s.id === supplierId);
 
@@ -110,12 +127,32 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
         el?.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
-    function openDropdown() { setSearch(""); setHiIdx(0); setOpen(true); }
+    useLayoutEffect(() => {
+        if (!open) return;
+        const update = () => {
+            const el = wrapRef.current;
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            setAnchor({ left: r.left, top: r.bottom + 2, width: r.width });
+        };
+        update();
+        window.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+            window.removeEventListener("scroll", update, true);
+            window.removeEventListener("resize", update);
+        };
+    }, [open]);
+
+    function openDropdown() { setSearch(""); setHiIdx(0); setAnchor(null); setOpen(true); }
     function closeDropdown() { setOpen(false); setSearch(""); }
     function selectItem(id: string) { onChange(id); closeDropdown(); }
 
     function handleBlur(e: React.FocusEvent) {
-        if (!wrapRef.current?.contains(e.relatedTarget as Node)) closeDropdown();
+        const next = e.relatedTarget as Node | null;
+        if (wrapRef.current?.contains(next)) return;
+        if (next instanceof Node && document.querySelector('[data-supplier-combo-portal="true"]')?.contains(next)) return;
+        closeDropdown();
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -148,8 +185,18 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
                 autoComplete="off"
                 spellCheck="false"
             />
-            {open && (
-                <div className="absolute left-0 top-full z-50 min-w-full mt-0.5 rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden">
+            {open && anchor && typeof document !== "undefined" && createPortal(
+                <div
+                    data-supplier-combo-portal="true"
+                    style={{
+                        position: "fixed",
+                        left: anchor.left,
+                        top: anchor.top,
+                        width: anchor.width,
+                        zIndex: 100,
+                    }}
+                    className="rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden"
+                >
                     {filtered.length === 0 ? (
                         <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Sin resultados</div>
                     ) : (
@@ -182,7 +229,8 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
                     >
                         + Crear{search ? ` "${search}"` : ' nuevo proveedor'}
                     </button>
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );
@@ -223,6 +271,10 @@ export default function NuevaFacturaPage() {
     const [rateLoading, setRateLoading] = useState(false);
     const [rateError, setRateError] = useState<string | null>(null);
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
+    const [periodo, setPeriodo] = useState<string>(() => date.slice(0, 7));
+    const [periodoManual, setPeriodoManual] = useState<boolean>(false);
+    const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
+    const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -290,15 +342,34 @@ export default function NuevaFacturaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date]);
 
-    // Derived totals — computed per-item from vatRate
-    const subtotal      = items.reduce((acc, i) => acc + (i.totalCost ?? 0), 0);
-    const baseExempt    = items.filter(i => (i.vatRate ?? "general_16") === "exenta").reduce((acc, i) => acc + i.totalCost, 0);
-    const baseTaxed8    = items.filter(i => (i.vatRate ?? "general_16") === "reducida_8").reduce((acc, i) => acc + i.totalCost, 0);
-    const baseTaxed16   = items.filter(i => (i.vatRate ?? "general_16") === "general_16").reduce((acc, i) => acc + i.totalCost, 0);
-    const vat8          = Math.round(baseTaxed8  * 8  / 100 * 100) / 100;
-    const vat16         = Math.round(baseTaxed16 * 16 / 100 * 100) / 100;
-    const vatAmount     = vat8 + vat16;
-    const total         = subtotal + vatAmount;
+    // Derived totals — computed by shared math (computeInvoiceTotals)
+    const lineInputs: LineInput[] = items.map((i) => ({
+        quantity: i.quantity ?? 0,
+        unitCost: i.unitCost ?? 0,
+        vatRate:  i.vatRate ?? "general_16",
+        adjustments: {
+            descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
+            descuentoValor: i.descuentoValor ?? 0,
+            recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
+            recargoValor:   i.recargoValor ?? 0,
+        },
+    }));
+    const totals = computeInvoiceTotals(lineInputs, headerAdj);
+    const {
+        subtotalBruto, descuentoLinea, recargoLinea,
+        descuentoHeader, recargoHeader,
+        baseIVA, ivaPorAlicuota, ivaMonto, total,
+    } = totals;
+    const subtotal  = baseIVA;       // legacy alias used by header rollup
+    const vatAmount = ivaMonto;      // legacy alias
+    const baseExempt  = lineInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + totals.items[idx].baseIVAFinal : acc, 0);
+    const baseTaxed8  = lineInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + totals.items[idx].baseIVAFinal : acc, 0);
+    const baseTaxed16 = lineInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + totals.items[idx].baseIVAFinal : acc, 0);
+    const vat8  = ivaPorAlicuota.reducida_8;
+    const vat16 = ivaPorAlicuota.general_16;
+    const headerAdjActive =
+        (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
+        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0);
 
     const effectiveDollarRate = (() => {
         const r = parseRateStr(dollarRate);
@@ -314,7 +385,8 @@ export default function NuevaFacturaPage() {
         invoiceNumber,
         controlNumber,
         date,
-        period:        date.slice(0, 7),
+        period:        periodoManual && periodo ? periodo : date.slice(0, 7),
+        periodoManual,
         status:        "borrador",
         subtotal,
         vatPercentage: 0,
@@ -323,7 +395,25 @@ export default function NuevaFacturaPage() {
         notes,
         dollarRate:    effectiveDollarRate,
         rateDecimals,
-    }), [companyId, supplierId, invoiceNumber, controlNumber, date, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals]);
+        descuentoTipo:  headerAdj.descuentoTipo,
+        descuentoValor: headerAdj.descuentoValor,
+        descuentoMonto: descuentoHeader,
+        recargoTipo:    headerAdj.recargoTipo,
+        recargoValor:   headerAdj.recargoValor,
+        recargoMonto:   recargoHeader,
+    }), [companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader]);
+
+    // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
+    // baseIVA reflejan el spread proporcional del header).
+    const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
+        const t = totals.items[idx];
+        return {
+            ...it,
+            descuentoMonto: t.descuentoMonto,
+            recargoMonto:   t.recargoMonto,
+            baseIVA:        t.baseIVAFinal,
+        };
+    });
 
     function validate(): boolean {
         if (!supplierId) { setError("Selecciona un proveedor"); return false; }
@@ -341,7 +431,7 @@ export default function NuevaFacturaPage() {
         setError(null);
         const invoice = buildInvoice();
         if (savedId) invoice.id = savedId;
-        const saved = await savePurchaseInvoice(invoice, items);
+        const saved = await savePurchaseInvoice(invoice, itemsForSave());
         setSaving(false);
         if (saved?.id) setSavedId(saved.id);
     }
@@ -353,7 +443,7 @@ export default function NuevaFacturaPage() {
         // First save draft (or update existing)
         const invoice = buildInvoice();
         if (savedId) invoice.id = savedId;
-        const saved = await savePurchaseInvoice(invoice, items);
+        const saved = await savePurchaseInvoice(invoice, itemsForSave());
         if (!saved) { setConfirming(false); return; }
         // Then confirm
         const confirmedInvoice = await confirmPurchaseInvoice(saved.id!);
@@ -413,7 +503,7 @@ export default function NuevaFacturaPage() {
     }
 
     if (confirmed && savedId) {
-        const period = date.slice(0, 7);
+        const period = (periodoManual && periodo) || date.slice(0, 7);
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <PageHeader title="Nueva Factura de Compra" subtitle="Registro completado">
@@ -435,7 +525,7 @@ export default function NuevaFacturaPage() {
                                     Factura confirmada
                                 </h2>
                                 <p className="text-[12px] text-[var(--text-secondary)] font-sans leading-snug mt-0.5">
-                                    Entradas registradas en el período {period}. Las existencias y el kardex ya reflejan el movimiento.
+                                    Entradas registradas en el período {period}. Las existencias ya reflejan el movimiento.
                                 </p>
                             </div>
                         </div>
@@ -547,87 +637,183 @@ export default function NuevaFacturaPage() {
                     {/* Row 1 — Datos de la factura + Resumen */}
                     <div className="flex gap-6 items-start">
                         {/* Datos de la factura */}
-                        <section className="flex-1 min-w-0 rounded-xl border border-border-light bg-surface-1 p-6 shadow-sm">
-                            <div className="flex items-center gap-2 mb-5">
-                                <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
-                                    <FileText size={13} strokeWidth={2} />
-                                </div>
-                                <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                    Datos de la factura
-                                </h2>
-                            </div>
+                        <section className="flex-1 min-w-0 rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
 
-                            {/* Row 1 — Proveedor (span 2) + Nº Factura */}
-                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                <div className="col-span-2">
-                                    <label className={labelCls}>
-                                        Proveedor <span className="text-error/80">*</span>
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <SupplierCombobox
-                                            supplierId={supplierId}
-                                            suppliers={suppliers}
-                                            onChange={setSupplierId}
-                                            onRequestCreate={(search) => {
-                                                setQcSupplier(s => ({ ...s, name: search }));
-                                                setQcMode('supplier');
-                                                setError(null);
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => { setQcSupplier({ name: '', rif: '' }); setQcMode('supplier'); setError(null); }}
-                                            className="h-10 w-10 shrink-0 rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center justify-center shadow-sm"
-                                            title="Crear nuevo proveedor"
-                                            aria-label="Crear nuevo proveedor"
-                                        >
-                                            <Plus size={14} strokeWidth={2} />
-                                        </button>
+                            {/* ── Card header ────────────────────────────────────── */}
+                            <header className="px-6 pt-5 pb-4 border-b border-border-light flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 flex-shrink-0">
+                                    <FileText size={14} strokeWidth={2} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground leading-none">
+                                        Datos de la factura
+                                    </h2>
+                                    <p className="mt-1.5 text-[12px] font-sans text-[var(--text-tertiary)] leading-snug">
+                                        Identifica el comprobante y define cómo entra al período contable.
+                                    </p>
+                                </div>
+                            </header>
+
+                            {/* ── Group 1 · Identificación ───────────────────────── */}
+                            <div className="px-6 pt-5 pb-5">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <span className={groupLabelCls}>Identificación</span>
+                                    <span className="flex-1 h-px bg-border-light" />
+                                </div>
+
+                                {/* Proveedor (span 2) + Nº Factura */}
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="col-span-2">
+                                        <label className={labelCls}>
+                                            Proveedor <span className="text-error/80">*</span>
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <SupplierCombobox
+                                                supplierId={supplierId}
+                                                suppliers={suppliers}
+                                                onChange={setSupplierId}
+                                                onRequestCreate={(search) => {
+                                                    setQcSupplier(s => ({ ...s, name: search }));
+                                                    setQcMode('supplier');
+                                                    setError(null);
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => { setQcSupplier({ name: '', rif: '' }); setQcMode('supplier'); setError(null); }}
+                                                className="h-10 w-10 shrink-0 rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center justify-center"
+                                                title="Crear nuevo proveedor"
+                                                aria-label="Crear nuevo proveedor"
+                                            >
+                                                <Plus size={14} strokeWidth={2} />
+                                            </button>
+                                        </div>
                                     </div>
+                                    <BaseInput.Field
+                                        label="Nº Factura"
+                                        isRequired
+                                        value={invoiceNumber}
+                                        onValueChange={setInvoiceNumber}
+                                        placeholder="0001-00123456"
+                                    />
                                 </div>
-                                <BaseInput.Field
-                                    label="Nº Factura"
-                                    value={invoiceNumber}
-                                    onValueChange={setInvoiceNumber}
-                                    placeholder="0001-00123456"
-                                />
+
+                                {/* Nº Control — single column, half-width on its own row */}
+                                <div className="mt-4 grid grid-cols-3 gap-4">
+                                    <BaseInput.Field
+                                        label="Nº Control"
+                                        value={controlNumber}
+                                        onValueChange={setControlNumber}
+                                        placeholder="00-00123456"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Row 2 — Nº Control · Fecha · Tasa BCV */}
-                            <div className="grid grid-cols-3 gap-4 mb-4">
-                                <BaseInput.Field
-                                    label="Nº Control"
-                                    value={controlNumber}
-                                    onValueChange={setControlNumber}
-                                    placeholder="00-00123456"
-                                />
-                                <BaseInput.Field
-                                    label="Fecha"
-                                    type="date"
-                                    value={date}
-                                    onValueChange={setDate}
-                                />
-                                <BcvRateInput
-                                    rate={dollarRate}
-                                    onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
-                                    decimals={rateDecimals}
-                                    onDecimalsChange={applyDecimals}
-                                    loading={rateLoading}
-                                    bcvDate={rateDateBcv}
-                                    error={rateError}
-                                />
+                            {/* ── Group 2 · Fechas y tasa ────────────────────────── */}
+                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <span className={groupLabelCls}>Fechas y tasa</span>
+                                    <span className="flex-1 h-px bg-border-light" />
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <BaseInput.Field
+                                        label="Fecha"
+                                        type="date"
+                                        value={date}
+                                        onValueChange={setDate}
+                                    />
+                                    <PeriodoContableInput
+                                        fecha={date}
+                                        periodo={periodo}
+                                        periodoManual={periodoManual}
+                                        onChange={(p, manual) => { setPeriodo(p); setPeriodoManual(manual); }}
+                                    />
+                                    <BcvRateInput
+                                        rate={dollarRate}
+                                        onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
+                                        decimals={rateDecimals}
+                                        onDecimalsChange={applyDecimals}
+                                        loading={rateLoading}
+                                        bcvDate={rateDateBcv}
+                                        error={rateError}
+                                    />
+                                </div>
+
+                                <div className="mt-3 flex items-start gap-1.5">
+                                    <Info size={12} strokeWidth={2} className="mt-[2px] flex-shrink-0 text-[var(--text-tertiary)]" />
+                                    <p className="text-[11px] font-sans text-[var(--text-tertiary)] leading-snug">
+                                        La <span className="font-mono uppercase tracking-[0.10em] text-[10px]">fecha</span> determina la tasa BCV consultada. El <span className="font-mono uppercase tracking-[0.10em] text-[10px]">período</span> define a qué mes contable entran las existencias al confirmar.
+                                    </p>
+                                </div>
                             </div>
 
-                            {/* Row 3 — Notas */}
-                            <div>
-                                <label className={labelCls}>Notas</label>
+                            {/* ── Group 3 · Notas ────────────────────────────────── */}
+                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <span className={groupLabelCls}>Notas</span>
+                                    <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]/70">opcional</span>
+                                    <span className="flex-1 h-px bg-border-light" />
+                                </div>
                                 <textarea
-                                    className={`${fieldCls} h-auto py-2 resize-none`}
-                                    rows={2}
+                                    className={`${fieldCls} h-auto py-2.5 resize-none leading-snug`}
+                                    rows={3}
+                                    maxLength={500}
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Observaciones opcionales sobre la factura…"
+                                    placeholder="Observaciones internas: condiciones de pago, retenciones aplicadas, referencia de orden de compra…"
                                 />
+                                <div className="mt-1.5 flex items-center justify-end">
+                                    <span className="font-mono text-[10px] tabular-nums text-[var(--text-tertiary)]/70">
+                                        {notes.length} / 500
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* ── Group 4 · Ajustes (collapsible) ───────────────── */}
+                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHeaderAdj((v) => !v)}
+                                    aria-expanded={showHeaderAdj}
+                                    className={[
+                                        "w-full flex items-center justify-between gap-3 px-3.5 h-11 rounded-lg",
+                                        "border bg-surface-1 transition-colors text-left",
+                                        showHeaderAdj || headerAdjActive
+                                            ? "border-border-medium hover:border-border-strong"
+                                            : "border-border-default hover:border-border-medium hover:bg-surface-2/50",
+                                    ].join(" ")}
+                                >
+                                    <span className="flex items-center gap-2.5 min-w-0">
+                                        <ChevronDown
+                                            size={13}
+                                            strokeWidth={2.4}
+                                            className={[
+                                                "text-[var(--text-tertiary)] transition-transform duration-150 flex-shrink-0",
+                                                showHeaderAdj ? "rotate-0" : "-rotate-90",
+                                            ].join(" ")}
+                                        />
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground font-bold">
+                                            Ajustes de factura
+                                        </span>
+                                        {headerAdjActive && (
+                                            <span className="badge-info inline-flex items-center h-5 px-1.5 rounded border font-mono text-[9px] font-bold uppercase tracking-[0.14em] whitespace-nowrap">
+                                                Activo
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] hidden sm:inline whitespace-nowrap">
+                                        Descuento · Recargo
+                                    </span>
+                                </button>
+                                {showHeaderAdj && (
+                                    <div className="mt-3 px-4 py-3.5 rounded-lg border border-border-light bg-surface-2/40">
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                            Se prorratean por línea según base IVA
+                                        </p>
+                                        <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} />
+                                    </div>
+                                )}
                             </div>
                         </section>
 
@@ -665,6 +851,17 @@ export default function NuevaFacturaPage() {
                                         <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Fecha</dt>
                                         <dd className="text-foreground tabular-nums">{date || "—"}</dd>
                                     </div>
+                                    <div className="flex justify-between items-center">
+                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Período</dt>
+                                        <dd className="flex items-center gap-1.5">
+                                            <span className="text-foreground tabular-nums">{(periodoManual && periodo) || date.slice(0, 7) || "—"}</span>
+                                            {periodoManual && periodo && periodo !== date.slice(0, 7) && (
+                                                <span className="px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-600 font-mono text-[8px] uppercase tracking-[0.12em] font-bold">
+                                                    Manual
+                                                </span>
+                                            )}
+                                        </dd>
+                                    </div>
                                     <div className="flex justify-between">
                                         <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Tasa BCV</dt>
                                         <dd className="text-foreground tabular-nums">
@@ -679,9 +876,31 @@ export default function NuevaFacturaPage() {
                                     </div>
                                 </dl>
 
-                                {/* Bases breakdown — only when there's taxed content */}
-                                {(baseExempt > 0 || baseTaxed8 > 0 || baseTaxed16 > 0) && (
+                                {/* Ajustes breakdown — sólo si hay alguno activo */}
+                                {(descuentoLinea > 0 || recargoLinea > 0 || descuentoHeader > 0 || recargoHeader > 0) && (
                                     <dl className="px-5 py-3 border-t border-border-light bg-surface-2/40 space-y-1.5 text-[12px]">
+                                        <div className="flex justify-between">
+                                            <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Subtotal bruto</dt>
+                                            <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(subtotalBruto)}</dd>
+                                        </div>
+                                        {(descuentoLinea + descuentoHeader) > 0 && (
+                                            <div className="flex justify-between">
+                                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">− Descuentos</dt>
+                                                <dd className="tabular-nums text-error/80 font-medium">{fmtN(descuentoLinea + descuentoHeader)}</dd>
+                                            </div>
+                                        )}
+                                        {(recargoLinea + recargoHeader) > 0 && (
+                                            <div className="flex justify-between">
+                                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">+ Recargos</dt>
+                                                <dd className="tabular-nums text-amber-600 font-medium">{fmtN(recargoLinea + recargoHeader)}</dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                )}
+
+                                {/* Bases por alícuota — only when there's taxed content */}
+                                {(baseExempt > 0 || baseTaxed8 > 0 || baseTaxed16 > 0) && (
+                                    <dl className="px-5 py-3 border-t border-border-light space-y-1.5 text-[12px]">
                                         {baseExempt > 0 && (
                                             <div className="flex justify-between">
                                                 <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base exenta</dt>
@@ -718,7 +937,7 @@ export default function NuevaFacturaPage() {
                                 {/* Subtotal + IVA rollup */}
                                 <dl className="px-5 py-3 border-t border-border-light space-y-1.5 text-[12px]">
                                     <div className="flex justify-between">
-                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Subtotal</dt>
+                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base IVA</dt>
                                         <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(subtotal)}</dd>
                                     </div>
                                     {vatAmount > 0 && (
@@ -797,7 +1016,7 @@ export default function NuevaFacturaPage() {
                         <div className="mt-5 pt-4 border-t border-border-light flex items-baseline justify-end gap-6 flex-wrap">
                             <div className="flex items-baseline gap-2">
                                 <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                    Subtotal
+                                    Base IVA
                                 </span>
                                 <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
                                     {fmtN(subtotal)}
@@ -925,8 +1144,6 @@ export default function NuevaFacturaPage() {
                                     onChange={(e) => setQcProduct(p => ({ ...p, type: e.target.value as ProductType }))}
                                 >
                                     <option value="mercancia">Mercancía</option>
-                                    <option value="materia_prima">Materia Prima</option>
-                                    <option value="producto_terminado">Prod. Terminado</option>
                                 </select>
                             </div>
                             <div>

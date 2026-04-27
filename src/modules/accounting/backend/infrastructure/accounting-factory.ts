@@ -20,6 +20,7 @@ import { SaveIntegrationRuleUseCase }                        from '../applicatio
 import { DeleteIntegrationRuleUseCase }                      from '../application/commands/delete-integration-rule.use-case';
 import { ProcessPayrollIntegrationUseCase }                  from '../application/commands/process-payroll-integration.use-case';
 import { ProcessInventoryPurchaseIntegrationUseCase }        from '../application/commands/process-inventory-purchase-integration.use-case';
+import { ReverseInventoryPurchaseIntegrationUseCase }        from '../application/commands/reverse-inventory-purchase-integration.use-case';
 import { GetAccountsUseCase }                                from '../application/queries/get-accounts.use-case';
 import { GetChartsUseCase }                                  from '../application/queries/get-charts.use-case';
 import { GetJournalEntriesUseCase }                          from '../application/queries/get-journal-entries.use-case';
@@ -75,5 +76,6 @@ export function getAccountingActions(userId: string) {
         // Integration processors (called from other module route handlers)
         processPayrollIntegration:           new ProcessPayrollIntegrationUseCase(ruleRepo, logRepo, periodRepo, entryRepo),
         processInventoryPurchaseIntegration: new ProcessInventoryPurchaseIntegrationUseCase(ruleRepo, logRepo, periodRepo, entryRepo),
+        reverseInventoryPurchaseIntegration: new ReverseInventoryPurchaseIntegrationUseCase(logRepo, entryRepo),
     };
 }

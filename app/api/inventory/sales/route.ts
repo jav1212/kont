@@ -9,6 +9,15 @@ interface OutboundItem {
     productId: string;
     quantity: number;
     currentStock?: number;
+    // Optional sale price set by the random sales generator. When present, the
+    // movement is persisted with precio_venta_unitario so the period report can
+    // reflect ganancia/pérdida via SUM(precio_venta_unitario × cantidad) for
+    // tipo='salida'. When omitted the movement remains valued at costo_total
+    // (legacy behavior).
+    precioVentaUnitario?: number;
+    // Optional override for the movement date. When omitted falls back to the
+    // outer body.date. Used by the generator to spread sales across the period.
+    date?: string;
 }
 
 interface OutboundBody {
@@ -28,16 +37,16 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
 
     const ownerId = actingAs?.ownerId ?? userId;
     const actions = getInventoryActions(ownerId);
-    const period  = date.slice(0, 7);
     const saved: Movement[] = [];
 
     for (const item of items) {
+        const itemDate = item.date ?? date;
         const movement: Movement = {
             companyId,
             productId:    item.productId,
             type:         'salida',
-            date,
-            period,
+            date:         itemDate,
+            period:       itemDate.slice(0, 7),
             quantity:     item.quantity,
             unitCost:     0, // RPC resolves average cost from product record
             totalCost:    0,
@@ -45,6 +54,10 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
             reference:    reference ?? '',
             notes:        '',
             currentStock: item.currentStock,
+            precioVentaUnitario:
+                typeof item.precioVentaUnitario === 'number' && Number.isFinite(item.precioVentaUnitario)
+                    ? item.precioVentaUnitario
+                    : null,
         };
 
         const result = await actions.saveMovement.execute(movement);

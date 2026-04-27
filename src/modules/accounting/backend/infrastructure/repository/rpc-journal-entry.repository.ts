@@ -129,6 +129,23 @@ export class RpcJournalEntryRepository implements IJournalEntryRepository {
         }
     }
 
+    async deleteBySourceRef(companyId: string, source: string, sourceRef: string): Promise<Result<string[]>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_accounting_entries_delete_by_source', {
+                    p_user_id:    this.userId,
+                    p_company_id: companyId,
+                    p_source:     source,
+                    p_source_ref: sourceRef,
+                });
+            if (error) return Result.fail(error.message);
+            const rows = (data as { entry_id: string }[]) ?? [];
+            return Result.success(rows.map((r) => r.entry_id));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error reversing entries');
+        }
+    }
+
     async getTrialBalance(companyId: string, periodId?: string): Promise<Result<TrialBalanceLine[]>> {
         try {
             const { data, error } = await this.source.instance

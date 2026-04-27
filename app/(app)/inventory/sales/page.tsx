@@ -9,6 +9,9 @@ export default function SalidasPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Salidas de Inventario" subtitle="Registro de salidas de existencias">
+                <BaseButton.Root as={Link} href="/inventory/sales/generator" variant="secondary" size="sm">
+                    Generar por monto/margen
+                </BaseButton.Root>
                 <BaseButton.Root as={Link} href="/inventory/sales/new-manual" variant="primary" size="sm">
                     + Nueva salida manual
                 </BaseButton.Root>

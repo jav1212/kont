@@ -19,7 +19,7 @@ const MODULES = [
     {
         id: "inventory",
         label: "Inventario",
-        desc: "Control de entradas, salidas, kardex y libros reglamentarios con reportes ISLR 177.",
+        desc: "Control de entradas, salidas y libros reglamentarios con reportes ISLR 177.",
         icon: (
             <svg width="22" height="22" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M1 4l5.5-3 5.5 3v5l-5.5 3L1 9V4z" />

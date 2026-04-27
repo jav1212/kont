@@ -6,7 +6,7 @@ import { Movement, MovementType } from '../domain/movement';
 import { IMovementRepository } from '../domain/repository/movement.repository';
 
 const OUTBOUND_TYPES: MovementType[] = [
-    'autoconsumo', 'salida', 'salida_produccion',
+    'autoconsumo', 'salida',
     'ajuste_negativo', 'devolucion_entrada',
 ];
 

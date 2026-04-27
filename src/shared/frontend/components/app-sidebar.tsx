@@ -65,7 +65,7 @@ function currentQuincenaLabel(d: Date = new Date()): string {
 function buildModuleSubtitle(moduleId: string | null, planName?: string | null): string | null {
     switch (moduleId) {
         case "payroll":     return currentQuincenaLabel();
-        case "inventory":   return "Kardex · Movimientos";
+        case "inventory":   return "Productos · Movimientos";
         case "accounting":  return "Libro diario";
         case "companies":   return "Directorio";
         case "documents":   return "Archivos y contratos";

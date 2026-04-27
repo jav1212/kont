@@ -7,8 +7,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Product } from '../../backend/domain/product';
-import type { Movement, KardexEntry } from '../../backend/domain/movement';
-import type { Transformation, PeriodClose } from '../../backend/domain/transformation';
+import type { Movement } from '../../backend/domain/movement';
+import type { PeriodClose } from '../../backend/domain/period-close';
 import type { Supplier } from '../../backend/domain/supplier';
 import type { PurchaseInvoice, PurchaseInvoiceItem } from '../../backend/domain/purchase-invoice';
 import type { Department } from '../../backend/domain/department';
@@ -18,15 +18,18 @@ import type { IslrProduct } from '../../backend/domain/islr-report';
 import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
 import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
 import type { BalanceReportRow } from '../../backend/domain/balance-report';
+import type {
+    GenerateRandomSalesInput,
+    RandomSalesPreview,
+    RandomSalesPreviewLine,
+} from '../../backend/app/generate-random-sales.use-case';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 
-export type { Product, Movement, KardexEntry, Transformation, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow };
+export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine };
 
 export function useInventory() {
     const [products, setProducts]                       = useState<Product[]>([]);
     const [movements, setMovements]                     = useState<Movement[]>([]);
-    const [kardex, setKardex]                           = useState<KardexEntry[]>([]);
-    const [transformations, setTransformations]         = useState<Transformation[]>([]);
     const [periodCloses, setPeriodCloses]               = useState<PeriodClose[]>([]);
     const [suppliers, setSuppliers]                     = useState<Supplier[]>([]);
     const [purchaseInvoices, setPurchaseInvoices]       = useState<PurchaseInvoice[]>([]);
@@ -41,8 +44,6 @@ export function useInventory() {
 
     const [loadingProducts, setLoadingProducts]               = useState(false);
     const [loadingMovements, setLoadingMovements]             = useState(false);
-    const [loadingKardex, setLoadingKardex]                   = useState(false);
-    const [loadingTransformations, setLoadingTransformations] = useState(false);
     const [loadingPeriodCloses, setLoadingPeriodCloses]       = useState(false);
     const [loadingSuppliers, setLoadingSuppliers]             = useState(false);
     const [loadingPurchaseInvoices, setLoadingPurchaseInvoices] = useState(false);
@@ -193,61 +194,6 @@ export function useInventory() {
                         : p
                 )
             );
-            return saved;
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
-            return null;
-        }
-    }, []);
-
-    // ── Kardex ─────────────────────────────────────────────────────────────────
-
-    const loadKardex = useCallback(async (companyId: string, productId: string) => {
-        setLoadingKardex(true);
-        setError(null);
-        try {
-            const res = await apiFetch(
-                `/api/inventory/kardex?companyId=${encodeURIComponent(companyId)}&productId=${encodeURIComponent(productId)}`
-            );
-            const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar kardex'); return; }
-            setKardex(json.data ?? []);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
-        } finally {
-            setLoadingKardex(false);
-        }
-    }, []);
-
-    // ── Transformations ────────────────────────────────────────────────────────
-
-    const loadTransformations = useCallback(async (companyId: string) => {
-        setLoadingTransformations(true);
-        setError(null);
-        try {
-            const res = await apiFetch(`/api/inventory/transformations?companyId=${encodeURIComponent(companyId)}`);
-            const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar transformaciones'); return; }
-            setTransformations(json.data ?? []);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
-        } finally {
-            setLoadingTransformations(false);
-        }
-    }, []);
-
-    const saveTransformation = useCallback(async (transformation: Transformation): Promise<Transformation | null> => {
-        setError(null);
-        try {
-            const res = await apiFetch('/api/inventory/transformations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(transformation),
-            });
-            const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar transformación'); return null; }
-            const saved: Transformation = json.data;
-            setTransformations((prev) => [saved, ...prev]);
             return saved;
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Error de red');
@@ -581,11 +527,30 @@ export function useInventory() {
         }
     }, []);
 
+    const generateRandomSales = useCallback(async (
+        input: GenerateRandomSalesInput,
+    ): Promise<RandomSalesPreview | null> => {
+        setError(null);
+        try {
+            const res = await apiFetch('/api/inventory/sales/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input),
+            });
+            const json = await res.json();
+            if (!res.ok) { setError(json.error ?? 'Error al generar salidas'); return null; }
+            return json.data as RandomSalesPreview;
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Error de red');
+            return null;
+        }
+    }, []);
+
     const saveOutbound = useCallback(async (payload: {
         companyId: string;
         date: string;
         reference?: string;
-        items: { productId: string; quantity: number; currentStock?: number }[];
+        items: { productId: string; quantity: number; currentStock?: number; precioVentaUnitario?: number; date?: string }[];
     }): Promise<boolean> => {
         setError(null);
         try {
@@ -670,13 +635,13 @@ export function useInventory() {
 
     return {
         // state
-        products, movements, kardex, transformations, periodCloses,
+        products, movements, periodCloses,
         suppliers, purchaseInvoices, currentPurchaseInvoice,
         departments, periodReport, purchaseLedger, islrReport, salesLedger, inventoryLedger, balanceReport,
         currentDollarRate,
         // loading
-        loadingProducts, loadingMovements, loadingKardex,
-        loadingTransformations, loadingPeriodCloses,
+        loadingProducts, loadingMovements,
+        loadingPeriodCloses,
         loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice,
         loadingDepartments, loadingPeriodReport, loadingPurchaseLedger, loadingIslrReport, loadingSalesLedger, loadingInventoryLedger, loadingBalanceReport,
         // error
@@ -684,8 +649,6 @@ export function useInventory() {
         // actions
         loadProducts, saveProduct, deleteProduct,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,
-        loadKardex,
-        loadTransformations, saveTransformation,
         loadPeriodCloses, savePeriodClose,
         loadSuppliers, saveSupplier, deleteSupplier,
         loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, deletePurchaseInvoice,
@@ -693,7 +656,7 @@ export function useInventory() {
         loadPeriodReport,
         loadPurchaseLedger,
         loadIslrReport,
-        loadSalesLedger, saveOutbound,
+        loadSalesLedger, saveOutbound, generateRandomSales,
         loadInventoryLedger,
         loadBalanceReport,
     };

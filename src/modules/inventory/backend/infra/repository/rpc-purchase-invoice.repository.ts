@@ -5,7 +5,14 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { IPurchaseInvoiceRepository } from '../../domain/repository/purchase-invoice.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
-import { PurchaseInvoice, PurchaseInvoiceItem, InvoiceStatus, VatRate, ItemCurrency } from '../../domain/purchase-invoice';
+import {
+    PurchaseInvoice,
+    PurchaseInvoiceItem,
+    InvoiceStatus,
+    VatRate,
+    ItemCurrency,
+    AdjustmentKind,
+} from '../../domain/purchase-invoice';
 
 // Infrastructure DTO — shape of the raw Postgres RPC row for invoice header.
 interface InvoiceRpcRow {
@@ -17,6 +24,7 @@ interface InvoiceRpcRow {
   numero_control: string | null;
   fecha: string;
   periodo: string;
+  periodo_manual: boolean | null;
   estado: string | null;
   subtotal: number | null;
   iva_porcentaje: number | null;
@@ -25,6 +33,12 @@ interface InvoiceRpcRow {
   notas: string | null;
   tasa_dolar: number | string | null;
   tasa_decimales: number | null;
+  descuento_tipo: string | null;
+  descuento_valor: number | string | null;
+  descuento_monto: number | string | null;
+  recargo_tipo: string | null;
+  recargo_valor: number | string | null;
+  recargo_monto: number | string | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   created_at: string | null;
@@ -44,7 +58,25 @@ interface InvoiceItemRpcRow {
   moneda: string | null;
   costo_moneda: number | null;
   tasa_dolar: number | null;
+  descuento_tipo: string | null;
+  descuento_valor: number | string | null;
+  descuento_monto: number | string | null;
+  recargo_tipo: string | null;
+  recargo_valor: number | string | null;
+  recargo_monto: number | string | null;
+  base_iva: number | string | null;
+  iva_incluido: boolean | null;
 }
+
+const num = (v: number | string | null | undefined, fallback = 0): number =>
+    v == null || v === '' ? fallback : Number(v);
+
+const adjKind = (v: string | null | undefined): AdjustmentKind | null =>
+    v === 'monto' || v === 'porcentaje' ? v : null;
+
+const stringifyAdj = (v: AdjustmentKind | null | undefined): string => v ?? '';
+const stringifyNum = (v: number | null | undefined): string =>
+    v != null && Number.isFinite(v) && v !== 0 ? String(v) : '';
 
 export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository {
     constructor(
@@ -90,10 +122,18 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 numero_factura: invoice.invoiceNumber,
                 numero_control: invoice.controlNumber ?? '',
                 fecha:          invoice.date,
+                periodo:        invoice.period ?? '',
+                periodo_manual: invoice.periodoManual ? 'true' : '',
                 iva_porcentaje: invoice.vatPercentage,
                 notas:          invoice.notes,
                 tasa_dolar:     invoice.dollarRate   != null ? String(invoice.dollarRate)   : '',
                 tasa_decimales: invoice.rateDecimals != null ? String(invoice.rateDecimals) : '',
+                descuento_tipo:  stringifyAdj(invoice.descuentoTipo),
+                descuento_valor: stringifyNum(invoice.descuentoValor),
+                descuento_monto: stringifyNum(invoice.descuentoMonto),
+                recargo_tipo:    stringifyAdj(invoice.recargoTipo),
+                recargo_valor:   stringifyNum(invoice.recargoValor),
+                recargo_monto:   stringifyNum(invoice.recargoMonto),
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -104,6 +144,14 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 moneda:         i.currency ?? 'B',
                 costo_moneda:   i.currencyCost ?? null,
                 tasa_dolar:     i.dollarRate ?? null,
+                descuento_tipo:  stringifyAdj(i.descuentoTipo),
+                descuento_valor: stringifyNum(i.descuentoValor),
+                descuento_monto: stringifyNum(i.descuentoMonto),
+                recargo_tipo:    stringifyAdj(i.recargoTipo),
+                recargo_valor:   stringifyNum(i.recargoValor),
+                recargo_monto:   stringifyNum(i.recargoMonto),
+                base_iva:       i.baseIVA != null ? String(i.baseIVA) : '',
+                iva_incluido:   i.ivaIncluido ? 'true' : '',
             }));
             const { data, error } = await this.source.instance
                 .rpc('tenant_inventario_factura_save', {
@@ -167,13 +215,21 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 invoiceId:    i.factura_id,
                 productId:    i.producto_id,
                 productName:  i.producto_nombre ?? undefined,
-                quantity:     Number(i.cantidad ?? 0),
-                unitCost:     Number(i.costo_unitario ?? 0),
-                totalCost:    Number(i.costo_total ?? 0),
+                quantity:     num(i.cantidad),
+                unitCost:     num(i.costo_unitario),
+                totalCost:    num(i.costo_total),
                 vatRate:      ((i.iva_alicuota ?? 'general_16') as VatRate),
                 currency:     (i.moneda === 'D' ? 'D' : 'B') as ItemCurrency,
                 currencyCost: i.costo_moneda != null ? Number(i.costo_moneda) : null,
                 dollarRate:   i.tasa_dolar   != null ? Number(i.tasa_dolar)   : null,
+                descuentoTipo:  adjKind(i.descuento_tipo),
+                descuentoValor: num(i.descuento_valor),
+                descuentoMonto: num(i.descuento_monto),
+                recargoTipo:    adjKind(i.recargo_tipo),
+                recargoValor:   num(i.recargo_valor),
+                recargoMonto:   num(i.recargo_monto),
+                baseIVA:        num(i.base_iva, num(i.costo_total)),
+                ivaIncluido:    i.iva_incluido === true,
             }))
             : undefined;
 
@@ -186,14 +242,21 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             controlNumber: row.numero_control ?? '',
             date:          row.fecha,
             period:        row.periodo,
+            periodoManual: row.periodo_manual === true,
             status:        ((row.estado ?? 'borrador') as InvoiceStatus),
-            subtotal:      Number(row.subtotal ?? 0),
-            vatPercentage: Number(row.iva_porcentaje ?? 16),
-            vatAmount:     Number(row.iva_monto ?? 0),
-            total:         Number(row.total ?? 0),
+            subtotal:      num(row.subtotal),
+            vatPercentage: num(row.iva_porcentaje, 16),
+            vatAmount:     num(row.iva_monto),
+            total:         num(row.total),
             notes:         row.notas ?? '',
             dollarRate:    row.tasa_dolar     != null ? Number(row.tasa_dolar)     : null,
             rateDecimals:  row.tasa_decimales != null ? Number(row.tasa_decimales) : null,
+            descuentoTipo:  adjKind(row.descuento_tipo),
+            descuentoValor: num(row.descuento_valor),
+            descuentoMonto: num(row.descuento_monto),
+            recargoTipo:    adjKind(row.recargo_tipo),
+            recargoValor:   num(row.recargo_valor),
+            recargoMonto:   num(row.recargo_monto),
             confirmedAt:   row.confirmada_at ?? null,
             items,
             createdAt:     row.created_at ?? undefined,

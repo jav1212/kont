@@ -23,6 +23,19 @@ const nextConfig: NextConfig = {
             },
         ],
     },
+    // Legacy inventory operation routes — collapsed into a single workspace at
+    // /inventory/operations/new with a kind selector. Keep these redirects so
+    // bookmarks and external links still land on the right preset.
+    async redirects() {
+        return [
+            { source: "/inventory/adjustments",          destination: "/inventory/operations/new?op=adjustment",       permanent: true },
+            { source: "/inventory/adjustments/new",      destination: "/inventory/operations/new?op=adjustment",       permanent: true },
+            { source: "/inventory/returns",              destination: "/inventory/operations/new?op=return",           permanent: true },
+            { source: "/inventory/returns/new",          destination: "/inventory/operations/new?op=return",           permanent: true },
+            { source: "/inventory/self-consumption",     destination: "/inventory/operations/new?op=self-consumption", permanent: true },
+            { source: "/inventory/self-consumption/new", destination: "/inventory/operations/new?op=self-consumption", permanent: true },
+        ];
+    },
 };
 
 export default withSerwistConfig(nextConfig);

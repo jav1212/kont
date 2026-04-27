@@ -85,7 +85,7 @@ export const SECTOR_TEMPLATES: Record<BusinessSector, SectorTemplate> = {
       'Charcutería',
     ],
     suggestedMeasureUnits: ['unidad', 'kg', 'g', 'litro', 'caja'],
-    suggestedProductTypes: ['mercancia', 'materia_prima', 'producto_terminado'],
+    suggestedProductTypes: ['mercancia'],
     defaultValuationMethod: 'promedio_ponderado',
     defaultCustomFields: [
       { key: 'tipo_producto', label: 'Tipo de Producto', type: 'select', options: ['Elaboración propia', 'Reventa'] },
@@ -160,7 +160,7 @@ export const SECTOR_TEMPLATES: Record<BusinessSector, SectorTemplate> = {
       'Desechables',
     ],
     suggestedMeasureUnits: ['unidad', 'kg', 'g', 'litro', 'caja'],
-    suggestedProductTypes: ['materia_prima', 'mercancia'],
+    suggestedProductTypes: ['mercancia'],
     defaultValuationMethod: 'promedio_ponderado',
     defaultCustomFields: [
       { key: 'proveedor_habitual', label: 'Proveedor Habitual', type: 'text' },
@@ -226,7 +226,7 @@ export const SECTOR_TEMPLATES: Record<BusinessSector, SectorTemplate> = {
     label: 'Otro / Personalizado',
     suggestedDepartments: [],
     suggestedMeasureUnits: ['unidad', 'kg', 'litro', 'caja'],
-    suggestedProductTypes: ['mercancia', 'materia_prima', 'producto_terminado'],
+    suggestedProductTypes: ['mercancia'],
     defaultValuationMethod: 'promedio_ponderado',
     defaultCustomFields: [],
     visibleColumns: ['code', 'name', 'currentStock', 'averageCost', 'vatType'],

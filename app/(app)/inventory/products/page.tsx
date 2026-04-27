@@ -55,9 +55,7 @@ const fieldCls = [
 const labelCls = "font-mono text-[12px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
 const TIPOS: { value: ProductType; label: string }[] = [
-    { value: "mercancia",          label: "Mercancía"          },
-    { value: "materia_prima",      label: "Materia Prima"      },
-    { value: "producto_terminado", label: "Producto Terminado" },
+    { value: "mercancia", label: "Mercancía" },
 ];
 
 const UNIDADES: { value: MeasureUnit; label: string }[] = [
@@ -83,7 +81,6 @@ const IVA_TIPOS: { value: VatType; label: string }[] = [
 ];
 
 type EstadoFilter = "todos" | "activo" | "inactivo";
-type TipoFilter   = "todos" | ProductType;
 
 function empty(companyId: string): Product {
     return {
@@ -104,9 +101,7 @@ function empty(companyId: string): Product {
 
 function TipoBadge({ tipo }: { tipo: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        mercancia:          { label: "Mercancía",       cls: "border badge-info"    },
-        materia_prima:      { label: "Mat. Prima",      cls: "border badge-warning" },
-        producto_terminado: { label: "Prod. Terminado", cls: "border badge-success" },
+        mercancia: { label: "Mercancía", cls: "border badge-info" },
     };
     const { label, cls } = map[tipo] ?? { label: tipo, cls: "bg-surface-2 text-text-secondary border border-border-light" };
     return (
@@ -255,7 +250,6 @@ export default function ProductosPage() {
     const fileRef = useRef<HTMLInputElement>(null);
     const [search, setSearch] = useState("");
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
-    const [tipoFilter,   setTipoFilter]   = useState<TipoFilter>("todos");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -376,32 +370,21 @@ export default function ProductosPage() {
         return { total: products.length, active, inactive, departmentsUsed };
     }, [products]);
 
-    const tipoCounts = useMemo(() => {
-        return {
-            todos:              products.length,
-            mercancia:          products.filter((p) => p.type === "mercancia").length,
-            materia_prima:      products.filter((p) => p.type === "materia_prima").length,
-            producto_terminado: products.filter((p) => p.type === "producto_terminado").length,
-        };
-    }, [products]);
-
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return products.filter((p) => {
             if (estadoFilter === "activo"   && !p.active) return false;
             if (estadoFilter === "inactivo" &&  p.active) return false;
-            if (tipoFilter !== "todos" && p.type !== tipoFilter) return false;
             if (!q) return true;
             return [p.code, p.name, p.description ?? "", p.departmentName ?? ""]
                 .join(" ").toLowerCase().includes(q);
         });
-    }, [products, search, estadoFilter, tipoFilter]);
+    }, [products, search, estadoFilter]);
 
-    const hasFilters = search.trim() !== "" || estadoFilter !== "todos" || tipoFilter !== "todos";
+    const hasFilters = search.trim() !== "" || estadoFilter !== "todos";
     function clearFilters() {
         setSearch("");
         setEstadoFilter("todos");
-        setTipoFilter("todos");
     }
 
     return (
@@ -469,14 +452,6 @@ export default function ProductosPage() {
                             <FilterChip active={estadoFilter === "todos"}    onClick={() => setEstadoFilter("todos")}>Todos</FilterChip>
                             <FilterChip active={estadoFilter === "activo"}   onClick={() => setEstadoFilter("activo")}>Activos</FilterChip>
                             <FilterChip active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")}>Inactivos</FilterChip>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mr-1 hidden md:inline">Tipo</span>
-                            <FilterChip active={tipoFilter === "todos"}              onClick={() => setTipoFilter("todos")}              count={tipoCounts.todos}>Todos</FilterChip>
-                            <FilterChip active={tipoFilter === "mercancia"}          onClick={() => setTipoFilter("mercancia")}          count={tipoCounts.mercancia}>Mercancía</FilterChip>
-                            <FilterChip active={tipoFilter === "materia_prima"}      onClick={() => setTipoFilter("materia_prima")}      count={tipoCounts.materia_prima}>Mat. prima</FilterChip>
-                            <FilterChip active={tipoFilter === "producto_terminado"} onClick={() => setTipoFilter("producto_terminado")} count={tipoCounts.producto_terminado}>Terminado</FilterChip>
                         </div>
 
                         <div className="ml-auto flex items-center gap-3">
@@ -828,7 +803,7 @@ export default function ProductosPage() {
                             </div>
                             <p className="font-mono text-[13px] uppercase tracking-[0.14em] text-foreground">Catálogo vacío</p>
                             <p className="font-sans text-[13px] text-[var(--text-secondary)] max-w-[360px]">
-                                Crea el primer producto para empezar a registrar compras, ventas y kardex.
+                                Crea el primer producto para empezar a registrar compras y ventas.
                             </p>
                             <BaseButton.Root variant="primary" size="sm" onClick={openNew} leftIcon={<Plus size={14} strokeWidth={2.5} />}>
                                 Nuevo producto

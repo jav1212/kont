@@ -3,7 +3,7 @@
 //       so existing API route callers (getInventoryActions(userId).someAction) are unaffected.
 // Sub-factories (import directly if you only need one domain slice):
 //   - inventory-productos-factory   (products, departments)
-//   - inventory-movimientos-factory (movements, transformations, kardex)
+//   - inventory-movimientos-factory (movements)
 //   - inventory-proveedores-factory (suppliers, purchase invoices)
 //   - inventory-reportes-factory    (period report, ledgers, ISLR, balance)
 import { getInventoryProductsActions }  from './inventory-products-factory';

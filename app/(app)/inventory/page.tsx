@@ -9,9 +9,7 @@ import { ContextLink as Link } from "@/src/shared/frontend/components/context-li
 import {
     Package,
     ArrowUpRight,
-    Boxes,
     ArrowRightLeft,
-    History,
     ArrowRight,
     Plus,
     ShoppingCart,
@@ -38,19 +36,17 @@ import { motion }                from "framer-motion";
 const LOW_STOCK_THRESHOLD = 5;
 
 const ENTRY_TYPES = new Set([
-    "entrada", "entrada_produccion", "devolucion_entrada", "ajuste_positivo",
+    "entrada", "devolucion_entrada", "ajuste_positivo",
 ]);
 const EXIT_TYPES = new Set([
-    "salida", "salida_produccion", "devolucion_salida", "ajuste_negativo",
+    "salida", "devolucion_salida", "ajuste_negativo",
 ]);
 
 const QUICK_ACTIONS = [
     { href: "/inventory/products",    label: "Productos",        desc: "Catálogo y fichas de producto",    icon: Package        },
     { href: "/inventory/purchases",   label: "Compras",          desc: "Facturas y entradas de mercancía", icon: ShoppingCart   },
     { href: "/inventory/suppliers",   label: "Proveedores",      desc: "Directorio y retenciones",         icon: Truck          },
-    { href: "/inventory/production",  label: "Producción",       desc: "Transformaciones y lotes",         icon: Boxes          },
-    { href: "/inventory/kardex",      label: "Kardex",           desc: "Historial por producto",           icon: History        },
-    { href: "/inventory/adjustments", label: "Ajustes / Devol.", desc: "Correcciones y devoluciones",      icon: ArrowRightLeft },
+    { href: "/inventory/operations/new", label: "Operaciones",   desc: "Ajustes, devoluciones y autoconsumo", icon: ArrowRightLeft },
 ];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -164,7 +160,7 @@ export default function InventoryDashboard() {
                             <div className="flex flex-col text-sm">
                                 <span className="font-bold text-foreground">Sin productos registrados</span>
                                 <span className="text-[var(--text-secondary)]">
-                                    Crea el catálogo antes de registrar entradas, salidas o kardex.
+                                    Crea el catálogo antes de registrar entradas o salidas.
                                 </span>
                             </div>
                         </div>
@@ -353,9 +349,7 @@ export default function InventoryDashboard() {
 
 function TipoBadge({ tipo }: { tipo: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        mercancia:          { label: "Mercancía",       cls: "border badge-info"    },
-        materia_prima:      { label: "Mat. Prima",      cls: "border badge-warning" },
-        producto_terminado: { label: "Prod. Terminado", cls: "border badge-success" },
+        mercancia: { label: "Mercancía", cls: "border badge-info" },
     };
     const { label, cls } = map[tipo] ?? {
         label: tipo,

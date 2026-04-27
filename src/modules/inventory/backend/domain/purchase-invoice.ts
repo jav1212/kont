@@ -3,6 +3,7 @@
 // VatRate, ItemCurrency, InvoiceStatus string literal values are DB contracts — do not change.
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
 export type ItemCurrency = 'B' | 'D';
+export type AdjustmentKind = 'monto' | 'porcentaje';
 
 export interface PurchaseInvoiceItem {
   id?: string;
@@ -10,12 +11,29 @@ export interface PurchaseInvoiceItem {
   productId: string;
   productName?: string;
   quantity: number;
-  unitCost: number;    // always in Bs (canonical)
-  totalCost: number;   // always in Bs
+  unitCost: number;    // always in Bs (canonical) — siempre neto, sin IVA
+  totalCost: number;   // qty × unitCost, antes de ajustes
   vatRate: VatRate;
   currency: ItemCurrency;    // original currency of the supplier invoice
   currencyCost?: number | null; // cost in original currency (USD if currency='D')
   dollarRate?: number | null;   // BCV rate used for conversion
+
+  // ── Ajustes por línea (descuento, recargo)
+  // Cada uno por monto Bs o porcentaje.
+  descuentoTipo?:  AdjustmentKind | null;
+  descuentoValor?: number;
+  descuentoMonto?: number;     // resuelto en Bs (sólo línea, sin spread del header)
+  recargoTipo?:    AdjustmentKind | null;
+  recargoValor?:   number;
+  recargoMonto?:   number;     // resuelto en Bs
+
+  // Base IVA final (incluye ajustes de línea + spread proporcional del header)
+  baseIVA?: number;
+
+  // Toggle de UI: el costo_unitario fue ingresado con IVA incluido — el form
+  // ya convirtió a neto antes de persistir. Se guarda para restaurar el modo
+  // de entrada en re-edit.
+  ivaIncluido?: boolean;
 }
 
 export type InvoiceStatus = 'borrador' | 'confirmada';
@@ -27,8 +45,8 @@ export interface PurchaseInvoice {
   supplierName?: string;
   invoiceNumber: string;
   controlNumber?: string;
-  date: string;       // YYYY-MM-DD
-  period: string;     // YYYY-MM
+  date: string;       // YYYY-MM-DD — drives BCV lookup
+  period: string;     // YYYY-MM — período contable (puede diferir del mes de fecha)
   status: InvoiceStatus;
   subtotal: number;
   vatPercentage: number;
@@ -47,6 +65,20 @@ export interface PurchaseInvoice {
    * the accountant reopens the invoice. Nullable for legacy invoices.
    */
   rateDecimals?: number | null;
+
+  // ── Override de período contable (mig 070)
+  // Cuando true, `period` es el elegido por el usuario; si false, se sigue
+  // derivando de `date` en el RPC.
+  periodoManual?: boolean;
+
+  // ── Ajustes a nivel encabezado (mig 070) — se prorratean proporcional pre-IVA
+  descuentoTipo?:  AdjustmentKind | null;
+  descuentoValor?: number;
+  descuentoMonto?: number;     // resuelto en Bs
+  recargoTipo?:    AdjustmentKind | null;
+  recargoValor?:   number;
+  recargoMonto?:   number;
+
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
   createdAt?: string;
