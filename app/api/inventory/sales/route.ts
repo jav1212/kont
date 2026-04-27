@@ -18,6 +18,10 @@ interface OutboundItem {
     // Optional override for the movement date. When omitted falls back to the
     // outer body.date. Used by the generator to spread sales across the period.
     date?: string;
+    // Optional movement type — defaults to 'salida'. The random sales generator
+    // sends 'autoconsumo' for the carve-out lines so the same payload persists
+    // both 'salida' and 'autoconsumo' movements in a single request.
+    type?: 'salida' | 'autoconsumo';
 }
 
 interface OutboundBody {
@@ -41,10 +45,11 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
 
     for (const item of items) {
         const itemDate = item.date ?? date;
+        const itemType = item.type === 'autoconsumo' ? 'autoconsumo' : 'salida';
         const movement: Movement = {
             companyId,
             productId:    item.productId,
-            type:         'salida',
+            type:         itemType,
             date:         itemDate,
             period:       itemDate.slice(0, 7),
             quantity:     item.quantity,

@@ -2,6 +2,9 @@
 
 // Page: Generador de salidas aleatorias.
 // Distribuye un monto objetivo (o margen %) en salidas aleatorias del periodo.
+// Soporta carve-out de autoconsumo: parte del target T se reserva a movimientos
+// de tipo 'autoconsumo' (productos disjuntos respecto a salidas) — la suma S/IVA
+// total sigue siendo T.
 // Flujo: configurar → generar preview → ajustar/regenerar → confirmar.
 
 import { useCallback, useMemo, useState } from "react";
@@ -40,7 +43,8 @@ const fieldCls = [
     "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
 ].join(" ");
 
-type Mode = "monto" | "margen";
+type Mode     = "monto" | "margen";
+type AutoMode = "none" | "porcentaje" | "monto";
 
 // ── component ────────────────────────────────────────────────────────────────
 
@@ -54,6 +58,9 @@ export default function SalesGeneratorPage() {
     const [targetStr, setTargetStr] = useState<string>("");
     const [countStr, setCountStr]   = useState<string>("");
     const [reference, setReference] = useState<string>("Generado automáticamente");
+
+    const [autoMode, setAutoMode]           = useState<AutoMode>("none");
+    const [autoTargetStr, setAutoTargetStr] = useState<string>("");
 
     const [preview, setPreview] = useState<RandomSalesPreview | null>(null);
     const [lines, setLines]     = useState<RandomSalesPreviewLine[]>([]);
@@ -73,9 +80,21 @@ export default function SalesGeneratorPage() {
         [lines],
     );
 
-    const targetBs = preview?.targetBs ?? 0;
-    const inboundBs = preview?.inboundTotalBs ?? 0;
+    const sumAutoconsumo = useMemo(
+        () => lines.filter((l) => l.tipo === "autoconsumo").reduce((s, l) => s + l.totalSinIVA, 0),
+        [lines],
+    );
+    const sumSalidas = useMemo(
+        () => lines.filter((l) => l.tipo === "salida").reduce((s, l) => s + l.totalSinIVA, 0),
+        [lines],
+    );
+
+    const targetBs       = preview?.targetBs ?? 0;
+    const inboundBs      = preview?.inboundTotalBs ?? 0;
+    const salidasTargetBs    = preview?.salidasTotalBs ?? 0;
+    const autoTargetBs       = preview?.autoconsumoTotalBs ?? 0;
     const drift = useMemo(() => sumSinIVA - targetBs, [sumSinIVA, targetBs]);
+    const isAutoActive = (preview?.autoconsumoTotalBs ?? 0) > 0;
 
     const generate = useCallback(async (opts?: { newSeed?: boolean }) => {
         if (!companyId) return;
@@ -85,6 +104,19 @@ export default function SalesGeneratorPage() {
             return;
         }
         const count = countStr.trim() ? Number(countStr) : undefined;
+
+        let autoTarget: number | undefined;
+        if (autoMode !== "none") {
+            const parsed = Number(autoTargetStr.replace(",", "."));
+            if (!Number.isFinite(parsed) || parsed < 0) {
+                setError(autoMode === "porcentaje"
+                    ? "Ingresa un porcentaje de autoconsumo válido"
+                    : "Ingresa un monto Bs de autoconsumo válido");
+                return;
+            }
+            autoTarget = parsed;
+        }
+
         setLoading(true);
         setError(null);
         const result = await generateRandomSales({
@@ -94,13 +126,23 @@ export default function SalesGeneratorPage() {
             target,
             count: count != null && Number.isFinite(count) ? count : undefined,
             seed: opts?.newSeed ? Math.floor(Math.random() * 0xffffffff) : undefined,
+            autoconsumoMode:   autoMode,
+            autoconsumoTarget: autoTarget,
         });
         setLoading(false);
         if (result) {
             setPreview(result);
-            setLines(result.lines);
+            // Combinar y ordenar: primero salidas por fecha, luego autoconsumo por fecha
+            const combined: RandomSalesPreviewLine[] = [
+                ...result.lines,
+                ...result.autoconsumoLines,
+            ].sort((a, b) => {
+                if (a.tipo !== b.tipo) return a.tipo === "salida" ? -1 : 1;
+                return a.date.localeCompare(b.date);
+            });
+            setLines(combined);
         }
-    }, [companyId, period, mode, targetStr, countStr, generateRandomSales, setError]);
+    }, [companyId, period, mode, targetStr, countStr, autoMode, autoTargetStr, generateRandomSales, setError]);
 
     const removeLine = (idx: number) => {
         setLines((prev) => prev.filter((_, i) => i !== idx));
@@ -136,16 +178,30 @@ export default function SalesGeneratorPage() {
             setError(`La línea de ${invalid.productName} tiene cantidad ≤ 0`);
             return;
         }
-        const overStock = lines.find((l) => l.quantity > l.currentStock);
-        if (overStock) {
-            setError(`La línea de ${overStock.productName} excede el stock disponible (${overStock.currentStock})`);
-            return;
+
+        // Validación de stock combinado por producto (salida + autoconsumo)
+        const totalsByProduct = new Map<string, { qty: number; stock: number; name: string }>();
+        for (const l of lines) {
+            const prev = totalsByProduct.get(l.productId);
+            if (prev) {
+                prev.qty += l.quantity;
+            } else {
+                totalsByProduct.set(l.productId, {
+                    qty: l.quantity,
+                    stock: l.currentStock,
+                    name: l.productName,
+                });
+            }
+        }
+        for (const { qty, stock, name } of totalsByProduct.values()) {
+            if (qty > stock) {
+                setError(`${name}: la suma de cantidades (${fmtQty(qty)}) excede el stock disponible (${fmtQty(stock)})`);
+                return;
+            }
         }
 
         setSaving(true);
         setError(null);
-        // saveOutbound acepta una sola fecha; iteramos por fecha agrupando líneas para
-        // preservar la distribución temporal del preview (cada línea va con su date).
         const ok = await saveOutbound({
             companyId,
             date: lines[0].date,
@@ -156,6 +212,7 @@ export default function SalesGeneratorPage() {
                 currentStock:        l.currentStock,
                 precioVentaUnitario: l.precioVentaUnitario,
                 date:                l.date,
+                type:                l.tipo,
             })),
         });
         setSaving(false);
@@ -168,7 +225,7 @@ export default function SalesGeneratorPage() {
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader
                 title="Generador de salidas"
-                subtitle="Distribuye un monto o margen objetivo en salidas aleatorias del periodo"
+                subtitle="Distribuye un monto o margen objetivo en salidas aleatorias del periodo, con opción de carve-out a autoconsumo"
             />
 
             <div className="px-8 py-6 space-y-4 max-w-[1400px] mx-auto w-full">
@@ -240,6 +297,56 @@ export default function SalesGeneratorPage() {
                         </div>
                     </div>
 
+                    {/* Autoconsumo */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end pt-2 border-t border-border-light/60">
+                        <div className="md:col-span-2">
+                            <label className={labelCls}>Reservar a autoconsumo</label>
+                            <div className="flex rounded-lg border border-border-light overflow-hidden bg-surface-1">
+                                {([
+                                    { v: "none",       l: "Sin autoconsumo" },
+                                    { v: "porcentaje", l: "% del target"     },
+                                    { v: "monto",      l: "Monto Bs."        },
+                                ] as const).map((m) => (
+                                    <button
+                                        key={m.v}
+                                        type="button"
+                                        onClick={() => setAutoMode(m.v)}
+                                        className={[
+                                            "flex-1 h-10 text-[12px] uppercase tracking-[0.1em] transition-colors",
+                                            autoMode === m.v
+                                                ? "bg-amber-500/15 text-amber-600 font-bold"
+                                                : "text-text-tertiary hover:bg-surface-2",
+                                        ].join(" ")}
+                                    >
+                                        {m.l}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className={labelCls}>
+                                {autoMode === "porcentaje"
+                                    ? "% del target a autoconsumo"
+                                    : autoMode === "monto"
+                                        ? "Bs sin IVA a autoconsumo"
+                                        : "—"}
+                            </label>
+                            <input
+                                inputMode="decimal"
+                                className={fieldCls}
+                                disabled={autoMode === "none"}
+                                value={autoTargetStr}
+                                placeholder={
+                                    autoMode === "porcentaje" ? "10"
+                                  : autoMode === "monto"      ? "1500,00"
+                                  : "Activa una opción para reservar autoconsumo"
+                                }
+                                onChange={(e) => setAutoTargetStr(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                         <div className="flex-1 min-w-[260px]">
                             <label className={labelCls}>Referencia</label>
@@ -265,16 +372,31 @@ export default function SalesGeneratorPage() {
 
                 {/* Resumen */}
                 {preview && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className={`grid grid-cols-1 ${isAutoActive ? "md:grid-cols-5" : "md:grid-cols-4"} gap-3`}>
                         <SummaryCard
                             label="Entradas del periodo"
                             value={`Bs ${fmtN(inboundBs)}`}
                         />
                         <SummaryCard
-                            label="Target (Total Salidas S/IVA)"
+                            label="Target total (S/IVA)"
                             value={`Bs ${fmtN(targetBs)}`}
                             highlight
                         />
+                        {isAutoActive && (
+                            <SummaryCard
+                                label="Reservado a salidas"
+                                value={`Bs ${fmtN(salidasTargetBs)}`}
+                                sub={`Preview: ${fmtN(sumSalidas)} Bs`}
+                            />
+                        )}
+                        {isAutoActive && (
+                            <SummaryCard
+                                label="Reservado a autoconsumo"
+                                value={`Bs ${fmtN(autoTargetBs)}`}
+                                tone="warn"
+                                sub={`Preview: ${fmtN(sumAutoconsumo)} Bs`}
+                            />
+                        )}
                         <SummaryCard
                             label="Suma actual del preview"
                             value={`Bs ${fmtN(sumSinIVA)}`}
@@ -283,13 +405,15 @@ export default function SalesGeneratorPage() {
                                 ? "Coincide con el target"
                                 : `Δ ${drift >= 0 ? "+" : ""}${fmtN(drift)} Bs`}
                         />
-                        <SummaryCard
-                            label="Factor de venta"
-                            value={preview.factor.toLocaleString("es-VE", {
-                                minimumFractionDigits: 4, maximumFractionDigits: 4,
-                            })}
-                            sub={`× costo promedio · seed ${preview.seed}`}
-                        />
+                        {!isAutoActive && (
+                            <SummaryCard
+                                label="Factor de venta"
+                                value={preview.factor.toLocaleString("es-VE", {
+                                    minimumFractionDigits: 4, maximumFractionDigits: 4,
+                                })}
+                                sub={`× costo promedio · seed ${preview.seed}`}
+                            />
+                        )}
                     </div>
                 )}
 
@@ -299,6 +423,11 @@ export default function SalesGeneratorPage() {
                         <div className="px-5 py-3 border-b border-border-light flex items-center justify-between gap-3">
                             <p className="text-[12px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                 {lines.length} {lines.length === 1 ? "línea propuesta" : "líneas propuestas"}
+                                {isAutoActive && (
+                                    <span className="ml-2 text-[var(--text-secondary)]">
+                                        · {lines.filter((l) => l.tipo === "salida").length} venta · {lines.filter((l) => l.tipo === "autoconsumo").length} autoconsumo
+                                    </span>
+                                )}
                             </p>
                             <div className="flex gap-2">
                                 <BaseButton.Root
@@ -333,6 +462,7 @@ export default function SalesGeneratorPage() {
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {[
+                                                "Tipo",
                                                 "Fecha",
                                                 "Producto",
                                                 "IVA",
@@ -356,11 +486,27 @@ export default function SalesGeneratorPage() {
                                     <tbody>
                                         {lines.map((l, idx) => {
                                             const overStock = l.quantity > l.currentStock;
+                                            const isAuto = l.tipo === "autoconsumo";
                                             return (
                                                 <tr
-                                                    key={`${l.productId}-${idx}`}
-                                                    className="border-b border-border-light/50 hover:bg-surface-2 transition-colors"
+                                                    key={`${l.productId}-${l.tipo}-${idx}`}
+                                                    className={[
+                                                        "border-b border-border-light/50 transition-colors",
+                                                        isAuto ? "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]" : "hover:bg-surface-2",
+                                                    ].join(" ")}
                                                 >
+                                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                                        <span
+                                                            className={[
+                                                                "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border",
+                                                                isAuto
+                                                                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                                                                    : "border-border-light text-[var(--text-secondary)]",
+                                                            ].join(" ")}
+                                                        >
+                                                            {isAuto ? "Autoconsumo" : "Venta"}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-3 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
                                                         {l.date}
                                                     </td>
@@ -432,7 +578,7 @@ export default function SalesGeneratorPage() {
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t border-border-light bg-surface-2/40">
-                                            <td colSpan={6} className="px-3 py-2.5 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                            <td colSpan={7} className="px-3 py-2.5 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                                 Totales
                                             </td>
                                             <td className="px-3 py-2.5 tabular-nums text-foreground font-bold">

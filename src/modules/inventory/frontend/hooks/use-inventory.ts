@@ -550,7 +550,7 @@ export function useInventory() {
         companyId: string;
         date: string;
         reference?: string;
-        items: { productId: string; quantity: number; currentStock?: number; precioVentaUnitario?: number; date?: string }[];
+        items: { productId: string; quantity: number; currentStock?: number; precioVentaUnitario?: number; date?: string; type?: 'salida' | 'autoconsumo' }[];
     }): Promise<boolean> => {
         setError(null);
         try {
