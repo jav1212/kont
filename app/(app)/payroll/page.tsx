@@ -7,8 +7,22 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { Receipt, TrendingUp, RefreshCw, ChevronDown, Calendar, CalendarDays } from "lucide-react";
 import { calculateWeeklyFactor } from "@/src/modules/payroll/frontend/utils/payroll-helper";
-import { getHolidaysInRange } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
-import type { Holiday } from "@/src/modules/payroll/frontend/utils/venezuela-holidays";
+import {
+    getQuincenaInfo,
+    getWeekInfo,
+    getMondaysOfMonth,
+    MONTH_NAMES,
+    type Quincena,
+    type PeriodoMode,
+} from "@/src/modules/payroll/frontend/utils/period-info";
+import {
+    makeEarningsFromDefs,
+    extractEarningDefs,
+    makeDeductionsFromDefs,
+    makeBonusesFromDefs,
+    makeHorasExtrasFromDefs,
+    buildSettings,
+} from "@/src/modules/payroll/frontend/utils/settings-builders";
 import { EarningsSection, DeductionsSection, BonusesSection } from "@/src/modules/payroll/frontend/components/payroll-accordion-sections";
 import { HorasExtrasGlobalEditor } from "@/src/modules/payroll/frontend/components/payroll-row-editors";
 import { PayrollEmployeeTable } from "@/src/modules/payroll/frontend/components/payroll-employee-table";
@@ -20,17 +34,10 @@ import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payr
 import { usePayrollSettings } from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
-import type {
-    PdfVisibility,
-    PayrollEarningRowDef,
-    PayrollDeductionRowDef,
-    PayrollBonusRowDef,
-    PayrollHorasExtrasGlobalDef,
-    PayrollSettings,
-} from "@/src/modules/payroll/backend/domain/payroll-settings";
+import type { PdfVisibility } from "@/src/modules/payroll/backend/domain/payroll-settings";
 
 // ============================================================================
-// QUINCENA UTILS
+// LOCAL UI HELPERS
 // ============================================================================
 
 function SectionHeader({ label, color }: { label: string; color?: "green" | "amber" }) {
@@ -38,224 +45,6 @@ function SectionHeader({ label, color }: { label: string; color?: "green" | "amb
         : color === "green" ? "text-green-500/70"
             : "text-[var(--text-tertiary)]";
     return <p className={`font-mono text-[11px] uppercase tracking-[0.2em] mb-2 pt-1 ${cls}`}>{label}</p>;
-}
-
-type Quincena = 1 | 2;
-
-interface QuincenaInfo {
-    weekdays: number;  // Mon–Fri excluding holidays
-    saturdays: number;
-    sundays: number;
-    mondays: number;
-    holidays: number;  // weekday national holidays in period
-    holidayList: Holiday[];
-    startDate: string;
-    endDate: string;
-    label: string;
-}
-
-type PeriodoMode = "quincenal" | "semanal";
-
-interface WeekInfo {
-    weekdays: number;
-    saturdays: number;
-    sundays: number;
-    mondays: number;   // always 1 — one Monday per week
-    holidays: number;
-    holidayList: Holiday[];
-    startDate: string; // ISO Monday
-    endDate: string;   // ISO Sunday
-    label: string;
-}
-
-// Returns the ISO strings of every Monday in the given month.
-function getMondaysOfMonth(year: number, month: number): string[] {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const mondays: string[] = [];
-    const d = new Date(year, month - 1, 1);
-    while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
-    while (d.getMonth() === month - 1) {
-        mondays.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-        d.setDate(d.getDate() + 7);
-    }
-    return mondays;
-}
-
-// Builds a WeekInfo for the 7-day period starting on mondayISO.
-function getWeekInfo(mondayISO: string): WeekInfo {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-    const start = new Date(mondayISO + "T00:00:00");
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6); // Sunday
-
-    const startISO = toISO(start);
-    const endISO = toISO(end);
-
-    const holidayList = getHolidaysInRange(startISO, endISO);
-    const holidayDates = new Set(holidayList.map((h) => h.date));
-
-    let weekdays = 0, saturdays = 0, sundays = 0;
-    const cur = new Date(start);
-    while (cur <= end) {
-        const iso = toISO(cur);
-        const wd = cur.getDay();
-        if (wd === 0) sundays++;
-        else if (wd === 6) saturdays++;
-        else if (!holidayDates.has(iso)) weekdays++;
-        cur.setDate(cur.getDate() + 1);
-    }
-
-    const startFmt = start.toLocaleDateString("es-VE", { day: "2-digit", month: "short" });
-    const endFmt   = end.toLocaleDateString("es-VE",   { day: "2-digit", month: "short", year: "numeric" });
-
-    return {
-        weekdays, saturdays, sundays, mondays: 1,
-        holidays: holidayList.length,
-        holidayList,
-        startDate: startISO,
-        endDate: endISO,
-        label: `Sem. ${startFmt} – ${endFmt}`,
-    };
-}
-
-const MONTH_NAMES = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
-function getQuincenaInfo(year: number, month: number, q: Quincena): QuincenaInfo {
-    const startDay = q === 1 ? 1 : 16;
-    const endDay = q === 1 ? 15 : new Date(year, month, 0).getDate();
-    const start = new Date(year, month - 1, startDay);
-    const end = new Date(year, month - 1, endDay);
-
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-    const startISO = toISO(start);
-    const endISO = toISO(end);
-
-    // Detect holidays that fall on weekdays within this period
-    const holidayList = getHolidaysInRange(startISO, endISO);
-    const holidayDates = new Set(holidayList.map((h) => h.date));
-
-    let weekdays = 0, saturdays = 0, sundays = 0, mondays = 0;
-    const cur = new Date(start);
-    while (cur <= end) {
-        const iso = toISO(cur);
-        const wd = cur.getDay();
-        if (wd === 0) sundays++;
-        else if (wd === 6) saturdays++;
-        else if (!holidayDates.has(iso)) weekdays++; // holidays excluded from normal weekdays
-        if (wd === 1) mondays++;
-        cur.setDate(cur.getDate() + 1);
-    }
-
-    return {
-        weekdays, saturdays, sundays, mondays,
-        holidays: holidayList.length,
-        holidayList,
-        startDate: startISO, endDate: endISO,
-        label: `${startDay}–${endDay} de ${MONTH_NAMES[month - 1]} ${year}`,
-    };
-}
-
-// ============================================================================
-// ROW BUILDERS — settings-aware
-// ============================================================================
-
-let _seq = 0;
-const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
-
-// Known calendar-based labels → quantity comes from quincena calendar.
-const CALENDAR_QUANTITY: Record<string, (wd: number, sat: number, sun: number, hol: number) => number> = {
-    "Días Normales": (wd) => wd,
-    "Sábados": (_, sat) => sat,
-    "Domingos": (_, __, sun) => sun,
-    "Feriados Nacionales": (_, __, ___, hol) => hol,
-};
-
-// Build EarningRow[] from saved defs + current quincena calendar values.
-function makeEarningsFromDefs(
-    defs: PayrollEarningRowDef[],
-    wd: number, sat: number, sun: number, hol = 0,
-): EarningRow[] {
-    return defs
-        .map((def): EarningRow => {
-            let qty: string;
-            if (!def.useDaily) {
-                qty = def.quantity ?? "0";
-            } else {
-                const calFn = CALENDAR_QUANTITY[def.label];
-                qty = calFn ? String(calFn(wd, sat, sun, hol)) : "0";
-            }
-            return { id: uid("e"), label: def.label, quantity: qty, multiplier: def.multiplier, useDaily: def.useDaily };
-        })
-        // Drop calendar-based rows whose quantity is "0" (e.g. no Saturdays in period)
-        .filter((row) => !(!Object.prototype.hasOwnProperty.call(CALENDAR_QUANTITY, row.label) === false && row.useDaily && row.quantity === "0"));
-}
-
-// Extract defs from current earning rows (strip quantities for calendar-based rows).
-function extractEarningDefs(rows: EarningRow[]): PayrollEarningRowDef[] {
-    return rows.map((r) => ({
-        label: r.label,
-        multiplier: r.multiplier,
-        useDaily: r.useDaily,
-        ...(r.useDaily ? {} : { quantity: r.quantity }),
-    }));
-}
-
-function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): DeductionRow[] {
-    return defs.map((d) => ({
-        id: uid("d"), label: d.label, rate: d.rate, base: d.base,
-        mode: d.mode, quincenaRule: d.quincenaRule,
-    }));
-}
-
-function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
-    return defs.map((b) => ({ id: uid("b"), label: b.label, amount: b.amount }));
-}
-
-function makeHorasExtrasFromDefs(defs: PayrollHorasExtrasGlobalDef[]): HorasExtrasRow[] {
-    return defs.map((d) => ({ id: uid("xhg"), tipo: d.tipo, hours: d.hours, active: d.active }));
-}
-
-function extractHorasExtrasDefs(rows: HorasExtrasRow[]): PayrollHorasExtrasGlobalDef[] {
-    return rows
-        .filter((r): r is HorasExtrasRow & { tipo: "diurna" | "nocturna" } => r.tipo === "diurna" || r.tipo === "nocturna")
-        .map((r) => ({ tipo: r.tipo, hours: r.hours, active: r.active }));
-}
-
-// Build a PayrollSettings snapshot from current page state.
-function buildSettings(
-    earningRows: EarningRow[],
-    deductionRows: DeductionRow[],
-    bonusRows: BonusRow[],
-    diasUtilidades: number,
-    diasBono: number,
-    salaryMode: "mensual" | "integral",
-    cestaTicketUSD: number,
-    salarioMinimo: number,
-    horasExtrasGlobal: HorasExtrasRow[],
-    pdfVisibility: PdfVisibility,
-): PayrollSettings {
-    return {
-        earningRowDefs: extractEarningDefs(earningRows),
-        deductionRowDefs: deductionRows.map((r) => ({
-            label: r.label, rate: r.rate, base: r.base,
-            mode: r.mode ?? "rate", quincenaRule: r.quincenaRule ?? "always",
-        })),
-        bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount })),
-        diasUtilidades,
-        diasBonoVacacional: diasBono,
-        salaryMode,
-        cestaTicketUSD,
-        salarioMinimoRef: salarioMinimo,
-        horasExtrasGlobalRows: extractHorasExtrasDefs(horasExtrasGlobal),
-        pdfVisibility,
-    };
 }
 
 // ============================================================================
