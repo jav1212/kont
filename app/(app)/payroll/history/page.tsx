@@ -148,18 +148,13 @@ function RunRow({ run, isSelected, onSelect }: {
     );
 }
 
-function ReceiptsPanel({ receipts, loading, error }: {
-    receipts: PayrollReceipt[]; loading: boolean; error: string | null;
+function ReceiptsPanel({ receipts, loading }: {
+    receipts: PayrollReceipt[]; loading: boolean;
 }) {
     if (loading) return (
         <div className="flex items-center justify-center h-24 gap-2 border border-border-light rounded-xl">
             <Spinner />
             <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando recibos…</span>
-        </div>
-    );
-    if (error) return (
-        <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-            <p className="font-mono text-[13px] text-red-500">{error}</p>
         </div>
     );
     if (!receipts.length) return (
@@ -234,22 +229,19 @@ function ReceiptsPanel({ receipts, loading, error }: {
 
 export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
-    const { runs, loading, error, getReceipts } = usePayrollHistory(companyId);
+    const { runs, loading, getReceipts } = usePayrollHistory(companyId);
 
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
-    const [receiptsError, setReceiptsError] = useState<string | null>(null);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
         setSelectedRunId(runId);
         setReceiptsLoading(true);
-        setReceiptsError(null);
-        const { receipts: data, error: err } = await getReceipts(runId);
+        const data = await getReceipts(runId);
         setReceiptsLoading(false);
-        setReceiptsError(err);
-        setReceipts(data);
+        setReceipts(data ?? []);
     }, [selectedRunId, getReceipts]);
 
     const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
@@ -306,10 +298,6 @@ export default function PayrollHistoryPage() {
                             <Spinner />
                             <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
                         </div>
-                    ) : error ? (
-                        <div className="px-4 py-3 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                            <p className="font-mono text-[13px] text-red-500">{error}</p>
-                        </div>
                     ) : runs.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3 bg-surface-1">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -334,7 +322,6 @@ export default function PayrollHistoryPage() {
                                 <ReceiptsPanel
                                     receipts={receipts}
                                     loading={receiptsLoading}
-                                    error={receiptsError}
                                 />
                             )}
                         </div>

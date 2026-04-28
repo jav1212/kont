@@ -76,7 +76,7 @@ export default function MovementsPage() {
     const searchParams = useSearchParams();
     const {
         products, movements,
-        loadingMovements, error,
+        loadingMovements,
         loadProducts, loadMovements, deleteMovement,
     } = useInventory();
 
@@ -132,11 +132,6 @@ export default function MovementsPage() {
             />
 
             <div className="px-8 py-6 space-y-4">
-                {error && (
-                    <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
-                        {error}
-                    </div>
-                )}
 
                 {/* Toolbar de filtros */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm px-5 py-4">

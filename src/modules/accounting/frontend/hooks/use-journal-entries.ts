@@ -4,25 +4,24 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { JournalEntry }                 from '../../backend/domain/journal-entry';
 import { apiFetch }                          from '@/src/shared/frontend/utils/api-fetch';
+import { notify }                            from '@/src/shared/frontend/notify';
 
 export function useJournalEntries(companyId: string | null, periodId?: string | null) {
     const [data,    setData]    = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!companyId) { setData([]); return; }
         const qs = new URLSearchParams({ companyId });
         if (periodId) qs.set('periodId', periodId);
         setLoading(true);
-        setError(null);
         try {
             const res  = await apiFetch(`/api/accounting/entries?${qs.toString()}`);
             const json = await res.json() as { data?: JournalEntry[]; error?: string };
-            if (!res.ok) { setError(json.error ?? 'Error'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar asientos'); return; }
             setData(json.data ?? []);
         } catch {
-            setError('Error al cargar asientos');
+            notify.error('Error al cargar asientos');
         } finally {
             setLoading(false);
         }
@@ -30,5 +29,5 @@ export function useJournalEntries(companyId: string | null, periodId?: string | 
 
     useEffect(() => { void reload(); }, [reload]);
 
-    return { data, loading, error, reload };
+    return { data, loading, reload };
 }

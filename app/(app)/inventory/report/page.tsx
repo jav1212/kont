@@ -178,16 +178,15 @@ function SubtotalRow({ label, rows }: { label: string; rows: PeriodReportRow[] }
 
 export default function PeriodReportPage() {
     const { companyId } = useCompany();
-    const { periodReport, loadingPeriodReport, error, setError, loadPeriodReport } = useInventory();
+    const { periodReport, loadingPeriodReport, loadPeriodReport } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
     const [search, setSearch] = useState("");
 
     useEffect(() => {
         if (!companyId) return;
-        setError(null);
         loadPeriodReport(companyId, period);
-    }, [companyId, period, loadPeriodReport, setError]);
+    }, [companyId, period, loadPeriodReport]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -295,11 +294,6 @@ export default function PeriodReportPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Table ─────────────────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">

@@ -349,7 +349,7 @@ export default function OperationsHubPage() {
     const { companyId } = useCompany();
     const {
         products, movements,
-        loadingProducts, loadingMovements, error, setError,
+        loadingProducts, loadingMovements,
         loadProducts, loadMovements,
         deleteMovement, updateMovementMeta,
     } = useInventory();
@@ -483,7 +483,7 @@ export default function OperationsHubPage() {
                     mov={editingMov}
                     productName={productNameById.get(editingMov.productId) ?? editingMov.productId}
                     onSave={handleSaveEdit}
-                    onClose={() => { setEditingMov(null); setError(null); }}
+                    onClose={() => { setEditingMov(null); }}
                     saving={actionSaving}
                 />
             )}
@@ -492,7 +492,7 @@ export default function OperationsHubPage() {
                     mov={deletingMov}
                     productName={productNameById.get(deletingMov.productId) ?? deletingMov.productId}
                     onConfirm={handleDelete}
-                    onClose={() => { setDeletingMov(null); setError(null); }}
+                    onClose={() => { setDeletingMov(null); }}
                     deleting={actionSaving}
                 />
             )}
@@ -550,11 +550,6 @@ export default function OperationsHubPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Operations table ──────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">

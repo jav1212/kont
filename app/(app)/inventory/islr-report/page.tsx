@@ -280,16 +280,15 @@ function ProductTable({ product }: { product: IslrProduct }) {
 
 export default function IslrReportPage() {
     const { companyId } = useCompany();
-    const { islrReport, loadingIslrReport, error, setError, loadIslrReport } = useInventory();
+    const { islrReport, loadingIslrReport, loadIslrReport } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
     const [search, setSearch] = useState("");
 
     useEffect(() => {
         if (!companyId) return;
-        setError(null);
         loadIslrReport(companyId, period);
-    }, [companyId, period, loadIslrReport, setError]);
+    }, [companyId, period, loadIslrReport]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -396,11 +395,6 @@ export default function IslrReportPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Per-product cards ─────────────────────────────────────── */}
                 {loadingIslrReport ? (

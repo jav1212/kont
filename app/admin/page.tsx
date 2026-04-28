@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 
 // ============================================================================
 // TYPES
@@ -137,7 +138,6 @@ export default function AdminPage() {
     const [payments, setPayments] = useState<PaymentRequest[]>([]);
     const [tenants,  setTenants]  = useState<TenantRow[]>([]);
     const [loading,  setLoading]  = useState(true);
-    const [error,    setError]    = useState<string | null>(null);
 
     // Payment filter
     const [payFilter, setPayFilter] = useState<"" | "pending" | "approved" | "rejected">("");
@@ -223,18 +223,17 @@ export default function AdminPage() {
     // ── Load ──────────────────────────────────────────────────────────────
     const loadAll = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
             const [sumRes, tenRes] = await Promise.all([
                 fetch("/api/admin/summary"),
                 fetch("/api/admin/tenants"),
             ]);
-            if (sumRes.status === 403) { setError("Acceso denegado. Esta página es solo para administradores."); setLoading(false); return; }
+            if (sumRes.status === 403) { notify.error("Acceso denegado. Esta página es solo para administradores."); setLoading(false); return; }
             const [s, t] = await Promise.all([sumRes.json(), tenRes.json()]);
             if (s.data) setSummary(s.data);
             if (t.data) setTenants(t.data);
         } catch {
-            setError("Error al cargar datos.");
+            notify.error("Error al cargar datos.");
         } finally {
             setLoading(false);
         }
@@ -480,11 +479,7 @@ export default function AdminPage() {
                     </h1>
                 </header>
 
-                {error ? (
-                    <div className="px-4 py-4 border border-red-500/20 rounded-xl bg-red-500/[0.05]">
-                        <p className="font-mono text-[12px] text-red-500">{error}</p>
-                    </div>
-                ) : loading ? (
+                {loading ? (
                     <div className="flex items-center justify-center h-40 gap-2 border border-border-light rounded-xl">
                         <Spinner />
                         <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando…</span>

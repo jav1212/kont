@@ -3,7 +3,7 @@
 // Frontend hook: useInventory
 // Provides all inventory state and async actions for the inventory module.
 // Architectural role: application-layer adapter between UI components and inventory API routes.
-// All state variables, loading flags, and functions use English identifiers aligned with English domain types.
+// Errors are surfaced via notify.error (toast) — never returned to callers as a state slice.
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Product } from '../../backend/domain/product';
@@ -24,8 +24,15 @@ import type {
     RandomSalesPreviewLine,
 } from '../../backend/app/generate-random-sales.use-case';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
+import { notify } from '@/src/shared/frontend/notify';
 
 export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine };
+
+// Centralised error reporter. Network failures go to console for debugging
+// but the user always sees a toast — never a silent failure.
+function reportError(fallback: string, e: unknown): void {
+    notify.error(e instanceof Error ? e.message : fallback);
+}
 
 export function useInventory() {
     const [products, setProducts]                       = useState<Product[]>([]);
@@ -56,27 +63,23 @@ export function useInventory() {
     const [loadingInventoryLedger, setLoadingInventoryLedger] = useState(false);
     const [loadingBalanceReport, setLoadingBalanceReport]     = useState(false);
 
-    const [error, setError] = useState<string | null>(null);
-
     // ── Products ───────────────────────────────────────────────────────────────
 
     const loadProducts = useCallback(async (companyId: string) => {
         setLoadingProducts(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/products?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar productos'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar productos'); return; }
             setProducts(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingProducts(false);
         }
     }, []);
 
     const saveProduct = useCallback(async (product: Product): Promise<Product | null> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/products', {
                 method: 'POST',
@@ -84,7 +87,7 @@ export function useInventory() {
                 body: JSON.stringify(product),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar producto'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar producto'); return null; }
             const saved: Product = json.data;
             setProducts((prev) => {
                 const idx = prev.findIndex((p) => p.id === saved.id);
@@ -94,17 +97,16 @@ export function useInventory() {
             });
             return saved;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const deleteProduct = useCallback(async (id: string): Promise<{ ok: boolean; softDeleted?: boolean }> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/products/${id}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar producto'); return { ok: false }; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar producto'); return { ok: false }; }
             const softDeleted = Boolean(json.data?.softDeleted);
             if (softDeleted) {
                 setProducts((prev) =>
@@ -115,7 +117,7 @@ export function useInventory() {
             }
             return { ok: true, softDeleted };
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return { ok: false };
         }
     }, []);
@@ -124,31 +126,29 @@ export function useInventory() {
 
     const loadMovements = useCallback(async (companyId: string, period?: string) => {
         setLoadingMovements(true);
-        setError(null);
         try {
             const params = new URLSearchParams({ companyId });
             if (period) params.set('period', period);
             const res = await apiFetch(`/api/inventory/movements?${params}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar movimientos'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar movimientos'); return; }
             setMovements(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingMovements(false);
         }
     }, []);
 
     const deleteMovement = useCallback(async (id: string): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/movements/${id}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar movimiento'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar movimiento'); return false; }
             setMovements((prev) => prev.filter((m) => m.id !== id));
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
@@ -156,7 +156,6 @@ export function useInventory() {
     const updateMovementMeta = useCallback(async (
         id: string, date: string, reference: string, notes: string,
     ): Promise<Movement | null> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/movements/${id}`, {
                 method: 'PATCH',
@@ -164,18 +163,17 @@ export function useInventory() {
                 body: JSON.stringify({ date, reference, notes }),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al actualizar movimiento'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al actualizar movimiento'); return null; }
             const updated: Movement = json.data;
             setMovements((prev) => prev.map((m) => m.id === updated.id ? updated : m));
             return updated;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const saveMovement = useCallback(async (movement: Movement): Promise<Movement | null> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/movements', {
                 method: 'POST',
@@ -183,10 +181,9 @@ export function useInventory() {
                 body: JSON.stringify(movement),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar movimiento'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar movimiento'); return null; }
             const saved: Movement = json.data;
             setMovements((prev) => [saved, ...prev]);
-            // Update product current stock from saved movement balance
             setProducts((prev) =>
                 prev.map((p) =>
                     p.id === saved.productId
@@ -196,7 +193,7 @@ export function useInventory() {
             );
             return saved;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
@@ -205,14 +202,13 @@ export function useInventory() {
 
     const loadPeriodCloses = useCallback(async (companyId: string) => {
         setLoadingPeriodCloses(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/closings?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar cierres'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar cierres'); return; }
             setPeriodCloses(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingPeriodCloses(false);
         }
@@ -230,7 +226,6 @@ export function useInventory() {
         notes?: string,
         dollarRate?: number | null,
     ): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/closings', {
                 method: 'POST',
@@ -238,11 +233,11 @@ export function useInventory() {
                 body: JSON.stringify({ companyId, period, notes: notes ?? '', dollarRate: dollarRate ?? null }),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cerrar período'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cerrar período'); return false; }
             if (json.data) setPeriodCloses((prev) => [json.data, ...prev]);
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
@@ -251,21 +246,19 @@ export function useInventory() {
 
     const loadSuppliers = useCallback(async (companyId: string) => {
         setLoadingSuppliers(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/suppliers?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar proveedores'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar proveedores'); return; }
             setSuppliers(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingSuppliers(false);
         }
     }, []);
 
     const saveSupplier = useCallback(async (supplier: Supplier): Promise<Supplier | null> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/suppliers', {
                 method: 'POST',
@@ -273,7 +266,7 @@ export function useInventory() {
                 body: JSON.stringify(supplier),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar proveedor'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar proveedor'); return null; }
             const saved: Supplier = json.data;
             setSuppliers((prev) => {
                 const idx = prev.findIndex((s) => s.id === saved.id);
@@ -283,21 +276,20 @@ export function useInventory() {
             });
             return saved;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const deleteSupplier = useCallback(async (id: string): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/suppliers/${id}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar proveedor'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar proveedor'); return false; }
             setSuppliers((prev) => prev.filter((s) => s.id !== id));
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
@@ -306,14 +298,13 @@ export function useInventory() {
 
     const loadPurchaseInvoices = useCallback(async (companyId: string) => {
         setLoadingPurchaseInvoices(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/purchases?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar facturas'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar facturas'); return; }
             setPurchaseInvoices(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingPurchaseInvoices(false);
         }
@@ -321,14 +312,13 @@ export function useInventory() {
 
     const loadPurchaseInvoice = useCallback(async (invoiceId: string) => {
         setLoadingPurchaseInvoice(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar factura'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar factura'); return; }
             setCurrentPurchaseInvoice(json.data ?? null);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingPurchaseInvoice(false);
         }
@@ -338,7 +328,6 @@ export function useInventory() {
         invoice: PurchaseInvoice,
         items: PurchaseInvoiceItem[],
     ): Promise<PurchaseInvoice | null> => {
-        setError(null);
         try {
             const url = invoice.id
                 ? `/api/inventory/purchases/${invoice.id}`
@@ -349,7 +338,7 @@ export function useInventory() {
                 body: JSON.stringify({ invoice, items }),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar factura'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar factura'); return null; }
             const saved: PurchaseInvoice = json.data;
             setPurchaseInvoices((prev) => {
                 const idx = prev.findIndex((f) => f.id === saved.id);
@@ -360,57 +349,54 @@ export function useInventory() {
             setCurrentPurchaseInvoice(saved);
             return saved;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const deletePurchaseInvoice = useCallback(async (invoiceId: string): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/purchases/${invoiceId}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar factura'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar factura'); return false; }
             setPurchaseInvoices((prev) => prev.filter((f) => f.id !== invoiceId));
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
 
     const confirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/confirm`, {
                 method: 'POST',
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al confirm factura'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al confirmar factura'); return null; }
             const confirmed: PurchaseInvoice = json.data;
             setPurchaseInvoices((prev) => prev.map((f) => (f.id === confirmed.id ? confirmed : f)));
             setCurrentPurchaseInvoice(confirmed);
             return confirmed;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const unconfirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/unconfirm`, {
                 method: 'POST',
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al desconfirmar factura'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al desconfirmar factura'); return null; }
             const unconfirmed: PurchaseInvoice = json.data;
             setPurchaseInvoices((prev) => prev.map((f) => (f.id === unconfirmed.id ? unconfirmed : f)));
             setCurrentPurchaseInvoice(unconfirmed);
             return unconfirmed;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
@@ -419,21 +405,19 @@ export function useInventory() {
 
     const loadDepartments = useCallback(async (companyId: string) => {
         setLoadingDepartments(true);
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/departments?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar departamentos'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar departamentos'); return; }
             setDepartments(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingDepartments(false);
         }
     }, []);
 
     const saveDepartment = useCallback(async (department: Department): Promise<Department | null> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/departments', {
                 method: 'POST',
@@ -441,7 +425,7 @@ export function useInventory() {
                 body: JSON.stringify(department),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al guardar departamento'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar departamento'); return null; }
             const saved: Department = json.data;
             setDepartments((prev) => {
                 const idx = prev.findIndex((d) => d.id === saved.id);
@@ -451,21 +435,20 @@ export function useInventory() {
             });
             return saved;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
 
     const deleteDepartment = useCallback(async (id: string): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch(`/api/inventory/departments/${id}`, { method: 'DELETE' });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al eliminar departamento'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar departamento'); return false; }
             setDepartments((prev) => prev.filter((d) => d.id !== id));
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
@@ -474,16 +457,15 @@ export function useInventory() {
 
     const loadPurchaseLedger = useCallback(async (companyId: string, period: string) => {
         setLoadingPurchaseLedger(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/purchase-ledger?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de entradas'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar libro de entradas'); return; }
             setPurchaseLedger(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingPurchaseLedger(false);
         }
@@ -493,16 +475,15 @@ export function useInventory() {
 
     const loadIslrReport = useCallback(async (companyId: string, period: string) => {
         setLoadingIslrReport(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/islr-report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte ISLR'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar reporte ISLR'); return; }
             setIslrReport(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingIslrReport(false);
         }
@@ -512,16 +493,15 @@ export function useInventory() {
 
     const loadSalesLedger = useCallback(async (companyId: string, period: string) => {
         setLoadingSalesLedger(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/sales-ledger?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de salidas'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar libro de salidas'); return; }
             setSalesLedger(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingSalesLedger(false);
         }
@@ -530,7 +510,6 @@ export function useInventory() {
     const generateRandomSales = useCallback(async (
         input: GenerateRandomSalesInput,
     ): Promise<RandomSalesPreview | null> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/sales/generate', {
                 method: 'POST',
@@ -538,10 +517,10 @@ export function useInventory() {
                 body: JSON.stringify(input),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al generar salidas'); return null; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al generar salidas'); return null; }
             return json.data as RandomSalesPreview;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return null;
         }
     }, []);
@@ -552,7 +531,6 @@ export function useInventory() {
         reference?: string;
         items: { productId: string; quantity: number; currentStock?: number; precioVentaUnitario?: number; date?: string; type?: 'salida' | 'autoconsumo' }[];
     }): Promise<boolean> => {
-        setError(null);
         try {
             const res = await apiFetch('/api/inventory/sales', {
                 method: 'POST',
@@ -560,9 +538,8 @@ export function useInventory() {
                 body: JSON.stringify(payload),
             });
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al registrar salida'); return false; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al registrar salida'); return false; }
             const saved = json.data as Movement[];
-            // Update product current stock from the last outbound movement per product
             setProducts((prev) =>
                 prev.map((p) => {
                     const lastMov = saved.filter((m) => m.productId === p.id).at(-1);
@@ -571,7 +548,7 @@ export function useInventory() {
             );
             return true;
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
             return false;
         }
     }, []);
@@ -580,16 +557,15 @@ export function useInventory() {
 
     const loadInventoryLedger = useCallback(async (companyId: string, year: number) => {
         setLoadingInventoryLedger(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/inventory-ledger?companyId=${encodeURIComponent(companyId)}&year=${year}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar libro de inventarios'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar libro de inventarios'); return; }
             setInventoryLedger(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingInventoryLedger(false);
         }
@@ -599,16 +575,15 @@ export function useInventory() {
 
     const loadBalanceReport = useCallback(async (companyId: string, period: string) => {
         setLoadingBalanceReport(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/balance-report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte SALDO'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar reporte SALDO'); return; }
             setBalanceReport(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingBalanceReport(false);
         }
@@ -618,16 +593,15 @@ export function useInventory() {
 
     const loadPeriodReport = useCallback(async (companyId: string, period: string) => {
         setLoadingPeriodReport(true);
-        setError(null);
         try {
             const res = await apiFetch(
                 `/api/inventory/report?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
             );
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? 'Error al cargar reporte'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar reporte'); return; }
             setPeriodReport(json.data ?? []);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error de red');
+            reportError('Error de red', e);
         } finally {
             setLoadingPeriodReport(false);
         }
@@ -644,8 +618,6 @@ export function useInventory() {
         loadingPeriodCloses,
         loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice,
         loadingDepartments, loadingPeriodReport, loadingPurchaseLedger, loadingIslrReport, loadingSalesLedger, loadingInventoryLedger, loadingBalanceReport,
-        // error
-        error, setError,
         // actions
         loadProducts, saveProduct, deleteProduct,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,

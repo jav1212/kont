@@ -3,21 +3,19 @@
 import { useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
-import { AlertCircle } from "lucide-react";
+import { notify } from "@/src/shared/frontend/notify";
 
 export default function CompanySettingsPage() {
     const { company, update } = useCompany();
     const [saving, setSaving] = useState(false);
-    const [error,  setError]  = useState<string | null>(null);
 
     const showLogoInPdf = company?.showLogoInPdf ?? false;
 
     async function handleToggle() {
         if (!company) return;
         setSaving(true);
-        setError(null);
         const err = await update(company.id, { showLogoInPdf: !showLogoInPdf });
-        if (err) setError(err);
+        if (err) notify.error(err);
         setSaving(false);
     }
 
@@ -63,13 +61,6 @@ export default function CompanySettingsPage() {
                     </div>
                 </div>
             </SettingsSection>
-
-            {error && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-error">
-                    <AlertCircle size={14} />
-                    <p className="font-sans text-[12px] text-text-error">{error}</p>
-                </div>
-            )}
         </div>
     );
 }

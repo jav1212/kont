@@ -7,7 +7,7 @@
 
 import { useId, useRef, useState, useMemo }           from 'react';
 import { AnimatePresence, motion }                     from 'framer-motion';
-import { X, Upload, Trash2, Download, ArrowLeft, Pencil, Check } from 'lucide-react';
+import { X, Upload, Trash2, Download, ArrowLeft, Check } from 'lucide-react';
 import { PageHeader }                            from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                            from '@/src/shared/frontend/components/base-button';
 import { BaseInput }                             from '@/src/shared/frontend/components/base-input';
@@ -15,6 +15,7 @@ import { AccountingAccessGuard }                 from '@/src/modules/accounting/
 import { BaseTable }                             from '@/src/shared/frontend/components/base-table';
 import { useCompany }                            from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useCharts }                             from '@/src/modules/accounting/frontend/hooks/use-charts';
+import { notify }                                from '@/src/shared/frontend/notify';
 import { parseChartFile, detectRoots }           from '@/src/modules/accounting/frontend/utils/chart-import-parser';
 import type { RootEntry, Naturaleza }            from '@/src/modules/accounting/frontend/utils/chart-import-parser';
 import type { AccountChart }                     from '@/src/modules/accounting/backend/domain/account-chart';
@@ -97,7 +98,7 @@ type ModalStep = 'upload' | 'roots';
 export default function ChartsPage() {
     const modalId        = useId();
     const { companyId }  = useCompany();
-    const { data: rawData, loading, error, deleteChart, renameChart, importChart } = useCharts(companyId);
+    const { data: rawData, loading, deleteChart, renameChart, importChart } = useCharts(companyId);
 
     // Import modal state
     const [importOpen,    setImportOpen]    = useState(false);
@@ -110,14 +111,12 @@ export default function ChartsPage() {
     const [totalAccounts, setTotalAccounts] = useState(0);
     const [skippedLines,  setSkippedLines]  = useState(0);
     const [importing,     setImporting]     = useState(false);
-    const [importErr,     setImportErr]     = useState<string | null>(null);
     const fileInputRef                      = useRef<HTMLInputElement>(null);
 
     // Inline rename state
     const [editingId,   setEditingId]   = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const [renaming,    setRenaming]    = useState(false);
-    const [renameErr,   setRenameErr]   = useState<string | null>(null);
 
     // Force table rows to re-render by returning a new object reference
     // on every keystroke, while casting to avoid TypeScript errors.
@@ -133,7 +132,6 @@ export default function ChartsPage() {
     // Delete modal state
     const [deleteTarget, setDeleteTarget] = useState<AccountChart | null>(null);
     const [deleting,     setDeleting]     = useState(false);
-    const [deleteErr,    setDeleteErr]    = useState<string | null>(null);
 
     // ── Import handlers ───────────────────────────────────────────────────────
 
@@ -141,7 +139,6 @@ export default function ChartsPage() {
         const file = e.target.files?.[0] ?? null;
         setImportFile(file);
         setImportText(null);
-        setImportErr(null);
         setRoots([]);
         setNaturalezaMap({});
 
@@ -155,7 +152,7 @@ export default function ChartsPage() {
 
             const detected = detectRoots(text);
             if (detected.length === 0) {
-                setImportErr('No se encontraron cuentas en el archivo. Verifica el formato.');
+                notify.error('No se encontraron cuentas en el archivo. Verifica el formato.');
                 return;
             }
 
@@ -186,7 +183,6 @@ export default function ChartsPage() {
         setNaturalezaMap({});
         setTotalAccounts(0);
         setSkippedLines(0);
-        setImportErr(null);
         setModalStep('upload');
         setImportOpen(true);
     }
@@ -202,22 +198,19 @@ export default function ChartsPage() {
         setImportText(null);
         setRoots([]);
         setNaturalezaMap({});
-        setImportErr(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     }
 
     async function handleImport() {
         if (!importText || !importFile) return;
         setImporting(true);
-        setImportErr(null);
         try {
             const { accounts } = parseChartFile(importText, naturalezaMap);
             const chartName    = importName.trim() || importFile.name.replace(/\.[^.]+$/, '');
-            const err          = await importChart(chartName, accounts);
-            if (err) { setImportErr(err); return; }
-            closeImport();
+            const ok           = await importChart(chartName, accounts);
+            if (ok) closeImport();
         } catch {
-            setImportErr('No se pudo leer el archivo. Inténtalo de nuevo o verifica que no esté dañado.');
+            notify.error('No se pudo leer el archivo. Inténtalo de nuevo o verifica que no esté dañado.');
         } finally {
             setImporting(false);
         }
@@ -228,23 +221,19 @@ export default function ChartsPage() {
     function startEdit(item: AccountChart) {
         setEditingId(item.id);
         setEditingName(item.name);
-        setRenameErr(null);
     }
 
     function cancelEdit() {
         setEditingId(null);
         setEditingName('');
-        setRenameErr(null);
     }
 
     async function confirmRename(item: AccountChart) {
         const trimmed = editingName.trim();
         if (!trimmed || trimmed === item.name) { cancelEdit(); return; }
         setRenaming(true);
-        setRenameErr(null);
-        const err = await renameChart(item.id, item.companyId, trimmed);
-        if (err) { setRenameErr(err); }
-        else     { setEditingId(null); setEditingName(''); }
+        const ok = await renameChart(item.id, item.companyId, trimmed);
+        if (ok) { setEditingId(null); setEditingName(''); }
         setRenaming(false);
     }
 
@@ -253,10 +242,8 @@ export default function ChartsPage() {
     async function confirmDelete() {
         if (!deleteTarget) return;
         setDeleting(true);
-        setDeleteErr(null);
-        const err = await deleteChart(deleteTarget.id);
-        if (err) { setDeleteErr(err); }
-        else     { setDeleteTarget(null); }
+        const ok = await deleteChart(deleteTarget.id);
+        if (ok) setDeleteTarget(null);
         setDeleting(false);
     }
 
@@ -310,9 +297,6 @@ export default function ChartsPage() {
                                             >
                                                 <X size={14} />
                                             </button>
-                                            {renameErr && (
-                                                <span className="font-mono text-[11px] text-text-error shrink-0">{renameErr}</span>
-                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2 min-w-0">
@@ -347,7 +331,7 @@ export default function ChartsPage() {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => { setDeleteTarget(item); setDeleteErr(null); }}
+                                                onClick={() => { setDeleteTarget(item); }}
                                                 className="font-mono text-[12px] text-[var(--text-error)] hover:opacity-70 focus-visible:outline-none focus-visible:underline transition-opacity"
                                             >
                                                 Eliminar
@@ -370,9 +354,6 @@ export default function ChartsPage() {
                                 </div>
                             }
                         />
-                        {error && (
-                            <p className="font-mono text-[12px] text-[var(--text-error)]">{error}</p>
-                        )}
                     </div>
                 </div>
             </div>
@@ -464,11 +445,6 @@ export default function ChartsPage() {
                                             </div>
                                         </div>
 
-                                        {importErr && (
-                                            <div className="p-3 rounded-lg bg-red-50 border border-red-100 dark:bg-red-500/10 dark:border-red-500/20">
-                                                <p className="text-[11px] text-red-600 flex items-center gap-1.5 font-mono"><X size={10} /> {importErr}</p>
-                                            </div>
-                                        )}
                                     </div>
 
                                     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-light bg-surface-2/30 shrink-0">
@@ -551,13 +527,6 @@ export default function ChartsPage() {
                                         </div>
                                     )}
 
-                                    {importErr && (
-                                        <div className="px-6 py-3 border-t border-border-light shrink-0">
-                                            <div className="p-3 rounded-lg bg-red-50 border border-red-100 dark:bg-red-500/10 dark:border-red-500/20">
-                                                <p className="text-[11px] text-red-600 flex items-center gap-1.5 font-mono"><X size={10} /> {importErr}</p>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border-light bg-surface-2/30 shrink-0">
                                         <span className="font-mono text-[11px] text-text-tertiary">
@@ -599,7 +568,7 @@ export default function ChartsPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                            onClick={() => { setDeleteTarget(null); }}
                             className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
                         />
                         <motion.div
@@ -612,7 +581,7 @@ export default function ChartsPage() {
                                 <h2 className="text-[14px] font-bold uppercase tracking-widest text-foreground">
                                     Eliminar plan
                                 </h2>
-                                <BaseButton.Icon variant="ghost" size="sm" onClick={() => { setDeleteTarget(null); setDeleteErr(null); }}>
+                                <BaseButton.Icon variant="ghost" size="sm" onClick={() => { setDeleteTarget(null); }}>
                                     <X size={14} />
                                 </BaseButton.Icon>
                             </div>
@@ -624,18 +593,13 @@ export default function ChartsPage() {
                                     Las cuentas permanecerán pero quedarán sin plan asignado.{' '}
                                     Esta acción no se puede deshacer.
                                 </p>
-                                {deleteErr && (
-                                    <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-100 dark:bg-red-500/10 dark:border-red-500/20">
-                                        <p className="text-[10px] text-red-600 flex items-center gap-1.5 font-mono"><X size={10} /> {deleteErr}</p>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-light bg-surface-2/30">
                                 <BaseButton.Root
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                                    onClick={() => { setDeleteTarget(null); }}
                                     isDisabled={deleting}
                                 >
                                     Cancelar

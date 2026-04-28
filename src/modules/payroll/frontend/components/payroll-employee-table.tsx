@@ -238,7 +238,7 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-400 mb-2 mt-4">{children}</p>
 );
 
-const TablePlaceholder = ({ loading, error }: { loading: boolean; error: string | null }) => (
+const TablePlaceholder = ({ loading }: { loading: boolean }) => (
     <div className="flex items-center justify-center h-32 border border-border-light rounded-xl">
         {loading ? (
             <div className="flex items-center gap-2 text-neutral-400">
@@ -248,8 +248,6 @@ const TablePlaceholder = ({ loading, error }: { loading: boolean; error: string 
                 </svg>
                 <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados...</span>
             </div>
-        ) : error ? (
-            <span className="font-mono text-[13px] text-error">{error}</span>
         ) : (
             <span className="font-mono text-[13px] text-neutral-300 uppercase tracking-widest">Sin empleados. Agrega empleados en la sección de Empleados.</span>
         )}
@@ -557,9 +555,8 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
 export interface PayrollEmployeeTableProps {
     employees:                Employee[];
     empLoading:               boolean;
-    empError:                 string | null;
-    onConfirm?:               (results: EmployeeResult[]) => Promise<string | null>;
-    onSaveDraft?:             (results: EmployeeResult[]) => Promise<{ runId: string | null; error: string | null }>;
+    onConfirm?:               (results: EmployeeResult[]) => Promise<boolean>;
+    onSaveDraft?:             (results: EmployeeResult[]) => Promise<{ runId: string | null }>;
     earningRows:              EarningRow[];
     deductionRows:            DeductionRow[];
     bonusRows:                BonusRow[];
@@ -585,7 +582,7 @@ export interface PayrollEmployeeTableProps {
 }
 
 export const PayrollEmployeeTable = ({
-    employees, empLoading, empError, onConfirm, onSaveDraft,
+    employees, empLoading, onConfirm, onSaveDraft,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     diasUtilidades, diasBonoVacacional,
     horasExtrasGlobal = [], salarioMinimo = 0,
@@ -598,12 +595,10 @@ export const PayrollEmployeeTable = ({
     const [expandedId,       setExpandedId]       = useState<string | null>(null);
     const [search,           setSearch]           = useState("");
     const [confirmLoading,   setConfirmLoading]   = useState(false);
-    const [confirmError,     setConfirmError]     = useState<string | null>(null);
     const [confirmOk,        setConfirmOk]        = useState(false);
     const [showModal,        setShowModal]        = useState(false);
     const [includeVacaciones, setIncludeVacaciones] = useState(true);
     const [draftSavedAt,     setDraftSavedAt]     = useState<Date | null>(null);
-    const [draftError,       setDraftError]       = useState<string | null>(null);
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback(
@@ -652,13 +647,9 @@ export const PayrollEmployeeTable = ({
         // Auto-guardar como borrador para que el usuario tenga respaldo en BD.
         // Si el período ya está confirmado no se reescribe nada (es inmutable).
         if (!onSaveDraft || periodAlreadyConfirmed) return;
-        const { error } = await onSaveDraft(results);
-        if (error) {
-            setDraftError(error);
-            toast.error(`Recibo exportado, pero no se pudo guardar borrador: ${error}`);
-        } else {
+        const { runId } = await onSaveDraft(results);
+        if (runId) {
             setDraftSavedAt(new Date());
-            setDraftError(null);
             toast.success("Recibo exportado y nómina guardada como borrador");
         }
     }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed]);
@@ -666,13 +657,10 @@ export const PayrollEmployeeTable = ({
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
         setConfirmLoading(true);
-        setConfirmError(null);
         setConfirmOk(false);
-        const err = await onConfirm(results);
+        const ok = await onConfirm(results);
         setConfirmLoading(false);
-        if (err) {
-            setConfirmError(err);
-        } else {
+        if (ok) {
             setShowModal(false);
             setConfirmOk(true);
         }
@@ -731,7 +719,7 @@ export const PayrollEmployeeTable = ({
         );
     }, [results, search]);
 
-    const showTable = !empLoading && !empError && employees.length > 0;
+    const showTable = !empLoading && employees.length > 0;
     // ── Confirm modal totals ───────────────────────────────────────────────
     const activeResults = results.filter((r) => r.estado === "activo");
     const modalTotals   = activeResults.reduce(
@@ -834,11 +822,6 @@ export const PayrollEmployeeTable = ({
                             </div>
                         )}
 
-                        {confirmError && (
-                            <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                <p className="font-mono text-[12px] text-red-400">{confirmError}</p>
-                            </div>
-                        )}
 
                         <p className="font-mono text-[11px] text-[var(--text-disabled)] leading-relaxed">
                             Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.
@@ -924,14 +907,7 @@ export const PayrollEmployeeTable = ({
                         </svg>
                         Exportar PDF
                     </button>
-                    {draftError ? (
-                        <span
-                            title={draftError}
-                            className="h-8 px-2 inline-flex items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-mono text-[11px] uppercase tracking-[0.16em]"
-                        >
-                            Borrador no guardado
-                        </span>
-                    ) : draftSavedAt ? (
+                    {draftSavedAt ? (
                         <span
                             className="h-8 px-2 inline-flex items-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.16em]"
                         >
@@ -940,7 +916,7 @@ export const PayrollEmployeeTable = ({
                     ) : null}
                     {onConfirm && (
                         <button
-                            onClick={() => { setConfirmError(null); setShowModal(true); }}
+                            onClick={() => { setShowModal(true); }}
                             disabled={results.length === 0 || confirmOk || !!periodAlreadyConfirmed}
                             title={periodAlreadyConfirmed ? "Período ya confirmado" : undefined}
                             className={[
@@ -962,13 +938,6 @@ export const PayrollEmployeeTable = ({
                     )}
                 </div>
             </div>
-
-            {/* Confirm error */}
-            {confirmError && (
-                <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.04]">
-                    <p className="font-mono text-[12px] text-red-500">{confirmError}</p>
-                </div>
-            )}
 
             {/* Search */}
             {showTable && (
@@ -1015,7 +984,7 @@ export const PayrollEmployeeTable = ({
                     />
                 </>
             ) : (
-                <TablePlaceholder loading={empLoading} error={empError} />
+                <TablePlaceholder loading={empLoading} />
             )}
         </div>
     );

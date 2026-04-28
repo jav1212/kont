@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, AuthVisual } from "../_components/auth-shell";
 
 const COOLDOWN_SECONDS = 30;
@@ -41,7 +42,6 @@ function ResendConfirmationInner() {
 
     const [email,         setEmail]         = useState(searchParams.get("email") ?? "");
     const [loading,       setLoading]       = useState(false);
-    const [error,         setError]         = useState<string | null>(null);
     const [sent,          setSent]          = useState(false);
     const [cooldownUntil, setCooldownUntil] = useState(0);
     const [now,           setNow]           = useState(() => Date.now());
@@ -66,17 +66,16 @@ function ResendConfirmationInner() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
 
-        if (!email.trim()) { setError("El correo es requerido."); return; }
-        if (!/\S+@\S+\.\S+/.test(email.trim())) { setError("El correo no es válido."); return; }
+        if (!email.trim()) { notify.error("El correo es requerido."); return; }
+        if (!/\S+@\S+\.\S+/.test(email.trim())) { notify.error("El correo no es válido."); return; }
         if (cooldownRemaining > 0) return;
 
         setLoading(true);
         const err = await resendConfirmation(email.trim());
         setLoading(false);
 
-        if (err) { setError(err); return; }
+        if (err) { notify.error(err); return; }
 
         setSent(true);
         setCooldownUntil(Date.now() + COOLDOWN_SECONDS * 1000);
@@ -141,9 +140,6 @@ function ResendConfirmationInner() {
                                     ? <><RefreshCw className="w-3.5 h-3.5" /> Reintentar en {cooldownRemaining}s</>
                                     : <><RotateCcw className="w-3.5 h-3.5" /> Enviar otra vez</>}
                         </BaseButton.Root>
-                        {error && (
-                            <p className="font-sans text-[11.5px] text-red-600 dark:text-red-400 text-center">{error}</p>
-                        )}
                     </form>
 
                     <Link
@@ -166,12 +162,6 @@ function ResendConfirmationInner() {
                             onValueChange={setEmail}
                             isDisabled={loading}
                         />
-
-                        {error && (
-                            <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07]">
-                                <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
-                            </div>
-                        )}
 
                         <BaseButton.Root
                             type="submit"

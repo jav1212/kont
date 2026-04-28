@@ -12,6 +12,7 @@ import { BaseTable }                      from '@/src/shared/frontend/components
 import { AccountingAccessGuard }          from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import { useCompany }                     from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccountingPeriods }           from '@/src/modules/accounting/frontend/hooks/use-accounting-periods';
+import { notify }                         from '@/src/shared/frontend/notify';
 import type { AccountingPeriod }          from '@/src/modules/accounting/backend/domain/accounting-period';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -60,19 +61,16 @@ interface PeriodRow extends AccountingPeriod {
 export default function PeriodsPage() {
     const formId = useId();
     const { companyId }                    = useCompany();
-    const { data, loading, error, reload } = useAccountingPeriods(companyId);
+    const { data, loading, reload } = useAccountingPeriods(companyId);
     const [form,    setForm]               = useState(EMPTY_FORM);
     const [saving,  setSaving]             = useState(false);
-    const [formErr, setFormErr]            = useState<string | null>(null);
     const [closeTarget, setCloseTarget]    = useState<AccountingPeriod | null>(null);
     const [closing, setClosing]            = useState(false);
-    const [closeErr, setCloseErr]          = useState<string | null>(null);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!companyId) return;
         setSaving(true);
-        setFormErr(null);
         try {
             const res  = await fetch('/api/accounting/periods', {
                 method:  'POST',
@@ -80,11 +78,11 @@ export default function PeriodsPage() {
                 body:    JSON.stringify({ companyId, ...form }),
             });
             const json = await res.json() as { error?: string };
-            if (!res.ok) { setFormErr(json.error ?? 'No se pudo crear el período. Inténtalo de nuevo.'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo crear el período. Inténtalo de nuevo.'); return; }
             setForm(EMPTY_FORM);
             await reload();
         } catch {
-            setFormErr('No se pudo crear el período. Inténtalo de nuevo.');
+            notify.error('No se pudo crear el período. Inténtalo de nuevo.');
         } finally {
             setSaving(false);
         }
@@ -93,18 +91,17 @@ export default function PeriodsPage() {
     async function confirmClose() {
         if (!closeTarget) return;
         setClosing(true);
-        setCloseErr(null);
         try {
             const res = await fetch(`/api/accounting/periods/${closeTarget.id}/close`, { method: 'POST' });
             if (!res.ok) {
                 const json = await res.json() as { error?: string };
-                setCloseErr(json.error ?? 'No se pudo cerrar el período.');
+                notify.error(json.error ?? 'No se pudo cerrar el período.');
                 return;
             }
             setCloseTarget(null);
             await reload();
         } catch {
-            setCloseErr('No se pudo cerrar el período.');
+            notify.error('No se pudo cerrar el período.');
         } finally {
             setClosing(false);
         }
@@ -162,12 +159,6 @@ export default function PeriodsPage() {
                                 />
                             </div>
 
-                            {formErr && (
-                                <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                                    {formErr}
-                                </p>
-                            )}
-
                             <BaseButton.Root
                                 type="submit"
                                 variant="primary"
@@ -198,7 +189,7 @@ export default function PeriodsPage() {
                                 render: (_v, item) => item.status === 'open' ? (
                                     <button
                                         type="button"
-                                        onClick={() => { setCloseTarget(item); setCloseErr(null); }}
+                                        onClick={() => { setCloseTarget(item); }}
                                         className="font-mono text-[12px] text-neutral-500 hover:text-foreground focus-visible:outline-none focus-visible:underline transition-colors"
                                     >
                                         Cerrar período
@@ -221,18 +212,13 @@ export default function PeriodsPage() {
                         }
                     />
 
-                    {error && (
-                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                            {error}
-                        </p>
-                    )}
                 </div>
             </div>
 
             {/* ── Close period confirmation modal ────────────────────── */}
             <Modal
                 isOpen={closeTarget !== null}
-                onClose={() => { setCloseTarget(null); setCloseErr(null); }}
+                onClose={() => { setCloseTarget(null); }}
                 size="sm"
             >
                 <ModalContent>
@@ -245,17 +231,12 @@ export default function PeriodsPage() {
                             <span className="font-semibold text-foreground">&ldquo;{closeTarget?.name}&rdquo;</span>
                             ? No podrás registrar nuevos asientos en este período una vez cerrado.
                         </p>
-                        {closeErr && (
-                            <p role="alert" className="font-mono text-[12px] text-[var(--text-error)] mt-2">
-                                {closeErr}
-                            </p>
-                        )}
                     </ModalBody>
                     <ModalFooter>
                         <BaseButton.Root
                             variant="ghost"
                             size="sm"
-                            onPress={() => { setCloseTarget(null); setCloseErr(null); }}
+                            onPress={() => { setCloseTarget(null); }}
                             isDisabled={closing}
                         >
                             Cancelar

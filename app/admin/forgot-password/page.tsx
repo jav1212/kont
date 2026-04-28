@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 
 const Spinner = () => (
     <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -14,15 +15,13 @@ const Spinner = () => (
 export default function AdminForgotPasswordPage() {
     const [email,   setEmail]   = useState("");
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
     const [sent,    setSent]    = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!email.trim()) { setError("El correo es requerido."); return; }
+        if (!email.trim()) { notify.error("El correo es requerido."); return; }
 
         setLoading(true);
-        setError(null);
 
         const res  = await fetch("/api/admin/forgot-password", {
             method:  "POST",
@@ -33,7 +32,7 @@ export default function AdminForgotPasswordPage() {
         setLoading(false);
 
         if (!res.ok) {
-            setError(json.error ?? "Error al enviar el correo.");
+            notify.error(json.error ?? "Error al enviar el correo.");
             return;
         }
 
@@ -95,12 +94,6 @@ export default function AdminForgotPasswordPage() {
                                 onValueChange={setEmail}
                                 isDisabled={loading}
                             />
-
-                            {error && (
-                                <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                    <p className="font-mono text-[10px] text-red-400">{error}</p>
-                                </div>
-                            )}
 
                             <button
                                 type="submit"

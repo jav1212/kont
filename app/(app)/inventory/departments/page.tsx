@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { notify } from "@/src/shared/frontend/notify";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -26,7 +27,6 @@ import {
     Pencil,
     Trash2,
     X,
-    AlertCircle,
     Tag,
     AlignLeft,
     CheckCircle2,
@@ -170,7 +170,7 @@ function FormSection({
 export default function DepartamentosPage() {
     const { companyId } = useCompany();
     const {
-        departments, loadingDepartments, error, setError,
+        departments, loadingDepartments,
         loadDepartments, saveDepartment, deleteDepartment,
         products, loadProducts,
     } = useInventory();
@@ -200,19 +200,17 @@ export default function DepartamentosPage() {
     function openNew() {
         if (!companyId) return;
         setForm(emptyDepartment(companyId));
-        setError(null);
     }
 
     function openEdit(d: Department) {
         setForm({ ...d });
-        setError(null);
     }
 
-    function closeForm() { setForm(null); setError(null); }
+    function closeForm() { setForm(null); }
 
     async function handleSave() {
         if (!form) return;
-        if (!form.name.trim()) { setError("El nombre es requerido"); return; }
+        if (!form.name.trim()) { notify.error("El nombre es requerido"); return; }
         setSaving(true);
         const saved = await saveDepartment(form);
         setSaving(false);
@@ -328,7 +326,7 @@ export default function DepartamentosPage() {
                 </BaseButton.Root>
                 <BaseButton.Root
                     variant="secondary" size="sm"
-                    onClick={() => { setPasteOpen((v) => !v); setError(null); }}
+                    onClick={() => { setPasteOpen((v) => !v); }}
                     leftIcon={<ClipboardPaste size={14} />}
                 >
                     Pegar CSV
@@ -428,12 +426,6 @@ export default function DepartamentosPage() {
                 </div>
 
                 {/* Error */}
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-error/30 bg-error/[0.05] text-text-error text-[13px] flex items-start gap-3">
-                        <AlertCircle size={16} className="flex-shrink-0 mt-[1px]" />
-                        <span className="font-sans">{error}</span>
-                    </div>
-                )}
 
                 {/* Paste CSV panel */}
                 {pasteOpen && (

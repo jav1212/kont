@@ -161,16 +161,15 @@ function PeriodPicker({
 
 export default function BalanceReportPage() {
     const { companyId } = useCompany();
-    const { balanceReport, loadingBalanceReport, error, setError, loadBalanceReport } = useInventory();
+    const { balanceReport, loadingBalanceReport, loadBalanceReport } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
     const [search, setSearch] = useState("");
 
     useEffect(() => {
         if (!companyId) return;
-        setError(null);
         loadBalanceReport(companyId, period);
-    }, [companyId, period, loadBalanceReport, setError]);
+    }, [companyId, period, loadBalanceReport]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -282,11 +281,6 @@ export default function BalanceReportPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Table ─────────────────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">

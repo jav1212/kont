@@ -77,13 +77,6 @@ export function OperationForm({ op, onChangeKind }: Props) {
             </PageHeader>
 
             <div className="px-8 py-6 space-y-5 max-w-5xl">
-                {form.error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/30 bg-red-500/[0.05] text-red-500 text-[13px] flex items-start gap-2">
-                        <Info size={14} strokeWidth={2} className="mt-0.5 flex-shrink-0" />
-                        <span>{form.error}</span>
-                    </div>
-                )}
-
                 {/* Datos de la operación */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">

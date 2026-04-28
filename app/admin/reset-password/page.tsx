@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 
 const Spinner = () => (
     <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -20,7 +21,6 @@ export default function AdminResetPasswordPage() {
     const [password, setPassword] = useState("");
     const [confirm,  setConfirm]  = useState("");
     const [loading,  setLoading]  = useState(false);
-    const [error,    setError]    = useState<string | null>(null);
 
     // El link de Supabase usa implicit flow: los tokens van en el hash (#access_token=...&type=recovery).
     // Parseamos el hash manualmente y llamamos setSession() para establecer la sesión.
@@ -63,11 +63,10 @@ export default function AdminResetPasswordPage() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
 
-        if (!password)              { setError("La contraseña es requerida."); return; }
-        if (password.length < 8)    { setError("Mínimo 8 caracteres."); return; }
-        if (password !== confirm)   { setError("Las contraseñas no coinciden."); return; }
+        if (!password)              { notify.error("La contraseña es requerida."); return; }
+        if (password.length < 8)    { notify.error("Mínimo 8 caracteres."); return; }
+        if (password !== confirm)   { notify.error("Las contraseñas no coinciden."); return; }
 
         setLoading(true);
         const supabase = getSupabaseBrowser();
@@ -75,7 +74,7 @@ export default function AdminResetPasswordPage() {
         setLoading(false);
 
         if (updateError) {
-            setError(updateError.message);
+            notify.error(updateError.message);
             return;
         }
 
@@ -156,12 +155,6 @@ export default function AdminResetPasswordPage() {
                                 onValueChange={setConfirm}
                                 isDisabled={loading}
                             />
-
-                            {error && (
-                                <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                    <p className="font-mono text-[10px] text-red-400">{error}</p>
-                                </div>
-                            )}
 
                             <button
                                 type="submit"

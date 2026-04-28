@@ -66,7 +66,7 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 export default function PurchaseInvoicesPage() {
     const { companyId } = useCompany();
     const {
-        purchaseInvoices, loadingPurchaseInvoices, error, setError,
+        purchaseInvoices, loadingPurchaseInvoices,
         loadPurchaseInvoices, deletePurchaseInvoice,
     } = useInventory();
 
@@ -164,7 +164,7 @@ export default function PurchaseInvoicesPage() {
                             <BaseButton.Root
                                 variant="secondary"
                                 size="md"
-                                onClick={() => { setConfirmDeleteConfirmada(null); setError(null); }}
+                                onClick={() => { setConfirmDeleteConfirmada(null); }}
                                 disabled={deleting}
                             >
                                 Cancelar
@@ -239,11 +239,6 @@ export default function PurchaseInvoicesPage() {
                     </span>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
                     {loadingPurchaseInvoices ? (
@@ -329,7 +324,7 @@ export default function PurchaseInvoicesPage() {
                                                     </button>
                                                     <span className="text-[var(--text-tertiary)]">·</span>
                                                     <button
-                                                        onClick={() => { setConfirmDelete(null); setError(null); }}
+                                                        onClick={() => { setConfirmDelete(null); }}
                                                         className="text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                     >
                                                         Cancelar

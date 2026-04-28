@@ -3,78 +3,75 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry } from "@/src/modules/payroll/backend/domain/employee";
 import { fetchJson } from "@/src/shared/frontend/utils/api-fetch";
+import { notify } from "@/src/shared/frontend/notify";
 
 export type { Employee, EmployeeEstado, EmployeeMoneda, SalaryHistoryEntry };
 
 interface UseEmployeeResult {
     employees:        Employee[];
     loading:          boolean;
-    error:            string | null;
     reload:           () => Promise<void>;
-    upsert:           (employees: Omit<Employee, "id" | "companyId">[]) => Promise<string | null>;
-    remove:           (ids: string[]) => Promise<string | null>;
-    getSalaryHistory: (companyId: string, cedula: string) => Promise<{ history: SalaryHistoryEntry[]; error: string | null }>;
+    upsert:           (employees: Omit<Employee, "id" | "companyId">[]) => Promise<boolean>;
+    remove:           (ids: string[]) => Promise<boolean>;
+    getSalaryHistory: (companyId: string, cedula: string) => Promise<SalaryHistoryEntry[] | null>;
 }
 
 export function useEmployee(companyId: string | null): UseEmployeeResult {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loading,   setLoading]   = useState(false);
-    const [error,     setError]     = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
-        setError(null);
         const { ok, json } = await fetchJson(`/api/employees/get-by-company?companyId=${companyId}`);
-        if (!ok) setError(json.error ?? "Error al cargar empleados");
+        if (!ok) notify.error(json.error ?? "Error al cargar empleados");
         else     setEmployees((json.data as Employee[]) ?? []);
         setLoading(false);
     }, [companyId]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading before first await (non-cascading in React 18)
         if (companyId) reload();
     }, [companyId, reload]);
 
-    const upsert = useCallback(async (rows: Omit<Employee, "id" | "companyId">[]): Promise<string | null> => {
-        if (!companyId) return "No hay empresa seleccionada";
+    const upsert = useCallback(async (rows: Omit<Employee, "id" | "companyId">[]): Promise<boolean> => {
+        if (!companyId) { notify.error("No hay empresa seleccionada"); return false; }
         const withCompany = rows.map((e) => ({ ...e, companyId }));
         const { ok, json } = await fetchJson("/api/employees/upsert", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ companyId, employees: withCompany }),
         });
-        if (!ok) return json.error ?? "Error al guardar empleados";
+        if (!ok) { notify.error(json.error ?? "Error al guardar empleados"); return false; }
         await reload();
-        return null;
+        return true;
     }, [companyId, reload]);
 
-    const remove = useCallback(async (ids: string[]): Promise<string | null> => {
-        if (!companyId) return "No hay empresa seleccionada";
+    const remove = useCallback(async (ids: string[]): Promise<boolean> => {
+        if (!companyId) { notify.error("No hay empresa seleccionada"); return false; }
         const { ok, json } = await fetchJson("/api/employees/delete", {
             method:  "DELETE",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ ids }),
         });
-        if (!ok) return json.error ?? "Error al eliminar empleados";
+        if (!ok) { notify.error(json.error ?? "Error al eliminar empleados"); return false; }
         await reload();
-        return null;
+        return true;
     }, [companyId, reload]);
 
     const getSalaryHistory = useCallback(async (
         cId: string, cedula: string
-    ): Promise<{ history: SalaryHistoryEntry[]; error: string | null }> => {
+    ): Promise<SalaryHistoryEntry[] | null> => {
         const { ok, json } = await fetchJson(
             `/api/employees/salary-history?companyId=${cId}&cedula=${encodeURIComponent(cedula)}`
         );
-        if (!ok) return { history: [], error: json.error ?? "Error al cargar historial" };
-        return { history: (json.data as SalaryHistoryEntry[]) ?? [], error: null };
+        if (!ok) { notify.error(json.error ?? "Error al cargar historial"); return null; }
+        return (json.data as SalaryHistoryEntry[]) ?? [];
     }, []);
 
     return {
         employees: companyId ? employees : [],
         loading: companyId ? loading : false,
-        error: companyId ? error : null,
         reload,
         upsert,
         remove,

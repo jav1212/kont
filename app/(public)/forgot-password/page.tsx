@@ -5,20 +5,19 @@ import Link from "next/link";
 import { Loader2, Send, ChevronLeft, AlertCircle, KeyRound } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, AuthVisual } from "../_components/auth-shell";
 
 export default function ForgotPasswordPage() {
     const [email,   setEmail]   = useState("");
     const [loading, setLoading] = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
     const [sent,    setSent]    = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!email.trim()) { setError("El correo es requerido."); return; }
+        if (!email.trim()) { notify.error("El correo es requerido."); return; }
 
         setLoading(true);
-        setError(null);
 
         const res  = await fetch("/api/auth/forgot-password", {
             method:  "POST",
@@ -28,7 +27,7 @@ export default function ForgotPasswordPage() {
         const json = await res.json();
         setLoading(false);
 
-        if (!res.ok) { setError(json.error ?? "Error al enviar el correo."); return; }
+        if (!res.ok) { notify.error(json.error ?? "Error al enviar el correo."); return; }
 
         setSent(true);
     }
@@ -76,12 +75,6 @@ export default function ForgotPasswordPage() {
                             onValueChange={setEmail}
                             isDisabled={loading}
                         />
-
-                        {error && (
-                            <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07]">
-                                <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
-                            </div>
-                        )}
 
                         <BaseButton.Root
                             type="submit"

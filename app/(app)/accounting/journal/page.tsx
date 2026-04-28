@@ -13,6 +13,7 @@ import { AccountingAccessGuard }     from '@/src/modules/accounting/frontend/com
 import { useCompany }                from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccountingPeriods }      from '@/src/modules/accounting/frontend/hooks/use-accounting-periods';
 import { useJournalEntries }         from '@/src/modules/accounting/frontend/hooks/use-journal-entries';
+import { notify }                    from '@/src/shared/frontend/notify';
 import type { JournalEntry }         from '@/src/modules/accounting/backend/domain/journal-entry';
 import { APP_SIZES }                 from '@/src/shared/frontend/sizes';
 
@@ -73,26 +74,24 @@ export default function JournalPage() {
     const { companyId }                    = useCompany();
     const { data: periods }                = useAccountingPeriods(companyId);
     const [periodId, setPeriodId]          = useState<string>('');
-    const { data, loading, error, reload } = useJournalEntries(companyId, periodId || null);
+    const { data, loading, reload } = useJournalEntries(companyId, periodId || null);
     const [postTarget, setPostTarget]      = useState<JournalEntry | null>(null);
     const [posting,    setPosting]         = useState(false);
-    const [postErr,    setPostErr]         = useState<string | null>(null);
 
     async function confirmPost() {
         if (!postTarget) return;
         setPosting(true);
-        setPostErr(null);
         try {
             const res = await fetch(`/api/accounting/entries/${postTarget.id}/post`, { method: 'POST' });
             if (!res.ok) {
                 const json = await res.json() as { error?: string };
-                setPostErr(json.error ?? 'No se pudo publicar el asiento.');
+                notify.error(json.error ?? 'No se pudo publicar el asiento.');
                 return;
             }
             setPostTarget(null);
             await reload();
         } catch {
-            setPostErr('No se pudo publicar el asiento.');
+            notify.error('No se pudo publicar el asiento.');
         } finally {
             setPosting(false);
         }
@@ -176,7 +175,7 @@ export default function JournalPage() {
                                         {item.status === 'draft' && (
                                             <button
                                                 type="button"
-                                                onClick={() => { setPostTarget(item); setPostErr(null); }}
+                                                onClick={() => { setPostTarget(item); }}
                                                 className="font-mono text-[12px] text-neutral-500 hover:text-foreground focus-visible:outline-none focus-visible:underline transition-colors"
                                             >
                                                 Publicar
@@ -201,18 +200,13 @@ export default function JournalPage() {
                         }
                     />
 
-                    {error && (
-                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                            {error}
-                        </p>
-                    )}
                 </div>
             </div>
 
             {/* ── Post confirmation modal ────────────────────────────── */}
             <Modal
                 isOpen={postTarget !== null}
-                onClose={() => { setPostTarget(null); setPostErr(null); }}
+                onClose={() => { setPostTarget(null); }}
                 size="sm"
             >
                 <ModalContent>
@@ -227,17 +221,12 @@ export default function JournalPage() {
                             </span>
                             ? Esta acción es irreversible.
                         </p>
-                        {postErr && (
-                            <p role="alert" className="font-mono text-[12px] text-[var(--text-error)] mt-2">
-                                {postErr}
-                            </p>
-                        )}
                     </ModalBody>
                     <ModalFooter>
                         <BaseButton.Root
                             variant="ghost"
                             size="sm"
-                            onPress={() => { setPostTarget(null); setPostErr(null); }}
+                            onPress={() => { setPostTarget(null); }}
                             isDisabled={posting}
                         >
                             Cancelar

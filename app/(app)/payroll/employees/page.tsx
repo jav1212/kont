@@ -6,6 +6,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
+import { notify } from "@/src/shared/frontend/notify";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import {
     employeesToCsv,
@@ -33,7 +34,6 @@ import {
     X,
     Clock,
     Loader2,
-    AlertCircle,
     AlertTriangle,
     ClipboardPaste,
     ChevronDown,
@@ -487,13 +487,12 @@ function EmployeeRow({
 interface NewRowProps {
     draft:    RowState;
     saving:   boolean;
-    error?:   string;
     onChange: (field: keyof RowState, value: string) => void;
     onSave:   () => void;
     onCancel: () => void;
 }
 
-function NewEmployeeRow({ draft, saving, error, onChange, onSave, onCancel }: NewRowProps) {
+function NewEmployeeRow({ draft, saving, onChange, onSave, onCancel }: NewRowProps) {
     const tdCls = "px-4 py-3 align-middle";
     return (
         <>
@@ -588,15 +587,6 @@ function NewEmployeeRow({ draft, saving, error, onChange, onSave, onCancel }: Ne
                     )}
                 </td>
             </tr>
-            {error && (
-                <tr className="bg-error/[0.05] border-b border-error/20">
-                    <td colSpan={7} className="px-4 py-2">
-                        <p className="font-sans text-[12px] text-text-error flex items-center gap-2">
-                            <AlertCircle size={13} className="flex-shrink-0" /> {error}
-                        </p>
-                    </td>
-                </tr>
-            )}
         </>
     );
 }
@@ -605,7 +595,7 @@ function NewEmployeeRow({ draft, saving, error, onChange, onSave, onCancel }: Ne
 
 export default function EmployeesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading, error, upsert, remove, getSalaryHistory } = useEmployee(companyId);
+    const { employees, loading, upsert, remove, getSalaryHistory } = useEmployee(companyId);
     const { capacity } = useCapacity();
 
     const empMax       = capacity?.employeesPerCompany.max ?? null;
@@ -617,17 +607,13 @@ export default function EmployeesPage() {
     const [modes,  setModes]  = useState<Record<string, RowMode>>({});
     const [drafts, setDrafts] = useState<Record<string, RowState>>({});
     const [saving, setSaving] = useState<Record<string, boolean>>({});
-    const [, setRowError]     = useState<Record<string, string>>({});
 
     // New rows
     const [newRows, setNewRows]           = useState<{ id: string; draft: RowState }[]>([]);
     const [newSaving, setNewSaving]       = useState<Record<string, boolean>>({});
-    const [newRowError, setNewRowError]   = useState<Record<string, string>>({});
-
     // Selection
     const [selected, setSelected]               = useState<Set<string>>(new Set());
     const [bulkDeleting, setBulkDeleting]       = useState(false);
-    const [bulkError, setBulkError]             = useState<string | null>(null);
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
     // Per-row delete confirmation
@@ -636,7 +622,6 @@ export default function EmployeesPage() {
 
     // CSV
     const [csvLoading, setCsvLoading] = useState(false);
-    const [csvError, setCsvError]     = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Paste
@@ -650,7 +635,6 @@ export default function EmployeesPage() {
     const [historyModal, setHistoryModal]     = useState<{ cedula: string; nombre: string } | null>(null);
     const [historyData, setHistoryData]       = useState<SalaryHistoryEntry[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
-    const [historyError, setHistoryError]     = useState<string | null>(null);
 
     // Filters
     const [search, setSearch]             = useState("");
@@ -685,7 +669,6 @@ export default function EmployeesPage() {
     const startEdit = useCallback((emp: Employee) => {
         setModes((m)  => ({ ...m, [emp.cedula]: "edit" }));
         setDrafts((d) => ({ ...d, [emp.cedula]: employeeToRow(emp) }));
-        setRowError((e) => ({ ...e, [emp.cedula]: "" }));
     }, []);
 
     const cancelEdit = useCallback((cedula: string) => {
@@ -697,7 +680,7 @@ export default function EmployeesPage() {
         const draft = drafts[cedula];
         if (!draft) return;
         setSaving((s) => ({ ...s, [cedula]: true }));
-        const err = await upsert([{
+        const ok = await upsert([{
             cedula:         draft.cedula,
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
@@ -707,8 +690,7 @@ export default function EmployeesPage() {
             fechaIngreso:   draft.fechaIngreso || null,
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
-        if (err) setRowError((e) => ({ ...e, [cedula]: err }));
-        else cancelEdit(cedula);
+        if (ok) cancelEdit(cedula);
     }, [drafts, upsert, cancelEdit]);
 
     // ── New row actions ─────────────────────────────────────────────────────
@@ -728,7 +710,6 @@ export default function EmployeesPage() {
 
     const cancelNewRow = useCallback((id: string) => {
         setNewRows((r) => r.filter((n) => n.id !== id));
-        setNewRowError((s) => { const n = { ...s }; delete n[id]; return n; });
     }, []);
 
     const updateNewDraft = useCallback((id: string, field: keyof RowState, value: string) => {
@@ -743,23 +724,14 @@ export default function EmployeesPage() {
         const { draft } = row;
         const cedula = draft.cedula.trim();
 
-        if (!cedula) {
-            setNewRowError((s) => ({ ...s, [id]: "La cédula es requerida." })); return;
-        }
-        if (!draft.nombre.trim()) {
-            setNewRowError((s) => ({ ...s, [id]: "El nombre es requerido." })); return;
-        }
-        if (employees.some((e) => e.cedula === cedula)) {
-            setNewRowError((s) => ({ ...s, [id]: `La cédula ${cedula} ya existe.` })); return;
-        }
+        if (!cedula)                            { notify.error("La cédula es requerida."); return; }
+        if (!draft.nombre.trim())               { notify.error("El nombre es requerido."); return; }
+        if (employees.some((e) => e.cedula === cedula)) { notify.error(`La cédula ${cedula} ya existe.`); return; }
         const salary = parseFloat(draft.salarioMensual);
-        if (!salary || salary <= 0) {
-            setNewRowError((s) => ({ ...s, [id]: "El salario debe ser mayor a 0." })); return;
-        }
+        if (!salary || salary <= 0)             { notify.error("El salario debe ser mayor a 0."); return; }
 
-        setNewRowError((s) => ({ ...s, [id]: "" }));
         setNewSaving((s) => ({ ...s, [id]: true }));
-        const err = await upsert([{
+        const ok = await upsert([{
             cedula,
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
@@ -769,8 +741,7 @@ export default function EmployeesPage() {
             fechaIngreso:   draft.fechaIngreso || null,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
-        if (err) setNewRowError((s) => ({ ...s, [id]: err }));
-        else cancelNewRow(id);
+        if (ok) cancelNewRow(id);
     }, [newRows, employees, upsert, cancelNewRow]);
 
     // ── Selection ───────────────────────────────────────────────────────────
@@ -791,22 +762,19 @@ export default function EmployeesPage() {
 
     const handleRowDelete = useCallback(async (cedula: string) => {
         setDeletingRow(cedula);
-        const err = await remove([cedula]);
+        const ok = await remove([cedula]);
         setDeletingRow(null);
         setConfirmDeleteRow(null);
-        if (err) setBulkError(err);
-        else setSelected((s) => { const n = new Set(s); n.delete(cedula); return n; });
+        if (ok) setSelected((s) => { const n = new Set(s); n.delete(cedula); return n; });
     }, [remove]);
 
     // ── Bulk delete ─────────────────────────────────────────────────────────
 
     const handleBulkDelete = useCallback(async () => {
         setBulkDeleting(true);
-        setBulkError(null);
-        const err = await remove([...selected]);
+        const ok = await remove([...selected]);
         setBulkDeleting(false);
-        if (err) setBulkError(err);
-        else { setSelected(new Set()); setConfirmBulkDelete(false); }
+        if (ok) { setSelected(new Set()); setConfirmBulkDelete(false); }
     }, [remove, selected]);
 
     // ── CSV ─────────────────────────────────────────────────────────────────
@@ -819,13 +787,12 @@ export default function EmployeesPage() {
     const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setCsvError(null); setCsvLoading(true);
+        setCsvLoading(true);
         const { employees: parsed, errors } = parseCsv(await file.text());
         if (errors.length > 0) {
-            setCsvError(errors[0]); setCsvLoading(false); return;
+            notify.error(errors[0]); setCsvLoading(false); return;
         }
-        const err = await upsert(parsed);
-        if (err) setCsvError(err);
+        await upsert(parsed);
         setCsvLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
     }, [upsert]);
@@ -849,9 +816,9 @@ export default function EmployeesPage() {
         const { employees: parsed, errors } = parseCsv(pasteText);
         if (errors.length > 0) return;
         setPasteImporting(true);
-        const err = await upsert(parsed);
+        const ok = await upsert(parsed);
         setPasteImporting(false);
-        if (err) { setPasteErrors([err]); return; }
+        if (!ok) return;
         closePasteModal();
     }, [pasteText, upsert, closePasteModal]);
 
@@ -860,11 +827,10 @@ export default function EmployeesPage() {
     const openHistory = useCallback(async (emp: Employee) => {
         if (!companyId) return;
         setHistoryModal({ cedula: emp.cedula, nombre: emp.nombre });
-        setHistoryData([]); setHistoryError(null); setHistoryLoading(true);
-        const { history, error: err } = await getSalaryHistory(companyId, emp.cedula);
+        setHistoryData([]); setHistoryLoading(true);
+        const history = await getSalaryHistory(companyId, emp.cedula);
         setHistoryLoading(false);
-        if (err) setHistoryError(err);
-        else setHistoryData(history);
+        if (history) setHistoryData(history);
     }, [companyId, getSalaryHistory]);
 
     const clearFilters = () => { setSearch(""); setEstadoFilter("todos"); };
@@ -971,20 +937,6 @@ export default function EmployeesPage() {
                     </div>
                 )}
 
-                {/* Errors */}
-                {(csvError || bulkError || error) && (
-                    <div className="px-4 py-3 rounded-lg border border-error/30 bg-error/[0.05] text-text-error text-[13px] flex items-start gap-3">
-                        <AlertCircle size={16} className="flex-shrink-0 mt-[1px]" />
-                        <span className="font-sans flex-1">{csvError ?? bulkError ?? error}</span>
-                        <button
-                            type="button"
-                            onClick={() => { setCsvError(null); setBulkError(null); }}
-                            className="text-[11px] uppercase tracking-[0.12em] text-text-error/70 hover:text-text-error transition-colors"
-                        >
-                            Cerrar
-                        </button>
-                    </div>
-                )}
 
                 {/* Toolbar + selection bar */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm">
@@ -1163,7 +1115,6 @@ export default function EmployeesPage() {
                                                 key={row.id}
                                                 draft={row.draft}
                                                 saving={newSaving[row.id] ?? false}
-                                                error={newRowError[row.id]}
                                                 onChange={(f, v) => updateNewDraft(row.id, f, v)}
                                                 onSave={() => saveNewRow(row.id)}
                                                 onCancel={() => cancelNewRow(row.id)}
@@ -1243,11 +1194,6 @@ export default function EmployeesPage() {
                                         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                                             Consultando…
                                         </span>
-                                    </div>
-                                ) : historyError ? (
-                                    <div className="px-4 py-3 rounded-lg border border-error/30 bg-error/[0.05] text-text-error text-[13px] flex items-start gap-3">
-                                        <AlertCircle size={16} className="flex-shrink-0 mt-[1px]" />
-                                        <span className="font-sans">{historyError}</span>
                                     </div>
                                 ) : historyData.length === 0 ? (
                                     <div className="flex flex-col items-center py-10 gap-2 text-center">

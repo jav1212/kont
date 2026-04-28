@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
+import { notify } from '@/src/shared/frontend/notify';
 import type { DocumentFolder } from '../../backend/domain/document-folder';
 import type { Document } from '../../backend/domain/document';
 
@@ -10,12 +11,10 @@ export function useDocuments(companyId?: string | null) {
     const [documents,        setDocuments]         = useState<Document[]>([]);
     const [selectedFolderId, setSelectedFolderId]  = useState<string | null>(null);
     const [loading,          setLoading]           = useState(false);
-    const [error,            setError]             = useState<string | null>(null);
 
     // ── Fetch folders ──────────────────────────────────────────────────────
     const loadFolders = useCallback(async (parentId: string | null = null) => {
         setLoading(true);
-        setError(null);
         try {
             const params = new URLSearchParams();
             if (parentId)  params.set('parentId', parentId);
@@ -25,7 +24,7 @@ export function useDocuments(companyId?: string | null) {
             if (!res.ok) throw new Error(json.error ?? 'Error al cargar carpetas');
             setFolders(json.data);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error desconocido');
+            notify.error(e instanceof Error ? e.message : 'Error al cargar carpetas');
         } finally {
             setLoading(false);
         }
@@ -34,7 +33,6 @@ export function useDocuments(companyId?: string | null) {
     // ── Fetch documents in selected folder ────────────────────────────────
     const loadDocuments = useCallback(async (folderId: string | null = null) => {
         setLoading(true);
-        setError(null);
         try {
             const params = new URLSearchParams();
             if (folderId)  params.set('folderId', folderId);
@@ -44,7 +42,7 @@ export function useDocuments(companyId?: string | null) {
             if (!res.ok) throw new Error(json.error ?? 'Error al cargar documentos');
             setDocuments(json.data);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Error desconocido');
+            notify.error(e instanceof Error ? e.message : 'Error al cargar documentos');
         } finally {
             setLoading(false);
         }
@@ -205,7 +203,6 @@ export function useDocuments(companyId?: string | null) {
         documents,
         selectedFolderId,
         loading,
-        error,
         selectFolder,
         createFolder,
         renameFolder,

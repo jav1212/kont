@@ -14,6 +14,7 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 import {
@@ -76,7 +77,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         products, loadProducts,
         suppliers, loadSuppliers,
         currentPurchaseInvoice, loadingPurchaseInvoice, loadPurchaseInvoice,
-        error, setError,
         savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, saveMovement,
     } = useInventory();
 
@@ -272,9 +272,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
     async function handleReturn() {
         const toReturn = returnItems.filter((i) => i.returnQty > 0);
-        if (toReturn.length === 0) { setError("Ingresa al menos una cantidad a devolver"); return; }
+        if (toReturn.length === 0) { notify.error("Ingresa al menos una cantidad a devolver"); return; }
         setSavingReturn(true);
-        setError(null);
         let allOk = true;
         for (const item of toReturn) {
             const product = products.find((p) => p.id === item.productId);
@@ -299,11 +298,11 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     }
 
     function validate(): boolean {
-        if (!supplierId) { setError("Selecciona un proveedor"); return false; }
-        if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
+        if (!supplierId) { notify.error("Selecciona un proveedor"); return false; }
+        if (items.length === 0) { notify.error("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (!item.productId) { notify.error("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
         }
         return true;
     }
@@ -311,7 +310,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     async function handleSaveDraft() {
         if (!validate()) return;
         setSaving(true);
-        setError(null);
         await savePurchaseInvoice(buildInvoice(), itemsForSave());
         setSaving(false);
     }
@@ -319,7 +317,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     async function handleConfirm() {
         if (!validate()) return;
         setConfirming(true);
-        setError(null);
         const saved = await savePurchaseInvoice(buildInvoice(), itemsForSave());
         if (!saved) { setConfirming(false); return; }
         const confirmed = await confirmPurchaseInvoice(saved.id!);
@@ -334,7 +331,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         );
         if (!ok) return;
         setUnconfirming(true);
-        setError(null);
         setJustConfirmed(false);
         await unconfirmPurchaseInvoice(currentPurchaseInvoice.id);
         setUnconfirming(false);
@@ -491,11 +487,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             )}
 
             <div className="px-8 py-6">
-                {error && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {justConfirmed && (
                     <div className="mb-4 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px] font-sans flex items-center gap-2">

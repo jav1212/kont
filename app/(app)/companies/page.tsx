@@ -13,6 +13,7 @@ import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
+import { notify } from "@/src/shared/frontend/notify";
 import {
     Building2,
     Download,
@@ -99,7 +100,7 @@ function TaxpayerTypeBadge({ type }: { type: TaxpayerType }) {
 // ============================================================================
 
 export default function CompaniesPage() {
-    const { companies, loading, error, save, update, remove, applySector } = useCompany();
+    const { companies, loading, save, update, remove, applySector } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
     const { user } = useAuth();
     const atCompanyLimit = !canAddCompany();
@@ -115,7 +116,6 @@ export default function CompaniesPage() {
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoUploadSuccess, setLogoUploadSuccess] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
-    const [editError, setEditError] = useState<string | null>(null);
     const logoInputRef = useRef<HTMLInputElement>(null);
 
     // ── New row state ──────────────────────────────────────────────────────
@@ -124,16 +124,13 @@ export default function CompaniesPage() {
     const [newName, setNewName] = useState("");
     const [newTaxpayerType, setNewTaxpayerType] = useState<TaxpayerType>("ordinario");
     const [newSaving, setNewSaving] = useState(false);
-    const [newError, setNewError] = useState<string | null>(null);
 
     // ── Delete confirm state ───────────────────────────────────────────────
     const [confirmId, setConfirmId] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
 
     // ── CSV state ──────────────────────────────────────────────────────────
     const [csvLoading, setCsvLoading] = useState(false);
-    const [csvError, setCsvError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ── Paste modal state ──────────────────────────────────────────────────
@@ -163,7 +160,6 @@ export default function CompaniesPage() {
         setEditLogoUrl(company.logoUrl);
         setEditSector(company.sector);
         setEditTaxpayerType(company.taxpayerType ?? "ordinario");
-        setEditError(null);
     }, []);
 
     const cancelEdit = useCallback(() => {
@@ -174,14 +170,12 @@ export default function CompaniesPage() {
         setEditLogoUrl(undefined);
         setEditSector(undefined);
         setEditTaxpayerType("ordinario");
-        setEditError(null);
         setLogoUploadSuccess(false);
     }, []);
 
     const saveEdit = useCallback(async () => {
         if (!editingId || !editName.trim()) return;
         setEditSaving(true);
-        setEditError(null);
 
         // Find the original company to detect sector change
         const original = companies.find(c => c.id === editingId);
@@ -199,11 +193,12 @@ export default function CompaniesPage() {
         // If sector changed, apply the sector template (auto-create departments, set config)
         if (!err && sectorChanged && editSector) {
             const sectorErr = await applySector(editingId, editSector);
-            if (sectorErr) { setEditSaving(false); setEditError(sectorErr); return; }
+            if (sectorErr) { setEditSaving(false); notify.error(sectorErr); return; }
         }
 
         setEditSaving(false);
-        if (err) { setEditError(err); } else { cancelEdit(); }
+        if (err) notify.error(err);
+        else     cancelEdit();
     }, [editingId, editName, editPhone, editAddress, editLogoUrl, editSector, editTaxpayerType, companies, update, applySector, cancelEdit]);
 
     const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,14 +207,13 @@ export default function CompaniesPage() {
 
         const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
         if (file.size > MAX_BYTES) {
-            setEditError("El logo debe ser menor a 2 MB.");
+            notify.error("El logo debe ser menor a 2 MB.");
             if (logoInputRef.current) logoInputRef.current.value = "";
             return;
         }
 
         setLogoUploading(true);
         setLogoUploadSuccess(false);
-        // Keep any existing editError visible until the new attempt resolves
         const ext = file.name.split(".").pop();
         const path = `${user.id}/${editingId}/logo.${ext}`;
         const { error: uploadErr } = await getSupabaseBrowser().storage
@@ -227,14 +221,13 @@ export default function CompaniesPage() {
             .upload(path, file, { upsert: true });
         if (uploadErr) {
             console.error("[logo-upload]", uploadErr);
-            setEditError("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
+            notify.error("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
             setLogoUploading(false);
             if (logoInputRef.current) logoInputRef.current.value = "";
             return;
         }
         const { data: { publicUrl } } = getSupabaseBrowser().storage.from("logos").getPublicUrl(path);
         setEditLogoUrl(publicUrl);
-        setEditError(null); // clear only after confirmed success
         setLogoUploading(false);
         setLogoUploadSuccess(true);
         setTimeout(() => setLogoUploadSuccess(false), 1800);
@@ -244,13 +237,13 @@ export default function CompaniesPage() {
     // ── New actions ────────────────────────────────────────────────────────
 
     const saveNew = useCallback(async () => {
-        if (!newRif.trim()) { setNewError("El RIF es obligatorio"); return; }
-        if (!newName.trim()) { setNewError("El nombre es obligatorio"); return; }
+        if (!newRif.trim())  { notify.error("El RIF es obligatorio"); return; }
+        if (!newName.trim()) { notify.error("El nombre es obligatorio"); return; }
         setNewSaving(true);
-        setNewError(null);
         const err = await save({ id: newRif.trim().toUpperCase(), name: newName.trim(), taxpayerType: newTaxpayerType });
         setNewSaving(false);
-        if (err) { setNewError(err); } else { setShowNew(false); setNewRif(""); setNewName(""); setNewTaxpayerType("ordinario"); }
+        if (err) notify.error(err);
+        else     { setShowNew(false); setNewRif(""); setNewName(""); setNewTaxpayerType("ordinario"); }
     }, [newRif, newName, newTaxpayerType, save]);
 
     const cancelNew = useCallback(() => {
@@ -258,17 +251,16 @@ export default function CompaniesPage() {
         setNewRif("");
         setNewName("");
         setNewTaxpayerType("ordinario");
-        setNewError(null);
     }, []);
 
     // ── Delete actions ─────────────────────────────────────────────────────
 
     const handleDelete = useCallback(async (id: string) => {
         setDeleting(true);
-        setDeleteError(null);
         const err = await remove(id);
         setDeleting(false);
-        if (err) { setDeleteError(err); } else { setConfirmId(null); }
+        if (err) notify.error(err);
+        else     setConfirmId(null);
     }, [remove]);
 
     // ── CSV export ─────────────────────────────────────────────────────────
@@ -283,11 +275,10 @@ export default function CompaniesPage() {
     const handleImportFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setCsvError(null);
         setCsvLoading(true);
         const { companies: parsed, errors } = parseCompaniesCsv(await file.text());
         if (errors.length > 0) {
-            setCsvError(errors[0]);
+            notify.error(errors[0]);
             setCsvLoading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
@@ -297,7 +288,7 @@ export default function CompaniesPage() {
             const err = await save({ id: row.rif, name: row.nombre, taxpayerType: row.tipoContribuyente });
             if (err && !firstErr) firstErr = err;
         }
-        if (firstErr) setCsvError(firstErr);
+        if (firstErr) notify.error(firstErr);
         setCsvLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
     }, [save]);
@@ -398,7 +389,7 @@ export default function CompaniesPage() {
                     <BaseButton.Root
                         variant="primary"
                         size="sm"
-                        onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); setNewError(null); }}
+                        onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); }}
                         isDisabled={showNew || atCompanyLimit}
                         title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
                         leftIcon={<IconPlus />}
@@ -410,12 +401,6 @@ export default function CompaniesPage() {
 
             <div className="px-8 py-6 space-y-6">
 
-                {/* Errors */}
-                {(deleteError || error || csvError) && (
-                    <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.05]">
-                        <p className="font-mono text-[10px] text-red-500">{deleteError ?? csvError ?? error}</p>
-                    </div>
-                )}
 
                 {/* Table */}
                 {loading ? (
@@ -482,9 +467,6 @@ export default function CompaniesPage() {
                                                                 if (e.key === "Escape") cancelNew();
                                                             }}
                                                         />
-                                                        {newError && (
-                                                            <p className="text-[10px] text-red-500 mt-1">{newError}</p>
-                                                        )}
                                                     </div>
                                                 </td>
                                                 {/* Teléfono / Dirección / Sector — empty on new row */}
@@ -604,7 +586,6 @@ export default function CompaniesPage() {
                                                                             }}
                                                                         />
                                                                     </div>
-                                                                    {editError && <p className="text-[10px] text-red-500">{editError}</p>}
                                                                     <div className="sm:hidden grid grid-cols-2 gap-2">
                                                                         <BaseInput.Field className="w-full" placeholder="Teléfono" value={editPhone} onValueChange={setEditPhone} />
                                                                         <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />

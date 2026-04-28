@@ -1,3 +1,5 @@
+import { notify } from '@/src/shared/frontend/notify';
+
 const ACTIVE_TENANT_KEY = 'kont-active-tenant-id';
 
 /**
@@ -42,4 +44,25 @@ export async function apiFetch(url: string, options?: RequestInit): Promise<Resp
     }
 
     return fetch(url, { ...options, headers });
+}
+
+/**
+ * Helper para hooks: hace fetchJson y dispara notify.error si la respuesta
+ * falla. Devuelve el `data` del shape estándar `{ data, error }`, o `null`
+ * si hubo error (en cuyo caso ya se mostró el toast).
+ *
+ * Uso:
+ *   const items = await callApi<Producto[]>(`/api/inventory/products?…`);
+ *   if (!items) return; // error ya visible para el usuario
+ */
+export async function callApi<T>(
+    path: string,
+    options?: RequestInit & { fallbackError?: string },
+): Promise<T | null> {
+    const { ok, json } = await fetchJson(path, options);
+    if (!ok) {
+        notify.error(json.error ?? options?.fallbackError ?? 'Ocurrió un error inesperado.');
+        return null;
+    }
+    return (json.data ?? null) as T | null;
 }

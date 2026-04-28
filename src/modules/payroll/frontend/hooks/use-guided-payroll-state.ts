@@ -46,12 +46,13 @@ import type {
 import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 import type { EmployeeResult } from "../components/payroll-employee-table";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
+import { notify } from "@/src/shared/frontend/notify";
 
 export type SaveMsg = { ok: boolean; text: string } | null;
 
 export function useGuidedPayrollState() {
     const { companyId, company } = useCompany();
-    const { employees, loading: empLoading, error: empError } = useEmployee(companyId);
+    const { employees, loading: empLoading } = useEmployee(companyId);
     const { confirm, saveDraft, runs } = usePayrollHistory(companyId);
     const {
         settings: savedSettings,
@@ -452,9 +453,9 @@ export function useGuidedPayrollState() {
     );
 
     const handleConfirm = useCallback(
-        async (results: EmployeeResult[]): Promise<string | null> => {
+        async (results: EmployeeResult[]): Promise<boolean> => {
             const payload = buildPayload(results);
-            if (!payload) return "No hay empresa seleccionada";
+            if (!payload) { notify.error("No hay empresa seleccionada"); return false; }
             return confirm(payload);
         },
         [buildPayload, confirm],
@@ -463,9 +464,9 @@ export function useGuidedPayrollState() {
     const handleSaveDraft = useCallback(
         async (
             results: EmployeeResult[],
-        ): Promise<{ runId: string | null; error: string | null }> => {
+        ): Promise<{ runId: string | null }> => {
             const payload = buildPayload(results);
-            if (!payload) return { runId: null, error: "No hay empresa seleccionada" };
+            if (!payload) { notify.error("No hay empresa seleccionada"); return { runId: null }; }
             return saveDraft(payload);
         },
         [buildPayload, saveDraft],
@@ -477,7 +478,6 @@ export function useGuidedPayrollState() {
         company,
         employees,
         empLoading,
-        empError,
         runs,
 
         // Settings persistence

@@ -176,7 +176,7 @@ function PeriodPicker({
 export default function EntradasPage() {
     const { companyId } = useCompany();
     const {
-        purchaseInvoices, loadingPurchaseInvoices, error, setError,
+        purchaseInvoices, loadingPurchaseInvoices,
         loadPurchaseInvoices, deletePurchaseInvoice,
     } = useInventory();
 
@@ -307,7 +307,7 @@ export default function EntradasPage() {
                             Esta acción elimina la factura sin afectar el inventario. ¿Continuar?
                         </div>
                         <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                            <BaseButton.Root variant="secondary" size="md" onClick={() => { setConfirmDelete(null); setError(null); }} disabled={deleting}>
+                            <BaseButton.Root variant="secondary" size="md" onClick={() => { setConfirmDelete(null); }} disabled={deleting}>
                                 Cancelar
                             </BaseButton.Root>
                             <BaseButton.Root variant="danger" size="md" onClick={() => handleDelete(confirmDelete)} disabled={deleting}>
@@ -338,7 +338,7 @@ export default function EntradasPage() {
                             </p>
                         </div>
                         <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                            <BaseButton.Root variant="secondary" size="md" onClick={() => { setConfirmDeleteConfirmada(null); setError(null); }} disabled={deleting}>
+                            <BaseButton.Root variant="secondary" size="md" onClick={() => { setConfirmDeleteConfirmada(null); }} disabled={deleting}>
                                 Cancelar
                             </BaseButton.Root>
                             <BaseButton.Root variant="danger" size="md" onClick={() => handleDelete(confirmDeleteConfirmada)} disabled={deleting}>
@@ -400,11 +400,6 @@ export default function EntradasPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Entradas table ────────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">

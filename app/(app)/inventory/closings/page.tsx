@@ -26,7 +26,7 @@ function fmtDate(iso: string) {
 export default function CierresPage() {
     const { companyId } = useCompany();
     const {
-        periodCloses, loadingPeriodCloses, error,
+        periodCloses, loadingPeriodCloses,
         loadPeriodCloses, savePeriodClose,
     } = useInventory();
 
@@ -102,11 +102,6 @@ export default function CierresPage() {
                             Cerrar período
                         </h2>
 
-                        {error && (
-                            <div className="mb-4 px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
-                                {error}
-                            </div>
-                        )}
 
                         {/* Warning */}
                         <div className="mb-4 px-3 py-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] text-amber-600 text-[12px] leading-relaxed">

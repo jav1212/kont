@@ -195,18 +195,18 @@ const InputField = ({
                 {...props}
             />
 
-            {/* ── helper / error ─────────────────────────────────────── */}
-            {(helperText || error) && (
+            {/* ── helper ─────────────────────────────────────────────── */}
+            {/* Error text intentionally NOT rendered here — errors go via
+                `notify.error()` (toast). The `error` prop only flips the
+                visual `isInvalid` flag (border + label color + icon). */}
+            {helperText && !error && (
                 <div className={`flex items-start gap-1.5 ${APP_SIZES.spacing.helperTop}`}>
-                    {error ? <ErrorIcon /> : <InfoIcon />}
+                    <InfoIcon />
                     <p className={[
-                        // helper copy is prose → sans; `APP_SIZES.text.helper` embeds font-sans
                         `${APP_SIZES.text.helper} leading-snug`,
-                        error
-                            ? "text-error/80"
-                            : "text-neutral-500 dark:text-neutral-400",
+                        "text-neutral-500 dark:text-neutral-400",
                     ].join(" ")}>
-                        {error || helperText}
+                        {helperText}
                     </p>
                 </div>
             )}

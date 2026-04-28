@@ -20,6 +20,7 @@ import {
     type RandomSalesPreview,
     type RandomSalesPreviewLine,
 } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { notify } from "@/src/shared/frontend/notify";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ type AutoMode = "none" | "porcentaje" | "monto";
 export default function SalesGeneratorPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { saveOutbound, generateRandomSales, error, setError } = useInventory();
+    const { saveOutbound, generateRandomSales } = useInventory();
 
     const [period, setPeriod]   = useState<string>(currentPeriod());
     const [mode, setMode]       = useState<Mode>("monto");
@@ -100,7 +101,7 @@ export default function SalesGeneratorPage() {
         if (!companyId) return;
         const target = Number(targetStr.replace(",", "."));
         if (!Number.isFinite(target)) {
-            setError("Ingresa un target numérico válido");
+            notify.error("Ingresa un target numérico válido");
             return;
         }
         const count = countStr.trim() ? Number(countStr) : undefined;
@@ -109,7 +110,7 @@ export default function SalesGeneratorPage() {
         if (autoMode !== "none") {
             const parsed = Number(autoTargetStr.replace(",", "."));
             if (!Number.isFinite(parsed) || parsed < 0) {
-                setError(autoMode === "porcentaje"
+                notify.error(autoMode === "porcentaje"
                     ? "Ingresa un porcentaje de autoconsumo válido"
                     : "Ingresa un monto Bs de autoconsumo válido");
                 return;
@@ -118,7 +119,6 @@ export default function SalesGeneratorPage() {
         }
 
         setLoading(true);
-        setError(null);
         const result = await generateRandomSales({
             companyId,
             period,
@@ -142,7 +142,7 @@ export default function SalesGeneratorPage() {
             });
             setLines(combined);
         }
-    }, [companyId, period, mode, targetStr, countStr, autoMode, autoTargetStr, generateRandomSales, setError]);
+    }, [companyId, period, mode, targetStr, countStr, autoMode, autoTargetStr, generateRandomSales]);
 
     const removeLine = (idx: number) => {
         setLines((prev) => prev.filter((_, i) => i !== idx));
@@ -170,12 +170,12 @@ export default function SalesGeneratorPage() {
     const confirm = useCallback(async () => {
         if (!companyId) return;
         if (lines.length === 0) {
-            setError("No hay líneas que confirmar");
+            notify.error("No hay líneas que confirmar");
             return;
         }
         const invalid = lines.find((l) => l.quantity <= 0);
         if (invalid) {
-            setError(`La línea de ${invalid.productName} tiene cantidad ≤ 0`);
+            notify.error(`La línea de ${invalid.productName} tiene cantidad ≤ 0`);
             return;
         }
 
@@ -195,13 +195,12 @@ export default function SalesGeneratorPage() {
         }
         for (const { qty, stock, name } of totalsByProduct.values()) {
             if (qty > stock) {
-                setError(`${name}: la suma de cantidades (${fmtQty(qty)}) excede el stock disponible (${fmtQty(stock)})`);
+                notify.error(`${name}: la suma de cantidades (${fmtQty(qty)}) excede el stock disponible (${fmtQty(stock)})`);
                 return;
             }
         }
 
         setSaving(true);
-        setError(null);
         const ok = await saveOutbound({
             companyId,
             date: lines[0].date,
@@ -219,7 +218,7 @@ export default function SalesGeneratorPage() {
         if (ok) {
             router.push(`/inventory/movements?period=${encodeURIComponent(period)}`);
         }
-    }, [companyId, lines, reference, period, saveOutbound, setError, router]);
+    }, [companyId, lines, reference, period, saveOutbound, router]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
@@ -229,11 +228,6 @@ export default function SalesGeneratorPage() {
             />
 
             <div className="px-8 py-6 space-y-4 max-w-[1400px] mx-auto w-full">
-                {error && (
-                    <div className="px-3 py-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
-                        {error}
-                    </div>
-                )}
 
                 {/* Configuración */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm px-5 py-4 space-y-4">

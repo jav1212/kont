@@ -187,7 +187,7 @@ function TypeFilterChips({
 export default function LibroInventariosPage() {
     const { companyId } = useCompany();
     const {
-        inventoryLedger, loadingInventoryLedger, error, setError, loadInventoryLedger,
+        inventoryLedger, loadingInventoryLedger, loadInventoryLedger,
     } = useInventory();
 
     const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -196,9 +196,8 @@ export default function LibroInventariosPage() {
 
     useEffect(() => {
         if (!companyId) return;
-        setError(null);
         loadInventoryLedger(companyId, year);
-    }, [companyId, year, loadInventoryLedger, setError]);
+    }, [companyId, year, loadInventoryLedger]);
 
     const counts = useMemo<Record<TypeFilter, number>>(() => ({
         all:                inventoryLedger.length,
@@ -318,11 +317,6 @@ export default function LibroInventariosPage() {
                     </div>
                 </div>
 
-                {error && (
-                    <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 {/* ── Main table ────────────────────────────────────────────── */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">

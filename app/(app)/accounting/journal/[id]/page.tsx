@@ -12,6 +12,7 @@ import { BaseButton }                       from '@/src/shared/frontend/componen
 import { BaseTable }                        from '@/src/shared/frontend/components/base-table';
 import { AccountingAccessGuard }            from '@/src/modules/accounting/frontend/components/accounting-access-guard';
 import type { EntryWithLines }              from '@/src/modules/accounting/backend/domain/repository/journal-entry.repository';
+import { notify }                           from '@/src/shared/frontend/notify';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -76,21 +77,18 @@ export default function JournalEntryDetailPage() {
     const { id }                  = useParams<{ id: string }>();
     const [data,    setData]      = useState<EntryWithLines | null>(null);
     const [loading, setLoading]   = useState(true);
-    const [error,   setError]     = useState<string | null>(null);
     const [showPostModal, setShowPostModal] = useState(false);
     const [posting, setPosting]   = useState(false);
-    const [postErr, setPostErr]   = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
             const res  = await fetch(`/api/accounting/entries/${id}`);
             const json = await res.json() as { data?: EntryWithLines; error?: string };
-            if (!res.ok || json.error) { setError(json.error ?? 'No se pudo cargar el asiento.'); return; }
+            if (!res.ok || json.error) { notify.error(json.error ?? 'No se pudo cargar el asiento.'); return; }
             setData(json.data ?? null);
         } catch {
-            setError('No se pudo cargar el asiento.');
+            notify.error('No se pudo cargar el asiento.');
         } finally {
             setLoading(false);
         }
@@ -100,11 +98,10 @@ export default function JournalEntryDetailPage() {
 
     async function confirmPost() {
         setPosting(true);
-        setPostErr(null);
         try {
             const res  = await fetch(`/api/accounting/entries/${id}/post`, { method: 'POST' });
             const json = await res.json() as { error?: string };
-            if (!res.ok) { setPostErr(json.error ?? 'No se pudo publicar el asiento.'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo publicar el asiento.'); return; }
             setShowPostModal(false);
             await load();
         } finally {
@@ -141,11 +138,6 @@ export default function JournalEntryDetailPage() {
                     {/* ── Loading / error ────────────────────────────── */}
                     {loading && (
                         <p className="font-mono text-[13px] text-neutral-400">Cargando asiento...</p>
-                    )}
-                    {error && (
-                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                            {error}
-                        </p>
                     )}
 
                     {entry && (
@@ -244,7 +236,7 @@ export default function JournalEntryDetailPage() {
                                     <BaseButton.Root
                                         variant="primary"
                                         size="sm"
-                                        onPress={() => { setShowPostModal(true); setPostErr(null); }}
+                                        onPress={() => { setShowPostModal(true); }}
                                     >
                                         Publicar asiento
                                     </BaseButton.Root>
@@ -259,11 +251,6 @@ export default function JournalEntryDetailPage() {
                                 </BaseButton.Root>
                             </div>
 
-                            {postErr && (
-                                <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                                    {postErr}
-                                </p>
-                            )}
                         </>
                     )}
                 </div>
@@ -272,7 +259,7 @@ export default function JournalEntryDetailPage() {
             {/* ── Post confirmation modal ────────────────────────────── */}
             <Modal
                 isOpen={showPostModal}
-                onClose={() => { setShowPostModal(false); setPostErr(null); }}
+                onClose={() => { setShowPostModal(false); }}
                 size="sm"
             >
                 <ModalContent>
@@ -285,17 +272,12 @@ export default function JournalEntryDetailPage() {
                             <span className="font-semibold text-foreground">#{entry?.entryNumber}</span>?
                             Esta acción es irreversible.
                         </p>
-                        {postErr && (
-                            <p role="alert" className="font-mono text-[12px] text-[var(--text-error)] mt-2">
-                                {postErr}
-                            </p>
-                        )}
                     </ModalBody>
                     <ModalFooter>
                         <BaseButton.Root
                             variant="ghost"
                             size="sm"
-                            onPress={() => { setShowPostModal(false); setPostErr(null); }}
+                            onPress={() => { setShowPostModal(false); }}
                             isDisabled={posting}
                         >
                             Cancelar

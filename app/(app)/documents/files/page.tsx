@@ -31,7 +31,6 @@ export default function DocumentsPage() {
         documents,
         selectedFolderId,
         loading,
-        error,
         selectFolder,
         createFolder,
         renameFolder,
@@ -373,21 +372,6 @@ export default function DocumentsPage() {
                         <UploadButton onUpload={handleUpload} />
                     </div>
                 </PageHeader>
- 
-                {/* Error banner */}
-                <AnimatePresence>
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="mx-8 mt-4 px-4 py-3 rounded-xl bg-error/5 border border-error/20 flex items-start gap-3"
-                        >
-                            <AlertCircle className="text-error shrink-0 mt-0.5" size={14} />
-                            <p className="text-[12px] text-error font-sans font-medium">{error}</p>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
 
                 {/* Document list — dropzone container */}
                 <div

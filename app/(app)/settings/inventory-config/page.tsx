@@ -9,7 +9,8 @@ import type { CustomFieldDefinition, InventoryConfig } from "@/src/modules/compa
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
-import { Trash2, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
+import { notify } from "@/src/shared/frontend/notify";
 
 const fieldCls = [
     "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
@@ -41,8 +42,6 @@ export default function InventoryConfigPage() {
     const [config,  setConfig]  = useState<InventoryConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving,  setSaving]  = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
 
     // New field form
     const [newLabel,   setNewLabel]   = useState("");
@@ -65,17 +64,17 @@ export default function InventoryConfigPage() {
     const handleSave = useCallback(async () => {
         if (!companyId || !config) return;
         setSaving(true);
-        setError(null);
         const err = await saveInventoryConfig(companyId, config);
         setSaving(false);
-        if (err) { setError(err); } else { setSuccess(true); setTimeout(() => setSuccess(false), 2000); }
+        if (err) notify.error(err);
+        else     notify.success("Configuración guardada correctamente.");
     }, [companyId, config, saveInventoryConfig]);
 
     const addField = useCallback(() => {
         if (!newLabel.trim() || !config) return;
         const key = generateKey(newLabel.trim());
         if (config.customFields.some(f => f.key === key)) {
-            setError(`Ya existe un campo con la clave "${key}"`);
+            notify.error(`Ya existe un campo con la clave "${key}"`);
             return;
         }
         const field: CustomFieldDefinition = {
@@ -90,7 +89,6 @@ export default function InventoryConfigPage() {
         setNewLabel("");
         setNewType("text");
         setNewOptions("");
-        setError(null);
     }, [newLabel, newType, newOptions, config]);
 
     const removeField = useCallback((key: string) => {
@@ -207,18 +205,6 @@ export default function InventoryConfigPage() {
                 </div>
             </SettingsSection>
 
-            {error && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-error">
-                    <AlertCircle size={14} />
-                    <p className="font-sans text-[12px] text-text-error">{error}</p>
-                </div>
-            )}
-            {success && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-success">
-                    <CheckCircle2 size={14} />
-                    <p className="font-sans text-[12px] text-text-success">Configuración guardada correctamente.</p>
-                </div>
-            )}
 
             <div className="flex justify-end">
                 <BaseButton.Root

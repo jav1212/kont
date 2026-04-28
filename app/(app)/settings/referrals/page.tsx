@@ -11,7 +11,6 @@ import {
     Copy,
     Share2,
     Link2,
-    AlertCircle,
 } from "lucide-react";
 import { useReferrals } from "@/src/modules/referrals/frontend/hooks/use-referrals";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -29,7 +28,7 @@ function formatUsd(n: number): string {
 }
 
 export default function ReferralsPage() {
-    const { data, loading, error, reload } = useReferrals();
+    const { data, loading } = useReferrals();
     const [copiedCode, setCopiedCode] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
 
@@ -73,21 +72,6 @@ export default function ReferralsPage() {
 
     return (
         <div className="space-y-6 font-mono">
-            {error && (
-                <div className="flex items-center justify-between gap-3 px-4 py-3 border rounded-lg badge-error">
-                    <div className="flex items-center gap-2">
-                        <AlertCircle size={14} />
-                        <p className="font-sans text-[12px] text-text-error">{error}</p>
-                    </div>
-                    <button
-                        onClick={reload}
-                        className="font-mono text-[11px] uppercase tracking-[0.1em] font-bold text-text-error underline underline-offset-2 hover:no-underline shrink-0"
-                    >
-                        Reintentar
-                    </button>
-                </div>
-            )}
-
             {loading ? (
                 <SettingsSection title="Programa de referidos" subtitle="Cargando…">
                     <div className="flex flex-col items-center justify-center h-40 gap-3">

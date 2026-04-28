@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 
 const Spinner = () => (
     <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -17,15 +18,13 @@ export default function AdminSignInPage() {
 
     const [email,   setEmail]   = useState("");
     const [pass,    setPass]    = useState("");
-    const [error,   setError]   = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
 
-        if (!email.trim()) { setError("El correo es requerido."); return; }
-        if (!pass)         { setError("La contraseña es requerida."); return; }
+        if (!email.trim()) { notify.error("El correo es requerido."); return; }
+        if (!pass)         { notify.error("La contraseña es requerida."); return; }
 
         setLoading(true);
 
@@ -39,7 +38,7 @@ export default function AdminSignInPage() {
         setLoading(false);
 
         if (!res.ok) {
-            setError(json.error ?? "Error al iniciar sesión.");
+            notify.error(json.error ?? "Error al iniciar sesión.");
             return;
         }
 
@@ -88,14 +87,6 @@ export default function AdminSignInPage() {
                         onValueChange={setPass}
                         isDisabled={loading}
                     />
-
-                    {error && (
-                        <div className="px-3 py-2.5 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                            <p className="font-mono text-[10px] text-red-400 leading-relaxed">
-                                {error}
-                            </p>
-                        </div>
-                    )}
 
                     <button
                         type="submit"

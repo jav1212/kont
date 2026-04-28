@@ -7,6 +7,7 @@ import { Loader2, Check, Gift } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, AuthVisual, PasswordField } from "../_components/auth-shell";
 
 const RESEND_UNLOCK_SECONDS   = 15;
@@ -52,7 +53,6 @@ function SignUpPageInner() {
     const [pass,    setPass]    = useState("");
     const [confirm, setConfirm] = useState("");
     const [terms,   setTerms]   = useState(false);
-    const [error,   setError]   = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
@@ -60,7 +60,6 @@ function SignUpPageInner() {
     const [now,           setNow]           = useState(() => Date.now());
     const [resendLoading, setResendLoading] = useState(false);
     const [resendSent,    setResendSent]    = useState(false);
-    const [resendError,   setResendError]   = useState<string | null>(null);
 
     useEffect(() => {
         if (!success) return;
@@ -81,10 +80,9 @@ function SignUpPageInner() {
     async function handleResend() {
         if (resendDisabled) return;
         setResendLoading(true);
-        setResendError(null);
         const err = await resendConfirmation(email.trim());
         setResendLoading(false);
-        if (err) { setResendError(err); return; }
+        if (err) { notify.error(err); return; }
         setResendSent(true);
         setSuccessAt(Date.now());
         setNow(Date.now());
@@ -102,16 +100,15 @@ function SignUpPageInner() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
 
         const validationError = validate(name, email, pass, confirm, terms);
-        if (validationError) { setError(validationError); return; }
+        if (validationError) { notify.error(validationError); return; }
 
         setLoading(true);
         const err = await signUp(email, pass, name);
         setLoading(false);
 
-        if (err) { setError(err); return; }
+        if (err) { notify.error(err); return; }
 
         setSuccess(true);
         setSuccessAt(Date.now());
@@ -170,9 +167,6 @@ function SignUpPageInner() {
                         )}
                         {resendSent && cooldownActive && (
                             <p className="font-sans text-[11px] text-emerald-600 dark:text-emerald-400">Listo, revisa tu bandeja.</p>
-                        )}
-                        {resendError && (
-                            <p className="font-sans text-[11px] text-red-600 dark:text-red-400">{resendError}</p>
                         )}
                     </div>
 
@@ -236,12 +230,6 @@ function SignUpPageInner() {
                             Acepto los <Link href="/legal/terminos" className="text-primary-500 font-semibold hover:underline">términos</Link> y la <Link href="/legal/privacidad" className="text-primary-500 font-semibold hover:underline">política de privacidad</Link>.
                         </span>
                     </label>
-
-                    {error && (
-                        <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07]">
-                            <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
-                        </div>
-                    )}
 
                     <BaseButton.Root
                         type="submit"

@@ -8,7 +8,8 @@ import { apiFetch } from "@/src/shared/frontend/utils/api-fetch";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { SettingsSection } from "@/src/shared/frontend/components/settings-section";
-import { AlertCircle, Plus, UserCog, MailCheck, CheckCircle2, Copy } from "lucide-react";
+import { Plus, UserCog, MailCheck, CheckCircle2, Copy } from "lucide-react";
+import { notify } from "@/src/shared/frontend/notify";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,7 +55,6 @@ export default function MembersPage() {
 
     const [members,    setMembers]    = useState<Member[]>([]);
     const [loading,    setLoading]    = useState(true);
-    const [error,      setError]      = useState<string | null>(null);
     const [inviteOpen,    setInviteOpen]    = useState(false);
     const [revoking,      setRevoking]      = useState<string | null>(null);
     const [revokeTarget,  setRevokeTarget]  = useState<Member | null>(null);
@@ -67,11 +67,10 @@ export default function MembersPage() {
 
     const fetchMembers = useCallback(async () => {
         setLoading(true);
-        setError(null);
         try {
             const res  = await apiFetch("/api/memberships/members");
             const json = await res.json();
-            if (!res.ok) { setError(json.error ?? "Error al cargar miembros"); return; }
+            if (!res.ok) { notify.error(json.error ?? "Error al cargar miembros"); return; }
             setMembers(json.data ?? []);
         } finally {
             setLoading(false);
@@ -94,7 +93,7 @@ export default function MembersPage() {
         const res  = await apiFetch(`/api/memberships/${id}`, { method: "DELETE" });
         const json = await res.json();
         setRevoking(null);
-        if (!res.ok) { setError(json.error ?? "Error al revocar"); return; }
+        if (!res.ok) { notify.error(json.error ?? "Error al revocar"); return; }
         fetchMembers();
     }
 
@@ -125,13 +124,6 @@ export default function MembersPage() {
                     <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                         Gestionando tenant de cliente
                     </p>
-                </div>
-            )}
-
-            {error && (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-lg border badge-error">
-                    <AlertCircle size={14} />
-                    <p className="font-sans text-[12px] text-text-error">{error}</p>
                 </div>
             )}
 
@@ -355,14 +347,12 @@ function InviteModal({
     const [email,     setEmail]     = useState("");
     const [role,      setRole]      = useState("contable");
     const [loading,   setLoading]   = useState(false);
-    const [error,     setError]     = useState<string | null>(null);
     const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
     const [copied,    setCopied]    = useState(false);
 
     async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
         setLoading(true);
-        setError(null);
         const res  = await apiFetch("/api/memberships/invite", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
@@ -370,7 +360,7 @@ function InviteModal({
         });
         const json = await res.json();
         setLoading(false);
-        if (!res.ok) { setError(json.error ?? "Error al invitar"); return; }
+        if (!res.ok) { notify.error(json.error ?? "Error al invitar"); return; }
         setAcceptUrl(json.data?.acceptUrl ?? null);
     }
 
@@ -419,9 +409,6 @@ function InviteModal({
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {error && (
-                            <p className="font-mono text-xs text-red-500">{error}</p>
-                        )}
                         <BaseInput.Field
                             label="Email"
                             type="email"

@@ -34,6 +34,7 @@ import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payr
 import { usePayrollSettings } from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
+import { notify } from "@/src/shared/frontend/notify";
 import type { PdfVisibility } from "@/src/modules/payroll/backend/domain/payroll-settings";
 
 // ============================================================================
@@ -115,7 +116,7 @@ function DayStat({ label, value, muted }: { label: string; value: number; muted?
 
 export default function PayrollCalculator() {
     const { companyId, company } = useCompany();
-    const { employees, loading: empLoading, error: empError } = useEmployee(companyId);
+    const { employees, loading: empLoading } = useEmployee(companyId);
     const { confirm, saveDraft, runs } = usePayrollHistory(companyId);
     const { settings: savedSettings, loading: settingsLoading, loadedAt: settingsLoadedAt, save: saveSettings } = usePayrollSettings(companyId);
 
@@ -433,15 +434,15 @@ export default function PayrollCalculator() {
         };
     }, [companyId, activePeriodInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum]);
 
-    const handleConfirm = useCallback(async (results: EmployeeResult[]): Promise<string | null> => {
+    const handleConfirm = useCallback(async (results: EmployeeResult[]): Promise<boolean> => {
         const payload = buildPayload(results);
-        if (!payload) return "No hay empresa seleccionada";
+        if (!payload) { notify.error("No hay empresa seleccionada"); return false; }
         return confirm(payload);
     }, [buildPayload, confirm]);
 
-    const handleSaveDraft = useCallback(async (results: EmployeeResult[]): Promise<{ runId: string | null; error: string | null }> => {
+    const handleSaveDraft = useCallback(async (results: EmployeeResult[]): Promise<{ runId: string | null }> => {
         const payload = buildPayload(results);
-        if (!payload) return { runId: null, error: "No hay empresa seleccionada" };
+        if (!payload) { notify.error("No hay empresa seleccionada"); return { runId: null }; }
         return saveDraft(payload);
     }, [buildPayload, saveDraft]);
 
@@ -1018,7 +1019,6 @@ export default function PayrollCalculator() {
                             <PayrollEmployeeTable
                                 employees={employees}
                                 empLoading={empLoading}
-                                empError={empError}
                                 onConfirm={handleConfirm}
                                 onSaveDraft={handleSaveDraft}
                                 earningRows={earningRows}

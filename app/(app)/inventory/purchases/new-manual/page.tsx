@@ -15,6 +15,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { notify } from "@/src/shared/frontend/notify";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
@@ -268,7 +269,7 @@ function ProductCombo({
 export default function NuevaEntradaManualPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { products, loadProducts, saveMovement, error, setError } = useInventory();
+    const { products, loadProducts, saveMovement } = useInventory();
 
     const [date, setDate] = useState(todayStr());
     const [notes, setNotes] = useState("");
@@ -338,14 +339,14 @@ export default function NuevaEntradaManualPage() {
     function removeRow(index: number) { setItems((prev) => prev.filter((_, i) => i !== index)); }
 
     function validate(): boolean {
-        if (!companyId) { setError("Sin empresa seleccionada"); return false; }
-        if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
+        if (!companyId) { notify.error("Sin empresa seleccionada"); return false; }
+        if (items.length === 0) { notify.error("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
-            if (item.currencyCost < 0) { setError("El costo no puede ser negativo"); return false; }
+            if (!item.productId) { notify.error("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
+            if (item.currencyCost < 0) { notify.error("El costo no puede ser negativo"); return false; }
             if (item.currency === "D" && !dollarRate) {
-                setError("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
+                notify.error("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
         }
@@ -355,7 +356,6 @@ export default function NuevaEntradaManualPage() {
     async function handleSave() {
         if (!validate()) return;
         setSaving(true);
-        setError(null);
         let allOk = true;
         for (const item of items) {
             const c = computeCosts(item, dollarRate, ivaMode);
@@ -452,11 +452,6 @@ export default function NuevaEntradaManualPage() {
             </PageHeader>
 
             <div className="px-8 py-6">
-                {error && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px] font-sans">
-                        {error}
-                    </div>
-                )}
 
                 <div className="space-y-4">
                     {/* Row 1 — Datos de la entrada + Resumen */}

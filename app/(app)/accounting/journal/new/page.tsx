@@ -13,6 +13,7 @@ import { AccountingAccessGuard }        from '@/src/modules/accounting/frontend/
 import { useCompany }                   from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccounts }                  from '@/src/modules/accounting/frontend/hooks/use-accounts';
 import { useAccountingPeriods }         from '@/src/modules/accounting/frontend/hooks/use-accounting-periods';
+import { notify }                       from '@/src/shared/frontend/notify';
 import type { SaveEntryInput }          from '@/src/modules/accounting/backend/domain/repository/journal-entry.repository';
 import { APP_SIZES }                    from '@/src/shared/frontend/sizes';
 
@@ -60,7 +61,6 @@ export default function NewJournalEntryPage() {
         { ...EMPTY_LINE, type: 'credit' },
     ]);
     const [saving,  setSaving]  = useState(false);
-    const [formErr, setFormErr] = useState<string | null>(null);
 
     const addLine    = useCallback(() => setLines((ls) => [...ls, { ...EMPTY_LINE }]), []);
     const removeLine = useCallback((idx: number) =>
@@ -75,12 +75,11 @@ export default function NewJournalEntryPage() {
     async function save(andPost: boolean) {
         if (!companyId) return;
         const selectedPeriod = periodId || openPeriods[0]?.id;
-        if (!selectedPeriod) { setFormErr('No hay período contable abierto. Crea uno en la sección Períodos.'); return; }
-        if (!description.trim()) { setFormErr('Ingresa una descripción para el asiento.'); return; }
-        if (andPost && !balanced) { setFormErr('El asiento no cuadra — los débitos deben ser iguales a los créditos.'); return; }
+        if (!selectedPeriod) { notify.error('No hay período contable abierto. Crea uno en la sección Períodos.'); return; }
+        if (!description.trim()) { notify.error('Ingresa una descripción para el asiento.'); return; }
+        if (andPost && !balanced) { notify.error('El asiento no cuadra — los débitos deben ser iguales a los créditos.'); return; }
 
         setSaving(true);
-        setFormErr(null);
 
         const body: SaveEntryInput = {
             entry: { companyId, periodId: selectedPeriod, date, description },
@@ -101,21 +100,21 @@ export default function NewJournalEntryPage() {
                 body:    JSON.stringify(body),
             });
             const json = await res.json() as { data?: string; error?: string };
-            if (!res.ok) { setFormErr(json.error ?? 'No se pudo guardar el asiento. Inténtalo de nuevo.'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo guardar el asiento. Inténtalo de nuevo.'); return; }
 
             if (andPost) {
                 const entryId = json.data;
                 const postRes = await fetch(`/api/accounting/entries/${entryId}/post`, { method: 'POST' });
                 if (!postRes.ok) {
                     const postJson = await postRes.json() as { error?: string };
-                    setFormErr(postJson.error ?? 'El asiento se guardó pero no se pudo publicar.');
+                    notify.error(postJson.error ?? 'El asiento se guardó pero no se pudo publicar.');
                     return;
                 }
             }
 
             router.push('/accounting/journal');
         } catch {
-            setFormErr('No se pudo guardar el asiento. Inténtalo de nuevo.');
+            notify.error('No se pudo guardar el asiento. Inténtalo de nuevo.');
         } finally {
             setSaving(false);
         }
@@ -277,13 +276,6 @@ export default function NewJournalEntryPage() {
                             </span>
                         )}
                     </div>
-
-                    {/* ── Error message ──────────────────────────────── */}
-                    {formErr && (
-                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                            {formErr}
-                        </p>
-                    )}
 
                     {/* ── Actions ────────────────────────────────────── */}
                     <div className="flex gap-2">

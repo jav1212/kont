@@ -12,6 +12,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { apiFetch as tenantApiFetch, fetchJson as tenantFetchJson, type ApiJsonResult } from "@/src/shared/frontend/utils/api-fetch";
+import { notify } from "@/src/shared/frontend/notify";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,6 @@ export interface UseCompanyResult {
     company:            Company | null;
     companyId:          string | null;
     loading:            boolean;
-    error:              string | null;
     reload:             () => Promise<void>;
     selectCompany:      (id: string) => void;
     save:               (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }) => Promise<string | null>;
@@ -122,7 +122,6 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         return localStorage.getItem(STORAGE_KEY) ?? null;
     });
     const [loading, setLoading] = useState(true);
-    const [error,   setError]   = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!user?.id) return;
@@ -135,7 +134,6 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
             return;
         }
         setLoading(true);
-        setError(null);
 
         const ownerId = activeTenantId;
         const res  = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
@@ -144,7 +142,7 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         const ok = res.ok;
 
         if (!ok) {
-            setError(json.error ?? "Error al cargar empresas");
+            notify.error(json.error ?? "Error al cargar empresas");
         } else {
             const list: Company[] = (json.data as Company[]) ?? [];
             setCompanies(list);
@@ -251,7 +249,6 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         company: selectedCompany,
         companyId: visibleCompanyId,
         loading: hasSession ? loading : false,
-        error: hasSession ? error : null,
         reload,
         selectCompany,
         save,

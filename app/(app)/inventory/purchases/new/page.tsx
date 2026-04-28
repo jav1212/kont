@@ -15,6 +15,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
@@ -246,7 +247,6 @@ export default function NuevaFacturaPage() {
         suppliers, loadSuppliers,
         loadPeriodCloses,
         currentDollarRate,
-        error, setError,
         savePurchaseInvoice, confirmPurchaseInvoice,
         saveSupplier,
         saveProduct,
@@ -416,11 +416,11 @@ export default function NuevaFacturaPage() {
     });
 
     function validate(): boolean {
-        if (!supplierId) { setError("Selecciona un proveedor"); return false; }
-        if (items.length === 0) { setError("Agrega al menos un producto"); return false; }
+        if (!supplierId) { notify.error("Selecciona un proveedor"); return false; }
+        if (items.length === 0) { notify.error("Agrega al menos un producto"); return false; }
         for (const item of items) {
-            if (!item.productId) { setError("Selecciona un producto en cada fila"); return false; }
-            if (item.quantity <= 0) { setError("La cantidad debe ser mayor a 0"); return false; }
+            if (!item.productId) { notify.error("Selecciona un producto en cada fila"); return false; }
+            if (item.quantity <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
         }
         return true;
     }
@@ -428,7 +428,6 @@ export default function NuevaFacturaPage() {
     async function handleSaveDraft() {
         if (!validate()) return;
         setSaving(true);
-        setError(null);
         const invoice = buildInvoice();
         if (savedId) invoice.id = savedId;
         const saved = await savePurchaseInvoice(invoice, itemsForSave());
@@ -439,7 +438,6 @@ export default function NuevaFacturaPage() {
     async function handleConfirm() {
         if (!validate()) return;
         setConfirming(true);
-        setError(null);
         // First save draft (or update existing)
         const invoice = buildInvoice();
         if (savedId) invoice.id = savedId;
@@ -455,7 +453,7 @@ export default function NuevaFacturaPage() {
     }
 
     async function handleQcSupplier() {
-        if (!qcSupplier.name.trim()) { setError('El nombre es requerido'); return; }
+        if (!qcSupplier.name.trim()) { notify.error('El nombre es requerido'); return; }
         setQcSaving(true);
         const saved = await saveSupplier({ companyId: companyId!, name: qcSupplier.name.trim(), rif: qcSupplier.rif.trim(), contact: '', phone: '', email: '', address: '', notes: '', active: true });
         setQcSaving(false);
@@ -479,7 +477,7 @@ export default function NuevaFacturaPage() {
     }
 
     async function handleQcProduct() {
-        if (!qcProduct.name.trim()) { setError('El nombre del producto es requerido'); return; }
+        if (!qcProduct.name.trim()) { notify.error('El nombre del producto es requerido'); return; }
         setQcSaving(true);
         const saved = await saveProduct({
             companyId: companyId!,
@@ -626,12 +624,6 @@ export default function NuevaFacturaPage() {
             </PageHeader>
 
             <div className="px-8 py-6">
-                {error && (
-                    <div className="mb-4 px-4 py-3 rounded-lg border badge-error flex items-start gap-2">
-                        <X size={14} strokeWidth={2.2} className="mt-[2px] flex-shrink-0" />
-                        <span className="font-sans text-[13px] leading-snug">{error}</span>
-                    </div>
-                )}
 
                 <div className="space-y-4">
                     {/* Row 1 — Datos de la factura + Resumen */}
@@ -675,12 +667,11 @@ export default function NuevaFacturaPage() {
                                                 onRequestCreate={(search) => {
                                                     setQcSupplier(s => ({ ...s, name: search }));
                                                     setQcMode('supplier');
-                                                    setError(null);
                                                 }}
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => { setQcSupplier({ name: '', rif: '' }); setQcMode('supplier'); setError(null); }}
+                                                onClick={() => { setQcSupplier({ name: '', rif: '' }); setQcMode('supplier'); }}
                                                 className="h-10 w-10 shrink-0 rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center justify-center"
                                                 title="Crear nuevo proveedor"
                                                 aria-label="Crear nuevo proveedor"
@@ -992,7 +983,7 @@ export default function NuevaFacturaPage() {
                             </div>
                             <button
                                 type="button"
-                                onClick={() => { setQcMode('product'); setError(null); }}
+                                onClick={() => { setQcMode('product'); }}
                                 className="h-8 px-3 text-[11px] uppercase tracking-[0.12em] rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center gap-1.5 shadow-sm"
                             >
                                 <Plus size={12} strokeWidth={2} />
@@ -1008,7 +999,6 @@ export default function NuevaFacturaPage() {
                             onRequestCreateProduct={(search) => {
                                 setQcProduct(p => ({ ...p, name: search }));
                                 setQcMode('product');
-                                setError(null);
                             }}
                         />
 
@@ -1098,7 +1088,6 @@ export default function NuevaFacturaPage() {
                             onValueChange={(v) => setQcSupplier(s => ({ ...s, rif: v }))}
                             placeholder="J-12345678-9"
                         />
-                        {error && <p className="text-[13px] text-red-500">{error}</p>}
                         <div className="flex gap-2 pt-2">
                             <button
                                 onClick={() => setQcMode(null)}
@@ -1211,7 +1200,6 @@ export default function NuevaFacturaPage() {
                                 </button>
                             </div>
                         )}
-                        {error && <p className="text-[13px] text-red-500">{error}</p>}
                         <div className="flex gap-2 pt-2">
                             <button
                                 onClick={() => setQcMode(null)}

@@ -16,6 +16,7 @@ import { useCompany }                   from '@/src/modules/companies/frontend/h
 import { useAccounts }                  from '@/src/modules/accounting/frontend/hooks/use-accounts';
 import { useIntegrationRules }          from '@/src/modules/accounting/frontend/hooks/use-integration-rules';
 import { useIntegrationLog }            from '@/src/modules/accounting/frontend/hooks/use-integration-log';
+import { notify }                       from '@/src/shared/frontend/notify';
 import type { IntegrationRule, IntegrationSource, AmountField } from '@/src/modules/accounting/backend/domain/integration-rule';
 import { APP_SIZES }                    from '@/src/shared/frontend/sizes';
 
@@ -126,10 +127,8 @@ export default function IntegrationsPage() {
     const [form,         setForm]         = useState(EMPTY_FORM);
     const [editing,      setEditing]      = useState<string | null>(null);
     const [saving,       setSaving]       = useState(false);
-    const [formErr,      setFormErr]      = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<IntegrationRule | null>(null);
     const [deleting,     setDeleting]     = useState(false);
-    const [deleteErr,    setDeleteErr]    = useState<string | null>(null);
     const [tab,          setTab]          = useState<'rules' | 'log'>('rules');
 
     function startEdit(rule: IntegrationRule) {
@@ -141,21 +140,18 @@ export default function IntegrationsPage() {
             amountField:     rule.amountField,
             description:     rule.description,
         });
-        setFormErr(null);
         document.getElementById(formId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function cancelEdit() {
         setEditing(null);
         setForm(EMPTY_FORM);
-        setFormErr(null);
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!companyId) return;
         setSaving(true);
-        setFormErr(null);
         try {
             const body = {
                 ...(editing ? { id: editing } : {}),
@@ -169,11 +165,11 @@ export default function IntegrationsPage() {
                 body:    JSON.stringify(body),
             });
             const json = await res.json() as { error?: string };
-            if (!res.ok) { setFormErr(json.error ?? 'No se pudo guardar la regla. Inténtalo de nuevo.'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo guardar la regla. Inténtalo de nuevo.'); return; }
             cancelEdit();
             await reloadRules();
         } catch {
-            setFormErr('No se pudo guardar la regla. Inténtalo de nuevo.');
+            notify.error('No se pudo guardar la regla. Inténtalo de nuevo.');
         } finally {
             setSaving(false);
         }
@@ -182,18 +178,17 @@ export default function IntegrationsPage() {
     async function confirmDelete() {
         if (!deleteTarget) return;
         setDeleting(true);
-        setDeleteErr(null);
         try {
             const res = await fetch(`/api/accounting/integration-rules/${deleteTarget.id}`, { method: 'DELETE' });
             if (!res.ok) {
                 const json = await res.json() as { error?: string };
-                setDeleteErr(json.error ?? 'No se pudo eliminar la regla.');
+                notify.error(json.error ?? 'No se pudo eliminar la regla.');
                 return;
             }
             setDeleteTarget(null);
             await reloadRules();
         } catch {
-            setDeleteErr('No se pudo eliminar la regla.');
+            notify.error('No se pudo eliminar la regla.');
         } finally {
             setDeleting(false);
         }
@@ -325,11 +320,6 @@ export default function IntegrationsPage() {
                                 />
                             </div>
 
-                            {formErr && (
-                                <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                                    {formErr}
-                                </p>
-                            )}
 
                             <div className="flex gap-2">
                                 <BaseButton.Root
@@ -410,7 +400,7 @@ export default function IntegrationsPage() {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => { setDeleteTarget(item); setDeleteErr(null); }}
+                                                onClick={() => { setDeleteTarget(item); }}
                                                 className="font-mono text-[12px] text-[var(--text-error)] hover:opacity-70 focus-visible:outline-none focus-visible:underline transition-opacity"
                                             >
                                                 Eliminar
@@ -519,7 +509,7 @@ export default function IntegrationsPage() {
             {/* ── Delete confirmation modal ──────────────────────────── */}
             <Modal
                 isOpen={deleteTarget !== null}
-                onClose={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                onClose={() => { setDeleteTarget(null); }}
                 size="sm"
             >
                 <ModalContent>
@@ -534,17 +524,12 @@ export default function IntegrationsPage() {
                             </span>
                             ? Los asientos ya generados no se verán afectados.
                         </p>
-                        {deleteErr && (
-                            <p role="alert" className="font-mono text-[12px] text-[var(--text-error)] mt-2">
-                                {deleteErr}
-                            </p>
-                        )}
                     </ModalBody>
                     <ModalFooter>
                         <BaseButton.Root
                             variant="ghost"
                             size="sm"
-                            onPress={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                            onPress={() => { setDeleteTarget(null); }}
                             isDisabled={deleting}
                         >
                             Cancelar

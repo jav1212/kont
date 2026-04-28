@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { notify } from "@/src/shared/frontend/notify";
 
 interface ReferralStats {
     totalReferrals:      number;
@@ -19,31 +20,32 @@ export interface ReferralInfo {
 interface State {
     data:    ReferralInfo | null;
     loading: boolean;
-    error:   string | null;
 }
 
 export function useReferrals() {
-    const [state,   setState]   = useState<State>({ data: null, loading: true, error: null });
+    const [state,   setState]   = useState<State>({ data: null, loading: true });
     const [version, setVersion] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
 
         const load = () => {
-            setState((s) => ({ ...s, loading: true, error: null }));
+            setState((s) => ({ ...s, loading: true }));
             fetch("/api/referrals/me")
                 .then(async (res) => ({ ok: res.ok, json: await res.json() }))
                 .then(({ ok, json }) => {
                     if (cancelled) return;
                     if (!ok) {
-                        setState({ data: null, loading: false, error: json?.error ?? "Error al cargar referidos" });
+                        notify.error(json?.error ?? "Error al cargar referidos");
+                        setState({ data: null, loading: false });
                     } else {
-                        setState({ data: json.data as ReferralInfo, loading: false, error: null });
+                        setState({ data: json.data as ReferralInfo, loading: false });
                     }
                 })
                 .catch(() => {
                     if (cancelled) return;
-                    setState({ data: null, loading: false, error: "Error de red al cargar referidos" });
+                    notify.error("Error de red al cargar referidos");
+                    setState({ data: null, loading: false });
                 });
         };
 

@@ -53,7 +53,7 @@ export default function TrialBalancePage() {
     const { data: periods }          = useAccountingPeriods(companyId);
     const [periodId, setPeriodId]    = useState<string>('');
 
-    const { data: rows, loading, error } = useTrialBalance(companyId, periodId || null);
+    const { data: rows, loading } = useTrialBalance(companyId, periodId || null);
 
     const totalDebit  = rows.reduce((s, r) => s + r.totalDebit,  0);
     const totalCredit = rows.reduce((s, r) => s + r.totalCredit, 0);
@@ -179,11 +179,6 @@ export default function TrialBalancePage() {
                         </div>
                     )}
 
-                    {error && (
-                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)]">
-                            {error}
-                        </p>
-                    )}
                 </div>
             </div>
         </AccountingAccessGuard>

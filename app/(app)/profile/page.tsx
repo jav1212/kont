@@ -9,6 +9,7 @@ import { PageHeader }  from "@/src/shared/frontend/components/page-header";
 import { BaseButton }  from "@/src/shared/frontend/components/base-button";
 import { BaseInput }   from "@/src/shared/frontend/components/base-input";
 import { BaseBadge }   from "@/src/shared/frontend/components/base-badge";
+import { notify }      from "@/src/shared/frontend/notify";
 
 export default function ProfilePage() {
     const { user } = useAuth();
@@ -16,8 +17,6 @@ export default function ProfilePage() {
     const [name,       setName]       = useState("");
     const [nameLoaded, setNameLoaded] = useState(false);
     const [saving,     setSaving]     = useState(false);
-    const [error,      setError]      = useState<string | null>(null);
-    const [success,    setSuccess]    = useState(false);
     const [avatarUrl,  setAvatarUrl]  = useState<string | null>(null);
     const [uploading,  setUploading]  = useState(false);
     const [createdAt,  setCreatedAt]  = useState<string | null>(null);
@@ -42,8 +41,6 @@ export default function ProfilePage() {
         e.preventDefault();
         if (!user) return;
         setSaving(true);
-        setError(null);
-        setSuccess(false);
         const res  = await fetch("/api/users/update", {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -51,15 +48,14 @@ export default function ProfilePage() {
         });
         const json = await res.json();
         setSaving(false);
-        if (!res.ok) { setError(json.error ?? "Error al guardar."); return; }
-        setSuccess(true);
+        if (!res.ok) { notify.error(json.error ?? "Error al guardar."); return; }
+        notify.success("Perfil actualizado correctamente.");
     }
 
     async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file || !user) return;
         setUploading(true);
-        setError(null);
 
         const supabase = getSupabaseBrowser();
         const ext      = file.name.split(".").pop();
@@ -70,7 +66,7 @@ export default function ProfilePage() {
             .upload(path, file, { upsert: true });
 
         if (uploadErr) {
-            setError("No se pudo subir la imagen: " + uploadErr.message);
+            notify.error("No se pudo subir la imagen: " + uploadErr.message);
             setUploading(false);
             return;
         }
@@ -85,7 +81,7 @@ export default function ProfilePage() {
         const json = await res.json();
         setUploading(false);
 
-        if (!res.ok) { setError(json.error ?? "No se pudo guardar la nueva imagen."); return; }
+        if (!res.ok) { notify.error(json.error ?? "No se pudo guardar la nueva imagen."); return; }
         setAvatarUrl(publicUrl);
     }
 
@@ -166,7 +162,7 @@ export default function ProfilePage() {
                                         label="Nombre completo"
                                         placeholder="Tu nombre completo"
                                         value={name}
-                                        onValueChange={(v) => { setName(v); setSuccess(false); }}
+                                        onValueChange={setName}
                                     />
                                     <BaseInput.Field
                                         label="Correo electrónico"
@@ -176,27 +172,6 @@ export default function ProfilePage() {
                                     />
                                 </div>
 
-                                {error && (
-                                    <div className="px-3 py-2 border rounded-lg badge-error">
-                                        <p className="font-sans text-[12px] text-text-error leading-snug">
-                                            {error}
-                                        </p>
-                                    </div>
-                                )}
-                                {success && !error && (
-                                    <div className="px-3 py-2 border rounded-lg badge-success">
-                                        <p className="font-sans text-[12px] text-text-success leading-snug">
-                                            Perfil actualizado correctamente.
-                                        </p>
-                                    </div>
-                                )}
-                                {uploading && (
-                                    <div className="px-3 py-2 border rounded-lg badge-info">
-                                        <p className="font-sans text-[12px] text-text-info leading-snug">
-                                            Subiendo nueva imagen de perfil…
-                                        </p>
-                                    </div>
-                                )}
 
                                 <div className="pt-1 flex justify-end">
                                     <BaseButton.Root

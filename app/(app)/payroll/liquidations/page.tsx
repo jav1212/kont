@@ -5,7 +5,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import {
     Calendar,
-    AlertCircle, Gavel, Scale, UserMinus,
+    Gavel, Scale, UserMinus,
     Coins, ShieldAlert, PieChart, Plane, Gift,
     ChevronRight, Users, Wallet, Receipt, TrendingUp,
 } from "lucide-react";
@@ -695,7 +695,7 @@ function BreakdownLine({
 
 export default function LiquidacionesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading, error } = useEmployee(companyId);
+    const { employees, loading } = useEmployee(companyId);
 
     const today = getTodayIsoDate();
 
@@ -976,11 +976,6 @@ export default function LiquidacionesPage() {
                 <main className="flex-1 overflow-y-auto bg-surface-2 p-6 lg:p-8">
                     {loading ? (
                         <CalculatorLoading />
-                    ) : error ? (
-                        <div className="flex flex-col items-center justify-center h-full gap-3 text-error">
-                            <AlertCircle size={32} />
-                            <span className="font-mono text-[13px] font-bold uppercase tracking-widest">{error}</span>
-                        </div>
                     ) : liquidationResults.length === 0 ? (
                         <CalculatorEmptyState
                             description={

@@ -7,6 +7,7 @@ import { Loader2, MailCheck } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, PasswordField } from "../_components/auth-shell";
 
 const RESEND_COOLDOWN_SECONDS = 30;
@@ -29,7 +30,6 @@ function SignInFormContent() {
 
     const [email,    setEmail]    = useState(searchParams.get("email") ?? "");
     const [pass,     setPass]     = useState("");
-    const [error,    setError]    = useState<string | null>(rawErrorParam);
     const [loading,  setLoading]  = useState(false);
 
     const [needsConfirmation, setNeedsConfirmation] = useState(rawReason === "expired");
@@ -37,6 +37,11 @@ function SignInFormContent() {
     const [resendSent,        setResendSent]        = useState(false);
     const [cooldownUntil,     setCooldownUntil]     = useState(0);
     const [now,               setNow]               = useState(() => Date.now());
+
+    // Surface ?error=… coming from auth callbacks (Supabase magic link, etc.).
+    useEffect(() => {
+        if (rawErrorParam) notify.error(rawErrorParam);
+    }, [rawErrorParam]);
 
     useEffect(() => {
         if (cooldownUntil <= now) return;
@@ -48,7 +53,7 @@ function SignInFormContent() {
 
     async function handleResend() {
         if (!email.trim()) {
-            setError("Escribe tu correo para reenviar el enlace.");
+            notify.error("Escribe tu correo para reenviar el enlace.");
             return;
         }
         if (cooldownRemaining > 0 || resendLoading) return;
@@ -58,11 +63,10 @@ function SignInFormContent() {
         setResendLoading(false);
 
         if (err) {
-            setError(err);
+            notify.error(err);
             setResendSent(false);
             return;
         }
-        setError(null);
         setResendSent(true);
         setCooldownUntil(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
         setNow(Date.now());
@@ -70,18 +74,17 @@ function SignInFormContent() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
         setResendSent(false);
 
-        if (!email.trim()) { setError("El correo es requerido."); return; }
-        if (!pass)         { setError("La contraseña es requerida."); return; }
+        if (!email.trim()) { notify.error("El correo es requerido."); return; }
+        if (!pass)         { notify.error("La contraseña es requerida."); return; }
 
         setLoading(true);
         const err = await signIn(email, pass);
         setLoading(false);
 
         if (err) {
-            setError(err);
+            notify.error(err);
             if (isUnconfirmedEmailError(err)) setNeedsConfirmation(true);
             return;
         }
@@ -122,14 +125,6 @@ function SignInFormContent() {
                     autoComplete="current-password"
                 />
             </div>
-
-            {error && (
-                <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07]">
-                    <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">
-                        {error}
-                    </p>
-                </div>
-            )}
 
             {needsConfirmation && (
                 <div className="px-4 py-4 border border-amber-500/30 rounded-xl bg-amber-500/[0.06] space-y-3">

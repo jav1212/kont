@@ -14,7 +14,7 @@ interface Props {
 
 export function GuidedStepReview({ state, onBack }: Props) {
     const {
-        employees, empLoading, empError,
+        employees, empLoading,
         company, companyId,
         earningRows, deductionRows, bonusRows,
         mondaysInMonth, bcvRate,
@@ -52,7 +52,6 @@ export function GuidedStepReview({ state, onBack }: Props) {
             <PayrollEmployeeTable
                 employees={employees}
                 empLoading={empLoading}
-                empError={empError}
                 onConfirm={handleConfirm}
                 onSaveDraft={handleSaveDraft}
                 earningRows={earningRows}

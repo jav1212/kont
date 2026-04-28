@@ -15,6 +15,7 @@ import { AccountingAccessGuard }     from '@/src/modules/accounting/frontend/com
 import { useCompany }                from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useAccounts }               from '@/src/modules/accounting/frontend/hooks/use-accounts';
 import { useCharts }                 from '@/src/modules/accounting/frontend/hooks/use-charts';
+import { notify }                    from '@/src/shared/frontend/notify';
 import type { Account }              from '@/src/modules/accounting/backend/domain/account';
 import { APP_SIZES }                 from '@/src/shared/frontend/sizes';
 
@@ -194,10 +195,8 @@ export default function AccountsPage() {
     const [form,         setForm]         = useState(EMPTY_FORM);
     const [editing,      setEditing]      = useState<string | null>(null);
     const [saving,       setSaving]       = useState(false);
-    const [formErr,      setFormErr]      = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
     const [deleting,     setDeleting]     = useState(false);
-    const [deleteErr,    setDeleteErr]    = useState<string | null>(null);
     const [showSuccessMsg, setShowSuccessMsg] = useState(false);
 
     // ── Computed accounts for selected chart
@@ -223,14 +222,12 @@ export default function AccountsPage() {
             saldoInicial: String(account.saldoInicial ?? 0),
             isGroup:      account.isGroup,
         });
-        setFormErr(null);
         setShowSuccessMsg(false);
     }
 
     function cancelEdit() {
         setEditing(null);
         setForm(EMPTY_FORM);
-        setFormErr(null);
     }
 
     // ── Submit ─────────────────────────────────────────────────────────────────
@@ -239,7 +236,6 @@ export default function AccountsPage() {
         e.preventDefault();
         if (!companyId || !selectedChartId) return;
         setSaving(true);
-        setFormErr(null);
         setShowSuccessMsg(false);
         try {
             const body = {
@@ -260,15 +256,15 @@ export default function AccountsPage() {
                 body:    JSON.stringify(body),
             });
             const json = await res.json() as { error?: string };
-            if (!res.ok) { setFormErr(json.error ?? 'No se pudo guardar la cuenta.'); return; }
-            
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo guardar la cuenta.'); return; }
+
             if (!editing) setShowSuccessMsg(true);
             setTimeout(() => setShowSuccessMsg(false), 3000);
 
             cancelEdit();
             await reloadAccounts();
         } catch {
-            setFormErr('No se pudo guardar la cuenta. Inténtalo de nuevo.');
+            notify.error('No se pudo guardar la cuenta. Inténtalo de nuevo.');
         } finally {
             setSaving(false);
         }
@@ -279,18 +275,17 @@ export default function AccountsPage() {
     async function confirmDelete() {
         if (!deleteTarget) return;
         setDeleting(true);
-        setDeleteErr(null);
         try {
             const res = await fetch(`/api/accounting/accounts/${deleteTarget.id}`, { method: 'DELETE' });
             if (!res.ok) {
                 const json = await res.json() as { error?: string };
-                setDeleteErr(json.error ?? 'No se pudo eliminar la cuenta.');
+                notify.error(json.error ?? 'No se pudo eliminar la cuenta.');
                 return;
             }
             setDeleteTarget(null);
             await reloadAccounts();
         } catch {
-            setDeleteErr('No se pudo eliminar la cuenta.');
+            notify.error('No se pudo eliminar la cuenta.');
         } finally {
             setDeleting(false);
         }
@@ -435,7 +430,6 @@ export default function AccountsPage() {
                                 </label>
                             </div>
                             
-                            {formErr && <p role="alert" className="font-mono text-[11px] text-[var(--text-error)] mt-1 bg-red-500/10 p-2 rounded-lg border border-red-500/20">{formErr}</p>}
                             {showSuccessMsg && <p className="font-mono text-[11px] text-success mt-1 flex items-center gap-1.5 bg-success/10 p-2 rounded-lg"><Check size={12}/> Cuenta añadida</p>}
                             
                             <div className="flex gap-2 pt-2 mt-1">
@@ -497,7 +491,7 @@ export default function AccountsPage() {
                                     node={rootNode} 
                                     level={0} 
                                     onSelectEdit={startEdit}
-                                    onDeleteRequest={(acc) => { setDeleteTarget(acc); setDeleteErr(null); }} 
+                                    onDeleteRequest={(acc) => { setDeleteTarget(acc); }} 
                                     expandSignal={expandSignal}
                                     collapseSignal={collapseSignal}
                                 />
@@ -526,7 +520,7 @@ export default function AccountsPage() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                onClick={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                                onClick={() => { setDeleteTarget(null); }}
                                 className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
                             />
                             <motion.div
@@ -539,7 +533,7 @@ export default function AccountsPage() {
                                     <h2 className="text-[14px] font-bold uppercase tracking-widest text-foreground">
                                         Eliminar cuenta
                                     </h2>
-                                    <BaseButton.Icon variant="ghost" size="sm" onClick={() => { setDeleteTarget(null); setDeleteErr(null); }}>
+                                    <BaseButton.Icon variant="ghost" size="sm" onClick={() => { setDeleteTarget(null); }}>
                                         <X size={14} />
                                     </BaseButton.Icon>
                                 </div>
@@ -552,18 +546,13 @@ export default function AccountsPage() {
                                         </span>
                                         ? Esta acción no se puede deshacer.
                                     </p>
-                                    {deleteErr && (
-                                        <p role="alert" className="font-mono text-[12px] text-[var(--text-error)] mt-4 bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-                                            {deleteErr}
-                                        </p>
-                                    )}
                                 </div>
                                 
                                 <div className="px-6 py-4 border-t border-border-light bg-surface-2/30 flex justify-end gap-3">
                                     <BaseButton.Root
                                         variant="ghost"
                                         size="sm"
-                                        onPress={() => { setDeleteTarget(null); setDeleteErr(null); }}
+                                        onPress={() => { setDeleteTarget(null); }}
                                         isDisabled={deleting}
                                     >
                                         Cancelar

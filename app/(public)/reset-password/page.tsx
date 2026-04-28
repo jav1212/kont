@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { Loader2, CheckCircle2, XCircle, ArrowRight, LockKeyhole } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { notify } from "@/src/shared/frontend/notify";
 import { AuthShell, AuthHeader, AuthVisual, PasswordField } from "../_components/auth-shell";
 
 type Stage = "loading" | "ready" | "success" | "invalid";
@@ -24,7 +25,6 @@ export default function ResetPasswordPage() {
     const [password, setPassword] = useState("");
     const [confirm,  setConfirm]  = useState("");
     const [loading,  setLoading]  = useState(false);
-    const [error,    setError]    = useState<string | null>(null);
 
     useEffect(() => {
         const supabase = getSupabaseBrowser();
@@ -64,18 +64,17 @@ export default function ResetPasswordPage() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setError(null);
 
-        if (!password)            { setError("La contraseña es requerida."); return; }
-        if (password.length < 8)  { setError("Mínimo 8 caracteres."); return; }
-        if (password !== confirm) { setError("Las contraseñas no coinciden."); return; }
+        if (!password)            { notify.error("La contraseña es requerida."); return; }
+        if (password.length < 8)  { notify.error("Mínimo 8 caracteres."); return; }
+        if (password !== confirm) { notify.error("Las contraseñas no coinciden."); return; }
 
         setLoading(true);
         const supabase = getSupabaseBrowser();
         const { error: updateError } = await supabase.auth.updateUser({ password });
         setLoading(false);
 
-        if (updateError) { setError(updateError.message); return; }
+        if (updateError) { notify.error(updateError.message); return; }
 
         await supabase.auth.signOut();
         setStage("success");
@@ -159,13 +158,6 @@ export default function ResetPasswordPage() {
                                 );
                             })}
                         </ul>
-                    )}
-
-                    {error && (
-                        <div role="alert" aria-live="polite" className="px-4 py-3 border border-red-500/30 rounded-xl bg-red-500/[0.07] flex items-start gap-3">
-                            <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                            <p className="font-sans text-[13px] text-red-600 dark:text-red-400 leading-relaxed">{error}</p>
-                        </div>
                     )}
 
                     <BaseButton.Root
