@@ -13,6 +13,7 @@ interface RawCompanyRow {
     rif:              string | null;
     phone:            string | null;
     address:          string | null;
+    contact_email:    string | null;
     logo_url:         string | null;
     show_logo_in_pdf: boolean | null;
     sector:           string | null;
@@ -65,6 +66,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_logo_url:      company.logoUrl       ?? null,
                     p_sector:        company.sector        ?? null,
                     p_taxpayer_type: company.taxpayerType  ?? 'ordinario',
+                    p_contact_email: company.contactEmail  ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success();
@@ -96,6 +98,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
                     p_show_logo_in_pdf:  (company.showLogoInPdf!== undefined ? company.showLogoInPdf : current.showLogoInPdf) ?? null,
                     p_sector:            (company.sector       !== undefined ? company.sector : current.sector) ?? null,
                     p_taxpayer_type:     company.taxpayerType  !== undefined ? company.taxpayerType : null,
+                    p_contact_email:     (company.contactEmail !== undefined ? company.contactEmail : current.contactEmail) ?? null,
                 });
             if (error) return Result.fail(error.message);
             return Result.success(this.mapToDomain(data));
@@ -178,6 +181,7 @@ export class RpcCompanyRepository implements ICompanyRepository {
             rif:             row.rif              ?? undefined,
             phone:           row.phone            ?? undefined,
             address:         row.address          ?? undefined,
+            contactEmail:    row.contact_email    ?? undefined,
             logoUrl:         row.logo_url         ?? undefined,
             showLogoInPdf:   row.show_logo_in_pdf ?? false,
             sector:          this.parseSector(row.sector),

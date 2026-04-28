@@ -1,28 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BellRing, Bell, X, Settings } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Modal, ModalContent, ModalBody } from "@heroui/react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { ReminderManagementPanel } from "./reminder-management-panel";
 import type { TaxpayerType } from "@/src/modules/tools/seniat-calendar/data/types";
 
 interface ReminderOptInProps {
-    rif:          string;
-    taxpayerType: TaxpayerType;
+    rif:                 string;
+    taxpayerType:        TaxpayerType;
+    /** Pre-fill recipient with the client's contact email when the RIF matches a saved company. */
+    companyContactEmail?: string;
 }
 
-export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
-    const [open, setOpen]             = useState(false);
-    const [manageOpen, setManageOpen] = useState(false);
-    const [loading, setLoading]       = useState(false);
-    const { isAuthenticated, user }   = useAuth();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: ReminderOptInProps) {
+    const [open, setOpen]                 = useState(false);
+    const [manageOpen, setManageOpen]     = useState(false);
+    const [loading, setLoading]           = useState(false);
+    const { isAuthenticated, user }       = useAuth();
+    const [recipientEmail, setRecipientEmail] = useState("");
+    const [emailTouched, setEmailTouched] = useState(false);
+
+    // Sync the recipient email each time the modal opens or the underlying
+    // company / user changes — prefer the client's contact email, fall back
+    // to the authenticated user's email.
+    useEffect(() => {
+        if (!open) return;
+        const next = companyContactEmail?.trim() || user?.email || "";
+        setRecipientEmail(next);
+        setEmailTouched(false);
+    }, [open, companyContactEmail, user?.email]);
+
+    const emailValid = EMAIL_RE.test(recipientEmail.trim());
+    const showEmailError = emailTouched && !emailValid;
 
     async function handleSubmit() {
         if (!isAuthenticated) return;
+        if (!emailValid) { setEmailTouched(true); return; }
         setLoading(true);
         try {
             const res = await fetch("/api/seniat-reminders/subscribe", {
@@ -31,6 +52,7 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                 body: JSON.stringify({
                     rif,
                     taxpayerType,
+                    email:      recipientEmail.trim(),
                     categories: [],   // subscribe to all categories
                     daysBefore: 3,
                 }),
@@ -43,7 +65,7 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                 return;
             }
 
-            toast.success("Recordatorios activados. Te avisaremos 3 días antes de cada vencimiento.");
+            toast.success("Recordatorios activados. Le avisaremos al cliente 3 días antes de cada vencimiento.");
             setOpen(false);
         } catch {
             toast.error("Error de red. Intenta de nuevo.");
@@ -70,7 +92,7 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                 placement="center"
                 hideCloseButton
                 classNames={{
-                    base:     "rounded-2xl border border-border-light bg-surface-1 shadow-xl max-w-[440px] w-full",
+                    base:     "rounded-2xl border border-border-light bg-surface-1 shadow-xl max-w-[460px] w-full",
                     backdrop: "backdrop-blur-sm bg-black/30",
                 }}
             >
@@ -131,14 +153,26 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                                     Activa recordatorios por email para el RIF{" "}
                                     <span className="font-bold text-text-primary">{rif}</span>
                                     {" "}({taxpayerType === "especial" ? "Sujeto Pasivo Especial" : "Contribuyente Ordinario"}).
-                                    Te avisaremos 3 días antes de cada vencimiento.
+                                    Le avisaremos al cliente 3 días antes de cada vencimiento.
                                 </p>
 
-                                <div className="mt-5 p-3 rounded-lg bg-surface-2 border border-border-light">
-                                    <p className="text-[11px] font-mono text-text-tertiary">
-                                        Recibirás un email en{" "}
-                                        <span className="font-bold text-text-primary">{user?.email}</span>
-                                        {" "}3 días antes de cada obligación fiscal.
+                                <div className="mt-5 flex flex-col gap-1.5">
+                                    <label htmlFor="reminder-recipient-email" className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-tertiary">
+                                        Correo del cliente
+                                    </label>
+                                    <BaseInput.Field
+                                        id="reminder-recipient-email"
+                                        type="email"
+                                        value={recipientEmail}
+                                        onValueChange={(v) => { setRecipientEmail(v); if (!emailTouched) setEmailTouched(true); }}
+                                        onBlur={() => setEmailTouched(true)}
+                                        placeholder="cliente@empresa.com"
+                                        error={showEmailError ? "Correo inválido." : undefined}
+                                    />
+                                    <p className="text-[11px] font-mono text-text-tertiary leading-relaxed">
+                                        Le enviaremos el recordatorio a este correo, firmado por ti
+                                        {user?.email ? <> (<span className="text-text-secondary">{user.email}</span>)</> : null}.
+                                        Si responde, te llegará a ti.
                                     </p>
                                 </div>
 
@@ -148,7 +182,7 @@ export function ReminderOptIn({ rif, taxpayerType }: ReminderOptInProps) {
                                         fullWidth
                                         onClick={() => void handleSubmit()}
                                         loading={loading}
-                                        disabled={loading}
+                                        disabled={loading || !emailValid}
                                     >
                                         Activar recordatorios
                                     </BaseButton.Root>

@@ -193,6 +193,7 @@ export default function CompaniesPage() {
     const [editName, setEditName] = useState("");
     const [editPhone, setEditPhone] = useState("");
     const [editAddress, setEditAddress] = useState("");
+    const [editContactEmail, setEditContactEmail] = useState("");
     const [editLogoUrl, setEditLogoUrl] = useState<string | undefined>(undefined);
     const [editSector, setEditSector] = useState<BusinessSector | undefined>(undefined);
     const [editTaxpayerType, setEditTaxpayerType] = useState<TaxpayerType>("ordinario");
@@ -269,6 +270,7 @@ export default function CompaniesPage() {
         setEditName(company.name);
         setEditPhone(company.phone ?? "");
         setEditAddress(company.address ?? "");
+        setEditContactEmail(company.contactEmail ?? "");
         setEditLogoUrl(company.logoUrl);
         setEditSector(company.sector);
         setEditTaxpayerType(company.taxpayerType ?? "ordinario");
@@ -279,6 +281,7 @@ export default function CompaniesPage() {
         setEditName("");
         setEditPhone("");
         setEditAddress("");
+        setEditContactEmail("");
         setEditLogoUrl(undefined);
         setEditSector(undefined);
         setEditTaxpayerType("ordinario");
@@ -296,6 +299,7 @@ export default function CompaniesPage() {
             name: editName.trim(),
             phone: editPhone.trim() || undefined,
             address: editAddress.trim() || undefined,
+            contactEmail: editContactEmail.trim() || undefined,
             logoUrl: editLogoUrl,
             sector: editSector,
             taxpayerType: editTaxpayerType,
@@ -309,7 +313,7 @@ export default function CompaniesPage() {
         setEditSaving(false);
         if (err) notify.error(err);
         else     cancelEdit();
-    }, [editingId, editName, editPhone, editAddress, editLogoUrl, editSector, editTaxpayerType, companies, update, applySector, cancelEdit]);
+    }, [editingId, editName, editPhone, editAddress, editContactEmail, editLogoUrl, editSector, editTaxpayerType, companies, update, applySector, cancelEdit]);
 
     const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -799,6 +803,7 @@ export default function CompaniesPage() {
                                                                     <div className="sm:hidden grid grid-cols-2 gap-2">
                                                                         <BaseInput.Field className="w-full" placeholder="Teléfono" value={editPhone} onValueChange={setEditPhone} />
                                                                         <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />
+                                                                        <BaseInput.Field className="w-full col-span-2" placeholder="Correo del cliente" type="email" value={editContactEmail} onValueChange={setEditContactEmail} />
                                                                     </div>
                                                                     <input
                                                                         ref={logoInputRef}
@@ -854,12 +859,20 @@ export default function CompaniesPage() {
                                                             )}
                                                         </td>
 
-                                                        {/* Dirección */}
+                                                        {/* Dirección + correo del cliente */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
                                                             {isEditing ? (
-                                                                <BaseInput.Field className="w-full" value={editAddress} onValueChange={setEditAddress} />
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />
+                                                                    <BaseInput.Field className="w-full" placeholder="Correo del cliente" type="email" value={editContactEmail} onValueChange={setEditContactEmail} />
+                                                                </div>
                                                             ) : (
-                                                                <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[180px] inline-block">{company.address ?? "—"}</span>
+                                                                <div className="flex flex-col leading-tight">
+                                                                    <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[180px] inline-block">{company.address ?? "—"}</span>
+                                                                    {company.contactEmail && (
+                                                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] truncate max-w-[180px] inline-block">{company.contactEmail}</span>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </td>
 

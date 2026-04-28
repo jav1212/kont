@@ -2,6 +2,10 @@
 // Shared — sendSeniatReminderEmail
 // Recordatorio tributario SENIAT vía Resend, usando el layout shared Konta
 // (slate-light + accent #FF4A18, monospace).
+//
+// Atribución: el contador (`senderName` + `senderEmail`) figura en el subject,
+// heading y footer; Resend `replyTo` apunta al contador para que las respuestas
+// del cliente lleguen a quien configuró el recordatorio (no a no-reply@).
 // =============================================================================
 
 import { Resend } from "resend";
@@ -14,6 +18,10 @@ export interface SendSeniatReminderOptions {
     taxpayerType: "ordinario" | "especial";
     daysBefore:   number;
     obligations:  CalendarEntry[];
+    /** Display name of the user that activated the reminder ("OficinaKm11"). */
+    senderName?:  string;
+    /** Email of the user — used as Reply-To and footer attribution. */
+    senderEmail?: string;
 }
 
 function formatDate(iso: string): string {
@@ -61,17 +69,26 @@ function buildObligationsTable(obligations: CalendarEntry[]): string {
 export async function sendSeniatReminderEmail(opts: SendSeniatReminderOptions): Promise<void> {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    const { rif, taxpayerType, daysBefore, obligations } = opts;
+    const { rif, taxpayerType, daysBefore, obligations, senderName, senderEmail } = opts;
     const count     = obligations.length;
     const firstOb   = obligations[0];
     const typeLabel = taxpayerType === "especial" ? "Sujeto Pasivo Especial" : "Contribuyente Ordinario";
     const calUrl    = `https://kontave.com/herramientas/calendario-seniat?rif=${encodeURIComponent(rif)}&tipo=${taxpayerType}`;
     const manageUrl = `https://kontave.com/herramientas/calendario-seniat?manage=1`;
     const daysLabel = daysBefore === 1 ? "1 día" : `${daysBefore} días`;
+    const sender    = senderName?.trim() || "Konta";
+
+    const heading   = senderName
+        ? `${sender} te recuerda: ${count === 1 ? "1 obligación" : `${count} obligaciones`} por vencer`
+        : `${count === 1 ? "1 obligación" : `${count} obligaciones`} por vencer`;
+
+    const footerNote = senderEmail
+        ? `Recibes este correo porque ${sender} (${senderEmail}) configuró recordatorios SENIAT en Konta para tu RIF ${rif}. Si no esperabas este aviso, responde a ${senderEmail}.`
+        : `Recibes este correo porque ${sender} configuró recordatorios SENIAT en Konta para tu RIF ${rif}.`;
 
     const html = renderEmailLayout({
-        preheader: `${count === 1 ? "1 obligación" : `${count} obligaciones`} SENIAT por vencer en ${daysLabel} (RIF ${rif}).`,
-        heading:   `${count === 1 ? "1 obligación" : `${count} obligaciones`} por vencer`,
+        preheader: `${sender} te avisa: ${count === 1 ? "1 obligación" : `${count} obligaciones`} SENIAT por vencer en ${daysLabel} (RIF ${rif}).`,
+        heading,
         bodyHtml:  `
             <p style="margin:0 0 4px;">
                 RIF <strong style="color:${EMAIL_BRAND.text};">${rif}</strong> · ${typeLabel}
@@ -80,7 +97,7 @@ export async function sendSeniatReminderEmail(opts: SendSeniatReminderOptions): 
         `,
         cta:   { label: "Ver calendario completo", href: calUrl },
         badge: `RECORDATORIO SENIAT · VENCE EN ${daysLabel.toUpperCase()}`,
-        footerNote: `Recibes este correo porque activaste recordatorios en Konta para el RIF ${rif}.`,
+        footerNote,
         extraHtml: `<p style="margin:8px 0 0;font-family:${EMAIL_FONT_MONO};font-size:11px;color:${EMAIL_BRAND.textTertiary};">
             <a href="${manageUrl}" style="color:${EMAIL_BRAND.textSecondary};text-decoration:underline;">Administrar recordatorios</a>
             &nbsp;·&nbsp;
@@ -88,11 +105,13 @@ export async function sendSeniatReminderEmail(opts: SendSeniatReminderOptions): 
         </p>`,
     });
 
-    const subject = `SENIAT · Vence en ${daysLabel}: ${firstOb.shortTitle}${count > 1 ? ` y ${count - 1} más` : ""}`;
+    const subjectPrefix = senderName ? `${sender} te recuerda · ` : "";
+    const subject = `${subjectPrefix}SENIAT vence en ${daysLabel}: ${firstOb.shortTitle}${count > 1 ? ` y ${count - 1} más` : ""}`;
 
     await resend.emails.send({
         from:    process.env.RESEND_FROM_EMAIL ?? "konta <no-reply@kontave.com>",
         to:      opts.to,
+        replyTo: senderEmail,
         subject,
         html,
     });

@@ -138,4 +138,22 @@ export class SupabaseReminderRepository implements ReminderSubscriptionRepositor
 
         if (error) throw new Error(error.message);
     }
+
+    async findUserMeta(userId: string): Promise<{ name: string | null; email: string } | null> {
+        // email lives in auth.users (admin scope); display name in public.profiles
+        const { data: userResp, error: userErr } = await this.client.auth.admin.getUserById(userId);
+        if (userErr || !userResp?.user?.email) return null;
+
+        const email = userResp.user.email;
+
+        const { data: profileRow } = await this.client
+            .from("profiles")
+            .select("name")
+            .eq("id", userId)
+            .maybeSingle();
+
+        const name = (profileRow as { name: string | null } | null)?.name ?? null;
+
+        return { name, email };
+    }
 }

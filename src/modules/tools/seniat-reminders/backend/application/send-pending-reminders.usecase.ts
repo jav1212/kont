@@ -72,6 +72,11 @@ export class SendPendingRemindersUseCase extends UseCase<SendPendingRemindersInp
 
         const subs = await this.repo.findEnabled();
 
+        // Cache user metadata (name + email) per userId so we don't hit
+        // auth.admin.getUserById once per subscription when the same CPA
+        // owns many.
+        const senderCache = new Map<string, { name: string | null; email: string } | null>();
+
         let processed = 0;
         let sent      = 0;
         let skipped   = 0;
@@ -111,12 +116,21 @@ export class SendPendingRemindersUseCase extends UseCase<SendPendingRemindersInp
                     continue;
                 }
 
+                if (!senderCache.has(sub.userId)) {
+                    senderCache.set(sub.userId, await this.repo.findUserMeta(sub.userId));
+                }
+                const meta = senderCache.get(sub.userId) ?? null;
+                const senderName  = meta?.name?.trim() || meta?.email?.split("@")[0] || undefined;
+                const senderEmail = meta?.email;
+
                 await sendSeniatReminderEmail({
                     to:           sub.email,
                     rif:          sub.rif,
                     taxpayerType: sub.taxpayerType as "ordinario" | "especial",
                     daysBefore:   sub.daysBefore,
                     obligations:  matching,
+                    senderName,
+                    senderEmail,
                 });
 
                 await this.repo.updateLastSent(sub.id, now);

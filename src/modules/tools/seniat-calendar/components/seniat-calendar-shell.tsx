@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 
@@ -55,16 +55,23 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
     const nextEntry = useMemo(() => getNextUpcoming(entries, today), [entries, today]);
     const nextDueDate = nextEntry?.dueDate ?? null;
 
-    // Auto-fill from first company with RIF when authenticated
+    // Auto-fill from first company with RIF when authenticated.
+    // One-shot: re-clearing the RIF (or typing a custom one) must NOT re-fire
+    // the fill — otherwise the user can't consult RIFs outside their company list.
+    const autoFilledRef = useRef(false);
     useEffect(() => {
-        if (!rif && companies.length > 0) {
-            const first = companies.find((c) => c.rif && !c.disabled);
-            if (first?.rif) {
-                setRif(first.rif);
-                setTaxpayerType(first.taxpayerType);
-            }
+        if (autoFilledRef.current) return;
+        if (companiesLoading) return;
+        // RIF already provided (e.g. via URL share-params) — count as filled.
+        if (rif) { autoFilledRef.current = true; return; }
+        if (companies.length === 0) return;
+        const first = companies.find((c) => c.rif && !c.disabled);
+        if (first?.rif) {
+            setRif(first.rif);
+            setTaxpayerType(first.taxpayerType);
         }
-    }, [companies, rif, setRif, setTaxpayerType]);
+        autoFilledRef.current = true;
+    }, [companies, companiesLoading, rif, setRif, setTaxpayerType]);
 
     const isEmbed = variant === "embed";
     const isAuthed = variant === "authed";
@@ -80,7 +87,9 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
     const showEmpty = !rifValid && !rifTouched;
     const showError = rifTouched && !rifValid && rif.length > 0;
 
-    const companyName = companies.find((c) => c.rif === rif)?.name;
+    const matchedCompany = companies.find((c) => c.rif === rif);
+    const companyName = matchedCompany?.name;
+    const companyContactEmail = matchedCompany?.contactEmail;
 
     return (
         <div className={containerCls}>
@@ -175,7 +184,11 @@ export function SeniatCalendarShell({ variant }: SeniatCalendarShellProps) {
                                     embedMode={isEmbed}
                                 />
                                 {!isEmbed && rifValid && (
-                                    <ReminderOptIn rif={rif} taxpayerType={taxpayerType} />
+                                    <ReminderOptIn
+                                        rif={rif}
+                                        taxpayerType={taxpayerType}
+                                        companyContactEmail={companyContactEmail}
+                                    />
                                 )}
                             </div>
                         </div>

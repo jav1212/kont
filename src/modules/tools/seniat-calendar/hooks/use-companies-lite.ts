@@ -10,6 +10,7 @@ export interface CompanyLite {
     name: string;
     rif?: string;
     taxpayerType: TaxpayerType;
+    contactEmail?: string;
     disabled: boolean;
     disabledReason?: string;
 }
@@ -86,6 +87,7 @@ export function useCompaniesLite(): State {
                         name: c.name,
                         rif: effectiveRif,
                         taxpayerType: c.taxpayerType ?? "ordinario",
+                        contactEmail: c.contactEmail,
                         disabled: !effectiveRif,
                         disabledReason: !effectiveRif ? "Agrega un RIF en Configuración" : undefined,
                     };

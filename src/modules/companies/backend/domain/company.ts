@@ -82,6 +82,7 @@ export interface Company {
     rif?: string;
     phone?: string;
     address?: string;
+    contactEmail?: string;   // optional client email used for SENIAT reminder delivery
     logoUrl?: string;
     showLogoInPdf?: boolean;
     configFiscal?: Partial<ConfigFiscal>;

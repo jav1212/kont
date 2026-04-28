@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CheckCircle2 } from "lucide-react";
+import { Building2, CheckCircle2, X } from "lucide-react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { formatRifMask } from "../utils/rif";
 
@@ -14,8 +14,18 @@ interface RifInputProps {
 export function RifInput({ value, onChange, touched, valid }: RifInputProps) {
     const showError = touched && value.length > 0 && !valid;
     const showValid = valid;
+    const showClear = value.length > 0;
 
-    const endContent = showValid ? (
+    const endContent = showClear ? (
+        <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label="Limpiar RIF"
+            className="flex items-center justify-center w-4 h-4 rounded-sm text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors duration-100"
+        >
+            <X size={12} strokeWidth={2} />
+        </button>
+    ) : showValid ? (
         <CheckCircle2 size={15} className="text-text-success flex-shrink-0" strokeWidth={2} />
     ) : (
         <Building2 size={15} className="text-text-disabled flex-shrink-0" strokeWidth={1.5} />

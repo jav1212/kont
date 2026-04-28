@@ -46,4 +46,11 @@ export interface ReminderSubscriptionRepository {
 
     /** Actualiza lastSentAt al timestamp indicado */
     updateLastSent(id: string, sentAt: string): Promise<void>;
+
+    /**
+     * Devuelve el nombre y email del dueño de la suscripción para que el cron
+     * pueda firmar los emails con el contador correcto. Requiere service_role
+     * (auth.admin). null si el usuario fue borrado.
+     */
+    findUserMeta(userId: string): Promise<{ name: string | null; email: string } | null>;
 }

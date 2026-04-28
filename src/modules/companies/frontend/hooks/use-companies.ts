@@ -53,6 +53,7 @@ export interface Company {
     rif?:            string;
     phone?:          string;
     address?:        string;
+    contactEmail?:   string;
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
@@ -67,6 +68,7 @@ export interface CompanyUpdateData {
     rif?:            string;
     phone?:          string;
     address?:        string;
+    contactEmail?:   string;
     logoUrl?:        string;
     showLogoInPdf?:  boolean;
     sector?:         BusinessSector;
