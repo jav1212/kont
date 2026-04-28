@@ -5,7 +5,8 @@
 // Architectural role: Feature component in the inventory module frontend.
 // Constraints: Export name kept as FacturaItemsGrid for backward compatibility with existing pages.
 
-import { useState, useRef, useEffect, Fragment } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, Fragment } from "react";
+import { createPortal } from "react-dom";
 import type {
     PurchaseInvoiceItem,
     VatRate,
@@ -80,6 +81,10 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
     const [hiIdx, setHiIdx] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
+    // Portal anchor — recomputed from the input's bounding rect so the dropdown
+    // can render via createPortal and escape the table wrapper's `overflow-x-auto`,
+    // which CSS would otherwise force to clip vertically.
+    const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
 
     const selected = products.find((p) => p.id === productId);
 
@@ -96,12 +101,32 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
         el?.scrollIntoView({ block: "nearest" });
     }, [hiIdx]);
 
+    useLayoutEffect(() => {
+        if (!open) return;
+        const update = () => {
+            const el = wrapRef.current;
+            if (!el) return;
+            const r = el.getBoundingClientRect();
+            setAnchor({ left: r.left, top: r.bottom + 2, width: Math.max(r.width, 320) });
+        };
+        update();
+        window.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+            window.removeEventListener("scroll", update, true);
+            window.removeEventListener("resize", update);
+        };
+    }, [open]);
+
     function openDropdown() { setSearch(""); setHiIdx(0); setOpen(true); }
     function closeDropdown() { setOpen(false); setSearch(""); }
     function selectItem(id: string) { onSelect(id); closeDropdown(); }
 
     function handleBlur(e: React.FocusEvent) {
-        if (!wrapRef.current?.contains(e.relatedTarget as Node)) closeDropdown();
+        const next = e.relatedTarget as Node | null;
+        if (wrapRef.current?.contains(next)) return;
+        if (next instanceof Node && document.querySelector('[data-factura-product-combo-portal="true"]')?.contains(next)) return;
+        closeDropdown();
     }
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -139,8 +164,18 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
                 autoComplete="off"
                 spellCheck={false}
             />
-            {open && (
-                <div className="absolute left-0 top-full z-50 min-w-[300px] mt-0.5 rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden">
+            {open && anchor && typeof document !== "undefined" && createPortal(
+                <div
+                    data-factura-product-combo-portal="true"
+                    style={{
+                        position: "fixed",
+                        left: anchor.left,
+                        top: anchor.top,
+                        width: anchor.width,
+                        zIndex: 100,
+                    }}
+                    className="rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden"
+                >
                     {filtered.length === 0 ? (
                         <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Sin resultados</div>
                     ) : (
@@ -175,7 +210,8 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
                             + Crear{search ? ` "${search}"` : ' nuevo producto'}
                         </button>
                     )}
-                </div>
+                </div>,
+                document.body,
             )}
         </div>
     );
