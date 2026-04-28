@@ -92,6 +92,49 @@ interface TenantMember {
     joinedAt: string | null;
 }
 
+interface InboxEmail {
+    id:          string;
+    from:        string;
+    to:          string[];
+    cc:          string[];
+    bcc:         string[];
+    reply_to:    string[];
+    subject:     string | null;
+    created_at:  string;
+    message_id:  string;
+    attachments: Array<{
+        id:           string;
+        filename:     string | null;
+        content_type: string;
+    }>;
+}
+
+interface InboxDetail {
+    email: {
+        id:         string;
+        created_at: string;
+        from:       string;
+        to:         string[];
+        cc:         string[];
+        bcc:        string[];
+        reply_to:   string[];
+        subject:    string | null;
+        html:       string | null;
+        text:       string | null;
+        headers:    Record<string, string>;
+        message_id: string;
+        raw:        { download_url: string; expires_at: string };
+    };
+    attachments: Array<{
+        id:           string;
+        filename:     string | null;
+        size:         number;
+        content_type: string;
+        download_url: string;
+        expires_at:   string;
+    }>;
+}
+
 // ============================================================================
 // HELPERS
 // ============================================================================
@@ -131,7 +174,7 @@ function formatDate(iso?: string | null) {
 // ============================================================================
 
 export default function AdminPage() {
-    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans" | "subscriptions">("payments");
+    const [tab, setTab] = useState<"payments" | "tenants" | "admins" | "plans" | "subscriptions" | "inbox">("payments");
 
     // Data
     const [summary,  setSummary]  = useState<PlatformSummary | null>(null);
@@ -219,6 +262,17 @@ export default function AdminPage() {
     const [newAdminOk,       setNewAdminOk]       = useState(false);
     const [deletingAdmin,    setDeletingAdmin]    = useState<string | null>(null);
     const [confirmDeleteAdmin, setConfirmDeleteAdmin] = useState<string | null>(null);
+
+    // Inbox (kontave.com received emails via Resend)
+    const [inboxEmails,        setInboxEmails]        = useState<InboxEmail[]>([]);
+    const [inboxLoaded,        setInboxLoaded]        = useState(false);
+    const [inboxLoading,       setInboxLoading]       = useState(false);
+    const [inboxError,         setInboxError]         = useState<string | null>(null);
+    const [selectedInboxId,    setSelectedInboxId]    = useState<string | null>(null);
+    const [inboxDetail,        setInboxDetail]        = useState<InboxDetail | null>(null);
+    const [inboxDetailLoading, setInboxDetailLoading] = useState(false);
+    const [inboxDetailError,   setInboxDetailError]   = useState<string | null>(null);
+    const [inboxView,          setInboxView]          = useState<"html" | "text">("html");
 
     // ── Load ──────────────────────────────────────────────────────────────
     const loadAll = useCallback(async () => {
@@ -388,6 +442,54 @@ export default function AdminPage() {
         if (tab === "admins" && !adminsLoaded) loadAdmins();
     }, [tab, adminsLoaded, loadAdmins]);
 
+    // ── Inbox (received emails on kontave.com) ────────────────────────────
+    const loadInbox = useCallback(async () => {
+        setInboxLoading(true);
+        setInboxError(null);
+        try {
+            const res  = await fetch("/api/admin/inbox");
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            setInboxEmails(Array.isArray(json.data) ? json.data : []);
+            setInboxLoaded(true);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : "Error al cargar bandeja.";
+            setInboxError(msg);
+            notify.error(msg);
+        } finally {
+            setInboxLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (tab === "inbox" && !inboxLoaded) loadInbox();
+    }, [tab, inboxLoaded, loadInbox]);
+
+    const openInboxEmail = useCallback(async (id: string) => {
+        if (selectedInboxId === id) {
+            setSelectedInboxId(null);
+            setInboxDetail(null);
+            return;
+        }
+        setSelectedInboxId(id);
+        setInboxDetail(null);
+        setInboxDetailError(null);
+        setInboxDetailLoading(true);
+        try {
+            const res  = await fetch(`/api/admin/inbox/${id}`);
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            setInboxDetail(json.data as InboxDetail);
+            // Default to whichever exists; prefer html.
+            setInboxView((json.data?.email?.html ? "html" : "text"));
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : "Error al cargar el correo.";
+            setInboxDetailError(msg);
+        } finally {
+            setInboxDetailLoading(false);
+        }
+    }, [selectedInboxId]);
+
     // ── Create admin ──────────────────────────────────────────────────────
     const handleCreateAdmin = useCallback(async () => {
         setNewAdminError(null);
@@ -530,6 +632,9 @@ export default function AdminPage() {
                             </button>
                             <button className={tabBtn(tab === "subscriptions")} onClick={() => setTab("subscriptions")}>
                                 Suscripciones
+                            </button>
+                            <button className={tabBtn(tab === "inbox")} onClick={() => setTab("inbox")}>
+                                Inbox
                             </button>
                         </div>
 
@@ -1455,6 +1560,222 @@ export default function AdminPage() {
                                                     </td>
                                                 </tr>
                                             ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── INBOX TAB ───────────────────────────────────────────── */}
+                        {tab === "inbox" && (
+                            <div className="space-y-4">
+
+                                {/* Header con dominio + recargar */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
+                                            Bandeja entrante
+                                        </p>
+                                        <p className="font-mono text-[12px] text-foreground">
+                                            <span className="text-[var(--text-tertiary)]">@</span>kontave.com
+                                            <span className="ml-2 text-[10px] text-[var(--text-tertiary)] tabular-nums">
+                                                {inboxEmails.length} {inboxEmails.length === 1 ? "correo" : "correos"}
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setInboxLoaded(false); loadInbox(); }}
+                                        disabled={inboxLoading}
+                                        className="h-8 px-3 rounded-lg border border-border-light font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium disabled:opacity-50 transition-colors flex items-center gap-1.5"
+                                    >
+                                        {inboxLoading && <Spinner />}
+                                        {inboxLoading ? "Cargando…" : "Recargar"}
+                                    </button>
+                                </div>
+
+                                {inboxError && (
+                                    <div className="border border-red-500/20 bg-red-500/[0.04] rounded-xl px-4 py-3">
+                                        <p className="font-mono text-[10px] text-red-500">{inboxError}</p>
+                                    </div>
+                                )}
+
+                                {/* Lista */}
+                                <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="border-b border-border-light bg-surface-2">
+                                                {["Recibido", "De", "Para", "Asunto", "Adj."].map((h) => (
+                                                    <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                                        {h}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {inboxLoading && inboxEmails.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-10 text-center">
+                                                        <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-[var(--text-disabled)]">
+                                                            <Spinner /> Cargando bandeja…
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ) : inboxEmails.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                        Sin correos recibidos
+                                                    </td>
+                                                </tr>
+                                            ) : inboxEmails.map((m) => {
+                                                const isSel = selectedInboxId === m.id;
+                                                return (
+                                                    <Fragment key={m.id}>
+                                                        <tr
+                                                            onClick={() => openInboxEmail(m.id)}
+                                                            className={[
+                                                                "border-b border-border-light/60 last:border-b-0 cursor-pointer transition-colors",
+                                                                isSel ? "bg-primary-500/[0.05]" : "hover:bg-foreground/[0.02]",
+                                                            ].join(" ")}
+                                                        >
+                                                            <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)] whitespace-nowrap">
+                                                                {new Date(m.created_at).toLocaleString("es-VE", {
+                                                                    day: "2-digit", month: "short",
+                                                                    hour: "2-digit", minute: "2-digit",
+                                                                })}
+                                                            </td>
+                                                            <td className="px-3 py-3 font-mono text-[11px] text-foreground max-w-[200px] truncate">
+                                                                {m.from}
+                                                            </td>
+                                                            <td className="px-3 py-3 font-mono text-[11px] text-[var(--text-secondary)] max-w-[180px] truncate">
+                                                                {m.to.join(", ")}
+                                                            </td>
+                                                            <td className="px-3 py-3 font-mono text-[11px] text-foreground max-w-[280px] truncate">
+                                                                {m.subject || <span className="italic text-[var(--text-tertiary)]">(sin asunto)</span>}
+                                                            </td>
+                                                            <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-tertiary)] tabular-nums text-center">
+                                                                {m.attachments.length || "—"}
+                                                            </td>
+                                                        </tr>
+                                                        {isSel && (
+                                                            <tr className="bg-surface-2/40 border-b border-border-light/60">
+                                                                <td colSpan={5} className="px-4 py-4">
+                                                                    {inboxDetailLoading ? (
+                                                                        <div className="flex items-center gap-2 font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                                                                            <Spinner /> Cargando correo…
+                                                                        </div>
+                                                                    ) : inboxDetailError ? (
+                                                                        <p className="font-mono text-[10px] text-red-500">{inboxDetailError}</p>
+                                                                    ) : inboxDetail ? (
+                                                                        <div className="space-y-3">
+                                                                            {/* Metadatos */}
+                                                                            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 font-mono text-[10px]">
+                                                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.15em]">De</span>
+                                                                                <span className="text-foreground">{inboxDetail.email.from}</span>
+                                                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.15em]">Para</span>
+                                                                                <span className="text-foreground">{inboxDetail.email.to.join(", ")}</span>
+                                                                                {inboxDetail.email.cc.length > 0 && (
+                                                                                    <>
+                                                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.15em]">CC</span>
+                                                                                        <span className="text-foreground">{inboxDetail.email.cc.join(", ")}</span>
+                                                                                    </>
+                                                                                )}
+                                                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.15em]">Asunto</span>
+                                                                                <span className="text-foreground">{inboxDetail.email.subject || "(sin asunto)"}</span>
+                                                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.15em]">Recibido</span>
+                                                                                <span className="text-[var(--text-secondary)]">{new Date(inboxDetail.email.created_at).toLocaleString("es-VE")}</span>
+                                                                            </div>
+
+                                                                            {/* Toggle html/text + raw */}
+                                                                            <div className="flex items-center gap-2">
+                                                                                {inboxDetail.email.html && (
+                                                                                    <button
+                                                                                        onClick={() => setInboxView("html")}
+                                                                                        className={[
+                                                                                            "h-6 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.15em] transition-colors",
+                                                                                            inboxView === "html"
+                                                                                                ? "bg-foreground/[0.08] border-border-medium text-foreground"
+                                                                                                : "border-border-light text-[var(--text-tertiary)] hover:text-foreground",
+                                                                                        ].join(" ")}
+                                                                                    >
+                                                                                        HTML
+                                                                                    </button>
+                                                                                )}
+                                                                                {inboxDetail.email.text && (
+                                                                                    <button
+                                                                                        onClick={() => setInboxView("text")}
+                                                                                        className={[
+                                                                                            "h-6 px-2 rounded border font-mono text-[9px] uppercase tracking-[0.15em] transition-colors",
+                                                                                            inboxView === "text"
+                                                                                                ? "bg-foreground/[0.08] border-border-medium text-foreground"
+                                                                                                : "border-border-light text-[var(--text-tertiary)] hover:text-foreground",
+                                                                                        ].join(" ")}
+                                                                                    >
+                                                                                        Texto
+                                                                                    </button>
+                                                                                )}
+                                                                                {inboxDetail.email.raw?.download_url && (
+                                                                                    <a
+                                                                                        href={inboxDetail.email.raw.download_url}
+                                                                                        target="_blank" rel="noopener noreferrer"
+                                                                                        className="h-6 px-2 rounded border border-border-light font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium inline-flex items-center"
+                                                                                    >
+                                                                                        Raw .eml
+                                                                                    </a>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Body */}
+                                                                            <div className="border border-border-light rounded-lg bg-surface-1 overflow-hidden">
+                                                                                {inboxView === "html" && inboxDetail.email.html ? (
+                                                                                    <iframe
+                                                                                        sandbox=""
+                                                                                        srcDoc={inboxDetail.email.html}
+                                                                                        title={`Email ${inboxDetail.email.id}`}
+                                                                                        className="w-full h-[420px] bg-white"
+                                                                                    />
+                                                                                ) : inboxDetail.email.text ? (
+                                                                                    <pre className="px-4 py-3 font-mono text-[11px] text-foreground whitespace-pre-wrap break-words max-h-[420px] overflow-auto">
+                                                                                        {inboxDetail.email.text}
+                                                                                    </pre>
+                                                                                ) : (
+                                                                                    <p className="px-4 py-6 font-mono text-[10px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                                                        Sin contenido
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Adjuntos */}
+                                                                            {inboxDetail.attachments.length > 0 && (
+                                                                                <div>
+                                                                                    <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1.5">
+                                                                                        Adjuntos
+                                                                                    </p>
+                                                                                    <ul className="space-y-1">
+                                                                                        {inboxDetail.attachments.map((a) => (
+                                                                                            <li key={a.id}>
+                                                                                                <a
+                                                                                                    href={a.download_url}
+                                                                                                    target="_blank" rel="noopener noreferrer"
+                                                                                                    className="inline-flex items-center gap-2 font-mono text-[11px] text-primary-500 hover:underline"
+                                                                                                >
+                                                                                                    <span>{a.filename ?? a.id}</span>
+                                                                                                    <span className="text-[9px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">
+                                                                                                        {a.content_type} · {Math.max(1, Math.round(a.size / 1024))} KB
+                                                                                                    </span>
+                                                                                                </a>
+                                                                                            </li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </Fragment>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
