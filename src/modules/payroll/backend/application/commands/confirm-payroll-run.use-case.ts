@@ -16,16 +16,22 @@ export class ConfirmPayrollRunUseCase {
         if (!input.run.periodEnd)        return Result.fail("periodEnd is required");
         if (input.receipts.length === 0) return Result.fail("No employees to confirm");
 
-        // Prevent duplicate runs for the same period
+        // Drafts for the same period are promoted in-place by the RPC; only an
+        // already-confirmed run for the same period is a hard duplicate.
         const existing = await this.repo.findByCompany(input.run.companyId);
         if (existing.isSuccess) {
             const duplicate = existing.getValue().find(
-                (r) => r.periodStart === input.run.periodStart && r.periodEnd === input.run.periodEnd
+                (r) => r.periodStart === input.run.periodStart
+                    && r.periodEnd   === input.run.periodEnd
+                    && r.status      === "confirmed"
             );
             if (duplicate) return Result.fail("A payroll run already exists for this period.");
         }
 
-        const result = await this.repo.save(input);
+        const result = await this.repo.save({
+            ...input,
+            run: { ...input.run, status: "confirmed" },
+        });
 
         if (result.isSuccess && this.eventBus) {
             await this.eventBus.publish<PayrollConfirmedPayload>({

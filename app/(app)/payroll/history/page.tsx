@@ -118,7 +118,7 @@ function RunRow({ run, isSelected, onSelect }: {
                     {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
                 </span>
                 <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
-                    Confirmada: {formatDateTime(run.confirmedAt)}
+                    {run.status === "draft" ? "Guardado" : "Confirmada"}: {formatDateTime(run.confirmedAt)}
                 </span>
             </div>
             <div className="flex items-center gap-6 tabular-nums">
@@ -126,8 +126,15 @@ function RunRow({ run, isSelected, onSelect }: {
                     <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
                     <span className="font-mono text-[13px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
                 </div>
-                <span className="font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border badge-success">
-                    {run.status}
+                <span
+                    className={[
+                        "font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                        run.status === "draft"
+                            ? "border-border-medium bg-foreground/[0.05] text-[var(--text-secondary)]"
+                            : "badge-success",
+                    ].join(" ")}
+                >
+                    {run.status === "draft" ? "Borrador" : "Confirmada"}
                 </span>
                 <svg
                     width="12" height="12" viewBox="0 0 12 12" fill="none"

@@ -5,6 +5,7 @@
 // ============================================================================
 
 import React, { useMemo, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
 import type { Column }   from "@/src/shared/frontend/components/base-table";
 import { BaseInput }     from "@/src/shared/frontend/components/base-input";
@@ -558,6 +559,7 @@ export interface PayrollEmployeeTableProps {
     empLoading:               boolean;
     empError:                 string | null;
     onConfirm?:               (results: EmployeeResult[]) => Promise<string | null>;
+    onSaveDraft?:             (results: EmployeeResult[]) => Promise<{ runId: string | null; error: string | null }>;
     earningRows:              EarningRow[];
     deductionRows:            DeductionRow[];
     bonusRows:                BonusRow[];
@@ -583,7 +585,7 @@ export interface PayrollEmployeeTableProps {
 }
 
 export const PayrollEmployeeTable = ({
-    employees, empLoading, empError, onConfirm,
+    employees, empLoading, empError, onConfirm, onSaveDraft,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     diasUtilidades, diasBonoVacacional,
     horasExtrasGlobal = [], salarioMinimo = 0,
@@ -600,6 +602,8 @@ export const PayrollEmployeeTable = ({
     const [confirmOk,        setConfirmOk]        = useState(false);
     const [showModal,        setShowModal]        = useState(false);
     const [includeVacaciones, setIncludeVacaciones] = useState(true);
+    const [draftSavedAt,     setDraftSavedAt]     = useState<Date | null>(null);
+    const [draftError,       setDraftError]       = useState<string | null>(null);
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback(
@@ -644,7 +648,20 @@ export const PayrollEmployeeTable = ({
                 logoUrl: companyLogoUrl, showLogoInPdf, pdfVisibility,
             }
         );
-    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility]);
+
+        // Auto-guardar como borrador para que el usuario tenga respaldo en BD.
+        // Si el período ya está confirmado no se reescribe nada (es inmutable).
+        if (!onSaveDraft || periodAlreadyConfirmed) return;
+        const { error } = await onSaveDraft(results);
+        if (error) {
+            setDraftError(error);
+            toast.error(`Recibo exportado, pero no se pudo guardar borrador: ${error}`);
+        } else {
+            setDraftSavedAt(new Date());
+            setDraftError(null);
+            toast.success("Recibo exportado y nómina guardada como borrador");
+        }
+    }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed]);
 
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
@@ -907,6 +924,20 @@ export const PayrollEmployeeTable = ({
                         </svg>
                         Exportar PDF
                     </button>
+                    {draftError ? (
+                        <span
+                            title={draftError}
+                            className="h-8 px-2 inline-flex items-center rounded-lg border border-red-500/30 bg-red-500/10 text-red-500 font-mono text-[11px] uppercase tracking-[0.16em]"
+                        >
+                            Borrador no guardado
+                        </span>
+                    ) : draftSavedAt ? (
+                        <span
+                            className="h-8 px-2 inline-flex items-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.16em]"
+                        >
+                            Borrador guardado · {draftSavedAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                    ) : null}
                     {onConfirm && (
                         <button
                             onClick={() => { setConfirmError(null); setShowModal(true); }}

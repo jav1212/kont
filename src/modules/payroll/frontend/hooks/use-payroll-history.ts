@@ -44,6 +44,11 @@ export interface ConfirmPayload {
     receipts: ConfirmReceiptPayload[];
 }
 
+export interface SaveDraftResult {
+    runId: string | null;
+    error: string | null;
+}
+
 interface UsePayrollHistoryResult {
     runs:        PayrollRun[];
     loading:     boolean;
@@ -51,6 +56,7 @@ interface UsePayrollHistoryResult {
     reload:      () => Promise<void>;
     getReceipts: (runId: string) => Promise<{ receipts: PayrollReceipt[]; error: string | null }>;
     confirm:     (payload: ConfirmPayload) => Promise<string | null>;
+    saveDraft:   (payload: ConfirmPayload) => Promise<SaveDraftResult>;
 }
 
 // ============================================================================
@@ -96,6 +102,18 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         return null;
     }, [reload]);
 
+    const saveDraft = useCallback(async (payload: ConfirmPayload): Promise<SaveDraftResult> => {
+        const { ok, json } = await fetchJson("/api/payroll/runs/draft", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(payload),
+        });
+        if (!ok) return { runId: null, error: json.error ?? "Error al guardar borrador" };
+        await reload();
+        const data = json.data as { runId?: string } | undefined;
+        return { runId: data?.runId ?? null, error: null };
+    }, [reload]);
+
     return {
         runs: companyId ? runs : [],
         loading: companyId ? loading : false,
@@ -103,5 +121,6 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         reload,
         getReceipts,
         confirm,
+        saveDraft,
     };
 }

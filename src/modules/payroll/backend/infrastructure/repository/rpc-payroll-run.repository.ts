@@ -45,9 +45,10 @@ export class RpcPayrollRunRepository implements IPayrollRunRepository {
         try {
             const { data, error } = await this.source.instance
                 .rpc('tenant_payroll_run_save', {
-                    p_user_id: this.userId,
-                    p_run:     input.run,
+                    p_user_id:  this.userId,
+                    p_run:      input.run,
                     p_receipts: input.receipts,
+                    p_status:   input.run.status ?? 'confirmed',
                 });
             if (error) return Result.fail(error.message);
             return Result.success(data as string);

@@ -2,12 +2,15 @@ import { Result }         from "@/src/core/domain/result";
 import { PayrollRun }     from "../payroll-run";
 import { PayrollReceipt } from "../payroll-receipt";
 
+export type PayrollRunStatus = "draft" | "confirmed";
+
 export interface SavePayrollRunInput {
     run: {
         companyId:   string;
         periodStart: string;
         periodEnd:   string;
         exchangeRate: number;
+        status?:     PayrollRunStatus;  // defaults to "confirmed" when omitted
     };
     receipts: Omit<PayrollReceipt, "id" | "runId" | "createdAt">[];
 }

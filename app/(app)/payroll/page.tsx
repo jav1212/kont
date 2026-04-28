@@ -327,7 +327,7 @@ function DayStat({ label, value, muted }: { label: string; value: number; muted?
 export default function PayrollCalculator() {
     const { companyId, company } = useCompany();
     const { employees, loading: empLoading, error: empError } = useEmployee(companyId);
-    const { confirm, runs } = usePayrollHistory(companyId);
+    const { confirm, saveDraft, runs } = usePayrollHistory(companyId);
     const { settings: savedSettings, loading: settingsLoading, loadedAt: settingsLoadedAt, save: saveSettings } = usePayrollSettings(companyId);
 
     // ── Quincena / Semanal ─────────────────────────────────────────────────
@@ -596,19 +596,23 @@ export default function PayrollCalculator() {
     const addBonus = useCallback((b: BonusRow) => setBonusRows((rs) => [...rs, b]), []);
 
     // ── Duplicate period check ─────────────────────────────────────────────
+    // Sólo bloquea cuando hay una nómina **confirmada** para el período;
+    // los borradores se sobrescriben en cada export.
     const periodAlreadyConfirmed = useMemo(
         () => runs.some(
             (r) => r.companyId === companyId &&
                 r.periodStart === activePeriodInfo.startDate &&
-                r.periodEnd === activePeriodInfo.endDate,
+                r.periodEnd === activePeriodInfo.endDate &&
+                r.status === "confirmed",
         ),
         [runs, companyId, activePeriodInfo],
     );
 
-    // ── Confirm ────────────────────────────────────────────────────────────
-    const handleConfirm = useCallback(async (results: EmployeeResult[]): Promise<string | null> => {
-        if (!companyId) return "No hay empresa seleccionada";
-        return confirm({
+
+    // ── Confirm / Save draft ───────────────────────────────────────────────
+    const buildPayload = useCallback((results: EmployeeResult[]) => {
+        if (!companyId) return null;
+        return {
             run: {
                 companyId,
                 periodStart: activePeriodInfo.startDate,
@@ -637,8 +641,20 @@ export default function PayrollCalculator() {
                     salarioIntegral: r.salarioIntegral,
                 },
             })),
-        });
-    }, [companyId, activePeriodInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum, confirm]);
+        };
+    }, [companyId, activePeriodInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum]);
+
+    const handleConfirm = useCallback(async (results: EmployeeResult[]): Promise<string | null> => {
+        const payload = buildPayload(results);
+        if (!payload) return "No hay empresa seleccionada";
+        return confirm(payload);
+    }, [buildPayload, confirm]);
+
+    const handleSaveDraft = useCallback(async (results: EmployeeResult[]): Promise<{ runId: string | null; error: string | null }> => {
+        const payload = buildPayload(results);
+        if (!payload) return { runId: null, error: "No hay empresa seleccionada" };
+        return saveDraft(payload);
+    }, [buildPayload, saveDraft]);
 
     // ── Quincena buttons ───────────────────────────────────────────────────
     const qBtnCls = (active: boolean) => [
@@ -1215,6 +1231,7 @@ export default function PayrollCalculator() {
                                 empLoading={empLoading}
                                 empError={empError}
                                 onConfirm={handleConfirm}
+                                onSaveDraft={handleSaveDraft}
                                 earningRows={earningRows}
                                 deductionRows={deductionRows}
                                 bonusRows={bonusRows}
