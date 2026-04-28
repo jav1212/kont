@@ -9,6 +9,9 @@ import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payr
 import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import { generatePayrollPdf } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
 import type { PdfEmployeeResult } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
+import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
+
+type HistoryTab = "payroll" | "cesta";
 
 // ============================================================================
 // HELPERS
@@ -231,6 +234,8 @@ export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
     const { runs, loading, getReceipts } = usePayrollHistory(companyId);
 
+    const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
+
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
@@ -262,13 +267,14 @@ export default function PayrollHistoryPage() {
         });
     }, [selectedRun, receipts, company]);
 
+    const subtitle = activeTab === "payroll"
+        ? (company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados")
+        : (company ? `Cesta ticket · ${company.name}` : "Cesta ticket");
+
     return (
         <div className="min-h-full bg-surface-2 flex flex-col">
-            <PageHeader
-                title="Historial de Nómina"
-                subtitle={company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados"}
-            >
-                {selectedRun && receipts.length > 0 && (
+            <PageHeader title="Historial de Nómina" subtitle={subtitle}>
+                {activeTab === "payroll" && selectedRun && receipts.length > 0 && (
                     <div className="flex items-center gap-2">
                         <BaseButton.Root
                             variant="primary"
@@ -292,42 +298,81 @@ export default function PayrollHistoryPage() {
 
             <div className="flex-1 overflow-y-auto p-8">
                 <div className="max-w-[1100px] mx-auto space-y-5">
-                    {/* Content */}
-                    {loading ? (
-                        <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl bg-surface-1">
-                            <Spinner />
-                            <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
-                        </div>
-                    ) : runs.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3 bg-surface-1">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                            </svg>
-                            <span className="font-mono text-[13px] uppercase tracking-widest">Sin nóminas confirmadas</span>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                                {runs.map((run) => (
-                                    <RunRow
-                                        key={run.id}
-                                        run={run}
-                                        isSelected={selectedRunId === run.id}
-                                        onSelect={handleSelectRun}
-                                    />
-                                ))}
-                            </div>
+                    <HistoryTabs active={activeTab} onChange={setActiveTab} />
 
-                            {selectedRunId && (
-                                <ReceiptsPanel
-                                    receipts={receipts}
-                                    loading={receiptsLoading}
-                                />
-                            )}
-                        </div>
+                    {activeTab === "payroll" ? (
+                        loading ? (
+                            <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl bg-surface-1">
+                                <Spinner />
+                                <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
+                            </div>
+                        ) : runs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3 bg-surface-1">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                                </svg>
+                                <span className="font-mono text-[13px] uppercase tracking-widest">Sin nóminas confirmadas</span>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                                    {runs.map((run) => (
+                                        <RunRow
+                                            key={run.id}
+                                            run={run}
+                                            isSelected={selectedRunId === run.id}
+                                            onSelect={handleSelectRun}
+                                        />
+                                    ))}
+                                </div>
+
+                                {selectedRunId && (
+                                    <ReceiptsPanel
+                                        receipts={receipts}
+                                        loading={receiptsLoading}
+                                    />
+                                )}
+                            </div>
+                        )
+                    ) : (
+                        <CestaTicketHistoryView
+                            companyId={companyId}
+                            company={company ?? null}
+                        />
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+function HistoryTabs({ active, onChange }: {
+    active: HistoryTab;
+    onChange: (t: HistoryTab) => void;
+}) {
+    const tabs: { id: HistoryTab; label: string }[] = [
+        { id: "payroll", label: "Nóminas" },
+        { id: "cesta",   label: "Cesta Ticket" },
+    ];
+    return (
+        <div className="flex items-end border-b border-border-light gap-6">
+            {tabs.map((t) => {
+                const isActive = active === t.id;
+                return (
+                    <button
+                        key={t.id}
+                        onClick={() => onChange(t.id)}
+                        className={[
+                            "relative pb-2.5 -mb-px font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                            isActive
+                                ? "text-foreground border-b-2 border-primary-500"
+                                : "text-[var(--text-tertiary)] border-b-2 border-transparent hover:text-foreground",
+                        ].join(" ")}
+                    >
+                        {t.label}
+                    </button>
+                );
+            })}
         </div>
     );
 }

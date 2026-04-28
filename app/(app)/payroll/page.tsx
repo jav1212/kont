@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Receipt } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Receipt, Save } from "lucide-react";
 import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { notify } from "@/src/shared/frontend/notify";
 import { useGuidedPayrollState } from "@/src/modules/payroll/frontend/hooks/use-guided-payroll-state";
+import {
+    useCestaTicketHistory,
+    type CestaTicketPayload,
+} from "@/src/modules/payroll/frontend/hooks/use-cesta-ticket-history";
 import {
     GuidedStepperHeader,
     type StepDef,
@@ -41,11 +46,59 @@ export default function PayrollCalculatorPage() {
         activePeriodInfo,
         employees,
         company,
+        companyId,
         bcvRate,
         showCestaTicket,
         cestaTicketUSD,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
+
+    const {
+        runs: ctRuns,
+        saveDraft: saveCtDraft,
+        confirm: confirmCt,
+    } = useCestaTicketHistory(companyId);
+
+    const cestaTicketAlreadyConfirmed = useMemo(
+        () =>
+            ctRuns.some(
+                (r) =>
+                    r.companyId === companyId &&
+                    r.periodStart === activePeriodInfo.startDate &&
+                    r.periodEnd === activePeriodInfo.endDate &&
+                    r.status === "confirmed",
+            ),
+        [ctRuns, companyId, activePeriodInfo],
+    );
+
+    const [savingCtDraft, setSavingCtDraft]   = useState(false);
+    const [confirmingCt, setConfirmingCt]     = useState(false);
+
+    const buildCtPayload = useCallback((): CestaTicketPayload | null => {
+        if (!companyId) return null;
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) return null;
+        const montoUsd = parseFloat(cestaTicketUSD) || 40;
+        const montoVes = montoUsd * bcvRate;
+        return {
+            run: {
+                companyId,
+                periodStart:  activePeriodInfo.startDate,
+                periodEnd:    activePeriodInfo.endDate,
+                montoUsd,
+                exchangeRate: bcvRate,
+            },
+            receipts: active.map((e) => ({
+                companyId,
+                employeeId:     e.cedula,
+                employeeCedula: e.cedula,
+                employeeNombre: e.nombre,
+                employeeCargo:  e.cargo,
+                montoUsd,
+                montoVes,
+            })),
+        };
+    }, [companyId, employees, cestaTicketUSD, bcvRate, activePeriodInfo]);
 
     const handleCestaTicketPdf = () => {
         const active = employees.filter((e) => e.estado === "activo");
@@ -63,6 +116,24 @@ export default function PayrollCalculatorPage() {
         );
     };
 
+    const handleSaveCestaTicketDraft = async () => {
+        const payload = buildCtPayload();
+        if (!payload) { notify.error("No hay empleados activos para guardar"); return; }
+        setSavingCtDraft(true);
+        const { runId } = await saveCtDraft(payload);
+        setSavingCtDraft(false);
+        if (runId) notify.success("Borrador de cesta ticket guardado");
+    };
+
+    const handleConfirmCestaTicket = async () => {
+        const payload = buildCtPayload();
+        if (!payload) { notify.error("No hay empleados activos para confirmar"); return; }
+        setConfirmingCt(true);
+        const ok = await confirmCt(payload);
+        setConfirmingCt(false);
+        if (ok) notify.success("Cesta ticket confirmada");
+    };
+
     return (
         <DesktopOnlyGuard>
             <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
@@ -78,14 +149,38 @@ export default function PayrollCalculatorPage() {
                 >
                     <div className="flex items-center gap-3">
                         {showCestaTicket && (
-                            <BaseButton.Root
-                                variant="secondary"
-                                size="sm"
-                                onClick={handleCestaTicketPdf}
-                                leftIcon={<Receipt size={14} />}
-                            >
-                                Cesta Ticket
-                            </BaseButton.Root>
+                            <>
+                                <BaseButton.Root
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleSaveCestaTicketDraft}
+                                    disabled={savingCtDraft || !activos || cestaTicketAlreadyConfirmed}
+                                    leftIcon={<Save size={14} />}
+                                >
+                                    {savingCtDraft ? "Guardando..." : "Guardar borrador"}
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={handleConfirmCestaTicket}
+                                    disabled={confirmingCt || !activos || cestaTicketAlreadyConfirmed}
+                                    leftIcon={<Check size={14} />}
+                                >
+                                    {confirmingCt
+                                        ? "Confirmando..."
+                                        : cestaTicketAlreadyConfirmed
+                                            ? "Cesta ticket confirmada"
+                                            : "Confirmar cesta ticket"}
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={handleCestaTicketPdf}
+                                    leftIcon={<Receipt size={14} />}
+                                >
+                                    Cesta Ticket
+                                </BaseButton.Root>
+                            </>
                         )}
 
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2 h-8">
