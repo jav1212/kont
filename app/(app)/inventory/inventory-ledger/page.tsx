@@ -12,8 +12,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    FileText,
     Layers,
-    Printer,
     Search,
     TrendingDown,
     TrendingUp,
@@ -24,6 +24,7 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InventoryLedgerRow } from "@/src/modules/inventory/backend/domain/inventory-ledger";
+import { generateInventoryLedgerPdf } from "@/src/modules/inventory/frontend/utils/inventory-ledger-pdf";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -185,7 +186,7 @@ function TypeFilterChips({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function LibroInventariosPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const {
         inventoryLedger, loadingInventoryLedger, loadInventoryLedger,
     } = useInventory();
@@ -243,11 +244,16 @@ export default function LibroInventariosPage() {
                 <BaseButton.Root
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Printer size={13} strokeWidth={2} />}
-                    onClick={() => window.print()}
-                    disabled={inventoryLedger.length === 0 || loadingInventoryLedger}
+                    leftIcon={<FileText size={13} strokeWidth={2} />}
+                    onClick={() => generateInventoryLedgerPdf(filtered, {
+                        companyName:    company?.name ?? "Empresa",
+                        companyRif:     company?.rif,
+                        year,
+                        typeFilterLabel: typeFilter === "all" ? undefined : TYPE_LABEL[typeFilter],
+                    })}
+                    disabled={filtered.length === 0 || loadingInventoryLedger}
                 >
-                    Imprimir
+                    PDF
                 </BaseButton.Root>
                 <BaseButton.Root
                     variant="secondary"

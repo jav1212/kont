@@ -10,10 +10,10 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    FileText,
     Layers,
     PackageMinus,
     PackagePlus,
-    Printer,
     Search,
     Scale,
 } from "lucide-react";
@@ -23,6 +23,7 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { BalanceReportRow } from "@/src/modules/inventory/backend/domain/balance-report";
+import { generateBalanceReportPdf } from "@/src/modules/inventory/frontend/utils/balance-report-pdf";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ function PeriodPicker({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function BalanceReportPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const { balanceReport, loadingBalanceReport, loadBalanceReport } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
@@ -208,11 +209,15 @@ export default function BalanceReportPage() {
                 <BaseButton.Root
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Printer size={13} strokeWidth={2} />}
-                    onClick={() => window.print()}
-                    disabled={balanceReport.length === 0 || loadingBalanceReport}
+                    leftIcon={<FileText size={13} strokeWidth={2} />}
+                    onClick={() => generateBalanceReportPdf(filtered, {
+                        companyName: company?.name ?? "Empresa",
+                        companyRif:  company?.rif,
+                        period,
+                    })}
+                    disabled={filtered.length === 0 || loadingBalanceReport}
                 >
-                    Imprimir
+                    PDF
                 </BaseButton.Root>
                 <BaseButton.Root
                     variant="secondary"

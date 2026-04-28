@@ -12,8 +12,8 @@ import {
     Coins,
     Download,
     FileSpreadsheet,
+    FileText,
     Layers,
-    Printer,
     Receipt,
     Search,
 } from "lucide-react";
@@ -23,6 +23,7 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { PeriodReportRow } from "@/src/modules/inventory/backend/domain/period-report";
+import { generatePeriodReportPdf } from "@/src/modules/inventory/frontend/utils/period-report-pdf";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ function SubtotalRow({ label, rows }: { label: string; rows: PeriodReportRow[] }
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function PeriodReportPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const { periodReport, loadingPeriodReport, loadPeriodReport } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
@@ -221,11 +222,15 @@ export default function PeriodReportPage() {
                 <BaseButton.Root
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Printer size={13} strokeWidth={2} />}
-                    onClick={() => window.print()}
-                    disabled={periodReport.length === 0 || loadingPeriodReport}
+                    leftIcon={<FileText size={13} strokeWidth={2} />}
+                    onClick={() => generatePeriodReportPdf(filtered, {
+                        companyName: company?.name ?? "Empresa",
+                        companyRif:  company?.rif,
+                        period,
+                    })}
+                    disabled={filtered.length === 0 || loadingPeriodReport}
                 >
-                    Imprimir
+                    PDF
                 </BaseButton.Root>
                 <BaseButton.Root
                     variant="secondary"

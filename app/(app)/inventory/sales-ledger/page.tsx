@@ -13,11 +13,11 @@ import {
     ChevronRight,
     Coins,
     Download,
+    FileText,
     Layers,
     PackageMinus,
     Pencil,
     Plus,
-    Printer,
     RotateCcw,
     Search,
     Trash2,
@@ -31,6 +31,7 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement, MovementType } from "@/src/modules/inventory/backend/domain/movement";
+import { generateSalesLedgerPdf } from "@/src/modules/inventory/frontend/utils/sales-ledger-pdf";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -358,7 +359,7 @@ function DeleteConfirm({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function LibroSalidasPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const {
         products, movements,
         loadingProducts, loadingMovements,
@@ -482,11 +483,16 @@ export default function LibroSalidasPage() {
                 <BaseButton.Root
                     variant="ghost"
                     size="sm"
-                    leftIcon={<Printer size={13} strokeWidth={2} />}
-                    onClick={() => window.print()}
-                    disabled={inPeriod.length === 0 || loading}
+                    leftIcon={<FileText size={13} strokeWidth={2} />}
+                    onClick={() => generateSalesLedgerPdf(filtered, {
+                        companyName:     company?.name ?? "Empresa",
+                        companyRif:      company?.rif,
+                        period,
+                        productNameById,
+                    })}
+                    disabled={filtered.length === 0 || loading}
                 >
-                    Imprimir
+                    PDF
                 </BaseButton.Root>
                 <BaseButton.Root
                     variant="secondary"
