@@ -20,7 +20,6 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/payroll/tablero",           label: "Tablero",       group: null           },
         { href: "/payroll/employees",         label: "Empleados",     group: null           },
         { href: "/payroll",                   label: "Calculadora",   group: "Operaciones"  },
-        { href: "/payroll-guided",            label: "Modo guiado",   group: "Operaciones"  },
         { href: "/payroll/vacations",         label: "Vacaciones",    group: "Operaciones"  },
         { href: "/payroll/profit-sharing",    label: "Utilidades",    group: "Operaciones"  },
         { href: "/payroll/social-benefits",   label: "Prestaciones",  group: "Operaciones"  },

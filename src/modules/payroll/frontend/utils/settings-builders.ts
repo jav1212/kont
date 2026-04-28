@@ -1,9 +1,6 @@
 // Builders that translate between persisted PayrollSettings (defs without
-// runtime ids/quantities) and the runtime row shapes used by the calculator
-// (with auto-filled calendar quantities and stable ids for React keys).
-//
-// Shared by the legacy /payroll calculator and the experimental
-// /payroll-guided wizard.
+// runtime ids/quantities) and the runtime row shapes used by the /payroll
+// calculator (with auto-filled calendar quantities and stable ids for React keys).
 
 import type {
     EarningRow,

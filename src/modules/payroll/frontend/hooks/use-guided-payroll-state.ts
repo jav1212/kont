@@ -1,11 +1,9 @@
 "use client";
 
-// Hook that owns the entire calculator state for the experimental
-// /payroll-guided wizard. Mirrors what the legacy /payroll page keeps
-// inline at module scope, but exposed as a single tuple so the step
-// components can stay presentational.
+// Hook that owns the entire calculator state for the /payroll wizard.
+// Single source of truth — the page and step components stay presentational.
 //
-// Behaviour parity vs the legacy page:
+// Behaviours:
 //   - Hydrate row defs / alícuotas / cesta / PDF visibility from PayrollSettings
 //     when settingsLoadedAt advances (handles A→B→A tenant switches, REQ-008)
 //   - Auto-fill calendar earnings when period changes
