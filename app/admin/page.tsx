@@ -159,6 +159,33 @@ export default function AdminPage() {
     const [tenantActionPlanId, setTenantActionPlanId] = useState("");
     const [tenantActioning,    setTenantActioning]    = useState(false);
 
+    // Test email per-row state
+    const [testEmailState, setTestEmailState] = useState<Record<string, "idle" | "sending" | "ok" | "error">>({});
+    const [testEmailMsg,   setTestEmailMsg]   = useState<Record<string, string>>({});
+
+    const sendTestEmailToTenant = useCallback(async (tenantId: string) => {
+        setTestEmailState((s) => ({ ...s, [tenantId]: "sending" }));
+        setTestEmailMsg((m) => ({ ...m, [tenantId]: "" }));
+        try {
+            const res  = await fetch(`/api/admin/tenants/${tenantId}/send-test-email`, { method: "POST" });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+            setTestEmailState((s) => ({ ...s, [tenantId]: "ok" }));
+            setTestEmailMsg((m) => ({ ...m, [tenantId]: `Enviado a ${json?.data?.sentTo ?? "destinatario"}` }));
+            setTimeout(() => {
+                setTestEmailState((s) => ({ ...s, [tenantId]: "idle" }));
+                setTestEmailMsg((m) => ({ ...m, [tenantId]: "" }));
+            }, 4000);
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : "Fallo al enviar";
+            setTestEmailState((s) => ({ ...s, [tenantId]: "error" }));
+            setTestEmailMsg((m) => ({ ...m, [tenantId]: msg }));
+            setTimeout(() => {
+                setTestEmailState((s) => ({ ...s, [tenantId]: "idle" }));
+            }, 6000);
+        }
+    }, []);
+
     // Plans
     const [plans,        setPlans]        = useState<PlanRow[]>([]);
     const [plansLoaded,  setPlansLoaded]  = useState(false);
@@ -729,13 +756,46 @@ export default function AdminPage() {
                                                         <td className="px-3 py-3 font-mono text-[10px] text-[var(--text-secondary)]">
                                                             {formatDate(t.current_period_end)}
                                                         </td>
-                                                        <td className="px-3 py-3 text-right">
-                                                            <button
-                                                                onClick={() => { setTenantActionId(isEditing ? null : t.tenant_id); setTenantActionStatus(t.status); setTenantActionPlanId(""); }}
-                                                                className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
-                                                            >
-                                                                {isEditing ? "Cerrar" : "Editar"}
-                                                            </button>
+                                                        <td className="px-3 py-3 text-right whitespace-nowrap">
+                                                            {(() => {
+                                                                const ts = testEmailState[t.tenant_id] ?? "idle";
+                                                                const tm = testEmailMsg[t.tenant_id] ?? "";
+                                                                const disabled = ts === "sending" || !t.email;
+                                                                const labelByState: Record<string, string> = {
+                                                                    idle:    "Enviar prueba",
+                                                                    sending: "Enviando…",
+                                                                    ok:      "✓ Enviado",
+                                                                    error:   "✕ Falló",
+                                                                };
+                                                                const colorClass =
+                                                                    ts === "ok"
+                                                                        ? "border-primary-500/40 text-primary-500"
+                                                                        : ts === "error"
+                                                                            ? "border-rose-500/40 text-rose-500"
+                                                                            : "border-border-light text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium";
+                                                                return (
+                                                                    <div className="inline-flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => sendTestEmailToTenant(t.tenant_id)}
+                                                                            disabled={disabled}
+                                                                            title={tm || (t.email ? "Enviar correo de prueba al owner" : "Sin correo")}
+                                                                            className={[
+                                                                                "h-6 px-2.5 rounded-md border font-mono text-[9px] uppercase tracking-widest transition-colors disabled:opacity-50",
+                                                                                colorClass,
+                                                                                ts === "idle" ? "opacity-0 group-hover:opacity-100" : "opacity-100",
+                                                                            ].join(" ")}
+                                                                        >
+                                                                            {labelByState[ts]}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => { setTenantActionId(isEditing ? null : t.tenant_id); setTenantActionStatus(t.status); setTenantActionPlanId(""); }}
+                                                                            className="h-6 px-2.5 rounded-md border border-border-light font-mono text-[9px] uppercase tracking-widest text-[var(--text-tertiary)] hover:text-foreground hover:border-border-medium transition-colors opacity-0 group-hover:opacity-100"
+                                                                        >
+                                                                            {isEditing ? "Cerrar" : "Editar"}
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </td>
                                                     </tr>
 
