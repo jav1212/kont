@@ -28,6 +28,7 @@ import {
     type LineInput,
 } from "@/src/modules/inventory/shared/totals";
 import { HeaderAdjustmentsSection } from "@/src/modules/inventory/frontend/components/header-adjustments-section";
+import { IvaRetencionToggle } from "@/src/modules/inventory/frontend/components/iva-retencion-toggle";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -274,6 +275,7 @@ export default function NuevaFacturaPage() {
     const [periodo, setPeriodo] = useState<string>(() => date.slice(0, 7));
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
     const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
+    const [retencionIvaPct, setRetencionIvaPct] = useState<number>(0);
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
 
     const [saving, setSaving] = useState(false);
@@ -354,12 +356,13 @@ export default function NuevaFacturaPage() {
             recargoValor:   i.recargoValor ?? 0,
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct);
     const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
         descuentoHeader, recargoHeader,
         baseIVA, ivaPorAlicuota, ivaMonto, total,
+        retencionIva, totalAPagar,
     } = totals;
     const subtotal  = baseIVA;       // legacy alias used by header rollup
     const vatAmount = ivaMonto;      // legacy alias
@@ -368,9 +371,11 @@ export default function NuevaFacturaPage() {
     const baseTaxed16 = lineInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + totals.items[idx].baseIVAFinal : acc, 0);
     const vat8  = ivaPorAlicuota.reducida_8;
     const vat16 = ivaPorAlicuota.general_16;
+    const hasRetencion = retencionIvaPct > 0 && retencionIva > 0;
     const headerAdjActive =
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
-        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0);
+        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0) ||
+        retencionIvaPct > 0;
 
     const effectiveDollarRate = (() => {
         const r = parseRateStr(dollarRate);
@@ -402,7 +407,9 @@ export default function NuevaFacturaPage() {
         recargoTipo:    headerAdj.recargoTipo,
         recargoValor:   headerAdj.recargoValor,
         recargoMonto:   recargoHeader,
-    }), [companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader]);
+        retencionIvaPct,
+        retencionIvaMonto: retencionIva,
+    }), [companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -795,15 +802,23 @@ export default function NuevaFacturaPage() {
                                         )}
                                     </span>
                                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] hidden sm:inline whitespace-nowrap">
-                                        Descuento · Recargo
+                                        Descuento · Recargo · Retención
                                     </span>
                                 </button>
                                 {showHeaderAdj && (
-                                    <div className="mt-3 px-4 py-3.5 rounded-lg border border-border-light bg-surface-2/40">
-                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
-                                            Se prorratean por línea según base IVA
-                                        </p>
-                                        <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} />
+                                    <div className="mt-3 px-4 py-3.5 rounded-lg border border-border-light bg-surface-2/40 space-y-4">
+                                        <div>
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                                Se prorratean por línea según base IVA
+                                            </p>
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} />
+                                        </div>
+                                        <div className="pt-3 border-t border-border-light/60">
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                                Se aplica POST-IVA y reduce el total a pagar al proveedor
+                                            </p>
+                                            <IvaRetencionToggle value={retencionIvaPct} onChange={setRetencionIvaPct} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -968,9 +983,9 @@ export default function NuevaFacturaPage() {
                                                 {showAlicuotaBreakdown && (
                                                     <>
                                                         {baseExempt  > 0 && breakdownRow("Base exenta",       baseExempt,  { tone: "muted",   indent: true })}
-                                                        {baseTaxed8  > 0 && breakdownRow("Base gravada 8%",   baseTaxed8,  { tone: "muted",   indent: true })}
+                                                        {baseTaxed8  > 0 && breakdownRow("Base imponible 8%",  baseTaxed8,  { tone: "muted",   indent: true })}
                                                         {vat8        > 0 && breakdownRow("IVA 8%",            vat8,        { tone: "warn",    indent: true, note: "8% × base" })}
-                                                        {baseTaxed16 > 0 && breakdownRow("Base gravada 16%",  baseTaxed16, { tone: "muted",   indent: true })}
+                                                        {baseTaxed16 > 0 && breakdownRow("Base imponible", baseTaxed16, { tone: "muted",   indent: true })}
                                                         {vat16       > 0 && breakdownRow("IVA 16%",           vat16,       { tone: "neutral", indent: true, note: "16% × base" })}
                                                         {hasMultipleTaxedAlicuotas && breakdownRow("Total IVA", vatAmount, { tone: "neutral", indent: true, note: "= IVA 8% + IVA 16%" })}
                                                     </>
@@ -981,6 +996,12 @@ export default function NuevaFacturaPage() {
                                                         ? breakdownRow("IVA 8%",  vat8,  { tone: "warn",    note: "8% × base" })
                                                         : breakdownRow("IVA 16%", vat16, { tone: "neutral", note: "16% × base" })
                                                 )}
+
+                                                {hasRetencion && breakdownRow(
+                                                    `Retención IVA ${retencionIvaPct}%`,
+                                                    retencionIva,
+                                                    { tone: "neg", sign: "−", note: `${retencionIvaPct}% × IVA` },
+                                                )}
                                             </dl>
                                         </>
                                     );
@@ -989,7 +1010,9 @@ export default function NuevaFacturaPage() {
                                 {/* Total hero */}
                                 <div className="px-5 py-4 border-t border-border-default bg-surface-1">
                                     <div className="flex items-baseline justify-between">
-                                        <span className="text-foreground uppercase tracking-[0.14em] text-[10px] font-bold">Total</span>
+                                        <span className="text-foreground uppercase tracking-[0.14em] text-[10px] font-bold">
+                                            {hasRetencion ? "Total factura" : "Total"}
+                                        </span>
                                         <span className="tabular-nums font-bold text-foreground text-[22px] tracking-tight">
                                             Bs. {fmtN(total)}
                                         </span>
@@ -1006,6 +1029,30 @@ export default function NuevaFacturaPage() {
                                             Define la tasa BCV para ver el equivalente en USD.
                                         </p>
                                     ) : null}
+
+                                    {hasRetencion && (
+                                        <div className="mt-3 pt-3 border-t border-border-light">
+                                            <div className="flex items-baseline justify-between">
+                                                <span className="text-info uppercase tracking-[0.14em] text-[10px] font-bold">
+                                                    Total a pagar
+                                                </span>
+                                                <span className="tabular-nums font-bold text-info text-[18px] tracking-tight">
+                                                    Bs. {fmtN(totalAPagar)}
+                                                </span>
+                                            </div>
+                                            {effectiveDollarRate && totalAPagar > 0 && (
+                                                <div className="flex items-baseline justify-between mt-0.5">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ USD</span>
+                                                    <span className="tabular-nums text-[var(--text-tertiary)] text-[12px] font-semibold">
+                                                        ${fmtN(totalAPagar / effectiveDollarRate)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <p className="mt-1.5 font-sans text-[10px] text-[var(--text-tertiary)] leading-snug">
+                                                Bs. {fmtN(retencionIva)} se enteran a SENIAT
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </aside>

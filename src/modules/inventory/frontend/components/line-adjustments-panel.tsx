@@ -6,6 +6,7 @@
 // Pensado para colocarlo dentro de un panel colapsable por fila en pantallas
 // de movimientos manuales (entrada manual, ajustes, devoluciones).
 
+import { useEffect, useState } from "react";
 import type { LineAdjustments, AdjustmentKind } from "@/src/modules/inventory/shared/totals";
 
 interface Props {
@@ -30,6 +31,24 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
     const accentCls =
         accent === "negative" ? "text-error/80" : "text-amber-600";
 
+    // Local string state so the user can type "5," / "5." mid-typing without
+    // the controlled value snapping back to "5". We only resync from parent
+    // when its `valor` diverges from what our text already represents (e.g.
+    // initial load, reset).
+    const [text, setText] = useState<string>(() =>
+        !tipo || valor === 0 ? "" : String(valor).replace(".", ","),
+    );
+
+    useEffect(() => {
+        if (!tipo) { setText(""); return; }
+        const own = parseFloat(text.replace(",", "."));
+        const owned = Number.isFinite(own) ? own : 0;
+        if (Math.abs(owned - valor) > 1e-9) {
+            setText(valor === 0 ? "" : String(valor).replace(".", ","));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [valor, tipo]);
+
     return (
         <div className="flex items-center gap-2">
             <span className={`min-w-[88px] font-mono text-[10px] uppercase tracking-[0.12em] ${accentCls}`}>
@@ -49,10 +68,13 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
                 type="text"
                 inputMode="decimal"
                 disabled={readOnly || !tipo}
-                value={tipo ? (valor === 0 ? "" : String(valor)) : ""}
+                value={tipo ? text : ""}
                 onChange={(e) => {
-                    const parsed = parseFloat(e.target.value.replace(",", "."));
-                    onValorChange(isNaN(parsed) ? 0 : parsed);
+                    const raw = e.target.value;
+                    if (!/^\d*[.,]?\d*$/.test(raw)) return;
+                    setText(raw);
+                    const parsed = parseFloat(raw.replace(",", "."));
+                    onValorChange(Number.isFinite(parsed) ? parsed : 0);
                 }}
                 placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? "0,00 Bs" : ""}
                 className="w-24 h-7 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed focus:border-primary-500/60 transition-colors"

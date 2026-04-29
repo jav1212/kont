@@ -12,5 +12,6 @@ export interface PurchaseLedgerRow {
   iva8: number;
   taxableBase16: number;
   iva16: number;
+  ivaRetenido: number;   // monto retenido al proveedor por contribuyente especial
   total: number;
 }

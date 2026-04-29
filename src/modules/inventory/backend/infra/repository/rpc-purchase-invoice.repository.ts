@@ -39,6 +39,8 @@ interface InvoiceRpcRow {
   recargo_tipo: string | null;
   recargo_valor: number | string | null;
   recargo_monto: number | string | null;
+  retencion_iva_pct:   number | string | null;
+  retencion_iva_monto: number | string | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   created_at: string | null;
@@ -134,6 +136,7 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 recargo_tipo:    stringifyAdj(invoice.recargoTipo),
                 recargo_valor:   stringifyNum(invoice.recargoValor),
                 recargo_monto:   stringifyNum(invoice.recargoMonto),
+                retencion_iva_pct: stringifyNum(invoice.retencionIvaPct),
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -257,6 +260,8 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             recargoTipo:    adjKind(row.recargo_tipo),
             recargoValor:   num(row.recargo_valor),
             recargoMonto:   num(row.recargo_monto),
+            retencionIvaPct:   num(row.retencion_iva_pct),
+            retencionIvaMonto: num(row.retencion_iva_monto),
             confirmedAt:   row.confirmada_at ?? null,
             items,
             createdAt:     row.created_at ?? undefined,

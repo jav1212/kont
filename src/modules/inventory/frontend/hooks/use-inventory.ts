@@ -367,6 +367,20 @@ export function useInventory() {
         }
     }, []);
 
+    // After (un)confirming, the RPC returns only the header (row_to_json of
+    // facturas_compra). To keep `currentPurchaseInvoice.items` populated for
+    // the detail page's breakdown, refetch the full invoice with items.
+    const refetchFullInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
+        try {
+            const res = await apiFetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
+            const json = await res.json();
+            if (!res.ok) return null;
+            return json.data ?? null;
+        } catch {
+            return null;
+        }
+    }, []);
+
     const confirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
         try {
             const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/confirm`, {
@@ -374,15 +388,16 @@ export function useInventory() {
             });
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al confirmar factura'); return null; }
-            const confirmed: PurchaseInvoice = json.data;
-            setPurchaseInvoices((prev) => prev.map((f) => (f.id === confirmed.id ? confirmed : f)));
-            setCurrentPurchaseInvoice(confirmed);
-            return confirmed;
+            const headerOnly: PurchaseInvoice = json.data;
+            const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
+            setPurchaseInvoices((prev) => prev.map((f) => (f.id === full.id ? full : f)));
+            setCurrentPurchaseInvoice(full);
+            return full;
         } catch (e) {
             reportError('Error de red', e);
             return null;
         }
-    }, []);
+    }, [refetchFullInvoice]);
 
     const unconfirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
         try {
@@ -391,15 +406,16 @@ export function useInventory() {
             });
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al desconfirmar factura'); return null; }
-            const unconfirmed: PurchaseInvoice = json.data;
-            setPurchaseInvoices((prev) => prev.map((f) => (f.id === unconfirmed.id ? unconfirmed : f)));
-            setCurrentPurchaseInvoice(unconfirmed);
-            return unconfirmed;
+            const headerOnly: PurchaseInvoice = json.data;
+            const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
+            setPurchaseInvoices((prev) => prev.map((f) => (f.id === full.id ? full : f)));
+            setCurrentPurchaseInvoice(full);
+            return full;
         } catch (e) {
             reportError('Error de red', e);
             return null;
         }
-    }, []);
+    }, [refetchFullInvoice]);
 
     // ── Departments ────────────────────────────────────────────────────────────
 

@@ -79,6 +79,12 @@ export interface PurchaseInvoice {
   recargoValor?:   number;
   recargoMonto?:   number;
 
+  // ── Retención IVA (mig 080) — descuento POST-IVA. No toca base ni IVA débito;
+  // el monto retenido se entera a SENIAT, no al proveedor. Aplica a TODA la
+  // factura (sin discriminar alícuota). Defaults: 0 / 75 / 100.
+  retencionIvaPct?:   number;  // 0 | 75 | 100
+  retencionIvaMonto?: number;  // server-resolved Bs (= ivaMonto × pct/100)
+
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
   createdAt?: string;

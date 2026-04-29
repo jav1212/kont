@@ -25,6 +25,7 @@ import {
     type LineInput,
 } from "@/src/modules/inventory/shared/totals";
 import { HeaderAdjustmentsSection } from "@/src/modules/inventory/frontend/components/header-adjustments-section";
+import { IvaRetencionToggle } from "@/src/modules/inventory/frontend/components/iva-retencion-toggle";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 import {
     BcvRateInput,
@@ -90,6 +91,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [periodo, setPeriodo] = useState<string>("");
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
     const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
+    const [retencionIvaPct, setRetencionIvaPct] = useState<number>(0);
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
     const {
         rate: dollarRateStr,
@@ -179,9 +181,11 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             recargoTipo:    (currentPurchaseInvoice.recargoTipo ?? null) as AdjustmentKind | null,
             recargoValor:   currentPurchaseInvoice.recargoValor ?? 0,
         });
+        setRetencionIvaPct(currentPurchaseInvoice.retencionIvaPct ?? 0);
         const hasAdj =
             (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
-            (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0);
+            (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0) ||
+            (currentPurchaseInvoice.retencionIvaPct ?? 0) > 0;
         if (hasAdj) setShowHeaderAdj(true);
         const storedDecimals = currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS;
         if (currentPurchaseInvoice.dollarRate != null) {
@@ -210,13 +214,17 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
+    const retencionIva = totals.retencionIva;
+    const totalAPagar  = totals.totalAPagar;
+    const hasRetencion = retencionIvaPct > 0 && retencionIva > 0;
     const headerAdjActive =
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
-        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0);
+        (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0) ||
+        retencionIvaPct > 0;
 
     const effectiveDollarRate = (() => {
         const r = parseRateStr(dollarRateStr);
@@ -246,7 +254,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         recargoTipo:    headerAdj.recargoTipo,
         recargoValor:   headerAdj.recargoValor,
         recargoMonto:   totals.recargoHeader,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader]);
+        retencionIvaPct,
+        retencionIvaMonto: retencionIva,
+    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -648,16 +658,28 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     Ajustes de factura
                                     {headerAdjActive && !showHeaderAdj && (
                                         <span className="text-[10px] text-[var(--text-tertiary)] normal-case tracking-normal">
-                                            (descuento/recargo activos)
+                                            (descuento/recargo/retención activos)
                                         </span>
                                     )}
                                 </button>
                                 {showHeaderAdj && (
-                                    <div className="mt-3 px-4 py-3 rounded-lg border border-border-light bg-surface-2/40">
-                                        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
-                                            Se prorratean por línea según base IVA
-                                        </p>
-                                        <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} />
+                                    <div className="mt-3 px-4 py-3 rounded-lg border border-border-light bg-surface-2/40 space-y-4">
+                                        <div>
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                                Se prorratean por línea según base IVA
+                                            </p>
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} />
+                                        </div>
+                                        <div className="pt-3 border-t border-border-light/60">
+                                            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
+                                                Se aplica POST-IVA y reduce el total a pagar al proveedor
+                                            </p>
+                                            <IvaRetencionToggle
+                                                value={retencionIvaPct}
+                                                onChange={setRetencionIvaPct}
+                                                readOnly={!isDraft}
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -701,7 +723,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         recargoValor:   i.recargoValor ?? 0,
                                     },
                                 }));
-                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals);
+                                const dRetencionPct = isDraft ? retencionIvaPct : (invoice.retencionIvaPct ?? 0);
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct);
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
@@ -709,6 +732,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dVat16        = t.ivaPorAlicuota.general_16;
                                 const dVatAmount    = t.ivaMonto;
                                 const dTotal        = isDraft ? t.total : invoice.total;
+                                const dRetencionIva = isDraft ? t.retencionIva : (invoice.retencionIvaMonto ?? 0);
+                                const dTotalAPagar  = dTotal - dRetencionIva;
+                                const dHasRetencion = dRetencionPct > 0 && dRetencionIva > 0;
                                 const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
 
                                 const rateForUsd = isDraft
@@ -828,9 +854,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                     <>
                                                         <div className="col-span-3 h-1" aria-hidden="true" />
                                                         {dBaseExempt   > 0 && renderRow("Base exenta",       dBaseExempt,  { kind: "muted",   indent: true })}
-                                                        {dBaseTaxed8   > 0 && renderRow("Base gravada 8%",   dBaseTaxed8,  { kind: "muted",   indent: true })}
+                                                        {dBaseTaxed8   > 0 && renderRow("Base imponible 8%",  dBaseTaxed8,  { kind: "muted",   indent: true })}
                                                         {dVat8         > 0 && renderRow("IVA 8%",            dVat8,        { kind: "neutral", indent: true, note: "8% × base" })}
-                                                        {dBaseTaxed16  > 0 && renderRow("Base gravada 16%",  dBaseTaxed16, { kind: "muted",   indent: true })}
+                                                        {dBaseTaxed16  > 0 && renderRow("Base imponible", dBaseTaxed16, { kind: "muted",   indent: true })}
                                                         {dVat16        > 0 && renderRow("IVA 16%",           dVat16,       { kind: "neutral", indent: true, note: "16% × base" })}
                                                         {hasMultipleTaxedAlicuotas && renderRow("Total IVA", dVatAmount,   { kind: "neutral", indent: true, note: "= IVA 8% + IVA 16%" })}
                                                     </>
@@ -844,11 +870,26 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                 )}
 
                                                 <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
-                                                {renderRow("Total", dTotal, {
+                                                {renderRow(dHasRetencion ? "Total factura" : "Total", dTotal, {
                                                     kind: "total",
                                                     // Only annotate when the equation actually adds two terms.
                                                     note: hasIva ? "= base + IVA" : undefined,
                                                 })}
+
+                                                {dHasRetencion && (
+                                                    <>
+                                                        {renderRow(
+                                                            `Retención IVA ${dRetencionPct}%`,
+                                                            dRetencionIva,
+                                                            { kind: "neg", sign: "−", indent: true, note: `${dRetencionPct}% × IVA` },
+                                                        )}
+                                                        <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
+                                                        {renderRow("Total a pagar", dTotalAPagar, {
+                                                            kind: "total",
+                                                            note: "= total − retención",
+                                                        })}
+                                                    </>
+                                                )}
 
                                                 {!rateForUsd && (
                                                     <p className="col-span-3 mt-1 text-[10px] font-sans text-[var(--text-tertiary)] leading-snug text-right">

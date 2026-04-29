@@ -4,6 +4,7 @@
 // encabezado de factura. Cada uno por monto Bs o porcentaje.
 // Reutilizable entre la página de creación y la de edición de factura.
 
+import { useEffect, useState } from "react";
 import type { AdjustmentKind, HeaderAdjustments } from "@/src/modules/inventory/shared/totals";
 
 interface Props {
@@ -34,6 +35,23 @@ interface RowProps {
 function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly }: RowProps) {
     const accentCls =
         accent === "negative" ? "text-error/80" : "text-amber-600";
+
+    // Local string state so the user can type "5," / "5." mid-typing without
+    // the controlled value snapping back to "5". Hooks must be called
+    // unconditionally on every render — DO NOT put them after early returns.
+    const [text, setText] = useState<string>(() =>
+        !tipo || valor === 0 ? "" : String(valor).replace(".", ","),
+    );
+
+    useEffect(() => {
+        if (!tipo) { setText(""); return; }
+        const own = parseFloat(text.replace(",", "."));
+        const owned = Number.isFinite(own) ? own : 0;
+        if (Math.abs(owned - valor) > 1e-9) {
+            setText(valor === 0 ? "" : String(valor).replace(".", ","));
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [valor, tipo]);
 
     if (readOnly) {
         const hasValue = tipo != null && valor > 0;
@@ -67,10 +85,13 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
                 type="text"
                 inputMode="decimal"
                 disabled={!tipo}
-                value={tipo ? (valor === 0 ? "" : String(valor)) : ""}
+                value={tipo ? text : ""}
                 onChange={(e) => {
-                    const parsed = parseFloat(e.target.value.replace(",", "."));
-                    onValorChange(isNaN(parsed) ? 0 : parsed);
+                    const raw = e.target.value;
+                    if (!/^\d*[.,]?\d*$/.test(raw)) return;
+                    setText(raw);
+                    const parsed = parseFloat(raw.replace(",", "."));
+                    onValorChange(Number.isFinite(parsed) ? parsed : 0);
                 }}
                 placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? "0,00 Bs" : ""}
                 className={inputCls}

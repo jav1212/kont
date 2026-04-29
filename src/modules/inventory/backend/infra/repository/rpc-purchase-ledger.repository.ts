@@ -20,6 +20,7 @@ interface PurchaseLedgerRpcRow {
   iva_8:            number | null;
   base_gravada_16:  number | null;
   iva_16:           number | null;
+  iva_retenido:     number | null;
   total:            number | null;
 }
 
@@ -57,6 +58,7 @@ export class RpcPurchaseLedgerRepository implements IPurchaseLedgerRepository {
             iva8:          row.iva_8           ?? 0,
             taxableBase16: row.base_gravada_16 ?? 0,
             iva16:         row.iva_16          ?? 0,
+            ivaRetenido:   row.iva_retenido    ?? 0,
             total:         row.total           ?? 0,
         };
     }
