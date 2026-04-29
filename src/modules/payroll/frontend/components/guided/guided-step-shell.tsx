@@ -16,6 +16,8 @@ interface GuidedStepShellProps {
     nextDisabled?: boolean;
     /** Hide the default Anterior/Siguiente cluster — the page renders its own footer. */
     hideNav?: boolean;
+    /** Center-align the title + subtitle. Default left to preserve existing wizards. */
+    centerHeader?: boolean;
 }
 
 // Generous-padding chassis for each wizard step. Mid-aged users benefit from
@@ -30,17 +32,23 @@ export function GuidedStepShell({
     nextLabel = "Siguiente",
     nextDisabled = false,
     hideNav = false,
+    centerHeader = false,
 }: GuidedStepShellProps) {
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-4xl mx-auto px-8 py-8">
-                    <header className="mb-6">
+                    <header className={["mb-6", centerHeader ? "text-center" : ""].join(" ")}>
                         <h2 className="font-mono text-[22px] font-black tracking-tight text-foreground leading-tight">
                             {title}
                         </h2>
                         {subtitle && (
-                            <p className="font-mono text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+                            <p
+                                className={[
+                                    "font-mono text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed",
+                                    centerHeader ? "max-w-2xl mx-auto" : "",
+                                ].join(" ")}
+                            >
                                 {subtitle}
                             </p>
                         )}
