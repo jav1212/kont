@@ -10,8 +10,12 @@
 // Eliminamos el flujo de magic-link porque los escáneres de correo (Outlook
 // Safe Links, Gmail Safe Browsing, antivirus, link previewers) consumen el
 // OTP de un solo uso antes de que llegue el usuario, generando el clásico
-// `otp_expired` con menos de un minuto de vida. El código de 6 dígitos es
+// `otp_expired` con menos de un minuto de vida. El código numérico es
 // inmune: no hay link que escanear.
+//
+// El largo del código viene del setting "Mailer OTP Length" en Supabase
+// (Auth → Providers → Email). Está espejado en la constante OTP_LENGTH
+// más abajo — si cambias el setting, ajusta la constante.
 //
 // La pantalla `/reset-password` queda como redirect-shim: usuarios con
 // emails viejos (link) caen aquí y reinician el flujo.
@@ -37,6 +41,10 @@ import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser
 import { AuthShell, AuthHeader, AuthVisual, PasswordField } from "../_components/auth-shell";
 
 type Stage = "email" | "code" | "password" | "success";
+
+// Supabase's "Mailer OTP Length" (Auth → Providers → Email) define cuántos dígitos
+// trae el código del correo. Si el dashboard cambia, sólo movemos esta constante.
+const OTP_LENGTH = 8;
 
 type PwRule = { id: string; label: string; test: (p: string) => boolean };
 const PW_RULES: PwRule[] = [
@@ -86,7 +94,7 @@ export default function ForgotPasswordPage() {
     async function handleVerifyCode(e: React.FormEvent) {
         e.preventDefault();
         const token = code.replace(/\D/g, "");
-        if (token.length !== 6) { notify.error("El código debe tener 6 dígitos."); return; }
+        if (token.length !== OTP_LENGTH) { notify.error(`El código debe tener ${OTP_LENGTH} dígitos.`); return; }
 
         setLoading(true);
         const supabase = getSupabaseBrowser();
@@ -151,7 +159,7 @@ export default function ForgotPasswordPage() {
         email: {
             icon:     <Mail className="w-5 h-5 text-white" />,
             title:    "Recuperar acceso",
-            subtitle: "Ingresa tu correo y te enviaremos un código de 6 dígitos.",
+            subtitle: `Ingresa tu correo y te enviaremos un código de ${OTP_LENGTH} dígitos.`,
         },
         code: {
             icon:     <KeyRound className="w-5 h-5 text-white" />,
@@ -249,22 +257,22 @@ export default function ForgotPasswordPage() {
 
                     <form onSubmit={handleVerifyCode} className="space-y-4" noValidate>
                         <BaseInput.Field
-                            label="Código de 6 dígitos"
+                            label={`Código de ${OTP_LENGTH} dígitos`}
                             type="text"
                             inputMode="numeric"
                             autoComplete="one-time-code"
-                            placeholder="000000"
-                            maxLength={6}
+                            placeholder={"0".repeat(OTP_LENGTH)}
+                            maxLength={OTP_LENGTH}
                             value={code}
-                            onValueChange={(v) => setCode(v.replace(/\D/g, "").slice(0, 6))}
+                            onValueChange={(v) => setCode(v.replace(/\D/g, "").slice(0, OTP_LENGTH))}
                             isDisabled={loading}
-                            inputClassName="text-center text-[22px] font-bold tracking-[0.5em] tabular-nums"
+                            inputClassName="text-center text-[22px] font-bold tracking-[0.4em] tabular-nums"
                             autoFocus
                         />
 
                         <BaseButton.Root
                             type="submit"
-                            disabled={loading || code.length !== 6}
+                            disabled={loading || code.length !== OTP_LENGTH}
                             variant="primary"
                             className="w-full h-11 mt-1 rounded-xl shadow-sm"
                         >

@@ -4,7 +4,7 @@
 // RESET PASSWORD — redirect shim
 //
 // El flujo de recuperación se unificó en /forgot-password (3 etapas con OTP
-// de 6 dígitos: correo → código → contraseña). Esta página queda únicamente
+// numérico: correo → código → contraseña). Esta página queda únicamente
 // para que los usuarios con correos viejos (los que aún traen magic-link
 // apuntando a /reset-password) no caigan en un 404 — los enviamos al inicio
 // del flujo nuevo con un mensaje breve.
@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
     const visual = (
         <AuthVisual
             heading={<>Cambió el flujo,<br /><span className="text-white/70">ahora más simple.</span></>}
-            copy="Sustituimos los enlaces por un código de 6 dígitos. Te llevamos al inicio del flujo nuevo."
+            copy="Sustituimos los enlaces por un código numérico de un solo uso. Te llevamos al inicio del flujo nuevo."
         />
     );
 
@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
             <AuthHeader
                 icon={<KeyRound className="w-5 h-5 text-white" />}
                 title="Solicita un nuevo código"
-                subtitle="Actualizamos la recuperación: ahora es un código de 6 dígitos en vez de un enlace."
+                subtitle="Actualizamos la recuperación: ahora es un código numérico en vez de un enlace."
             />
 
             <div className="space-y-5">
