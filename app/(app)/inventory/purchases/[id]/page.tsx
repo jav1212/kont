@@ -1002,6 +1002,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     // Skip "Base IVA" + "IVA" rows when there's no IVA — they
                                     // would just echo the Total. Show only the Total in that case.
                                     const summaryHasIva = invoice.vatAmount > 0;
+                                    const summaryRetencionMonto = invoice.retencionIvaMonto ?? 0;
+                                    const summaryRetencionPct   = invoice.retencionIvaPct ?? 0;
+                                    const summaryHasRetencion   = summaryRetencionMonto > 0;
                                     return (
                                         <>
                                             {summaryHasIva && (
@@ -1025,6 +1028,25 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                         </div>
                                                     </div>
                                                 </>
+                                            )}
+                                            {summaryHasRetencion && (
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">
+                                                        Ret. IVA {summaryRetencionPct}%
+                                                    </span>
+                                                    <div className="text-right">
+                                                        <div className="tabular-nums text-error/80">
+                                                            <span className="opacity-60 mr-0.5">−</span>
+                                                            Bs. {fmtN(summaryRetencionMonto)}
+                                                        </div>
+                                                        {usd(summaryRetencionMonto) && (
+                                                            <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
+                                                                <span className="opacity-60 mr-0.5">−</span>
+                                                                ≈ {usd(summaryRetencionMonto)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             )}
                                             <div className="flex justify-between items-baseline font-bold pt-1">
                                                 <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
