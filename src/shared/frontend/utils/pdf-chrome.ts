@@ -69,15 +69,17 @@ export function pageBounds(doc: Doc): PageBounds {
 // ── Palette ───────────────────────────────────────────────────────────────────
 
 export const COLORS = {
-    ink:       [17,  24,  39]  as RGB,    // slate-900
-    inkMed:    [55,  65,  81]  as RGB,    // slate-700
-    muted:     [107, 114, 128] as RGB,    // slate-500
-    border:    [229, 231, 235] as RGB,    // slate-200
-    borderStr: [203, 213, 225] as RGB,    // slate-300
-    rowAlt:    [248, 250, 252] as RGB,    // slate-50
-    bandHead:  [241, 245, 249] as RGB,    // slate-100
-    white:     [255, 255, 255] as RGB,
-    orange:    [255, 74,  24]  as RGB,    // Konta brand accent (#FF4A18)
+    ink:        [17,  24,  39]  as RGB,    // slate-900
+    inkMed:     [55,  65,  81]  as RGB,    // slate-700
+    muted:      [107, 114, 128] as RGB,    // slate-500
+    border:     [229, 231, 235] as RGB,    // slate-200
+    borderStr:  [203, 213, 225] as RGB,    // slate-300
+    rowAlt:     [248, 250, 252] as RGB,    // slate-50
+    bandHead:   [241, 245, 249] as RGB,    // slate-100
+    white:      [255, 255, 255] as RGB,
+    orange:     [255, 74,  24]  as RGB,    // Konta brand accent (#FF4A18)
+    amber:      [180, 83,  9]   as RGB,    // amber-700 (text on amberLight)
+    amberLight: [254, 243, 199] as RGB,    // amber-100 (row highlight)
 };
 
 // ── Primitives ────────────────────────────────────────────────────────────────

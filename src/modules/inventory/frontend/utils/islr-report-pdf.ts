@@ -162,10 +162,14 @@ export async function generateIslrReportPdf(
                 zebra = false;
             }
 
+            const isAuto = m.type === "autoconsumo";
+            const tipoText = isAuto ? "AUTOCONSUMO" : (TIPO_LABEL[m.type] ?? m.type);
+            const tipoColor = isAuto ? COLORS.amber : COLORS.inkMed;
+
             const cells: PdfCell[] = [
                 { x: COLS.fecha.x, w: COLS.fecha.w, text: fmtDateEs(m.date),                     align: "left",  mono: true, size: 7 },
                 { x: COLS.ref.x,   w: COLS.ref.w,   text: m.reference || "—",                     align: "left",  size: 7,   color: COLORS.muted },
-                { x: COLS.tipo.x,  w: COLS.tipo.w,  text: TIPO_LABEL[m.type] ?? m.type,           align: "left",  size: 7 },
+                { x: COLS.tipo.x,  w: COLS.tipo.w,  text: tipoText,                                align: "left",  size: 7,   bold: isAuto, color: tipoColor },
                 { x: COLS.inQ.x,   w: COLS.inQ.w,   text: m.inboundQuantity > 0 ? formatQty(m.inboundQuantity) : "—",  align: "right", mono: true, size: 7.5 },
                 { x: COLS.outQ.x,  w: COLS.outQ.w,  text: m.outboundQuantity > 0 ? formatQty(m.outboundQuantity) : "—", align: "right", mono: true, size: 7.5 },
                 { x: COLS.balQ.x,  w: COLS.balQ.w,  text: formatQty(m.balanceQuantity),           align: "right", mono: true, size: 7.5, bold: true },
@@ -173,8 +177,14 @@ export async function generateIslrReportPdf(
                 { x: COLS.outC.x,  w: COLS.outC.w,  text: m.outboundCost > 0 ? formatN(m.outboundCost) : "—",   align: "right", mono: true, size: 7.5 },
                 { x: COLS.balC.x,  w: COLS.balC.w,  text: formatN(m.balanceCost),                 align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
             ];
-            drawRow(doc, y, ROW_H, cells, { zebra });
-            zebra = !zebra;
+            // Autoconsumo: fila completa pintada en ámbar suave para distinguir
+            // a primera vista del resto de salidas y devoluciones.
+            if (isAuto) {
+                drawRow(doc, y, ROW_H, cells, { zebra: true, band: COLORS.amberLight });
+            } else {
+                drawRow(doc, y, ROW_H, cells, { zebra });
+                zebra = !zebra;
+            }
             y += ROW_H;
 
             totalIn      += m.inboundQuantity;
