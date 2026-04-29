@@ -16,6 +16,7 @@ import {
     Layers,
     Receipt,
     Search,
+    Wallet,
 } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -70,19 +71,21 @@ function groupByDepartment(rows: PeriodReportRow[]) {
 
 // Numeric columns for the report table
 const NUM_COLS: { key: keyof PeriodReportRow; label: string }[] = [
-    { key: "openingInventory",      label: "Inv. Inicial"       },
-    { key: "averageCost",           label: "Costo Prom."        },
-    { key: "inbound",               label: "Entradas"           },
-    { key: "outbound",              label: "Salidas"            },
-    { key: "currentStock",          label: "Exist. Actual"      },
-    { key: "inboundCostBs",         label: "Entradas Bs"        },
-    { key: "totalOutboundNoVatBs",  label: "Salidas S/IVA Bs"   },
-    { key: "outboundCostBs",        label: "Costo Salidas Bs"   },
-    { key: "selfConsumptionCost",   label: "Autoconsumo Bs"     },
-    { key: "currentCostBs",         label: "Costo Actual Bs"    },
-    { key: "vatPercentage",         label: "IVA %"              },
-    { key: "totalVatBs",            label: "IVA Bs"             },
-    { key: "totalWithVatBs",        label: "Total c/IVA Bs"     },
+    { key: "openingInventory",         label: "Inv. Inicial"       },
+    { key: "averageCost",              label: "Costo Prom."        },
+    { key: "inbound",                  label: "Entradas"           },
+    { key: "outbound",                 label: "Salidas"            },
+    { key: "currentStock",             label: "Exist. Actual"      },
+    { key: "inboundCostBs",            label: "Entradas Bs"        },
+    { key: "totalOutboundNoVatBs",     label: "Salidas S/IVA Bs"   },
+    { key: "salesWithVatBs",           label: "Salidas C/IVA Bs"   },
+    { key: "outboundCostBs",           label: "Costo Salidas Bs"   },
+    { key: "selfConsumptionCost",      label: "Autoconsumo Bs"     },
+    { key: "selfConsumptionWithVatBs", label: "Autoc. C/IVA Bs"    },
+    { key: "currentCostBs",            label: "Costo Actual Bs"    },
+    { key: "vatPercentage",            label: "IVA %"              },
+    { key: "totalVatBs",               label: "IVA Bs"             },
+    { key: "totalWithVatBs",           label: "Total c/IVA Bs"     },
 ];
 
 // CSV export
@@ -208,9 +211,11 @@ export default function PeriodReportPage() {
     [filtered]);
 
     const headlineTotals = useMemo(() => ({
-        outboundCostBs: sumField(periodReport, "outboundCostBs"),
-        totalVatBs:     sumField(periodReport, "totalVatBs"),
-        totalWithVatBs: sumField(periodReport, "totalWithVatBs"),
+        outboundCostBs:    sumField(periodReport, "outboundCostBs"),
+        totalVatBs:        sumField(periodReport, "totalVatBs"),
+        totalWithVatBs:    sumField(periodReport, "totalWithVatBs"),
+        grossBillingBs:    sumField(periodReport, "salesWithVatBs")
+                         + sumField(periodReport, "selfConsumptionWithVatBs"),
     }), [periodReport]);
 
     return (
@@ -245,7 +250,7 @@ export default function PeriodReportPage() {
 
             <div className="px-8 py-6 space-y-6">
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <DashboardKpiCard
                         label="Productos"
                         value={periodReport.length}
@@ -271,12 +276,20 @@ export default function PeriodReportPage() {
                         sublabel="costo despachado"
                     />
                     <DashboardKpiCard
+                        label="Facturación bruta"
+                        value={`Bs ${fmtN(headlineTotals.grossBillingBs)}`}
+                        color="primary"
+                        icon={Wallet}
+                        loading={loadingPeriodReport}
+                        sublabel="salidas + autoconsumo c/IVA"
+                    />
+                    <DashboardKpiCard
                         label="IVA del período"
                         value={`Bs ${fmtN(headlineTotals.totalVatBs)}`}
                         color="default"
                         icon={Receipt}
                         loading={loadingPeriodReport}
-                        sublabel={`Total c/IVA Bs ${fmtN(headlineTotals.totalWithVatBs)}`}
+                        sublabel={`Stock c/IVA Bs ${fmtN(headlineTotals.totalWithVatBs)}`}
                     />
                 </div>
 

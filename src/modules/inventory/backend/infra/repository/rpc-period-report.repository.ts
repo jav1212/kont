@@ -50,8 +50,11 @@ export class RpcPeriodReportRepository implements IPeriodReportRepository {
     private mapToDomain(row: PeriodReportRpcRow): PeriodReportRow {
         const vatType: VatType = row.iva_tipo === 'exento' ? 'exento' : 'general';
         const vatPercentage = vatType === 'exento' ? 0 : 16;
+        const vatFactor = 1 + vatPercentage / 100;
         const currentCostBs = Number(row.costo_actual_bs ?? 0);
         const totalVatBs = currentCostBs * (vatPercentage / 100);
+        const totalOutboundNoVatBs = Number(row.total_salidas_s_iva_bs ?? 0);
+        const selfConsumptionCost = Number(row.costo_autoconsumo ?? 0);
         return {
             code:                  row.codigo               ?? '',
             name:                  row.nombre               ?? '',
@@ -64,13 +67,15 @@ export class RpcPeriodReportRepository implements IPeriodReportRepository {
             outbound:              Number(row.salidas                ?? 0),
             currentStock:          Number(row.existencia_actual      ?? 0),
             inboundCostBs:         Number(row.costo_entradas_bs      ?? 0),
-            totalOutboundNoVatBs:  Number(row.total_salidas_s_iva_bs ?? 0),
+            totalOutboundNoVatBs,
             outboundCostBs:        Number(row.costo_salidas_bs       ?? 0),
-            selfConsumptionCost:   Number(row.costo_autoconsumo      ?? 0),
+            selfConsumptionCost,
             currentCostBs,
             vatPercentage,
             totalVatBs,
             totalWithVatBs: currentCostBs + totalVatBs,
+            salesWithVatBs: totalOutboundNoVatBs * vatFactor,
+            selfConsumptionWithVatBs: selfConsumptionCost * vatFactor,
         };
     }
 }

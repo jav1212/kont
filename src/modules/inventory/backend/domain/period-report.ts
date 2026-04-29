@@ -20,6 +20,8 @@ export interface PeriodReportRow {
   selfConsumptionCost: number;
   currentCostBs: number;
   vatPercentage: number;
-  totalVatBs: number;
-  totalWithVatBs: number;
+  totalVatBs: number;                  // IVA sobre el costo de existencia (stock al cierre)
+  totalWithVatBs: number;              // currentCostBs + totalVatBs
+  salesWithVatBs: number;              // totalOutboundNoVatBs × (1 + vat/100) — facturación bruta de ventas
+  selfConsumptionWithVatBs: number;    // selfConsumptionCost × (1 + vat/100)
 }

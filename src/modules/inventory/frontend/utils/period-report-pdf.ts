@@ -25,8 +25,8 @@ import {
     type PdfCell,
 } from "@/src/shared/frontend/utils/pdf-chrome";
 
-// A3 landscape dimensions (420×297mm). Used because the report has 16
-// columns total (5 text + 11 numeric) and would not fit comfortably on A4.
+// A3 landscape dimensions (420×297mm). Used because the report has 18
+// columns total (5 text + 13 numeric) and would not fit comfortably on A4.
 const PAGE_W = 420;
 
 export interface PeriodReportPdfOpts {
@@ -43,25 +43,27 @@ interface NumColDef {
 }
 
 const NUM_COLS: NumColDef[] = [
-    { key: "openingInventory",   label: "Inv. Ini",     qty: true },
-    { key: "averageCost",        label: "C. Prom",                 },
-    { key: "inbound",            label: "Entradas",     qty: true },
-    { key: "outbound",           label: "Salidas",      qty: true },
-    { key: "currentStock",       label: "Stock",        qty: true },
-    { key: "inboundCostBs",      label: "Ent. Bs",                 },
-    { key: "outboundCostBs",     label: "C. Sal. Bs",              },
-    { key: "selfConsumptionCost",label: "Autoconsumo",             },
-    { key: "vatPercentage",      label: "IVA %",        pct: true },
-    { key: "totalVatBs",         label: "IVA Bs",                  },
-    { key: "totalWithVatBs",     label: "Tot. c/IVA",              },
+    { key: "openingInventory",         label: "Inv. Ini",     qty: true },
+    { key: "averageCost",              label: "C. Prom",                 },
+    { key: "inbound",                  label: "Entradas",     qty: true },
+    { key: "outbound",                 label: "Salidas",      qty: true },
+    { key: "currentStock",             label: "Stock",        qty: true },
+    { key: "inboundCostBs",            label: "Ent. Bs",                 },
+    { key: "salesWithVatBs",           label: "Sal. c/IVA",              },
+    { key: "outboundCostBs",           label: "C. Sal. Bs",              },
+    { key: "selfConsumptionCost",      label: "Autocons.",               },
+    { key: "selfConsumptionWithVatBs", label: "Auto. c/IVA",             },
+    { key: "vatPercentage",            label: "IVA %",        pct: true },
+    { key: "totalVatBs",               label: "IVA Bs",                  },
+    { key: "totalWithVatBs",           label: "Stock c/IVA",             },
 ];
 
 const COLS = (() => {
     const codigo = 18;
-    const dept   = 30;
-    const prov   = 32;
-    const iva    = 12;
-    const numW   = 22;
+    const dept   = 28;
+    const prov   = 30;
+    const iva    = 11;
+    const numW   = 19;
     const numTotal = NUM_COLS.length * numW;
     const producto = PAGE_W - 2 * PAGE.marginX - codigo - dept - prov - iva - numTotal;
     let x = PAGE.marginX;
