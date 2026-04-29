@@ -465,7 +465,7 @@ export default function LibroEntradasPage() {
                 subtitle={`Movimientos de entrada · ${periodLabel(period)}`}
             >
                 <BaseButton.Root
-                    variant="ghost"
+                    variant="primary"
                     size="sm"
                     leftIcon={<FileText size={13} strokeWidth={2} />}
                     onClick={() => generatePurchaseLedgerPdf(filtered, {

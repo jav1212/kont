@@ -242,7 +242,7 @@ export default function LibroInventariosPage() {
                 subtitle={`Código de Comercio Art. 36 · Ejercicio ${year}`}
             >
                 <BaseButton.Root
-                    variant="ghost"
+                    variant="primary"
                     size="sm"
                     leftIcon={<FileText size={13} strokeWidth={2} />}
                     onClick={() => generateInventoryLedgerPdf(filtered, {
