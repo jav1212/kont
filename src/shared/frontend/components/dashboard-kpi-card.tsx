@@ -103,7 +103,7 @@ export function DashboardKpiCard({
             whileHover={{ y: -2 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
             className={[
-                "relative overflow-hidden rounded-2xl border bg-surface-1 p-5",
+                "@container relative overflow-hidden rounded-2xl border bg-surface-1 p-5",
                 // shadow-lg is reserved for modals — hover on cards stays at shadow-md
                 "transition-shadow duration-300 hover:shadow-md",
                 config.border,
@@ -125,9 +125,9 @@ export function DashboardKpiCard({
                         {label}
                     </p>
 
-                    {/* ── value — kpi token: 28 px mono, tabular, tight ── */}
+                    {/* ── value — kpi token: mono, tabular, tight; scales with card width via container queries ── */}
                     <p
-                        className={`font-mono text-[28px] font-bold tabular-nums tracking-[-0.02em] leading-[1] ${config.text}`}
+                        className={`font-mono text-[18px] @[220px]:text-[20px] @[260px]:text-[22px] @[300px]:text-[24px] @[340px]:text-[26px] @[380px]:text-[28px] font-bold tabular-nums tracking-[-0.02em] leading-[1] break-words ${config.text}`}
                         aria-live="polite"
                     >
                         {loading ? (
@@ -140,7 +140,7 @@ export function DashboardKpiCard({
 
                     {/* ── sublabel — sans, muted (prose-style) ─────────── */}
                     {sublabel && !loading && (
-                        <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
+                        <p className="font-sans text-[11px] @[260px]:text-[12px] text-[var(--text-tertiary)] leading-snug break-words">
                             {sublabel}
                         </p>
                     )}
