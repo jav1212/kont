@@ -11,13 +11,13 @@ import {
     Calendar,
     ChevronLeft,
     ChevronRight,
-    Coins,
     Download,
     FileText,
     Layers,
     PackageMinus,
     Pencil,
     Plus,
+    Receipt,
     RotateCcw,
     Search,
     Trash2,
@@ -424,12 +424,18 @@ export default function LibroSalidasPage() {
         const distinct = new Set<string>();
         let qty = 0;
         let cost = 0;
+        let salesValue = 0;
         for (const m of inPeriod) {
             distinct.add(m.productId);
             qty  += m.quantity;
             cost += m.totalCost;
+            // precioVentaUnitario sólo está presente en salidas/autoconsumo (null en
+            // devoluciones a proveedor) — coincide con el target del generador de ventas.
+            if (m.precioVentaUnitario != null) {
+                salesValue += m.precioVentaUnitario * m.quantity;
+            }
         }
-        return { count: inPeriod.length, qty, cost, distinct: distinct.size };
+        return { count: inPeriod.length, qty, cost, salesValue, distinct: distinct.size };
     }, [inPeriod]);
 
     const loading = loadingProducts || loadingMovements;
@@ -534,12 +540,12 @@ export default function LibroSalidasPage() {
                         sublabel={totals.qty === 0 ? "ninguna unidad despachada" : "unidades despachadas"}
                     />
                     <DashboardKpiCard
-                        label="Costo total"
-                        value={`Bs ${fmtN(totals.cost)}`}
+                        label="Total ventas (S/IVA)"
+                        value={`Bs ${fmtN(totals.salesValue)}`}
                         color="default"
-                        icon={Coins}
+                        icon={Receipt}
                         loading={loading}
-                        sublabel="costo total de las salidas"
+                        sublabel="precio de venta × cantidad"
                     />
                     <DashboardKpiCard
                         label="Productos"
@@ -641,16 +647,17 @@ export default function LibroSalidasPage() {
                                 <thead className="sticky top-0 z-10">
                                     <tr className="border-b border-border-light bg-surface-2/80 backdrop-blur-sm">
                                         {[
-                                            { h: "Fecha",       align: "left"  },
-                                            { h: "Tipo",        align: "left"  },
-                                            { h: "Producto",    align: "left"  },
-                                            { h: "Referencia",  align: "left"  },
-                                            { h: "Cantidad",    align: "right" },
-                                            { h: "Costo unit.", align: "right" },
-                                            { h: "Costo total", align: "right" },
-                                            { h: "Saldo",       align: "right" },
-                                            { h: "",            align: "left"  },
-                                            { h: "",            align: "left"  },
+                                            { h: "Fecha",         align: "left"  },
+                                            { h: "Tipo",          align: "left"  },
+                                            { h: "Producto",      align: "left"  },
+                                            { h: "Referencia",    align: "left"  },
+                                            { h: "Cantidad",      align: "right" },
+                                            { h: "Costo unit.",   align: "right" },
+                                            { h: "Costo total",   align: "right" },
+                                            { h: "Total venta",   align: "right" },
+                                            { h: "Saldo",         align: "right" },
+                                            { h: "",              align: "left"  },
+                                            { h: "",              align: "left"  },
                                         ].map((c, i) => (
                                             <th
                                                 key={i}
@@ -689,6 +696,11 @@ export default function LibroSalidasPage() {
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right whitespace-nowrap">
                                                     {fmtN(m.totalCost)}
+                                                </td>
+                                                <td className="px-4 py-2.5 tabular-nums font-medium text-foreground text-right whitespace-nowrap">
+                                                    {m.precioVentaUnitario != null
+                                                        ? fmtN(m.precioVentaUnitario * m.quantity)
+                                                        : "—"}
                                                 </td>
                                                 <td className="px-4 py-2.5 tabular-nums text-[var(--text-secondary)] text-right whitespace-nowrap">
                                                     {fmtN0(m.balanceQuantity)}
@@ -729,6 +741,9 @@ export default function LibroSalidasPage() {
                                         <td />
                                         <td className="px-4 py-3 tabular-nums text-right text-[13px] font-bold text-foreground whitespace-nowrap">
                                             {fmtN(totals.cost)}
+                                        </td>
+                                        <td className="px-4 py-3 tabular-nums text-right text-[13px] font-bold text-foreground whitespace-nowrap">
+                                            {fmtN(totals.salesValue)}
                                         </td>
                                         <td colSpan={3} />
                                     </tr>

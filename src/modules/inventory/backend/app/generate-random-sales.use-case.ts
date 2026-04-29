@@ -110,15 +110,14 @@ export class GenerateRandomSalesUseCase
             return Result.fail('No hay productos activos con stock y costo promedio > 0');
         }
 
-        // ── Target absoluto en Bs sin IVA
-        let inboundTotal = 0;
-        if (mode === 'margen') {
-            const inRes = await this.movementRepo.getInboundTotal(companyId, period);
-            if (inRes.isFailure) return Result.fail(inRes.getError());
-            inboundTotal = inRes.getValue();
-            if (inboundTotal <= 0) {
-                return Result.fail(`No hay entradas en el periodo ${period} ${INBOUND_RECAP}: no se puede aplicar margen %`);
-            }
+        // ── Target absoluto en Bs sin IVA. Siempre se consulta el total de entradas del
+        // periodo: en mode='margen' es la base del cálculo, en mode='monto' es informativo
+        // (se muestra en el card "Entradas del periodo" del preview).
+        const inRes = await this.movementRepo.getInboundTotal(companyId, period);
+        if (inRes.isFailure) return Result.fail(inRes.getError());
+        const inboundTotal = inRes.getValue();
+        if (mode === 'margen' && inboundTotal <= 0) {
+            return Result.fail(`No hay entradas en el periodo ${period} ${INBOUND_RECAP}: no se puede aplicar margen %`);
         }
         const T = mode === 'monto' ? target : inboundTotal * (1 + target / 100);
         if (T <= 0) return Result.fail('El target resultante es menor o igual a cero');
@@ -225,9 +224,10 @@ export class GenerateRandomSalesUseCase
                 drafts.push({ product: p, quantity: qty, date });
             }
 
-            // Redistribuir drift de redondeo en cantidades enteras. Sin restricción de stock:
-            // suma a la línea con menor precio (avanza despacio, evita overshoot) o resta de
-            // la de mayor precio (deshace overshoot rápido).
+            // Redistribuir drift de redondeo en cantidades enteras. En cada paso, elegir la
+            // operación (+1 ó −1 en alguna línea) que MINIMICE |drift| y detener cuando no
+            // exista una mejora posible. Esto evita que una sola línea actúe como sumidero
+            // absorbiendo cientos de unidades de drift, manteniendo la distribución uniforme.
             const lineBs = (d: Draft) => (d.product.averageCost ?? 0) * markupFactor * d.quantity;
             const totalBs = (ds: Draft[]) => ds.reduce((s, d) => s + lineBs(d), 0);
             const precioOf = (d: Draft) => (d.product.averageCost ?? 0) * markupFactor;
@@ -236,21 +236,32 @@ export class GenerateRandomSalesUseCase
                 const drift = subT - totalBs(drafts);
                 if (Math.abs(drift) < 0.01) break;
 
-                if (drift > 0) {
-                    // Sumar 1 unidad en la línea con MENOR precio (el incremento es más fino)
-                    const candidate = drafts
-                        .filter((d) => precioOf(d) > 0)
-                        .sort((a, b) => precioOf(a) - precioOf(b))[0];
-                    if (!candidate) break;
-                    candidate.quantity += 1;
-                } else {
-                    // Restar 1 unidad en la línea con MAYOR precio y qty > 1
-                    const candidate = drafts
-                        .filter((d) => d.quantity > 1)
-                        .sort((a, b) => precioOf(b) - precioOf(a))[0];
-                    if (!candidate) break;
-                    candidate.quantity -= 1;
+                let best: { idx: number; delta: 1 | -1 } | null = null;
+                let bestAbs = Math.abs(drift);
+
+                for (let i = 0; i < drafts.length; i++) {
+                    const p = precioOf(drafts[i]);
+                    if (p <= 0) continue;
+
+                    // Probar +1: drift baja en p
+                    const absAdd = Math.abs(drift - p);
+                    if (absAdd < bestAbs) {
+                        best = { idx: i, delta: 1 };
+                        bestAbs = absAdd;
+                    }
+
+                    // Probar −1: drift sube en p (sólo si qty > 1)
+                    if (drafts[i].quantity > 1) {
+                        const absSub = Math.abs(drift + p);
+                        if (absSub < bestAbs) {
+                            best = { idx: i, delta: -1 };
+                            bestAbs = absSub;
+                        }
+                    }
                 }
+
+                if (!best) break;
+                drafts[best.idx].quantity += best.delta;
             }
 
             return drafts;

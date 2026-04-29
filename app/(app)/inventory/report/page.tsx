@@ -11,7 +11,6 @@ import {
     ChevronRight,
     Coins,
     Download,
-    FileSpreadsheet,
     FileText,
     Layers,
     Receipt,
@@ -250,19 +249,11 @@ export default function PeriodReportPage() {
 
             <div className="px-8 py-6 space-y-6">
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <DashboardKpiCard
-                        label="Productos"
-                        value={periodReport.length}
-                        color="primary"
-                        icon={FileSpreadsheet}
-                        loading={loadingPeriodReport}
-                        sublabel={`del período ${periodLabel(period)}`}
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <DashboardKpiCard
                         label="Departamentos"
                         value={departmentCount}
-                        color="default"
+                        color="primary"
                         icon={Layers}
                         loading={loadingPeriodReport}
                         sublabel={departmentCount === 1 ? "departamento con movimientos" : "departamentos con movimientos"}

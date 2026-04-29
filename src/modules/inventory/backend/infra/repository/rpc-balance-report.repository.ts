@@ -16,6 +16,7 @@ interface BalanceReportRpcRow {
   costo_entradas:       number | null;
   unidades_salidas:     number | null;
   costo_salidas:        number | null;
+  total_ventas_s_iva:   number | null;
   unidades_existencia:  number | null;
   costo_existencia:     number | null;
 }
@@ -43,15 +44,16 @@ export class RpcBalanceReportRepository implements IBalanceReportRepository {
 
     private mapToDomain(row: BalanceReportRpcRow): BalanceReportRow {
         return {
-            departmentName: row.departamento_nombre  ?? '',
-            openingUnits:   Number(row.unidades_inicial    ?? 0),
-            openingCost:    Number(row.costo_inicial       ?? 0),
-            inboundUnits:   Number(row.unidades_entradas   ?? 0),
-            inboundCost:    Number(row.costo_entradas      ?? 0),
-            outboundUnits:  Number(row.unidades_salidas    ?? 0),
-            outboundCost:   Number(row.costo_salidas       ?? 0),
-            closingUnits:   Number(row.unidades_existencia ?? 0),
-            closingCost:    Number(row.costo_existencia    ?? 0),
+            departmentName:       row.departamento_nombre  ?? '',
+            openingUnits:         Number(row.unidades_inicial    ?? 0),
+            openingCost:          Number(row.costo_inicial       ?? 0),
+            inboundUnits:         Number(row.unidades_entradas   ?? 0),
+            inboundCost:          Number(row.costo_entradas      ?? 0),
+            outboundUnits:        Number(row.unidades_salidas    ?? 0),
+            outboundCost:         Number(row.costo_salidas       ?? 0),
+            salesValueWithoutVat: Number(row.total_ventas_s_iva  ?? 0),
+            closingUnits:         Number(row.unidades_existencia ?? 0),
+            closingCost:          Number(row.costo_existencia    ?? 0),
         };
     }
 }

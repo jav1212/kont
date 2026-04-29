@@ -11,9 +11,9 @@ import {
     ChevronRight,
     Download,
     FileText,
-    Layers,
     PackageMinus,
     PackagePlus,
+    Receipt,
     Search,
     Scale,
 } from "lucide-react";
@@ -70,6 +70,7 @@ function exportCSV(rows: BalanceReportRow[], period: string) {
         "Entradas Bs",
         "Salidas (unid.)",
         "Salidas Bs",
+        "Total ventas S/IVA",
         "Existencia (unid.)",
         "Existencia Bs",
     ];
@@ -84,6 +85,7 @@ function exportCSV(rows: BalanceReportRow[], period: string) {
                 r.inboundCost.toFixed(2),
                 r.outboundUnits,
                 r.outboundCost.toFixed(2),
+                r.salesValueWithoutVat.toFixed(2),
                 r.closingUnits,
                 r.closingCost.toFixed(2),
             ].join(",")
@@ -97,6 +99,7 @@ function exportCSV(rows: BalanceReportRow[], period: string) {
             sum(rows, "inboundCost").toFixed(2),
             sum(rows, "outboundUnits"),
             sum(rows, "outboundCost").toFixed(2),
+            sum(rows, "salesValueWithoutVat").toFixed(2),
             sum(rows, "closingUnits"),
             sum(rows, "closingCost").toFixed(2),
         ].join(","),
@@ -179,25 +182,27 @@ export default function BalanceReportPage() {
     }, [balanceReport, search]);
 
     const totals = useMemo(() => ({
-        openingUnits:  sum(balanceReport, "openingUnits"),
-        openingCost:   sum(balanceReport, "openingCost"),
-        inboundUnits:  sum(balanceReport, "inboundUnits"),
-        inboundCost:   sum(balanceReport, "inboundCost"),
-        outboundUnits: sum(balanceReport, "outboundUnits"),
-        outboundCost:  sum(balanceReport, "outboundCost"),
-        closingUnits:  sum(balanceReport, "closingUnits"),
-        closingCost:   sum(balanceReport, "closingCost"),
+        openingUnits:         sum(balanceReport, "openingUnits"),
+        openingCost:          sum(balanceReport, "openingCost"),
+        inboundUnits:         sum(balanceReport, "inboundUnits"),
+        inboundCost:          sum(balanceReport, "inboundCost"),
+        outboundUnits:        sum(balanceReport, "outboundUnits"),
+        outboundCost:         sum(balanceReport, "outboundCost"),
+        salesValueWithoutVat: sum(balanceReport, "salesValueWithoutVat"),
+        closingUnits:         sum(balanceReport, "closingUnits"),
+        closingCost:          sum(balanceReport, "closingCost"),
     }), [balanceReport]);
 
     const filteredTotals = useMemo(() => ({
-        openingUnits:  sum(filtered, "openingUnits"),
-        openingCost:   sum(filtered, "openingCost"),
-        inboundUnits:  sum(filtered, "inboundUnits"),
-        inboundCost:   sum(filtered, "inboundCost"),
-        outboundUnits: sum(filtered, "outboundUnits"),
-        outboundCost:  sum(filtered, "outboundCost"),
-        closingUnits:  sum(filtered, "closingUnits"),
-        closingCost:   sum(filtered, "closingCost"),
+        openingUnits:         sum(filtered, "openingUnits"),
+        openingCost:          sum(filtered, "openingCost"),
+        inboundUnits:         sum(filtered, "inboundUnits"),
+        inboundCost:          sum(filtered, "inboundCost"),
+        outboundUnits:        sum(filtered, "outboundUnits"),
+        outboundCost:         sum(filtered, "outboundCost"),
+        salesValueWithoutVat: sum(filtered, "salesValueWithoutVat"),
+        closingUnits:         sum(filtered, "closingUnits"),
+        closingCost:          sum(filtered, "closingCost"),
     }), [filtered]);
 
     return (
@@ -234,28 +239,28 @@ export default function BalanceReportPage() {
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <DashboardKpiCard
-                        label="Departamentos"
-                        value={balanceReport.length}
-                        color="primary"
-                        icon={Layers}
-                        loading={loadingBalanceReport}
-                        sublabel={`con movimientos en ${periodLabel(period)}`}
-                    />
-                    <DashboardKpiCard
                         label="Entradas"
                         value={`Bs ${fmtMoney(totals.inboundCost)}`}
-                        color="default"
+                        color="primary"
                         icon={PackagePlus}
                         loading={loadingBalanceReport}
                         sublabel={`${fmtN(totals.inboundUnits)} unidades ingresadas`}
                     />
                     <DashboardKpiCard
-                        label="Salidas"
+                        label="Salidas (costo)"
                         value={`Bs ${fmtMoney(totals.outboundCost)}`}
                         color="default"
                         icon={PackageMinus}
                         loading={loadingBalanceReport}
                         sublabel={`${fmtN(totals.outboundUnits)} unidades despachadas`}
+                    />
+                    <DashboardKpiCard
+                        label="Ventas (S/IVA)"
+                        value={`Bs ${fmtMoney(totals.salesValueWithoutVat)}`}
+                        color="default"
+                        icon={Receipt}
+                        loading={loadingBalanceReport}
+                        sublabel="precio de venta × cantidad"
                     />
                     <DashboardKpiCard
                         label="Existencia"
@@ -356,6 +361,12 @@ export default function BalanceReportPage() {
                                                 Salidas
                                             </span>
                                         </th>
+                                        <th className="px-4 pt-2.5 pb-1 text-right text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium" rowSpan={2}>
+                                            <span className="inline-flex items-center gap-1">
+                                                <Receipt size={11} strokeWidth={2} className="text-[var(--text-tertiary)]" />
+                                                Total ventas (S/IVA)
+                                            </span>
+                                        </th>
                                         <th className="px-4 pt-2.5 pb-1 text-right text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium" colSpan={2}>
                                             <span className="inline-flex items-center gap-1">
                                                 <Scale size={11} strokeWidth={2} className="text-[var(--text-tertiary)]" />
@@ -395,6 +406,9 @@ export default function BalanceReportPage() {
                                             <td className="px-4 py-2.5 tabular-nums text-right text-foreground">
                                                 {fmtMoney(row.outboundCost)}
                                             </td>
+                                            <td className="px-4 py-2.5 tabular-nums text-right font-medium text-foreground">
+                                                {fmtMoney(row.salesValueWithoutVat)}
+                                            </td>
                                             <td className="px-4 py-2.5 tabular-nums text-right text-[var(--text-secondary)]">
                                                 {fmtN(row.closingUnits)}
                                             </td>
@@ -426,6 +440,9 @@ export default function BalanceReportPage() {
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
                                             {fmtMoney(filteredTotals.outboundCost)}
+                                        </td>
+                                        <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
+                                            {fmtMoney(filteredTotals.salesValueWithoutVat)}
                                         </td>
                                         <td className="px-4 py-3 tabular-nums text-right text-[12px] font-bold text-foreground">
                                             {fmtN(filteredTotals.closingUnits)}
