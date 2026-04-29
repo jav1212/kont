@@ -132,7 +132,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
-    if (user && isPublic(pathname) && pathname !== '/reset-password') {
+    // /forgot-password mantiene sesión durante el flujo OTP (verifyOtp({ type:
+    // 'recovery' }) crea una sesión efímera entre la etapa 2 y la 3). No la
+    // expulsamos al panel hasta que el usuario complete o cancele el cambio
+    // de contraseña. /reset-password ya hereda la misma excepción para los
+    // correos antiguos con magic-link.
+    if (user && isPublic(pathname) && pathname !== '/reset-password' && pathname !== '/forgot-password') {
         return NextResponse.redirect(new URL('/payroll', request.url));
     }
 

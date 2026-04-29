@@ -1,5 +1,11 @@
 // API route — POST /api/auth/forgot-password
-// Delegates to ResetPasswordUseCase. Always returns success to avoid email enumeration.
+//
+// Dispara el envío del correo de recuperación. Supabase incluye en el correo
+// tanto el magic-link como el código de 6 dígitos ({{ .Token }}); el frontend
+// usa el código vía supabase.auth.verifyOtp({ type: 'recovery' }), por lo que
+// ya no pasamos `redirectTo` — el link queda como fallback inactivo.
+//
+// Siempre retornamos éxito para evitar email enumeration.
 import { getAuthActions } from "@/src/modules/auth/backend/infrastructure/auth-factory";
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
 import { rateLimit } from "@/src/shared/backend/utils/rate-limit";
@@ -15,12 +21,7 @@ export async function POST(req: Request) {
         return Response.json({ error: 'Formato JSON inválido.' }, { status: 400 });
     }
 
-    const { origin } = new URL(req.url);
-
-    const result = await getAuthActions().resetPassword.execute({
-        email,
-        redirectTo: `${origin}/reset-password`,
-    });
+    const result = await getAuthActions().resetPassword.execute({ email });
 
     return handleResult(result, 200);
 }
