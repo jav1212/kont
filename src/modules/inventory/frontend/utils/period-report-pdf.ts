@@ -181,6 +181,8 @@ export async function generatePeriodReportPdf(
                     align: "right" as const,
                     mono: true,
                     size: 6.4,
+                    bold: true,
+                    color: COLORS.ink,
                 })),
             ];
             drawRow(doc, y, ROW_H, cells, { zebra });

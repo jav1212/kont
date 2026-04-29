@@ -127,14 +127,14 @@ export async function generateInventoryLedgerPdf(
             { x: COLS.producto.x, w: COLS.producto.w, text: r.name,                       align: "left",  size: 7.5, color: COLORS.ink, bold: true },
             { x: COLS.tipo.x,     w: COLS.tipo.w,     text: TYPE_LABEL[r.type] ?? r.type, align: "left",  size: 7,   color: COLORS.muted },
             { x: COLS.unidad.x,   w: COLS.unidad.w,   text: r.measureUnit,                align: "left",  size: 7,   color: COLORS.muted },
-            { x: COLS.qIni.x,     w: COLS.qIni.w,     text: formatQty(r.openingQuantity), align: "right", mono: true, size: 7.5 },
-            { x: COLS.vIni.x,     w: COLS.vIni.w,     text: formatN(r.openingValue),      align: "right", mono: true, size: 7.5, color: COLORS.muted },
-            { x: COLS.qIn.x,      w: COLS.qIn.w,      text: formatQty(r.inboundQuantity), align: "right", mono: true, size: 7.5 },
-            { x: COLS.vIn.x,      w: COLS.vIn.w,      text: formatN(r.inboundValue),      align: "right", mono: true, size: 7.5, color: COLORS.muted },
-            { x: COLS.qOut.x,     w: COLS.qOut.w,     text: formatQty(r.outboundQuantity),align: "right", mono: true, size: 7.5 },
-            { x: COLS.vOut.x,     w: COLS.vOut.w,     text: formatN(r.outboundValue),     align: "right", mono: true, size: 7.5, color: COLORS.muted },
-            { x: COLS.qFin.x,     w: COLS.qFin.w,     text: formatQty(r.closingQuantity), align: "right", mono: true, size: 8, bold: true },
-            { x: COLS.vFin.x,     w: COLS.vFin.w,     text: formatN(r.closingValue),      align: "right", mono: true, size: 8, bold: true, color: COLORS.ink },
+            { x: COLS.qIni.x,     w: COLS.qIni.w,     text: formatQty(r.openingQuantity), align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.vIni.x,     w: COLS.vIni.w,     text: formatN(r.openingValue),      align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.qIn.x,      w: COLS.qIn.w,      text: formatQty(r.inboundQuantity), align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.vIn.x,      w: COLS.vIn.w,      text: formatN(r.inboundValue),      align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.qOut.x,     w: COLS.qOut.w,     text: formatQty(r.outboundQuantity),align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.vOut.x,     w: COLS.vOut.w,     text: formatN(r.outboundValue),     align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.qFin.x,     w: COLS.qFin.w,     text: formatQty(r.closingQuantity), align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.vFin.x,     w: COLS.vFin.w,     text: formatN(r.closingValue),      align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
         ];
         drawRow(doc, y, ROW_H, cells, { zebra });
         zebra = !zebra;

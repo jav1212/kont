@@ -116,10 +116,10 @@ export async function generateSalesLedgerPdf(
             { x: COLS.tipo.x,       w: COLS.tipo.w,       text: TYPE_LABEL[m.type] ?? m.type,     align: "left",  size: 7.5 },
             { x: COLS.producto.x,   w: COLS.producto.w,   text: productName,                      align: "left",  size: 7.5, color: COLORS.ink, bold: true },
             { x: COLS.referencia.x, w: COLS.referencia.w, text: m.reference || m.notes || "—",    align: "left",  size: 7,   color: COLORS.muted },
-            { x: COLS.cantidad.x,   w: COLS.cantidad.w,   text: formatQty(m.quantity),            align: "right", mono: true, size: 8 },
-            { x: COLS.costoUnit.x,  w: COLS.costoUnit.w,  text: formatN(m.unitCost),              align: "right", mono: true, size: 7.5, color: COLORS.muted },
-            { x: COLS.costoTotal.x, w: COLS.costoTotal.w, text: formatN(m.totalCost),             align: "right", mono: true, size: 8, bold: true, color: COLORS.ink },
-            { x: COLS.saldo.x,      w: COLS.saldo.w,      text: formatQty(m.balanceQuantity),     align: "right", mono: true, size: 7.5, color: COLORS.muted },
+            { x: COLS.cantidad.x,   w: COLS.cantidad.w,   text: formatQty(m.quantity),            align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.costoUnit.x,  w: COLS.costoUnit.w,  text: formatN(m.unitCost),              align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
+            { x: COLS.costoTotal.x, w: COLS.costoTotal.w, text: formatN(m.totalCost),             align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.saldo.x,      w: COLS.saldo.w,      text: formatQty(m.balanceQuantity),     align: "right", mono: true, size: 7.5, bold: true, color: COLORS.ink },
         ];
         drawRow(doc, y, ROW_H, cells, { zebra });
         zebra = !zebra;

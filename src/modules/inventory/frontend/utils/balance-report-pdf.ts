@@ -108,13 +108,13 @@ export async function generateBalanceReportPdf(
 
         const cells: PdfCell[] = [
             { x: COLS.dept.x, w: COLS.dept.w, text: r.departmentName || "Sin departamento", align: "left", size: 8.5, bold: true, color: COLORS.ink },
-            { x: COLS.cols[0]!.uX, w: COLS.cols[0]!.uW, text: formatQty(r.openingUnits),  align: "right", mono: true, size: 8 },
-            { x: COLS.cols[0]!.vX, w: COLS.cols[0]!.vW, text: formatN(r.openingCost),     align: "right", mono: true, size: 8, color: COLORS.muted },
-            { x: COLS.cols[1]!.uX, w: COLS.cols[1]!.uW, text: formatQty(r.inboundUnits),  align: "right", mono: true, size: 8 },
-            { x: COLS.cols[1]!.vX, w: COLS.cols[1]!.vW, text: formatN(r.inboundCost),     align: "right", mono: true, size: 8, color: COLORS.muted },
-            { x: COLS.cols[2]!.uX, w: COLS.cols[2]!.uW, text: formatQty(r.outboundUnits), align: "right", mono: true, size: 8 },
-            { x: COLS.cols[2]!.vX, w: COLS.cols[2]!.vW, text: formatN(r.outboundCost),    align: "right", mono: true, size: 8, color: COLORS.muted },
-            { x: COLS.cols[3]!.uX, w: COLS.cols[3]!.uW, text: formatQty(r.closingUnits),  align: "right", mono: true, size: 8.5, bold: true },
+            { x: COLS.cols[0]!.uX, w: COLS.cols[0]!.uW, text: formatQty(r.openingUnits),  align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[0]!.vX, w: COLS.cols[0]!.vW, text: formatN(r.openingCost),     align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[1]!.uX, w: COLS.cols[1]!.uW, text: formatQty(r.inboundUnits),  align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[1]!.vX, w: COLS.cols[1]!.vW, text: formatN(r.inboundCost),     align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[2]!.uX, w: COLS.cols[2]!.uW, text: formatQty(r.outboundUnits), align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[2]!.vX, w: COLS.cols[2]!.vW, text: formatN(r.outboundCost),    align: "right", mono: true, size: 8,   bold: true, color: COLORS.ink },
+            { x: COLS.cols[3]!.uX, w: COLS.cols[3]!.uW, text: formatQty(r.closingUnits),  align: "right", mono: true, size: 8.5, bold: true, color: COLORS.ink },
             { x: COLS.cols[3]!.vX, w: COLS.cols[3]!.vW, text: formatN(r.closingCost),     align: "right", mono: true, size: 8.5, bold: true, color: COLORS.ink },
         ];
         drawRow(doc, y, ROW_H, cells, { zebra });
