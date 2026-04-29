@@ -53,7 +53,11 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
             date:         itemDate,
             period:       itemDate.slice(0, 7),
             quantity:     item.quantity,
-            unitCost:     0, // RPC resolves average cost from product record
+            // For outbound types tenant_inventario_movimientos_save (mig 079)
+            // overrides costo_unitario with the product's current costo_promedio
+            // (COGS) and recomputes saldo_cantidad + product existencia, so the
+            // values sent here are placeholders.
+            unitCost:     0,
             totalCost:    0,
             balanceQuantity: 0,
             reference:    reference ?? '',

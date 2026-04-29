@@ -7,9 +7,9 @@
 // total sigue siendo T.
 // Flujo: configurar → generar preview → ajustar/regenerar → confirmar.
 
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { Trash2, RefreshCw, Sparkles, Check } from "lucide-react";
+import { Trash2, RefreshCw, Sparkles, Check, ChevronRight } from "lucide-react";
 
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -29,6 +29,9 @@ const fmtN = (n: number) =>
 
 const fmtQty = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+
+const fmtFactor = (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
 
 function currentPeriod(): string {
     const d = new Date();
@@ -57,6 +60,7 @@ export default function SalesGeneratorPage() {
     const [period, setPeriod]   = useState<string>(currentPeriod());
     const [mode, setMode]       = useState<Mode>("monto");
     const [targetStr, setTargetStr] = useState<string>("");
+    const [markupStr, setMarkupStr] = useState<string>("30");
     const [countStr, setCountStr]   = useState<string>("");
     const [reference, setReference] = useState<string>("Generado automáticamente");
 
@@ -67,6 +71,15 @@ export default function SalesGeneratorPage() {
     const [lines, setLines]     = useState<RandomSalesPreviewLine[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving]   = useState(false);
+    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+    const toggleRow = useCallback((idx: number) => {
+        setExpandedRows((prev) => {
+            const next = new Set(prev);
+            if (next.has(idx)) next.delete(idx); else next.add(idx);
+            return next;
+        });
+    }, []);
 
     const sumSinIVA = useMemo(
         () => lines.reduce((s, l) => s + l.totalSinIVA, 0),
@@ -104,6 +117,11 @@ export default function SalesGeneratorPage() {
             notify.error("Ingresa un target numérico válido");
             return;
         }
+        const markupPct = Number(markupStr.replace(",", "."));
+        if (!Number.isFinite(markupPct) || markupPct <= -100) {
+            notify.error("Ingresa un markup % válido (mayor a -100)");
+            return;
+        }
         const count = countStr.trim() ? Number(countStr) : undefined;
 
         let autoTarget: number | undefined;
@@ -124,6 +142,7 @@ export default function SalesGeneratorPage() {
             period,
             mode,
             target,
+            markupPct,
             count: count != null && Number.isFinite(count) ? count : undefined,
             seed: opts?.newSeed ? Math.floor(Math.random() * 0xffffffff) : undefined,
             autoconsumoMode:   autoMode,
@@ -141,11 +160,21 @@ export default function SalesGeneratorPage() {
                 return a.date.localeCompare(b.date);
             });
             setLines(combined);
+            setExpandedRows(new Set());
         }
-    }, [companyId, period, mode, targetStr, countStr, autoMode, autoTargetStr, generateRandomSales]);
+    }, [companyId, period, mode, targetStr, markupStr, countStr, autoMode, autoTargetStr, generateRandomSales]);
 
     const removeLine = (idx: number) => {
         setLines((prev) => prev.filter((_, i) => i !== idx));
+        // Reindex expansion set after removal
+        setExpandedRows((prev) => {
+            const next = new Set<number>();
+            for (const i of prev) {
+                if (i < idx) next.add(i);
+                else if (i > idx) next.add(i - 1);
+            }
+            return next;
+        });
     };
 
     const updateQty = (idx: number, qty: number) => {
@@ -179,27 +208,10 @@ export default function SalesGeneratorPage() {
             return;
         }
 
-        // Validación de stock combinado por producto (salida + autoconsumo)
-        const totalsByProduct = new Map<string, { qty: number; stock: number; name: string }>();
-        for (const l of lines) {
-            const prev = totalsByProduct.get(l.productId);
-            if (prev) {
-                prev.qty += l.quantity;
-            } else {
-                totalsByProduct.set(l.productId, {
-                    qty: l.quantity,
-                    stock: l.currentStock,
-                    name: l.productName,
-                });
-            }
-        }
-        for (const { qty, stock, name } of totalsByProduct.values()) {
-            if (qty > stock) {
-                notify.error(`${name}: la suma de cantidades (${fmtQty(qty)}) excede el stock disponible (${fmtQty(stock)})`);
-                return;
-            }
-        }
-
+        // Stock shortfall combinado por producto (salida + autoconsumo) — sólo informativo:
+        // se permite vender más de lo que dice el inventario porque al iniciar con el sistema
+        // no se cuenta con historial completo. El backend acepta el shortfall enviando
+        // currentStock=undefined, salteando el chequeo de SaveMovementUseCase.
         setSaving(true);
         const ok = await saveOutbound({
             companyId,
@@ -208,7 +220,7 @@ export default function SalesGeneratorPage() {
             items: lines.map((l) => ({
                 productId:           l.productId,
                 quantity:            l.quantity,
-                currentStock:        l.currentStock,
+                // currentStock omitido a propósito — habilita stock negativo en datos iniciales
                 precioVentaUnitario: l.precioVentaUnitario,
                 date:                l.date,
                 type:                l.tipo,
@@ -231,7 +243,7 @@ export default function SalesGeneratorPage() {
 
                 {/* Configuración */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm px-5 py-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                         <div>
                             <label className={labelCls}>Período</label>
                             <BaseInput.Field
@@ -276,6 +288,19 @@ export default function SalesGeneratorPage() {
                                 value={targetStr}
                                 placeholder={mode === "monto" ? "120,00" : "20"}
                                 onChange={(e) => setTargetStr(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <label className={labelCls} title="Precio venta = costo × (1 + markup/100)">
+                                Markup % unitario
+                            </label>
+                            <input
+                                inputMode="decimal"
+                                className={fieldCls}
+                                value={markupStr}
+                                placeholder="30"
+                                onChange={(e) => setMarkupStr(e.target.value)}
                             />
                         </div>
 
@@ -401,11 +426,11 @@ export default function SalesGeneratorPage() {
                         />
                         {!isAutoActive && (
                             <SummaryCard
-                                label="Factor de venta"
-                                value={preview.factor.toLocaleString("es-VE", {
+                                label={`Markup ${preview.markupPct}%`}
+                                value={`× ${preview.factor.toLocaleString("es-VE", {
                                     minimumFractionDigits: 4, maximumFractionDigits: 4,
-                                })}
-                                sub={`× costo promedio · seed ${preview.seed}`}
+                                })}`}
+                                sub={`precio = costo × ${preview.factor.toFixed(2)} · seed ${preview.seed}`}
                             />
                         )}
                     </div>
@@ -456,6 +481,7 @@ export default function SalesGeneratorPage() {
                                     <thead>
                                         <tr className="border-b border-border-light">
                                             {[
+                                                "",
                                                 "Tipo",
                                                 "Fecha",
                                                 "Producto",
@@ -463,6 +489,7 @@ export default function SalesGeneratorPage() {
                                                 "Cant.",
                                                 "Costo U.",
                                                 "Precio venta U.",
+                                                "Factor",
                                                 "Total S/IVA",
                                                 "IVA Bs.",
                                                 "Total c/IVA",
@@ -479,100 +506,205 @@ export default function SalesGeneratorPage() {
                                     </thead>
                                     <tbody>
                                         {lines.map((l, idx) => {
-                                            const overStock = l.quantity > l.currentStock;
+                                            const shortfall = Math.max(0, l.quantity - l.currentStock);
+                                            const hasShortfall = shortfall > 0;
                                             const isAuto = l.tipo === "autoconsumo";
+                                            const isExpanded = expandedRows.has(idx);
+                                            const lineFactor = l.unitCost > 0 ? l.precioVentaUnitario / l.unitCost : 0;
+                                            const globalFactor = preview?.factor ?? 0;
+                                            // Línea sumidero: factor real difiere del global por más del 1%
+                                            const isDiffSink = globalFactor > 0 && Math.abs(lineFactor - globalFactor) / globalFactor > 0.01;
+                                            const ivaPct = l.vatType === "general" ? 0.16 : 0;
                                             return (
-                                                <tr
-                                                    key={`${l.productId}-${l.tipo}-${idx}`}
-                                                    className={[
-                                                        "border-b border-border-light/50 transition-colors",
-                                                        isAuto ? "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]" : "hover:bg-surface-2",
-                                                    ].join(" ")}
-                                                >
-                                                    <td className="px-3 py-2.5 whitespace-nowrap">
-                                                        <span
+                                                <Fragment key={`${l.productId}-${l.tipo}-${idx}`}>
+                                                    <tr
+                                                        className={[
+                                                            "border-b border-border-light/50 transition-colors",
+                                                            isAuto ? "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]" : "hover:bg-surface-2",
+                                                        ].join(" ")}
+                                                    >
+                                                        <td className="px-2 py-2.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleRow(idx)}
+                                                                className={[
+                                                                    "inline-flex items-center justify-center w-6 h-6 rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-all",
+                                                                    isExpanded ? "rotate-90 text-foreground" : "",
+                                                                ].join(" ")}
+                                                                aria-label={isExpanded ? "Colapsar fórmula" : "Ver fórmula"}
+                                                                title={isExpanded ? "Colapsar fórmula" : "Ver fórmula"}
+                                                            >
+                                                                <ChevronRight size={14} strokeWidth={1.8} />
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 whitespace-nowrap">
+                                                            <span
+                                                                className={[
+                                                                    "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border",
+                                                                    isAuto
+                                                                        ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
+                                                                        : "border-border-light text-[var(--text-secondary)]",
+                                                                ].join(" ")}
+                                                            >
+                                                                {isAuto ? "Autoconsumo" : "Venta"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
+                                                            {l.date}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-foreground max-w-[300px]">
+                                                            <div className="truncate">
+                                                                {l.productCode ? (
+                                                                    <span className="text-[var(--text-tertiary)]">[{l.productCode}] </span>
+                                                                ) : null}
+                                                                {l.productName}
+                                                            </div>
+                                                            <div className="text-[11px] flex items-center gap-2 mt-0.5">
+                                                                <span className="text-[var(--text-tertiary)]">
+                                                                    stock {fmtQty(l.currentStock)}
+                                                                </span>
+                                                                {hasShortfall && (
+                                                                    <span
+                                                                        className="text-amber-600 font-medium"
+                                                                        title={`Para cubrir esta venta sin dejar stock negativo, harían falta ${fmtQty(shortfall)} unidades adicionales en inventario`}
+                                                                    >
+                                                                        faltan {fmtQty(shortfall)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-2.5">
+                                                            <span
+                                                                className={[
+                                                                    "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border",
+                                                                    l.vatType === "general"
+                                                                        ? "badge-info"
+                                                                        : "border-border-light text-[var(--text-tertiary)]",
+                                                                ].join(" ")}
+                                                            >
+                                                                {l.vatType === "general" ? "16%" : "Exento"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-3 py-2.5">
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                step="0.0001"
+                                                                value={l.quantity}
+                                                                onChange={(e) => updateQty(idx, Number(e.target.value))}
+                                                                className={[
+                                                                    "h-8 w-24 px-2 rounded border bg-surface-1 outline-none",
+                                                                    "font-mono text-[13px] text-foreground tabular-nums",
+                                                                    "focus:border-primary-500/60",
+                                                                    hasShortfall ? "border-amber-500/50" : "border-border-light",
+                                                                ].join(" ")}
+                                                                title={hasShortfall
+                                                                    ? `Stock actual ${fmtQty(l.currentStock)} · faltan ${fmtQty(shortfall)} unidades`
+                                                                    : undefined}
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
+                                                            {fmtN(l.unitCost)}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 tabular-nums text-foreground">
+                                                            {fmtN(l.precioVentaUnitario)}
+                                                        </td>
+                                                        <td
                                                             className={[
-                                                                "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border",
-                                                                isAuto
-                                                                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600"
-                                                                    : "border-border-light text-[var(--text-secondary)]",
+                                                                "px-3 py-2.5 tabular-nums",
+                                                                isDiffSink ? "text-amber-600 font-bold" : "text-[var(--text-secondary)]",
                                                             ].join(" ")}
+                                                            title={isDiffSink
+                                                                ? `Difiere del factor global (${fmtFactor(globalFactor)}). Esta línea absorbe el residuo de redondeo.`
+                                                                : undefined}
                                                         >
-                                                            {isAuto ? "Autoconsumo" : "Venta"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-3 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">
-                                                        {l.date}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">
-                                                        {l.productCode ? (
-                                                            <span className="text-[var(--text-tertiary)]">[{l.productCode}] </span>
-                                                        ) : null}
-                                                        {l.productName}
-                                                        <span className="ml-2 text-[11px] text-[var(--text-tertiary)]">
-                                                            stock {fmtQty(l.currentStock)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-3 py-2.5">
-                                                        <span
-                                                            className={[
-                                                                "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium border",
-                                                                l.vatType === "general"
-                                                                    ? "badge-info"
-                                                                    : "border-border-light text-[var(--text-tertiary)]",
-                                                            ].join(" ")}
-                                                        >
-                                                            {l.vatType === "general" ? "16%" : "Exento"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-3 py-2.5">
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            step="0.0001"
-                                                            value={l.quantity}
-                                                            onChange={(e) => updateQty(idx, Number(e.target.value))}
-                                                            className={[
-                                                                "h-8 w-24 px-2 rounded border bg-surface-1 outline-none",
-                                                                "font-mono text-[13px] text-foreground tabular-nums",
-                                                                "focus:border-primary-500/60",
-                                                                overStock ? "border-red-500/50" : "border-border-light",
-                                                            ].join(" ")}
-                                                        />
-                                                    </td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
-                                                        {fmtN(l.unitCost)}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-foreground">
-                                                        {fmtN(l.precioVentaUnitario)}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-foreground font-bold">
-                                                        {fmtN(l.totalSinIVA)}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
-                                                        {fmtN(l.iva)}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
-                                                        {fmtN(l.totalConIVA)}
-                                                    </td>
-                                                    <td className="px-3 py-2.5 text-right">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeLine(idx)}
-                                                            className="inline-flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
-                                                            aria-label="Eliminar línea"
-                                                            title="Eliminar línea"
-                                                        >
-                                                            <Trash2 size={14} strokeWidth={1.8} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
+                                                            {fmtFactor(lineFactor)}
+                                                            {isDiffSink && <span className="ml-1 text-[10px]">⚠</span>}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 tabular-nums text-foreground font-bold">
+                                                            {fmtN(l.totalSinIVA)}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
+                                                            {fmtN(l.iva)}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 tabular-nums text-[var(--text-secondary)]">
+                                                            {fmtN(l.totalConIVA)}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeLine(idx)}
+                                                                className="inline-flex items-center justify-center text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                                aria-label="Eliminar línea"
+                                                                title="Eliminar línea"
+                                                            >
+                                                                <Trash2 size={14} strokeWidth={1.8} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {isExpanded && (
+                                                        <tr className={isAuto ? "bg-amber-500/[0.06]" : "bg-surface-2/40"}>
+                                                            <td />
+                                                            <td colSpan={12} className="px-4 py-3">
+                                                                <div className="rounded-md border border-border-light/70 bg-surface-1 p-3 space-y-1.5 text-[12px]">
+                                                                    <p className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-2">
+                                                                        Desglose de cálculo
+                                                                    </p>
+                                                                    <FormulaRow
+                                                                        label="Factor de línea"
+                                                                        formula={`${fmtN(l.precioVentaUnitario)} ÷ ${fmtN(l.unitCost)}`}
+                                                                        result={fmtFactor(lineFactor)}
+                                                                        warn={isDiffSink}
+                                                                        note={isDiffSink ? `Difiere del factor global ${fmtFactor(globalFactor)} — línea sumidero del residuo` : undefined}
+                                                                    />
+                                                                    <FormulaRow
+                                                                        label="Precio venta U."
+                                                                        formula={`${fmtN(l.unitCost)} × ${fmtFactor(lineFactor)}`}
+                                                                        result={`${fmtN(l.precioVentaUnitario)} Bs`}
+                                                                    />
+                                                                    <FormulaRow
+                                                                        label="Total S/IVA"
+                                                                        formula={`${fmtN(l.precioVentaUnitario)} × ${fmtQty(l.quantity)}`}
+                                                                        result={`${fmtN(l.totalSinIVA)} Bs`}
+                                                                    />
+                                                                    <FormulaRow
+                                                                        label="IVA"
+                                                                        formula={l.vatType === "general"
+                                                                            ? `${fmtN(l.totalSinIVA)} × 16%`
+                                                                            : `${fmtN(l.totalSinIVA)} × 0% (exento)`}
+                                                                        result={`${fmtN(l.iva)} Bs`}
+                                                                    />
+                                                                    <FormulaRow
+                                                                        label="Total c/IVA"
+                                                                        formula={`${fmtN(l.totalSinIVA)} + ${fmtN(l.iva)}`}
+                                                                        result={`${fmtN(l.totalConIVA)} Bs`}
+                                                                        bold
+                                                                    />
+                                                                    {hasShortfall && (
+                                                                        <FormulaRow
+                                                                            label="Stock requerido"
+                                                                            formula={`qty ${fmtQty(l.quantity)} − stock ${fmtQty(l.currentStock)}`}
+                                                                            result={`faltan ${fmtQty(shortfall)} unidades`}
+                                                                            warn
+                                                                            note="ajustar entrada inicial de inventario"
+                                                                        />
+                                                                    )}
+                                                                    {ivaPct > 0 && (
+                                                                        <p className="pt-1 text-[10px] text-[var(--text-tertiary)] italic">
+                                                                            Tasa IVA general 16%
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </Fragment>
                                             );
                                         })}
                                     </tbody>
                                     <tfoot>
                                         <tr className="border-t border-border-light bg-surface-2/40">
-                                            <td colSpan={7} className="px-3 py-2.5 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                            <td colSpan={9} className="px-3 py-2.5 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                                 Totales
                                             </td>
                                             <td className="px-3 py-2.5 tabular-nums text-foreground font-bold">
@@ -598,6 +730,44 @@ export default function SalesGeneratorPage() {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+function FormulaRow({
+    label, formula, result, warn, bold, note,
+}: {
+    label:    string;
+    formula:  string;
+    result:   string;
+    warn?:    boolean;
+    bold?:    boolean;
+    note?:    string;
+}) {
+    return (
+        <div className="flex items-baseline gap-2 leading-relaxed">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] w-[120px] shrink-0">
+                {label}
+            </span>
+            <span className="font-mono tabular-nums text-[var(--text-secondary)]">
+                {formula}
+            </span>
+            <span className="text-[var(--text-tertiary)]">=</span>
+            <span
+                className={[
+                    "font-mono tabular-nums",
+                    warn ? "text-amber-600 font-bold"
+                  : bold  ? "text-foreground font-bold"
+                  :         "text-foreground",
+                ].join(" ")}
+            >
+                {result}
+            </span>
+            {note && (
+                <span className="text-[10px] text-amber-600 italic ml-1">
+                    {note}
+                </span>
+            )}
+        </div>
+    );
+}
 
 function SummaryCard({
     label, value, sub, highlight, tone,

@@ -276,7 +276,7 @@ export default function NuevaSalidaManualPage() {
         setSaving(true);
         let allOk = true;
         for (const item of items) {
-            const { unitPrice, totalPrice, basePriceCurrency } = computePrices(item, dollarRate, ivaMode);
+            const { unitPrice, basePriceCurrency } = computePrices(item, dollarRate, ivaMode);
             const movement: Movement = {
                 companyId: companyId!,
                 productId: item.productId,
@@ -284,14 +284,19 @@ export default function NuevaSalidaManualPage() {
                 date,
                 period: date.slice(0, 7),
                 quantity: item.quantity,
-                unitCost: unitPrice,
-                totalCost: totalPrice,
+                // unitCost / totalCost are placeholders: tenant_inventario_movimientos_save
+                // (mig 079) overrides them with the product's current costo_promedio
+                // (COGS) for outbound types. The user-entered price is the sale
+                // price, persisted via precioVentaUnitario for the libro de ventas.
+                unitCost: 0,
+                totalCost: 0,
                 balanceQuantity: 0,
                 reference: "Salida manual",
                 notes,
                 currency: item.currency,
                 currencyCost: basePriceCurrency,
                 dollarRate: item.currency === "D" ? dollarRate : null,
+                precioVentaUnitario: unitPrice,
             };
             const result = await saveMovement(movement);
             if (!result) { allOk = false; break; }

@@ -12,6 +12,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         period,
         mode,
         target,
+        markupPct,
         count,
         seed,
         autoconsumoMode,
@@ -23,6 +24,10 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     if (mode !== 'monto' && mode !== 'margen')
                                        return Response.json({ error: 'mode debe ser "monto" o "margen"' }, { status: 400 });
     if (typeof target !== 'number')    return Response.json({ error: 'target debe ser numérico' },        { status: 400 });
+
+    if (markupPct != null && typeof markupPct !== 'number') {
+        return Response.json({ error: 'markupPct debe ser numérico' }, { status: 400 });
+    }
 
     const validAutoModes = ['none', 'porcentaje', 'monto'] as const;
     if (autoconsumoMode != null && !validAutoModes.includes(autoconsumoMode)) {
@@ -37,6 +42,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
 
     const result = await actions.generateRandomSales.execute({
         companyId, period, mode, target,
+        markupPct: typeof markupPct === 'number' ? markupPct : undefined,
         count: typeof count === 'number' ? count : undefined,
         seed:  typeof seed  === 'number' ? seed  : undefined,
         autoconsumoMode:   autoconsumoMode ?? 'none',
