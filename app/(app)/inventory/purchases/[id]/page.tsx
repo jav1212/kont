@@ -59,8 +59,8 @@ const readonlyCls = [
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
 
-const fmtN = (n: number) =>
-    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const makeFmt = (decimals: number) => (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
 const fmtDate = (d: string) => {
     if (!d) return "—";
@@ -204,7 +204,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             recargoValor:   i.recargoValor ?? 0,
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj);
+    // Decimals binding: while editing, the form's rateDecimals drives precision.
+    // For confirmed invoices, the persisted `rateDecimals` is the source of truth.
+    const effectiveDecimals = currentPurchaseInvoice?.status === "confirmada"
+        ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
+        : rateDecimals;
+    const fmtN = makeFmt(effectiveDecimals);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -671,6 +677,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 onChange={setItems}
                                 readOnly={!isDraft}
                                 dollarRate={effectiveDollarRate}
+                                decimals={effectiveDecimals}
                             />
 
                             {/* Totals */}
@@ -694,7 +701,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         recargoValor:   i.recargoValor ?? 0,
                                     },
                                 }));
-                                const t = computeInvoiceTotals(dInputs, displayHeader);
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals);
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
@@ -703,71 +710,152 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dVatAmount    = t.ivaMonto;
                                 const dTotal        = isDraft ? t.total : invoice.total;
                                 const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
+
+                                const rateForUsd = isDraft
+                                    ? effectiveDollarRate
+                                    : (invoice.dollarRate ?? effectiveDollarRate);
+                                const formatUsd = (n: number) =>
+                                    rateForUsd && rateForUsd > 0 ? `$ ${fmtN(n / rateForUsd)}` : "—";
+
+                                type RowKind = "muted" | "neutral" | "neg" | "pos" | "primary" | "total";
+                                const valueColor: Record<RowKind, string> = {
+                                    muted:   "text-[var(--text-secondary)]",
+                                    neutral: "text-[var(--text-secondary)]",
+                                    neg:     "text-error/80 font-medium",
+                                    pos:     "text-amber-600 font-medium",
+                                    primary: "text-[var(--text-primary)] font-medium",
+                                    total:   "text-foreground font-bold text-[14px]",
+                                };
+                                const renderRow = (
+                                    label: string,
+                                    value: number,
+                                    opts: { kind?: RowKind; note?: string; indent?: boolean; sign?: "+" | "−" } = {},
+                                ) => {
+                                    const { kind = "muted", note, indent, sign } = opts;
+                                    const labelCol = kind === "total" ? "text-foreground font-semibold" : "text-[var(--text-tertiary)]";
+                                    const usdCol   = kind === "total" ? "text-foreground font-bold" : "text-[var(--text-tertiary)]";
+                                    return (
+                                        <>
+                                            <span className={`${labelCol} uppercase tracking-[0.12em] text-[11px] ${indent ? "pl-3" : ""}`}>
+                                                {label}
+                                                {note && (
+                                                    <span className="ml-2 normal-case tracking-normal text-[10px] text-[var(--text-tertiary)] opacity-80">
+                                                        {note}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className={`tabular-nums ${valueColor[kind]} w-40 text-right`}>
+                                                {sign && <span className="opacity-60 mr-0.5">{sign}</span>}
+                                                Bs. {fmtN(value)}
+                                            </span>
+                                            <span className={`tabular-nums ${usdCol} w-32 text-right text-[12px]`}>
+                                                {sign && <span className="opacity-60 mr-0.5">{sign}</span>}
+                                                {formatUsd(value)}
+                                            </span>
+                                        </>
+                                    );
+                                };
+
+                                // ── View shape decisions ─────────────────────────────────────
+                                // Goal: never show two rows that hold the same numeric value. The
+                                // intermediate "Base IVA" row only earns its keep when there are
+                                // adjustments (it bridges bruto → final base) or when bases are
+                                // split across multiple alícuotas. In any single-alícuota / no-adj
+                                // case it equals the next row, so we collapse it.
+                                const aliquotCount =
+                                    (dBaseExempt > 0 ? 1 : 0) +
+                                    (dBaseTaxed8 > 0 ? 1 : 0) +
+                                    (dBaseTaxed16 > 0 ? 1 : 0);
+                                const isOnlyExempt   = aliquotCount === 1 && dBaseExempt > 0;
+                                const isMixed        = aliquotCount > 1;
+                                const hasIva         = dVatAmount > 0;
+                                const hasMultipleTaxedAlicuotas = (dVat8 > 0 && dVat16 > 0);
+
+                                const showAdjustmentSection  = hasLineOrHeaderAdj;
+                                // intermediate Base IVA row: only when adjustments OR mixed alícuotas
+                                const showBaseIntermediate   = showAdjustmentSection || isMixed;
+                                // per-alícuota breakdown: only when mixed (otherwise it'd duplicate)
+                                const showAlicuotaBreakdown  = isMixed;
+
+                                // Single-alícuota label when collapsed
+                                const singleAliquotaLabel: string =
+                                    isOnlyExempt ? "exenta"
+                                    : dBaseTaxed8 > 0 ? "gravada 8%"
+                                    : "gravada 16%";
+
                                 return (
-                                    <div className="mt-4 pt-4 border-t border-border-light flex flex-col items-end gap-1.5 text-[13px]">
-                                        {hasLineOrHeaderAdj && (
-                                            <>
-                                                <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Subtotal bruto</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(t.subtotalBruto)}</span>
-                                                </div>
-                                                {(t.descuentoLinea + t.descuentoHeader) > 0 && (
-                                                    <div className="flex gap-8 items-center">
-                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">− Descuentos</span>
-                                                        <span className="tabular-nums text-error/80 font-medium w-36 text-right">{fmtN(t.descuentoLinea + t.descuentoHeader)}</span>
-                                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-border-light">
+                                        <div className="flex justify-end">
+                                            <div className="grid grid-cols-[minmax(200px,1fr)_auto_auto] gap-x-6 gap-y-1.5 items-baseline text-[13px]">
+                                                {/* Column headers */}
+                                                <span aria-hidden="true" />
+                                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] w-40 text-right">Bolívares</span>
+                                                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] w-32 text-right">USD</span>
+
+                                                {/* Block 1 — Adjustments */}
+                                                {showAdjustmentSection && (
+                                                    <>
+                                                        {renderRow("Subtotal bruto", t.subtotalBruto, { kind: "muted", note: "Σ qty × costo" })}
+                                                        {t.descuentoLinea  > 0 && renderRow("Descuento líneas",  t.descuentoLinea,  { kind: "neg", sign: "−", indent: true })}
+                                                        {t.descuentoHeader > 0 && renderRow("Descuento factura", t.descuentoHeader, { kind: "neg", sign: "−", indent: true, note: "prorrateado" })}
+                                                        {t.recargoLinea    > 0 && renderRow("Recargo líneas",    t.recargoLinea,    { kind: "pos", sign: "+", indent: true })}
+                                                        {t.recargoHeader   > 0 && renderRow("Recargo factura",   t.recargoHeader,   { kind: "pos", sign: "+", indent: true, note: "prorrateado" })}
+                                                        <div className="col-span-3 h-px bg-border-light my-0.5" aria-hidden="true" />
+                                                    </>
                                                 )}
-                                                {(t.recargoLinea + t.recargoHeader) > 0 && (
-                                                    <div className="flex gap-8 items-center">
-                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">+ Recargos</span>
-                                                        <span className="tabular-nums text-amber-600 w-36 text-right">{fmtN(t.recargoLinea + t.recargoHeader)}</span>
-                                                    </div>
+
+                                                {/* Block 2 — Base */}
+                                                {showBaseIntermediate ? (
+                                                    isOnlyExempt
+                                                        ? renderRow("Base imponible", t.baseIVA, {
+                                                              kind: "primary",
+                                                              note: showAdjustmentSection ? "exenta · = bruto − desc + rec" : "exenta",
+                                                          })
+                                                        : renderRow("Base IVA", t.baseIVA, {
+                                                              kind: "primary",
+                                                              note: showAdjustmentSection ? "= bruto − desc + rec" : undefined,
+                                                          })
+                                                ) : (
+                                                    // Single alícuota, no adjustments: collapse to one labeled row
+                                                    renderRow("Base imponible", t.baseIVA, {
+                                                        kind: "primary",
+                                                        note: singleAliquotaLabel,
+                                                    })
                                                 )}
-                                            </>
-                                        )}
-                                        <div className="flex gap-8 items-center">
-                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
-                                            <span className="tabular-nums font-medium text-[var(--text-primary)] w-36 text-right">{fmtN(t.baseIVA)}</span>
-                                        </div>
-                                        {dBaseExempt > 0 && (
-                                            <div className="flex gap-8 items-center">
-                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base exenta</span>
-                                                <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseExempt)}</span>
+
+                                                {/* Block 3 — Per-alícuota breakdown (only when mixed) */}
+                                                {showAlicuotaBreakdown && (
+                                                    <>
+                                                        <div className="col-span-3 h-1" aria-hidden="true" />
+                                                        {dBaseExempt   > 0 && renderRow("Base exenta",       dBaseExempt,  { kind: "muted",   indent: true })}
+                                                        {dBaseTaxed8   > 0 && renderRow("Base gravada 8%",   dBaseTaxed8,  { kind: "muted",   indent: true })}
+                                                        {dVat8         > 0 && renderRow("IVA 8%",            dVat8,        { kind: "neutral", indent: true, note: "8% × base" })}
+                                                        {dBaseTaxed16  > 0 && renderRow("Base gravada 16%",  dBaseTaxed16, { kind: "muted",   indent: true })}
+                                                        {dVat16        > 0 && renderRow("IVA 16%",           dVat16,       { kind: "neutral", indent: true, note: "16% × base" })}
+                                                        {hasMultipleTaxedAlicuotas && renderRow("Total IVA", dVatAmount,   { kind: "neutral", indent: true, note: "= IVA 8% + IVA 16%" })}
+                                                    </>
+                                                )}
+
+                                                {/* Block 4 — Single-alícuota IVA row (when not mixed and not exempt) */}
+                                                {!showAlicuotaBreakdown && hasIva && (
+                                                    dVat8 > 0
+                                                        ? renderRow("IVA 8%",  dVat8,  { kind: "neutral", note: "8% × base" })
+                                                        : renderRow("IVA 16%", dVat16, { kind: "neutral", note: "16% × base" })
+                                                )}
+
+                                                <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
+                                                {renderRow("Total", dTotal, {
+                                                    kind: "total",
+                                                    // Only annotate when the equation actually adds two terms.
+                                                    note: hasIva ? "= base + IVA" : undefined,
+                                                })}
+
+                                                {!rateForUsd && (
+                                                    <p className="col-span-3 mt-1 text-[10px] font-sans text-[var(--text-tertiary)] leading-snug text-right">
+                                                        Define la tasa BCV para ver el equivalente en USD.
+                                                    </p>
+                                                )}
                                             </div>
-                                        )}
-                                        {dBaseTaxed8 > 0 && (
-                                            <>
-                                                <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 8%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseTaxed8)}</span>
-                                                </div>
-                                                <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 8%</span>
-                                                    <span className="tabular-nums text-amber-600 w-36 text-right">{fmtN(dVat8)}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                        {dBaseTaxed16 > 0 && (
-                                            <>
-                                                <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base gravada 16%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dBaseTaxed16)}</span>
-                                                </div>
-                                                <div className="flex gap-8 items-center">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA 16%</span>
-                                                    <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dVat16)}</span>
-                                                </div>
-                                            </>
-                                        )}
-                                        {dVatAmount > 0 && (
-                                            <div className="flex gap-8 items-center">
-                                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Total IVA</span>
-                                                <span className="tabular-nums text-[var(--text-secondary)] w-36 text-right">{fmtN(dVatAmount)}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex gap-8 items-center border-t border-border-light pt-2 mt-1">
-                                            <span className="text-foreground uppercase tracking-[0.12em] text-[11px] font-semibold">Total</span>
-                                            <span className="tabular-nums font-bold text-foreground w-36 text-right text-[14px]">{fmtN(dTotal)}</span>
                                         </div>
                                     </div>
                                 );
@@ -866,20 +954,49 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
-                                <div className="flex justify-between">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
-                                    <span className="tabular-nums text-[var(--text-primary)]">{fmtN(invoice.subtotal)}</span>
-                                </div>
-                                {invoice.vatAmount > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
-                                        <span className="tabular-nums text-[var(--text-secondary)]">{fmtN(invoice.vatAmount)}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between font-bold pt-1">
-                                    <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
-                                    <span className="tabular-nums text-foreground text-[14px]">{fmtN(invoice.total)}</span>
-                                </div>
+                                {(() => {
+                                    const summaryRate = invoice.dollarRate ?? effectiveDollarRate;
+                                    const usd = (n: number) =>
+                                        summaryRate && summaryRate > 0 ? `$ ${fmtN(n / summaryRate)}` : null;
+                                    // Skip "Base IVA" + "IVA" rows when there's no IVA — they
+                                    // would just echo the Total. Show only the Total in that case.
+                                    const summaryHasIva = invoice.vatAmount > 0;
+                                    return (
+                                        <>
+                                            {summaryHasIva && (
+                                                <>
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
+                                                        <div className="text-right">
+                                                            <div className="tabular-nums text-[var(--text-primary)]">Bs. {fmtN(invoice.subtotal)}</div>
+                                                            {usd(invoice.subtotal) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(invoice.subtotal)}</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-between items-baseline">
+                                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
+                                                        <div className="text-right">
+                                                            <div className="tabular-nums text-[var(--text-secondary)]">Bs. {fmtN(invoice.vatAmount)}</div>
+                                                            {usd(invoice.vatAmount) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(invoice.vatAmount)}</div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="flex justify-between items-baseline font-bold pt-1">
+                                                <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
+                                                <div className="text-right">
+                                                    <div className="tabular-nums text-foreground text-[14px]">Bs. {fmtN(invoice.total)}</div>
+                                                    {usd(invoice.total) && (
+                                                        <div className="tabular-nums text-[11px] font-semibold text-[var(--text-secondary)]">≈ {usd(invoice.total)}</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                             {isConfirmed && invoice.confirmedAt && (
                                 <div className="pt-3 border-t border-border-light flex items-center gap-1.5">

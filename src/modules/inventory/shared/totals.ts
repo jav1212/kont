@@ -56,11 +56,21 @@ export function emptyHeaderAdjustments(): HeaderAdjustments {
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 export const round4 = (n: number) => Math.round(n * 10000) / 10000;
+export const roundN = (n: number, decimals: number) => {
+    if (!isFinite(n)) return n;
+    const factor = Math.pow(10, decimals);
+    return Math.round(n * factor) / factor;
+};
 
-function resolveAmount(tipo: AdjustmentKind | null, valor: number, baseFor: number): number {
+function resolveAmount(
+    tipo: AdjustmentKind | null,
+    valor: number,
+    baseFor: number,
+    decimals = 2,
+): number {
     if (!tipo || !Number.isFinite(valor) || valor <= 0) return 0;
-    if (tipo === 'porcentaje') return round2((baseFor * valor) / 100);
-    return round2(valor);
+    if (tipo === 'porcentaje') return roundN((baseFor * valor) / 100, decimals);
+    return roundN(valor, decimals);
 }
 
 // netFromGross: convierte costo bruto (con IVA incluido) a costo neto.
@@ -98,23 +108,27 @@ export interface LineTotals {
     total:          number;  // baseIVA + ivaMonto (sin header spread)
 }
 
-export function computeLineTotals(input: LineInput): LineTotals {
-    const base = round2(input.quantity * input.unitCost);
+export function computeLineTotals(input: LineInput, decimals = 2): LineTotals {
+    const r = (n: number) => roundN(n, decimals);
+
+    const base = r(input.quantity * input.unitCost);
 
     const descuentoMonto = resolveAmount(
         input.adjustments.descuentoTipo,
         input.adjustments.descuentoValor,
         base,
+        decimals,
     );
     const recargoMonto = resolveAmount(
         input.adjustments.recargoTipo,
         input.adjustments.recargoValor,
         base,
+        decimals,
     );
 
-    const baseIVA  = round2(base - descuentoMonto + recargoMonto);
-    const ivaMonto = round2((baseIVA * vatRatePct(input.vatRate)) / 100);
-    const total    = round2(baseIVA + ivaMonto);
+    const baseIVA  = r(base - descuentoMonto + recargoMonto);
+    const ivaMonto = r((baseIVA * vatRatePct(input.vatRate)) / 100);
+    const total    = r(baseIVA + ivaMonto);
 
     return { base, descuentoMonto, recargoMonto, baseIVA, ivaMonto, total };
 }
@@ -150,15 +164,18 @@ export interface InvoiceTotals {
 export function computeInvoiceTotals(
     lines: Array<LineInput>,
     header: HeaderAdjustments,
+    decimals = 2,
 ): InvoiceTotals {
+    const r = (n: number) => roundN(n, decimals);
+
     // Step 1: per-line totals sin header
-    const computed: LineTotals[] = lines.map(computeLineTotals);
+    const computed: LineTotals[] = lines.map((l) => computeLineTotals(l, decimals));
 
     const sumBaseIVA = computed.reduce((acc, c) => acc + c.baseIVA, 0);
 
     // Step 2: header adjustments resueltos sobre la sumBaseIVA
-    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA);
-    const recargoHeader   = resolveAmount(header.recargoTipo,   header.recargoValor,   sumBaseIVA);
+    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA, decimals);
+    const recargoHeader   = resolveAmount(header.recargoTipo,   header.recargoValor,   sumBaseIVA, decimals);
 
     // Step 3: prorratear header sobre cada línea por peso de baseIVA
     const items: InvoiceLineComputed[] = computed.map((c, idx) => {
@@ -172,18 +189,18 @@ export function computeInvoiceTotals(
                 // residuo: total − suma de shares ya repartidas
                 const sharedSoFar = computed
                     .slice(0, idx)
-                    .reduce((acc, ci) => acc + round2((ci.baseIVA / sumBaseIVA) * total), 0);
-                return round2(total - sharedSoFar);
+                    .reduce((acc, ci) => acc + r((ci.baseIVA / sumBaseIVA) * total), 0);
+                return r(total - sharedSoFar);
             }
-            return round2(weight * total);
+            return r(weight * total);
         };
 
         const headerDescuentoShare = sharePart(descuentoHeader);
         const headerRecargoShare   = sharePart(recargoHeader);
 
-        const baseIVAFinal  = round2(c.baseIVA - headerDescuentoShare + headerRecargoShare);
-        const ivaMontoFinal = round2((baseIVAFinal * vatRatePct(lines[idx].vatRate)) / 100);
-        const totalFinal    = round2(baseIVAFinal + ivaMontoFinal);
+        const baseIVAFinal  = r(c.baseIVA - headerDescuentoShare + headerRecargoShare);
+        const ivaMontoFinal = r((baseIVAFinal * vatRatePct(lines[idx].vatRate)) / 100);
+        const totalFinal    = r(baseIVAFinal + ivaMontoFinal);
 
         return {
             ...c,
@@ -195,16 +212,16 @@ export function computeInvoiceTotals(
         };
     });
 
-    const subtotalBruto  = round2(computed.reduce((a, c) => a + c.base, 0));
-    const descuentoLinea = round2(computed.reduce((a, c) => a + c.descuentoMonto, 0));
-    const recargoLinea   = round2(computed.reduce((a, c) => a + c.recargoMonto, 0));
+    const subtotalBruto  = r(computed.reduce((a, c) => a + c.base, 0));
+    const descuentoLinea = r(computed.reduce((a, c) => a + c.descuentoMonto, 0));
+    const recargoLinea   = r(computed.reduce((a, c) => a + c.recargoMonto, 0));
 
-    const baseIVA  = round2(items.reduce((a, c) => a + c.baseIVAFinal, 0));
-    const ivaMonto = round2(items.reduce((a, c) => a + c.ivaMontoFinal, 0));
+    const baseIVA  = r(items.reduce((a, c) => a + c.baseIVAFinal, 0));
+    const ivaMonto = r(items.reduce((a, c) => a + c.ivaMontoFinal, 0));
 
     const ivaPorAlicuota = { exenta: 0, reducida_8: 0, general_16: 0 };
     items.forEach((c, idx) => {
-        ivaPorAlicuota[lines[idx].vatRate] = round2(ivaPorAlicuota[lines[idx].vatRate] + c.ivaMontoFinal);
+        ivaPorAlicuota[lines[idx].vatRate] = r(ivaPorAlicuota[lines[idx].vatRate] + c.ivaMontoFinal);
     });
 
     return {
@@ -217,6 +234,6 @@ export function computeInvoiceTotals(
         baseIVA,
         ivaPorAlicuota,
         ivaMonto,
-        total: round2(baseIVA + ivaMonto),
+        total: r(baseIVA + ivaMonto),
     };
 }

@@ -19,7 +19,7 @@ import {
     netFromGross,
     grossFromNet,
     emptyLineAdjustments,
-    round2,
+    roundN,
     round4 as round4Shared,
 } from "@/src/modules/inventory/shared/totals";
 
@@ -34,6 +34,9 @@ interface Props {
     onChange: (items: PurchaseInvoiceItem[]) => void;
     readOnly?: boolean;
     dollarRate?: number | null; // BCV rate for the period — used for USD→Bs conversion
+    /** Calculation precision: how many decimals all derived totals are rounded to.
+     *  Drives both the on-screen formatter and the rounding of `totalCost`. */
+    decimals?: number;
     onRequestCreateProduct?: (search: string) => void;
 }
 
@@ -51,8 +54,8 @@ export function emptyItem(): PurchaseInvoiceItem {
     };
 }
 
-const fmtN = (n: number) =>
-    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const makeFmt = (decimals: number) => (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
 const round4 = round4Shared;
 
@@ -224,9 +227,11 @@ interface NumberCellProps {
     onChange: (val: number) => void;
     onNavigate: (dir: NavDir) => void;
     registerRef: (el: HTMLInputElement | null) => void;
+    format: (n: number) => string;
+    placeholder?: string;
 }
 
-function NumberCell({ value, onChange, onNavigate, registerRef }: NumberCellProps) {
+function NumberCell({ value, onChange, onNavigate, registerRef, format, placeholder = "0,00" }: NumberCellProps) {
     const [draft, setDraft] = useState<string | null>(null);
     const editing = draft !== null;
 
@@ -255,8 +260,8 @@ function NumberCell({ value, onChange, onNavigate, registerRef }: NumberCellProp
             type="text"
             inputMode="decimal"
             className="w-full h-8 px-2 outline-none bg-transparent font-mono text-[12px] text-foreground tabular-nums text-right focus:bg-primary-500/[0.06] rounded transition-colors"
-            value={editing ? draft! : value === 0 ? "" : fmtN(value)}
-            placeholder="0,00"
+            value={editing ? draft! : value === 0 ? "" : format(value)}
+            placeholder={placeholder}
             onChange={(e) => setDraft(e.target.value)}
             onFocus={handleFocus}
             onBlur={(e) => commit(e.target.value)}
@@ -327,9 +332,13 @@ function AjusteRow({ label, tipo, valor, onTipoChange, onValorChange, extraInput
 
 // ── FacturaItemsGrid ──────────────────────────────────────────────────────────
 
-export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, onRequestCreateProduct }: Props) {
+export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, decimals = 2, onRequestCreateProduct }: Props) {
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+    const fmtN = makeFmt(decimals);
+    const round = (n: number) => roundN(n, decimals);
+    const placeholder0 = `0,${"0".repeat(Math.max(2, decimals))}`;
 
     function refKey(row: number, col: ColIdx) { return `${row}-${col}`; }
 
@@ -372,7 +381,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             item.currencyCost = currencyCostVal;
             item.dollarRate   = rate;
             item.unitCost     = round4(currencyCostVal * rate);
-            item.totalCost    = round2(item.quantity * item.unitCost);
+            item.totalCost    = round(item.quantity * item.unitCost);
         } else if (field === 'unitCostDisplay') {
             // User edited the cost cell. If iva_incluido, the typed value is the
             // gross — convert to net for storage. Otherwise it's the net directly.
@@ -380,7 +389,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             item.unitCost = item.ivaIncluido
                 ? netFromGross(typed, item.vatRate ?? 'general_16')
                 : round4(typed);
-            item.totalCost = round2(item.quantity * item.unitCost);
+            item.totalCost = round(item.quantity * item.unitCost);
             if (item.currency !== 'D') item.currencyCost = null;
         } else if (field === 'currency') {
             item.currency = val as ItemCurrency;
@@ -391,11 +400,11 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     item.currencyCost = rate > 0 ? round4(item.unitCost / rate) : 0;
                 }
                 item.unitCost  = round4((item.currencyCost ?? 0) * rate);
-                item.totalCost = round2(item.quantity * item.unitCost);
+                item.totalCost = round(item.quantity * item.unitCost);
             } else {
                 item.currencyCost = null;
                 item.dollarRate   = null;
-                item.totalCost = round2(item.quantity * item.unitCost);
+                item.totalCost = round(item.quantity * item.unitCost);
             }
         } else if (field === 'ivaIncluido') {
             item.ivaIncluido = !!val;
@@ -415,7 +424,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             else if (field === 'recargoValor') item.recargoValor = Number(val) || 0;
 
             if (field === 'quantity' || field === 'unitCost') {
-                item.totalCost = round2(Number(item.quantity) * Number(item.unitCost));
+                item.totalCost = round(Number(item.quantity) * Number(item.unitCost));
                 if (item.currency !== 'D') item.currencyCost = null;
             }
             if (field === 'productId') {
@@ -565,6 +574,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                 onChange={(v) => updateItem(idx, "quantity", v)}
                                                 onNavigate={(dir) => handleNavigate(idx, 1, dir)}
                                                 registerRef={registerRef(idx, 1)}
+                                                format={fmtN}
+                                                placeholder={placeholder0}
                                             />
                                         )}
                                     </td>
@@ -609,6 +620,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                 onChange={(v) => updateItem(idx, "currencyCostInput", v)}
                                                 onNavigate={(dir) => handleNavigate(idx, 2, dir)}
                                                 registerRef={registerRef(idx, 2)}
+                                                format={fmtN}
+                                                placeholder={placeholder0}
                                             />
                                         ) : (
                                             <NumberCell
@@ -616,6 +629,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                 onChange={(v) => updateItem(idx, "unitCostDisplay", v)}
                                                 onNavigate={(dir) => handleNavigate(idx, 2, dir)}
                                                 registerRef={registerRef(idx, 2)}
+                                                format={fmtN}
+                                                placeholder={placeholder0}
                                             />
                                         )}
                                     </td>

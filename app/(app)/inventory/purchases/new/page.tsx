@@ -44,8 +44,8 @@ const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--
 // content. Sits above each subgroup of fields inside the "Datos" card.
 const groupLabelCls = "font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] font-semibold";
 
-const fmtN = (n: number) =>
-    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const makeFmt = (decimals: number) => (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 
 const todayStr = () => getTodayIsoDate();
 
@@ -354,7 +354,8 @@ export default function NuevaFacturaPage() {
             recargoValor:   i.recargoValor ?? 0,
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals);
+    const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
         descuentoHeader, recargoHeader,
@@ -867,77 +868,123 @@ export default function NuevaFacturaPage() {
                                     </div>
                                 </dl>
 
-                                {/* Ajustes breakdown — sólo si hay alguno activo */}
-                                {(descuentoLinea > 0 || recargoLinea > 0 || descuentoHeader > 0 || recargoHeader > 0) && (
-                                    <dl className="px-5 py-3 border-t border-border-light bg-surface-2/40 space-y-1.5 text-[12px]">
-                                        <div className="flex justify-between">
-                                            <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Subtotal bruto</dt>
-                                            <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(subtotalBruto)}</dd>
-                                        </div>
-                                        {(descuentoLinea + descuentoHeader) > 0 && (
-                                            <div className="flex justify-between">
-                                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">− Descuentos</dt>
-                                                <dd className="tabular-nums text-error/80 font-medium">{fmtN(descuentoLinea + descuentoHeader)}</dd>
+                                {/* Compact breakdown row — Bs above, USD below.
+                                    Same renderer used for ajustes, alícuotas y rollup. */}
+                                {(() => {
+                                    const usd = (n: number) =>
+                                        effectiveDollarRate && effectiveDollarRate > 0
+                                            ? `≈ $ ${fmtN(n / effectiveDollarRate)}`
+                                            : null;
+                                    type Tone = "muted" | "neutral" | "neg" | "pos" | "warn";
+                                    const valueColor: Record<Tone, string> = {
+                                        muted:   "text-[var(--text-secondary)]",
+                                        neutral: "text-[var(--text-secondary)]",
+                                        neg:     "text-error/80 font-medium",
+                                        pos:     "text-amber-600 font-medium",
+                                        warn:    "text-[var(--text-warning)] font-medium",
+                                    };
+                                    const breakdownRow = (
+                                        label: string,
+                                        value: number,
+                                        opts: { tone?: Tone; sign?: "+" | "−"; note?: string; indent?: boolean } = {},
+                                    ) => {
+                                        const { tone = "muted", sign, note, indent } = opts;
+                                        return (
+                                            <div className="flex justify-between items-baseline gap-3">
+                                                <dt className={`text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px] ${indent ? "pl-2.5" : ""}`}>
+                                                    {label}
+                                                    {note && (
+                                                        <span className="ml-1.5 normal-case tracking-normal text-[9px] opacity-80">
+                                                            {note}
+                                                        </span>
+                                                    )}
+                                                </dt>
+                                                <dd className="text-right">
+                                                    <div className={`tabular-nums ${valueColor[tone]}`}>
+                                                        {sign && <span className="opacity-60 mr-0.5">{sign}</span>}
+                                                        Bs. {fmtN(value)}
+                                                    </div>
+                                                    {usd(value) && (
+                                                        <div className="tabular-nums text-[9px] text-[var(--text-tertiary)] mt-0.5">
+                                                            {sign && <span className="opacity-60 mr-0.5">{sign}</span>}
+                                                            {usd(value)}
+                                                        </div>
+                                                    )}
+                                                </dd>
                                             </div>
-                                        )}
-                                        {(recargoLinea + recargoHeader) > 0 && (
-                                            <div className="flex justify-between">
-                                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">+ Recargos</dt>
-                                                <dd className="tabular-nums text-amber-600 font-medium">{fmtN(recargoLinea + recargoHeader)}</dd>
-                                            </div>
-                                        )}
-                                    </dl>
-                                )}
+                                        );
+                                    };
 
-                                {/* Bases por alícuota — only when there's taxed content */}
-                                {(baseExempt > 0 || baseTaxed8 > 0 || baseTaxed16 > 0) && (
-                                    <dl className="px-5 py-3 border-t border-border-light space-y-1.5 text-[12px]">
-                                        {baseExempt > 0 && (
-                                            <div className="flex justify-between">
-                                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base exenta</dt>
-                                                <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(baseExempt)}</dd>
-                                            </div>
-                                        )}
-                                        {baseTaxed8 > 0 && (
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base 8%</dt>
-                                                    <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(baseTaxed8)}</dd>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">IVA 8%</dt>
-                                                    <dd className="tabular-nums text-[var(--text-warning)] font-medium">{fmtN(vat8)}</dd>
-                                                </div>
-                                            </>
-                                        )}
-                                        {baseTaxed16 > 0 && (
-                                            <>
-                                                <div className="flex justify-between">
-                                                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base 16%</dt>
-                                                    <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(baseTaxed16)}</dd>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">IVA 16%</dt>
-                                                    <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(vat16)}</dd>
-                                                </div>
-                                            </>
-                                        )}
-                                    </dl>
-                                )}
+                                    // ── Same view-shape rules as the detail page ─────────────
+                                    // Collapse rows that hold the same value as a sibling. The
+                                    // intermediate "Base IVA" only earns its keep when there are
+                                    // adjustments OR mixed alícuotas.
+                                    const hasAdj = (descuentoLinea > 0 || recargoLinea > 0 || descuentoHeader > 0 || recargoHeader > 0);
+                                    const aliquotCount =
+                                        (baseExempt  > 0 ? 1 : 0) +
+                                        (baseTaxed8  > 0 ? 1 : 0) +
+                                        (baseTaxed16 > 0 ? 1 : 0);
+                                    const isOnlyExempt   = aliquotCount === 1 && baseExempt > 0;
+                                    const isMixed        = aliquotCount > 1;
+                                    const hasIva         = vatAmount > 0;
+                                    const hasMultipleTaxedAlicuotas = (vat8 > 0 && vat16 > 0);
 
-                                {/* Subtotal + IVA rollup */}
-                                <dl className="px-5 py-3 border-t border-border-light space-y-1.5 text-[12px]">
-                                    <div className="flex justify-between">
-                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Base IVA</dt>
-                                        <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(subtotal)}</dd>
-                                    </div>
-                                    {vatAmount > 0 && (
-                                        <div className="flex justify-between">
-                                            <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Total IVA</dt>
-                                            <dd className="tabular-nums text-[var(--text-secondary)]">{fmtN(vatAmount)}</dd>
-                                        </div>
-                                    )}
-                                </dl>
+                                    const showAdjustmentSection = hasAdj;
+                                    const showBaseIntermediate  = hasAdj || isMixed;
+                                    const showAlicuotaBreakdown = isMixed;
+
+                                    const singleAliquotaLabel: string =
+                                        isOnlyExempt ? "exenta"
+                                        : baseTaxed8 > 0 ? "gravada 8%"
+                                        : "gravada 16%";
+
+                                    return (
+                                        <>
+                                            {showAdjustmentSection && (
+                                                <dl className="px-5 py-3 border-t border-border-light bg-surface-2/40 space-y-2 text-[12px]">
+                                                    {breakdownRow("Subtotal bruto", subtotalBruto, { tone: "muted", note: "Σ qty × costo" })}
+                                                    {descuentoLinea  > 0 && breakdownRow("Descuento líneas",  descuentoLinea,  { tone: "neg", sign: "−", indent: true })}
+                                                    {descuentoHeader > 0 && breakdownRow("Descuento factura", descuentoHeader, { tone: "neg", sign: "−", indent: true, note: "prorrateado" })}
+                                                    {recargoLinea    > 0 && breakdownRow("Recargo líneas",    recargoLinea,    { tone: "pos", sign: "+", indent: true })}
+                                                    {recargoHeader   > 0 && breakdownRow("Recargo factura",   recargoHeader,   { tone: "pos", sign: "+", indent: true, note: "prorrateado" })}
+                                                </dl>
+                                            )}
+
+                                            <dl className="px-5 py-3 border-t border-border-light space-y-2 text-[12px]">
+                                                {showBaseIntermediate ? (
+                                                    isOnlyExempt
+                                                        ? breakdownRow("Base imponible", subtotal, {
+                                                              tone: "neutral",
+                                                              note: hasAdj ? "exenta · = bruto − desc + rec" : "exenta",
+                                                          })
+                                                        : breakdownRow("Base IVA", subtotal, {
+                                                              tone: "neutral",
+                                                              note: hasAdj ? "= bruto − desc + rec" : undefined,
+                                                          })
+                                                ) : (
+                                                    breakdownRow("Base imponible", subtotal, { tone: "neutral", note: singleAliquotaLabel })
+                                                )}
+
+                                                {showAlicuotaBreakdown && (
+                                                    <>
+                                                        {baseExempt  > 0 && breakdownRow("Base exenta",       baseExempt,  { tone: "muted",   indent: true })}
+                                                        {baseTaxed8  > 0 && breakdownRow("Base gravada 8%",   baseTaxed8,  { tone: "muted",   indent: true })}
+                                                        {vat8        > 0 && breakdownRow("IVA 8%",            vat8,        { tone: "warn",    indent: true, note: "8% × base" })}
+                                                        {baseTaxed16 > 0 && breakdownRow("Base gravada 16%",  baseTaxed16, { tone: "muted",   indent: true })}
+                                                        {vat16       > 0 && breakdownRow("IVA 16%",           vat16,       { tone: "neutral", indent: true, note: "16% × base" })}
+                                                        {hasMultipleTaxedAlicuotas && breakdownRow("Total IVA", vatAmount, { tone: "neutral", indent: true, note: "= IVA 8% + IVA 16%" })}
+                                                    </>
+                                                )}
+
+                                                {!showAlicuotaBreakdown && hasIva && (
+                                                    vat8 > 0
+                                                        ? breakdownRow("IVA 8%",  vat8,  { tone: "warn",    note: "8% × base" })
+                                                        : breakdownRow("IVA 16%", vat16, { tone: "neutral", note: "16% × base" })
+                                                )}
+                                            </dl>
+                                        </>
+                                    );
+                                })()}
 
                                 {/* Total hero */}
                                 <div className="px-5 py-4 border-t border-border-default bg-surface-1">
@@ -996,31 +1043,36 @@ export default function NuevaFacturaPage() {
                             products={products}
                             onChange={setItems}
                             dollarRate={effectiveDollarRate}
+                            decimals={rateDecimals}
                             onRequestCreateProduct={(search) => {
                                 setQcProduct(p => ({ ...p, name: search }));
                                 setQcMode('product');
                             }}
                         />
 
-                        {/* Inline totals — full breakdown lives in the resumen above */}
+                        {/* Inline totals — full breakdown lives in the resumen above.
+                            Only surface "Base IVA" + "IVA" when IVA actually applies; in
+                            an exempt-only case those rows would just echo the Total. */}
                         <div className="mt-5 pt-4 border-t border-border-light flex items-baseline justify-end gap-6 flex-wrap">
-                            <div className="flex items-baseline gap-2">
-                                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                    Base IVA
-                                </span>
-                                <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
-                                    {fmtN(subtotal)}
-                                </span>
-                            </div>
                             {vatAmount > 0 && (
-                                <div className="flex items-baseline gap-2">
-                                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                        IVA
-                                    </span>
-                                    <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
-                                        {fmtN(vatAmount)}
-                                    </span>
-                                </div>
+                                <>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                                            Base IVA
+                                        </span>
+                                        <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
+                                            {fmtN(subtotal)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                                            IVA
+                                        </span>
+                                        <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
+                                            {fmtN(vatAmount)}
+                                        </span>
+                                    </div>
+                                </>
                             )}
                             <div className="flex items-baseline gap-2 pl-5 border-l border-border-light">
                                 <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground font-bold">
