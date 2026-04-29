@@ -138,6 +138,7 @@ export async function generatePeriodReportPdf(
         companyRif:  opts.companyRif,
         reportTitle: "Reporte de Período",
         periodLabel: fmtPeriodMonth(opts.period),
+        legalCaption: "Reporte Art. 177 ISLR",
     };
 
     drawHeader(doc, headerOpts);

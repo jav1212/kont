@@ -23,6 +23,12 @@ export interface KontaPdfHeaderOpts {
     reportTitle:   string;       // e.g. "Libro de Entradas"
     periodLabel:   string;       // e.g. "Marzo 2026" or "Año 2026"
     generatedAtIso?: string;     // defaults to new Date().toISOString()
+    /**
+     * Optional legal/regulatory tag rendered as a small badge under the RIF.
+     * Used by inventory reports to flag SENIAT compliance ("Reporte Art. 177
+     * ISLR"). Skipped silently when undefined.
+     */
+    legalCaption?: string;
 }
 
 // ── Page geometry ─────────────────────────────────────────────────────────────
@@ -68,17 +74,21 @@ export function pageBounds(doc: Doc): PageBounds {
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
+// Text tones are biased dark by design: every text tier prints as solid black
+// on inkjet/low-toner printers. We collapse the heading/body distinction onto
+// near-black, and keep secondary text at slate-900 so it still prints fully
+// dark while remaining (barely) distinguishable on screen.
 export const COLORS = {
-    ink:        [17,  24,  39]  as RGB,    // slate-900
-    inkMed:     [55,  65,  81]  as RGB,    // slate-700
-    muted:      [107, 114, 128] as RGB,    // slate-500
+    ink:        [10,  12,  16]  as RGB,    // near-black — headings, totals, body
+    inkMed:     [10,  12,  16]  as RGB,    // near-black — body (was slate-800)
+    muted:      [17,  24,  39]  as RGB,    // slate-900 — secondary/labels (was slate-700)
     border:     [229, 231, 235] as RGB,    // slate-200
     borderStr:  [203, 213, 225] as RGB,    // slate-300
     rowAlt:     [248, 250, 252] as RGB,    // slate-50
     bandHead:   [241, 245, 249] as RGB,    // slate-100
     white:      [255, 255, 255] as RGB,
     orange:     [255, 74,  24]  as RGB,    // Konta brand accent (#FF4A18)
-    amber:      [180, 83,  9]   as RGB,    // amber-700 (text on amberLight)
+    amber:      [120, 53,  15]  as RGB,    // amber-900 — text on amberLight (was 800)
     amberLight: [254, 243, 199] as RGB,    // amber-100 (row highlight)
 };
 
@@ -227,8 +237,11 @@ export function drawHeader(doc: Doc, opts: KontaPdfHeaderOpts): number {
         renderMono(doc, `RIF ${opts.companyRif}`, xL, 17.5, 8.5, false, COLORS.muted, "left");
     }
 
-    // Right block: report title + period + generated timestamp
-    renderText(doc, opts.reportTitle.toUpperCase(), xR, 12, 11, true, COLORS.ink, "right");
+    // Right block: report title (+ legal caption appended) + period + generated timestamp
+    const titleText = opts.legalCaption
+        ? `${opts.reportTitle} - ${opts.legalCaption}`
+        : opts.reportTitle;
+    renderText(doc, titleText.toUpperCase(), xR, 12, 11, true, COLORS.ink, "right");
     renderMono(doc, opts.periodLabel.toUpperCase(), xR, 17.5, 9, true, COLORS.inkMed, "right");
 
     const generatedAt = opts.generatedAtIso ?? new Date().toISOString();

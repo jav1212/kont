@@ -91,6 +91,7 @@ export async function generateBalanceReportPdf(
         companyRif:  opts.companyRif,
         reportTitle: "Reporte de Saldos",
         periodLabel: fmtPeriodMonth(opts.period),
+        legalCaption: "Reporte Art. 177 ISLR",
     };
 
     drawHeader(doc, headerOpts);

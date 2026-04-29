@@ -93,6 +93,7 @@ export async function generatePurchaseLedgerPdf(
         companyRif:  opts.companyRif,
         reportTitle: "Libro de Entradas",
         periodLabel: fmtPeriodMonth(opts.period),
+        legalCaption: "Reporte Art. 177 ISLR",
     };
 
     drawHeader(doc, headerOpts);

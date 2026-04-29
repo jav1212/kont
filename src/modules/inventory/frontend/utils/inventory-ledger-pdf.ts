@@ -105,6 +105,7 @@ export async function generateInventoryLedgerPdf(
         companyRif:  opts.companyRif,
         reportTitle: "Libro de Inventarios",
         periodLabel: `Año ${opts.year}${opts.typeFilterLabel ? ` · ${opts.typeFilterLabel}` : ""}`,
+        legalCaption: "Reporte Art. 177 ISLR",
     };
 
     drawHeader(doc, headerOpts);
