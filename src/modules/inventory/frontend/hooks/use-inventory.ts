@@ -23,10 +23,21 @@ import type {
     RandomSalesPreview,
     RandomSalesPreviewLine,
 } from '../../backend/app/generate-random-sales.use-case';
+import type {
+    GenerateStockAdjustmentInput,
+    StockAdjustmentPreview,
+    StockAdjustmentLine,
+    AdjustmentBaseSource,
+    AdjustmentMode,
+} from '../../backend/app/generate-stock-adjustment.use-case';
+import type {
+    SaveStockAdjustmentInput,
+    SaveStockAdjustmentOutput,
+} from '../../backend/app/save-stock-adjustment.use-case';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 
-export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine };
+export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput };
 
 // Centralised error reporter. Network failures go to console for debugging
 // but the user always sees a toast — never a silent failure.
@@ -569,6 +580,52 @@ export function useInventory() {
         }
     }, []);
 
+    // ── Stock Adjustments (no movement) ────────────────────────────────────────
+
+    const generateStockAdjustment = useCallback(async (
+        input: GenerateStockAdjustmentInput,
+    ): Promise<StockAdjustmentPreview | null> => {
+        try {
+            const res = await apiFetch('/api/inventory/adjustments/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(input),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al generar ajuste'); return null; }
+            return json.data as StockAdjustmentPreview;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const saveStockAdjustment = useCallback(async (
+        payload: SaveStockAdjustmentInput,
+    ): Promise<SaveStockAdjustmentOutput | null> => {
+        try {
+            const res = await apiFetch('/api/inventory/adjustments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar ajuste'); return null; }
+            const data = json.data as SaveStockAdjustmentOutput;
+            // Refrescar productos con el nuevo currentStock — averageCost no cambia
+            if (data.updated.length > 0) {
+                const byId = new Map(data.updated.map((p) => [p.id, p]));
+                setProducts((prev) =>
+                    prev.map((p) => (p.id && byId.has(p.id) ? byId.get(p.id)! : p))
+                );
+            }
+            return data;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
     // ── Inventory Ledger ───────────────────────────────────────────────────────
 
     const loadInventoryLedger = useCallback(async (companyId: string, year: number) => {
@@ -645,6 +702,7 @@ export function useInventory() {
         loadPurchaseLedger,
         loadIslrReport,
         loadSalesLedger, saveOutbound, generateRandomSales,
+        generateStockAdjustment, saveStockAdjustment,
         loadInventoryLedger,
         loadBalanceReport,
     };

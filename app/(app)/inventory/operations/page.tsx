@@ -25,6 +25,7 @@ import {
     Pencil,
     RotateCcw,
     PackageMinus,
+    Wand2,
 } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -456,6 +457,16 @@ export default function OperationsHubPage() {
                     leftIcon={<Pencil size={13} strokeWidth={2} />}
                 >
                     Ajuste
+                </BaseButton.Root>
+                <BaseButton.Root
+                    as={Link}
+                    href="/inventory/adjustments/generator"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Wand2 size={13} strokeWidth={2} />}
+                    title="Cuadra la existencia de varios productos a la vez (no crea movimientos)"
+                >
+                    Generar ajustes
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}

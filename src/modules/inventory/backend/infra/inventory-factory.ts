@@ -6,10 +6,11 @@
 //   - inventory-movimientos-factory (movements)
 //   - inventory-proveedores-factory (suppliers, purchase invoices)
 //   - inventory-reportes-factory    (period report, ledgers, ISLR, balance)
-import { getInventoryProductsActions }  from './inventory-products-factory';
-import { getInventoryMovementsActions } from './inventory-movements-factory';
-import { getInventorySuppliersActions } from './inventory-suppliers-factory';
-import { getInventoryReportsActions }   from './inventory-reports-factory';
+import { getInventoryProductsActions }     from './inventory-products-factory';
+import { getInventoryMovementsActions }    from './inventory-movements-factory';
+import { getInventorySuppliersActions }    from './inventory-suppliers-factory';
+import { getInventoryReportsActions }      from './inventory-reports-factory';
+import { getInventoryAdjustmentsActions }  from './inventory-adjustments-factory';
 
 export function getInventoryActions(userId: string) {
     return {
@@ -17,5 +18,6 @@ export function getInventoryActions(userId: string) {
         ...getInventoryMovementsActions(userId),
         ...getInventorySuppliersActions(userId),
         ...getInventoryReportsActions(userId),
+        ...getInventoryAdjustmentsActions(userId),
     };
 }

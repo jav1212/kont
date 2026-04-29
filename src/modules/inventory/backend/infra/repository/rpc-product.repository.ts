@@ -78,6 +78,22 @@ export class RpcProductRepository implements IProductRepository {
         }
     }
 
+    async setStock(companyId: string, productId: string, newStock: number): Promise<Result<Product>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_inventario_productos_set_existencia', {
+                    p_user_id:     this.userId,
+                    p_empresa_id:  companyId,
+                    p_producto_id: productId,
+                    p_existencia:  newStock,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(this.mapToDomain(data as ProductRpcRow));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Failed to set product stock');
+        }
+    }
+
     async delete(id: string): Promise<Result<DeleteProductOutcome>> {
         try {
             const { data, error } = await this.source.instance
