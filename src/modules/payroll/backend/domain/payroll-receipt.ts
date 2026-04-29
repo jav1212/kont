@@ -1,3 +1,9 @@
+export interface ReceiptComputedLine {
+    label:   string;
+    formula: string;
+    amount:  number;
+}
+
 export interface ReceiptCalculationData {
     gross:              number;
     netUsd:             number;
@@ -8,6 +14,12 @@ export interface ReceiptCalculationData {
     alicuotaUtil?:      number;
     alicuotaBono?:      number;
     salarioIntegral?:   number;
+    // Sprint 3: desglose por línea persistido para reconstruir el recibo desde
+    // el historial (incluye fórmulas). Opcional — los recibos antiguos sólo
+    // exponen los totales agregados.
+    earningLines?:      ReceiptComputedLine[];
+    bonusLines?:        ReceiptComputedLine[];
+    deductionLines?:    ReceiptComputedLine[];
 }
 
 export interface PayrollReceipt {

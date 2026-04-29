@@ -20,6 +20,7 @@ import {
 import type { EarningRow, DeductionRow, BonusRow, HorasExtrasRow } from "../types/payroll-types";
 import { HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 import { generatePayrollPdf } from "../utils/payroll-pdf";
+import { generatePayrollSummaryPdf } from "../utils/payroll-summary-pdf";
 import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 import { computeAportes, downloadAportesCsv } from "../utils/aportes-patronales";
 import { Employee, EmployeeEstado } from "../hooks/use-employee";
@@ -654,6 +655,32 @@ export const PayrollEmployeeTable = ({
         }
     }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed]);
 
+    const handleExportSummaryPdf = useCallback(async () => {
+        const active = results.filter((r) => r.estado === "activo");
+        if (!active.length) return;
+        await generatePayrollSummaryPdf(
+            active.map((r) => ({
+                cedula:          r.cedula,
+                nombre:          r.nombre,
+                cargo:           r.cargo,
+                salarioMensual:  r.salarioMensual,
+                totalEarnings:   r.totalEarnings,
+                totalBonuses:    r.totalBonuses,
+                totalDeductions: r.totalDeductions,
+                net:             r.net,
+                netUSD:          r.netUSD,
+            })),
+            {
+                companyName,
+                companyId,
+                periodLabel: periodLabel ?? "",
+                periodStart,
+                periodEnd:   payrollDate,
+                bcvRate,
+            },
+        );
+    }, [results, companyName, companyId, periodLabel, periodStart, payrollDate, bcvRate]);
+
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
         setConfirmLoading(true);
@@ -906,6 +933,12 @@ export const PayrollEmployeeTable = ({
                             <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
                         </svg>
                         Exportar PDF
+                    </button>
+                    <button onClick={handleExportSummaryPdf} disabled={results.filter(r => r.estado === "activo").length === 0} className={toolbarBtnBase}>
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="1.5" y="2" width="9" height="8" rx="0.5" /><path d="M1.5 5h9M4 2v8M7 2v8" />
+                        </svg>
+                        Reporte general
                     </button>
                     {draftSavedAt ? (
                         <span

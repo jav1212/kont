@@ -3,12 +3,14 @@
 import { useState, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, FileBarChart } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import { generatePayrollPdf } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
 import type { PdfEmployeeResult } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
+import { generatePayrollSummaryPdf } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
+import type { PayrollSummaryEmployeeRow } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
 
 type HistoryTab = "payroll" | "cesta";
@@ -65,10 +67,18 @@ function buildPdfEmployees(receipts: PayrollReceipt[]): PdfEmployeeResult[] {
         const net = r.netPay;
         const gross = cd.gross ?? (r.totalEarnings + r.totalBonuses);
 
-        // Reconstruir líneas resumidas (sin detalle, sólo totales)
-        const earningLines = r.totalEarnings > 0 ? [{ label: "Asignaciones", formula: "—", amount: r.totalEarnings }] : [];
-        const bonusLines = r.totalBonuses > 0 ? [{ label: "Bonificaciones", formula: "—", amount: r.totalBonuses }] : [];
-        const deductionLines = r.totalDeductions > 0 ? [{ label: "Deducciones", formula: "—", amount: r.totalDeductions }] : [];
+        // Recibos confirmados a partir de Sprint 3 traen el desglose por línea
+        // (con fórmulas) en `calculationData`. Para los runs anteriores que sólo
+        // guardaron los agregados, caemos a una línea-resumen sin fórmula.
+        const earningLines   = cd.earningLines   && cd.earningLines.length   > 0
+            ? cd.earningLines
+            : (r.totalEarnings   > 0 ? [{ label: "Asignaciones",  formula: "—", amount: r.totalEarnings   }] : []);
+        const bonusLines     = cd.bonusLines     && cd.bonusLines.length     > 0
+            ? cd.bonusLines
+            : (r.totalBonuses    > 0 ? [{ label: "Bonificaciones", formula: "—", amount: r.totalBonuses    }] : []);
+        const deductionLines = cd.deductionLines && cd.deductionLines.length > 0
+            ? cd.deductionLines
+            : (r.totalDeductions > 0 ? [{ label: "Deducciones",   formula: "—", amount: r.totalDeductions }] : []);
 
         return {
             cedula: r.employeeCedula,
@@ -257,6 +267,7 @@ export default function PayrollHistoryPage() {
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
         await generatePayrollPdf(employees, {
             companyName: company?.name ?? "Empresa",
+            companyId: company?.id,
             payrollDate: selectedRun.periodEnd,
             periodStart: selectedRun.periodStart,
             periodLabel,
@@ -264,6 +275,30 @@ export default function PayrollHistoryPage() {
             mondaysInMonth: receipts[0]?.calculationData?.mondaysInMonth ?? 4,
             logoUrl: company?.logoUrl,
             showLogoInPdf: company?.showLogoInPdf,
+        });
+    }, [selectedRun, receipts, company]);
+
+    const handleDownloadSummaryPdf = useCallback(async () => {
+        if (!selectedRun || !receipts.length) return;
+        const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
+        const rows: PayrollSummaryEmployeeRow[] = receipts.map((r) => ({
+            cedula:          r.employeeCedula,
+            nombre:          r.employeeNombre,
+            cargo:           r.employeeCargo,
+            salarioMensual:  r.monthlySalary,
+            totalEarnings:   r.totalEarnings,
+            totalBonuses:    r.totalBonuses,
+            totalDeductions: r.totalDeductions,
+            net:             r.netPay,
+            netUSD:          r.calculationData?.netUsd ?? 0,
+        }));
+        await generatePayrollSummaryPdf(rows, {
+            companyName: company?.name ?? "Empresa",
+            companyId:   company?.id,
+            periodLabel,
+            periodStart: selectedRun.periodStart,
+            periodEnd:   selectedRun.periodEnd,
+            bcvRate:     selectedRun.exchangeRate,
         });
     }, [selectedRun, receipts, company]);
 
@@ -283,6 +318,14 @@ export default function PayrollHistoryPage() {
                             leftIcon={<FileText size={14} />}
                         >
                             Descargar PDF
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleDownloadSummaryPdf}
+                            leftIcon={<FileBarChart size={14} />}
+                        >
+                            Reporte general
                         </BaseButton.Root>
                         <BaseButton.Root
                             variant="secondary"

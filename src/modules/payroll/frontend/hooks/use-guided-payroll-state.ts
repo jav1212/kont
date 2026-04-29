@@ -443,6 +443,9 @@ export function useGuidedPayrollState() {
                         alicuotaUtil: r.alicuotaUtil,
                         alicuotaBono: r.alicuotaBono,
                         salarioIntegral: r.salarioIntegral,
+                        earningLines:   r.earningLines,
+                        bonusLines:     r.bonusLines,
+                        deductionLines: r.deductionLines,
                     },
                 })),
             };

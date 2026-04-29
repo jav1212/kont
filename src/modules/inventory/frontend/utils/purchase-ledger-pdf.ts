@@ -2,7 +2,7 @@
 //
 // Renders a landscape A4 PDF listing every "entrada" / "devolucion_salida"
 // movement for the selected month, plus a totals row. Shares the Konta header
-// + footer/watermark with every other inventory PDF (see pdf-chrome.ts).
+// + footer/watermark with every other inventory PDF (see shared pdf-chrome.ts).
 
 import jsPDF from "jspdf";
 import type { Movement } from "../../backend/domain/movement";
@@ -22,7 +22,7 @@ import {
     safeFilename,
     type KontaPdfHeaderOpts,
     type PdfCell,
-} from "./pdf-chrome";
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
 export interface PurchaseLedgerPdfOpts {
     companyName:       string;

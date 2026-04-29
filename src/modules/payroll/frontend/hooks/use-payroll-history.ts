@@ -32,6 +32,9 @@ export interface ConfirmReceiptPayload {
         alicuotaUtil?: number;
         alicuotaBono?: number;
         salarioIntegral?: number;
+        earningLines?:   { label: string; formula: string; amount: number }[];
+        bonusLines?:     { label: string; formula: string; amount: number }[];
+        deductionLines?: { label: string; formula: string; amount: number }[];
     };
 }
 

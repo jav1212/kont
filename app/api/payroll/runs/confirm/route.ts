@@ -3,6 +3,12 @@ import { getPayrollRunActions }  from "@/src/modules/payroll/backend/infrastruct
 import { getAccountingActions }  from "@/src/modules/accounting/backend/infrastructure/accounting-factory";
 import { withTenant }            from "@/src/shared/backend/utils/require-tenant";
 
+const ComputedLineSchema = z.object({
+    label:   z.string(),
+    formula: z.string(),
+    amount:  z.number(),
+});
+
 const CalculationDataSchema = z.object({
     gross:          z.number(),
     netUsd:         z.number(),
@@ -12,6 +18,9 @@ const CalculationDataSchema = z.object({
     alicuotaUtil:   z.number().nonnegative().optional(),
     alicuotaBono:   z.number().nonnegative().optional(),
     salarioIntegral: z.number().nonnegative().optional(),
+    earningLines:   z.array(ComputedLineSchema).optional(),
+    bonusLines:     z.array(ComputedLineSchema).optional(),
+    deductionLines: z.array(ComputedLineSchema).optional(),
 });
 
 const ReceiptSchema = z.object({

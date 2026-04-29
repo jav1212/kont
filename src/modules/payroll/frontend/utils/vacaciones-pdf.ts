@@ -1,34 +1,69 @@
-// ============================================================================
-// VACACIONES PDF — Constancia de Vacaciones (LOTTT)
-// Diseño fiel al card de vista previa: fondo blanco, header oscuro,
-// secciones separadas por líneas suaves, tabla limpia, total en color.
-// ============================================================================
+// PDF generators: Constancia de Vacaciones — completas (Arts. 190 + 192 LOTTT)
+// y fraccionadas (Art. 196). Comparten el chrome Konta con todos los demás
+// reportes (header naranja, footer Kontave, paleta slate + naranja).
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    drawHeader,
+    drawFooter,
+    drawHeaderRow,
+    fill,
+    hline,
+    rect,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface VacPdfEmployee {
-    nombre:    string;
-    cedula:    string;
-    cargo?:    string;
-    anios?:    number;
+    nombre: string;
+    cedula: string;
+    cargo?: string;
+    anios?: number;
 }
 
 export interface VacCompletasPdfData {
+    companyName:      string;
+    companyId?:       string;
+    employee:         VacPdfEmployee;
+    fechaInicio:      string;
+    fechaCulminacion: string;
+    fechaReintegro:   string;
+    salarioVES:       number;
+    salarioDia:       number;
+    diasCalendario:   number;
+    diasHabiles:      number;
+    diasDescanso:     number;
+    diasDisfrute:     number;
+    diasBono:         number;
+    montoDisfrute:    number;
+    montoBono:        number;
+    total:            number;
+    logoUrl?:         string;
+    showLogoInPdf?:   boolean;
+}
+
+export interface VacFraccionadasPdfData {
     companyName:       string;
+    companyId?:        string;
     employee:          VacPdfEmployee;
-    fechaInicio:       string;   // ISO
-    fechaCulminacion:  string;   // ISO
-    fechaReintegro:    string;   // ISO
+    fechaIngreso:      string;
+    fechaEgreso:       string;
+    ultimoAniversario: string;
+    aniosCompletos:    number;
+    mesesFraccion:     number;
+    diasAnuales:       number;
     salarioVES:        number;
     salarioDia:        number;
-    diasCalendario:    number;
-    diasHabiles:       number;
-    diasDescanso:      number;
-    diasDisfrute:      number;
-    diasBono:          number;
+    fraccionDisfrute:  number;
+    fraccionBono:      number;
     montoDisfrute:     number;
     montoBono:         number;
     total:             number;
@@ -36,482 +71,286 @@ export interface VacCompletasPdfData {
     showLogoInPdf?:    boolean;
 }
 
-export interface VacFraccionadasPdfData {
-    companyName:        string;
-    employee:           VacPdfEmployee;
-    fechaIngreso:       string;   // ISO
-    fechaEgreso:        string;   // ISO
-    ultimoAniversario:  string;   // ISO
-    aniosCompletos:     number;
-    mesesFraccion:      number;
-    diasAnuales:        number;
-    salarioVES:         number;
-    salarioDia:         number;
-    fraccionDisfrute:   number;
-    fraccionBono:       number;
-    montoDisfrute:      number;
-    montoBono:          number;
-    total:              number;
-    logoUrl?:           string;
-    showLogoInPdf?:     boolean;
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Colors (matching the card design) ─────────────────────────────────────────
-
-type RGB = [number, number, number];
-const C = {
-    ink:      [0,   0,   0]   as RGB,
-    inkMed:   [0,   0,   0]   as RGB,
-    muted:    [0,   0,   0]   as RGB,
-    muted2:   [0,   0,   0]   as RGB,
-    border:   [218, 218, 226] as RGB,   // #dadae2 — border-light
-    bgStripe: [240, 240, 245] as RGB,   // #f0f0f5 — row alt
-    bgPage:   [255, 255, 255] as RGB,   // blanco para impresión
-    white:    [255, 255, 255] as RGB,
-    primary:  [217, 58,  16]  as RGB,   // #D93A10 — Konta orange (dark)
-    accent:   [255, 74,  24]  as RGB,   // #FF4A18 — Konta brand accent
-    amber:    [180, 120, 10]  as RGB,   // #b4780a
-    amberAcc: [253, 230, 138] as RGB,   // #fde68a
-    header:   [255, 255, 255] as RGB,
-    accentBg: [255, 220, 210] as RGB,   // light orange for reintegro / meses
-};
-
-// ── Primitives ────────────────────────────────────────────────────────────────
-
-const fill = (doc: jsPDF, x: number, y: number, w: number, h: number, c: RGB) => {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-};
-
-const hline = (doc: jsPDF, x: number, y: number, w: number, c: RGB = C.border, lw = 0.2) => {
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-};
-
-const rect = (doc: jsPDF, x: number, y: number, w: number, h: number, stroke: RGB, lw = 0.25) => {
-    doc.setDrawColor(stroke[0], stroke[1], stroke[2]);
-    doc.setLineWidth(lw);
-    doc.rect(x, y, w, h, "D");
-};
-
-const txt = (
-    doc: jsPDF, text: string,
-    x: number, y: number, size: number, bold: boolean,
-    color: RGB, align: "left" | "center" | "right" = "left",
-    maxW?: number,
-) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.setCharSpace(0);
-
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
-
-    let ax = x;
-    if (align === "right")  ax = x - doc.getTextWidth(str);
-    if (align === "center") ax = x - doc.getTextWidth(str) / 2;
-
-    doc.text(str, ax, y);
-};
-
-const fmtNum = (n: number): string => {
-    const [int, dec] = n.toFixed(2).split(".");
-    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + dec;
-};
-const fmtVES = (n: number) => "Bs. " + fmtNum(n);
+type Doc = jsPDF;
 
 function formatDateES(iso: string): string {
     if (!iso) return "—";
     const [y, m, d] = iso.split("-");
-    const meses = ["enero","febrero","marzo","abril","mayo","junio",
-                   "julio","agosto","septiembre","octubre","noviembre","diciembre"];
-    return `${parseInt(d)} de ${meses[parseInt(m) - 1]} de ${y}`;
+    const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    return `${parseInt(d, 10)} de ${meses[parseInt(m, 10) - 1]} de ${y}`;
 }
 
-function emitidoStr(): string {
-    return new Date().toLocaleDateString("es-VE", {
-        day: "2-digit", month: "short", year: "numeric",
-    }).toUpperCase();
+interface ParamCol {
+    label: string;
+    value: string;
+    accent?: boolean;
 }
 
-// ── Shared: header ────────────────────────────────────────────────────────────
+function drawParamsStrip(doc: Doc, x: number, w: number, y: number, cols: ParamCol[]): number {
+    const H = 14;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
+    const colW = w / cols.length;
+    cols.forEach(({ label, value, accent }, i) => {
+        const cx = x + i * colW;
+        if (accent) fill(doc, cx, y, 1.2, H, COLORS.orange);
+        renderLabel(doc, label, cx + 3, y + 5, "left", COLORS.muted, 7);
+        renderMono(doc, value, cx + 3, y + 11, 9, true, COLORS.inkMed, "left");
+    });
+    return y + H + 4;
+}
 
-function drawHeader(
-    doc: jsPDF, PW: number, ML: number, MR: number,
-    accentLeft: RGB, accentBottom: RGB,
-    companyName: string, titleLine1: string, titleLine2: string,
-    rightLabel: string, rightLine1: string, rightLine2?: string,
+interface ConceptRow {
+    label:    string;
+    subtitle: string;
+    dias:     number;
+    monto:    number;
+}
+
+function drawConceptTable(
+    doc: Doc,
+    x: number,
+    w: number,
+    y: number,
+    rows: ConceptRow[],
+    totalLabel: string,
+    totalDias: number,
+    total: number,
 ): number {
-    const HDR_H = 40;
-    fill(doc, 0, 0, PW, HDR_H, C.header);
-    // Left accent bar (4mm wide, stops 2mm from bottom)
-    fill(doc, 0, 0, 4, HDR_H - 2, accentLeft);
-    // Bottom accent line (2mm tall)
-    fill(doc, 4, HDR_H - 2, PW - 4, 2, accentBottom);
+    const colConcept = w * 0.6;
+    const colDias    = w * 0.18;
+    const colMonto   = w * 0.22;
 
-    txt(doc, companyName.toUpperCase(),  ML + 6, 11,   13, true,  C.ink);
-    txt(doc, titleLine1,                  ML + 6, 19,   9.5,false, C.muted);
-    txt(doc, titleLine2,                  ML + 6, 25,   8,  false, C.muted2);
+    drawHeaderRow(doc, y, 6, [
+        { x: x,                      w: colConcept, text: "Concepto", align: "left"  },
+        { x: x + colConcept,         w: colDias,    text: "Días",     align: "right" },
+        { x: x + colConcept + colDias, w: colMonto, text: "Monto",    align: "right" },
+    ]);
+    y += 6;
 
-    txt(doc, rightLabel.toUpperCase(),   MR, 11,   8,  false, C.muted, "right");
-    txt(doc, rightLine1,                  MR, 19,   10, true,  C.ink, "right");
-    if (rightLine2) txt(doc, rightLine2, MR, 25,   10, true,  C.ink, "right");
-    txt(doc, `Emitido: ${emitidoStr()}`, MR, 31,   8,  false, C.muted, "right");
+    rows.forEach((row, i) => {
+        const H = 10;
+        if (i % 2 === 1) fill(doc, x, y, w, H, COLORS.rowAlt);
+        renderText(doc, row.label,    x + 3, y + 4.2, 9.5, true,  COLORS.ink,      "left", colConcept - 4, "helvetica");
+        renderText(doc, row.subtitle, x + 3, y + 8.2, 7.5, false, COLORS.muted,    "left", colConcept - 4, "helvetica");
+        renderMono(doc, `${row.dias} d`, x + colConcept + colDias - 2, y + 6.5, 9, false, COLORS.muted, "right");
+        renderMono(doc, formatVES(row.monto), x + colConcept + colDias + colMonto - 2, y + 6.5, 10, true, COLORS.ink, "right");
+        y += H;
+    });
 
-    return HDR_H + 5;
+    // Orange accent + total bar
+    fill(doc, x, y, w, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, x, y, w, 12, COLORS.bandHead);
+    rect(doc, x, y, w, 12, COLORS.border, 0.2);
+    renderLabel(doc, `${totalLabel} · ${totalDias} días`, x + 3, y + 7.8, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(total), x + w - 3, y + 8.2, 13, true, COLORS.ink, "right");
+    return y + 12 + 6;
 }
-
-// ── Shared: employee card ─────────────────────────────────────────────────────
 
 function drawEmployeeCard(
-    doc: jsPDF, ML: number, W: number, MR: number, y: number,
-    accentBar: RGB,
-    nombre: string, cargo: string | undefined, cedula: string, rightSub: string,
+    doc: Doc,
+    x: number,
+    w: number,
+    y: number,
+    employee: VacPdfEmployee,
+    rightSub: string,
 ): number {
-    const H = 18;
-    fill(doc, ML, y, W, H, C.white);
-    fill(doc, ML, y, 3, H, accentBar);
-    rect(doc, ML, y, W, H, C.border, 0.25);
-
-    txt(doc, nombre.toUpperCase(), ML + 7, y + 7,  12, true,  C.inkMed, "left", W * 0.63);
-    if (cargo) txt(doc, cargo.toUpperCase(), ML + 7, y + 13, 8.5, false, C.muted, "left", W * 0.55);
-
-    txt(doc, `CI: ${cedula}`,  MR - 3, y + 7,  10.5, true,  C.inkMed, "right");
-    txt(doc, rightSub,          MR - 3, y + 13, 8.5, false, C.muted, "right");
-
+    const H = 16;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    fill(doc, x, y, 1.5, H, COLORS.orange);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
+    renderLabel(doc, "Trabajador", x + 4, y + 4.5, "left", COLORS.muted, 7);
+    renderText(doc, employee.nombre.toUpperCase(), x + 4, y + 9.5, 11, true, COLORS.ink, "left", w * 0.55, "helvetica");
+    if (employee.cargo) {
+        renderText(doc, employee.cargo, x + 4, y + 13.6, 8, false, COLORS.muted, "left", w * 0.55, "helvetica");
+    }
+    renderLabel(doc, "Cédula", x + w - 3, y + 4.5, "right", COLORS.muted, 7);
+    renderMono(doc, employee.cedula, x + w - 3, y + 9.5, 11, true, COLORS.ink, "right");
+    renderMono(doc, rightSub, x + w - 3, y + 13.6, 7.8, false, COLORS.muted, "right");
     return y + H + 5;
 }
 
-// ── Shared: params strip (dark) ───────────────────────────────────────────────
-
-interface ParamCol { lbl: string; val: string; color: RGB; }
-
-function drawParamsStrip(doc: jsPDF, ML: number, W: number, y: number, cols: ParamCol[]): number {
-    const H = 16;
-    fill(doc, ML, y, W, H, C.bgStripe);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(ML, y, W, H, "D");
-    const colW = W / cols.length;
-    cols.forEach(({ lbl, val }, i) => {
-        const cx = ML + i * colW + 4;
-        txt(doc, lbl.toUpperCase(), cx, y + 5.5, 8.5, false, C.muted);
-        txt(doc, val,               cx, y + 12,  10,  true, C.inkMed, "left", colW - 6);
+function drawSignatures(doc: Doc, x: number, w: number, y: number): number {
+    renderLabel(doc, "Firmas de Conformidad", x, y + 4, "left", COLORS.inkMed, 8.5);
+    y += 6;
+    const boxW = (w - 14) / 2;
+    const H = 24;
+    ["Empleador", "Trabajador"].forEach((role, i) => {
+        const sx = x + i * (boxW + 14);
+        rect(doc, sx, y, boxW, H, COLORS.borderStr, 0.3);
+        hline(doc, sx + 6, y + H - 8, boxW - 12, COLORS.borderStr, 0.3);
+        renderLabel(doc, role, sx + boxW / 2, y + H - 4, "center", COLORS.muted, 7.5);
     });
-    return y + H + 2;
+    return y + H + 6;
 }
 
-// ── Shared: concept table ─────────────────────────────────────────────────────
-
-interface ConceptRow { label: string; subtitle: string; dias: number; monto: number; color: RGB; alt: boolean; }
-
-function drawConceptTable(
-    doc: jsPDF, ML: number, W: number, MR: number, y: number,
-    rows: ConceptRow[],
-    totalLabel: string, totalDias: number, total: number,
-    totalAccent: RGB, totalBar: RGB,
-): number {
-    // Table header (light)
-    fill(doc, ML, y, W, 10, C.bgStripe);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 10, ML + W, y + 10);
-    txt(doc, "CONCEPTO", ML + 4, y + 7, 9, true, C.inkMed);
-    txt(doc, "DÍAS",     MR - 38, y + 7, 9, true, C.inkMed, "right");
-    txt(doc, "MONTO",    MR,      y + 7, 9, true, C.inkMed, "right");
-    y += 10;
-
-    // Rows
-    for (const { label, subtitle, dias, monto, color, alt } of rows) {
-        const H = 16;
-        fill(doc, ML, y, W, H, alt ? C.bgStripe : C.white);
-        hline(doc, ML, y + H, W, C.border, 0.15);
-
-        txt(doc, label,    ML + 4, y + 6.5, 10,   true,  C.inkMed);
-        txt(doc, subtitle, ML + 4, y + 12,  8.5, false, C.muted, "left", W * 0.56);
-
-        txt(doc, `${dias} d`,   MR - 38, y + 9.5, 9.5, false, C.muted, "right");
-        txt(doc, fmtVES(monto), MR,      y + 10,  11,  true,  color,   "right");
-
-        y += H;
-    }
-
-    y += 2;
-
-    // Total bar (light with top border)
-    fill(doc, ML, y, W, 15, C.white);
-    fill(doc, ML, y, 3,  15, totalBar);
-    doc.setDrawColor(totalBar[0], totalBar[1], totalBar[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 15, ML + W, y + 15);
-    txt(doc, `${totalLabel}  ·  ${totalDias} días`, ML + 7, y + 9.5, 10, true, C.inkMed);
-    txt(doc, fmtVES(total), MR, y + 9.5, 13.5, true, totalAccent, "right");
-
-    return y + 15 + 8;
-}
-
-// ── Shared: signatures ────────────────────────────────────────────────────────
-
-function drawSignatures(doc: jsPDF, ML: number, W: number, y: number): number {
-    txt(doc, "FIRMAS DE CONFORMIDAD", ML, y, 10, true, C.inkMed);
-    y += 8;
-    const boxW = (W - 14) / 2;
-    ["EMPLEADOR", "TRABAJADOR"].forEach((role, i) => {
-        const sx = ML + i * (boxW + 14);
-        // box
-        fill(doc, sx, y, boxW, 25, C.white);
-        rect(doc, sx, y, boxW, 25, C.border, 0.25);
-        // gray top stripe
-        fill(doc, sx, y, boxW, 2, C.muted);
-        // signature line
-        hline(doc, sx + 6, y + 19, boxW - 12, C.border, 0.4);
-        txt(doc, role, sx + boxW / 2, y + 23, 8.5, false, C.muted, "center");
-    });
-    return y + 25 + 8;
-}
-
-// ── Shared: legal note ────────────────────────────────────────────────────────
-
-function drawLegal(doc: jsPDF, ML: number, W: number, y: number, text: string): number {
-    hline(doc, ML, y, W, C.border, 0.2);
+function drawLegal(doc: Doc, x: number, w: number, y: number, text: string): number {
+    hline(doc, x, y, w, COLORS.border, 0.2);
     y += 4;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    (doc.splitTextToSize(text, W) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 4.5);
-    });
-    return y + 14;
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(text, w) as string[];
+    lines.forEach((line, i) => doc.text(line, x, y + i * 3.5));
+    return y + lines.length * 3.5 + 2;
 }
 
-// ── Shared: footer ────────────────────────────────────────────────────────────
-
-function drawFooter(
-    doc: jsPDF, PW: number, PH: number,
-    text: string, _accentLine: RGB,
-) {
-    fill(doc, 0, PH - 11, PW, 11, C.white);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(0, PH - 11, PW, PH - 11);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(text, PW / 2, PH - 6, { align: "center" });
-}
-
-// ============================================================================
-// GENERATE — Vacaciones Completas
-// ============================================================================
+// ── Vacaciones Completas ──────────────────────────────────────────────────────
 
 export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const ML = 13, MR = PW - 13, W = MR - ML;
+    const ML = 12, W = PW - 2 * ML;
 
-    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
-        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
-    // Page background
-    fill(doc, 0, 0, PW, PH, C.bgPage);
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Constancia de Vacaciones",
+        periodLabel: `${formatDateES(data.fechaInicio)} — ${formatDateES(data.fechaCulminacion)}`,
+    });
 
-    // ── Header ──
-    let y = drawHeader(
-        doc, PW, ML, MR,
-        C.primary, C.accent,
-        data.companyName,
-        "CONSTANCIA DE VACACIONES",
-        "Arts. 190 · 192 LOTTT — Disfrute y Bono Vacacional",
-        "Período",
-        formatDateES(data.fechaInicio),
-        `al ${formatDateES(data.fechaCulminacion)}`,
-    );
+    let y = 32;
 
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    // ── Employee card ──
     y = drawEmployeeCard(
-        doc, ML, W, MR, y, C.primary,
-        data.employee.nombre,
-        data.employee.cargo,
-        data.employee.cedula,
+        doc, ML, W, y,
+        data.employee,
         `${data.employee.anios ?? 0} año${(data.employee.anios ?? 0) !== 1 ? "s" : ""} de servicio`,
     );
 
-    // ── Params strip: Salario Mensual | Salario Diario | Reintegro | Cal·Háb·Desc ──
+    // Reintegro card (orange-accented strip)
     y = drawParamsStrip(doc, ML, W, y, [
-        { lbl: "Salario Mensual",  val: fmtVES(data.salarioVES), color: C.white },
-        { lbl: "Salario Diario",   val: fmtVES(data.salarioDia), color: C.white },
-        { lbl: "Reintegro",        val: formatDateES(data.fechaReintegro).toUpperCase(), color: C.accentBg },
-        { lbl: "Cal · Háb · Desc", val: `${data.diasCalendario} · ${data.diasHabiles} · ${data.diasDescanso}`, color: C.white },
+        { label: "Salario Mensual", value: formatVES(data.salarioVES) },
+        { label: "Salario Diario",  value: formatVES(data.salarioDia) },
+        { label: "Reintegro",       value: formatDateES(data.fechaReintegro), accent: true },
+        { label: "Cal · Háb · Desc", value: `${data.diasCalendario} · ${data.diasHabiles} · ${data.diasDescanso}` },
     ]);
 
-    // ── Concept table ──
-    y = drawConceptTable(
-        doc, ML, W, MR, y,
-        [
-            {
-                label: "Disfrute Vacacional",
-                subtitle: "Art. 190 LOTTT · 15 días base (+adicionales)",
-                dias: data.diasDisfrute, monto: data.montoDisfrute,
-                color: C.primary, alt: false,
-            },
-            {
-                label: "Bono Vacacional",
-                subtitle: "Art. 192 LOTTT · 15 días base (+adicionales)",
-                dias: data.diasBono, monto: data.montoBono,
-                color: C.amber, alt: true,
-            },
-        ],
-        "Total a recibir",
-        data.diasDisfrute + data.diasBono,
-        data.total,
-        C.accent,
-        C.accent,
-    );
+    y = drawConceptTable(doc, ML, W, y, [
+        {
+            label:    "Disfrute Vacacional",
+            subtitle: "Art. 190 LOTTT · 15 días base + adicionales",
+            dias:     data.diasDisfrute,
+            monto:    data.montoDisfrute,
+        },
+        {
+            label:    "Bono Vacacional",
+            subtitle: "Art. 192 LOTTT · 15 días base + adicionales",
+            dias:     data.diasBono,
+            monto:    data.montoBono,
+        },
+    ], "Total a recibir", data.diasDisfrute + data.diasBono, data.total);
 
-    // ── Signatures ──
     y = drawSignatures(doc, ML, W, y);
 
-    // ── Legal note ──
     drawLegal(doc, ML, W, y,
         "La presente constancia certifica el disfrute del período vacacional de conformidad con los Arts. 190 y 192 " +
         "de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
         "Las firmas de ambas partes confirman el acuerdo sobre las fechas y montos indicados.",
     );
 
-    // ── Footer ──
-    drawFooter(doc, PW, PH,
-        `${data.companyName.toUpperCase()}  ·  CONSTANCIA DE VACACIONES  ·  DOCUMENTO CONFIDENCIAL`,
-        C.accent,
-    );
+    drawFooter(doc, kontaLogo);
 
-    doc.save(`vacaciones_completas_${data.employee.cedula}_${data.fechaInicio.replaceAll("-", "")}.pdf`);
+    doc.save(`vacaciones-completas-${safeFilename(data.employee.cedula)}-${data.fechaInicio.replaceAll("-", "")}.pdf`);
 }
 
-// ============================================================================
-// GENERATE — Vacaciones Fraccionadas
-// ============================================================================
+// ── Vacaciones Fraccionadas ───────────────────────────────────────────────────
 
 export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const ML = 13, MR = PW - 13, W = MR - ML;
+    const ML = 12, W = PW - 2 * ML;
 
-    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
-        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
-    // Page background
-    fill(doc, 0, 0, PW, PH, C.bgPage);
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Vacaciones Fraccionadas",
+        periodLabel: `Egreso ${formatDateES(data.fechaEgreso)}`,
+    });
 
-    // ── Header (amber accent) ──
-    let y = drawHeader(
-        doc, PW, ML, MR,
-        C.amber, C.amberAcc,
-        data.companyName,
-        "CONSTANCIA DE VACACIONES FRACCIONADAS",
-        "Art. 196 LOTTT — Porción proporcional al período trabajado",
-        "Fecha de Egreso",
-        formatDateES(data.fechaEgreso),
-    );
+    let y = 32;
 
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    // ── Employee card ──
     y = drawEmployeeCard(
-        doc, ML, W, MR, y, C.amber,
-        data.employee.nombre,
-        data.employee.cargo,
-        data.employee.cedula,
+        doc, ML, W, y,
+        data.employee,
         `${data.aniosCompletos} año${data.aniosCompletos !== 1 ? "s" : ""} completo${data.aniosCompletos !== 1 ? "s" : ""}`,
     );
 
-    // ── Params strip: Fecha Ingreso | Último Aniversario | Meses Año | Días Anuales ──
     y = drawParamsStrip(doc, ML, W, y, [
-        { lbl: "Fecha de Ingreso",    val: formatDateES(data.fechaIngreso).toUpperCase(),        color: C.white },
-        { lbl: "Último Aniversario",  val: formatDateES(data.ultimoAniversario).toUpperCase(),   color: C.white },
-        { lbl: "Meses Año en Curso",  val: `${data.mesesFraccion} mes${data.mesesFraccion !== 1 ? "es" : ""}`, color: C.accentBg },
-        { lbl: "Días Anuales Base",   val: `${data.diasAnuales} días`,                           color: C.white },
+        { label: "Fecha de Ingreso",   value: formatDateES(data.fechaIngreso) },
+        { label: "Último Aniversario", value: formatDateES(data.ultimoAniversario) },
+        { label: "Meses Año Curso",    value: `${data.mesesFraccion} mes${data.mesesFraccion !== 1 ? "es" : ""}`, accent: true },
+        { label: "Días Anuales Base",  value: `${data.diasAnuales} días` },
     ]);
 
-    // ── Formula box ──
-    const formulaH = 12;
-    fill(doc, ML, y, W, formulaH, C.bgStripe);
-    rect(doc, ML, y, W, formulaH, C.border, 0.2);
-    txt(doc, "FÓRMULA (ART. 196):", ML + 4, y + 4.5, 8.5, false, C.muted);
-    txt(doc,
-        `\u2308 ${data.diasAnuales} días / 12 meses × ${data.mesesFraccion} meses \u2309  =  ${data.fraccionDisfrute} días`,
-        ML + 4, y + 9.5, 10, true, C.inkMed,
+    // Formula box
+    const formulaH = 11;
+    fill(doc, ML, y, W, formulaH, COLORS.rowAlt);
+    rect(doc, ML, y, W, formulaH, COLORS.border, 0.2);
+    renderLabel(doc, "Fórmula Art. 196 LOTTT", ML + 3, y + 4.5, "left", COLORS.muted, 7);
+    renderMono(doc,
+        `(${data.diasAnuales} días / 12 meses) × ${data.mesesFraccion} meses = ${data.fraccionDisfrute} días`,
+        ML + 3, y + 9, 9.5, true, COLORS.inkMed, "left",
     );
     y += formulaH + 5;
 
-    // ── Concept table ──
-    y = drawConceptTable(
-        doc, ML, W, MR, y,
-        [
-            {
-                label: "Disfrute Fraccionado",
-                subtitle: `Art. 190 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
-                dias: data.fraccionDisfrute, monto: data.montoDisfrute,
-                color: C.amber, alt: false,
-            },
-            {
-                label: "Bono Vacacional Fraccionado",
-                subtitle: `Art. 192 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
-                dias: data.fraccionBono, monto: data.montoBono,
-                color: C.amber, alt: true,
-            },
-        ],
-        "Total Fraccionado",
-        data.fraccionDisfrute + data.fraccionBono,
-        data.total,
-        C.amberAcc,
-        C.amberAcc,
-    );
+    y = drawConceptTable(doc, ML, W, y, [
+        {
+            label:    "Disfrute Fraccionado",
+            subtitle: `Art. 190 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
+            dias:     data.fraccionDisfrute,
+            monto:    data.montoDisfrute,
+        },
+        {
+            label:    "Bono Vacacional Fraccionado",
+            subtitle: `Art. 192 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
+            dias:     data.fraccionBono,
+            monto:    data.montoBono,
+        },
+    ], "Total Fraccionado", data.fraccionDisfrute + data.fraccionBono, data.total);
 
-    // ── Salary strip (light) ──
-    fill(doc, ML, y, W, 14, C.bgStripe);
-    rect(doc, ML, y, W, 14, C.border, 0.2);
-    txt(doc, "SALARIO MENSUAL:", ML + 4, y + 5, 8.5, false, C.muted);
-    txt(doc, fmtVES(data.salarioVES), ML + 48, y + 5, 11, true, C.inkMed);
-    txt(doc, "SALARIO DIARIO:", ML + W * 0.5, y + 5, 8.5, false, C.muted);
-    txt(doc, fmtVES(data.salarioDia), ML + W * 0.5 + 40, y + 5, 11, true, C.inkMed);
-    txt(doc, `Base: salario mensual ÷ 30 = ${fmtVES(data.salarioDia)} / día`,
-        ML + 4, y + 10.5, 8.5, false, C.muted);
-    y += 18;
+    // Salary recap
+    fill(doc, ML, y, W, 12, COLORS.rowAlt);
+    rect(doc, ML, y, W, 12, COLORS.border, 0.2);
+    renderLabel(doc, "Salario Mensual",  ML + 3,           y + 4.5, "left", COLORS.muted, 7);
+    renderMono(doc,  formatVES(data.salarioVES), ML + 3,           y + 9.5, 9.5, true, COLORS.inkMed, "left");
+    renderLabel(doc, "Salario Diario",   ML + W * 0.5,     y + 4.5, "left", COLORS.muted, 7);
+    renderMono(doc,  formatVES(data.salarioDia), ML + W * 0.5,     y + 9.5, 9.5, true, COLORS.inkMed, "left");
+    y += 12 + 6;
 
-    // ── Signatures ──
     y = drawSignatures(doc, ML, W, y);
 
-    // ── Legal note ──
     drawLegal(doc, ML, W, y,
         "La presente constancia certifica el pago de las vacaciones fraccionadas de conformidad con el Art. 196 " +
         "de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT), correspondientes a la fracción " +
         "del año de servicio no cubierta por el período completo. El cálculo se realiza sobre el salario normal del trabajador.",
     );
 
-    // ── Footer ──
-    drawFooter(doc, PW, PH,
-        `${data.companyName.toUpperCase()}  ·  VACACIONES FRACCIONADAS  ·  DOCUMENTO CONFIDENCIAL`,
-        C.amberAcc,
-    );
+    drawFooter(doc, kontaLogo);
 
-    doc.save(`vacaciones_fraccionadas_${data.employee.cedula}_${data.fechaEgreso.replaceAll("-", "")}.pdf`);
+    doc.save(`vacaciones-fraccionadas-${safeFilename(data.employee.cedula)}-${data.fechaEgreso.replaceAll("-", "")}.pdf`);
 }

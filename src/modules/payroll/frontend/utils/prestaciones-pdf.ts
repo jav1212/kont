@@ -1,390 +1,302 @@
+// PDF generators: Prestaciones Sociales (Art. 142 LOTTT) e Intereses + Anticipo
+// (Arts. 143/144). Estilo Konta: header naranja, cuerpo slate + naranja, footer
+// Kontave compartido.
+
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    drawHeader,
+    drawFooter,
+    fill,
+    hline,
+    rect,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+    fmtDateEs,
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface SocialBenefitsPdfData {
-    companyName:            string;
-    employee:               { name: string; idNumber: string; role?: string };
-    hireDate:               string;
-    cutoffDate:             string;
-    yearsOfService:         number;
-    completeMonths:         number;
-    totalDays:              number;
-    salaryVES:              number;
-    dailySalary:            number;
-    profitSharingQuota:     number;
-    vacationBonusQuota:     number;
-    integratedDailySalary:  number;
-    quarterlyDays:          number;
-    extraDays:              number;
-    totalSeniorityDays:     number;
-    accumulatedBalance:     number;
+    companyName:                 string;
+    companyId?:                  string;
+    employee:                    { name: string; idNumber: string; role?: string };
+    hireDate:                    string;
+    cutoffDate:                  string;
+    yearsOfService:              number;
+    completeMonths:              number;
+    totalDays:                   number;
+    salaryVES:                   number;
+    dailySalary:                 number;
+    profitSharingQuota:          number;
+    vacationBonusQuota:          number;
+    integratedDailySalary:       number;
+    quarterlyDays:               number;
+    extraDays:                   number;
+    totalSeniorityDays:          number;
+    accumulatedBalance:          number;
     seniorityIndemnityGuarantee: number;
-    finalAmount:            number;
-    isGuaranteeApplied:     boolean;
-    socialBenefitsAdvance:  number;
-    accumulatedInterests:   number;
-    immediatePayment:       number;
-    balanceInFavor:         number;
-    advancePercentage?:     number;
-    interestRate?:          number;
-    logoUrl?:               string;
-    showLogoInPdf?:         boolean;
+    finalAmount:                 number;
+    isGuaranteeApplied:          boolean;
+    socialBenefitsAdvance:       number;
+    accumulatedInterests:        number;
+    immediatePayment:            number;
+    balanceInFavor:              number;
+    advancePercentage?:          number;
+    interestRate?:               number;
+    logoUrl?:                    string;
+    showLogoInPdf?:              boolean;
 }
 
-// ── Palette (Clean Monochrome) ────────────────────────────────────────────────
-type RGB = [number, number, number];
-const COLORS = {
-    ink:       [0,   0,   0]   as RGB,
-    inkMed:    [0,   0,   0]   as RGB,
-    muted:     [0,   0,   0]   as RGB,
-    border:    [230, 230, 235] as RGB,
-    borderStr: [190, 190, 200] as RGB,
-    bg:        [255, 255, 255] as RGB,
-    rowAlt:    [248, 248, 252] as RGB,
-    white:     [255, 255, 255] as RGB,
-    primary:   [217, 58,  16]  as RGB,
-    amber:     [220, 38,  38]  as RGB,
-    green:     [22,  101, 52]  as RGB,
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-// ── Primitives ────────────────────────────────────────────────────────────────
 type Doc = jsPDF;
 
-const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-};
-
-const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = COLORS.border, lw = 0.25) => {
-    doc.setLineDashPattern([], 0);
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-};
-
-const renderText = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, color: RGB, align: "left" | "center" | "right" = "left", maxW?: number, font: "helvetica" | "courier" = "helvetica") => {
-    doc.setFont(font, bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
-
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
-
-    doc.text(str, x, y, { align });
-};
-
-const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
-
-const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
-    renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-const formatVES = (n: number) => "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    const [y, m, d] = iso.split("-");
-    const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`.toUpperCase();
-};
-
-function drawFooter(doc: Doc, PW: number, PH: number, companyName: string, sub: string) {
-    fill(doc, 0, PH - 14, PW, 14, COLORS.white);
-    hline(doc, 0, PH - 14, PW, COLORS.border, 0.4);
-    renderLabel(doc, `${companyName.toUpperCase()}  |  ${sub}  |  DOCUMENTO CONFIDENCIAL`, PW / 2, PH - 7, "center", COLORS.muted);
-}
-
-function drawSignatures(doc: Doc, ML: number, W: number, y: number): number {
-    const SIG_W = (W - 16) / 2;
+function drawSignatures(doc: Doc, x: number, w: number, y: number): number {
+    const SIG_W = (w - 16) / 2;
     const SIG_H = 24;
-    ["EMPLEADOR", "TRABAJADOR"].forEach((role, i) => {
-        const sx = ML + i * (SIG_W + 16);
-        doc.setDrawColor(COLORS.borderStr[0], COLORS.borderStr[1], COLORS.borderStr[2]);
-        doc.setLineWidth(0.4);
-        doc.setLineDashPattern([2, 1.5], 0);
-        doc.rect(sx, y, SIG_W, SIG_H, "S");
-        doc.setLineDashPattern([], 0); // reset
-        
-        hline(doc, sx + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.4);
-        renderLabel(doc, role, sx + SIG_W / 2, y + SIG_H - 5.5, "center", COLORS.muted);
+    ["Empleador", "Trabajador"].forEach((role, i) => {
+        const sx = x + i * (SIG_W + 16);
+        rect(doc, sx, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+        hline(doc, sx + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.3);
+        renderLabel(doc, role, sx + SIG_W / 2, y + SIG_H - 4, "center", COLORS.muted, 7.5);
     });
-    return y + SIG_H + 8;
+    return y + SIG_H + 6;
 }
 
 function renderDetailRow(
-    doc: Doc, ML: number, MR: number, W: number, y: number,
-    label: string, sub: string, value: string, color: RGB, alt: boolean, formula?: string
+    doc: Doc, x: number, w: number, y: number,
+    label: string, sub: string, value: string,
+    valueColor = COLORS.ink, alt = false, formula?: string,
 ): number {
-    const H = 12;
-    if (alt) fill(doc, ML, y, W, H, COLORS.rowAlt);
-    hline(doc, ML, y + H, W, COLORS.border, 0.25);
-    
-    renderText(doc, label, ML + 4,  y + 5, 9.5, true, COLORS.ink);
-    if (sub) renderText(doc, sub, ML + 4,  y + 9.5, 8.5, false, COLORS.muted, "left", W * 0.5);
+    const H = 10;
+    if (alt) fill(doc, x, y, w, H, COLORS.rowAlt);
+    hline(doc, x, y + H, w, COLORS.border, 0.2);
 
-    if (formula) {
-        renderMono(doc, formula, ML + W * 0.5, y + 7.5, 8.5, false, COLORS.muted, "left");
+    renderText(doc, label, x + 3, y + 4.2, 9, true, COLORS.ink, "left", w * 0.5, "helvetica");
+    if (sub) {
+        renderText(doc, sub, x + 3, y + 8, 7.5, false, COLORS.muted, "left", w * 0.5, "helvetica");
     }
-
-    renderMono(doc, value, MR - 4, y + 7.5, 10.5, true, color, "right");
+    if (formula) {
+        renderMono(doc, formula, x + w * 0.5, y + 6, 7.8, false, COLORS.muted, "left");
+    }
+    renderMono(doc, value, x + w - 3, y + 6, 9.5, true, valueColor, "right");
     return y + H;
 }
 
-// ── Exported PDF Generators ───────────────────────────────────────────────────
+function drawIdentityCard(
+    doc: Doc, x: number, w: number, y: number,
+    employee: SocialBenefitsPdfData["employee"],
+    rightTopLabel: string, rightTopValue: string, rightSub: string,
+    midLabel: string, midValue: string, midSub: string,
+): number {
+    const H = 18;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    fill(doc, x, y, 1.5, H, COLORS.orange);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
+
+    const c1 = x + 4;
+    const c2 = x + w * 0.4;
+    const c3 = x + w - 3;
+
+    renderLabel(doc, "Trabajador", c1, y + 4, "left", COLORS.muted, 7);
+    renderText(doc, employee.name.toUpperCase(), c1, y + 9, 10.5, true, COLORS.ink, "left", c2 - c1 - 4, "helvetica");
+    if (employee.role) renderText(doc, employee.role, c1, y + 13.5, 7.8, false, COLORS.muted, "left", c2 - c1 - 4, "helvetica");
+    renderMono(doc, "CI " + employee.idNumber, c1, y + 16.5, 7.8, false, COLORS.inkMed, "left");
+
+    renderLabel(doc, midLabel, c2, y + 4, "left", COLORS.muted, 7);
+    renderMono(doc, midValue, c2, y + 9, 10, true, COLORS.ink, "left");
+    renderMono(doc, midSub,   c2, y + 13.5, 7.8, false, COLORS.muted, "left");
+
+    renderLabel(doc, rightTopLabel, c3, y + 4, "right", COLORS.muted, 7);
+    renderMono(doc, rightTopValue, c3, y + 9, 10, true, COLORS.ink, "right");
+    renderMono(doc, rightSub,      c3, y + 13.5, 7.8, false, COLORS.muted, "right");
+
+    return y + H + 5;
+}
+
+function drawSectionLabel(doc: Doc, x: number, w: number, y: number, label: string): number {
+    renderLabel(doc, label, x, y + 3.5, "left", COLORS.inkMed, 8);
+    hline(doc, x, y + 5, w, COLORS.border, 0.2);
+    return y + 7;
+}
+
+// ── Prestaciones Sociales (Art. 142) ──────────────────────────────────────────
 
 export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const ML = 16, MR = PW - 16, W = MR - ML;
+    const ML = 12, W = PW - 2 * ML;
 
-    let logoBase64 = null;
-    if (data.showLogoInPdf && data.logoUrl) {
-        logoBase64 = await loadImageAsBase64(data.logoUrl).catch(() => null);
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
+
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Prestaciones Sociales",
+        periodLabel: `Corte ${fmtDateEs(data.cutoffDate)}`,
+    });
+
+    let y = 32;
+
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    fill(doc, 0, 0, PW, PH, COLORS.bg);
+    y = drawIdentityCard(doc, ML, W, y, data.employee,
+        "Sal. Integral / Día", formatVES(data.integratedDailySalary), `Base ${formatVES(data.dailySalary)}`,
+        "Antigüedad", `${data.yearsOfService}a ${data.completeMonths % 12}m`, `Ingreso ${fmtDateEs(data.hireDate)}`,
+    );
 
-    // ── Header ────────────────────────────────────────────────────────────
-    const topY = 20;
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 15, true, COLORS.ink);
-    } else {
-        renderText(doc, data.companyName.toUpperCase(), ML, topY, 15, true, COLORS.ink);
-    }
+    // ── Componente salarial ───────────────────────────────────────────────────
+    y = drawSectionLabel(doc, ML, W, y, "Componente Salarial (Art. 122)");
+    y = renderDetailRow(doc, ML, W, y, "Salario normal / día", "", formatVES(data.dailySalary), COLORS.ink, false, "Mensual ÷ 30");
+    y = renderDetailRow(doc, ML, W, y, "Alícuota de utilidades", "", formatVES(data.profitSharingQuota), COLORS.ink, true, "Diario × días_util / 360");
+    y = renderDetailRow(doc, ML, W, y, "Alícuota bono vacacional", "", formatVES(data.vacationBonusQuota), COLORS.ink, false, "Diario × días_bono / 360");
 
-    renderText(doc, "PRESTACIONES SOCIALES", MR, topY - 1, 11, true, COLORS.ink, "right");
-    renderText(doc, "ART. 142 LOTTT — GARANTÍA Y ACUMULADOS", MR, topY + 4, 9, false, COLORS.muted, "right");
+    fill(doc, ML, y, W, 0.4, COLORS.orange);
+    y += 1;
+    fill(doc, ML, y, W, 11, COLORS.bandHead);
+    rect(doc, ML, y, W, 11, COLORS.border, 0.2);
+    renderLabel(doc, "Salario Integral Diario", ML + 3, y + 7, "left", COLORS.inkMed, 8);
+    renderMono(doc, formatVES(data.integratedDailySalary), ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
+    y += 11 + 6;
 
-    renderLabel(doc, "FECHA CORTE", MR, topY + 12, "right");
-    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 17, 11, true, COLORS.inkMed, "right");
-    
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 23, "right");
+    // ── Prestaciones acumuladas ───────────────────────────────────────────────
+    y = drawSectionLabel(doc, ML, W, y, "Prestaciones Acumuladas");
+    y = renderDetailRow(doc, ML, W, y, "Días trimestrales", "5 días/mes × meses completos", `${data.quarterlyDays} días`, COLORS.ink, false);
+    y = renderDetailRow(doc, ML, W, y, "Días adicionales", "Art. 142.b (desde año 2)", `${data.extraDays} días`, COLORS.ink, true);
+    y = renderDetailRow(doc, ML, W, y, "Saldo acumulado", `${data.totalSeniorityDays} días × ${formatVES(data.integratedDailySalary)}`, formatVES(data.accumulatedBalance), COLORS.ink, false);
+    y = renderDetailRow(doc, ML, W, y, "Garantía Art. 142.c", `30 d × Sal. Integral × ${data.yearsOfService} año(s)`, formatVES(data.seniorityIndemnityGuarantee), COLORS.ink, true);
 
-    let y = topY + 26;
-    hline(doc, ML, y, W, COLORS.border, 0.4);
-    y += 8;
+    fill(doc, ML, y, W, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, ML, y, W, 13, COLORS.bandHead);
+    rect(doc, ML, y, W, 13, COLORS.border, 0.2);
+    renderLabel(doc, "Monto Total Prestaciones", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(data.finalAmount), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    y += 13 + 6;
 
-    // ── Employee data ──────────────────────────────────────────────
-    const c1x = ML;
-    const c2x = ML + W * 0.38;
-
-    renderLabel(doc, "Trabajador", c1x, y);
-    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 6, 11, true, COLORS.ink, "left", c2x - c1x - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 12, 8.5, false, COLORS.muted);
-    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 17, 9.5, true, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Antigüedad", c2x, y);
-    const antStr = `${data.yearsOfService}a ${data.completeMonths % 12}m`;
-    renderMono(doc, antStr, c2x, y + 6, 10.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 11.5, 9, false, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Sal. Integral / Día", MR, y, "right");
-    renderMono(doc, formatVES(data.integratedDailySalary), MR, y + 6, 10.5, true, COLORS.ink, "right");
-    renderMono(doc, `Base: ${formatVES(data.dailySalary)}`, MR, y + 11.5, 9, false, COLORS.muted, "right");
-
-    y += 18;
-    hline(doc, ML, y, W, COLORS.border, 0.4);
-    y += 6;
-
-    // ── Salary Components ─────────────────────────────────────────────────
-    renderLabel(doc, "COMPONENTE SALARIAL", ML, y + 2, "left");
-    y += 5;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y = renderDetailRow(doc, ML, MR, W, y, "Salario normal / día", "", formatVES(data.dailySalary), COLORS.inkMed, false, "Salario mensual ÷ 30");
-    y = renderDetailRow(doc, ML, MR, W, y, "Alícuota de utilidades", "", formatVES(data.profitSharingQuota), COLORS.inkMed, true, "Sal. Diario × días_util / 360");
-    y = renderDetailRow(doc, ML, MR, W, y, "Alícuota bono vacacional", "", formatVES(data.vacationBonusQuota), COLORS.inkMed, false, "Sal. Diario × días_bono / 360");
-    
-    fill(doc, ML, y, W, 10, COLORS.rowAlt);
-    renderText(doc, "SALARIO INTEGRAL DIARIO (Art. 122)", ML + 4, y + 6.5, 10, true, COLORS.ink);
-    renderMono(doc, formatVES(data.integratedDailySalary), MR - 4, y + 6.5, 11, true, COLORS.ink, "right");
-    y += 10;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y += 8;
-
-    // ── Accumulated Days ──────────────────────────────────────────────────
-    renderLabel(doc, "PRESTACIONES ACUMULADAS", ML, y + 2, "left");
-    y += 5;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y = renderDetailRow(doc, ML, MR, W, y, "Días trimestrales", "5 días/mes × meses completos", `${data.quarterlyDays} días`, COLORS.ink, false);
-    y = renderDetailRow(doc, ML, MR, W, y, "Días adicionales", "Art. 142.b (desde año 2)", `${data.extraDays} días`, COLORS.ink, true);
-    
-    fill(doc, ML, y, W, 14, COLORS.white);
-    renderText(doc, `SALDO ACUMULADO`, ML + 4, y + 6.5, 10, true, COLORS.ink);
-    renderText(doc, `${data.totalSeniorityDays} días × ${formatVES(data.integratedDailySalary)}`, ML + 4, y + 11.5, 8.5, false, COLORS.muted);
-    renderMono(doc, formatVES(data.accumulatedBalance), MR - 4, y + 9, 12, true, COLORS.inkMed, "right");
-    y += 14;
-    hline(doc, ML, y, W, COLORS.border, 0.25);
-    fill(doc, ML, y, W, 14, COLORS.white);
-    renderText(doc, `GARANTÍA ART. 142.C`, ML + 4, y + 6.5, 10, true, COLORS.ink);
-    renderText(doc, `30 días × Sal. Integral × ${data.yearsOfService} año(s)`, ML + 4, y + 11.5, 8.5, false, COLORS.muted);
-    renderMono(doc, formatVES(data.seniorityIndemnityGuarantee), MR - 4, y + 9, 12, true, COLORS.inkMed, "right");
-    y += 14;
-
-    // Final social benefits amount
-    fill(doc, ML, y, W, 14, COLORS.rowAlt);
-    renderText(doc, "MONTO TOTAL PRESTACIONES", ML + 4, y + 8.5, 10, true, COLORS.ink);
-    renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 9, 15, true, COLORS.ink, "right");
-    y += 14;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y += 8;
-
-    // ── Payment Details (Advances) ────────────────────────────────────────
+    // ── Pago inmediato ────────────────────────────────────────────────────────
     if (data.socialBenefitsAdvance > 0 || data.accumulatedInterests > 0) {
         const pct = data.advancePercentage ?? 75;
-        renderLabel(doc, "PAGO INMEDIATO", ML, y + 2, "left");
-        y += 5;
-        hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-        
-        let localAlt = false;
+        y = drawSectionLabel(doc, ML, W, y, "Pago Inmediato");
         if (data.socialBenefitsAdvance > 0) {
-            y = renderDetailRow(doc, ML, MR, W, y, `Anticipo de Prestaciones (${pct}%)`, "Art. 144 LOTTT", formatVES(data.socialBenefitsAdvance), COLORS.amber, localAlt);
-            localAlt = !localAlt;
+            y = renderDetailRow(doc, ML, W, y, `Anticipo de Prestaciones (${pct}%)`, "Art. 144 LOTTT", formatVES(data.socialBenefitsAdvance), COLORS.ink, false);
         }
         if (data.accumulatedInterests > 0) {
-            y = renderDetailRow(doc, ML, MR, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", formatVES(data.accumulatedInterests), COLORS.ink, localAlt);
+            y = renderDetailRow(doc, ML, W, y, "Intereses de Fideicomiso", "Art. 143 LOTTT", formatVES(data.accumulatedInterests), COLORS.ink, true);
         }
+        y = renderDetailRow(doc, ML, W, y, "Total anticipos entregados", "Anticipos + intereses", `- ${formatVES(data.immediatePayment)}`, COLORS.inkMed, false);
 
-        fill(doc, ML, y, W, 14, COLORS.white);
-        renderText(doc, "Monto total acumulado (Garantía o Saldo)", ML + 4, y + 6.5, 9.5, false, COLORS.inkMed);
-        renderMono(doc, formatVES(data.finalAmount), MR - 4, y + 6.5, 11, false, COLORS.inkMed, "right");
-        renderText(doc, "TOTAL ANTICIPOS ENTREGADOS", ML + 4, y + 11.5, 9.5, true, COLORS.inkMed);
-        renderMono(doc, `- ${formatVES(data.immediatePayment)}`, MR - 4, y + 11.5, 11, false, COLORS.inkMed, "right");
-        y += 14;
-
-        fill(doc, ML, y, W, 14, COLORS.rowAlt);
-        renderText(doc, "SALDO A FAVOR (PRESTACIONES NETAS)", ML + 4, y + 8.5, 10, true, COLORS.ink);
-        renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 9, 15, true, COLORS.ink, "right");
-        y += 14;
-        hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-        y += 8;
+        fill(doc, ML, y, W, 0.5, COLORS.orange);
+        y += 1.2;
+        fill(doc, ML, y, W, 13, COLORS.bandHead);
+        rect(doc, ML, y, W, 13, COLORS.border, 0.2);
+        renderLabel(doc, "Saldo a Favor", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+        renderMono(doc, formatVES(data.balanceInFavor), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+        y += 13 + 6;
     }
 
-    // ── Legal & Signatures ──────────────────────────────────────────────
-    if (y > PH - 45) {
-        doc.addPage();
-        y = 30;
-    } else {
-        y += 4;
-    }
+    // ── Legal + firmas ────────────────────────────────────────────────────────
+    const legal =
+        "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 " +
+        "de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+        "El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 " +
+        "días de salario integral por año de servicio (Art. 142.c).";
 
-    const legal = "La presente constancia certifica el saldo de prestaciones sociales de conformidad con el Art. 142 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El monto corresponde al mayor valor entre el saldo acumulado (Art. 142.a y 142.b) y la garantía de 30 días de salario integral por año de servicio (Art. 142.c).";
-    renderText(doc, legal, ML, y, 8.5, false, COLORS.muted, "left", W);
-    
-    y += 16;
-    y = drawSignatures(doc, ML, W, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(legal, W) as string[];
+    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+    y += lines.length * 3.5 + 6;
 
-    drawFooter(doc, PW, PH, data.companyName, `PRESTACIONES SOCIALES AL ${formatDate(data.cutoffDate)}`);
-    doc.save(`prestaciones_${data.employee.idNumber}_${data.cutoffDate.replaceAll("-", "")}.pdf`);
+    drawSignatures(doc, ML, W, y);
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`prestaciones-${safeFilename(data.employee.idNumber)}-${data.cutoffDate.replaceAll("-", "")}.pdf`);
 }
+
+// ── Intereses + Anticipo (Art. 143 / 144) ─────────────────────────────────────
 
 export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const ML = 16, MR = PW - 16, W = MR - ML;
+    const ML = 12, W = PW - 2 * ML;
 
-    const logoBase64 = (data.showLogoInPdf && data.logoUrl)
-        ? await loadImageAsBase64(data.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
-    fill(doc, 0, 0, PW, PH, COLORS.bg);
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Intereses y Anticipo",
+        periodLabel: `Corte ${fmtDateEs(data.cutoffDate)}`,
+    });
 
-    // ── Header ────────────────────────────────────────────────────────────
-    const topY = 20;
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, data.companyName.toUpperCase(), ML + 32, topY, 15, true, COLORS.ink);
-    } else {
-        renderText(doc, data.companyName.toUpperCase(), ML, topY, 15, true, COLORS.ink);
+    let y = 32;
+
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    renderText(doc, "INTERESES Y ANTICIPO", MR, topY - 1, 11, true, COLORS.ink, "right");
-    renderText(doc, "ART. 143/144 LOTTT", MR, topY + 4, 9, false, COLORS.muted, "right");
+    y = drawIdentityCard(doc, ML, W, y, data.employee,
+        "Saldo Acumulado", formatVES(data.accumulatedBalance), "Base de cálculo",
+        "Antigüedad", `${data.yearsOfService}a ${data.completeMonths % 12}m`, `Ingreso ${fmtDateEs(data.hireDate)}`,
+    );
 
-    renderLabel(doc, "FECHA CORTE", MR, topY + 12, "right");
-    renderMono(doc, formatDate(data.cutoffDate), MR, topY + 17, 11, true, COLORS.inkMed, "right");
-    
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, MR, topY + 23, "right");
-
-    let y = topY + 26;
-    hline(doc, ML, y, W, COLORS.border, 0.4);
-    y += 8;
-
-    // ── Employee data ──────────────────────────────────────────────
-    const c1x = ML;
-    const c2x = ML + W * 0.38;
-
-    renderLabel(doc, "Trabajador", c1x, y);
-    renderText(doc, data.employee.name.toUpperCase(), c1x, y + 6, 11, true, COLORS.ink, "left", c2x - c1x - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), c1x, y + 12, 8.5, false, COLORS.muted);
-    renderMono(doc, "CI " + data.employee.idNumber, c1x, y + 17, 9.5, true, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Antigüedad", c2x, y);
-    const antStr = `${data.yearsOfService}a ${data.completeMonths % 12}m`;
-    renderMono(doc, antStr, c2x, y + 6, 10.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(data.hireDate)}`, c2x, y + 11.5, 9, false, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Base de Cálculo", MR, y, "right");
-    renderMono(doc, "Saldo Acumulado", MR, y + 6, 9.5, false, COLORS.muted, "right");
-    renderMono(doc, formatVES(data.accumulatedBalance), MR, y + 11.5, 10.5, true, COLORS.inkMed, "right");
-
-    y += 18;
-    hline(doc, ML, y, W, COLORS.border, 0.4);
-    y += 6;
-
-    // ── Advance & Interests Details ───────────────────────────────────────
-    const pct = data.advancePercentage ?? 75;
+    const pct  = data.advancePercentage ?? 75;
     const rate = data.interestRate ?? 0;
-    renderLabel(doc, "PAGO INMEDIATO", ML, y + 2, "left");
-    y += 5;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
 
-    y = renderDetailRow(doc, ML, MR, W, y, `Anticipo de Prestaciones (${pct}%)`, `Art. 144 — ${pct}% del saldo acumulado`, formatVES(data.socialBenefitsAdvance), COLORS.amber, false);
-    y = renderDetailRow(doc, ML, MR, W, y, "Intereses sobre Prestaciones", `Art. 143 — Tasa aplicada ${rate}%`, formatVES(data.accumulatedInterests), COLORS.green, true);
-    
-    fill(doc, ML, y, W, 12, COLORS.rowAlt);
-    renderText(doc, "TOTAL ANTICIPOS E INTERESES", ML + 4, y + 7.5, 10, true, COLORS.ink);
-    renderMono(doc, formatVES(data.immediatePayment), MR - 4, y + 8, 15, true, COLORS.ink, "right");
-    y += 12;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y += 8;
+    y = drawSectionLabel(doc, ML, W, y, "Pago Inmediato");
+    y = renderDetailRow(doc, ML, W, y, `Anticipo de Prestaciones (${pct}%)`, `Art. 144 — ${pct}% del saldo acumulado`, formatVES(data.socialBenefitsAdvance), COLORS.ink, false);
+    y = renderDetailRow(doc, ML, W, y, "Intereses sobre Prestaciones", `Art. 143 — Tasa ${rate}%`, formatVES(data.accumulatedInterests), COLORS.ink, true);
 
-    // Account Summary
-    renderLabel(doc, "RESUMEN DE CUENTA DE GARANTÍA", ML, y + 2, "left");
-    y += 5;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y = renderDetailRow(doc, ML, MR, W, y, "Monto Prestaciones Acumuladas", data.isGuaranteeApplied ? "Se aplicó Garantía Art. 142.c" : "Por días acumulados", formatVES(data.finalAmount), COLORS.inkMed, false);
-    y = renderDetailRow(doc, ML, MR, W, y, "Total Deducción (Pago actual)", "Anticipos + Intereses ya entregados", `- ${formatVES(data.immediatePayment)}`, COLORS.inkMed, true);
+    fill(doc, ML, y, W, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, ML, y, W, 12, COLORS.bandHead);
+    rect(doc, ML, y, W, 12, COLORS.border, 0.2);
+    renderLabel(doc, "Total anticipos e intereses", ML + 3, y + 7.8, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(data.immediatePayment), ML + W - 3, y + 8.2, 13, true, COLORS.ink, "right");
+    y += 12 + 6;
 
-    fill(doc, ML, y, W, 14, COLORS.rowAlt);
-    renderText(doc, "SALDO PENDIENTE A FAVOR DEL TRABAJADOR", ML + 4, y + 8.5, 10, true, COLORS.ink);
-    renderMono(doc, formatVES(data.balanceInFavor), MR - 4, y + 9.5, 15, true, COLORS.green, "right");
-    y += 14;
-    hline(doc, ML, y, W, COLORS.borderStr, 0.8);
-    y += 8;
+    y = drawSectionLabel(doc, ML, W, y, "Cuenta de Garantía");
+    y = renderDetailRow(doc, ML, W, y, "Monto Prestaciones Acumuladas", data.isGuaranteeApplied ? "Garantía Art. 142.c" : "Días acumulados", formatVES(data.finalAmount), COLORS.ink, false);
+    y = renderDetailRow(doc, ML, W, y, "Total Deducción", "Anticipos + Intereses ya entregados", `- ${formatVES(data.immediatePayment)}`, COLORS.inkMed, true);
 
-    // ── Signatures ──────────────────────────────────────────────
-    if (y > PH - 45) {
-        doc.addPage();
-        y = 30;
-    } else {
-        y += 4;
-    }
+    fill(doc, ML, y, W, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, ML, y, W, 13, COLORS.bandHead);
+    rect(doc, ML, y, W, 13, COLORS.border, 0.2);
+    renderLabel(doc, "Saldo Pendiente a Favor del Trabajador", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(data.balanceInFavor), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    y += 13 + 6;
 
-    const legal = `Los intereses son calculados conforme al Art. 143 LOTTT. El monto anticipado ha sido depositado y deducido proporcionalmente conforme al Art. 144 LOTTT.`;
-    renderText(doc, legal, ML, y, 8.5, false, COLORS.muted, "left", W);
-    
-    y += 12;
-    y = drawSignatures(doc, ML, W, y);
+    const legal = "Los intereses son calculados conforme al Art. 143 LOTTT. El monto anticipado ha sido depositado y deducido proporcionalmente conforme al Art. 144 LOTTT.";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(legal, W) as string[];
+    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+    y += lines.length * 3.5 + 6;
 
-    drawFooter(doc, PW, PH, data.companyName, `INTERESES Y ANTICIPO AL ${formatDate(data.cutoffDate)}`);
-    doc.save(`intereses_anticipo_${data.employee.idNumber}_${data.cutoffDate.replaceAll("-", "")}.pdf`);
+    drawSignatures(doc, ML, W, y);
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`intereses-anticipo-${safeFilename(data.employee.idNumber)}-${data.cutoffDate.replaceAll("-", "")}.pdf`);
 }

@@ -1,16 +1,32 @@
-// fin-de-ano-pdf.ts
-// Genera recibos de "Bonificación de Fin de Año" en formato idéntico
-// al documento legal venezolano (LOTTT Arts. 131, 142, 190, 192).
+// PDF generator: Bonificación de Fin de Año (LOTTT Arts. 131, 142, 190, 192).
+// Estilo Konta — header naranja, tabla zebra, firma + ciudad/fecha. Footer
+// Kontave compartido en cada página.
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    drawHeader,
+    drawFooter,
+    drawHeaderRow,
+    fill,
+    hline,
+    rect,
+    formatN,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface FinDeAnoConcept {
     label:   string;
-    dias:    number | null;   // null = no mostrar
-    salario: number | null;   // null = no mostrar (e.g. intereses)
+    dias:    number | null;
+    salario: number | null;
     monto:   number;
     italic?: boolean;
 }
@@ -21,27 +37,28 @@ export interface FinDeAnoDeduccion {
 }
 
 export interface FinDeAnoEmployee {
-    nombre:   string;
-    cedula:   string;
-    concepts: FinDeAnoConcept[];
-    deductions: FinDeAnoDeduccion[];
-    subtotal:   number;
-    totalDed:   number;
-    totalRecibido: number;
+    nombre:                string;
+    cedula:                string;
+    concepts:              FinDeAnoConcept[];
+    deductions:            FinDeAnoDeduccion[];
+    subtotal:              number;
+    totalDed:              number;
+    totalRecibido:         number;
     salarioDiarioIntegral: number;
 }
 
 export interface FinDeAnoOptions {
     companyName:    string;
-    periodStart:    string;   // DD/MM/YYYY
-    periodEnd:      string;   // DD/MM/YYYY
+    companyId?:     string;
+    periodStart:    string;
+    periodEnd:      string;
     ciudad:         string;
-    fechaDoc:       string;   // e.g. "14 de noviembre de 2025"
+    fechaDoc:       string;
     logoUrl?:       string;
     showLogoInPdf?: boolean;
 }
 
-// ── Number to words (Bolívares, Spanish) ────────────────────────────────────
+// ── Number to words (Spanish) ─────────────────────────────────────────────────
 
 const ONES = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE",
     "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE",
@@ -88,321 +105,151 @@ export function montoEnLetras(monto: number): string {
     return `${bsStr} BOLÍVARES CON ${String(cts).padStart(2, "0")}/100CTMOS`;
 }
 
-// ── Palette ───────────────────────────────────────────────────────────────────
-
-type RGB = [number, number, number];
-
-const C = {
-    ink:      [0,   0,   0]   as RGB,
-    inkMed:   [0,   0,   0]   as RGB,
-    muted:    [0,   0,   0]   as RGB,
-    border:   [218, 218, 226] as RGB,
-    white:    [255, 255, 255] as RGB,
-    primary:  [8,   145, 178] as RGB,
-    primaryLt:[207, 250, 254] as RGB,
-    accent:   [34,  211, 238] as RGB,
-    headerBg: [255, 255, 255] as RGB,
-    rowAlt:   [240, 240, 245] as RGB,
-    subtotal: [207, 250, 254] as RGB,
-    subtotalBd:[103, 232, 249] as RGB,
-    sectionHdr:[20,  22,  38]  as RGB,
-};
-
-// ── PDF primitives ───────────────────────────────────────────────────────────
+// ── Per-employee receipt ──────────────────────────────────────────────────────
 
 type Doc = jsPDF;
 
-const fmtVES = (n: number) =>
-    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function txt(
-    doc:   Doc,
-    text:  string,
-    x:     number,
-    y:     number,
-    size:  number,
-    bold:  boolean,
-    align: "left" | "center" | "right" = "left",
-    color: RGB = C.ink,
-    maxW?: number,
-) {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
-
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
-
-    doc.text(str, x, y, { align });
-}
-
-function fill(doc: Doc, x: number, y: number, w: number, h: number, c: RGB) {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-}
-
-function hline(doc: Doc, x: number, y: number, w: number, lw = 0.25, c: RGB = C.border) {
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-}
-
-// ── Receipt renderer ─────────────────────────────────────────────────────────
-
-function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isFirst: boolean, logoBase64?: string | null) {
+function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isFirst: boolean, companyLogo: string | null): void {
     if (!isFirst) doc.addPage();
 
-    const PW  = doc.internal.pageSize.getWidth();
-    const PH  = doc.internal.pageSize.getHeight();
-    const ML  = 14;
-    const MR  = PW - 14;
-    const W   = MR - ML;
+    const PW = doc.internal.pageSize.getWidth();
+    const ML = 12, W = PW - 2 * ML;
 
-    // ── HEADER ─────────────────────────────────────────────────────────────
-    const HDR_H = 36;
-    fill(doc, 0, 0, PW, HDR_H, C.headerBg);
-    fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
-    fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
+    drawHeader(doc, {
+        companyName: opts.companyName,
+        companyRif:  opts.companyId,
+        reportTitle: "Bonificación de Fin de Año",
+        periodLabel: `${opts.periodStart} — ${opts.periodEnd}`,
+    });
 
-    txt(doc, opts.companyName.toUpperCase(), ML + 2, 11, 13, true, "left", C.ink);
-    txt(doc, "BONIFICACIÓN DE FIN DE AÑO — LOTTT Arts. 131, 142, 190, 192",
-        ML + 2, 18.5, 9.5, false, "left", C.muted);
+    let y = 32;
 
-    txt(doc, "PERÍODO", MR, 10, 9, false, "right", C.muted);
-    txt(doc, `${opts.periodStart} — ${opts.periodEnd}`, MR, 18, 10.5, true, "right", C.ink);
-    txt(doc,
-        `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 26, 8.5, false, "right", C.muted);
-
-    let y = HDR_H + 8;
-
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    // ── Intro paragraph ────────────────────────────────────────────────────
+    // ── Intro paragraph ───────────────────────────────────────────────────────
     const totalStr  = montoEnLetras(emp.totalRecibido);
-    const salIntStr = `${fmtVES(emp.salarioDiarioIntegral)} BOLIVARES CON ${String(Math.round((emp.salarioDiarioIntegral % 1) * 100)).padStart(2, "0")}/100 (Bs. ${fmtVES(emp.salarioDiarioIntegral)})`;
+    const salIntStr = `${formatN(emp.salarioDiarioIntegral)} BOLÍVARES (Bs. ${formatN(emp.salarioDiarioIntegral)})`;
 
-    const intro = [
-        `Yo, ${emp.nombre}, titular de la cedula de Identidad número V-${emp.cedula} y de este domicilio, por medio de la presente hago constar que he recibido de la Firma`,
-        `${opts.companyName} la cantidad de ${totalStr} (Bs. ${fmtVES(emp.totalRecibido)}) por concepto de las Bonificación de Fin de Año:`,
-        `Utilidades, Adelanto de Prestaciones y Vacaciones, que me corresponde por el periodo de trabajo que va del ${opts.periodStart} al ${opts.periodEnd}. El cual ha sido calculado sobre la base de mi`,
-        `salario Integral devengado para esta fecha, la cantidad de ${salIntStr} Bolívares diarios`,
-    ].join(" ");
+    const intro =
+        `Yo, ${emp.nombre}, titular de la cédula de identidad número V-${emp.cedula} y de este domicilio, por medio de la presente hago constar que he recibido de la firma ` +
+        `${opts.companyName} la cantidad de ${totalStr} (Bs. ${formatN(emp.totalRecibido)}) por concepto de Bonificación de Fin de Año: ` +
+        `Utilidades, Adelanto de Prestaciones y Vacaciones, que me corresponde por el período de trabajo del ${opts.periodStart} al ${opts.periodEnd}, ` +
+        `calculado sobre la base de mi salario integral diario devengado, equivalente a ${salIntStr}.`;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(20, 20, 25);
-    const introLines: string[] = doc.splitTextToSize(intro, W);
-    introLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 5.2);
-    });
-    y += introLines.length * 5.2 + 4;
+    doc.setFontSize(9.5);
+    doc.setTextColor(COLORS.inkMed[0], COLORS.inkMed[1], COLORS.inkMed[2]);
+    const introLines = doc.splitTextToSize(intro, W) as string[];
+    introLines.forEach((line, i) => doc.text(line, ML, y + i * 4.5));
+    y += introLines.length * 4.5 + 4;
 
-    const declaracion = "Por el presente documento declaro haber recibido a mi cabal y entera satisfacción y en moneda de curso legal, la cantidad mencionada por lo cual nada tengo a reclamar por concepto de utilidades y anticipo de Prestaciones Sociales, calculado de la siguiente manera:";
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    const declLines: string[] = doc.splitTextToSize(declaracion, W);
-    declLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 5.2);
-    });
-    y += declLines.length * 5.2 + 6;
+    const declaracion =
+        "Declaro haber recibido la cantidad indicada a mi cabal y entera satisfacción y en moneda de curso legal, " +
+        "por lo cual nada tengo que reclamar por concepto de utilidades y anticipo de prestaciones sociales, " +
+        "calculadas de la siguiente manera:";
+    const declLines = doc.splitTextToSize(declaracion, W) as string[];
+    declLines.forEach((line, i) => doc.text(line, ML, y + i * 4.5));
+    y += declLines.length * 4.5 + 6;
 
-    // ── Table header ──────────────────────────────────────────────────────
-    const COL_CONCEPTO = ML;
-    const COL_DIAS     = MR - 60;
-    const COL_SALARIO  = MR - 36;
-    const COL_MONTO    = MR;
-    const COL_W        = COL_DIAS - ML - 2;
+    // ── Concepts table ────────────────────────────────────────────────────────
+    const colConcept = W * 0.52;
+    const colDias    = W * 0.12;
+    const colSalario = W * 0.16;
+    const colMonto   = W * 0.20;
 
-    // Header row
-    fill(doc, ML, y - 5, W, 7, C.rowAlt);
-    fill(doc, ML, y - 5, 3, 7, C.primary);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("CONCEPTOS",  COL_CONCEPTO + 5, y, { align: "left"  });
-    doc.text("DÍAS",       COL_DIAS,     y, { align: "center" });
-    doc.text("SALARIO",    COL_SALARIO,  y, { align: "center" });
-    doc.text("MONTO (Bs)", COL_MONTO,    y, { align: "right"  });
+    drawHeaderRow(doc, y, 6, [
+        { x: ML,                                       w: colConcept, text: "Conceptos",  align: "left"  },
+        { x: ML + colConcept,                          w: colDias,    text: "Días",       align: "center"},
+        { x: ML + colConcept + colDias,                w: colSalario, text: "Salario",    align: "center"},
+        { x: ML + colConcept + colDias + colSalario,   w: colMonto,   text: "Monto",      align: "right" },
+    ]);
     y += 6;
-    hline(doc, ML, y, W, 0.4, C.primary);
-    y += 3;
 
-    // ── Concept rows ──────────────────────────────────────────────────────
-    const ROW_H = 6.5;
+    const ROW_H = 6;
     emp.concepts.forEach((c, i) => {
-        if (i % 2 !== 0) {
-            fill(doc, ML, y - 4.5, W, ROW_H, C.rowAlt);
-        }
-
-        doc.setFont("helvetica", c.italic ? "italic" : "normal");
-        doc.setFontSize(10.5);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        const labelLines: string[] = doc.splitTextToSize(c.label, COL_W);
-        labelLines.forEach((line: string, li: number) => {
-            doc.text(line, COL_CONCEPTO, y + li * 4.8);
-        });
-
+        if (i % 2 === 1) fill(doc, ML, y, W, ROW_H, COLORS.rowAlt);
+        renderText(doc, c.label, ML + 3, y + 4.2, 8.5, false, COLORS.inkMed, "left", colConcept - 4, "helvetica");
         if (c.dias !== null) {
-            doc.setFont("helvetica", "normal");
-            doc.text(String(c.dias), COL_DIAS, y, { align: "center" });
+            renderMono(doc, String(c.dias), ML + colConcept + colDias / 2, y + 4.2, 8.5, false, COLORS.muted, "center");
         }
         if (c.salario !== null) {
-            doc.text(fmtVES(c.salario), COL_SALARIO, y, { align: "center" });
+            renderMono(doc, formatN(c.salario), ML + colConcept + colDias + colSalario / 2, y + 4.2, 8.5, false, COLORS.muted, "center");
         }
         if (c.monto > 0) {
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
-            doc.text(fmtVES(c.monto), COL_MONTO, y, { align: "right" });
+            renderMono(doc, formatVES(c.monto), ML + colConcept + colDias + colSalario + colMonto - 2, y + 4.2, 9, true, COLORS.ink, "right");
         }
-
-        const rowH = Math.max(ROW_H, labelLines.length * 4.8 + 1.5);
-        y += rowH;
-        hline(doc, ML, y, W, 0.1);
+        y += ROW_H;
+        hline(doc, ML, y, W, COLORS.border, 0.15);
     });
-
     y += 2;
 
-    // ── Subtotal ──────────────────────────────────────────────────────────
-    fill(doc, ML, y - 4.5, W, 7, C.subtotal);
-    fill(doc, ML, y - 4.5, 3, 7, C.primary);
-    doc.setDrawColor(C.subtotalBd[0], C.subtotalBd[1], C.subtotalBd[2]);
-    doc.setLineWidth(0.3);
-    doc.rect(ML, y - 4.5, W, 7, "D");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
-    doc.text("SUBTOTAL", COL_CONCEPTO + 5, y);
-    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.text(fmtVES(emp.subtotal), COL_MONTO, y, { align: "right" });
-    y += 10;
+    // ── Subtotal ──────────────────────────────────────────────────────────────
+    fill(doc, ML, y, W, 8, COLORS.bandHead);
+    rect(doc, ML, y, W, 8, COLORS.border, 0.2);
+    renderLabel(doc, "Subtotal", ML + 3, y + 5.5, "left", COLORS.inkMed, 8.5);
+    renderMono(doc, formatVES(emp.subtotal), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
+    y += 8 + 6;
 
-    // ── Deductions ────────────────────────────────────────────────────────
-    fill(doc, ML, y - 5, W, 7, C.rowAlt);
-    fill(doc, ML, y - 5, 3, 7, C.primary);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("DEDUCCIONES", COL_CONCEPTO + 5, y);
-    doc.text("MONTO (Bs)", COL_MONTO, y, { align: "right" });
+    // ── Deductions ────────────────────────────────────────────────────────────
+    drawHeaderRow(doc, y, 6, [
+        { x: ML, w: W - colMonto, text: "Deducciones", align: "left"  },
+        { x: ML + W - colMonto, w: colMonto, text: "Monto", align: "right" },
+    ]);
     y += 6;
-    hline(doc, ML, y, W, 0.4, C.primary);
-    y += 3;
 
     emp.deductions.forEach((d, i) => {
-        if (i % 2 !== 0) {
-            fill(doc, ML, y - 5, W, ROW_H, C.rowAlt);
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10.5);
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        doc.text(d.label, COL_CONCEPTO, y);
-        doc.setFont("helvetica", d.monto > 0 ? "bold" : "normal");
-        doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
-        doc.text(fmtVES(d.monto), COL_MONTO, y, { align: "right" });
+        if (i % 2 === 1) fill(doc, ML, y, W, ROW_H, COLORS.rowAlt);
+        renderText(doc, d.label, ML + 3, y + 4.2, 8.5, false, COLORS.inkMed, "left", W - colMonto - 4, "helvetica");
+        renderMono(doc, formatVES(d.monto), ML + W - 3, y + 4.2, 9, d.monto > 0, COLORS.ink, "right");
         y += ROW_H;
-        hline(doc, ML, y, W, 0.1);
+        hline(doc, ML, y, W, COLORS.border, 0.15);
     });
-
     y += 3;
 
-    // Total deducciones
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("TOTAL DEDUCCIONES", COL_CONCEPTO, y);
-    doc.setTextColor(C.ink[0], C.ink[1], C.ink[2]);
-    doc.text(fmtVES(emp.totalDed), COL_MONTO, y, { align: "right" });
-    y += 4;
-    hline(doc, ML, y, W, 0.5);
-    y += 6;
+    fill(doc, ML, y, W, 8, COLORS.bandHead);
+    rect(doc, ML, y, W, 8, COLORS.border, 0.2);
+    renderLabel(doc, "Total deducciones", ML + 3, y + 5.5, "left", COLORS.inkMed, 8.5);
+    renderMono(doc, formatVES(emp.totalDed), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
+    y += 8 + 5;
 
-    // Total recibido
-    fill(doc, ML, y - 5.5, W, 11, C.white);
-    // Top accent line
-    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setLineWidth(1.2);
-    doc.line(ML, y - 5.5, ML + W, y - 5.5);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(ML, y - 5.5 + 11, ML + W, y - 5.5 + 11);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text("TOTAL RECIBIDO", COL_CONCEPTO + 2, y + 1);
-    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.text(fmtVES(emp.totalRecibido), COL_MONTO, y + 1, { align: "right" });
-    y += 14;
+    // ── Total recibido (orange-accented) ──────────────────────────────────────
+    fill(doc, ML, y, W, 0.6, COLORS.orange);
+    y += 1.4;
+    fill(doc, ML, y, W, 14, COLORS.bandHead);
+    rect(doc, ML, y, W, 14, COLORS.border, 0.2);
+    renderLabel(doc, "Total recibido", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(emp.totalRecibido), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    y += 14 + 6;
 
-    // ── Legal note ────────────────────────────────────────────────────────
-    hline(doc, ML, y, W, 0.2);
+    // ── Legal note ────────────────────────────────────────────────────────────
+    hline(doc, ML, y, W, COLORS.border, 0.2);
     y += 4;
-    const nota = "La prestación de antigüedad Art. 142 fue cancelada con salario integral, para dar cumplimiento al artículo 122 de la Ley Orgánica del Trabajo.";
+    const nota = "La prestación de antigüedad Art. 142 fue cancelada con salario integral, en cumplimiento del Art. 122 LOTTT.";
     doc.setFont("helvetica", "italic");
-    doc.setFontSize(10);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    const notaLines: string[] = doc.splitTextToSize(nota, W);
-    notaLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + i * 4.8);
-    });
-    y += notaLines.length * 4.8 + 8;
+    doc.setFontSize(8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    doc.text(nota, ML, y);
+    y += 8;
 
-    // ── Signatures ────────────────────────────────────────────────────────
-    const sigW  = 75;
-    const sigH  = 22;
-    const sigPd = 6;
+    // ── Signatures ────────────────────────────────────────────────────────────
+    const SIG_W = 75;
+    const SIG_H = 22;
+    rect(doc, ML, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+    renderText(doc, opts.companyName, ML + SIG_W / 2, y + 9, 9, true, COLORS.inkMed, "center", SIG_W - 8, "helvetica");
+    hline(doc, ML + 6, y + SIG_H - 7, SIG_W - 12, COLORS.borderStr, 0.3);
+    renderLabel(doc, "Firma y sello del empleador", ML + SIG_W / 2, y + SIG_H - 3, "center", COLORS.muted, 7);
 
-    // Employer
-    doc.setFillColor(C.white[0], C.white[1], C.white[2]);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.25);
-    doc.rect(ML, y, sigW, sigH, "FD");
-    fill(doc, ML, y, sigW, 1.5, C.primary);
-    txt(doc, opts.companyName, ML + sigW / 2, y + 9.5, 9.5, true, "center", C.inkMed, sigW - 10);
-    hline(doc, ML + sigPd, y + 17, sigW - sigPd * 2, 0.4, C.border);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text("FIRMA Y SELLO DEL EMPLEADOR", ML + sigW / 2, y + 21, { align: "center" });
+    const esx = ML + W - SIG_W;
+    rect(doc, esx, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+    renderText(doc, emp.nombre, esx + SIG_W / 2, y + 8.5, 9, true, COLORS.inkMed, "center", SIG_W - 8, "helvetica");
+    renderMono(doc, `CI V-${emp.cedula}`, esx + SIG_W / 2, y + 13, 8, false, COLORS.muted, "center");
+    hline(doc, esx + 6, y + SIG_H - 7, SIG_W - 12, COLORS.borderStr, 0.3);
+    renderLabel(doc, "Firma del trabajador · Conforme", esx + SIG_W / 2, y + SIG_H - 3, "center", COLORS.muted, 7);
 
-    // Employee
-    const esx = MR - sigW;
-    doc.setFillColor(C.white[0], C.white[1], C.white[2]);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.25);
-    doc.rect(esx, y, sigW, sigH, "FD");
-    fill(doc, esx, y, sigW, 1.5, C.primary);
-    txt(doc, emp.nombre, esx + sigW / 2, y + 9.5, 9.5, true, "center", C.inkMed, sigW - 10);
-    txt(doc, `C.I. V-${emp.cedula}`, esx + sigW / 2, y + 14.5, 8.5, false, "center", C.muted);
-    hline(doc, esx + sigPd, y + 17, sigW - sigPd * 2, 0.4, C.border);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text("FIRMA DEL TRABAJADOR / CONFORME", esx + sigW / 2, y + 21, { align: "center" });
-
-    // City + date centred between signatures
-    txt(doc, `${opts.ciudad}, ${opts.fechaDoc}`, PW / 2, y + sigH + 8, 10, false, "center", C.inkMed);
-
-    // ── FOOTER ────────────────────────────────────────────────────────────
-    fill(doc, 0, PH - 10, PW, 10, C.white);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(0, PH - 10, PW, PH - 10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(opts.companyName.toUpperCase(), ML, PH - 6);
-    doc.text("DOCUMENTO CONFIDENCIAL", PW / 2, PH - 6, { align: "center" });
-    doc.text(
-        new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase(),
-        MR, PH - 6, { align: "right" }
-    );
+    // City/date centered
+    renderText(doc, `${opts.ciudad}, ${opts.fechaDoc}`, PW / 2, y + SIG_H + 7, 9, false, COLORS.inkMed, "center", undefined, "helvetica");
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -410,11 +257,17 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
 export async function generateFinDeAnoPdf(employees: FinDeAnoEmployee[], opts: FinDeAnoOptions): Promise<void> {
     if (employees.length === 0) return;
 
-    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
-        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        opts.showLogoInPdf && opts.logoUrl
+            ? loadImageAsBase64(opts.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, logoBase64));
-    doc.save(`bonificacion_fin_de_ano_${opts.periodEnd.replaceAll("/", "")}.pdf`);
+    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, companyLogo));
+
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`fin-de-ano-${safeFilename(opts.companyName)}-${opts.periodEnd.replaceAll("/", "")}.pdf`);
 }

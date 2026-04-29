@@ -20,7 +20,7 @@ import {
     safeFilename,
     type KontaPdfHeaderOpts,
     type PdfCell,
-} from "./pdf-chrome";
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
 export interface BalanceReportPdfOpts {
     companyName: string;

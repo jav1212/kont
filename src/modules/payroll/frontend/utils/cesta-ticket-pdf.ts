@@ -1,119 +1,89 @@
-// ============================================================================
-// CESTA TICKET PDF — Reporte de Ticket de Alimentación (Art. 5 LOPCYMAT / LOTTT)
-// Solo aplica para la segunda quincena del mes.
-// ============================================================================
+// PDF generator: Reporte de Cesta Ticket — segunda quincena del mes.
+// Estilo Konta — header naranja, tabla zebra, recuadros de firma con badge USD,
+// footer Kontave compartido en cada página.
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    PAGE,
+    pageBounds,
+    drawHeader,
+    drawFooter,
+    drawHeaderRow,
+    drawRow,
+    fill,
+    hline,
+    rect,
+    formatN,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
 export interface CestaTicketEmployee {
-    cedula:  string;
-    nombre:  string;
-    cargo:   string;
-    estado:  string;
+    cedula: string;
+    nombre: string;
+    cargo:  string;
+    estado: string;
 }
 
 export interface CestaTicketOptions {
-    companyName:  string;
-    companyId?:   string;
-    periodLabel:  string;   // "16–31 de Marzo 2026"
-    payrollDate:  string;   // ISO date for filename
-    montoUSD:     number;   // monto por empleado (default 40)
-    bcvRate:      number;   // tasa BCV para conversión a VES
-    logoUrl?:     string;
+    companyName:    string;
+    companyId?:     string;
+    periodLabel:    string;
+    payrollDate:    string;
+    montoUSD:       number;
+    bcvRate:        number;
+    logoUrl?:       string;
     showLogoInPdf?: boolean;
 }
 
-type RGB = [number, number, number];
+const fmtUSD = (n: number) => "$ " + formatN(n);
 
-const C = {
-    ink:       [0,   0,   0]   as RGB,
-    inkMed:    [0,   0,   0]   as RGB,
-    muted:     [0,   0,   0]   as RGB,
-    border:    [218, 218, 226] as RGB,
-    borderMed: [175, 175, 185] as RGB,
-    bg:        [255, 255, 255] as RGB,   // blanco para impresión
-    rowAlt:    [240, 240, 245] as RGB,
-    white:     [255, 255, 255] as RGB,
-    primary:   [8,   145, 178] as RGB,
-    accent:    [34,  211, 238] as RGB,
-    header:    [255, 255, 255] as RGB,
-    green:     [22,  101, 52]  as RGB,
-};
+type Doc = jsPDF;
 
-const fill = (doc: jsPDF, x: number, y: number, w: number, h: number, c: RGB) => {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-};
-
-const box = (doc: jsPDF, x: number, y: number, w: number, h: number, fc: RGB, sc: RGB, lw = 0.2) => {
-    doc.setFillColor(fc[0], fc[1], fc[2]);
-    doc.setDrawColor(sc[0], sc[1], sc[2]);
-    doc.setLineWidth(lw);
-    doc.rect(x, y, w, h, "FD");
-};
-
-const hline = (doc: jsPDF, x: number, y: number, w: number, c: RGB = C.border, lw = 0.2) => {
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-};
-
-const txt = (
-    doc: jsPDF, text: string,
-    x: number, y: number, size: number, bold: boolean,
-    color: RGB, align: "left" | "center" | "right" = "left",
-    maxW?: number,
-) => {
-    doc.setFont("helvetica", bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
-    doc.setCharSpace(0);
-
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
-
-    let ax = x;
-    if (align === "right")  ax = x - doc.getTextWidth(str);
-    if (align === "center") ax = x - doc.getTextWidth(str) / 2;
-
-    doc.text(str, ax, y);
-};
-
-const lbl = (doc: jsPDF, text: string, x: number, y: number, align: "left" | "right" | "center" = "left") => {
-    txt(doc, text.toUpperCase(), x, y, 8.5, false, C.muted, align);
-};
-
-const fmtNum = (n: number): string => {
-    const [int, dec] = n.toFixed(2).split(".");
-    const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return intFmt + "," + dec;
-};
-
-const fmtVES = (n: number) => "Bs. " + fmtNum(n);
-const fmtUSD = (n: number) => "$ "   + fmtNum(n);
-
-// ── Draws the header on any page ──────────────────────────────────────────────
-function drawPageBg(doc: jsPDF, PW: number, PH: number) {
-    fill(doc, 0, 0, PW, PH, C.bg);
+interface PageHeader {
+    companyName: string;
+    companyRif?: string;
+    periodLabel: string;
 }
 
-function drawFooter(doc: jsPDF, PW: number, PH: number, opts: CestaTicketOptions) {
-    fill(doc, 0, PH - 10, PW, 10, C.white);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.3);
-    doc.line(0, PH - 10, PW, PH - 10);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    doc.text(
-        `${opts.companyName.toUpperCase()}  ·  ${opts.periodLabel}  ·  DOCUMENTO CONFIDENCIAL`,
-        PW / 2, PH - 6, { align: "center" },
-    );
+function repaintPageHeader(doc: Doc, opts: PageHeader): number {
+    drawHeader(doc, {
+        companyName: opts.companyName,
+        companyRif:  opts.companyRif,
+        reportTitle: "Cesta Ticket",
+        periodLabel: opts.periodLabel,
+    });
+    return PAGE.contentTop as number;
+}
+
+function drawParamsCard(doc: Doc, x: number, w: number, y: number, montoUSD: number, bcvRate: number): number {
+    const H = 14;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    fill(doc, x, y, 1.5, H, COLORS.orange);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
+
+    const cx1 = x + 4;
+    const cx2 = x + w * 0.36;
+    const cx3 = x + w - 3;
+
+    const montoVES = montoUSD * bcvRate;
+
+    renderLabel(doc, "Monto por empleado", cx1, y + 5, "left", COLORS.muted, 7);
+    renderMono(doc, fmtUSD(montoUSD), cx1, y + 11, 10, true, COLORS.ink, "left");
+
+    renderLabel(doc, "Tasa BCV", cx2, y + 5, "left", COLORS.muted, 7);
+    renderMono(doc, `Bs. ${formatN(bcvRate)} / USD`, cx2, y + 11, 10, true, COLORS.inkMed, "left");
+
+    renderLabel(doc, "Equiv. por empleado", cx3, y + 5, "right", COLORS.muted, 7);
+    renderMono(doc, formatVES(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
+
+    return y + H + 5;
 }
 
 export async function generateCestaTicketPdf(
@@ -123,233 +93,152 @@ export async function generateCestaTicketPdf(
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
 
-    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
-        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        opts.showLogoInPdf && opts.logoUrl
+            ? loadImageAsBase64(opts.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
-    const PH = doc.internal.pageSize.getHeight();
-    const ML = 13;
-    const MR = PW - 13;
-    const W  = MR - ML;
+    const ML = 12, W = PW - 2 * ML;
 
-    drawPageBg(doc, PW, PH);
+    const pageHeader: PageHeader = {
+        companyName: opts.companyName,
+        companyRif:  opts.companyId,
+        periodLabel: opts.periodLabel,
+    };
 
-    // ── HEADER ────────────────────────────────────────────────────────────
-    const HDR_H = 38;
-    fill(doc, 0, 0, PW, HDR_H, C.header);
-    fill(doc, 0, HDR_H - 2, PW, 2, C.accent);
-    fill(doc, 0, 0, 4, HDR_H - 2, C.primary);
+    let y = repaintPageHeader(doc, pageHeader);
 
-    txt(doc, opts.companyName.toUpperCase(), ML + 2, 11, 13, true, C.ink);
-    if (opts.companyId) txt(doc, `RIF: ${opts.companyId}`, ML + 2, 18, 9.5, false, C.inkMed);
-    txt(doc, "REPORTE DE CESTA TICKET — 2ª QUINCENA", ML + 2, 25, 9.5, false, C.muted);
-
-    txt(doc, opts.periodLabel.toUpperCase(), MR, 19, 10, true, C.ink, "right");
-    txt(doc,
-        `Emitido: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`,
-        MR, 27, 8.5, false, C.muted, "right"
-    );
-
-    let y = HDR_H + 6;
-
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", ML, y, 25, 12); y += 15; } catch { /* */ }
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    // ── PARAMS CARD ───────────────────────────────────────────────────────
+    y = drawParamsCard(doc, ML, W, y, opts.montoUSD, opts.bcvRate);
+
+    // ── Table header ──────────────────────────────────────────────────────────
+    const colN     = W * 0.07;
+    const colName  = W * 0.40;
+    const colCed   = W * 0.18;
+    const colUSD   = W * 0.16;
+    const colVES   = W * 0.19;
+    const drawTH = (yy: number): number => {
+        drawHeaderRow(doc, yy, 6, [
+            { x: ML,                                        w: colN,    text: "N°",         align: "center" },
+            { x: ML + colN,                                 w: colName, text: "Nombre",     align: "left"   },
+            { x: ML + colN + colName,                       w: colCed,  text: "Cédula",     align: "left"   },
+            { x: ML + colN + colName + colCed,              w: colUSD,  text: "Monto USD",  align: "right"  },
+            { x: ML + colN + colName + colCed + colUSD,     w: colVES,  text: "Equiv. VES", align: "right"  },
+        ]);
+        return yy + 6;
+    };
+
+    y = drawTH(y);
+
     const montoVES = opts.montoUSD * opts.bcvRate;
-    box(doc, ML, y, W, 12, C.white, C.border, 0.3);
-    fill(doc, ML, y, 3, 12, C.primary);
-
-    const cx1 = ML + 8;
-    const cx2 = ML + W * 0.35;
-    const cx3 = MR - 4;
-
-    lbl(doc, "Monto por empleado", cx1, y + 4.5);
-    txt(doc, fmtUSD(opts.montoUSD), cx1, y + 9.5, 10.5, true, C.primary);
-    lbl(doc, "Tasa BCV", cx2, y + 4.5);
-    txt(doc, `Bs. ${opts.bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })} / USD`, cx2, y + 9.5, 10.5, true, C.inkMed);
-    lbl(doc, "Equiv. por empleado", cx3, y + 4.5, "right");
-    txt(doc, fmtVES(montoVES), cx3, y + 9.5, 10.5, true, C.green, "right");
-
-    y += 12 + 6;
-
-    // ── TABLE ─────────────────────────────────────────────────────────────
-    const COL_N    = ML;
-    const COL_NAME = ML + 10;
-    const COL_CED  = ML + W * 0.44;
-    const COL_USD  = ML + W * 0.62;
-    const COL_VES  = ML + W * 0.78;
-
-    // Table header
-    const TH_H = 8;
-    fill(doc, ML, y, W, TH_H, C.rowAlt);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + TH_H, ML + W, y + TH_H);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-
-    const th = (text: string, x: number, align: "left" | "right" | "center" = "left") =>
-        doc.text(text.toUpperCase(), x, y + 5.5, { align });
-
-    th("N°",         COL_N + 4);
-    th("Nombre",     COL_NAME);
-    th("Cédula",     COL_CED);
-    th("Monto USD",  COL_USD);
-    th("Equiv. VES", COL_VES);
-
-    y += TH_H;
-
-    const ROW_H = 9;
+    const ROW_H = 6;
     active.forEach((emp, i) => {
-        const rowBg = i % 2 === 0 ? C.white : C.rowAlt;
-        fill(doc, ML, y, W, ROW_H, rowBg);
-        hline(doc, ML, y + ROW_H, W, C.border, 0.1);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-        doc.text(String(i + 1), COL_N + 4, y + 5.5);
-
-        doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-        const maxNameW = COL_CED - COL_NAME - 3;
-        const nameLines: string[] = doc.splitTextToSize(emp.nombre, maxNameW);
-        doc.text(nameLines[0], COL_NAME, y + 5.5);
-
-        doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-        doc.text(emp.cedula, COL_CED, y + 5.5);
-
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-        doc.text(fmtUSD(opts.montoUSD), COL_USD, y + 5.5);
-
-        doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-        doc.text(fmtVES(montoVES), COL_VES, y + 5.5);
-
-        y += ROW_H;
-
-        // New page if not enough room for totals + signatures
-        if (y > PH - 55 && i < active.length - 1) {
-            drawFooter(doc, PW, PH, opts);
+        if (y + ROW_H > pageBounds(doc).contentBot) {
             doc.addPage();
-            drawPageBg(doc, PW, PH);
-            y = 15;
+            y = repaintPageHeader(doc, pageHeader);
+            y = drawTH(y);
         }
+        drawRow(doc, y, ROW_H, [
+            { x: ML,                                       w: colN,    text: String(i + 1),         align: "center", size: 8.5, mono: true,            color: COLORS.muted },
+            { x: ML + colN,                                w: colName, text: emp.nombre,            align: "left",   size: 8.5,                       color: COLORS.ink },
+            { x: ML + colN + colName,                      w: colCed,  text: emp.cedula,            align: "left",   size: 8.5, mono: true,            color: COLORS.muted },
+            { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(opts.montoUSD), align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
+            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatVES(montoVES),   align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
+        ], { zebra: i % 2 === 1 });
+        y += ROW_H;
     });
 
-    y += 4;
+    y += 2;
 
-    // ── TOTALS ────────────────────────────────────────────────────────────
+    // ── Totals row (orange-accented) ──────────────────────────────────────────
+    if (y + 14 > pageBounds(doc).contentBot) {
+        doc.addPage();
+        y = repaintPageHeader(doc, pageHeader);
+    }
+
     const totalUSD = opts.montoUSD * active.length;
     const totalVES = montoVES * active.length;
 
-    fill(doc, ML, y, W, 12, C.white);
-    fill(doc, ML, y, 3, 12, C.primary);
-    doc.setDrawColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.setLineWidth(0.8);
-    doc.line(ML, y, ML + W, y);
-    doc.setDrawColor(C.border[0], C.border[1], C.border[2]);
-    doc.setLineWidth(0.2);
-    doc.line(ML, y + 12, ML + W, y + 12);
+    fill(doc, ML, y, W, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, ML, y, W, 12, COLORS.bandHead);
+    rect(doc, ML, y, W, 12, COLORS.border, 0.2);
+    renderLabel(doc, `Total · ${active.length} empleado${active.length !== 1 ? "s" : ""}`, ML + 3, y + 7.8, "left", COLORS.inkMed, 9);
+    renderMono(doc, fmtUSD(totalUSD),  ML + colN + colName + colCed + colUSD - 1, y + 7.8, 10, true, COLORS.ink, "right");
+    renderMono(doc, formatVES(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
+    y += 12 + 8;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.5);
-    doc.setTextColor(C.inkMed[0], C.inkMed[1], C.inkMed[2]);
-    doc.text(`TOTAL  ·  ${active.length} EMPLEADOS`, ML + 8, y + 7.5);
-
-    doc.setTextColor(C.primary[0], C.primary[1], C.primary[2]);
-    doc.text(fmtUSD(totalUSD), COL_USD, y + 7.5);
-
-    doc.setTextColor(C.green[0], C.green[1], C.green[2]);
-    doc.text(fmtVES(totalVES), COL_VES, y + 7.5);
-
-    y += 12 + 10;
-
-    // ── SIGNATURE BOXES (3 per row) ───────────────────────────────────────
-    // Header for signature section
-    txt(doc, "FIRMA DE RECIBO", ML, y, 9.5, true, C.inkMed);
+    // ── Signature boxes ───────────────────────────────────────────────────────
+    if (y + 8 > pageBounds(doc).contentBot) {
+        doc.addPage();
+        y = repaintPageHeader(doc, pageHeader);
+    }
+    renderLabel(doc, "Firma de recibo", ML, y, "left", COLORS.inkMed, 8);
     y += 6;
 
-    const SIG_W  = (W - 8) / 3;   // 3 per row, 4mm gap between
-    const SIG_H  = 32;            // taller para acomodar checkbox
-    const SIG_PD = 4;
-    const GAP    = 4;
-    const CB     = 3;             // checkbox size (mm)
+    const SIG_W = (W - 8) / 3;
+    const SIG_H = 28;
+    const GAP   = 4;
+    const PD    = 3;
+    const CB    = 2.5;
 
     active.forEach((emp, i) => {
         const col = i % 3;
         const sx  = ML + col * (SIG_W + GAP);
 
-        // New page if box doesn't fit
-        if (col === 0 && i > 0 && y + SIG_H > PH - 18) {
-            drawFooter(doc, PW, PH, opts);
+        if (col === 0 && i > 0 && y + SIG_H > pageBounds(doc).contentBot) {
             doc.addPage();
-            drawPageBg(doc, PW, PH);
-            y = 20;
+            y = repaintPageHeader(doc, pageHeader);
         }
 
-        // Box
-        box(doc, sx, y, SIG_W, SIG_H, C.white, C.border, 0.25);
-        fill(doc, sx, y, SIG_W, 1.5, C.primary);
+        fill(doc, sx, y, SIG_W, SIG_H, COLORS.white);
+        rect(doc, sx, y, SIG_W, SIG_H, COLORS.border, 0.25);
+        fill(doc, sx, y, SIG_W, 1, COLORS.orange);
 
-        // Monto badge top-right
-        txt(doc, fmtUSD(opts.montoUSD), sx + SIG_W - SIG_PD, y + 6.5, 8.5, true, C.primary, "right");
+        renderMono(doc, fmtUSD(opts.montoUSD), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
 
-        // Name + cédula
-        txt(doc, emp.nombre, sx + SIG_PD, y + 11.5, 9.5, true, C.inkMed, "left", SIG_W - SIG_PD * 2);
-        txt(doc, emp.cedula, sx + SIG_PD, y + 16.5, 8.5, false, C.muted);
+        renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
+        renderMono(doc, emp.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
+        renderMono(doc, formatVES(montoVES), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
 
-        // Equivalente VES
-        txt(doc, fmtVES(montoVES), sx + SIG_PD, y + 20.5, 8.5, false, C.green);
+        // checkbox
+        rect(doc, sx + PD, y + 20, CB, CB, COLORS.borderStr, 0.3);
+        renderText(doc, "Recibido en Bs. efectivo", sx + PD + CB + 1.5, y + 22.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
 
-        // Checkbox "recibido en bolívares en efectivo"
-        const cbX = sx + SIG_PD;
-        const cbY = y + 21.5;
-        doc.setDrawColor(C.borderMed[0], C.borderMed[1], C.borderMed[2]);
-        doc.setLineWidth(0.35);
-        doc.rect(cbX, cbY, CB, CB);
-        txt(doc, "Recibido en Bs. efectivo", cbX + CB + 1.5, cbY + CB - 0.3, 7.5, false, C.muted ?? [0,0,0] as RGB);
+        // signature line
+        hline(doc, sx + PD, y + SIG_H - 4, SIG_W - PD * 2, COLORS.borderStr, 0.3);
+        renderLabel(doc, "Firma", sx + SIG_W / 2, y + SIG_H - 0.5, "center", COLORS.muted, 7);
 
-        // Signature line
-        hline(doc, sx + SIG_PD, y + SIG_H - 5, SIG_W - SIG_PD * 2, C.borderMed, 0.35);
-        txt(doc, "FIRMA", sx + SIG_W / 2, y + SIG_H - 1, 7.5, false, C.muted, "center");
-
-        // Advance y after every 3 boxes
-        if (col === 2 || i === active.length - 1) {
-            y += SIG_H + 5;
-        }
+        if (col === 2 || i === active.length - 1) y += SIG_H + 5;
     });
 
-    // ── LEGAL NOTE ────────────────────────────────────────────────────────
-    if (y + 18 > PH - 18) {
-        drawFooter(doc, PW, PH, opts);
+    // ── Legal note ────────────────────────────────────────────────────────────
+    if (y + 18 > pageBounds(doc).contentBot) {
         doc.addPage();
-        drawPageBg(doc, PW, PH);
-        y = 20;
+        y = repaintPageHeader(doc, pageHeader);
     }
-
-    hline(doc, ML, y, W, C.border, 0.25);
+    hline(doc, ML, y, W, COLORS.border, 0.2);
     y += 4;
 
     const legal =
         "El presente reporte acredita el pago del beneficio de alimentación (cesta ticket) correspondiente " +
         "a la segunda quincena del período indicado, de conformidad con la Ley de Alimentación para los " +
-        "Trabajadores y las Trabajadoras (LOTTT). El trabajador confirma la recepción de dicho beneficio " +
-        "con su firma en el recuadro correspondiente.";
+        "Trabajadores y las Trabajadoras (LOTTT). El trabajador confirma la recepción del beneficio con su firma.";
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(C.muted[0], C.muted[1], C.muted[2]);
-    const legalLines: string[] = doc.splitTextToSize(legal, W);
-    legalLines.forEach((line: string, i: number) => {
-        doc.text(line, ML, y + 4.5 + i * 4.5);
-    });
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(legal, W) as string[];
+    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
 
-    drawFooter(doc, PW, PH, opts);
-    doc.save(`cesta_ticket_${opts.payrollDate.replaceAll("-", "")}.pdf`);
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`cesta-ticket-${safeFilename(opts.companyName)}-${opts.payrollDate.replaceAll("-", "")}.pdf`);
 }

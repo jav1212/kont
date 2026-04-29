@@ -1,235 +1,183 @@
+// PDF generator: Constancia de Liquidación (renuncia / despido). Una página por
+// empleado, con tabla de conceptos y firma. Estilo Konta — header naranja,
+// footer Kontave compartido en cada página.
+
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    drawHeader,
+    drawFooter,
+    drawHeaderRow,
+    fill,
+    hline,
+    rect,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+    fmtDateEs,
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface LiquidationLine {
     label:      string;
     days?:      number;
-    formula?:   string;   // Calculation formula (replaces daily salary column)
-    salary?:    number;   // Daily salary used (shown if no formula)
+    formula?:   string;
+    salary?:    number;
     amount:     number;
-    highlight?: "amber";  // Indemnity/Special highlight
+    highlight?: "amber";
 }
 
 export interface LiquidationEmployee {
-    name:           string;
-    idNumber:       string;
-    role:           string;
-    hireDate:       string;   // ISO YYYY-MM-DD
-    terminationDate: string;  // ISO YYYY-MM-DD
-    yearsOfService: number;
-    daysOfService:  number;   // Days of the last partial year
-    reason:         "renuncia" | "despido_justificado" | "despido_injustificado";
-    lines:          LiquidationLine[];
-    total:          number;
+    name:            string;
+    idNumber:        string;
+    role:            string;
+    hireDate:        string;
+    terminationDate: string;
+    yearsOfService:  number;
+    daysOfService:   number;
+    reason:          "renuncia" | "despido_justificado" | "despido_injustificado";
+    lines:           LiquidationLine[];
+    total:           number;
 }
 
 export interface LiquidationOptions {
     companyName:    string;
     companyId?:     string;
-    documentDate:   string;   // ISO YYYY-MM-DD
+    documentDate:   string;
     bcvRate?:       number;
     logoUrl?:       string;
     showLogoInPdf?: boolean;
 }
 
-// ── Palette (Clean Monochrome) ────────────────────────────────────────────────
-type RGB = [number, number, number];
-const COLORS = {
-    ink:       [0,   0,   0]   as RGB,
-    inkMed:    [0,   0,   0]   as RGB,
-    muted:     [0,   0,   0]   as RGB,
-    border:    [230, 230, 235] as RGB,
-    borderStr: [190, 190, 200] as RGB,
-    bg:        [255, 255, 255] as RGB,
-    rowAlt:    [248, 248, 252] as RGB,
-    white:     [255, 255, 255] as RGB,
-    primary:   [217, 58,  16]  as RGB,  // Konta orange accents
-    amber:     [220, 38,  38]  as RGB,  // Highlight
+const REASON_LABELS: Record<LiquidationEmployee["reason"], string> = {
+    renuncia:              "Renuncia voluntaria",
+    despido_justificado:   "Despido justificado",
+    despido_injustificado: "Despido injustificado",
 };
 
-// ── Primitives ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 type Doc = jsPDF;
 
-const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-};
+function drawIdentityCard(doc: Doc, x: number, w: number, y: number, emp: LiquidationEmployee, dailySalary: number): number {
+    const H = 18;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    fill(doc, x, y, 1.5, H, COLORS.orange);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
 
-const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = COLORS.border, lw = 0.25) => {
-    doc.setLineDashPattern([], 0);
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-};
+    const c1 = x + 4;
+    const c2 = x + w * 0.4;
+    const c3 = x + w - 3;
 
-const renderText = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, color: RGB, align: "left" | "center" | "right" = "left", maxW?: number, font: "helvetica" | "courier" = "helvetica") => {
-    doc.setFont(font, bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
+    renderLabel(doc, "Trabajador", c1, y + 4, "left", COLORS.muted, 7);
+    renderText(doc, emp.name.toUpperCase(), c1, y + 9, 10.5, true, COLORS.ink, "left", c2 - c1 - 4, "helvetica");
+    if (emp.role) renderText(doc, emp.role, c1, y + 13.5, 7.8, false, COLORS.muted, "left", c2 - c1 - 4, "helvetica");
+    renderMono(doc, "CI " + emp.idNumber, c1, y + 16.8, 7.8, false, COLORS.inkMed, "left");
 
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
+    renderLabel(doc, "Antigüedad", c2, y + 4, "left", COLORS.muted, 7);
+    renderMono(doc, `${emp.yearsOfService}a ${emp.daysOfService % 365}d`, c2, y + 9, 10, true, COLORS.ink, "left");
+    renderMono(doc, `Ingreso ${fmtDateEs(emp.hireDate)}`, c2, y + 13.5, 7.8, false, COLORS.muted, "left");
+    renderMono(doc, `Egreso ${fmtDateEs(emp.terminationDate)}`, c2, y + 16.8, 7.8, false, COLORS.muted, "left");
 
-    doc.text(str, x, y, { align });
-};
+    renderLabel(doc, "Salario Base / Día", c3, y + 4, "right", COLORS.muted, 7);
+    renderMono(doc, dailySalary > 0 ? formatVES(dailySalary) : "—", c3, y + 9, 10, true, COLORS.ink, "right");
 
-const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
+    return y + H + 5;
+}
 
-const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
-    renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
+// ── Per-employee receipt ──────────────────────────────────────────────────────
 
-// ── Formatters ────────────────────────────────────────────────────────────────
-const formatVES = (n: number) => "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    const [y, m, d] = iso.split("-");
-    const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`.toUpperCase();
-};
-const REASON_LABELS: Record<string, string> = { renuncia: "Renuncia Voluntaria", despido_justificado: "Despido Justificado", despido_injustificado: "Despido Injustificado" };
-
-// ── Receipt renderer ──────────────────────────────────────────────────────────
-function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOptions, isFirst: boolean, logoBase64?: string | null) {
+function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOptions, isFirst: boolean, _logoBase64: string | null): void {
     if (!isFirst) doc.addPage();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginLeft = 16;
-    const marginRight = pageWidth - 16;
-    const contentWidth  = marginRight - marginLeft;
 
-    fill(doc, 0, 0, pageWidth, pageHeight, COLORS.bg);
+    const PW = doc.internal.pageSize.getWidth();
+    const ML = 12, W = PW - 2 * ML;
 
-    // ── HEADER ────────────────────────────────────────────────────────────
-    const topY = 20;
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", marginLeft, topY - 5, 28, 11); } catch { /* */ }
-        renderText(doc, opts.companyName.toUpperCase(), marginLeft + 32, topY, 15, true, COLORS.ink);
-        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft + 32, topY + 5, 9.5, false, COLORS.muted, "left");
-    } else {
-        renderText(doc, opts.companyName.toUpperCase(), marginLeft, topY, 15, true, COLORS.ink);
-        if (opts.companyId) renderMono(doc, `ID ${opts.companyId}`, marginLeft, topY + 5, 9.5, false, COLORS.muted, "left");
+    drawHeader(doc, {
+        companyName: opts.companyName,
+        companyRif:  opts.companyId,
+        reportTitle: "Constancia de Liquidación",
+        periodLabel: REASON_LABELS[emp.reason] ?? emp.reason,
+    });
+
+    let y = 32;
+
+    if (_logoBase64) {
+        try { doc.addImage(_logoBase64, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    renderText(doc, "CONSTANCIA DE LIQUIDACIÓN", marginRight, topY - 1, 11, true, COLORS.ink, "right");
-    renderText(doc, "ART. 142 LOTTT — " + (REASON_LABELS[emp.reason] ?? emp.reason).toUpperCase(), marginRight, topY + 4, 8.5, false, COLORS.muted, "right");
-
-    renderLabel(doc, "FECHA DE EGRESO", marginRight, topY + 12, "right");
-    renderMono(doc, formatDate(emp.terminationDate), marginRight, topY + 17, 11.5, true, COLORS.inkMed, "right");
-    
-    renderLabel(doc, `EMITIDO: ${new Date().toLocaleDateString("es-VE", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase()}`, marginRight, topY + 23, "right");
-
-    let y = topY + 26;
-    hline(doc, marginLeft, y, contentWidth, COLORS.border, 0.4);
-    y += 8;
-
-    // ── EMPLOYEE DATA POINTS ──────────────────────────────────────────────
-    const col1X = marginLeft;
-    const col2X = marginLeft + contentWidth * 0.40;
-
-    renderLabel(doc, "Trabajador", col1X, y);
-    renderText(doc, emp.name.toUpperCase(), col1X, y + 6, 11, true, COLORS.ink, "left", col2X - col1X - 4);
-    if (emp.role) renderText(doc, emp.role.toUpperCase(), col1X, y + 12, 8.5, false, COLORS.muted);
-    renderMono(doc, "CI " + emp.idNumber, col1X, y + 17, 10.5, true, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Antigüedad", col2X, y);
-    const seniorityStr = `${emp.yearsOfService}a ${emp.daysOfService % 365}d`;
-    renderMono(doc, seniorityStr, col2X, y + 6, 11.5, true, COLORS.ink, "left");
-    renderMono(doc, `Ingreso: ${formatDate(emp.hireDate)}`, col2X, y + 11.5, 9, false, COLORS.inkMed, "left");
-
-    renderLabel(doc, "Salario Base / Día", marginRight, y, "right");
     const dailySalary = emp.lines.length > 0 && emp.lines[0].salary && emp.lines[0].salary > 0
         ? emp.lines[0].salary
         : (emp.total > 0 ? emp.total / 30 : 0);
-    renderMono(doc, dailySalary > 0 ? formatVES(dailySalary) : "—", marginRight, y + 6, 11.5, true, COLORS.ink, "right");
 
-    y += 22;
-    hline(doc, marginLeft, y, contentWidth, COLORS.border, 0.3);
-    y += 10;
+    y = drawIdentityCard(doc, ML, W, y, emp, dailySalary);
 
-    // ── TABLE HEADER ──────────────────────────────────────────────────────
-    const COL_DIAS  = marginRight - 50;
-    const COL_MONTO = marginRight;
-
-    renderLabel(doc, "CONCEPTO / CÁLCULO", marginLeft, y, "left", COLORS.inkMed);
-    renderLabel(doc, "DÍAS", COL_DIAS, y, "center", COLORS.inkMed);
-    renderLabel(doc, "MONTO ASIGNADO", COL_MONTO, y, "right", COLORS.inkMed);
-
-    y += 3;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.4);
+    // ── Concept table ─────────────────────────────────────────────────────────
+    const colConcept = W * 0.62;
+    const colDias    = W * 0.12;
+    const colMonto   = W * 0.26;
+    drawHeaderRow(doc, y, 6, [
+        { x: ML,                          w: colConcept, text: "Concepto / Cálculo", align: "left"  },
+        { x: ML + colConcept,             w: colDias,    text: "Días",               align: "center"},
+        { x: ML + colConcept + colDias,   w: colMonto,   text: "Monto",              align: "right" },
+    ]);
     y += 6;
 
-    // ── CONCEPT ROWS ──────────────────────────────────────────────────────
-    const ROW_HEIGHT = 12;
-    emp.lines.forEach((line) => {
-        const isAmber = line.highlight === "amber";
-        const titleColor = isAmber ? COLORS.amber : COLORS.ink;
-
-        renderText(doc, line.label.toUpperCase(), marginLeft, y, 10, true, titleColor);
+    emp.lines.forEach((line, i) => {
+        const H = line.formula ? 10 : 7;
+        if (i % 2 === 1) fill(doc, ML, y, W, H, COLORS.rowAlt);
+        renderText(doc, line.label, ML + 3, y + 4.2, 9.5, true, COLORS.ink, "left", colConcept - 4, "helvetica");
         if (line.formula) {
-            renderText(doc, line.formula.toUpperCase(), marginLeft, y + 4.5, 8.5, false, COLORS.muted);
+            renderMono(doc, line.formula, ML + 3, y + 8, 7.8, false, COLORS.muted, "left");
         }
-
-        if (line.days !== undefined) renderMono(doc, String(line.days), COL_DIAS, y + 2, 10, true, COLORS.muted, "center");
-        renderMono(doc, formatVES(line.amount), COL_MONTO, y + 2, 10.5, true, titleColor, "right");
-
-        y += ROW_HEIGHT;
-        hline(doc, marginLeft, y - 4, contentWidth, COLORS.border, 0.2); // Faint line between concepts
+        if (line.days !== undefined) {
+            renderMono(doc, String(line.days), ML + colConcept + colDias / 2, y + (line.formula ? 6 : 4.5), 9, false, COLORS.muted, "center");
+        }
+        renderMono(doc, formatVES(line.amount), ML + colConcept + colDias + colMonto - 2, y + (line.formula ? 6 : 4.5), 9.5, true, COLORS.ink, "right");
+        y += H;
+        hline(doc, ML, y, W, COLORS.border, 0.2);
     });
 
-    y += 6;
+    y += 4;
 
-    // ── TOTAL BAR ─────────────────────────────────────────────────────────
-    fill(doc, marginLeft, y, contentWidth, 16, COLORS.rowAlt);
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.4);
-    hline(doc, marginLeft, y + 16, contentWidth, COLORS.borderStr, 0.4);
+    // ── Total bar (orange-accented) ───────────────────────────────────────────
+    fill(doc, ML, y, W, 0.6, COLORS.orange);
+    y += 1.4;
+    fill(doc, ML, y, W, 14, COLORS.bandHead);
+    rect(doc, ML, y, W, 14, COLORS.border, 0.2);
+    renderLabel(doc, "Líquido a recibir", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
+    renderMono(doc, formatVES(emp.total), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    y += 14 + 6;
 
-    renderLabel(doc, "LÍQUIDO A RECIBIR", marginLeft + 4, y + 9, "left", COLORS.inkMed);
-    renderMono(doc, formatVES(emp.total), marginRight - 4, y + 10.5, 14.5, true, COLORS.ink, "right");
-
-    y += 28;
-
-    // ── LEGAL NOTE ────────────────────────────────────────────────────────
-    const legalNote =
-        "El presente documento certifica la liquidación y pago de todas las acreencias laborales aplicables al trabajador indicado, calculadas conforme a la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Incluye prestaciones sociales, utilidades, vacaciones y afines" +
+    // ── Legal ─────────────────────────────────────────────────────────────────
+    const legal =
+        "El presente documento certifica la liquidación y pago de todas las acreencias laborales aplicables al trabajador indicado, " +
+        "calculadas conforme a la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). Incluye prestaciones sociales, " +
+        "utilidades, vacaciones y afines" +
         (emp.reason === "despido_injustificado" ? " e indemnización por despido injustificado (Art. 92)." : ".");
-    
-    renderText(doc, legalNote, marginLeft, y, 8.5, false, COLORS.muted, "left", contentWidth, "helvetica");
 
-    // ── SIGNATURES ────────────────────────────────────────────────────────
-    const signatureWidth = 60;
-    const signatureY = pageHeight - 38;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(legal, W) as string[];
+    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+    y += lines.length * 3.5 + 8;
 
-    doc.setLineDashPattern([1.5, 1.5], 0);
-    doc.setDrawColor(COLORS.borderStr[0], COLORS.borderStr[1], COLORS.borderStr[2]);
-    doc.setLineWidth(0.3);
-    
-    // Employer
-    doc.line(marginLeft + 5, signatureY, marginLeft + 5 + signatureWidth, signatureY);
-    renderLabel(doc, "REPRESENTANTE DEL EMPLEADOR", marginLeft + 5 + signatureWidth / 2, signatureY + 6, "center");
-    if (opts.companyName) renderText(doc, opts.companyName.toUpperCase(), marginLeft + 5 + signatureWidth / 2, signatureY + 11, 8.5, false, COLORS.muted, "center", signatureWidth);
+    // ── Signatures ────────────────────────────────────────────────────────────
+    const SIG_W = (W - 16) / 2;
+    const SIG_H = 24;
+    rect(doc, ML, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+    hline(doc, ML + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.3);
+    renderLabel(doc, "Representante del empleador", ML + SIG_W / 2, y + SIG_H - 4, "center", COLORS.muted, 7.5);
 
-    // Employee
-    const cxRight = marginRight - 5 - signatureWidth / 2;
-    doc.line(marginRight - 5 - signatureWidth, signatureY, marginRight - 5, signatureY);
-
-    renderLabel(doc, "FIRMA DEL TRABAJADOR", cxRight, signatureY + 6, "center");
-    renderMono(doc, "CI " + emp.idNumber, cxRight, signatureY + 11, 9, false, COLORS.muted, "center");
-    
-    doc.setLineDashPattern([], 0);
-
-    // ── FOOTER ────────────────────────────────────────────────────────────
-    hline(doc, marginLeft, pageHeight - 14, contentWidth, COLORS.border, 0.4);
-    renderLabel(doc, "DOCUMENTO DE CONFORMIDAD · ORIGINAL", marginLeft, pageHeight - 9, "left", COLORS.muted);
-    
-    const randomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-    renderMono(doc, "ID " + randomId, marginRight, pageHeight - 9, 8.5, true, COLORS.muted, "right");
+    rect(doc, ML + SIG_W + 16, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+    hline(doc, ML + SIG_W + 16 + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.3);
+    renderLabel(doc, `Trabajador · CI ${emp.idNumber}`, ML + SIG_W + 16 + SIG_W / 2, y + SIG_H - 4, "center", COLORS.muted, 7.5);
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -237,12 +185,17 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
 export async function generateLiquidationPdf(employees: LiquidationEmployee[], opts: LiquidationOptions): Promise<void> {
     if (employees.length === 0) return;
 
-    const logoBase64 = (opts.showLogoInPdf && opts.logoUrl)
-        ? await loadImageAsBase64(opts.logoUrl).catch(() => null)
-        : null;
+    const [companyLogo, kontaLogo] = await Promise.all([
+        opts.showLogoInPdf && opts.logoUrl
+            ? loadImageAsBase64(opts.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, logoBase64));
-    const slug = opts.documentDate.replaceAll("-", "");
-    doc.save(`liquidaciones_${slug}.pdf`);
+    employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, companyLogo));
+
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`liquidaciones-${safeFilename(opts.companyName)}-${opts.documentDate.replaceAll("-", "")}.pdf`);
 }

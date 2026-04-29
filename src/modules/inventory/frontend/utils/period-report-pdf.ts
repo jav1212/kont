@@ -23,7 +23,7 @@ import {
     safeFilename,
     type KontaPdfHeaderOpts,
     type PdfCell,
-} from "./pdf-chrome";
+} from "@/src/shared/frontend/utils/pdf-chrome";
 
 // A3 landscape dimensions (420×297mm). Used because the report has 16
 // columns total (5 text + 11 numeric) and would not fit comfortably on A4.

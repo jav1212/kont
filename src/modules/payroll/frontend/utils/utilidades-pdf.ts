@@ -1,5 +1,25 @@
+// PDF generators: Utilidades anuales (Art. 131 LOTTT) y utilidades fraccionadas
+// (Art. 175). Estilo Konta — header naranja, footer Kontave compartido.
+
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import {
+    COLORS,
+    drawHeader,
+    drawFooter,
+    fill,
+    hline,
+    rect,
+    formatVES,
+    loadKontaLogo,
+    renderText,
+    renderMono,
+    renderLabel,
+    safeFilename,
+    fmtDateEs,
+} from "@/src/shared/frontend/utils/pdf-chrome";
+
+// ── Public types ──────────────────────────────────────────────────────────────
 
 export interface ProfitSharingPdfEmployee {
     name: string;
@@ -9,6 +29,7 @@ export interface ProfitSharingPdfEmployee {
 
 export interface FullProfitSharingPdfData {
     companyName:       string;
+    companyId?:        string;
     employee:          ProfitSharingPdfEmployee;
     fiscalYear:        number;
     salaryVES:         number;
@@ -21,12 +42,13 @@ export interface FullProfitSharingPdfData {
 
 export interface FractionalProfitSharingPdfData {
     companyName:       string;
+    companyId?:        string;
     employee:          ProfitSharingPdfEmployee;
     fiscalYear:        number;
-    hireDate:          string;   // ISO
-    cutoffDate:        string;   // ISO
-    fiscalStart:       string;   // ISO
-    periodStart:       string;   // ISO
+    hireDate:          string;
+    cutoffDate:        string;
+    fiscalStart:       string;
+    periodStart:       string;
     monthsWorked:      number;
     profitSharingDays: number;
     fractionalDays:    number;
@@ -37,237 +59,185 @@ export interface FractionalProfitSharingPdfData {
     showLogoInPdf?:    boolean;
 }
 
-type RGB = [number, number, number];
-const COLORS = {
-    ink:       [0,   0,   0]   as RGB,
-    inkMed:    [0,   0,   0]   as RGB,
-    muted:     [0,   0,   0]   as RGB,
-    border:    [230, 230, 235] as RGB,
-    borderStr: [190, 190, 200] as RGB,
-    bg:        [255, 255, 255] as RGB,
-    rowAlt:    [248, 248, 252] as RGB,
-    white:     [255, 255, 255] as RGB,
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 type Doc = jsPDF;
 
-const fill = (doc: Doc, x: number, y: number, w: number, h: number, c: RGB) => {
-    doc.setFillColor(c[0], c[1], c[2]);
-    doc.rect(x, y, w, h, "F");
-};
-
-const hline = (doc: Doc, x: number, y: number, w: number, c: RGB = COLORS.border, lw = 0.25) => {
-    doc.setLineDashPattern([], 0);
-    doc.setDrawColor(c[0], c[1], c[2]);
-    doc.setLineWidth(lw);
-    doc.line(x, y, x + w, y);
-};
-
-const renderText = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, color: RGB, align: "left" | "center" | "right" = "left", maxW?: number, font: "helvetica" | "courier" = "helvetica") => {
-    doc.setFont(font, bold ? "bold" : "normal");
-    doc.setFontSize(size);
-    doc.setTextColor(color[0], color[1], color[2]);
-
-    // Enforce single-line to avoid vertical overlap (wrapping)
-    let str = text;
-    if (maxW) {
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        str = lines[0] || "";
-    }
-
-    doc.text(str, x, y, { align });
-};
-
-const renderLabel = (doc: Doc, text: string, x: number, y: number, align: "left" | "right" | "center" = "left", color: RGB = COLORS.muted) =>
-    renderText(doc, text.toUpperCase(), x, y, 8.5, true, color, align, undefined, "helvetica");
-
-const renderMono = (doc: Doc, text: string, x: number, y: number, size: number, bold: boolean, c: RGB, align: "left" | "right" | "center" = "left") => 
-    renderText(doc, text, x, y, size, bold, c, align, undefined, "courier");
-
-const formatVES = (n: number) => "Bs. " + n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const formatDate = (iso: string) => {
-    if (!iso) return "—";
-    const [y, m, d] = iso.split("-");
-    const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`.toUpperCase();
-};
-
-function drawFooter(doc: Doc, pageWidth: number, pageHeight: number, companyName: string, subtitle: string) {
-    fill(doc, 0, pageHeight - 14, pageWidth, 14, COLORS.white);
-    hline(doc, 0, pageHeight - 14, pageWidth, COLORS.border, 0.4);
-    renderLabel(doc, `${companyName.toUpperCase()}  |  ${subtitle}  |  DOCUMENTO CONFIDENCIAL`, pageWidth / 2, pageHeight - 7, "center", COLORS.muted);
-}
-
-function drawSignatures(doc: Doc, marginLeft: number, contentWidth: number, y: number): number {
-    const SIG_WIDTH = (contentWidth - 16) / 2;
-    const SIG_HEIGHT = 24;
-    ["EMPLEADOR", "TRABAJADOR"].forEach((role, i) => {
-        const sx = marginLeft + i * (SIG_WIDTH + 16);
-        doc.setDrawColor(COLORS.borderStr[0], COLORS.borderStr[1], COLORS.borderStr[2]);
-        doc.setLineWidth(0.4);
-        doc.setLineDashPattern([2, 1.5], 0);
-        doc.rect(sx, y, SIG_WIDTH, SIG_HEIGHT, "S");
-        doc.setLineDashPattern([], 0); // reset
-        
-        hline(doc, sx + 8, y + SIG_HEIGHT - 8, SIG_WIDTH - 16, COLORS.borderStr, 0.4);
-        renderLabel(doc, role, sx + SIG_WIDTH / 2, y + SIG_HEIGHT - 5.5, "center", COLORS.muted);
+function drawSignatures(doc: Doc, x: number, w: number, y: number): number {
+    const SIG_W = (w - 16) / 2;
+    const SIG_H = 24;
+    ["Empleador", "Trabajador"].forEach((role, i) => {
+        const sx = x + i * (SIG_W + 16);
+        rect(doc, sx, y, SIG_W, SIG_H, COLORS.borderStr, 0.3);
+        hline(doc, sx + 8, y + SIG_H - 8, SIG_W - 16, COLORS.borderStr, 0.3);
+        renderLabel(doc, role, sx + SIG_W / 2, y + SIG_H - 4, "center", COLORS.muted, 7.5);
     });
-    return y + SIG_HEIGHT + 8;
+    return y + SIG_H + 6;
 }
+
+function drawIdentityCard(
+    doc: Doc, x: number, w: number, y: number,
+    employee: ProfitSharingPdfEmployee,
+    rightLabel: string, rightValue: string, rightSub?: string,
+): number {
+    const H = 18;
+    fill(doc, x, y, w, H, COLORS.rowAlt);
+    fill(doc, x, y, 1.5, H, COLORS.orange);
+    rect(doc, x, y, w, H, COLORS.border, 0.2);
+
+    const c1 = x + 4;
+    const c2 = x + w * 0.45;
+    const c3 = x + w - 3;
+
+    renderLabel(doc, "Trabajador", c1, y + 4, "left", COLORS.muted, 7);
+    renderText(doc, employee.name.toUpperCase(), c1, y + 9, 10.5, true, COLORS.ink, "left", c2 - c1 - 4, "helvetica");
+    if (employee.role) renderText(doc, employee.role, c1, y + 13.5, 7.8, false, COLORS.muted, "left", c2 - c1 - 4, "helvetica");
+
+    renderLabel(doc, "Cédula", c2, y + 4, "left", COLORS.muted, 7);
+    renderMono(doc, employee.idNumber, c2, y + 9, 10.5, true, COLORS.ink, "left");
+
+    renderLabel(doc, rightLabel, c3, y + 4, "right", COLORS.muted, 7);
+    renderMono(doc, rightValue, c3, y + 9, 10, true, COLORS.ink, "right");
+    if (rightSub) renderMono(doc, rightSub, c3, y + 13.5, 7.5, false, COLORS.muted, "right");
+
+    return y + H + 5;
+}
+
+function drawTotalCard(doc: Doc, x: number, w: number, y: number, label: string, value: string): number {
+    fill(doc, x, y, w, 0.5, COLORS.orange);
+    y += 1.2;
+    fill(doc, x, y, w, 14, COLORS.bandHead);
+    rect(doc, x, y, w, 14, COLORS.border, 0.2);
+    renderLabel(doc, label, x + 3, y + 8.5, "left", COLORS.inkMed, 9);
+    renderMono(doc, value, x + w - 3, y + 9, 14, true, COLORS.ink, "right");
+    return y + 14 + 6;
+}
+
+function drawLegal(doc: Doc, x: number, w: number, y: number, text: string): number {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.8);
+    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+    const lines = doc.splitTextToSize(text, w) as string[];
+    lines.forEach((ln, i) => doc.text(ln, x, y + i * 3.5));
+    return y + lines.length * 3.5 + 6;
+}
+
+// ── Utilidades completas ──────────────────────────────────────────────────────
 
 export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginLeft = 16, marginRight = pageWidth - 16, contentWidth = marginRight - marginLeft;
+    const PW = doc.internal.pageSize.getWidth();
+    const ML = 12, W = PW - 2 * ML;
 
-    let logoBase64 = null;
-    if (data.showLogoInPdf && data.logoUrl) {
-        logoBase64 = await loadImageAsBase64(data.logoUrl).catch(() => null);
-    }
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
-    fill(doc, 0, 0, pageWidth, pageHeight, COLORS.bg);
-
-    const topY = 20;
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", marginLeft, topY - 5, 28, 11); } catch { /* */ }
-    }
-    
-    renderText(doc, data.companyName.toUpperCase(), marginLeft + 32, topY, 15, true, COLORS.ink);
-    renderText(doc, "CONSTANCIA DE UTILIDADES ANUALES", marginLeft + 32, topY + 6.5, 10, false, COLORS.muted);
-
-    renderLabel(doc, "AÑO FISCAL", marginRight, topY, "right");
-    renderMono(doc, String(data.fiscalYear), marginRight, topY + 7, 15, true, COLORS.ink, "right");
-
-    let y = 38;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.5);
-    y += 12;
-
-    const column1X = marginLeft;
-    const column2X = marginLeft + contentWidth * 0.38;
-
-    renderLabel(doc, "Trabajador", column1X, y);
-    renderText(doc, data.employee.name.toUpperCase(), column1X, y + 6, 11, true, COLORS.ink, "left", column2X - column1X - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), column1X, y + 12, 8.5, false, COLORS.muted);
-
-    renderLabel(doc, "Cédula", column2X, y);
-    renderMono(doc, data.employee.idNumber, column2X, y + 6, 11, true, COLORS.ink, "left");
-
-    renderLabel(doc, "Sal. Mensual", marginRight, y, "right");
-    renderMono(doc, formatVES(data.salaryVES), marginRight, y + 6, 10.5, true, COLORS.ink, "right");
-    renderMono(doc, `Diario: ${formatVES(data.dailySalary)}`, marginRight, y + 11.5, 8.5, false, COLORS.muted, "right");
-
-    y += 18;
-
-    fill(doc, marginLeft, y, contentWidth, 10, COLORS.rowAlt);
-    renderText(doc, "DÍAS DE UTILIDADES BASE (Art. 131)", marginLeft + 4, y + 6.5, 9.5, true, COLORS.ink);
-    renderMono(doc, `${data.profitSharingDays} DÍAS`, marginRight - 4, y + 6.5, 11.5, true, COLORS.ink, "right");
-    y += 10;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.8);
-    y += 8;
-
-    renderLabel(doc, "Fórmula", marginLeft, y);
-    renderMono(doc, `${data.profitSharingDays} días × ${formatVES(data.dailySalary)} / día  =  ${formatVES(data.amount)}`, marginLeft, y + 7.5, 10, true, COLORS.inkMed, "left");
-
-    y += 14;
-
-    fill(doc, marginLeft, y, contentWidth, 14, COLORS.rowAlt);
-    renderText(doc, "MONTO A PAGAR (UTILIDADES NETAS)", marginLeft + 4, y + 8.5, 10.5, true, COLORS.ink);
-    renderMono(doc, formatVES(data.amount), marginRight - 4, y + 9.5, 15, true, COLORS.ink, "right");
-    y += 14;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.8);
-    y += 8;
-
-    const legal = `La presente constancia certifica el pago de utilidades correspondientes al año fiscal ${data.fiscalYear}, de conformidad con los Arts. 131 y 174 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El cálculo se realiza sobre el salario normal del trabajador. La firma de ambas partes confirma la recepción de dicho beneficio.`;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
-    (doc.splitTextToSize(legal, contentWidth) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, marginLeft, y + i * 5);
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Constancia de Utilidades",
+        periodLabel: `Año Fiscal ${data.fiscalYear}`,
     });
 
-    y += 24;
-    y = drawSignatures(doc, marginLeft, contentWidth, y);
+    let y = 32;
 
-    drawFooter(doc, pageWidth, pageHeight, data.companyName, `UTILIDADES ${data.fiscalYear}`);
-    doc.save(`utilidades_${data.employee.idNumber}_${data.fiscalYear}.pdf`);
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+    }
+
+    y = drawIdentityCard(doc, ML, W, y, data.employee,
+        "Sal. Mensual", formatVES(data.salaryVES), `Diario ${formatVES(data.dailySalary)}`);
+
+    // Días base + fórmula
+    fill(doc, ML, y, W, 11, COLORS.bandHead);
+    rect(doc, ML, y, W, 11, COLORS.border, 0.2);
+    renderLabel(doc, "Días de utilidades base · Art. 131 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
+    renderMono(doc, `${data.profitSharingDays} días`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
+    y += 11 + 4;
+
+    renderLabel(doc, "Fórmula", ML, y + 3.5, "left", COLORS.muted, 7);
+    renderMono(doc,
+        `${data.profitSharingDays} días × ${formatVES(data.dailySalary)} / día  =  ${formatVES(data.amount)}`,
+        ML, y + 9, 9.5, true, COLORS.inkMed, "left");
+    y += 14;
+
+    y = drawTotalCard(doc, ML, W, y, "Monto a pagar (utilidades netas)", formatVES(data.amount));
+
+    y = drawLegal(doc, ML, W, y,
+        `La presente constancia certifica el pago de utilidades correspondientes al año fiscal ${data.fiscalYear}, ` +
+        "de conformidad con los Arts. 131 y 174 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+        "El cálculo se realiza sobre el salario normal del trabajador. La firma de ambas partes confirma la recepción de dicho beneficio.",
+    );
+
+    drawSignatures(doc, ML, W, y);
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`utilidades-${safeFilename(data.employee.idNumber)}-${data.fiscalYear}.pdf`);
 }
+
+// ── Utilidades fraccionadas ───────────────────────────────────────────────────
 
 export async function generateFractionalProfitSharingPdf(data: FractionalProfitSharingPdfData): Promise<void> {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const marginLeft = 16, marginRight = pageWidth - 16, contentWidth = marginRight - marginLeft;
+    const PW = doc.internal.pageSize.getWidth();
+    const ML = 12, W = PW - 2 * ML;
 
-    let logoBase64 = null;
-    if (data.showLogoInPdf && data.logoUrl) {
-        logoBase64 = await loadImageAsBase64(data.logoUrl).catch(() => null);
-    }
+    const [companyLogo, kontaLogo] = await Promise.all([
+        data.showLogoInPdf && data.logoUrl
+            ? loadImageAsBase64(data.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
 
-    fill(doc, 0, 0, pageWidth, pageHeight, COLORS.bg);
-
-    const topY = 20;
-    if (logoBase64) {
-        try { doc.addImage(logoBase64, "JPEG", marginLeft, topY - 5, 28, 11); } catch { /* */ }
-    }
-    
-    renderText(doc, data.companyName.toUpperCase(), marginLeft + 32, topY, 15, true, COLORS.ink);
-    renderText(doc, "CONSTANCIA DE UTILIDADES FRACCIONADAS", marginLeft + 32, topY + 6.5, 10, false, COLORS.muted);
-
-    renderLabel(doc, "AÑO FISCAL", marginRight, topY, "right");
-    renderMono(doc, String(data.fiscalYear), marginRight, topY + 7, 15, true, COLORS.ink, "right");
-
-    let y = 38;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.5);
-    y += 12;
-
-    const column1X = marginLeft;
-    const column2X = marginLeft + contentWidth * 0.40;
-
-    renderLabel(doc, "Trabajador", column1X, y);
-    renderText(doc, data.employee.name.toUpperCase(), column1X, y + 6, 11, true, COLORS.ink, "left", column2X - column1X - 4);
-    if (data.employee.role) renderText(doc, data.employee.role.toUpperCase(), column1X, y + 12, 8.5, false, COLORS.muted);
-
-    renderLabel(doc, "Cédula", column2X, y);
-    renderMono(doc, data.employee.idNumber, column2X, y + 6, 11, true, COLORS.ink, "left");
-
-    renderLabel(doc, "Meses Trabajados", marginRight, y, "right");
-    renderMono(doc, `${data.monthsWorked} MES${data.monthsWorked !== 1 ? "ES" : ""}`, marginRight, y + 6, 10.5, true, COLORS.ink, "right");
-    renderMono(doc, `Período: ${formatDate(data.periodStart)} al ${formatDate(data.cutoffDate)}`, marginRight, y + 11.5, 8, false, COLORS.muted, "right");
-
-    y += 18;
-
-    fill(doc, marginLeft, y, contentWidth, 10, COLORS.rowAlt);
-    renderText(doc, "DÍAS FRACCIONADOS (Art. 175)", marginLeft + 4, y + 6.5, 9.5, true, COLORS.ink);
-    renderMono(doc, `${data.fractionalDays} DÍAS`, marginRight - 4, y + 6.5, 11.5, true, COLORS.ink, "right");
-    y += 10;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.8);
-    y += 8;
-
-    renderLabel(doc, "Fórmula", marginLeft, y);
-    renderMono(doc, `⌈ ${data.profitSharingDays} d / 12 m × ${data.monthsWorked} meses ⌉ = ${data.fractionalDays} d`, marginLeft, y + 7.5, 9, true, COLORS.inkMed, "left");
-    renderMono(doc, `${data.fractionalDays} días × ${formatVES(data.dailySalary)} / día  =  ${formatVES(data.amount)}`, marginLeft, y + 14, 10, true, COLORS.inkMed, "left");
-
-    y += 20;
-
-    fill(doc, marginLeft, y, contentWidth, 14, COLORS.rowAlt);
-    renderText(doc, "MONTO FRACCIONADO", marginLeft + 4, y + 8.5, 10.5, true, COLORS.ink);
-    renderMono(doc, formatVES(data.amount), marginRight - 4, y + 9.5, 15, true, COLORS.ink, "right");
-    y += 14;
-    hline(doc, marginLeft, y, contentWidth, COLORS.borderStr, 0.8);
-    y += 8;
-
-    const legal = `La presente constancia certifica el pago de utilidades fraccionadas correspondientes al período trabajado en el año fiscal ${data.fiscalYear}, de conformidad con el Art. 175 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). El cálculo es proporcional a los meses completos laborados desde el inicio del año fiscal o de la relación laboral (lo que ocurra después).`;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
-    (doc.splitTextToSize(legal, contentWidth) as string[]).forEach((line: string, i: number) => {
-        doc.text(line, marginLeft, y + i * 5);
+    drawHeader(doc, {
+        companyName: data.companyName,
+        companyRif:  data.companyId,
+        reportTitle: "Utilidades Fraccionadas",
+        periodLabel: `Año Fiscal ${data.fiscalYear}`,
     });
 
-    y += 24;
-    y = drawSignatures(doc, marginLeft, contentWidth, y);
+    let y = 32;
 
-    drawFooter(doc, pageWidth, pageHeight, data.companyName, `UTILIDADES FRACCIONADAS ${data.fiscalYear}`);
-    doc.save(`utilidades_fraccionadas_${data.employee.idNumber}_${data.fiscalYear}.pdf`);
+    if (companyLogo) {
+        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+    }
+
+    y = drawIdentityCard(doc, ML, W, y, data.employee,
+        "Meses Trabajados",
+        `${data.monthsWorked} mes${data.monthsWorked !== 1 ? "es" : ""}`,
+        `${fmtDateEs(data.periodStart)} → ${fmtDateEs(data.cutoffDate)}`,
+    );
+
+    // Días fraccionados
+    fill(doc, ML, y, W, 11, COLORS.bandHead);
+    rect(doc, ML, y, W, 11, COLORS.border, 0.2);
+    renderLabel(doc, "Días fraccionados · Art. 175 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
+    renderMono(doc, `${data.fractionalDays} días`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
+    y += 11 + 4;
+
+    renderLabel(doc, "Fórmula", ML, y + 3.5, "left", COLORS.muted, 7);
+    renderMono(doc,
+        `(${data.profitSharingDays} d / 12 m) × ${data.monthsWorked} meses = ${data.fractionalDays} d`,
+        ML, y + 9, 9.5, true, COLORS.inkMed, "left");
+    renderMono(doc,
+        `${data.fractionalDays} días × ${formatVES(data.dailySalary)} / día = ${formatVES(data.amount)}`,
+        ML, y + 14.5, 9.5, true, COLORS.inkMed, "left");
+    y += 20;
+
+    y = drawTotalCard(doc, ML, W, y, "Monto fraccionado", formatVES(data.amount));
+
+    y = drawLegal(doc, ML, W, y,
+        `La presente constancia certifica el pago de utilidades fraccionadas correspondientes al período trabajado en el año fiscal ${data.fiscalYear}, ` +
+        "de conformidad con el Art. 175 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+        "El cálculo es proporcional a los meses completos laborados desde el inicio del año fiscal o de la relación laboral (lo que ocurra después).",
+    );
+
+    drawSignatures(doc, ML, W, y);
+    drawFooter(doc, kontaLogo);
+
+    doc.save(`utilidades-fraccionadas-${safeFilename(data.employee.idNumber)}-${data.fiscalYear}.pdf`);
 }
