@@ -9,8 +9,6 @@ import {
     type NormalizedRate,
 } from "../_lib";
 
-export const revalidate = 1800; // 30 min — BCV publishes ~1×/day
-
 // GET /api/bcv/rates
 //   Optional ?date=YYYY-MM-DD (if omitted → today's rates including percentageChange)
 // Response: { date: "YYYY-MM-DD", rates: NormalizedRate[] }
@@ -27,7 +25,7 @@ export async function GET(req: NextRequest) {
 
         if (useToday) {
             // Use /exchange-rate — returns all currencies with percentageChange
-            const all = await fetchBcvCurrentAll({ revalidate: 1800 });
+            const all = await fetchBcvCurrentAll({ noStore: true });
             const rates = all
                 .filter((e) => (ALLOWED_CODES as readonly string[]).includes(e.code))
                 .map(normalizeEntry);
@@ -40,7 +38,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Historic date — use /exchange-rate/list (no percentageChange provided)
-        const raw = await fetchBcvListFallback(date!, 7, { revalidate: 1800 });
+        const raw = await fetchBcvListFallback(date!, 7, { noStore: true });
         if (!raw.length) {
             return NextResponse.json({ error: "No hay tasas disponibles para esa fecha." }, { status: 404 });
         }
