@@ -1,6 +1,6 @@
 import { Employee } from "@/src/modules/payroll/backend/domain/employee";
 
-const HEADERS = ["cedula", "nombre", "cargo", "salario_mensual", "moneda", "estado", "fecha_ingreso"] as const;
+const HEADERS = ["cedula", "nombre", "cargo", "salario_mensual", "moneda", "estado", "fecha_ingreso", "porcentaje_islr"] as const;
 
 function csvCell(value: string | number | null | undefined): string {
     const s = String(value ?? "");
@@ -20,6 +20,7 @@ export function employeesToCsv(employees: Employee[]): string {
             csvCell(e.moneda ?? "VES"),
             csvCell(e.estado),
             csvCell(e.fechaIngreso ?? ""),
+            csvCell(e.porcentajeIslr ?? 0),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
@@ -51,14 +52,20 @@ export function parseCsv(raw: string): CsvParseResult {
 
     if (lines.length < 2) return { employees: [], errors: ["El CSV está vacío o no tiene datos."] };
 
-    // Accept both old format (5 cols) and new format (7 cols)
-    const headerCols   = splitCsvLine(lines[0]).map((h) =>
+    // Accept three formats:
+    //   - old (5 cols): cedula,nombre,cargo,salario_mensual_ves,estado
+    //   - mid (7 cols): cedula,nombre,cargo,salario_mensual,moneda,estado,fecha_ingreso
+    //   - new (8 cols): + porcentaje_islr
+    const MID_HEADERS = ["cedula", "nombre", "cargo", "salario_mensual", "moneda", "estado", "fecha_ingreso"];
+    const headerCols  = splitCsvLine(lines[0]).map((h) =>
         h.toLowerCase().replace(/\s/g, "").replace(/^"|"$/g, "").replace(/""/g, "")
     );
-    const isOldFormat  = headerCols.join(",") === "cedula,nombre,cargo,salario_mensual_ves,estado";
-    const isNewFull    = headerCols.join(",") === HEADERS.join(",");
+    const headerJoin   = headerCols.join(",");
+    const isOldFormat  = headerJoin === "cedula,nombre,cargo,salario_mensual_ves,estado";
+    const isMidFormat  = headerJoin === MID_HEADERS.join(",");
+    const isNewFull    = headerJoin === HEADERS.join(",");
 
-    if (!isOldFormat && !isNewFull) {
+    if (!isOldFormat && !isMidFormat && !isNewFull) {
         errors.push(`Encabezado inválido. Se esperaba: ${HEADERS.join(",")}`);
         return { employees: [], errors };
     }
@@ -74,13 +81,17 @@ export function parseCsv(raw: string): CsvParseResult {
         const clean = cols.map((c) => c.trim().replace(/^"|"$/g, "").replace(/""/g, '"').trim());
 
         let cedula: string, nombre: string, cargo: string, salarioRaw: string,
-            monedaRaw: string, estadoRaw: string, fechaIngresoRaw: string;
+            monedaRaw: string, estadoRaw: string, fechaIngresoRaw: string,
+            porcentajeIslrRaw: string;
 
         if (isOldFormat) {
             [cedula, nombre, cargo, salarioRaw, estadoRaw] = clean;
-            monedaRaw = "VES"; fechaIngresoRaw = "";
-        } else {
+            monedaRaw = "VES"; fechaIngresoRaw = ""; porcentajeIslrRaw = "0";
+        } else if (isMidFormat) {
             [cedula, nombre, cargo, salarioRaw, monedaRaw, estadoRaw, fechaIngresoRaw] = clean;
+            porcentajeIslrRaw = "0";
+        } else {
+            [cedula, nombre, cargo, salarioRaw, monedaRaw, estadoRaw, fechaIngresoRaw, porcentajeIslrRaw] = clean;
         }
 
         if (!cedula) { errors.push(`Línea ${i + 1}: cédula vacía.`); continue; }
@@ -107,6 +118,13 @@ export function parseCsv(raw: string): CsvParseResult {
                 : null
             : null;
 
+        const porcentajeIslrParsed = porcentajeIslrRaw?.trim()
+            ? parseFloat(porcentajeIslrRaw.trim().replace(",", "."))
+            : 0;
+        const porcentajeIslr = Number.isFinite(porcentajeIslrParsed) && porcentajeIslrParsed >= 0 && porcentajeIslrParsed <= 100
+            ? porcentajeIslrParsed
+            : 0;
+
         employees.push({
             cedula,
             nombre:       nombre.toUpperCase(),
@@ -115,6 +133,7 @@ export function parseCsv(raw: string): CsvParseResult {
             moneda:       moneda as "VES" | "USD",
             estado:       estado as Employee["estado"],
             fechaIngreso,
+            porcentajeIslr,
         });
     }
 

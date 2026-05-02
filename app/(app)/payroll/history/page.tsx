@@ -3,15 +3,17 @@
 import { useState, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, FileBarChart } from "lucide-react";
+import { FileText, Download, FileBarChart, FileCode } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
+import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { generatePayrollPdf } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
 import type { PdfEmployeeResult } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
 import { generatePayrollSummaryPdf } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import type { PayrollSummaryEmployeeRow } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
+import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
 
 type HistoryTab = "payroll" | "cesta";
 
@@ -243,12 +245,14 @@ function ReceiptsPanel({ receipts, loading }: {
 export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
     const { runs, loading, getReceipts } = usePayrollHistory(companyId);
+    const { employees } = useEmployee(companyId);
 
     const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
 
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
+    const [islrModalOpen, setIslrModalOpen] = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -309,32 +313,47 @@ export default function PayrollHistoryPage() {
     return (
         <div className="min-h-full bg-surface-2 flex flex-col">
             <PageHeader title="Historial de Nómina" subtitle={subtitle}>
-                {activeTab === "payroll" && selectedRun && receipts.length > 0 && (
+                {activeTab === "payroll" && (
                     <div className="flex items-center gap-2">
-                        <BaseButton.Root
-                            variant="primary"
-                            size="sm"
-                            onClick={handleDownloadPdf}
-                            leftIcon={<FileText size={14} />}
-                        >
-                            Descargar PDF
-                        </BaseButton.Root>
-                        <BaseButton.Root
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleDownloadSummaryPdf}
-                            leftIcon={<FileBarChart size={14} />}
-                        >
-                            Reporte general
-                        </BaseButton.Root>
-                        <BaseButton.Root
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => exportReceiptsCsv(receipts, selectedRun, company?.name ?? "empresa")}
-                            leftIcon={<Download size={14} />}
-                        >
-                            Exportar CSV
-                        </BaseButton.Root>
+                        {selectedRun && receipts.length > 0 && (
+                            <>
+                                <BaseButton.Root
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={handleDownloadPdf}
+                                    leftIcon={<FileText size={14} />}
+                                >
+                                    Descargar PDF
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={handleDownloadSummaryPdf}
+                                    leftIcon={<FileBarChart size={14} />}
+                                >
+                                    Reporte general
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => exportReceiptsCsv(receipts, selectedRun, company?.name ?? "empresa")}
+                                    leftIcon={<Download size={14} />}
+                                >
+                                    Exportar CSV
+                                </BaseButton.Root>
+                            </>
+                        )}
+                        {runs.length > 0 && (
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setIslrModalOpen(true)}
+                                leftIcon={<FileCode size={14} />}
+                                title="Generar XML mensual de Retenciones ISLR para el portal del SENIAT"
+                            >
+                                XML SENIAT (ISLR)
+                            </BaseButton.Root>
+                        )}
                     </div>
                 )}
             </PageHeader>
@@ -385,6 +404,16 @@ export default function PayrollHistoryPage() {
                     )}
                 </div>
             </div>
+
+            <IslrXmlModal
+                open={islrModalOpen}
+                onClose={() => setIslrModalOpen(false)}
+                companyName={company?.name ?? "Empresa"}
+                companyRif={company?.rif ?? company?.id}
+                runs={runs}
+                employees={employees}
+                getReceipts={getReceipts}
+            />
         </div>
     );
 }

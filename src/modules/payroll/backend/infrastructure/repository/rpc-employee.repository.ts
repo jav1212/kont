@@ -19,6 +19,7 @@ interface RawEmployeeRow {
     moneda:          string | null;
     estado:          string;
     fecha_ingreso:   string | null;
+    porcentaje_islr: number | null;
 }
 
 interface RawSalaryHistoryRow {
@@ -62,6 +63,7 @@ export class RpcEmployeeRepository implements IEmployeeRepository {
                 estado:          e.estado,
                 moneda:          e.moneda ?? "VES",
                 fecha_ingreso:   e.fechaIngreso ?? null,
+                porcentaje_islr: e.porcentajeIslr ?? 0,
             }));
             const { error } = await this.source.instance
                 .rpc('tenant_employees_upsert', {
@@ -122,6 +124,7 @@ export class RpcEmployeeRepository implements IEmployeeRepository {
             moneda:         (row.moneda ?? "VES") as EmployeeMoneda,
             estado:         row.estado as EmployeeEstado,
             fechaIngreso:   row.fecha_ingreso ?? null,
+            porcentajeIslr: row.porcentaje_islr != null ? Number(row.porcentaje_islr) : 0,
         };
     }
 }

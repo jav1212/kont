@@ -11,6 +11,7 @@ export interface Employee {
     moneda:         EmployeeMoneda;   // VES (default) o USD
     estado:         EmployeeEstado;
     fechaIngreso?:  string | null;    // YYYY-MM-DD, opcional
+    porcentajeIslr?: number;          // % declarado en AR-I, default 0; usado en XML SENIAT mensual
 }
 
 export interface SalaryHistoryEntry {

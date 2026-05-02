@@ -53,6 +53,7 @@ interface RowState {
     moneda:         EmployeeMoneda;
     estado:         EmployeeEstado;
     fechaIngreso:   string;
+    porcentajeIslr: string;
 }
 
 const ESTADOS: EmployeeEstado[] = ["activo", "vacacion", "inactivo"];
@@ -73,6 +74,7 @@ function employeeToRow(e: Employee): RowState {
         moneda:         e.moneda ?? "VES",
         estado:         e.estado,
         fechaIngreso:   e.fechaIngreso ?? "",
+        porcentajeIslr: String(e.porcentajeIslr ?? 0),
     };
 }
 
@@ -353,6 +355,32 @@ function EmployeeRow({
                 )}
             </td>
 
+            {/* %ISLR (AR-I) */}
+            <td className={tdCls + " w-24"}>
+                {isEditing ? (
+                    <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
+                        <input
+                            type="number"
+                            step={0.01}
+                            min={0}
+                            max={100}
+                            placeholder="0"
+                            value={draft.porcentajeIslr}
+                            onChange={(e) => onDraftChange("porcentajeIslr", e.target.value)}
+                            className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
+                        />
+                        <span className="border-l border-border-light px-2 flex items-center font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] bg-surface-2">%</span>
+                    </div>
+                ) : (
+                    <div className="flex items-baseline justify-end gap-1 tabular-nums">
+                        <span className="font-mono text-[13px] text-[var(--text-secondary)]">
+                            {Number(employee.porcentajeIslr ?? 0).toFixed(2)}
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">%</span>
+                    </div>
+                )}
+            </td>
+
             {/* Ingreso / Antigüedad */}
             <td className={tdCls + " w-40"}>
                 {isEditing ? (
@@ -535,6 +563,21 @@ function NewEmployeeRow({ draft, saving, onChange, onSave, onCancel }: NewRowPro
                         onChange={(f, v) => onChange(f, v)}
                     />
                 </td>
+                <td className={tdCls + " w-24"}>
+                    <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
+                        <input
+                            type="number"
+                            step={0.01}
+                            min={0}
+                            max={100}
+                            placeholder="0"
+                            value={draft.porcentajeIslr}
+                            onChange={(e) => onChange("porcentajeIslr", e.target.value)}
+                            className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
+                        />
+                        <span className="border-l border-border-light px-2 flex items-center font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] bg-surface-2">%</span>
+                    </div>
+                </td>
                 <td className={tdCls + " w-40"}>
                     <input
                         type="date"
@@ -679,6 +722,8 @@ export default function EmployeesPage() {
     const saveRow = useCallback(async (cedula: string) => {
         const draft = drafts[cedula];
         if (!draft) return;
+        const islrParsed = parseFloat((draft.porcentajeIslr ?? "0").replace(",", "."));
+        const islr = Number.isFinite(islrParsed) && islrParsed >= 0 && islrParsed <= 100 ? islrParsed : 0;
         setSaving((s) => ({ ...s, [cedula]: true }));
         const ok = await upsert([{
             cedula:         draft.cedula,
@@ -688,6 +733,7 @@ export default function EmployeesPage() {
             moneda:         draft.moneda ?? "VES",
             estado:         draft.estado,
             fechaIngreso:   draft.fechaIngreso || null,
+            porcentajeIslr: islr,
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
@@ -704,6 +750,7 @@ export default function EmployeesPage() {
                 cedula: "", nombre: "", cargo: "",
                 salarioMensual: "", moneda: "VES",
                 estado: "activo", fechaIngreso: "",
+                porcentajeIslr: "0",
             },
         }, ...r]);
     }, [atLimit]);
@@ -730,6 +777,9 @@ export default function EmployeesPage() {
         const salary = parseFloat(draft.salarioMensual);
         if (!salary || salary <= 0)             { notify.error("El salario debe ser mayor a 0."); return; }
 
+        const islrParsed = parseFloat((draft.porcentajeIslr ?? "0").replace(",", "."));
+        const islr = Number.isFinite(islrParsed) && islrParsed >= 0 && islrParsed <= 100 ? islrParsed : 0;
+
         setNewSaving((s) => ({ ...s, [id]: true }));
         const ok = await upsert([{
             cedula,
@@ -739,6 +789,7 @@ export default function EmployeesPage() {
             moneda:         draft.moneda ?? "VES",
             estado:         draft.estado,
             fechaIngreso:   draft.fechaIngreso || null,
+            porcentajeIslr: islr,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
         if (ok) cancelNewRow(id);
@@ -1095,6 +1146,7 @@ export default function EmployeesPage() {
                                             { label: "Cédula",              align: "text-left"  },
                                             { label: "Nombre / Cargo",      align: "text-left"  },
                                             { label: "Salario mensual",     align: "text-right" },
+                                            { label: "% ISLR (AR-I)",       align: "text-right" },
                                             { label: "Ingreso / Antigüedad",align: "text-left"  },
                                             { label: "Estado",              align: "text-left"  },
                                             { label: "",                    align: "text-right" },
