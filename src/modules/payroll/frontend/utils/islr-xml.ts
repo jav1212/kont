@@ -196,6 +196,50 @@ export function buildIslrXml(input: BuildIslrXmlInput): string {
     ].join("\n");
 }
 
+/**
+ * Indenta el XML compacto que produce buildIslrXml para mostrarlo en preview.
+ * No altera el contenido — sólo añade saltos de línea y dos espacios por nivel.
+ *
+ * El download sigue usando el XML compacto original (mismo bytes que ya enviaba
+ * el portal). Esta función existe sólo para el panel "XML" del modal.
+ */
+export function prettifyIslrXml(xml: string): string {
+    // Tokens reconocidos, en orden de prioridad:
+    //   1) declaración    <?xml ... ?>
+    //   2) cierre         </Tag>
+    //   3) leaf con texto <Tag>contenido</Tag>
+    //   4) apertura       <Tag ...>
+    const tokenRe = /<\?[^?]+\?>|<\/[^>]+>|<[^>]+>[^<]*<\/[^>]+>|<[^>]+>/g;
+    const tokens = xml.match(tokenRe);
+    if (!tokens) return xml;
+
+    const INDENT = "  ";
+    const lines: string[] = [];
+    let depth = 0;
+
+    for (const tok of tokens) {
+        if (tok.startsWith("<?")) {
+            lines.push(tok);
+            continue;
+        }
+        if (tok.startsWith("</")) {
+            depth = Math.max(0, depth - 1);
+            lines.push(INDENT.repeat(depth) + tok);
+            continue;
+        }
+        // Leaf: <Tag>x</Tag> — un único token que ya contiene cierre
+        if (/<\/[^>]+>$/.test(tok) && tok.lastIndexOf("<") > 0) {
+            lines.push(INDENT.repeat(depth) + tok);
+            continue;
+        }
+        // Apertura: <Tag ...>
+        lines.push(INDENT.repeat(depth) + tok);
+        depth++;
+    }
+
+    return lines.join("\n");
+}
+
 /** Helper para descargar el XML generado en el navegador. */
 export function downloadXmlFile(xml: string, filename: string): void {
     const blob = new Blob([xml], { type: "application/xml;charset=utf-8" });

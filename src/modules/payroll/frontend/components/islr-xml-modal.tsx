@@ -3,18 +3,34 @@
 // =============================================================================
 // Modal: Generación del XML SENIAT — Relación de Retenciones ISLR (mensual).
 //
-// Muestra un selector año/mes que se autorrellena con los meses que tienen
-// nóminas confirmadas. Al generar, suma los brutos por empleado para todas
-// las runs del mes y arma el XML usando islr-xml.ts.
+// Flujo:
+//   1) Selector año/mes con los meses que tienen nóminas confirmadas.
+//   2) Al cambiar el mes (o al abrir) se cargan los recibos en paralelo, se
+//      acumula el bruto por cédula y se valida cada cédula → preview en vivo.
+//   3) Tab "Datos": cabecera (RIF Agente, Período, Fecha Op., Concepto) +
+//      tabla por empleado + total.
+//   4) Tab "XML": el mismo XML que se descarga, indentado para revisión.
+//   5) "Descargar XML" sólo arma el XML (compacto) y dispara la descarga —
+//      sin fetch, ya que la preview tiene los datos listos.
 // =============================================================================
 
-import { useCallback, useMemo, useState } from "react";
-import { X, FileCode, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { X, FileCode, Loader2, AlertTriangle } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseBadge } from "@/src/shared/frontend/components/base-badge";
 import { notify } from "@/src/shared/frontend/notify";
 import type { PayrollRun, PayrollReceipt } from "../hooks/use-payroll-history";
 import type { Employee } from "../hooks/use-employee";
-import { buildIslrXml, downloadXmlFile, type IslrXmlItem } from "../utils/islr-xml";
+import {
+    buildIslrXml,
+    downloadXmlFile,
+    formatRifAgente,
+    formatRifRetenido,
+    formatFechaOperacion,
+    lastDayOfMonth,
+    prettifyIslrXml,
+    type IslrXmlItem,
+} from "../utils/islr-xml";
 
 interface IslrXmlModalProps {
     open:        boolean;
@@ -31,11 +47,28 @@ const MES_LABELS = [
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-// Devuelve el año/mes (1-12) del periodEnd de una run.
+const fmtVES = (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 function runYearMonth(run: PayrollRun): { year: number; month: number } {
     const [y, m] = run.periodEnd.split("-");
     return { year: Number(y), month: Number(m) };
 }
+
+// ── Tipos internos ───────────────────────────────────────────────────────────
+
+type PreviewRow = IslrXmlItem & {
+    rifRetenido: string | null;   // null si formatRifRetenido lanzó
+    rifError?:   string;
+};
+
+type PreviewState =
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "ready"; rows: PreviewRow[]; latestPeriodEnd: string }
+    | { status: "error"; message: string };
+
+// =============================================================================
 
 export function IslrXmlModal({
     open, onClose, companyName, companyRif,
@@ -49,17 +82,20 @@ export function IslrXmlModal({
             const { year, month } = runYearMonth(r);
             set.add(`${year}-${String(month).padStart(2, "0")}`);
         });
-        return Array.from(set).sort().reverse();   // más reciente primero
+        return Array.from(set).sort().reverse();
     }, [runs]);
 
-    const [selected, setSelected] = useState<string | null>(null);
-    const [loading,  setLoading]  = useState(false);
+    const [selected, setSelected]       = useState<string | null>(null);
+    const [activeTab, setActiveTab]     = useState<"datos" | "xml">("datos");
+    const [previewState, setPreviewState] = useState<PreviewState>({ status: "idle" });
 
-    // Default: el mes más reciente con nóminas
     const effectiveSelected = selected ?? availableMonths[0] ?? null;
 
-    // ── Preview del mes seleccionado ─────────────────────────────────────────
-    const preview = useMemo(() => {
+    const noRif    = !companyRif || companyRif.trim() === "";
+    const noMonths = availableMonths.length === 0;
+
+    // ── Período derivado del seleccionado ────────────────────────────────────
+    const periodMeta = useMemo(() => {
         if (!effectiveSelected) return null;
         const [y, m] = effectiveSelected.split("-").map(Number);
         const monthRuns = runs.filter((r) => {
@@ -67,96 +103,178 @@ export function IslrXmlModal({
             const ym = runYearMonth(r);
             return ym.year === y && ym.month === m;
         });
-        return {
-            year:  y,
-            month: m,
-            runs:  monthRuns,
-        };
+        return { year: y, month: m, runs: monthRuns };
     }, [effectiveSelected, runs]);
 
-    // ── Generar y descargar XML ──────────────────────────────────────────────
-    const handleGenerate = useCallback(async () => {
-        if (!preview || !companyRif) {
+    // ── Carga de recibos + construcción de filas (auto al cambiar mes) ───────
+    useEffect(() => {
+        if (!open || noRif || noMonths || !periodMeta) return;
+
+        let cancelled = false;
+
+        // Tanto el reset a "loading" como el resultado final viven dentro del
+        // IIFE async para evitar setState síncrono en el body del effect.
+        (async () => {
+            if (cancelled) return;
+            setPreviewState({ status: "loading" });
+
+            try {
+                const allReceipts = await Promise.all(
+                    periodMeta.runs.map(async (r) => (await getReceipts(r.id)) ?? []),
+                );
+                if (cancelled) return;
+
+                // Bruto acumulado por cédula
+                const brutoPorCedula = new Map<string, number>();
+                allReceipts.flat().forEach((rcp) => {
+                    const gross = rcp.calculationData?.gross
+                        ?? (rcp.totalEarnings + rcp.totalBonuses);
+                    brutoPorCedula.set(
+                        rcp.employeeCedula,
+                        (brutoPorCedula.get(rcp.employeeCedula) ?? 0) + gross,
+                    );
+                });
+
+                // Empareja con empleados y valida cédula
+                const empByCedula = new Map(employees.map((e) => [e.cedula, e]));
+                const rows: PreviewRow[] = Array.from(brutoPorCedula.entries())
+                    .map(([cedula, monto]): PreviewRow => {
+                        const emp = empByCedula.get(cedula);
+                        const base: IslrXmlItem = {
+                            cedula,
+                            nombre:         emp?.nombre,
+                            montoOperacion: monto,
+                            porcentajeIslr: emp?.porcentajeIslr ?? 0,
+                        };
+                        try {
+                            return { ...base, rifRetenido: formatRifRetenido(cedula, emp?.nombre) };
+                        } catch (e) {
+                            return {
+                                ...base,
+                                rifRetenido: null,
+                                rifError: e instanceof Error ? e.message : "Cédula inválida",
+                            };
+                        }
+                    })
+                    .sort((a, b) => a.cedula.localeCompare(b.cedula));
+
+                const latestPeriodEnd = periodMeta.runs
+                    .map((r) => r.periodEnd)
+                    .sort()
+                    .reverse()[0]
+                    ?? lastDayOfMonth(periodMeta.year, periodMeta.month);
+
+                if (!cancelled) {
+                    setPreviewState({ status: "ready", rows, latestPeriodEnd });
+                }
+            } catch (e) {
+                if (!cancelled) {
+                    setPreviewState({
+                        status:  "error",
+                        message: e instanceof Error ? e.message : "Error al cargar la preview.",
+                    });
+                }
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [open, periodMeta, employees, getReceipts, noRif, noMonths]);
+
+    // ── Datos derivados de la preview ────────────────────────────────────────
+    const totalBruto = useMemo(() => {
+        if (previewState.status !== "ready") return 0;
+        return previewState.rows.reduce((acc, r) => acc + r.montoOperacion, 0);
+    }, [previewState]);
+
+    const invalidRows = useMemo(() => {
+        if (previewState.status !== "ready") return [];
+        return previewState.rows.filter((r) => r.rifError);
+    }, [previewState]);
+
+    // RifAgente formateado para el header (no lanza si companyRif es válido)
+    const rifAgenteDisplay = useMemo(() => {
+        if (!companyRif) return "—";
+        try { return formatRifAgente(companyRif); } catch { return "—"; }
+    }, [companyRif]);
+
+    // XML pretty para el tab "XML"
+    const previewXml = useMemo(() => {
+        if (previewState.status !== "ready" || !companyRif || !periodMeta) return null;
+        if (invalidRows.length > 0 || previewState.rows.length === 0) return null;
+
+        try {
+            const compact = buildIslrXml({
+                companyRif,
+                year:           periodMeta.year,
+                month:          periodMeta.month,
+                fechaOperacion: previewState.latestPeriodEnd,
+                items:          previewState.rows.map(stripPreviewMeta),
+            });
+            return prettifyIslrXml(compact);
+        } catch {
+            return null;
+        }
+    }, [previewState, companyRif, periodMeta, invalidRows]);
+
+    // ── Descarga ─────────────────────────────────────────────────────────────
+    const handleGenerate = useCallback(() => {
+        if (previewState.status !== "ready") {
+            notify.error("La vista previa aún no está lista.");
+            return;
+        }
+        if (!companyRif || !periodMeta) {
             notify.error("Falta el RIF de la empresa o el período seleccionado.");
             return;
         }
-        if (preview.runs.length === 0) {
-            notify.error("No hay nóminas confirmadas en el mes seleccionado.");
+        if (previewState.rows.length === 0) {
+            notify.error("No hay empleados con pagos en el período seleccionado.");
+            return;
+        }
+        if (invalidRows.length > 0) {
+            const labels = invalidRows.map((r) => r.nombre ?? r.cedula).join(", ");
+            notify.error(`Corrige las cédulas inválidas antes de descargar: ${labels}.`);
             return;
         }
 
-        setLoading(true);
         try {
-            // 1) Trae los recibos de todas las runs del mes en paralelo.
-            const allReceipts = await Promise.all(
-                preview.runs.map(async (r) => (await getReceipts(r.id)) ?? [])
-            );
-
-            // 2) Acumula bruto por cédula.
-            const brutoPorCedula = new Map<string, number>();
-            allReceipts.flat().forEach((rcp) => {
-                const gross = rcp.calculationData?.gross
-                    ?? (rcp.totalEarnings + rcp.totalBonuses);
-                brutoPorCedula.set(
-                    rcp.employeeCedula,
-                    (brutoPorCedula.get(rcp.employeeCedula) ?? 0) + gross,
-                );
-            });
-
-            if (brutoPorCedula.size === 0) {
-                notify.error("Ningún recibo encontrado en el mes seleccionado.");
-                setLoading(false);
-                return;
-            }
-
-            // 3) Empareja con cada empleado para obtener porcentajeIslr.
-            //    Si el empleado fue eliminado, se asume 0 %.
-            const empByCedula = new Map(employees.map((e) => [e.cedula, e]));
-            const items: IslrXmlItem[] = Array.from(brutoPorCedula.entries())
-                .map(([cedula, monto]) => ({
-                    cedula,
-                    nombre:         empByCedula.get(cedula)?.nombre,
-                    montoOperacion: monto,
-                    porcentajeIslr: empByCedula.get(cedula)?.porcentajeIslr ?? 0,
-                }))
-                // Orden estable por cédula numérica para consistencia entre exports.
-                .sort((a, b) => a.cedula.localeCompare(b.cedula));
-
-            // 4) FechaOperacion = el periodEnd más reciente del mes.
-            const latestPeriodEnd = preview.runs
-                .map((r) => r.periodEnd)
-                .sort()
-                .reverse()[0];
-
-            // 5) Construye el XML y dispara la descarga.
             const xml = buildIslrXml({
                 companyRif,
-                year:  preview.year,
-                month: preview.month,
-                fechaOperacion: latestPeriodEnd,
-                items,
+                year:           periodMeta.year,
+                month:          periodMeta.month,
+                fechaOperacion: previewState.latestPeriodEnd,
+                items:          previewState.rows.map(stripPreviewMeta),
             });
 
             const safeName = (companyName || "EMPRESA")
                 .toUpperCase()
                 .replace(/[^A-Z0-9]+/g, "")
                 .slice(0, 30);
-            const periodo = `${preview.year}${String(preview.month).padStart(2, "0")}`;
+            const periodo = `${periodMeta.year}${String(periodMeta.month).padStart(2, "0")}`;
             downloadXmlFile(xml, `IvaISLR${periodo}SalariosOtros${safeName}.xml`);
 
-            notify.success(`XML generado con ${items.length} empleado${items.length !== 1 ? "s" : ""}.`);
+            const n = previewState.rows.length;
+            notify.success(`XML generado con ${n} empleado${n !== 1 ? "s" : ""}.`);
             onClose();
         } catch (err) {
             notify.error(err instanceof Error ? err.message : "Error al generar el XML.");
-        } finally {
-            setLoading(false);
         }
-    }, [preview, companyRif, companyName, employees, getReceipts, onClose]);
+    }, [previewState, companyRif, periodMeta, invalidRows, companyName, onClose]);
 
     if (!open) return null;
 
-    const noRif    = !companyRif || companyRif.trim() === "";
-    const noMonths = availableMonths.length === 0;
+    const fechaOpDisplay = previewState.status === "ready"
+        ? formatFechaOperacion(previewState.latestPeriodEnd)
+        : "—";
+    const periodoNumeric = periodMeta
+        ? `${periodMeta.year}${String(periodMeta.month).padStart(2, "0")}`
+        : "—";
+
+    const downloadDisabled =
+        noRif ||
+        noMonths ||
+        previewState.status !== "ready" ||
+        invalidRows.length > 0 ||
+        (previewState.status === "ready" && previewState.rows.length === 0);
 
     return (
         <div
@@ -164,7 +282,7 @@ export function IslrXmlModal({
             onClick={onClose}
         >
             <div
-                className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 shadow-xl"
+                className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-border-light bg-surface-1 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -193,7 +311,7 @@ export function IslrXmlModal({
                 </div>
 
                 {/* Body */}
-                <div className="px-5 py-5 space-y-4">
+                <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
                     {noRif ? (
                         <div className="rounded-lg border border-warning/30 bg-warning/[0.05] text-text-warning px-4 py-3 text-[12.5px]">
                             La empresa no tiene RIF configurado. Asígnale uno antes de generar el XML.
@@ -204,6 +322,7 @@ export function IslrXmlModal({
                         </div>
                     ) : (
                         <>
+                            {/* Selector */}
                             <label className="block">
                                 <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                                     Período
@@ -226,16 +345,55 @@ export function IslrXmlModal({
                                 </div>
                             </label>
 
-                            {preview && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Stat label="Quincenas" value={preview.runs.length} hint={preview.runs.length === 1 ? "confirmada" : "confirmadas"} />
-                                    <Stat label="Concepto" value="001" hint="Sueldos y salarios" />
+                            {/* Header info bar — datos globales del XML */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px overflow-hidden rounded-lg border border-border-light bg-border-light">
+                                <InfoCell label="RIF Agente" value={rifAgenteDisplay} mono />
+                                <InfoCell label="Período"    value={periodoNumeric} mono />
+                                <InfoCell label="Fecha Op."  value={fechaOpDisplay} mono />
+                                <InfoCell label="Concepto"   value="001" hint="Sueldos y salarios" mono />
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="flex border-b border-border-light">
+                                <TabButton active={activeTab === "datos"} onClick={() => setActiveTab("datos")}>
+                                    Datos
+                                </TabButton>
+                                <TabButton
+                                    active={activeTab === "xml"}
+                                    onClick={() => setActiveTab("xml")}
+                                    disabled={previewState.status !== "ready" || invalidRows.length > 0 || (previewState.status === "ready" && previewState.rows.length === 0)}
+                                >
+                                    XML
+                                </TabButton>
+                            </div>
+
+                            {/* Tab content */}
+                            {activeTab === "datos" ? (
+                                <DatosPanel state={previewState} totalBruto={totalBruto} />
+                            ) : (
+                                <XmlPanel xml={previewXml} hasInvalid={invalidRows.length > 0} />
+                            )}
+
+                            {/* Aviso de cédulas inválidas */}
+                            {previewState.status === "ready" && invalidRows.length > 0 && (
+                                <div className="flex items-start gap-2 rounded-lg border border-error/30 bg-error/[0.05] text-text-error px-4 py-3 text-[12.5px]">
+                                    <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="font-medium">
+                                            Hay {invalidRows.length} empleado{invalidRows.length !== 1 ? "s" : ""} con cédula incompleta.
+                                        </p>
+                                        <p className="text-[12px] text-[var(--text-secondary)] mt-0.5">
+                                            Edita su cédula en /payroll/employees para incluir los 9 dígitos (cédula + dígito verificador).
+                                            Mientras tanto la descarga del XML está deshabilitada.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
 
-                            <div className="rounded-lg border border-border-light bg-surface-2/50 px-4 py-3 text-[12px] text-[var(--text-secondary)] font-sans">
+                            {/* Nota explicativa */}
+                            <p className="text-[11.5px] text-[var(--text-tertiary)]">
                                 Se sumarán los <strong>brutos</strong> de todas las nóminas confirmadas del mes y se usará el <strong>% ISLR</strong> de cada empleado (default 0).
-                            </div>
+                            </p>
                         </>
                     )}
                 </div>
@@ -246,7 +404,6 @@ export function IslrXmlModal({
                         variant="secondary"
                         size="sm"
                         onClick={onClose}
-                        isDisabled={loading}
                     >
                         Cancelar
                     </BaseButton.Root>
@@ -254,10 +411,14 @@ export function IslrXmlModal({
                         variant="primary"
                         size="sm"
                         onClick={handleGenerate}
-                        isDisabled={loading || noRif || noMonths}
-                        leftIcon={loading ? <Loader2 className="animate-spin" size={14} /> : <FileCode size={14} />}
+                        isDisabled={downloadDisabled}
+                        leftIcon={
+                            previewState.status === "loading"
+                                ? <Loader2 className="animate-spin" size={14} />
+                                : <FileCode size={14} />
+                        }
                     >
-                        {loading ? "Generando…" : "Descargar XML"}
+                        {previewState.status === "loading" ? "Cargando…" : "Descargar XML"}
                     </BaseButton.Root>
                 </div>
             </div>
@@ -265,14 +426,215 @@ export function IslrXmlModal({
     );
 }
 
-// ── Mini-tile ────────────────────────────────────────────────────────────────
+// ── Sub-componentes ──────────────────────────────────────────────────────────
 
-function Stat({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
+function stripPreviewMeta(r: PreviewRow): IslrXmlItem {
+    const { cedula, nombre, montoOperacion, porcentajeIslr } = r;
+    return { cedula, nombre, montoOperacion, porcentajeIslr };
+}
+
+function InfoCell({ label, value, hint, mono }: {
+    label: string;
+    value: string;
+    hint?: string;
+    mono?: boolean;
+}) {
     return (
-        <div className="rounded-lg border border-border-light bg-surface-2 px-3 py-2">
-            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">{label}</p>
-            <p className="font-mono text-[15px] font-semibold tabular-nums text-foreground leading-tight mt-0.5">{value}</p>
+        <div className="bg-surface-2/50 px-3 py-2.5">
+            <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                {label}
+            </p>
+            <p className={[
+                "text-[13px] font-semibold tabular-nums text-foreground leading-tight mt-0.5 truncate",
+                mono ? "font-mono" : "font-sans",
+            ].join(" ")}>
+                {value}
+            </p>
             {hint && <p className="font-sans text-[10px] text-[var(--text-tertiary)] truncate">{hint}</p>}
         </div>
+    );
+}
+
+function TabButton({
+    active, onClick, disabled, children,
+}: {
+    active:    boolean;
+    onClick:   () => void;
+    disabled?: boolean;
+    children:  React.ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={[
+                "px-4 h-9 -mb-px font-mono text-[11px] uppercase tracking-[0.14em] transition-colors",
+                "border-b-2",
+                active
+                    ? "border-primary-500 text-foreground"
+                    : "border-transparent text-[var(--text-tertiary)] hover:text-foreground",
+                disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
+            ].join(" ")}
+        >
+            {children}
+        </button>
+    );
+}
+
+function DatosPanel({ state, totalBruto }: {
+    state:      PreviewState;
+    totalBruto: number;
+}) {
+    if (state.status === "loading") {
+        return <DatosSkeleton />;
+    }
+    if (state.status === "error") {
+        return (
+            <div className="rounded-lg border border-error/30 bg-error/[0.05] text-text-error px-4 py-3 text-[12.5px]">
+                {state.message}
+            </div>
+        );
+    }
+    if (state.status !== "ready") return null;
+
+    if (state.rows.length === 0) {
+        return (
+            <div className="rounded-lg border border-border-light bg-surface-2 px-4 py-6 text-center text-[12.5px] text-[var(--text-secondary)]">
+                No hay recibos confirmados en el mes seleccionado.
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-lg border border-border-light overflow-hidden">
+            <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+                <table className="w-full text-[12px]">
+                    <thead className="sticky top-0 bg-surface-2 z-10">
+                        <tr className="border-b border-border-light">
+                            <Th>Cédula</Th>
+                            <Th>RIF retenido</Th>
+                            <Th>Empleado</Th>
+                            <Th align="right">Monto VES</Th>
+                            <Th align="right">% ISLR</Th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {state.rows.map((row, idx) => (
+                            <tr
+                                key={row.cedula}
+                                className={[
+                                    "border-b border-border-light last:border-b-0",
+                                    idx % 2 === 1 ? "bg-surface-2/30" : "",
+                                ].join(" ")}
+                            >
+                                <Td mono>{row.cedula}</Td>
+                                <Td mono>
+                                    {row.rifRetenido ?? (
+                                        <BaseBadge variant="error" size="sm" icon={AlertTriangle} title={row.rifError}>
+                                            Inválida
+                                        </BaseBadge>
+                                    )}
+                                </Td>
+                                <Td>
+                                    {row.nombre ?? (
+                                        <span className="text-[var(--text-tertiary)] italic">— sin empleado —</span>
+                                    )}
+                                </Td>
+                                <Td mono align="right">{fmtVES(row.montoOperacion)}</Td>
+                                <Td mono align="right">{row.porcentajeIslr.toFixed(2)}</Td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot className="bg-surface-2 sticky bottom-0">
+                        <tr>
+                            <Td colSpan={3} align="right" mono>
+                                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[10px]">
+                                    Total ({state.rows.length} empleado{state.rows.length !== 1 ? "s" : ""})
+                                </span>
+                            </Td>
+                            <Td mono align="right" bold>{fmtVES(totalBruto)}</Td>
+                            <Td />
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+function XmlPanel({ xml, hasInvalid }: { xml: string | null; hasInvalid: boolean }) {
+    if (hasInvalid) {
+        return (
+            <div className="rounded-lg border border-border-light bg-surface-2/50 px-4 py-6 text-center text-[12.5px] text-[var(--text-secondary)]">
+                El XML no se puede generar todavía: hay cédulas inválidas en la pestaña <strong>Datos</strong>.
+            </div>
+        );
+    }
+    if (!xml) {
+        return <DatosSkeleton />;
+    }
+    return (
+        <pre className="rounded-lg border border-border-light bg-surface-2/50 px-4 py-3 max-h-[340px] overflow-auto font-mono text-[11.5px] leading-[1.55] text-foreground whitespace-pre">
+            {xml}
+        </pre>
+    );
+}
+
+function DatosSkeleton() {
+    return (
+        <div className="rounded-lg border border-border-light overflow-hidden">
+            <div className="h-9 bg-surface-2 border-b border-border-light" />
+            <div className="space-y-px bg-border-light">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="h-9 bg-surface-1 px-3 flex items-center gap-3">
+                        <div className="h-3 w-24 rounded bg-surface-2 animate-pulse" />
+                        <div className="h-3 w-24 rounded bg-surface-2 animate-pulse" />
+                        <div className="h-3 flex-1 rounded bg-surface-2 animate-pulse" />
+                        <div className="h-3 w-16 rounded bg-surface-2 animate-pulse" />
+                        <div className="h-3 w-10 rounded bg-surface-2 animate-pulse" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function Th({ children, align = "left" }: { children: React.ReactNode; align?: "left" | "right" | "center" }) {
+    return (
+        <th
+            className={[
+                "px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-semibold whitespace-nowrap",
+                align === "right"  ? "text-right"  : "",
+                align === "center" ? "text-center" : "",
+            ].join(" ")}
+        >
+            {children}
+        </th>
+    );
+}
+
+function Td({
+    children, align = "left", mono, bold, colSpan,
+}: {
+    children?: React.ReactNode;
+    align?:    "left" | "right" | "center";
+    mono?:     boolean;
+    bold?:     boolean;
+    colSpan?:  number;
+}) {
+    return (
+        <td
+            colSpan={colSpan}
+            className={[
+                "px-3 py-2 align-middle text-foreground",
+                mono ? "font-mono tabular-nums" : "",
+                bold ? "font-semibold" : "",
+                align === "right"  ? "text-right"  : "",
+                align === "center" ? "text-center" : "",
+            ].join(" ")}
+        >
+            {children}
+        </td>
     );
 }
