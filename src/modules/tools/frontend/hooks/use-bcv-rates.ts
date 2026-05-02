@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { notify } from "@/src/shared/frontend/notify";
 
 export interface BcvRate {
     code: string;
@@ -15,9 +16,11 @@ export interface UseBcvRatesResult {
     rates: BcvRate[];
     date: string | null;
     loading: boolean;
-    error: string | null;
     refresh: () => void;
 }
+
+// Stable toast id so retries replace the previous error instead of stacking.
+const ERROR_TOAST_ID = "bcv-rates-error";
 
 // Simple in-memory cache across components — keyed by date (or "today").
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 min
@@ -43,7 +46,6 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
         date: cached?.payload.date ?? initialData?.date ?? null,
     }));
     const [loading, setLoading] = useState<boolean>(!cached && !initialData);
-    const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async (force = false) => {
         const existing = cache.get(key);
@@ -54,20 +56,19 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
         }
 
         setLoading(true);
-        setError(null);
         try {
             const url = date ? `/api/bcv/rates?date=${date}` : `/api/bcv/rates`;
             const res = await fetch(url);
             const body = await res.json();
             if (!res.ok) {
-                setError(body.error ?? "Error al consultar BCV.");
+                notify.error(body.error ?? "Error al consultar BCV.", { id: ERROR_TOAST_ID });
                 setLoading(false);
                 return;
             }
             cache.set(key, { at: Date.now(), payload: body });
             setState(body);
         } catch {
-            setError("No se pudo conectar con el BCV.");
+            notify.error("No se pudo conectar con el BCV.", { id: ERROR_TOAST_ID });
         } finally {
             setLoading(false);
         }
@@ -95,7 +96,6 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
         rates: state.rates,
         date: state.date,
         loading,
-        error,
         refresh: () => void load(true),
     };
 }

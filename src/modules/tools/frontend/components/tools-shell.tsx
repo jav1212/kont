@@ -38,7 +38,7 @@ const section = (i: number) => ({
 
 export function ToolsShell({ variant, initialData }: Props) {
     const [selectedDate, setSelectedDate] = useState<string | null>(null);
-    const { rates, date, loading, error, refresh } = useBcvRates(selectedDate, initialData);
+    const { rates, date, loading, refresh } = useBcvRates(selectedDate, initialData);
 
     // Initialized to the default on both server and client; localStorage is
     // read post-mount to avoid an SSR hydration mismatch on the public page.
@@ -100,15 +100,6 @@ export function ToolsShell({ variant, initialData }: Props) {
                     />
                 )}
             </motion.div>
-
-            {error && (
-                <div
-                    role="alert"
-                    className="rounded-xl border border-red-500 bg-red-100 dark:bg-red-900 px-4 py-3 text-[13px] text-red-700 dark:text-red-300 font-mono"
-                >
-                    {error}
-                </div>
-            )}
 
             {/* Top rates — asymmetric grid on desktop: USD dominates */}
             {showSkeletons ? (
