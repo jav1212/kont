@@ -297,9 +297,20 @@ function EmployeeRow({
 
             {/* Cédula */}
             <td className={tdCls + " w-32"}>
-                <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
-                    {employee.cedula}
-                </span>
+                {isEditing ? (
+                    <input
+                        type="text"
+                        value={draft.cedula}
+                        onChange={(e) => onDraftChange("cedula", e.target.value)}
+                        placeholder="V-12345678-9"
+                        className={cellInputCls}
+                        title="Cambiar la cédula también la actualizará en todos los recibos históricos."
+                    />
+                ) : (
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
+                        {employee.cedula}
+                    </span>
+                )}
             </td>
 
             {/* Nombre / Cargo */}
@@ -638,7 +649,7 @@ function NewEmployeeRow({ draft, saving, onChange, onSave, onCancel }: NewRowPro
 
 export default function EmployeesPage() {
     const { companyId, company } = useCompany();
-    const { employees, loading, upsert, remove, getSalaryHistory } = useEmployee(companyId);
+    const { employees, loading, upsert, remove, renameCedula, getSalaryHistory } = useEmployee(companyId);
     const { capacity } = useCapacity();
 
     const empMax       = capacity?.employeesPerCompany.max ?? null;
@@ -722,11 +733,35 @@ export default function EmployeesPage() {
     const saveRow = useCallback(async (cedula: string) => {
         const draft = drafts[cedula];
         if (!draft) return;
+
+        const newCedula = draft.cedula.trim();
+        if (!newCedula) { notify.error("La cédula no puede estar vacía."); return; }
+
+        const cedulaChanged = newCedula !== cedula;
+        if (cedulaChanged) {
+            if (employees.some((e) => e.cedula !== cedula && e.cedula === newCedula)) {
+                notify.error(`La cédula ${newCedula} ya pertenece a otro empleado.`);
+                return;
+            }
+            const confirmed = window.confirm(
+                `Vas a cambiar la cédula de ${draft.nombre || "este empleado"} de "${cedula}" a "${newCedula}".\n\n` +
+                "Esto también actualizará la cédula en los recibos de nómina, cesta ticket y el historial salarial. ¿Confirmas?"
+            );
+            if (!confirmed) return;
+        }
+
         const islrParsed = parseFloat((draft.porcentajeIslr ?? "0").replace(",", "."));
         const islr = Number.isFinite(islrParsed) && islrParsed >= 0 && islrParsed <= 100 ? islrParsed : 0;
+
         setSaving((s) => ({ ...s, [cedula]: true }));
+
+        if (cedulaChanged) {
+            const renamed = await renameCedula(cedula, newCedula);
+            if (!renamed) { setSaving((s) => ({ ...s, [cedula]: false })); return; }
+        }
+
         const ok = await upsert([{
-            cedula:         draft.cedula,
+            cedula:         newCedula,
             nombre:         draft.nombre.trim(),
             cargo:          draft.cargo.trim(),
             salarioMensual: parseFloat(draft.salarioMensual) || 0,
@@ -737,7 +772,7 @@ export default function EmployeesPage() {
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
-    }, [drafts, upsert, cancelEdit]);
+    }, [drafts, employees, upsert, renameCedula, cancelEdit]);
 
     // ── New row actions ─────────────────────────────────────────────────────
 

@@ -24,8 +24,11 @@
 //   </RelacionRetencionesISLR>
 //
 // Reglas clave:
-//   - RifAgente / RifRetenido: 10 caracteres = letra + 9 dígitos, sin guiones.
-//     Cédulas con menos de 9 dígitos se rellenan con ceros a la izquierda.
+//   - RifAgente: 10 caracteres = letra + 9 dígitos, sin guiones. Si el RIF de
+//     la empresa trae menos de 9 dígitos se rellena con ceros (es excepcional).
+//   - RifRetenido: 10 caracteres = letra + 9 dígitos. Debe ser el RIF real del
+//     empleado (cédula + dígito verificador). Si la cédula no tiene 9 dígitos
+//     exactos se aborta con error: padding con ceros produciría un RIF falso.
 //   - Periodo: AAAAMM (e.g. 202603 = marzo 2026).
 //   - NumeroFactura / NumeroControl: DDMMYYYY del último día del mes (8 chars).
 //   - FechaOperacion: DD/MM/YYYY del último periodEnd pagado en el mes.
@@ -60,21 +63,31 @@ export function formatRifAgente(rif: string): string {
 }
 
 /**
- * Normaliza una cédula a RIF retenido (10 chars: letra + 9 dígitos).
- * Acepta entradas como "V-20129086", "v20129086", "20129086".
+ * Normaliza la cédula del empleado al RIF retenido (10 chars: letra + 9 dígitos).
+ * Acepta entradas con letra y guiones ("V-12345678-9", "V123456789", "123456789").
  * Si no trae letra explícita, se asume "V" (venezolano).
+ *
+ * SENIAT exige los 9 dígitos del RIF real (cédula + dígito verificador). Si la
+ * cédula no llega con 9 dígitos exactos se lanza un error claro indicando qué
+ * empleado debe corregirse — rellenar con ceros producía un RIF falso que el
+ * portal aceptaba pero que no pertenece al contribuyente.
  */
-export function formatRifRetenido(cedula: string): string {
+export function formatRifRetenido(cedula: string, nombre?: string): string {
     const raw = (cedula ?? "").trim();
-    if (!raw) throw new Error("La cédula del empleado está vacía.");
+    const empLabel = nombre ? ` (${nombre})` : "";
+    if (!raw) throw new Error(`La cédula del empleado${empLabel} está vacía.`);
 
     const letterMatch = raw.match(/^[VvEeJjPpGg]/);
     const letter = (letterMatch ? letterMatch[0] : "V").toUpperCase();
     const digits = raw.replace(/[^0-9]/g, "");
-    if (digits.length === 0) throw new Error(`Cédula inválida: "${cedula}"`);
-
-    const padded = digits.length >= 9 ? digits.slice(0, 9) : digits.padStart(9, "0");
-    return `${letter}${padded}`;
+    if (digits.length !== 9) {
+        throw new Error(
+            `La cédula "${cedula}"${empLabel} no es un RIF válido para SENIAT: ` +
+            `requiere 9 dígitos (cédula + dígito verificador) y llegó con ${digits.length}. ` +
+            `Edita la cédula del empleado en /payroll/employees para incluir el dígito verificador antes de exportar el XML.`
+        );
+    }
+    return `${letter}${digits}`;
 }
 
 // ── Formateo de fechas y montos ──────────────────────────────────────────────
@@ -116,7 +129,8 @@ function formatPorcentaje(p: number | undefined): string {
 // ── Tipos públicos ───────────────────────────────────────────────────────────
 
 export interface IslrXmlItem {
-    cedula:           string;   // tal como viene del empleado (ej. "V-20129086")
+    cedula:           string;   // tal como viene del empleado (ej. "V-12345678-9")
+    nombre?:          string;   // opcional, sólo para identificar al empleado en mensajes de error
     montoOperacion:   number;   // bruto mensual acumulado (VES)
     porcentajeIslr:   number;   // % declarado en AR-I (0-100)
 }
@@ -158,7 +172,7 @@ export function buildIslrXml(input: BuildIslrXmlInput): string {
 
     const detalles = items
         .map((it) => {
-            const rifRet = formatRifRetenido(it.cedula);
+            const rifRet = formatRifRetenido(it.cedula, it.nombre);
             const monto  = formatMonto(it.montoOperacion);
             const pct    = formatPorcentaje(it.porcentajeIslr);
             return [

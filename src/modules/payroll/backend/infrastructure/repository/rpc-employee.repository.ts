@@ -92,6 +92,22 @@ export class RpcEmployeeRepository implements IEmployeeRepository {
         }
     }
 
+    async renameCedula(companyId: string, oldCedula: string, newCedula: string): Promise<Result<void>> {
+        try {
+            const { error } = await this.source.instance
+                .rpc('tenant_employees_rename_cedula', {
+                    p_user_id:    this.userId,
+                    p_company_id: companyId,
+                    p_old_cedula: oldCedula,
+                    p_new_cedula: newCedula,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success();
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Rename cedula error');
+        }
+    }
+
     async getSalaryHistory(companyId: string, cedula: string): Promise<Result<SalaryHistoryEntry[]>> {
         try {
             const { data, error } = await this.source.instance

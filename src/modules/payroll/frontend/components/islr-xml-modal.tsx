@@ -115,6 +115,7 @@ export function IslrXmlModal({
             const items: IslrXmlItem[] = Array.from(brutoPorCedula.entries())
                 .map(([cedula, monto]) => ({
                     cedula,
+                    nombre:         empByCedula.get(cedula)?.nombre,
                     montoOperacion: monto,
                     porcentajeIslr: empByCedula.get(cedula)?.porcentajeIslr ?? 0,
                 }))

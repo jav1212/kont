@@ -13,6 +13,7 @@ interface UseEmployeeResult {
     reload:           () => Promise<void>;
     upsert:           (employees: Omit<Employee, "id" | "companyId">[]) => Promise<boolean>;
     remove:           (ids: string[]) => Promise<boolean>;
+    renameCedula:     (oldCedula: string, newCedula: string) => Promise<boolean>;
     getSalaryHistory: (companyId: string, cedula: string) => Promise<SalaryHistoryEntry[] | null>;
 }
 
@@ -59,6 +60,18 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         return true;
     }, [companyId, reload]);
 
+    const renameCedula = useCallback(async (oldCedula: string, newCedula: string): Promise<boolean> => {
+        if (!companyId) { notify.error("No hay empresa seleccionada"); return false; }
+        const { ok, json } = await fetchJson("/api/employees/rename-cedula", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ companyId, oldCedula, newCedula }),
+        });
+        if (!ok) { notify.error(json.error ?? "Error al renombrar la cédula"); return false; }
+        await reload();
+        return true;
+    }, [companyId, reload]);
+
     const getSalaryHistory = useCallback(async (
         cId: string, cedula: string
     ): Promise<SalaryHistoryEntry[] | null> => {
@@ -75,6 +88,7 @@ export function useEmployee(companyId: string | null): UseEmployeeResult {
         reload,
         upsert,
         remove,
+        renameCedula,
         getSalaryHistory,
     };
 }

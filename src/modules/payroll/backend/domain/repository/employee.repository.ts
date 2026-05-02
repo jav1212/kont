@@ -6,4 +6,5 @@ export interface IEmployeeRepository {
     upsertByCedula(employees: Employee[]): Promise<Result<void>>;
     deleteByIds(ids: string[]): Promise<Result<void>>;
     getSalaryHistory(companyId: string, cedula: string): Promise<Result<SalaryHistoryEntry[]>>;
+    renameCedula(companyId: string, oldCedula: string, newCedula: string): Promise<Result<void>>;
 }
