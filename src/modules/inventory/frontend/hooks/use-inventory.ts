@@ -19,6 +19,14 @@ import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
 import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
 import type { BalanceReportRow } from '../../backend/domain/balance-report';
 import type {
+    MovementDraftSaveInput,
+    MovementDraftSaveResult,
+    MovementDraftSummary,
+    MovementDraftGroup,
+    MovementDraftKind,
+    MovementDraftConfirmResult,
+} from '../../backend/domain/movement-draft';
+import type {
     GenerateRandomSalesInput,
     RandomSalesPreview,
     RandomSalesPreviewLine,
@@ -38,6 +46,7 @@ import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 
 export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput };
+export type { MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary, MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult };
 
 // Centralised error reporter. Network failures go to console for debugging
 // but the user always sees a toast — never a silent failure.
@@ -680,6 +689,93 @@ export function useInventory() {
         }
     }, []);
 
+    // ── Movement drafts ────────────────────────────────────────────────────────
+
+    const saveMovementDraft = useCallback(async (
+        input: MovementDraftSaveInput,
+    ): Promise<MovementDraftSaveResult | null> => {
+        try {
+            const res  = await apiFetch('/api/inventory/movements/draft', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(input),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al guardar borrador'); return null; }
+            return json.data ?? null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const confirmMovementDraft = useCallback(async (
+        companyId:    string,
+        draftGroupId: string,
+    ): Promise<MovementDraftConfirmResult | null> => {
+        try {
+            const res  = await apiFetch(`/api/inventory/movements/draft/${encodeURIComponent(draftGroupId)}/confirm`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ companyId }),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al confirmar borrador'); return null; }
+            return json.data ?? null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const getLatestMovementDraft = useCallback(async (
+        companyId: string,
+        kind:      MovementDraftKind,
+    ): Promise<MovementDraftSummary | null> => {
+        try {
+            const url  = `/api/inventory/movements/draft?companyId=${encodeURIComponent(companyId)}&kind=${encodeURIComponent(kind)}`;
+            const res  = await apiFetch(url);
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al consultar borrador'); return null; }
+            return (json.data ?? null) as MovementDraftSummary | null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const getMovementDraft = useCallback(async (
+        companyId:    string,
+        draftGroupId: string,
+    ): Promise<MovementDraftGroup | null> => {
+        try {
+            const url  = `/api/inventory/movements/draft?companyId=${encodeURIComponent(companyId)}&draftGroupId=${encodeURIComponent(draftGroupId)}`;
+            const res  = await apiFetch(url);
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar borrador'); return null; }
+            return (json.data ?? null) as MovementDraftGroup | null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const discardMovementDraft = useCallback(async (
+        companyId:    string,
+        draftGroupId: string,
+    ): Promise<boolean> => {
+        try {
+            const url  = `/api/inventory/movements/draft?companyId=${encodeURIComponent(companyId)}&draftGroupId=${encodeURIComponent(draftGroupId)}`;
+            const res  = await apiFetch(url, { method: 'DELETE' });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al descartar borrador'); return false; }
+            return true;
+        } catch (e) {
+            reportError('Error de red', e);
+            return false;
+        }
+    }, []);
+
     return {
         // state
         products, movements, periodCloses,
@@ -705,5 +801,7 @@ export function useInventory() {
         generateStockAdjustment, saveStockAdjustment,
         loadInventoryLedger,
         loadBalanceReport,
+        // movement drafts
+        saveMovementDraft, confirmMovementDraft, getLatestMovementDraft, getMovementDraft, discardMovementDraft,
     };
 }

@@ -8,6 +8,10 @@
 import { ChevronLeft, Info, RefreshCw } from "lucide-react";
 
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
+import { AutoSaveStatusPill } from "@/src/shared/frontend/components/autosave-status-pill";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { ResumeDraftBanner } from "@/src/shared/frontend/components/resume-draft-banner";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -56,6 +60,8 @@ export function OperationForm({ op, onChangeKind }: Props) {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title={config.labels.pageTitle} subtitle={config.labels.pageSubtitle}>
+                <CompanyContextPill />
+                <AutoSaveStatusPill state={form.autosave} />
                 {onChangeKind && (
                     <BaseButton.Root
                         variant="ghost"
@@ -75,6 +81,19 @@ export function OperationForm({ op, onChangeKind }: Props) {
                     Volver
                 </BaseButton.Root>
             </PageHeader>
+
+            {form.pendingDraft && (
+                <div className="px-8 pt-6">
+                    <ResumeDraftBanner
+                        timestampLabel={formatDraftTimestamp(form.pendingDraft.updatedAt)}
+                        summary={`${form.pendingDraft.count} ${form.pendingDraft.count === 1 ? "ítem" : "ítems"}`}
+                        onResume={form.handleResumeDraft}
+                        onDiscard={form.handleDiscardDraft}
+                        resuming={form.resuming}
+                        discarding={form.discarding}
+                    />
+                </div>
+            )}
 
             <div className="px-8 py-6 space-y-5 max-w-5xl">
                 {/* Datos de la operación */}
@@ -253,21 +272,68 @@ export function OperationForm({ op, onChangeKind }: Props) {
                         variant="secondary"
                         size="md"
                         onClick={() => router.back()}
-                        disabled={form.saving}
+                        disabled={form.saving || form.confirming}
                     >
                         Cancelar
                     </BaseButton.Root>
                     <BaseButton.Root
                         variant="primary"
                         size="md"
-                        onClick={form.handleSave}
-                        disabled={form.saving}
-                        loading={form.saving}
+                        onClick={form.handleOpenConfirm}
+                        disabled={form.saving || form.confirming}
                     >
-                        {form.saving ? config.labels.submittingButton : config.labels.submitButton}
+                        {config.labels.submitButton}
                     </BaseButton.Root>
                 </div>
             </div>
+
+            {/* Confirm dialog — surfaces the active company before persisting */}
+            <ConfirmCompanyDialog
+                isOpen={form.showConfirm}
+                onClose={() => { if (!form.confirming) form.setShowConfirm(false); }}
+                onConfirm={form.handleConfirmOperation}
+                loading={form.confirming}
+                title={`Confirmar ${config.labels.pageTitle.toLowerCase()}`}
+                subtitle="Las existencias y el costo promedio se actualizan al confirmar. Los movimientos quedan registrados en el período del mes de la fecha."
+                summary={
+                    <>
+                        <SummaryRow label="Tipo" value={form.resolvedDirection.type} />
+                        <SummaryRow label="Fecha" value={form.date} />
+                        <SummaryRow label="Período" value={form.date.slice(0, 7)} />
+                        <SummaryRow
+                            label="Ítems"
+                            value={String(form.items.filter((it) => it.productId && it.quantity > 0).length)}
+                        />
+                        <div className="border-t border-border-light/60 pt-2.5 mt-1">
+                            <SummaryRow
+                                label="Total"
+                                value={`Bs. ${form.totals.total.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                emphasis
+                            />
+                            {form.dollarRate && form.totals.total > 0 && (
+                                <SummaryRow
+                                    label="≈ USD"
+                                    value={`$ ${(form.totals.total / form.dollarRate).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                />
+                            )}
+                        </div>
+                    </>
+                }
+                warning={form.resolvedDirection.isOutbound
+                    ? "Esta operación reduce existencias del kardex y no es reversible desde esta pantalla."
+                    : "Esta operación incrementa existencias del kardex y no es reversible desde esta pantalla."}
+                confirmLabel={form.confirming ? config.labels.submittingButton : config.labels.submitButton}
+            />
         </div>
     );
+}
+
+function formatDraftTimestamp(iso: string): string {
+    if (!iso) return "fecha desconocida";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("es-VE", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
 }

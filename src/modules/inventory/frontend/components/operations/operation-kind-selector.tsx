@@ -8,6 +8,7 @@ import { ArrowRight, ChevronLeft, Pencil, RotateCcw, PackageMinus, type LucideIc
 
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type { OperationKind } from "./operation-types";
 
@@ -58,6 +59,7 @@ export function OperationKindSelector({ onSelect }: Props) {
                 title="Nueva Operación"
                 subtitle="Ajuste · Devolución · Autoconsumo"
             >
+                <CompanyContextPill />
                 <BaseButton.Root
                     as={Link}
                     href="/inventory/operations"

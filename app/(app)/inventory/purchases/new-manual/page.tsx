@@ -6,10 +6,16 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, useCallback, useMemo, useRef, useLayoutEffect, startTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator, Info } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
+import { AutoSaveStatusPill } from "@/src/shared/frontend/components/autosave-status-pill";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { ResumeDraftBanner } from "@/src/shared/frontend/components/resume-draft-banner";
+import { useDebouncedAutoSave } from "@/src/shared/frontend/hooks/use-debounced-autosave";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -19,6 +25,7 @@ import { notify } from "@/src/shared/frontend/notify";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
+import type { MovementDraftRow, MovementDraftSaveInput } from "@/src/modules/inventory/backend/domain/movement-draft";
 import {
     computeLineTotals,
     emptyLineAdjustments,
@@ -268,8 +275,14 @@ function ProductCombo({
 
 export default function NuevaEntradaManualPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const draftIdParam = searchParams.get("draft");
     const { companyId } = useCompany();
-    const { products, loadProducts, saveMovement } = useInventory();
+    const {
+        products, loadProducts, saveMovement,
+        saveMovementDraft, confirmMovementDraft,
+        getLatestMovementDraft, getMovementDraft, discardMovementDraft,
+    } = useInventory();
 
     const [date, setDate] = useState(todayStr());
     const [notes, setNotes] = useState("");
@@ -294,6 +307,15 @@ export default function NuevaEntradaManualPage() {
     const [saved, setSaved] = useState(false);
     const [expandedAdj, setExpandedAdj] = useState<Set<number>>(new Set());
 
+    // Draft + confirm dialog state
+    const [draftGroupId, setDraftGroupId] = useState<string | null>(null);
+    const [showConfirm, setShowConfirm]   = useState(false);
+    const [confirming, setConfirming]     = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<{ id: string; updatedAt: string; count: number; totalCantidad: number } | null>(null);
+    const [resuming, setResuming]   = useState(false);
+    const [discarding, setDiscarding] = useState(false);
+    const [draftLoaded, setDraftLoaded] = useState(false);
+
     function toggleAdjExpanded(idx: number) {
         setExpandedAdj((prev) => {
             const next = new Set(prev);
@@ -305,6 +327,68 @@ export default function NuevaEntradaManualPage() {
     useEffect(() => {
         if (companyId) loadProducts(companyId);
     }, [companyId, loadProducts]);
+
+    // ── Resume-draft banner: lookup latest draft for this company+kind ───────
+    useEffect(() => {
+        if (!companyId || draftIdParam || saved || draftGroupId || draftLoaded) {
+            setPendingDraft(null);
+            return;
+        }
+        let cancelled = false;
+        getLatestMovementDraft(companyId, "entrada").then((summary) => {
+            if (cancelled) return;
+            if (!summary) { setPendingDraft(null); return; }
+            setPendingDraft({
+                id:            summary.draftGroupId,
+                updatedAt:     summary.updatedAt,
+                count:         summary.count,
+                totalCantidad: summary.totalCantidad,
+            });
+        });
+        return () => { cancelled = true; };
+    }, [companyId, draftIdParam, saved, draftGroupId, draftLoaded, getLatestMovementDraft]);
+
+    // ── Load draft from `?draft=<id>` ───────────────────────────────────────
+    useEffect(() => {
+        if (!draftIdParam || !companyId || draftLoaded) return;
+        let cancelled = false;
+        getMovementDraft(companyId, draftIdParam).then((group) => {
+            if (cancelled || !group) return;
+            const meta = group.meta;
+            setDate(meta.fecha ?? todayStr());
+            setIvaMode(meta.ivaMode ?? "agregado");
+            const ctx = meta.context as { notes?: string };
+            if (ctx?.notes) setNotes(ctx.notes);
+            const restoredItems: ManualItem[] = group.items.map((row) => {
+                const product = products.find((p) => p.id === row.productId);
+                const vatRate = product?.vatType === "general" ? 0.16 : 0;
+                return {
+                    productId:   row.productId,
+                    productName: product?.name ?? "",
+                    quantity:    row.cantidad,
+                    currency:    row.moneda,
+                    currencyCost: row.costoMoneda ?? row.costoUnitario ?? 0,
+                    vatRate,
+                    adjustments: {
+                        descuentoTipo:  row.descuentoTipo  ?? null,
+                        descuentoValor: row.descuentoValor ?? 0,
+                        recargoTipo:    row.recargoTipo    ?? null,
+                        recargoValor:   row.recargoValor   ?? 0,
+                    },
+                };
+            });
+            if (restoredItems.length > 0) setItems(restoredItems);
+            setDraftGroupId(meta.draftGroupId);
+            setDraftLoaded(true);
+            // Expand adjustment panels for rows with non-trivial adjustments
+            const expanded = new Set<number>();
+            restoredItems.forEach((it, idx) => {
+                if (hasAdjustments(it.adjustments)) expanded.add(idx);
+            });
+            setExpandedAdj(expanded);
+        });
+        return () => { cancelled = true; };
+    }, [draftIdParam, companyId, draftLoaded, getMovementDraft, products]);
 
     useEffect(() => {
         if (!date) return;
@@ -353,40 +437,121 @@ export default function NuevaEntradaManualPage() {
         return true;
     }
 
-    async function handleSave() {
-        if (!validate()) return;
-        setSaving(true);
-        let allOk = true;
-        for (const item of items) {
+    // Build the array of MovementDraftRow that the backend persists.
+    const buildDraftMovements = useCallback((): MovementDraftRow[] => items
+        .filter((it) => it.productId && it.quantity > 0)
+        .map((item) => {
             const c = computeCosts(item, dollarRate, ivaMode);
-            const movement: Movement = {
-                companyId: companyId!,
-                productId: item.productId,
-                type: "entrada",
-                date,
-                period: date.slice(0, 7),
-                quantity: item.quantity,
-                unitCost: c.unitCost,
-                totalCost: c.totalCost,
-                balanceQuantity: 0,
-                reference: "Entrada manual",
-                notes,
-                currency: item.currency,
-                currencyCost: c.baseCurrencyCost,
-                dollarRate: item.currency === "D" ? dollarRate : null,
-                descuentoTipo:  item.adjustments.descuentoTipo,
-                descuentoValor: item.adjustments.descuentoValor,
-                descuentoMonto: c.descuentoMonto,
-                recargoTipo:    item.adjustments.recargoTipo,
-                recargoValor:   item.adjustments.recargoValor,
-                recargoMonto:   c.recargoMonto,
-                baseIVA:        c.baseIVA,
+            return {
+                productId:           item.productId,
+                tipo:                "entrada",
+                fecha:               date,
+                cantidad:            item.quantity,
+                costoUnitario:       c.unitCost,
+                moneda:              item.currency,
+                // Preserve what the user typed in their chosen currency so the
+                // form rehydrates to the same input on resume.
+                costoMoneda:         item.currencyCost,
+                tasaDolar:           item.currency === "D" ? dollarRate : null,
+                referencia:          "Entrada manual",
+                notas:               notes,
+                descuentoTipo:       item.adjustments.descuentoTipo,
+                descuentoValor:      item.adjustments.descuentoValor,
+                descuentoMonto:      c.descuentoMonto,
+                recargoTipo:         item.adjustments.recargoTipo,
+                recargoValor:        item.adjustments.recargoValor,
+                recargoMonto:        c.recargoMonto,
+                baseIva:             c.baseIVA,
             };
-            const result = await saveMovement(movement);
-            if (!result) { allOk = false; break; }
+        }), [items, dollarRate, ivaMode, date, notes]);
+
+    // ── Auto-save draft ──────────────────────────────────────────────────────
+    const autosavePayload = useMemo(() => ({
+        date, ivaMode, notes, dollarRate,
+        items: items.map((it) => ({
+            p: it.productId, q: it.quantity, cur: it.currency, cc: it.currencyCost, v: it.vatRate,
+            dt: it.adjustments.descuentoTipo, dv: it.adjustments.descuentoValor,
+            rt: it.adjustments.recargoTipo,   rv: it.adjustments.recargoValor,
+        })),
+    }), [date, ivaMode, notes, dollarRate, items]);
+
+    const autosaveSave = useCallback(async () => {
+        if (!companyId) return null;
+        const payload: MovementDraftSaveInput = {
+            companyId,
+            draftGroupId: draftGroupId,
+            kind:      "entrada",
+            direction: "inbound",
+            ivaMode,
+            context:   { notes },
+            movements: buildDraftMovements(),
+        };
+        const saved = await saveMovementDraft(payload);
+        if (saved?.draftGroupId) setDraftGroupId(saved.draftGroupId);
+        return saved?.draftGroupId ?? null;
+    }, [companyId, draftGroupId, ivaMode, notes, buildDraftMovements, saveMovementDraft]);
+
+    const autosave = useDebouncedAutoSave({
+        payload: autosavePayload,
+        save: autosaveSave,
+        isValid: () => Boolean(
+            companyId &&
+            items.some((it) => it.productId && it.quantity > 0) &&
+            !items.some((it) => it.currency === "D" && !dollarRate),
+        ),
+        enabled: !saved,
+        delayMs: 2000,
+    });
+
+    function handleOpenConfirm() {
+        if (!validate()) return;
+        setShowConfirm(true);
+    }
+
+    async function handleConfirmEntry() {
+        setConfirming(true);
+        await autosave.flush();
+        if (!draftGroupId || !companyId) {
+            // Defensive fallback: no draft yet. Persist synchronously then confirm.
+            const payload: MovementDraftSaveInput = {
+                companyId: companyId!,
+                draftGroupId: null,
+                kind: "entrada",
+                direction: "inbound",
+                ivaMode,
+                context: { notes },
+                movements: buildDraftMovements(),
+            };
+            const justSaved = await saveMovementDraft(payload);
+            if (!justSaved?.draftGroupId) { setConfirming(false); return; }
+            setDraftGroupId(justSaved.draftGroupId);
+            const confirmed = await confirmMovementDraft(companyId!, justSaved.draftGroupId);
+            setConfirming(false);
+            setShowConfirm(false);
+            if (confirmed) setSaved(true);
+            return;
         }
-        setSaving(false);
-        if (allOk) setSaved(true);
+        const confirmed = await confirmMovementDraft(companyId, draftGroupId);
+        setConfirming(false);
+        setShowConfirm(false);
+        if (confirmed) setSaved(true);
+    }
+
+    function handleResumeDraft() {
+        if (!pendingDraft) return;
+        setResuming(true);
+        router.replace(`/inventory/purchases/new-manual?draft=${pendingDraft.id}`);
+    }
+
+    async function handleDiscardDraft() {
+        if (!pendingDraft || !companyId) return;
+        setDiscarding(true);
+        const ok = await discardMovementDraft(companyId, pendingDraft.id);
+        setDiscarding(false);
+        if (ok) {
+            setPendingDraft(null);
+            notify.info("Borrador descartado");
+        }
     }
 
     const totals = items.reduce(
@@ -441,6 +606,8 @@ export default function NuevaEntradaManualPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Entrada Manual de Inventario" subtitle="Registro directo de aumento de existencias">
+                <CompanyContextPill />
+                <AutoSaveStatusPill state={autosave} />
                 <BaseButton.Root
                     variant="secondary"
                     size="md"
@@ -450,6 +617,19 @@ export default function NuevaEntradaManualPage() {
                     Volver
                 </BaseButton.Root>
             </PageHeader>
+
+            {pendingDraft && (
+                <div className="px-8 pt-6">
+                    <ResumeDraftBanner
+                        timestampLabel={formatDraftTimestamp(pendingDraft.updatedAt)}
+                        summary={`${pendingDraft.count} ${pendingDraft.count === 1 ? "ítem" : "ítems"}`}
+                        onResume={handleResumeDraft}
+                        onDiscard={handleDiscardDraft}
+                        resuming={resuming}
+                        discarding={discarding}
+                    />
+                </div>
+            )}
 
             <div className="px-8 py-6">
 
@@ -803,7 +983,7 @@ export default function NuevaEntradaManualPage() {
                                 variant="secondary"
                                 size="md"
                                 onClick={() => router.back()}
-                                disabled={saving}
+                                disabled={saving || confirming}
                             >
                                 Cancelar
                             </BaseButton.Root>
@@ -811,14 +991,60 @@ export default function NuevaEntradaManualPage() {
                             variant="primary"
                             size="md"
                             leftIcon={<Save size={14} strokeWidth={2} />}
-                            onClick={handleSave}
-                            disabled={saving}
+                            onClick={handleOpenConfirm}
+                            disabled={saving || confirming}
                         >
-                            {saving ? "Registrando…" : "Registrar entrada"}
+                            Registrar entrada
                         </BaseButton.Root>
                     </div>
                 </div>
             </div>
+
+            {/* Confirm dialog — surfaces the active company before persisting */}
+            <ConfirmCompanyDialog
+                isOpen={showConfirm}
+                onClose={() => { if (!confirming) setShowConfirm(false); }}
+                onConfirm={handleConfirmEntry}
+                loading={confirming}
+                title="Confirmar entrada manual"
+                subtitle="Las existencias y el costo promedio se actualizan al confirmar. Los movimientos quedan registrados en el período del mes de la fecha."
+                summary={
+                    <>
+                        <SummaryRow label="Fecha" value={date} />
+                        <SummaryRow label="Período" value={date.slice(0, 7)} />
+                        <SummaryRow
+                            label="Ítems"
+                            value={String(items.filter((it) => it.productId && it.quantity > 0).length)}
+                        />
+                        <SummaryRow label="IVA" value={ivaMode === "agregado" ? "Agregado" : "Incluido"} />
+                        <div className="border-t border-border-light/60 pt-2.5 mt-1">
+                            <SummaryRow
+                                label="Total"
+                                value={`Bs. ${fmtN(totals.total)}`}
+                                emphasis
+                            />
+                            {dollarRate && totals.total > 0 && (
+                                <SummaryRow
+                                    label="≈ USD"
+                                    value={`$ ${fmtN(totals.total / dollarRate)}`}
+                                />
+                            )}
+                        </div>
+                    </>
+                }
+                warning="Esta operación crea movimientos definitivos en el kardex y no es reversible desde esta pantalla."
+                confirmLabel={confirming ? "Confirmando…" : "Sí, registrar entrada"}
+            />
         </div>
     );
+}
+
+function formatDraftTimestamp(iso: string): string {
+    if (!iso) return "fecha desconocida";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("es-VE", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
 }

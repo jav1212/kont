@@ -6,17 +6,26 @@
 // drive a single, reusable UI.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
+import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import {
     parseRateStr,
     roundRateValue,
 } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import { emptyLineAdjustments } from "@/src/modules/inventory/shared/totals";
-import type { Movement, MovementType } from "@/src/modules/inventory/backend/domain/movement";
+import { useDebouncedAutoSave } from "@/src/shared/frontend/hooks/use-debounced-autosave";
+import type { MovementType } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
+import type {
+    MovementDraftRow,
+    MovementDraftSaveInput,
+    MovementDraftKind,
+    MovementDraftDirection,
+} from "@/src/modules/inventory/backend/domain/movement-draft";
 
 import type {
     ContextFieldKind,
@@ -56,7 +65,16 @@ export interface ResolvedDirection {
 
 export function useOperationForm(config: OperationConfig) {
     const { companyId } = useCompany();
-    const { products, loadProducts, saveMovement } = useInventory();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const draftIdParam = searchParams.get("draft");
+    const {
+        products, loadProducts,
+        saveMovementDraft, confirmMovementDraft,
+        getLatestMovementDraft, getMovementDraft, discardMovementDraft,
+    } = useInventory();
+
+    const draftKind: MovementDraftKind = config.kind;
 
     const [date, setDate] = useState(getTodayIsoDate());
     const [ivaMode, setIvaMode] = useState<IvaMode>("agregado");
@@ -68,6 +86,15 @@ export function useOperationForm(config: OperationConfig) {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [savedPeriod, setSavedPeriod] = useState<string | null>(null);
+
+    // Draft + confirm dialog state
+    const [draftGroupId, setDraftGroupId] = useState<string | null>(null);
+    const [draftLoaded, setDraftLoaded]   = useState(false);
+    const [showConfirm, setShowConfirm]   = useState(false);
+    const [confirming, setConfirming]     = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<{ id: string; updatedAt: string; count: number } | null>(null);
+    const [resuming, setResuming]   = useState(false);
+    const [discarding, setDiscarding] = useState(false);
 
     const bcv = useBcvAutoFetch(date);
     const dollarRate = useMemo<number | null>(() => {
@@ -140,51 +167,206 @@ export function useOperationForm(config: OperationConfig) {
         return true;
     }
 
-    async function handleSave() {
-        if (!validate()) return;
-        setSaving(true);
+    // ── Resume-draft banner ─────────────────────────────────────────────────
+    useEffect(() => {
+        if (!companyId || draftIdParam || saved || draftGroupId || draftLoaded) {
+            setPendingDraft(null);
+            return;
+        }
+        let cancelled = false;
+        getLatestMovementDraft(companyId, draftKind).then((summary) => {
+            if (cancelled) return;
+            if (!summary) { setPendingDraft(null); return; }
+            setPendingDraft({
+                id:        summary.draftGroupId,
+                updatedAt: summary.updatedAt,
+                count:     summary.count,
+            });
+        });
+        return () => { cancelled = true; };
+    }, [companyId, draftIdParam, saved, draftGroupId, draftLoaded, draftKind, getLatestMovementDraft]);
+
+    // ── Load draft from `?draft=<id>` ───────────────────────────────────────
+    useEffect(() => {
+        if (!draftIdParam || !companyId || draftLoaded) return;
+        let cancelled = false;
+        getMovementDraft(companyId, draftIdParam).then((group) => {
+            if (cancelled || !group) return;
+            const meta = group.meta;
+            setDate(meta.fecha ?? getTodayIsoDate());
+            setIvaMode(meta.ivaMode ?? "agregado");
+            const ctx = (meta.context as Record<string, string> | undefined) ?? {};
+            setContext({
+                motivo:     ctx.motivo     ?? "",
+                referencia: ctx.referencia ?? "",
+                destino:    ctx.destino    ?? "",
+                notas:      ctx.notas      ?? "",
+            });
+            // Restore direction from the first item's tipo if it matches an option.
+            if (config.directionOptions && group.items.length > 0) {
+                const firstTipo = group.items[0].tipo;
+                const matchedDir = config.directionOptions.find((o) => o.value === firstTipo);
+                if (matchedDir) setSelectedDirection(matchedDir);
+            }
+            const restored: OperationItem[] = group.items.map((row) => {
+                const product = products.find((p) => p.id === row.productId);
+                const vatRate = product?.vatType === "general" ? 0.16 : 0;
+                return {
+                    productId:    row.productId,
+                    productName:  product?.name ?? "",
+                    quantity:     row.cantidad,
+                    currency:     row.moneda,
+                    currencyCost: row.costoMoneda ?? row.costoUnitario ?? 0,
+                    vatRate,
+                    adjustments: {
+                        descuentoTipo:  row.descuentoTipo  ?? null,
+                        descuentoValor: row.descuentoValor ?? 0,
+                        recargoTipo:    row.recargoTipo    ?? null,
+                        recargoValor:   row.recargoValor   ?? 0,
+                    },
+                };
+            });
+            if (restored.length > 0) setItems(restored);
+            setDraftGroupId(meta.draftGroupId);
+            setDraftLoaded(true);
+        });
+        return () => { cancelled = true; };
+    }, [draftIdParam, companyId, draftLoaded, getMovementDraft, products, config.directionOptions]);
+
+    // Build the draft rows the backend will persist.
+    const buildDraftMovements = useCallback((): MovementDraftRow[] => {
         const meta = config.buildMovementMeta({
             directionDefaultReference: resolvedDirection.defaultReference,
             context,
         });
-        let allOk = true;
-        for (const item of items) {
-            const c = computeOperationRowCosts({
-                item, dollarRate, ivaMode,
-                enableLineAdjustments: config.enableLineAdjustments,
+        return items
+            .filter((it) => it.productId && it.quantity > 0)
+            .map((item) => {
+                const c = computeOperationRowCosts({
+                    item, dollarRate, ivaMode,
+                    enableLineAdjustments: config.enableLineAdjustments,
+                });
+                return {
+                    productId:    item.productId,
+                    tipo:         resolvedDirection.type,
+                    fecha:        date,
+                    cantidad:     item.quantity,
+                    costoUnitario: c.unitCost,
+                    moneda:       item.currency,
+                    costoMoneda:  item.currencyCost,
+                    tasaDolar:    item.currency === "D" ? dollarRate : null,
+                    referencia:   meta.reference,
+                    notas:        meta.notes,
+                    ...(config.enableLineAdjustments && {
+                        descuentoTipo:  item.adjustments.descuentoTipo,
+                        descuentoValor: item.adjustments.descuentoValor,
+                        descuentoMonto: c.descuentoMonto,
+                        recargoTipo:    item.adjustments.recargoTipo,
+                        recargoValor:   item.adjustments.recargoValor,
+                        recargoMonto:   c.recargoMonto,
+                        baseIva:        c.baseIVA,
+                    }),
+                };
             });
-            const movement: Movement = {
-                companyId: companyId!,
-                productId: item.productId,
-                type: resolvedDirection.type,
-                date,
-                period: date.slice(0, 7),
-                quantity: item.quantity,
-                unitCost: c.unitCost,
-                totalCost: c.totalCost,
-                balanceQuantity: 0,
-                reference: meta.reference,
-                notes: meta.notes,
-                currency: item.currency,
-                currencyCost: c.baseCurrencyCost,
-                dollarRate: item.currency === "D" ? dollarRate : null,
-                ...(config.enableLineAdjustments && {
-                    descuentoTipo:  item.adjustments.descuentoTipo,
-                    descuentoValor: item.adjustments.descuentoValor,
-                    descuentoMonto: c.descuentoMonto,
-                    recargoTipo:    item.adjustments.recargoTipo,
-                    recargoValor:   item.adjustments.recargoValor,
-                    recargoMonto:   c.recargoMonto,
-                    baseIVA:        c.baseIVA,
-                }),
+    }, [items, dollarRate, ivaMode, date, context, resolvedDirection, config]);
+
+    // ── Auto-save ───────────────────────────────────────────────────────────
+    const direction: MovementDraftDirection = resolvedDirection.isOutbound ? "outbound" : "inbound";
+
+    const autosavePayload = useMemo(() => ({
+        date, ivaMode, dollarRate, direction,
+        kind: draftKind,
+        type: resolvedDirection.type,
+        context,
+        items: items.map((it) => ({
+            p: it.productId, q: it.quantity, cur: it.currency, cc: it.currencyCost, v: it.vatRate,
+            dt: it.adjustments.descuentoTipo, dv: it.adjustments.descuentoValor,
+            rt: it.adjustments.recargoTipo,   rv: it.adjustments.recargoValor,
+        })),
+    }), [date, ivaMode, dollarRate, direction, draftKind, resolvedDirection.type, context, items]);
+
+    const autosaveSave = useCallback(async () => {
+        if (!companyId) return null;
+        const payload: MovementDraftSaveInput = {
+            companyId,
+            draftGroupId: draftGroupId,
+            kind:      draftKind,
+            direction,
+            ivaMode,
+            context:   { ...context },
+            movements: buildDraftMovements(),
+        };
+        const saved = await saveMovementDraft(payload);
+        if (saved?.draftGroupId) setDraftGroupId(saved.draftGroupId);
+        return saved?.draftGroupId ?? null;
+    }, [companyId, draftGroupId, draftKind, direction, ivaMode, context, buildDraftMovements, saveMovementDraft]);
+
+    const autosave = useDebouncedAutoSave({
+        payload: autosavePayload,
+        save: autosaveSave,
+        isValid: () => Boolean(
+            companyId &&
+            items.some((it) => it.productId && it.quantity > 0) &&
+            !items.some((it) => it.currency === "D" && !dollarRate),
+        ),
+        enabled: !saved,
+        delayMs: 2000,
+    });
+
+    function handleOpenConfirm() {
+        if (!validate()) return;
+        setShowConfirm(true);
+    }
+
+    async function handleSave() {
+        // Public alias for legacy callers — opens the confirm dialog.
+        handleOpenConfirm();
+    }
+
+    async function handleConfirmOperation() {
+        setConfirming(true);
+        await autosave.flush();
+        let groupId = draftGroupId;
+        if (!groupId && companyId) {
+            const payload: MovementDraftSaveInput = {
+                companyId,
+                draftGroupId: null,
+                kind:      draftKind,
+                direction,
+                ivaMode,
+                context:   { ...context },
+                movements: buildDraftMovements(),
             };
-            const result = await saveMovement(movement);
-            if (!result) { allOk = false; break; }
+            const justSaved = await saveMovementDraft(payload);
+            if (!justSaved?.draftGroupId) { setConfirming(false); return; }
+            groupId = justSaved.draftGroupId;
+            setDraftGroupId(groupId);
         }
+        if (!groupId || !companyId) { setConfirming(false); return; }
+        const result = await confirmMovementDraft(companyId, groupId);
         setSaving(false);
-        if (allOk) {
+        setConfirming(false);
+        setShowConfirm(false);
+        if (result) {
             setSavedPeriod(date.slice(0, 7));
             setSaved(true);
+        }
+    }
+
+    function handleResumeDraft() {
+        if (!pendingDraft) return;
+        setResuming(true);
+        router.replace(`/inventory/operations/new?op=${config.kind}&draft=${pendingDraft.id}`);
+    }
+
+    async function handleDiscardDraft() {
+        if (!pendingDraft || !companyId) return;
+        setDiscarding(true);
+        const ok = await discardMovementDraft(companyId, pendingDraft.id);
+        setDiscarding(false);
+        if (ok) {
+            setPendingDraft(null);
+            notify.info("Borrador descartado");
         }
     }
 
@@ -223,5 +405,17 @@ export function useOperationForm(config: OperationConfig) {
         saving, saved, savedPeriod,
         totals, hasIva, costLabel,
         handleSave,
+
+        // Drafts + confirm dialog
+        autosave,
+        showConfirm, setShowConfirm,
+        confirming,
+        handleOpenConfirm,
+        handleConfirmOperation,
+        pendingDraft,
+        resuming,
+        discarding,
+        handleResumeDraft,
+        handleDiscardDraft,
     };
 }

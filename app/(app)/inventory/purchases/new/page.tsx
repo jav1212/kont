@@ -5,11 +5,17 @@
 // Architectural role: Page-level composition using inventory hook and shared domain types.
 // All identifiers use English domain types; JSX user-facing text remains in Spanish.
 
-import { useEffect, useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator, ChevronDown, Info } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
+import { AutoSaveStatusPill } from "@/src/shared/frontend/components/autosave-status-pill";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { ResumeDraftBanner } from "@/src/shared/frontend/components/resume-draft-banner";
+import { useDebouncedAutoSave } from "@/src/shared/frontend/hooks/use-debounced-autosave";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -242,6 +248,8 @@ function SupplierCombobox({ supplierId, suppliers, onChange, onRequestCreate }: 
 
 export default function NuevaFacturaPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const draftIdParam = searchParams.get("draft");
     const { companyId } = useCompany();
     const {
         products, loadProducts,
@@ -249,6 +257,10 @@ export default function NuevaFacturaPage() {
         loadPeriodCloses,
         currentDollarRate,
         savePurchaseInvoice, confirmPurchaseInvoice,
+        loadPurchaseInvoice, loadPurchaseInvoices,
+        deletePurchaseInvoice,
+        currentPurchaseInvoice,
+        purchaseInvoices,
         saveSupplier,
         saveProduct,
         departments, loadDepartments,
@@ -283,6 +295,13 @@ export default function NuevaFacturaPage() {
     const [savedId, setSavedId] = useState<string | null>(null);
     const [confirmed, setConfirmed] = useState(false);
 
+    // Confirmation dialog + resume-draft banner
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<PurchaseInvoice | null>(null);
+    const [resuming, setResuming] = useState(false);
+    const [discarding, setDiscarding] = useState(false);
+    const [draftLoaded, setDraftLoaded] = useState(false);
+
     // Quick-create state
     const [qcMode, setQcMode] = useState<'supplier' | 'product' | null>(null);
     const [qcSaving, setQcSaving] = useState(false);
@@ -303,8 +322,68 @@ export default function NuevaFacturaPage() {
             loadSuppliers(companyId);
             loadPeriodCloses(companyId);
             loadDepartments(companyId);
+            loadPurchaseInvoices(companyId);
         }
-    }, [companyId, loadProducts, loadSuppliers, loadPeriodCloses, loadDepartments]);
+    }, [companyId, loadProducts, loadSuppliers, loadPeriodCloses, loadDepartments, loadPurchaseInvoices]);
+
+    // ── Resume-draft banner ───────────────────────────────────────────────────
+    // Shows the most recent unconfirmed invoice for this company when the user
+    // didn't open the page with `?draft=<id>` already. Reset whenever the
+    // active company changes.
+    useEffect(() => {
+        if (draftIdParam || savedId || confirmed || draftLoaded) {
+            setPendingDraft(null);
+            return;
+        }
+        const drafts = purchaseInvoices
+            .filter((i) => i.status === "borrador" && i.companyId === companyId)
+            .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+        setPendingDraft(drafts[0] ?? null);
+    }, [purchaseInvoices, draftIdParam, savedId, confirmed, draftLoaded, companyId]);
+
+    // ── Load draft from `?draft=<id>` ─────────────────────────────────────────
+    useEffect(() => {
+        if (!draftIdParam || !companyId || draftLoaded) return;
+        loadPurchaseInvoice(draftIdParam);
+    }, [draftIdParam, companyId, draftLoaded, loadPurchaseInvoice]);
+
+    // Prefill the form once `currentPurchaseInvoice` matches the requested draft.
+    useEffect(() => {
+        if (!draftIdParam || draftLoaded) return;
+        const inv = currentPurchaseInvoice;
+        if (!inv || inv.id !== draftIdParam) return;
+
+        setSupplierId(inv.supplierId ?? "");
+        setInvoiceNumber(inv.invoiceNumber ?? "");
+        setControlNumber(inv.controlNumber ?? "");
+        setDate(inv.date ?? todayStr());
+        setPeriodo(inv.period ?? (inv.date ?? todayStr()).slice(0, 7));
+        setPeriodoManual(!!inv.periodoManual);
+        setNotes(inv.notes ?? "");
+        const loadedItems = (inv.items && inv.items.length > 0) ? inv.items : [emptyItem()];
+        setItems(loadedItems);
+        setHeaderAdj({
+            descuentoTipo:  inv.descuentoTipo  ?? null,
+            descuentoValor: inv.descuentoValor ?? 0,
+            recargoTipo:    inv.recargoTipo    ?? null,
+            recargoValor:   inv.recargoValor   ?? 0,
+        });
+        setRetencionIvaPct(inv.retencionIvaPct ?? 0);
+        if (inv.dollarRate != null) {
+            const decimals = inv.rateDecimals ?? rateDecimals;
+            applyDecimals(decimals);
+            setRateFromApi(inv.dollarRate, decimals);
+        }
+        const hasAdj =
+            (inv.descuentoTipo && (inv.descuentoValor ?? 0) > 0) ||
+            (inv.recargoTipo   && (inv.recargoValor   ?? 0) > 0) ||
+            (inv.retencionIvaPct ?? 0) > 0;
+        if (hasAdj) setShowHeaderAdj(true);
+
+        setSavedId(inv.id ?? null);
+        setDraftLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPurchaseInvoice, draftIdParam]);
 
     // Pre-fill rate from last period close when closes load (only if BCV hasn't filled it)
     useEffect(() => {
@@ -413,7 +492,7 @@ export default function NuevaFacturaPage() {
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
-    const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
+    const itemsForSave = useCallback((): PurchaseInvoiceItem[] => items.map((it, idx) => {
         const t = totals.items[idx];
         return {
             ...it,
@@ -421,6 +500,41 @@ export default function NuevaFacturaPage() {
             recargoMonto:   t.recargoMonto,
             baseIVA:        t.baseIVAFinal,
         };
+    }), [items, totals]);
+
+    // ── Auto-save ─────────────────────────────────────────────────────────────
+    // Snapshots only the user-editable shape so the watcher fires on real
+    // edits, not on every render. Keys are flattened to avoid deep diffs.
+    const autosavePayload = useMemo(() => ({
+        supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, notes,
+        rate: effectiveDollarRate, rateDecimals, retencionIvaPct,
+        headerAdj: {
+            d: headerAdj.descuentoTipo, dv: headerAdj.descuentoValor,
+            r: headerAdj.recargoTipo,   rv: headerAdj.recargoValor,
+        },
+        items: items.map((it) => ({
+            p: it.productId, q: it.quantity, c: it.unitCost, cc: it.currencyCost ?? null,
+            cur: it.currency, v: it.vatRate,
+            dt: it.descuentoTipo ?? null, dv: it.descuentoValor ?? 0,
+            rt: it.recargoTipo   ?? null, rv: it.recargoValor   ?? 0,
+        })),
+    }), [supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, notes,
+        effectiveDollarRate, rateDecimals, retencionIvaPct, headerAdj, items]);
+
+    const autosaveSave = useCallback(async () => {
+        const invoice = buildInvoice();
+        if (savedId) invoice.id = savedId;
+        const saved = await savePurchaseInvoice(invoice, itemsForSave());
+        if (saved?.id) setSavedId(saved.id);
+        return saved?.id ?? null;
+    }, [buildInvoice, itemsForSave, savedId, savePurchaseInvoice]);
+
+    const autosave = useDebouncedAutoSave({
+        payload: autosavePayload,
+        save: autosaveSave,
+        isValid: () => Boolean(supplierId && companyId && items.some((it) => it.productId && it.quantity > 0)),
+        enabled: !confirmed,
+        delayMs: 2000,
     });
 
     function validate(): boolean {
@@ -436,27 +550,63 @@ export default function NuevaFacturaPage() {
     async function handleSaveDraft() {
         if (!validate()) return;
         setSaving(true);
-        const invoice = buildInvoice();
-        if (savedId) invoice.id = savedId;
-        const saved = await savePurchaseInvoice(invoice, itemsForSave());
+        await autosave.flush();
         setSaving(false);
-        if (saved?.id) setSavedId(saved.id);
     }
 
-    async function handleConfirm() {
+    function handleOpenConfirm() {
         if (!validate()) return;
+        setShowConfirm(true);
+    }
+
+    async function handleConfirmInvoice() {
         setConfirming(true);
-        // First save draft (or update existing)
-        const invoice = buildInvoice();
-        if (savedId) invoice.id = savedId;
-        const saved = await savePurchaseInvoice(invoice, itemsForSave());
-        if (!saved) { setConfirming(false); return; }
-        // Then confirm
-        const confirmedInvoice = await confirmPurchaseInvoice(saved.id!);
+        // Flush any pending autosave before committing.
+        await autosave.flush();
+        const idToConfirm = savedId;
+        if (!idToConfirm) {
+            // Fallback: save synchronously if autosave didn't have a chance to run.
+            const invoice = buildInvoice();
+            const saved = await savePurchaseInvoice(invoice, itemsForSave());
+            if (!saved) { setConfirming(false); return; }
+            setSavedId(saved.id!);
+            const confirmedInvoice = await confirmPurchaseInvoice(saved.id!);
+            setConfirming(false);
+            setShowConfirm(false);
+            if (confirmedInvoice) {
+                setConfirmed(true);
+                setSavedId(confirmedInvoice.id!);
+            }
+            return;
+        }
+        const confirmedInvoice = await confirmPurchaseInvoice(idToConfirm);
         setConfirming(false);
+        setShowConfirm(false);
         if (confirmedInvoice) {
             setConfirmed(true);
             setSavedId(confirmedInvoice.id!);
+        }
+    }
+
+    // ── Resume / discard banner handlers ──────────────────────────────────────
+    function handleResumeDraft() {
+        if (!pendingDraft?.id) return;
+        setResuming(true);
+        router.replace(`/inventory/purchases/new?draft=${pendingDraft.id}`);
+        // The effect watching `draftIdParam` will load + prefill.
+        // `setResuming(false)` happens implicitly when the URL change re-mounts
+        // the page state. Leave the flag to prevent double-clicks during
+        // navigation.
+    }
+
+    async function handleDiscardDraft() {
+        if (!pendingDraft?.id) return;
+        setDiscarding(true);
+        const ok = await deletePurchaseInvoice(pendingDraft.id);
+        setDiscarding(false);
+        if (ok) {
+            setPendingDraft(null);
+            notify.info("Borrador descartado");
         }
     }
 
@@ -513,6 +663,7 @@ export default function NuevaFacturaPage() {
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <PageHeader title="Nueva Factura de Compra" subtitle="Registro completado">
+                    <CompanyContextPill />
                     <StatusChip tone="success">
                         <CheckCircle2 size={10} strokeWidth={2.5} />
                         Confirmada
@@ -618,9 +769,8 @@ export default function NuevaFacturaPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Nueva Factura de Compra" subtitle="Registrar compra a proveedor">
-                <StatusChip tone={savedId ? "warning" : "neutral"}>
-                    {savedId ? "Borrador · Guardado" : "Borrador · Nuevo"}
-                </StatusChip>
+                <CompanyContextPill />
+                <AutoSaveStatusPill state={autosave} />
                 <BaseButton.Root
                     variant="secondary"
                     size="md"
@@ -632,6 +782,19 @@ export default function NuevaFacturaPage() {
             </PageHeader>
 
             <div className="px-8 py-6">
+
+                {pendingDraft && (
+                    <div className="mb-4">
+                        <ResumeDraftBanner
+                            timestampLabel={formatDraftTimestamp(pendingDraft.updatedAt ?? pendingDraft.createdAt ?? "")}
+                            summary={pendingDraftSummary(pendingDraft)}
+                            onResume={handleResumeDraft}
+                            onDiscard={handleDiscardDraft}
+                            resuming={resuming}
+                            discarding={discarding}
+                        />
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     {/* Row 1 — Datos de la factura + Resumen */}
@@ -1147,24 +1310,17 @@ export default function NuevaFacturaPage() {
                             loading={saving}
                             disabled={confirming}
                         >
-                            {saving ? "Guardando…" : "Guardar borrador"}
+                            {saving ? "Guardando…" : "Guardar ahora"}
                         </BaseButton.Root>
                         <BaseButton.Root
                             variant="primary"
                             size="md"
                             leftIcon={<CheckCircle2 size={14} strokeWidth={2} />}
-                            onClick={handleConfirm}
-                            loading={confirming}
-                            disabled={saving}
+                            onClick={handleOpenConfirm}
+                            disabled={saving || confirming}
                         >
-                            {confirming ? "Confirmando…" : "Confirmar factura"}
+                            Confirmar factura
                         </BaseButton.Root>
-                        {savedId && !confirmed && (
-                            <span className="ml-auto flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-success)]">
-                                <CheckCircle2 size={12} strokeWidth={2} />
-                                Borrador guardado
-                            </span>
-                        )}
                     </div>
                 </div>
             </div>
@@ -1317,6 +1473,73 @@ export default function NuevaFacturaPage() {
                     </div>
                 </QuickModal>
             )}
+
+            {/* Confirm dialog — surfaces the active company before persisting */}
+            <ConfirmCompanyDialog
+                isOpen={showConfirm}
+                onClose={() => { if (!confirming) setShowConfirm(false); }}
+                onConfirm={handleConfirmInvoice}
+                loading={confirming}
+                title="Confirmar factura de compra"
+                subtitle={
+                    <>
+                        Al confirmar, las existencias y el costo promedio se actualizan inmediatamente y la factura entra en el período contable seleccionado. Esta acción no es reversible desde esta pantalla.
+                    </>
+                }
+                summary={
+                    <>
+                        <SummaryRow label="Nº Factura" value={invoiceNumber || "—"} />
+                        {controlNumber && <SummaryRow label="Nº Control" value={controlNumber} />}
+                        <SummaryRow label="Proveedor" value={supplierName ?? "—"} />
+                        <SummaryRow label="Período" value={(periodoManual && periodo) || date.slice(0, 7) || "—"} />
+                        <SummaryRow label="Ítems" value={String(itemCount)} />
+                        <div className="border-t border-border-light/60 pt-2.5 mt-1">
+                            <SummaryRow
+                                label="Total"
+                                value={`Bs. ${fmtN(total)}`}
+                                emphasis
+                            />
+                            {effectiveDollarRate && total > 0 && (
+                                <SummaryRow
+                                    label="≈ USD"
+                                    value={`$ ${fmtN(total / effectiveDollarRate)}`}
+                                />
+                            )}
+                            {hasRetencion && (
+                                <SummaryRow
+                                    label={`Total a pagar`}
+                                    value={`Bs. ${fmtN(totalAPagar)}`}
+                                />
+                            )}
+                        </div>
+                    </>
+                }
+                warning={hasRetencion
+                    ? `Se retendrá Bs. ${fmtN(retencionIva)} (${retencionIvaPct}% IVA) que se enteran a SENIAT.`
+                    : undefined}
+                confirmLabel={confirming ? "Confirmando…" : "Sí, confirmar"}
+            />
         </div>
     );
+}
+
+// ── Helpers para el banner de borrador ──────────────────────────────────────
+
+function formatDraftTimestamp(iso: string): string {
+    if (!iso) return "fecha desconocida";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("es-VE", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
+}
+
+function pendingDraftSummary(d: PurchaseInvoice): string {
+    const parts: string[] = [];
+    if (d.invoiceNumber) parts.push(`Nº ${d.invoiceNumber}`);
+    if (typeof d.total === "number" && d.total > 0) {
+        parts.push(`Bs. ${d.total.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : "Sin datos";
 }
