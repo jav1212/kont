@@ -13,6 +13,7 @@ import { SavePurchaseInvoiceUseCase }    from '../app/save-purchase-invoice.use-
 import { ConfirmPurchaseInvoiceUseCase }   from '../app/confirm-purchase-invoice.use-case';
 import { UnconfirmPurchaseInvoiceUseCase } from '../app/unconfirm-purchase-invoice.use-case';
 import { DeletePurchaseInvoiceUseCase }    from '../app/delete-purchase-invoice.use-case';
+import { MigratePurchaseInvoicesUseCase }  from '../app/migrate-purchase-invoices.use-case';
 
 export function getInventorySuppliersActions(userId: string) {
     const source       = new ServerSupabaseSource();
@@ -29,5 +30,6 @@ export function getInventorySuppliersActions(userId: string) {
         confirmPurchaseInvoice:   new ConfirmPurchaseInvoiceUseCase(invoiceRepo),
         unconfirmPurchaseInvoice: new UnconfirmPurchaseInvoiceUseCase(invoiceRepo),
         deletePurchaseInvoice:    new DeletePurchaseInvoiceUseCase(invoiceRepo),
+        migratePurchaseInvoices:  new MigratePurchaseInvoicesUseCase(invoiceRepo),
     };
 }

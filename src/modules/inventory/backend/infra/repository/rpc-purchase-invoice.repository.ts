@@ -13,6 +13,13 @@ import {
     ItemCurrency,
     AdjustmentKind,
 } from '../../domain/purchase-invoice';
+import {
+    MigratePurchaseInvoicesResult,
+    MigratedInvoice,
+    SkippedInvoice,
+    CreatedSupplierRef,
+    CreatedProductRef,
+} from '../../domain/migrate-purchase-invoices';
 
 // Infrastructure DTO — shape of the raw Postgres RPC row for invoice header.
 interface InvoiceRpcRow {
@@ -211,6 +218,26 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
         }
     }
 
+    async migrate(
+        invoiceIds:      string[],
+        targetCompanyId: string,
+        targetPeriod?:   string | null,
+    ): Promise<Result<MigratePurchaseInvoicesResult>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_inventario_factura_migrate', {
+                    p_user_id:            this.userId,
+                    p_factura_ids:        invoiceIds,
+                    p_empresa_destino_id: targetCompanyId,
+                    p_periodo_destino:    targetPeriod ?? null,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(mapMigrationResult(data));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Failed to migrate purchase invoices');
+        }
+    }
+
     private mapToDomain(row: InvoiceRpcRow): PurchaseInvoice {
         const items: PurchaseInvoiceItem[] | undefined = Array.isArray(row.items)
             ? row.items.map((i) => ({
@@ -268,4 +295,78 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             updatedAt:     row.updated_at ?? undefined,
         };
     }
+}
+
+// ── Migration result mapper ─────────────────────────────────────────────────
+
+interface MigrationRpcResponse {
+    migrated?:          MigrationRpcMigrated[];
+    skipped?:           MigrationRpcSkipped[];
+    created_suppliers?: MigrationRpcCreatedSupplier[];
+    created_products?:  MigrationRpcCreatedProduct[];
+}
+
+interface MigrationRpcMigrated {
+    id:                string;
+    source_empresa_id: string;
+    target_empresa_id: string;
+    was_confirmed:     boolean;
+    fecha:             string;
+    periodo:           string;
+    subtotal:          number | string;
+    iva_monto:         number | string;
+    total:             number | string;
+}
+
+interface MigrationRpcSkipped {
+    id:     string;
+    reason: string;
+}
+
+interface MigrationRpcCreatedSupplier {
+    id:     string;
+    rif:    string | null;
+    nombre: string;
+}
+
+interface MigrationRpcCreatedProduct {
+    id:     string;
+    codigo: string | null;
+    nombre: string;
+}
+
+function mapMigrationResult(data: unknown): MigratePurchaseInvoicesResult {
+    const r = (data ?? {}) as MigrationRpcResponse;
+
+    const migrated: MigratedInvoice[] = (r.migrated ?? []).map((m) => ({
+        id:               m.id,
+        sourceCompanyId:  m.source_empresa_id,
+        targetCompanyId:  m.target_empresa_id,
+        wasConfirmed:     Boolean(m.was_confirmed),
+        date:             m.fecha,
+        period:           m.periodo ?? '',
+        subtotal:         Number(m.subtotal ?? 0),
+        vatAmount:        Number(m.iva_monto ?? 0),
+        total:            Number(m.total ?? 0),
+    }));
+
+    const skipped: SkippedInvoice[] = (r.skipped ?? []).map((s) => ({
+        id:     s.id,
+        // RPC currently only emits 'already-in-target'; widen the type if more are added.
+        reason: 'already-in-target',
+    }));
+
+    const createdSuppliers: CreatedSupplierRef[] = (r.created_suppliers ?? []).map((s) => ({
+        id:     s.id,
+        rif:    s.rif ?? '',
+        nombre: s.nombre,
+    }));
+
+    const createdProducts: CreatedProductRef[] = (r.created_products ?? []).map((p) => ({
+        id:     p.id,
+        codigo: p.codigo ?? '',
+        nombre: p.nombre,
+    }));
+
+    return { migrated, skipped, createdSuppliers, createdProducts };
 }

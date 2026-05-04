@@ -2,6 +2,7 @@
 // Domain port — infrastructure must implement this interface.
 import { Result } from '@/src/core/domain/result';
 import { PurchaseInvoice, PurchaseInvoiceItem } from '../purchase-invoice';
+import { MigratePurchaseInvoicesResult } from '../migrate-purchase-invoices';
 
 export interface IPurchaseInvoiceRepository {
   findByCompany(companyId: string): Promise<Result<PurchaseInvoice[]>>;
@@ -10,4 +11,9 @@ export interface IPurchaseInvoiceRepository {
   confirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
   unconfirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
   delete(invoiceId: string): Promise<Result<void>>;
+  migrate(
+    invoiceIds:      string[],
+    targetCompanyId: string,
+    targetPeriod?:   string | null,
+  ): Promise<Result<MigratePurchaseInvoicesResult>>;
 }

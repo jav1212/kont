@@ -7,13 +7,14 @@
 // navigates and deletes.
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, ChevronLeft, Plus, Search, Trash2, X } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InvoiceStatus } from "@/src/modules/inventory/backend/domain/purchase-invoice";
+import { MigrateInvoicesDialog } from "./migrate-dialog";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,10 +65,11 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 ];
 
 export default function PurchaseInvoicesPage() {
-    const { companyId } = useCompany();
+    const { companyId, companies } = useCompany();
     const {
         purchaseInvoices, loadingPurchaseInvoices,
         loadPurchaseInvoices, deletePurchaseInvoice,
+        migratePurchaseInvoices,
     } = useInventory();
 
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -75,6 +77,8 @@ export default function PurchaseInvoicesPage() {
     const [deleting, setDeleting] = useState(false);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [migrateOpen, setMigrateOpen] = useState(false);
 
     useEffect(() => {
         if (companyId) loadPurchaseInvoices(companyId);
@@ -103,6 +107,40 @@ export default function PurchaseInvoicesPage() {
             .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     }, [purchaseInvoices, statusFilter, search]);
 
+    // Sólo los IDs visibles son seleccionables. La selección persiste a través
+    // de cambios de filtro (el usuario puede combinarlos), pero la barra de
+    // acciones cuenta sólo los que el usuario tiene marcados explícitamente.
+    const selectedInvoices = useMemo(
+        () => purchaseInvoices.filter((f) => f.id && selected.has(f.id)),
+        [purchaseInvoices, selected],
+    );
+    const visibleIds = useMemo(
+        () => filtered.map((f) => f.id).filter((id): id is string => Boolean(id)),
+        [filtered],
+    );
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+    const someVisibleSelected = visibleIds.some((id) => selected.has(id)) && !allVisibleSelected;
+
+    function toggleRow(id: string) {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    }
+
+    function toggleAllVisible() {
+        setSelected((prev) => {
+            const next = new Set(prev);
+            if (allVisibleSelected) {
+                visibleIds.forEach((id) => next.delete(id));
+            } else {
+                visibleIds.forEach((id) => next.add(id));
+            }
+            return next;
+        });
+    }
+
     function requestDelete(id: string, status: string) {
         if (status === "confirmada") {
             setConfirmDeleteConfirmada(id);
@@ -117,6 +155,23 @@ export default function PurchaseInvoicesPage() {
         setDeleting(false);
         setConfirmDelete(null);
         setConfirmDeleteConfirmada(null);
+    }
+
+    async function handleMigrate(targetCompanyId: string, targetPeriod: string | null) {
+        const ids = Array.from(selected);
+        if (ids.length === 0) return null;
+        const res = await migratePurchaseInvoices(ids, targetCompanyId, targetPeriod);
+        if (res) {
+            // Limpia las migradas/omitidas de la selección — quitarlas todas es
+            // suficiente porque ya no pertenecen a esta empresa.
+            setSelected((prev) => {
+                const next = new Set(prev);
+                res.migrated.forEach((m) => next.delete(m.id));
+                res.skipped.forEach((s) => next.delete(s.id));
+                return next;
+            });
+        }
+        return res;
     }
 
     return (
@@ -266,9 +321,19 @@ export default function PurchaseInvoicesPage() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1100px] text-[13px]">
+                            <table className="w-full min-w-[1140px] text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/50">
+                                        <th className="w-10 px-3 py-2.5">
+                                            <input
+                                                type="checkbox"
+                                                aria-label="Seleccionar todas las facturas visibles"
+                                                checked={allVisibleSelected}
+                                                ref={(el) => { if (el) el.indeterminate = someVisibleSelected; }}
+                                                onChange={toggleAllVisible}
+                                                className="size-3.5 align-middle accent-primary-500 cursor-pointer"
+                                            />
+                                        </th>
                                         {[
                                             { h: "Fecha", align: "left" },
                                             { h: "Período", align: "left" },
@@ -290,7 +355,24 @@ export default function PurchaseInvoicesPage() {
                                 </thead>
                                 <tbody>
                                 {filtered.map((f) => (
-                                    <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
+                                    <tr
+                                        key={f.id}
+                                        className={[
+                                            "border-b border-border-light/50 transition-colors",
+                                            f.id && selected.has(f.id)
+                                                ? "bg-primary-500/[0.06] hover:bg-primary-500/[0.10]"
+                                                : "hover:bg-surface-2",
+                                        ].join(" ")}
+                                    >
+                                        <td className="w-10 px-3 py-2.5">
+                                            <input
+                                                type="checkbox"
+                                                aria-label={`Seleccionar factura ${f.invoiceNumber || f.id}`}
+                                                checked={Boolean(f.id && selected.has(f.id))}
+                                                onChange={() => f.id && toggleRow(f.id)}
+                                                className="size-3.5 align-middle accent-primary-500 cursor-pointer"
+                                            />
+                                        </td>
                                         <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
                                         <td className="px-4 py-2.5 text-[var(--text-tertiary)] uppercase tracking-[0.08em] text-[11px] tabular-nums whitespace-nowrap">{fmtPeriod(f.period)}</td>
                                         <td className="px-4 py-2.5 text-foreground font-medium">{f.supplierName ?? "—"}</td>
@@ -349,6 +431,42 @@ export default function PurchaseInvoicesPage() {
                     )}
                 </div>
             </div>
+
+            {/* Barra flotante de acciones — visible cuando hay selección de la empresa actual */}
+            {selectedInvoices.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border-light bg-surface-1 shadow-lg">
+                    <span className="text-[11px] uppercase tracking-[0.12em] text-foreground tabular-nums">
+                        {selectedInvoices.length} {selectedInvoices.length === 1 ? "factura seleccionada" : "facturas seleccionadas"}
+                    </span>
+                    <span className="h-5 w-px bg-border-light" />
+                    <button
+                        type="button"
+                        onClick={() => setSelected(new Set())}
+                        className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <BaseButton.Root
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setMigrateOpen(true)}
+                        leftIcon={<ArrowRightLeft size={14} strokeWidth={2} />}
+                    >
+                        Migrar a otra empresa…
+                    </BaseButton.Root>
+                </div>
+            )}
+
+            {/* Dialog de migración — montado/desmontado para resetear estado */}
+            {migrateOpen && (
+                <MigrateInvoicesDialog
+                    invoices={selectedInvoices}
+                    companies={companies}
+                    sourceCompanyId={companyId ?? ""}
+                    onClose={() => setMigrateOpen(false)}
+                    onMigrate={handleMigrate}
+                />
+            )}
         </div>
     );
 }

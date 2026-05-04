@@ -11,6 +11,7 @@ import type { Movement } from '../../backend/domain/movement';
 import type { PeriodClose } from '../../backend/domain/period-close';
 import type { Supplier } from '../../backend/domain/supplier';
 import type { PurchaseInvoice, PurchaseInvoiceItem } from '../../backend/domain/purchase-invoice';
+import type { MigratePurchaseInvoicesResult } from '../../backend/domain/migrate-purchase-invoices';
 import type { Department } from '../../backend/domain/department';
 import type { PeriodReportRow } from '../../backend/domain/period-report';
 import type { PurchaseLedgerRow } from '../../backend/domain/purchase-ledger';
@@ -45,7 +46,7 @@ import type {
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 
-export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput };
+export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput, MigratePurchaseInvoicesResult };
 export type { MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary, MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult };
 
 // Centralised error reporter. Network failures go to console for debugging
@@ -75,6 +76,7 @@ export function useInventory() {
     const [loadingSuppliers, setLoadingSuppliers]             = useState(false);
     const [loadingPurchaseInvoices, setLoadingPurchaseInvoices] = useState(false);
     const [loadingPurchaseInvoice, setLoadingPurchaseInvoice] = useState(false);
+    const [migratingPurchaseInvoices, setMigratingPurchaseInvoices] = useState(false);
     const [loadingDepartments, setLoadingDepartments]         = useState(false);
     const [loadingPeriodReport, setLoadingPeriodReport]       = useState(false);
     const [loadingPurchaseLedger, setLoadingPurchaseLedger]   = useState(false);
@@ -437,6 +439,36 @@ export function useInventory() {
         }
     }, [refetchFullInvoice]);
 
+    const migratePurchaseInvoices = useCallback(async (
+        invoiceIds:      string[],
+        targetCompanyId: string,
+        targetPeriod?:   string | null,
+    ): Promise<MigratePurchaseInvoicesResult | null> => {
+        setMigratingPurchaseInvoices(true);
+        try {
+            const res  = await apiFetch('/api/inventory/purchases/migrate', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ invoiceIds, targetCompanyId, targetPeriod: targetPeriod ?? null }),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al migrar facturas'); return null; }
+            const data = json.data as MigratePurchaseInvoicesResult;
+            // La empresa actual ya no contiene las facturas migradas — quitarlas
+            // del estado local en lugar de re-fetchear toda la lista.
+            const migratedIds = new Set(data.migrated.map((m) => m.id));
+            if (migratedIds.size > 0) {
+                setPurchaseInvoices((prev) => prev.filter((f) => !migratedIds.has(f.id ?? '')));
+            }
+            return data;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        } finally {
+            setMigratingPurchaseInvoices(false);
+        }
+    }, []);
+
     // ── Departments ────────────────────────────────────────────────────────────
 
     const loadDepartments = useCallback(async (companyId: string) => {
@@ -785,14 +817,14 @@ export function useInventory() {
         // loading
         loadingProducts, loadingMovements,
         loadingPeriodCloses,
-        loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice,
+        loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice, migratingPurchaseInvoices,
         loadingDepartments, loadingPeriodReport, loadingPurchaseLedger, loadingIslrReport, loadingSalesLedger, loadingInventoryLedger, loadingBalanceReport,
         // actions
         loadProducts, saveProduct, deleteProduct,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,
         loadPeriodCloses, savePeriodClose,
         loadSuppliers, saveSupplier, deleteSupplier,
-        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, deletePurchaseInvoice,
+        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, deletePurchaseInvoice, migratePurchaseInvoices,
         loadDepartments, saveDepartment, deleteDepartment,
         loadPeriodReport,
         loadPurchaseLedger,
