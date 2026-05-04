@@ -44,8 +44,8 @@ const EXIT_TYPES = new Set([
 
 const QUICK_ACTIONS = [
     { href: "/inventory/products",    label: "Productos",        desc: "Catálogo y fichas de producto",    icon: Package        },
-    { href: "/inventory/purchases",   label: "Compras",          desc: "Facturas y entradas de mercancía", icon: ShoppingCart   },
-    { href: "/inventory/suppliers",   label: "Proveedores",      desc: "Directorio y retenciones",         icon: Truck          },
+    { href: "/purchases",   label: "Compras",          desc: "Facturas y entradas de mercancía", icon: ShoppingCart   },
+    { href: "/purchases/suppliers",   label: "Proveedores",      desc: "Directorio y retenciones",         icon: Truck          },
     { href: "/inventory/operations/new", label: "Operaciones",   desc: "Ajustes, devoluciones y autoconsumo", icon: ArrowRightLeft },
 ];
 
@@ -126,7 +126,7 @@ export default function InventoryDashboard() {
             <PageHeader title="Inventario" subtitle={`Tablero — ${periodo}`}>
                 <BaseButton.Root
                     as={Link}
-                    href="/inventory/purchases/new"
+                    href="/purchases/new"
                     variant="primary"
                     size="md"
                     leftIcon={<Plus size={16} strokeWidth={3} />}

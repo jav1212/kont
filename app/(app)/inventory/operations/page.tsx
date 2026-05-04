@@ -1,7 +1,7 @@
 "use client";
 
 // Page: Operaciones de Inventario (hub).
-// Mirrors /inventory/purchases (Entradas) and /inventory/sales (Salidas)
+// Mirrors /purchases (Entradas) and /inventory/sales (Salidas)
 // dashboards so the three "Operaciones" subnav entries share a consistent
 // landing surface: KPIs, period picker, type filter chips, and a list of
 // operations done in the period. The new-operation workspace lives at

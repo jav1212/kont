@@ -1,17 +1,17 @@
 'use client';
 
 // Frontend hook: useInventory
-// Provides all inventory state and async actions for the inventory module.
-// Architectural role: application-layer adapter between UI components and inventory API routes.
-// Errors are surfaced via notify.error (toast) — never returned to callers as a state slice.
+// Owns inventory-only state — products, movements, departments, period
+// closures, ledgers (purchase/sales/inventory), period and balance reports,
+// ISLR Art. 177 product report, stock adjustments, and movement drafts.
+//
+// Suppliers + purchase invoices + retention exports moved to the Purchases
+// module — see `src/modules/purchases/frontend/hooks/use-purchases.ts`.
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Product } from '../../backend/domain/product';
 import type { Movement } from '../../backend/domain/movement';
 import type { PeriodClose } from '../../backend/domain/period-close';
-import type { Supplier } from '../../backend/domain/supplier';
-import type { PurchaseInvoice, PurchaseInvoiceItem } from '../../backend/domain/purchase-invoice';
-import type { MigratePurchaseInvoicesResult } from '../../backend/domain/migrate-purchase-invoices';
 import type { Department } from '../../backend/domain/department';
 import type { PeriodReportRow } from '../../backend/domain/period-report';
 import type { PurchaseLedgerRow } from '../../backend/domain/purchase-ledger';
@@ -19,8 +19,6 @@ import type { IslrProduct } from '../../backend/domain/islr-report';
 import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
 import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
 import type { BalanceReportRow } from '../../backend/domain/balance-report';
-import type { IvaRetentionExportRow } from '../../backend/domain/iva-retention-export';
-import type { IslrRetentionExportRow, IslrRetentionExportPayload } from '../../backend/domain/islr-retentions-export';
 import type {
     MovementDraftSaveInput,
     MovementDraftSaveResult,
@@ -48,43 +46,39 @@ import type {
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 
-export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, IvaRetentionExportRow, IslrRetentionExportRow, IslrRetentionExportPayload, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput, MigratePurchaseInvoicesResult };
+export type {
+    Product, Movement, PeriodClose, Department,
+    PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow,
+    InventoryLedgerRow, BalanceReportRow,
+    GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine,
+    GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine,
+    AdjustmentBaseSource, AdjustmentMode,
+    SaveStockAdjustmentInput, SaveStockAdjustmentOutput,
+};
+export type {
+    MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary,
+    MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult,
+};
 
-export interface IvaRetentionExportPayload {
-    agentRif:     string;
-    periodYyyymm: string;
-    rows:         IvaRetentionExportRow[];
-}
-export type { MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary, MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult };
-
-// Centralised error reporter. Network failures go to console for debugging
-// but the user always sees a toast — never a silent failure.
 function reportError(fallback: string, e: unknown): void {
     notify.error(e instanceof Error ? e.message : fallback);
 }
 
 export function useInventory() {
-    const [products, setProducts]                       = useState<Product[]>([]);
-    const [movements, setMovements]                     = useState<Movement[]>([]);
-    const [periodCloses, setPeriodCloses]               = useState<PeriodClose[]>([]);
-    const [suppliers, setSuppliers]                     = useState<Supplier[]>([]);
-    const [purchaseInvoices, setPurchaseInvoices]       = useState<PurchaseInvoice[]>([]);
-    const [currentPurchaseInvoice, setCurrentPurchaseInvoice] = useState<PurchaseInvoice | null>(null);
-    const [departments, setDepartments]                 = useState<Department[]>([]);
-    const [periodReport, setPeriodReport]               = useState<PeriodReportRow[]>([]);
-    const [purchaseLedger, setPurchaseLedger]           = useState<PurchaseLedgerRow[]>([]);
-    const [islrReport, setIslrReport]                   = useState<IslrProduct[]>([]);
-    const [salesLedger, setSalesLedger]                 = useState<SalesLedgerRow[]>([]);
-    const [inventoryLedger, setInventoryLedger]         = useState<InventoryLedgerRow[]>([]);
-    const [balanceReport, setBalanceReport]             = useState<BalanceReportRow[]>([]);
+    const [products, setProducts]               = useState<Product[]>([]);
+    const [movements, setMovements]             = useState<Movement[]>([]);
+    const [periodCloses, setPeriodCloses]       = useState<PeriodClose[]>([]);
+    const [departments, setDepartments]         = useState<Department[]>([]);
+    const [periodReport, setPeriodReport]       = useState<PeriodReportRow[]>([]);
+    const [purchaseLedger, setPurchaseLedger]   = useState<PurchaseLedgerRow[]>([]);
+    const [islrReport, setIslrReport]           = useState<IslrProduct[]>([]);
+    const [salesLedger, setSalesLedger]         = useState<SalesLedgerRow[]>([]);
+    const [inventoryLedger, setInventoryLedger] = useState<InventoryLedgerRow[]>([]);
+    const [balanceReport, setBalanceReport]     = useState<BalanceReportRow[]>([]);
 
     const [loadingProducts, setLoadingProducts]               = useState(false);
     const [loadingMovements, setLoadingMovements]             = useState(false);
     const [loadingPeriodCloses, setLoadingPeriodCloses]       = useState(false);
-    const [loadingSuppliers, setLoadingSuppliers]             = useState(false);
-    const [loadingPurchaseInvoices, setLoadingPurchaseInvoices] = useState(false);
-    const [loadingPurchaseInvoice, setLoadingPurchaseInvoice] = useState(false);
-    const [migratingPurchaseInvoices, setMigratingPurchaseInvoices] = useState(false);
     const [loadingDepartments, setLoadingDepartments]         = useState(false);
     const [loadingPeriodReport, setLoadingPeriodReport]       = useState(false);
     const [loadingPurchaseLedger, setLoadingPurchaseLedger]   = useState(false);
@@ -244,7 +238,6 @@ export function useInventory() {
         }
     }, []);
 
-    // Derived: dollar rate from most recent period close that has one set.
     const currentDollarRate = useMemo(
         () => periodCloses.find((c) => c.dollarRate != null)?.dollarRate ?? null,
         [periodCloses],
@@ -269,211 +262,6 @@ export function useInventory() {
         } catch (e) {
             reportError('Error de red', e);
             return false;
-        }
-    }, []);
-
-    // ── Suppliers ──────────────────────────────────────────────────────────────
-
-    const loadSuppliers = useCallback(async (companyId: string) => {
-        setLoadingSuppliers(true);
-        try {
-            const res = await apiFetch(`/api/inventory/suppliers?companyId=${encodeURIComponent(companyId)}`);
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar proveedores'); return; }
-            setSuppliers(json.data ?? []);
-        } catch (e) {
-            reportError('Error de red', e);
-        } finally {
-            setLoadingSuppliers(false);
-        }
-    }, []);
-
-    const saveSupplier = useCallback(async (supplier: Supplier): Promise<Supplier | null> => {
-        try {
-            const res = await apiFetch('/api/inventory/suppliers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(supplier),
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al guardar proveedor'); return null; }
-            const saved: Supplier = json.data;
-            setSuppliers((prev) => {
-                const idx = prev.findIndex((s) => s.id === saved.id);
-                return idx >= 0
-                    ? prev.map((s) => (s.id === saved.id ? saved : s))
-                    : [...prev, saved];
-            });
-            return saved;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        }
-    }, []);
-
-    const deleteSupplier = useCallback(async (id: string): Promise<boolean> => {
-        try {
-            const res = await apiFetch(`/api/inventory/suppliers/${id}`, { method: 'DELETE' });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar proveedor'); return false; }
-            setSuppliers((prev) => prev.filter((s) => s.id !== id));
-            return true;
-        } catch (e) {
-            reportError('Error de red', e);
-            return false;
-        }
-    }, []);
-
-    // ── Purchase Invoices ──────────────────────────────────────────────────────
-
-    const loadPurchaseInvoices = useCallback(async (companyId: string) => {
-        setLoadingPurchaseInvoices(true);
-        try {
-            const res = await apiFetch(`/api/inventory/purchases?companyId=${encodeURIComponent(companyId)}`);
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar facturas'); return; }
-            setPurchaseInvoices(json.data ?? []);
-        } catch (e) {
-            reportError('Error de red', e);
-        } finally {
-            setLoadingPurchaseInvoices(false);
-        }
-    }, []);
-
-    const loadPurchaseInvoice = useCallback(async (invoiceId: string) => {
-        setLoadingPurchaseInvoice(true);
-        try {
-            const res = await apiFetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar factura'); return; }
-            setCurrentPurchaseInvoice(json.data ?? null);
-        } catch (e) {
-            reportError('Error de red', e);
-        } finally {
-            setLoadingPurchaseInvoice(false);
-        }
-    }, []);
-
-    const savePurchaseInvoice = useCallback(async (
-        invoice: PurchaseInvoice,
-        items: PurchaseInvoiceItem[],
-    ): Promise<PurchaseInvoice | null> => {
-        try {
-            const url = invoice.id
-                ? `/api/inventory/purchases/${invoice.id}`
-                : '/api/inventory/purchases';
-            const res = await apiFetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invoice, items }),
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al guardar factura'); return null; }
-            const saved: PurchaseInvoice = json.data;
-            setPurchaseInvoices((prev) => {
-                const idx = prev.findIndex((f) => f.id === saved.id);
-                return idx >= 0
-                    ? prev.map((f) => (f.id === saved.id ? saved : f))
-                    : [saved, ...prev];
-            });
-            setCurrentPurchaseInvoice(saved);
-            return saved;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        }
-    }, []);
-
-    const deletePurchaseInvoice = useCallback(async (invoiceId: string): Promise<boolean> => {
-        try {
-            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}`, { method: 'DELETE' });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al eliminar factura'); return false; }
-            setPurchaseInvoices((prev) => prev.filter((f) => f.id !== invoiceId));
-            return true;
-        } catch (e) {
-            reportError('Error de red', e);
-            return false;
-        }
-    }, []);
-
-    // After (un)confirming, the RPC returns only the header (row_to_json of
-    // facturas_compra). To keep `currentPurchaseInvoice.items` populated for
-    // the detail page's breakdown, refetch the full invoice with items.
-    const refetchFullInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
-        try {
-            const res = await apiFetch(`/api/inventory/purchases/${encodeURIComponent(invoiceId)}`);
-            const json = await res.json();
-            if (!res.ok) return null;
-            return json.data ?? null;
-        } catch {
-            return null;
-        }
-    }, []);
-
-    const confirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
-        try {
-            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/confirm`, {
-                method: 'POST',
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al confirmar factura'); return null; }
-            const headerOnly: PurchaseInvoice = json.data;
-            const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
-            setPurchaseInvoices((prev) => prev.map((f) => (f.id === full.id ? full : f)));
-            setCurrentPurchaseInvoice(full);
-            return full;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        }
-    }, [refetchFullInvoice]);
-
-    const unconfirmPurchaseInvoice = useCallback(async (invoiceId: string): Promise<PurchaseInvoice | null> => {
-        try {
-            const res = await apiFetch(`/api/inventory/purchases/${invoiceId}/unconfirm`, {
-                method: 'POST',
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al desconfirmar factura'); return null; }
-            const headerOnly: PurchaseInvoice = json.data;
-            const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
-            setPurchaseInvoices((prev) => prev.map((f) => (f.id === full.id ? full : f)));
-            setCurrentPurchaseInvoice(full);
-            return full;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        }
-    }, [refetchFullInvoice]);
-
-    const migratePurchaseInvoices = useCallback(async (
-        invoiceIds:      string[],
-        targetCompanyId: string,
-        targetPeriod?:   string | null,
-    ): Promise<MigratePurchaseInvoicesResult | null> => {
-        setMigratingPurchaseInvoices(true);
-        try {
-            const res  = await apiFetch('/api/inventory/purchases/migrate', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ invoiceIds, targetCompanyId, targetPeriod: targetPeriod ?? null }),
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al migrar facturas'); return null; }
-            const data = json.data as MigratePurchaseInvoicesResult;
-            // La empresa actual ya no contiene las facturas migradas — quitarlas
-            // del estado local en lugar de re-fetchear toda la lista.
-            const migratedIds = new Set(data.migrated.map((m) => m.id));
-            if (migratedIds.size > 0) {
-                setPurchaseInvoices((prev) => prev.filter((f) => !migratedIds.has(f.id ?? '')));
-            }
-            return data;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        } finally {
-            setMigratingPurchaseInvoices(false);
         }
     }, []);
 
@@ -547,7 +335,7 @@ export function useInventory() {
         }
     }, []);
 
-    // ── ISLR Report ────────────────────────────────────────────────────────────
+    // ── ISLR Report (Art. 177) ────────────────────────────────────────────────
 
     const loadIslrReport = useCallback(async (companyId: string, period: string) => {
         setLoadingIslrReport(true);
@@ -565,7 +353,7 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Sales Ledger ───────────────────────────────────────────────────────────
+    // ── Sales Ledger + outbound ────────────────────────────────────────────────
 
     const loadSalesLedger = useCallback(async (companyId: string, period: string) => {
         setLoadingSalesLedger(true);
@@ -629,7 +417,7 @@ export function useInventory() {
         }
     }, []);
 
-    // ── Stock Adjustments (no movement) ────────────────────────────────────────
+    // ── Stock Adjustments ──────────────────────────────────────────────────────
 
     const generateStockAdjustment = useCallback(async (
         input: GenerateStockAdjustmentInput,
@@ -661,7 +449,6 @@ export function useInventory() {
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al guardar ajuste'); return null; }
             const data = json.data as SaveStockAdjustmentOutput;
-            // Refrescar productos con el nuevo currentStock — averageCost no cambia
             if (data.updated.length > 0) {
                 const byId = new Map(data.updated.map((p) => [p.id, p]));
                 setProducts((prev) =>
@@ -708,48 +495,6 @@ export function useInventory() {
             reportError('Error de red', e);
         } finally {
             setLoadingBalanceReport(false);
-        }
-    }, []);
-
-    // ── IVA Retention TXT Export (SENIAT) ──────────────────────────────────────
-
-    const fetchIvaRetentionExport = useCallback(async (
-        companyId: string,
-        period:    string,
-    ): Promise<IvaRetentionExportPayload | null> => {
-        try {
-            const res = await apiFetch(
-                `/api/inventory/iva-retention-export?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
-            );
-            const json = await res.json();
-            if (!res.ok) {
-                notify.error(json.error ?? 'Error al consultar retenciones IVA');
-                return null;
-            }
-            return (json.data ?? null) as IvaRetentionExportPayload | null;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
-        }
-    }, []);
-
-    const fetchIslrRetentionsExport = useCallback(async (
-        companyId: string,
-        period:    string,
-    ): Promise<IslrRetentionExportPayload | null> => {
-        try {
-            const res = await apiFetch(
-                `/api/inventory/islr-retentions-export?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
-            );
-            const json = await res.json();
-            if (!res.ok) {
-                notify.error(json.error ?? 'Error al consultar retenciones ISLR');
-                return null;
-            }
-            return (json.data ?? null) as IslrRetentionExportPayload | null;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
         }
     }, []);
 
@@ -861,20 +606,19 @@ export function useInventory() {
     return {
         // state
         products, movements, periodCloses,
-        suppliers, purchaseInvoices, currentPurchaseInvoice,
-        departments, periodReport, purchaseLedger, islrReport, salesLedger, inventoryLedger, balanceReport,
+        departments, periodReport, purchaseLedger, islrReport, salesLedger,
+        inventoryLedger, balanceReport,
         currentDollarRate,
         // loading
         loadingProducts, loadingMovements,
         loadingPeriodCloses,
-        loadingSuppliers, loadingPurchaseInvoices, loadingPurchaseInvoice, migratingPurchaseInvoices,
-        loadingDepartments, loadingPeriodReport, loadingPurchaseLedger, loadingIslrReport, loadingSalesLedger, loadingInventoryLedger, loadingBalanceReport,
+        loadingDepartments, loadingPeriodReport, loadingPurchaseLedger,
+        loadingIslrReport, loadingSalesLedger, loadingInventoryLedger,
+        loadingBalanceReport,
         // actions
         loadProducts, saveProduct, deleteProduct,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,
         loadPeriodCloses, savePeriodClose,
-        loadSuppliers, saveSupplier, deleteSupplier,
-        loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice, deletePurchaseInvoice, migratePurchaseInvoices,
         loadDepartments, saveDepartment, deleteDepartment,
         loadPeriodReport,
         loadPurchaseLedger,
@@ -883,9 +627,8 @@ export function useInventory() {
         generateStockAdjustment, saveStockAdjustment,
         loadInventoryLedger,
         loadBalanceReport,
-        fetchIvaRetentionExport,
-        fetchIslrRetentionsExport,
         // movement drafts
-        saveMovementDraft, confirmMovementDraft, getLatestMovementDraft, getMovementDraft, discardMovementDraft,
+        saveMovementDraft, confirmMovementDraft, getLatestMovementDraft,
+        getMovementDraft, discardMovementDraft,
     };
 }

@@ -489,7 +489,7 @@ export default function LibroEntradasPage() {
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
-                    href="/inventory/purchases/new"
+                    href="/purchases/new"
                     variant="primary"
                     size="sm"
                     leftIcon={<Plus size={14} strokeWidth={2} />}
@@ -585,7 +585,7 @@ export default function LibroEntradasPage() {
                             <div className="flex items-center gap-2 mt-2">
                                 <BaseButton.Root
                                     as={Link}
-                                    href="/inventory/purchases/new"
+                                    href="/purchases/new"
                                     variant="primary"
                                     size="sm"
                                     leftIcon={<Plus size={13} strokeWidth={2} />}
@@ -730,7 +730,7 @@ export default function LibroEntradasPage() {
                         {" "}junto con salidas y operaciones.
                     </span>
                     <Link
-                        href="/inventory/purchases"
+                        href="/purchases"
                         className="font-mono uppercase tracking-[0.12em] text-[11px] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                     >
                         Ver facturas de compra →

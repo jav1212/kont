@@ -1,7 +1,7 @@
 "use client";
 
 // Page: Salidas de Inventario (hub).
-// Mirrors /inventory/purchases (Entradas) tablero so the user lands on a real
+// Mirrors /purchases (Entradas) tablero so the user lands on a real
 // dashboard with KPIs, period picker, and filterable list of outbound movements
 // instead of a placeholder. Outbound = movement.type ∈ { salida, autoconsumo,
 // devolucion_entrada }. Editing date/reference/notes happens inline (modal);

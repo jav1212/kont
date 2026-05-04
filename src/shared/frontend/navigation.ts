@@ -33,9 +33,9 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     inventory: [
         { href: "/inventory",                  label: "Tablero",              group: null          },
         { href: "/inventory/products",         label: "Productos",            group: "Catálogos"   },
-        { href: "/inventory/suppliers",        label: "Proveedores",          group: "Catálogos"   },
+        { href: "/purchases/suppliers",        label: "Proveedores",          group: "Catálogos"   },
         { href: "/inventory/departments",      label: "Departamentos",        group: "Catálogos"   },
-        { href: "/inventory/purchases",        label: "Entradas",             group: "Operaciones" },
+        { href: "/purchases",        label: "Entradas",             group: "Operaciones" },
         { href: "/inventory/sales",            label: "Salidas",              group: "Operaciones" },
         { href: "/inventory/operations",       label: "Operaciones",          group: "Operaciones" },
         { href: "/inventory/purchase-ledger",  label: "Libro de Entradas",    group: "Reportes"    },

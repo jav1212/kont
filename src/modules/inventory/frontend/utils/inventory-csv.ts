@@ -5,7 +5,7 @@
 
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import type { Department } from "@/src/modules/inventory/backend/domain/department";
-import type { Supplier } from "@/src/modules/inventory/backend/domain/supplier";
+import type { Supplier } from "@/src/modules/purchases/backend/domain/supplier";
 
 // ── shared helpers ─────────────────────────────────────────────────────────────
 
