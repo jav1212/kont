@@ -2,6 +2,7 @@ export const APP_MODULES = [
     { id: "payroll",     label: "Nómina",        href: "/payroll/tablero",        desktopOnly: false, paid: true              },
     { id: "employees",   label: "Empleados",     href: "/payroll/employees",      desktopOnly: false, paid: false, parentId: "payroll" },
     { id: "purchases",   label: "Compras",       href: "/purchases",              desktopOnly: true,  paid: true              },
+    { id: "sales",       label: "Ventas",        href: "/sales",                  desktopOnly: true,  paid: true              },
     { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: true,  paid: true              },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },
     { id: "tools",       label: "Herramientas",  href: "/tools",                  desktopOnly: false, paid: false             },
@@ -35,6 +36,12 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/purchases",                 label: "Tablero",             group: null          },
         { href: "/purchases/suppliers",       label: "Proveedores",         group: "Catálogos"   },
         { href: "/purchases/archive",         label: "Archivo de facturas", group: "Operaciones" },
+    ],
+    sales: [
+        { href: "/sales",                  label: "Tablero",             group: null          },
+        { href: "/sales/customers",        label: "Clientes",            group: "Catálogos"   },
+        { href: "/sales/archive",          label: "Archivo de facturas", group: "Operaciones" },
+        { href: "/sales/igtf-fortnightly", label: "IGTF Quincenal",      group: "Reportes"    },
     ],
     inventory: [
         { href: "/inventory",                  label: "Tablero",              group: null          },

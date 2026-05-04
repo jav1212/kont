@@ -67,6 +67,7 @@ function buildModuleSubtitle(moduleId: string | null, planName?: string | null):
     switch (moduleId) {
         case "payroll":     return currentQuincenaLabel();
         case "purchases":   return "Facturas · Proveedores · Retenciones";
+        case "sales":       return "Facturas · Clientes · IGTF";
         case "inventory":   return "Productos · Movimientos";
         case "accounting":  return "Libro diario";
         case "companies":   return "Directorio";
@@ -124,7 +125,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     // mismas tablas (inventario_facturas_compra, inventario_proveedores). Si
     // más adelante se separa la suscripción se reemplaza por su propio slug.
     const paidAccess: Record<string, boolean> = {
-        payroll: hasPayroll, inventory: hasInventory, purchases: hasInventory, accounting: hasAccounting,
+        payroll: hasPayroll,
+        inventory: hasInventory,
+        purchases: hasInventory,
+        sales:     hasInventory,   // shares plan with inventory until billed separately
+        accounting: hasAccounting,
     };
 
     const selectableModules = useMemo(() =>
