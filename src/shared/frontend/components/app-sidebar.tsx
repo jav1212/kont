@@ -34,6 +34,7 @@ import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
 import { SidebarModuleSelector } from "@/src/shared/frontend/components/sidebar-module-selector";
 import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
+import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-update-banner";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
@@ -305,19 +306,23 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 
             {/* ── Utility shortcuts (Config / Help) ─────────────────── */}
             {!isCollapsed && (
-                <div className="px-4 pt-2 pb-1 border-t border-sidebar-border flex flex-col gap-0.5">
-                    <UtilityShortcut
-                        href={buildContextHref("/settings/members")}
-                        active={pathname.startsWith("/settings")}
-                        label="Configuración"
-                        icon={<GearIcon />}
-                    />
-                    <UtilityShortcut
-                        href={buildContextHref("/help")}
-                        active={pathname.startsWith("/help")}
-                        label="Ayuda"
-                        icon={<HelpIcon />}
-                    />
+                <div className="px-4 pt-2 pb-1 border-t border-sidebar-border flex flex-col gap-2">
+                    {/* Banner sólo visible cuando el SW detecta una versión nueva */}
+                    <SidebarUpdateBanner />
+                    <div className="flex flex-col gap-0.5">
+                        <UtilityShortcut
+                            href={buildContextHref("/settings/members")}
+                            active={pathname.startsWith("/settings")}
+                            label="Configuración"
+                            icon={<GearIcon />}
+                        />
+                        <UtilityShortcut
+                            href={buildContextHref("/help")}
+                            active={pathname.startsWith("/help")}
+                            label="Ayuda"
+                            icon={<HelpIcon />}
+                        />
+                    </div>
                 </div>
             )}
 
@@ -329,6 +334,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                     isCollapsed ? "px-2 flex flex-col items-center gap-2" : "px-4",
                 ].join(" ")}
             >
+                {isCollapsed && <SidebarUpdateBanner collapsed />}
                 <AccountCard
                     email={userEmail}
                     name={profile?.name}

@@ -20,7 +20,11 @@ const serwist = new Serwist({
     // Precache all Next.js static assets (JS, CSS, HTML shell)
     precacheEntries: self.__SW_MANIFEST,
 
-    skipWaiting: true,
+    // skipWaiting=false: el SW nuevo queda en estado `waiting` hasta que la
+    // página explícitamente le mande {type:"SKIP_WAITING"} (al confirmar el
+    // banner "Nueva versión" en el sidebar). Evita reemplazar el shell mientras
+    // la usuaria está en medio de un formulario.
+    skipWaiting: false,
     clientsClaim: true,
     navigationPreload: true,
 
@@ -83,3 +87,13 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// ── Update prompt — handshake con el sidebar banner ──────────────────────────
+// El cliente (useServiceWorkerUpdate) envía {type:"SKIP_WAITING"} cuando la
+// usuaria confirma "Actualizar ahora". Activamos el SW nuevo; el evento
+// `controllerchange` del lado cliente dispara el reload.
+self.addEventListener("message", (event) => {
+    if (event.data?.type === "SKIP_WAITING") {
+        void self.skipWaiting();
+    }
+});
