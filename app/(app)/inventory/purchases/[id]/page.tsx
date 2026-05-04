@@ -17,6 +17,7 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
 import { generateComprobanteIvaPdf } from "@/src/modules/inventory/frontend/utils/comprobante-iva-pdf";
+import { generateComprobanteIslrPdf } from "@/src/modules/inventory/frontend/utils/comprobante-islr-pdf";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 import {
     computeInvoiceTotals,
@@ -369,6 +370,56 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setJustConfirmed(false);
         await unconfirmPurchaseInvoice(currentPurchaseInvoice.id);
         setUnconfirming(false);
+    }
+
+    async function handleDownloadComprobanteIslr() {
+        const inv = currentPurchaseInvoice;
+        if (!inv || !company) return;
+        if (!inv.comprobanteIslrNumero) {
+            notify.error("Esta factura no tiene un N° de comprobante ISLR asignado.");
+            return;
+        }
+        if (!inv.islrConcepto) {
+            notify.error("Falta el concepto ISLR — no se puede emitir el comprobante.");
+            return;
+        }
+        const supplier = suppliers.find((s) => s.id === inv.supplierId);
+        if (!supplier) { notify.error("No se pudo cargar el proveedor."); return; }
+        if (!company.rif)  { notify.error("La empresa no tiene RIF configurado."); return; }
+        if (!supplier.rif) { notify.error("El proveedor no tiene RIF — requerido por SENIAT."); return; }
+
+        try {
+            await generateComprobanteIslrPdf({
+                agent: {
+                    name:    company.name,
+                    rif:     company.rif,
+                    address: company.address,
+                },
+                supplier: {
+                    name:    supplier.name,
+                    rif:     supplier.rif,
+                    address: supplier.address,
+                },
+                operation: {
+                    invoiceNumber: inv.invoiceNumber,
+                    controlNumber: inv.controlNumber ?? "",
+                    invoiceDate:   fmtDate(inv.date),
+                    period:        inv.period,
+                },
+                retention: {
+                    conceptCode:      inv.islrConcepto,
+                    operationAmount:  inv.islrBaseRetencion ?? 0,
+                    percentage:       inv.islrPorcentaje ?? 0,
+                    sustraendo:       inv.islrSustraendo ?? 0,
+                    withheldAmount:   inv.islrMonto ?? 0,
+                    unidadTributaria: inv.islrUnidadTributaria,
+                },
+                voucherNumber: inv.comprobanteIslrNumero,
+            });
+            notify.success("Comprobante de retención ISLR generado.");
+        } catch (e) {
+            notify.error(e instanceof Error ? e.message : "Error al generar el comprobante ISLR.");
+        }
     }
 
     async function handleDownloadComprobante() {
@@ -1066,6 +1117,17 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                         title={`Descargar comprobante Nº ${invoice.comprobanteRetencionIvaNumero} para entregar al proveedor`}
                                     >
                                         Comprobante Ret. IVA
+                                    </BaseButton.Root>
+                                )}
+                                {invoice.comprobanteIslrNumero && (
+                                    <BaseButton.Root
+                                        variant="primary"
+                                        size="md"
+                                        leftIcon={<Receipt size={14} strokeWidth={2} />}
+                                        onClick={handleDownloadComprobanteIslr}
+                                        title={`Descargar comprobante ISLR Nº ${invoice.comprobanteIslrNumero} para entregar al proveedor`}
+                                    >
+                                        Comprobante Ret. ISLR
                                     </BaseButton.Root>
                                 )}
                                 <BaseButton.Root
