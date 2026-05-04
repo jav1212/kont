@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePwaInstall } from "@/src/shared/frontend/hooks/use-pwa-install";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Platform = "android" | "ios" | null;
-
-interface BeforeInstallPromptEvent extends Event {
-    prompt: () => Promise<void>;
-    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -96,42 +92,21 @@ export function PWAInstallButton({ navItemBase, navItemIdle }: {
     navItemIdle: string;
 }) {
     const [platform, setPlatform]       = useState<Platform>(null);
-    const [deferredPrompt, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
     const [popoverOpen, setPopoverOpen] = useState(false);
-    const [installed, setInstalled]     = useState(false);
+
+    const { canPromptInstall, isInstalled, promptInstall } = usePwaInstall();
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- window.navigator is browser-only
         setPlatform(detectPlatform());
-
-        function handlePrompt(e: Event) {
-            e.preventDefault();
-            setDeferred(e as BeforeInstallPromptEvent);
-        }
-        function handleInstalled() {
-            setInstalled(true);
-            setDeferred(null);
-        }
-
-        window.addEventListener("beforeinstallprompt", handlePrompt);
-        window.addEventListener("appinstalled", handleInstalled);
-        return () => {
-            window.removeEventListener("beforeinstallprompt", handlePrompt);
-            window.removeEventListener("appinstalled", handleInstalled);
-        };
     }, []);
 
-    if (installed || platform === null) return null;
+    if (isInstalled || platform === null) return null;
 
     async function handleClick() {
-        if (deferredPrompt) {
+        if (canPromptInstall) {
             // Native Android prompt available — use it directly
-            await deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === "accepted") {
-                setInstalled(true);
-                setDeferred(null);
-            }
+            await promptInstall();
         } else {
             // No native prompt (iOS, or Android without prompt yet) — show manual instructions
             setPopoverOpen((v) => !v);

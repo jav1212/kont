@@ -10,6 +10,7 @@ import {
     CreditCard,
     Gift,
     Palette,
+    Download,
     type LucideIcon,
 } from "lucide-react";
 
@@ -37,9 +38,10 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     {
         label: "Cuenta",
         items: [
-            { href: "/settings/billing",    label: "Facturación", subtitle: "Plan activo, pagos y solicitudes de suscripción.", icon: CreditCard },
-            { href: "/settings/referrals",  label: "Referidos",   subtitle: "Invita a otros profesionales y gana crédito.",     icon: Gift       },
-            { href: "/settings/apariencia", label: "Apariencia",  subtitle: "Tema y preferencias visuales (este navegador).",   icon: Palette    },
+            { href: "/settings/billing",       label: "Facturación", subtitle: "Plan activo, pagos y solicitudes de suscripción.", icon: CreditCard },
+            { href: "/settings/referrals",     label: "Referidos",   subtitle: "Invita a otros profesionales y gana crédito.",     icon: Gift       },
+            { href: "/settings/apariencia",    label: "Apariencia",  subtitle: "Tema y preferencias visuales (este navegador).",   icon: Palette    },
+            { href: "/settings/instalar-app",  label: "Instalar app", subtitle: "Cómo agregar Konta a Windows, macOS, Android o iOS.", icon: Download },
         ],
     },
 ];
