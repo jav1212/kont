@@ -12,6 +12,7 @@ export type ObligationCategory =
     | "IGTF"
     | "LOCTI"
     | "RETENCIONES_ISLR_TERCEROS"
+    | "PENSIONES"
     | "OTROS";
 
 export type Periodicity = "quincenal" | "mensual" | "anual" | "unica";

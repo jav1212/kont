@@ -14,6 +14,7 @@ import {
     FlaskConical,
     Users,
     MoreHorizontal,
+    HandHeart,
 } from "lucide-react";
 
 export interface CategoryStyle {
@@ -83,6 +84,14 @@ export const CATEGORY_STYLES: Record<ObligationCategory, CategoryStyle> = {
         label: "Ret. 3ros",
         barColor: "var(--badge-warning-border)",
     },
+    PENSIONES: {
+        textClass: "text-text-tertiary",
+        bgClass: "bg-surface-3",
+        borderClass: "border-border-light",
+        icon: HandHeart,
+        label: "Pensiones",
+        barColor: "var(--border-light)",
+    },
     OTROS: {
         textClass: "text-text-tertiary",
         bgClass: "bg-surface-3",
@@ -105,6 +114,7 @@ export function getMostCriticalCategory(categories: ObligationCategory[]): Oblig
         "RETENCIONES_ISLR_TERCEROS",
         "IVA",
         "LOCTI",
+        "PENSIONES",
         "IGTF",
         "OTROS",
     ];

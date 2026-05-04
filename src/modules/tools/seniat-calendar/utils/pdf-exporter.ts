@@ -66,6 +66,9 @@ function categoryColor(category: string): RGB {
         case "ISLR_ANUAL":
         case "ISLR_ESTIMADA": return C.error;
         case "LOCTI": return C.success;
+        case "PENSIONES":
+        case "IGTF":
+        case "OTROS":
         default: return C.muted;
     }
 }

@@ -7,9 +7,11 @@ const ALL_CATEGORIES: ObligationCategory[] = [
     "IVA",
     "ISLR_RETENCIONES",
     "ISLR_ANUAL",
+    "ISLR_ESTIMADA",
     "IGTF",
     "LOCTI",
     "RETENCIONES_ISLR_TERCEROS",
+    "PENSIONES",
     "OTROS",
 ];
 
