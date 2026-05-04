@@ -11,7 +11,6 @@ import { SECTOR_LABELS, BUSINESS_SECTORS, TAXPAYER_TYPES, TAXPAYER_TYPE_LABELS }
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
-import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { notify } from "@/src/shared/frontend/notify";
 import {
@@ -24,7 +23,6 @@ import {
     Edit3,
     Check,
     X,
-    Camera,
     ClipboardPaste,
     Loader2,
     Tags,
@@ -36,6 +34,7 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { InlineSelect } from "@/src/shared/frontend/components/inline-select";
 import type { InlineSelectOption } from "@/src/shared/frontend/components/inline-select";
+import { CompanyEditModal } from "@/src/modules/companies/frontend/components/company-edit-modal";
 
 // ============================================================================
 // CONSTANTS
@@ -63,7 +62,6 @@ const IconCancel = () => <X size={14} />;
 const IconEdit = () => <Edit3 size={14} />;
 const IconTrash = () => <Trash2 size={14} />;
 const IconPlus = () => <Plus size={14} />;
-const IconCamera = () => <Camera size={10} />;
 const IconImport = () => <Upload size={14} />;
 const IconExport = () => <Download size={14} />;
 const IconPaste = () => <ClipboardPaste size={14} />;
@@ -189,18 +187,9 @@ export default function CompaniesPage() {
     const atCompanyLimit = !canAddCompany();
 
     // ── Edit state ────────────────────────────────────────────────────────
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [editName, setEditName] = useState("");
-    const [editPhone, setEditPhone] = useState("");
-    const [editAddress, setEditAddress] = useState("");
-    const [editContactEmail, setEditContactEmail] = useState("");
-    const [editLogoUrl, setEditLogoUrl] = useState<string | undefined>(undefined);
-    const [editSector, setEditSector] = useState<BusinessSector | undefined>(undefined);
-    const [editTaxpayerType, setEditTaxpayerType] = useState<TaxpayerType>("ordinario");
-    const [logoUploading, setLogoUploading] = useState(false);
-    const [logoUploadSuccess, setLogoUploadSuccess] = useState(false);
-    const [editSaving, setEditSaving] = useState(false);
-    const logoInputRef = useRef<HTMLInputElement>(null);
+    // The whole edit form lives in <CompanyEditModal/>; here we only track
+    // which company is currently being edited.
+    const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
     // ── New row state ──────────────────────────────────────────────────────
     const [showNew, setShowNew] = useState(false);
@@ -264,89 +253,8 @@ export default function CompaniesPage() {
     }, [companies, search, filter]);
 
     // ── Edit actions ───────────────────────────────────────────────────────
-
-    const startEdit = useCallback((company: Company) => {
-        setEditingId(company.id);
-        setEditName(company.name);
-        setEditPhone(company.phone ?? "");
-        setEditAddress(company.address ?? "");
-        setEditContactEmail(company.contactEmail ?? "");
-        setEditLogoUrl(company.logoUrl);
-        setEditSector(company.sector);
-        setEditTaxpayerType(company.taxpayerType ?? "ordinario");
-    }, []);
-
-    const cancelEdit = useCallback(() => {
-        setEditingId(null);
-        setEditName("");
-        setEditPhone("");
-        setEditAddress("");
-        setEditContactEmail("");
-        setEditLogoUrl(undefined);
-        setEditSector(undefined);
-        setEditTaxpayerType("ordinario");
-        setLogoUploadSuccess(false);
-    }, []);
-
-    const saveEdit = useCallback(async () => {
-        if (!editingId || !editName.trim()) return;
-        setEditSaving(true);
-
-        const original = companies.find(c => c.id === editingId);
-        const sectorChanged = editSector !== original?.sector;
-
-        const err = await update(editingId, {
-            name: editName.trim(),
-            phone: editPhone.trim() || undefined,
-            address: editAddress.trim() || undefined,
-            contactEmail: editContactEmail.trim() || undefined,
-            logoUrl: editLogoUrl,
-            sector: editSector,
-            taxpayerType: editTaxpayerType,
-        });
-
-        if (!err && sectorChanged && editSector) {
-            const sectorErr = await applySector(editingId, editSector);
-            if (sectorErr) { setEditSaving(false); notify.error(sectorErr); return; }
-        }
-
-        setEditSaving(false);
-        if (err) notify.error(err);
-        else     cancelEdit();
-    }, [editingId, editName, editPhone, editAddress, editContactEmail, editLogoUrl, editSector, editTaxpayerType, companies, update, applySector, cancelEdit]);
-
-    const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !user || !editingId) return;
-
-        const MAX_BYTES = 2 * 1024 * 1024;
-        if (file.size > MAX_BYTES) {
-            notify.error("El logo debe ser menor a 2 MB.");
-            if (logoInputRef.current) logoInputRef.current.value = "";
-            return;
-        }
-
-        setLogoUploading(true);
-        setLogoUploadSuccess(false);
-        const ext = file.name.split(".").pop();
-        const path = `${user.id}/${editingId}/logo.${ext}`;
-        const { error: uploadErr } = await getSupabaseBrowser().storage
-            .from("logos")
-            .upload(path, file, { upsert: true });
-        if (uploadErr) {
-            console.error("[logo-upload]", uploadErr);
-            notify.error("No se pudo subir el logo. Verifica el archivo e intenta de nuevo.");
-            setLogoUploading(false);
-            if (logoInputRef.current) logoInputRef.current.value = "";
-            return;
-        }
-        const { data: { publicUrl } } = getSupabaseBrowser().storage.from("logos").getPublicUrl(path);
-        setEditLogoUrl(publicUrl);
-        setLogoUploading(false);
-        setLogoUploadSuccess(true);
-        setTimeout(() => setLogoUploadSuccess(false), 1800);
-        if (logoInputRef.current) logoInputRef.current.value = "";
-    }, [user, editingId]);
+    // `update` and `applySector` come from the company hook and are passed
+    // straight to the modal; nothing to wrap here.
 
     // ── New actions ────────────────────────────────────────────────────────
 
@@ -722,7 +630,6 @@ export default function CompaniesPage() {
                                             </tr>
                                         ) : (
                                             filtered.map((company) => {
-                                                const isEditing = editingId === company.id;
                                                 const isConfirm = confirmId === company.id;
                                                 const isActive = company.id === companyId;
 
@@ -737,7 +644,6 @@ export default function CompaniesPage() {
                                                                 : "hover:bg-surface-2/50",
                                                         ].join(" ")}
                                                     >
-
                                                         {/* RIF */}
                                                         <td className="pl-5 pr-5 py-4 w-40 relative">
                                                             {isActive && (
@@ -760,163 +666,74 @@ export default function CompaniesPage() {
 
                                                         {/* Nombre */}
                                                         <td className="px-5 py-4">
-                                                            {isEditing ? (
-                                                                <div className="space-y-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => logoInputRef.current?.click()}
-                                                                            disabled={logoUploading}
-                                                                            className={[
-                                                                                "relative w-9 h-9 rounded-lg overflow-hidden bg-primary-500/5 flex items-center justify-center shrink-0",
-                                                                                "border transition-all duration-200",
-                                                                                logoUploadSuccess
-                                                                                    ? "border-[var(--badge-success-border)] ring-4 ring-[var(--badge-success-bg)]/40"
-                                                                                    : "border-border-light hover:border-primary-500/40 hover:bg-primary-500/10",
-                                                                            ].join(" ")}
-                                                                        >
-                                                                            {editLogoUrl ? (
-                                                                                <Image
-                                                                                    src={editLogoUrl}
-                                                                                    alt={`Logo`}
-                                                                                    fill
-                                                                                    unoptimized
-                                                                                    sizes="36px"
-                                                                                    className={["object-cover", logoUploading ? "opacity-30" : ""].join(" ")}
-                                                                                />
-                                                                            ) : (
-                                                                                <span className="font-bold text-primary-500 text-[12px]">{editName[0] ?? "?"}</span>
-                                                                            )}
-                                                                            {logoUploading && <div className="absolute inset-0 flex items-center justify-center bg-white/60"><Spinner /></div>}
-                                                                            {!logoUploading && <div className="absolute bottom-0 right-0 p-0.5 bg-surface-1 rounded-tl-md text-primary-500 shadow-sm"><IconCamera /></div>}
-                                                                        </button>
-                                                                        <BaseInput.Field
-                                                                            autoFocus
-                                                                            className="w-full"
-                                                                            value={editName}
-                                                                            onValueChange={setEditName}
-                                                                            onKeyDown={(e) => {
-                                                                                if (e.key === "Enter") saveEdit();
-                                                                                if (e.key === "Escape") cancelEdit();
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="sm:hidden grid grid-cols-2 gap-2">
-                                                                        <BaseInput.Field className="w-full" placeholder="Teléfono" value={editPhone} onValueChange={setEditPhone} />
-                                                                        <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />
-                                                                        <BaseInput.Field className="w-full col-span-2" placeholder="Correo del cliente" type="email" value={editContactEmail} onValueChange={setEditContactEmail} />
-                                                                    </div>
-                                                                    <input
-                                                                        ref={logoInputRef}
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        className="sr-only"
-                                                                        onChange={handleLogoUpload}
-                                                                    />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => !isActive && selectCompany(company.id)}
+                                                                disabled={isActive}
+                                                                title={isActive ? "Empresa activa" : "Establecer como empresa activa"}
+                                                                className={[
+                                                                    "flex items-center gap-3 text-left w-full",
+                                                                    isActive ? "cursor-default" : "cursor-pointer",
+                                                                ].join(" ")}
+                                                            >
+                                                                <div className={[
+                                                                    "relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border",
+                                                                    isActive
+                                                                        ? "bg-primary-500/10 border-primary-500/30"
+                                                                        : "bg-surface-2 border-border-light/60",
+                                                                ].join(" ")}>
+                                                                    {company.logoUrl ? (
+                                                                        <Image src={company.logoUrl} alt={company.name} fill unoptimized sizes="36px" className="object-cover" />
+                                                                    ) : (
+                                                                        <Building2 className={isActive ? "text-primary-500" : "text-[var(--text-tertiary)]"} size={15} strokeWidth={1.6} />
+                                                                    )}
                                                                 </div>
-                                                            ) : (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => !isActive && selectCompany(company.id)}
-                                                                    disabled={isActive}
-                                                                    title={isActive ? "Empresa activa" : "Establecer como empresa activa"}
-                                                                    className={[
-                                                                        "flex items-center gap-3 text-left w-full",
-                                                                        isActive ? "cursor-default" : "cursor-pointer",
-                                                                    ].join(" ")}
-                                                                >
-                                                                    <div className={[
-                                                                        "relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border",
-                                                                        isActive
-                                                                            ? "bg-primary-500/10 border-primary-500/30"
-                                                                            : "bg-surface-2 border-border-light/60",
-                                                                    ].join(" ")}>
-                                                                        {company.logoUrl ? (
-                                                                            <Image src={company.logoUrl} alt={company.name} fill unoptimized sizes="36px" className="object-cover" />
-                                                                        ) : (
-                                                                            <Building2 className={isActive ? "text-primary-500" : "text-[var(--text-tertiary)]"} size={15} strokeWidth={1.6} />
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <span className="block text-[14px] font-medium text-foreground tracking-tight truncate">
-                                                                            {company.name}
+                                                                <div className="min-w-0">
+                                                                    <span className="block text-[14px] font-medium text-foreground tracking-tight truncate">
+                                                                        {company.name}
+                                                                    </span>
+                                                                    {!company.phone && !company.address && !company.sector && (
+                                                                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                                                            Perfil pendiente
                                                                         </span>
-                                                                        {!company.phone && !company.address && !company.sector && (
-                                                                            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-                                                                                Perfil pendiente
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </button>
-                                                            )}
+                                                                    )}
+                                                                </div>
+                                                            </button>
                                                         </td>
 
                                                         {/* Teléfono */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
-                                                            {isEditing ? (
-                                                                <BaseInput.Field className="w-full" value={editPhone} onValueChange={setEditPhone} />
-                                                            ) : (
-                                                                <span className="text-[13px] text-[var(--text-secondary)] tabular-nums">{company.phone ?? "—"}</span>
-                                                            )}
+                                                            <span className="text-[13px] text-[var(--text-secondary)] tabular-nums">{company.phone ?? "—"}</span>
                                                         </td>
 
                                                         {/* Dirección + correo del cliente */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
-                                                            {isEditing ? (
-                                                                <div className="flex flex-col gap-1.5">
-                                                                    <BaseInput.Field className="w-full" placeholder="Dirección" value={editAddress} onValueChange={setEditAddress} />
-                                                                    <BaseInput.Field className="w-full" placeholder="Correo del cliente" type="email" value={editContactEmail} onValueChange={setEditContactEmail} />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex flex-col leading-tight">
-                                                                    <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[180px] inline-block">{company.address ?? "—"}</span>
-                                                                    {company.contactEmail && (
-                                                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] truncate max-w-[180px] inline-block">{company.contactEmail}</span>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                            <div className="flex flex-col leading-tight">
+                                                                <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[180px] inline-block">{company.address ?? "—"}</span>
+                                                                {company.contactEmail && (
+                                                                    <span className="font-mono text-[11px] text-[var(--text-tertiary)] truncate max-w-[180px] inline-block">{company.contactEmail}</span>
+                                                                )}
+                                                            </div>
                                                         </td>
 
                                                         {/* Sector */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
-                                                            {isEditing ? (
-                                                                <InlineSelect
-                                                                    value={editSector}
-                                                                    onChange={(v) => setEditSector((v || undefined) as BusinessSector | undefined)}
-                                                                    options={SECTOR_OPTIONS}
-                                                                    ariaLabel="Sector de la empresa"
-                                                                    size="sm"
-                                                                    clearable
-                                                                    clearLabel="Sin sector"
-                                                                />
+                                                            {company.sector ? (
+                                                                <span className={[
+                                                                    "inline-flex items-center px-2 py-0.5 rounded-sm",
+                                                                    "font-mono text-[11px] uppercase tracking-[0.10em]",
+                                                                    "bg-surface-2 border border-border-light text-[var(--text-secondary)]",
+                                                                ].join(" ")}>
+                                                                    {SECTOR_LABELS[company.sector]}
+                                                                </span>
                                                             ) : (
-                                                                company.sector ? (
-                                                                    <span className={[
-                                                                        "inline-flex items-center px-2 py-0.5 rounded-sm",
-                                                                        "font-mono text-[11px] uppercase tracking-[0.10em]",
-                                                                        "bg-surface-2 border border-border-light text-[var(--text-secondary)]",
-                                                                    ].join(" ")}>
-                                                                        {SECTOR_LABELS[company.sector]}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="font-mono text-[12px] text-[var(--text-disabled)]">—</span>
-                                                                )
+                                                                <span className="font-mono text-[12px] text-[var(--text-disabled)]">—</span>
                                                             )}
                                                         </td>
 
                                                         {/* Tipo (Contribuyente) */}
                                                         <td className="px-5 py-4 hidden sm:table-cell">
-                                                            {isEditing ? (
-                                                                <InlineSelect
-                                                                    value={editTaxpayerType}
-                                                                    onChange={(v) => setEditTaxpayerType(v)}
-                                                                    options={TAXPAYER_OPTIONS}
-                                                                    ariaLabel="Tipo de contribuyente"
-                                                                    size="sm"
-                                                                />
-                                                            ) : (
-                                                                <TaxpayerTypeBadge type={company.taxpayerType ?? "ordinario"} />
-                                                            )}
+                                                            <TaxpayerTypeBadge type={company.taxpayerType ?? "ordinario"} />
                                                         </td>
 
                                                         {/* Creada */}
@@ -941,17 +758,6 @@ export default function CompaniesPage() {
                                                                             No
                                                                         </BaseButton.Root>
                                                                     </div>
-                                                                ) : editSaving && isEditing ? (
-                                                                    <Spinner />
-                                                                ) : isEditing ? (
-                                                                    <>
-                                                                        <BaseButton.Icon variant="ghost" size="sm" onClick={saveEdit} className="text-[var(--text-success)] hover:bg-[var(--badge-success-bg)]">
-                                                                            <IconSave />
-                                                                        </BaseButton.Icon>
-                                                                        <BaseButton.Icon variant="ghost" size="sm" onClick={cancelEdit}>
-                                                                            <IconCancel />
-                                                                        </BaseButton.Icon>
-                                                                    </>
                                                                 ) : (
                                                                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-data-[active=true]:opacity-100 transition-opacity">
                                                                         {!isActive && (
@@ -965,7 +771,7 @@ export default function CompaniesPage() {
                                                                                 <Star size={14} />
                                                                             </BaseButton.Icon>
                                                                         )}
-                                                                        <BaseButton.Icon variant="ghost" size="sm" onClick={() => startEdit(company)} title="Editar">
+                                                                        <BaseButton.Icon variant="ghost" size="sm" onClick={() => setEditingCompany(company)} title="Editar">
                                                                             <IconEdit />
                                                                         </BaseButton.Icon>
                                                                         <BaseButton.Icon
@@ -1011,6 +817,15 @@ export default function CompaniesPage() {
                 )}
 
             </div>
+
+            {/* ── Edit company modal ──────────────────────────────────────────── */}
+            <CompanyEditModal
+                company={editingCompany}
+                userId={user?.id ?? null}
+                onClose={() => setEditingCompany(null)}
+                onSave={update}
+                onApplySector={applySector}
+            />
 
             {/* ── Paste CSV Modal ─────────────────────────────────────────────── */}
             <AnimatePresence>
