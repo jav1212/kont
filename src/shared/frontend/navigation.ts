@@ -1,6 +1,7 @@
 export const APP_MODULES = [
     { id: "payroll",     label: "Nómina",        href: "/payroll/tablero",        desktopOnly: false, paid: true              },
     { id: "employees",   label: "Empleados",     href: "/payroll/employees",      desktopOnly: false, paid: false, parentId: "payroll" },
+    { id: "purchases",   label: "Compras",       href: "/purchases",              desktopOnly: true,  paid: true              },
     { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: true,  paid: true              },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },
     { id: "tools",       label: "Herramientas",  href: "/tools",                  desktopOnly: false, paid: false             },
@@ -30,12 +31,15 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/documents",       label: "Tablero",  group: null },
         { href: "/documents/files", label: "Archivos", group: null },
     ],
+    purchases: [
+        { href: "/purchases",                 label: "Tablero",             group: null          },
+        { href: "/purchases/suppliers",       label: "Proveedores",         group: "Catálogos"   },
+        { href: "/purchases/archive",         label: "Archivo de facturas", group: "Operaciones" },
+    ],
     inventory: [
         { href: "/inventory",                  label: "Tablero",              group: null          },
         { href: "/inventory/products",         label: "Productos",            group: "Catálogos"   },
-        { href: "/purchases/suppliers",        label: "Proveedores",          group: "Catálogos"   },
         { href: "/inventory/departments",      label: "Departamentos",        group: "Catálogos"   },
-        { href: "/purchases",        label: "Entradas",             group: "Operaciones" },
         { href: "/inventory/sales",            label: "Salidas",              group: "Operaciones" },
         { href: "/inventory/operations",       label: "Operaciones",          group: "Operaciones" },
         { href: "/inventory/purchase-ledger",  label: "Libro de Entradas",    group: "Reportes"    },
