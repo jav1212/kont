@@ -119,6 +119,22 @@ export interface PurchaseInvoice {
    */
   comprobanteIslrNumero?: string | null;
 
+  // ── IGTF (mig 093) — Reforma G.O. 6.687 (25/02/2022) + PA SNAT/2022/000013.
+  // Pagos en divisa o cripto. Para el SPE comprador es informativo (gasto no
+  // deducible Art. 18 LIGTF) — el banco/proveedor lo entera al SENIAT. Se
+  // suma al `total` porque el proveedor lo carga como concepto adicional al
+  // monto desembolsado.
+  /** ¿La factura tiene IGTF cargado? */
+  igtfAplica?:     boolean;
+  /** Alícuota aplicada (%); 3% en divisas/cripto. */
+  igtfPorcentaje?: number;
+  /** Monto pagado en divisa (USD/cripto). */
+  igtfBaseDivisa?: number;
+  /** Base en Bolívares = baseDivisa × tasaDolar. */
+  igtfBaseBs?:     number;
+  /** Monto IGTF en Bs (server-resolved). */
+  igtfMonto?:      number;
+
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
   createdAt?: string;

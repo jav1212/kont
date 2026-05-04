@@ -30,6 +30,7 @@ import {
 import { HeaderAdjustmentsSection } from "@/src/modules/purchases/frontend/components/header-adjustments-section";
 import { IvaRetencionToggle } from "@/src/modules/purchases/frontend/components/iva-retencion-toggle";
 import { IslrRetencionSection, emptyIslrValue, type IslrFormValue } from "@/src/modules/purchases/frontend/components/islr-retencion-section";
+import { IgtfSection, emptyIgtfValue, type IgtfFormValue } from "@/src/modules/purchases/frontend/components/igtf-section";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 import {
     BcvRateInput,
@@ -100,6 +101,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
     const [retencionIvaPct, setRetencionIvaPct] = useState<number>(0);
     const [islr, setIslr] = useState<IslrFormValue>(() => emptyIslrValue());
+    const [igtf, setIgtf] = useState<IgtfFormValue>(() => emptyIgtfValue());
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
     const {
         rate: dollarRateStr,
@@ -198,11 +200,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             monto:            currentPurchaseInvoice.islrMonto ?? 0,
             unidadTributaria: currentPurchaseInvoice.islrUnidadTributaria ?? 9,
         });
+        setIgtf({
+            aplica:     currentPurchaseInvoice.igtfAplica ?? false,
+            porcentaje: currentPurchaseInvoice.igtfPorcentaje ?? 3,
+            baseDivisa: currentPurchaseInvoice.igtfBaseDivisa ?? 0,
+            baseBs:     currentPurchaseInvoice.igtfBaseBs ?? 0,
+            monto:      currentPurchaseInvoice.igtfMonto ?? 0,
+        });
         const hasAdj =
             (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
             (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0) ||
             (currentPurchaseInvoice.retencionIvaPct ?? 0) > 0 ||
-            (currentPurchaseInvoice.islrConcepto != null);
+            (currentPurchaseInvoice.islrConcepto != null) ||
+            (currentPurchaseInvoice.igtfAplica === true);
         if (hasAdj) setShowHeaderAdj(true);
         const storedDecimals = currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS;
         if (currentPurchaseInvoice.dollarRate != null) {
@@ -242,7 +252,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
         (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0) ||
         retencionIvaPct > 0 ||
-        islr.concepto != null;
+        islr.concepto != null ||
+        igtf.aplica;
 
     const effectiveDollarRate = (() => {
         const r = parseRateStr(dollarRateStr);
@@ -280,7 +291,12 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         islrSustraendo:        islr.sustraendo,
         islrMonto:             islr.monto,
         islrUnidadTributaria:  islr.unidadTributaria,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr]);
+        igtfAplica:     igtf.aplica,
+        igtfPorcentaje: igtf.porcentaje,
+        igtfBaseDivisa: igtf.baseDivisa,
+        igtfBaseBs:     igtf.baseBs,
+        igtfMonto:      igtf.monto,
+    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -834,6 +850,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                 readOnly={!isDraft}
                                             />
                                         </div>
+                                        <div className="pt-3 border-t border-border-light/60">
+                                            <IgtfSection
+                                                value={igtf}
+                                                onChange={setIgtf}
+                                                dollarRate={effectiveDollarRate}
+                                                readOnly={!isDraft}
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -891,10 +915,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dRetencionIslr= isDraft ? islr.monto      : (invoice.islrMonto ?? 0);
                                 const dIslrConcepto = isDraft ? islr.concepto   : (invoice.islrConcepto ?? null);
                                 const dIslrPct      = isDraft ? islr.porcentaje : (invoice.islrPorcentaje ?? 0);
-                                const dTotalAPagar  = dGross - dRetencionIva - dRetencionIslr;
+                                const dIgtfMonto    = isDraft ? igtf.monto      : (invoice.igtfMonto ?? 0);
+                                const dIgtfPct      = isDraft ? igtf.porcentaje : (invoice.igtfPorcentaje ?? 0);
+                                const dTotalAPagar  = dGross - dRetencionIva - dRetencionIslr + dIgtfMonto;
                                 const dTotal        = dGross;
                                 const dHasRetencion = dRetencionPct > 0 && dRetencionIva > 0;
                                 const dHasIslr      = dRetencionIslr > 0;
+                                const dHasIgtf      = dIgtfMonto > 0;
                                 const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
 
                                 const rateForUsd = isDraft
@@ -1052,15 +1079,30 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                     )
                                                 )}
 
-                                                {(dHasRetencion || dHasIslr) && (
+                                                {dHasIgtf && (
+                                                    renderRow(
+                                                        `IGTF ${dIgtfPct}%`,
+                                                        dIgtfMonto,
+                                                        { kind: "pos", sign: "+", indent: true, note: "pago en divisa" },
+                                                    )
+                                                )}
+
+                                                {(dHasRetencion || dHasIslr || dHasIgtf) && (
                                                     <>
                                                         <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
                                                         {renderRow("Total a pagar", dTotalAPagar, {
                                                             kind: "total",
-                                                            note: dHasIslr && dHasRetencion
-                                                                ? "= total − ret. IVA − ret. ISLR"
-                                                                : dHasIslr ? "= total − ret. ISLR"
-                                                                : "= total − retención",
+                                                            note: [
+                                                                dHasRetencion && "− ret. IVA",
+                                                                dHasIslr      && "− ret. ISLR",
+                                                                dHasIgtf      && "+ IGTF",
+                                                            ].filter(Boolean).length > 0
+                                                                ? `= total ${[
+                                                                    dHasRetencion && "− ret. IVA",
+                                                                    dHasIslr      && "− ret. ISLR",
+                                                                    dHasIgtf      && "+ IGTF",
+                                                                  ].filter(Boolean).join(" ")}`
+                                                                : undefined,
                                                         })}
                                                     </>
                                                 )}
@@ -1204,6 +1246,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     const summaryIslrMonto      = invoice.islrMonto ?? 0;
                                     const summaryIslrConcepto   = invoice.islrConcepto ?? null;
                                     const summaryHasIslr        = summaryIslrMonto > 0 && !!summaryIslrConcepto;
+                                    const summaryIgtfMonto      = invoice.igtfMonto ?? 0;
+                                    const summaryIgtfPct        = invoice.igtfPorcentaje ?? 0;
+                                    const summaryHasIgtf        = (invoice.igtfAplica ?? false) && summaryIgtfMonto > 0;
                                     return (
                                         <>
                                             {summaryHasIva && (
@@ -1261,6 +1306,25 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                             <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
                                                                 <span className="opacity-60 mr-0.5">−</span>
                                                                 ≈ {usd(summaryIslrMonto)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {summaryHasIgtf && (
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">
+                                                        IGTF {summaryIgtfPct}%
+                                                    </span>
+                                                    <div className="text-right">
+                                                        <div className="tabular-nums text-info">
+                                                            <span className="opacity-60 mr-0.5">+</span>
+                                                            Bs. {fmtN(summaryIgtfMonto)}
+                                                        </div>
+                                                        {usd(summaryIgtfMonto) && (
+                                                            <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
+                                                                <span className="opacity-60 mr-0.5">+</span>
+                                                                ≈ {usd(summaryIgtfMonto)}
                                                             </div>
                                                         )}
                                                     </div>

@@ -56,6 +56,11 @@ interface InvoiceRpcRow {
   islr_monto:              number | string | null;
   islr_unidad_tributaria:  number | string | null;
   comprobante_islr_numero: string | null;
+  igtf_aplica:             boolean | null;
+  igtf_porcentaje:         number | string | null;
+  igtf_base_divisa:        number | string | null;
+  igtf_base_bs:            number | string | null;
+  igtf_monto:              number | string | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   created_at: string | null;
@@ -157,6 +162,10 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 islr_base_retencion:    stringifyNum(invoice.islrBaseRetencion),
                 islr_sustraendo:        stringifyNum(invoice.islrSustraendo),
                 islr_unidad_tributaria: stringifyNum(invoice.islrUnidadTributaria),
+                igtf_aplica:            invoice.igtfAplica ? 'true' : '',
+                igtf_porcentaje:        stringifyNum(invoice.igtfPorcentaje),
+                igtf_base_divisa:       stringifyNum(invoice.igtfBaseDivisa),
+                igtf_base_bs:           stringifyNum(invoice.igtfBaseBs),
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -310,6 +319,11 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             islrMonto:             num(row.islr_monto),
             islrUnidadTributaria:  row.islr_unidad_tributaria != null && row.islr_unidad_tributaria !== '' ? Number(row.islr_unidad_tributaria) : undefined,
             comprobanteIslrNumero: row.comprobante_islr_numero ?? null,
+            igtfAplica:            row.igtf_aplica === true,
+            igtfPorcentaje:        num(row.igtf_porcentaje),
+            igtfBaseDivisa:        num(row.igtf_base_divisa),
+            igtfBaseBs:            num(row.igtf_base_bs),
+            igtfMonto:             num(row.igtf_monto),
             confirmedAt:   row.confirmada_at ?? null,
             items,
             createdAt:     row.created_at ?? undefined,
