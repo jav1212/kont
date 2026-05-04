@@ -168,11 +168,11 @@ export function useOperationForm(config: OperationConfig) {
     }
 
     // ── Resume-draft banner ─────────────────────────────────────────────────
+    // Visibility derived in render so the effect never has to clear state on
+    // bail-out (avoids react-hooks/set-state-in-effect cascading renders).
+    const shouldOfferResumeDraft = !!companyId && !draftIdParam && !saved && !draftGroupId && !draftLoaded;
     useEffect(() => {
-        if (!companyId || draftIdParam || saved || draftGroupId || draftLoaded) {
-            setPendingDraft(null);
-            return;
-        }
+        if (!shouldOfferResumeDraft || !companyId) return;
         let cancelled = false;
         getLatestMovementDraft(companyId, draftKind).then((summary) => {
             if (cancelled) return;
@@ -184,7 +184,8 @@ export function useOperationForm(config: OperationConfig) {
             });
         });
         return () => { cancelled = true; };
-    }, [companyId, draftIdParam, saved, draftGroupId, draftLoaded, draftKind, getLatestMovementDraft]);
+    }, [shouldOfferResumeDraft, companyId, draftKind, getLatestMovementDraft]);
+    const visibleDraft = shouldOfferResumeDraft ? pendingDraft : null;
 
     // ── Load draft from `?draft=<id>` ───────────────────────────────────────
     useEffect(() => {
@@ -412,7 +413,7 @@ export function useOperationForm(config: OperationConfig) {
         confirming,
         handleOpenConfirm,
         handleConfirmOperation,
-        pendingDraft,
+        pendingDraft: visibleDraft,
         resuming,
         discarding,
         handleResumeDraft,

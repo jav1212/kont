@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Generated service worker — not editable source
     "public/sw.js",
     "public/workbox-*.js",
+    // Skill kits ship as runnable JSX templates — not part of the app build
+    ".claude/skills/**",
   ]),
   {
     rules: {

@@ -329,11 +329,12 @@ export default function NuevaEntradaManualPage() {
     }, [companyId, loadProducts]);
 
     // ── Resume-draft banner: lookup latest draft for this company+kind ───────
+    // The banner is shown only when no draft is being edited and nothing has been
+    // saved yet — derived in render so the effect never clears state on bail-out.
+    const shouldOfferResumeDraft = !!companyId && !draftIdParam && !saved && !draftGroupId && !draftLoaded;
+    const visibleDraft = shouldOfferResumeDraft ? pendingDraft : null;
     useEffect(() => {
-        if (!companyId || draftIdParam || saved || draftGroupId || draftLoaded) {
-            setPendingDraft(null);
-            return;
-        }
+        if (!shouldOfferResumeDraft || !companyId) return;
         let cancelled = false;
         getLatestMovementDraft(companyId, "entrada").then((summary) => {
             if (cancelled) return;
@@ -346,7 +347,7 @@ export default function NuevaEntradaManualPage() {
             });
         });
         return () => { cancelled = true; };
-    }, [companyId, draftIdParam, saved, draftGroupId, draftLoaded, getLatestMovementDraft]);
+    }, [shouldOfferResumeDraft, companyId, getLatestMovementDraft]);
 
     // ── Load draft from `?draft=<id>` ───────────────────────────────────────
     useEffect(() => {
@@ -618,11 +619,11 @@ export default function NuevaEntradaManualPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            {pendingDraft && (
+            {visibleDraft && (
                 <div className="px-8 pt-6">
                     <ResumeDraftBanner
-                        timestampLabel={formatDraftTimestamp(pendingDraft.updatedAt)}
-                        summary={`${pendingDraft.count} ${pendingDraft.count === 1 ? "ítem" : "ítems"}`}
+                        timestampLabel={formatDraftTimestamp(visibleDraft.updatedAt)}
+                        summary={`${visibleDraft.count} ${visibleDraft.count === 1 ? "ítem" : "ítems"}`}
                         onResume={handleResumeDraft}
                         onDiscard={handleDiscardDraft}
                         resuming={resuming}

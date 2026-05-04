@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { LogoMark, LogoFull } from "@/src/shared/frontend/components/logo";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
@@ -33,9 +34,9 @@ export function AuthShell({ children, visual }: AuthShellProps) {
                 {/* Wordmark top-left — gives the user a way home on auth pages
                     (PublicHeader is hidden on auth routes). */}
                 <div className="mb-10 md:mb-14 flex items-center">
-                    <a href="/" className="hover:opacity-80 transition-opacity" aria-label="Volver al inicio">
+                    <Link href="/" className="hover:opacity-80 transition-opacity" aria-label="Volver al inicio">
                         <LogoFull size={26} className="text-foreground" />
-                    </a>
+                    </Link>
                 </div>
 
                 <div className="flex-1 flex items-center justify-center">
