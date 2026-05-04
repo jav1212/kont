@@ -199,9 +199,13 @@ export function useSales() {
 
     // ── IGTF Quincena Report ──────────────────────────────────────────────────
 
+    // Returns { data, error } so the caller can decide whether to toast.
+    // Avoids React 18 strict-mode double-toasting when the effect runs twice
+    // and both invocations error: the page's cancelled flag suppresses the
+    // stale call's notify.
     const fetchIgtfFortnightly = useCallback(async (
         companyId: string, year: number, month: number, quincena: 1 | 2,
-    ): Promise<IgtfFortnightlyReport | null> => {
+    ): Promise<{ data: IgtfFortnightlyReport | null; error: string | null }> => {
         try {
             const params = new URLSearchParams({
                 companyId,
@@ -212,13 +216,11 @@ export function useSales() {
             const res = await apiFetch(`/api/sales/igtf-fortnightly?${params.toString()}`);
             const json = await res.json();
             if (!res.ok) {
-                notify.error(json.error ?? 'Error al consultar IGTF quincenal');
-                return null;
+                return { data: null, error: json.error ?? 'Error al consultar IGTF quincenal' };
             }
-            return (json.data ?? null) as IgtfFortnightlyReport | null;
+            return { data: (json.data ?? null) as IgtfFortnightlyReport | null, error: null };
         } catch (e) {
-            reportError('Error de red', e);
-            return null;
+            return { data: null, error: e instanceof Error ? e.message : 'Error de red' };
         }
     }, []);
 

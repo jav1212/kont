@@ -354,7 +354,8 @@ export default function CompaniesPage() {
         if (!newRif.trim())  { notify.error("El RIF es obligatorio"); return; }
         if (!newName.trim()) { notify.error("El nombre es obligatorio"); return; }
         setNewSaving(true);
-        const err = await save({ id: newRif.trim().toUpperCase(), name: newName.trim(), taxpayerType: newTaxpayerType });
+        const idRif = newRif.trim().toUpperCase();
+        const err = await save({ id: idRif, name: newName.trim(), rif: idRif, taxpayerType: newTaxpayerType });
         setNewSaving(false);
         if (err) notify.error(err);
         else     { setShowNew(false); setNewRif(""); setNewName(""); setNewTaxpayerType("ordinario"); }
@@ -399,7 +400,7 @@ export default function CompaniesPage() {
         }
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre, taxpayerType: row.tipoContribuyente });
+            const err = await save({ id: row.rif, name: row.nombre, rif: row.rif, taxpayerType: row.tipoContribuyente });
             if (err && !firstErr) firstErr = err;
         }
         if (firstErr) notify.error(firstErr);
@@ -423,7 +424,7 @@ export default function CompaniesPage() {
         setPasteImporting(true);
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre, taxpayerType: row.tipoContribuyente });
+            const err = await save({ id: row.rif, name: row.nombre, rif: row.rif, taxpayerType: row.tipoContribuyente });
             if (err && !firstErr) firstErr = err;
         }
         setPasteImporting(false);

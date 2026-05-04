@@ -45,9 +45,11 @@ export default function IgtfFortnightlyPage() {
         if (!companyId) return;
         let cancelled = false;
         setLoading(true);
-        fetchIgtfFortnightly(companyId, year, month, quincena).then((r) => {
-            if (!cancelled) setReport(r);
-            if (!cancelled) setLoading(false);
+        fetchIgtfFortnightly(companyId, year, month, quincena).then(({ data, error }) => {
+            if (cancelled) return;
+            if (error) notify.error(error);
+            setReport(data);
+            setLoading(false);
         });
         return () => { cancelled = true; };
     }, [companyId, year, month, quincena, fetchIgtfFortnightly]);
