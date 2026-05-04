@@ -317,30 +317,6 @@ export default function EntradasPage() {
                 title="Entradas de Inventario"
                 subtitle={`Tablero · ${periodLabel(period)}`}
             >
-                {isEspecial && (
-                    <>
-                        <BaseButton.Root
-                            variant="ghost"
-                            size="sm"
-                            leftIcon={<Receipt size={14} strokeWidth={2} />}
-                            onClick={handleExportTxt}
-                            disabled={exportingTxt || loadingPurchaseInvoices}
-                            title={`Genera el archivo TXT de retenciones IVA para subir al portal SENIAT (período ${periodLabel(period)})`}
-                        >
-                            {exportingTxt ? "Generando…" : "TXT Ret. IVA"}
-                        </BaseButton.Root>
-                        <BaseButton.Root
-                            variant="ghost"
-                            size="sm"
-                            leftIcon={<FileCode size={14} strokeWidth={2} />}
-                            onClick={handleExportIslrXml}
-                            disabled={exportingXml || loadingPurchaseInvoices}
-                            title={`Genera el archivo XML de retenciones ISLR sobre compras (período ${periodLabel(period)}). Si tu empresa también retiene ISLR de nómina, consolida con el XML de nómina antes de subir.`}
-                        >
-                            {exportingXml ? "Generando…" : "XML Ret. ISLR"}
-                        </BaseButton.Root>
-                    </>
-                )}
                 <BaseButton.Root
                     as={Link}
                     href="/inventory/purchase-ledger"
@@ -469,7 +445,7 @@ export default function EntradasPage() {
                     />
                 </div>
 
-                {/* ── Toolbar: period picker + filters + search ─────────────── */}
+                {/* ── Toolbar: period picker + filters + search + SENIAT exports ─ */}
                 <div className="flex flex-wrap items-center gap-3">
                     <PeriodPicker period={period} onChange={setPeriod} />
                     <StatusFilterChips value={statusFilter} onChange={setStatusFilter} counts={counts} />
@@ -483,6 +459,33 @@ export default function EntradasPage() {
                             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
                         />
                     </div>
+                    {isEspecial && (
+                        <div className="flex items-center gap-2 pl-3 border-l border-border-light">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] hidden lg:inline">
+                                Exportar SENIAT
+                            </span>
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="sm"
+                                leftIcon={<Receipt size={13} strokeWidth={2} />}
+                                onClick={handleExportTxt}
+                                disabled={exportingTxt || loadingPurchaseInvoices}
+                                title={`Genera el archivo TXT de retenciones IVA para subir al portal SENIAT (período ${periodLabel(period)})`}
+                            >
+                                {exportingTxt ? "…" : "TXT IVA"}
+                            </BaseButton.Root>
+                            <BaseButton.Root
+                                variant="secondary"
+                                size="sm"
+                                leftIcon={<FileCode size={13} strokeWidth={2} />}
+                                onClick={handleExportIslrXml}
+                                disabled={exportingXml || loadingPurchaseInvoices}
+                                title={`Genera el archivo XML de retenciones ISLR sobre compras (período ${periodLabel(period)}). Si tu empresa también retiene ISLR de nómina, consolida con el XML de nómina antes de subir.`}
+                            >
+                                {exportingXml ? "…" : "XML ISLR"}
+                            </BaseButton.Root>
+                        </div>
+                    )}
                 </div>
 
 
