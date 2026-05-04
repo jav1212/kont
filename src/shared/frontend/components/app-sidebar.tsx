@@ -119,8 +119,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const resolvedModuleId = derivedModuleId ?? storedModuleId;
     const subnav = resolvedModuleId ? MODULE_SUBNAV[resolvedModuleId] : undefined;
 
+    // `purchases` hereda el acceso de `inventory` por ahora — mismo plan,
+    // mismas tablas (inventario_facturas_compra, inventario_proveedores). Si
+    // más adelante se separa la suscripción se reemplaza por su propio slug.
     const paidAccess: Record<string, boolean> = {
-        payroll: hasPayroll, inventory: hasInventory, accounting: hasAccounting,
+        payroll: hasPayroll, inventory: hasInventory, purchases: hasInventory, accounting: hasAccounting,
     };
 
     const selectableModules = useMemo(() =>
