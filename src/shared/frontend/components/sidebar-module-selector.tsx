@@ -39,6 +39,15 @@ function renderModuleIcon(id: string, size: number) {
                     <path d="M6 10h4M8 8.5v3" />
                 </svg>
             );
+        case "purchases":
+            // Tray with downward arrow — incoming invoices / "entradas"
+            return (
+                <svg {...props}>
+                    <rect x="2" y="6.5" width="12" height="7.5" rx="1" />
+                    <path d="M2 10.5h4l1 1.5h2l1-1.5h4" />
+                    <path d="M8 1.7v4.8M5.5 4.2L8 6.6l2.5-2.4" />
+                </svg>
+            );
         case "inventory":
             return (
                 <svg {...props}>
