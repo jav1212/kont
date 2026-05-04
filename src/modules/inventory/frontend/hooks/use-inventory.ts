@@ -19,6 +19,8 @@ import type { IslrProduct } from '../../backend/domain/islr-report';
 import type { SalesLedgerRow } from '../../backend/domain/sales-ledger';
 import type { InventoryLedgerRow } from '../../backend/domain/inventory-ledger';
 import type { BalanceReportRow } from '../../backend/domain/balance-report';
+import type { IvaRetentionExportRow } from '../../backend/domain/iva-retention-export';
+import type { IslrRetentionExportRow, IslrRetentionExportPayload } from '../../backend/domain/islr-retentions-export';
 import type {
     MovementDraftSaveInput,
     MovementDraftSaveResult,
@@ -46,7 +48,13 @@ import type {
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { notify } from '@/src/shared/frontend/notify';
 
-export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput, MigratePurchaseInvoicesResult };
+export type { Product, Movement, PeriodClose, Supplier, PurchaseInvoice, PurchaseInvoiceItem, Department, PeriodReportRow, PurchaseLedgerRow, IslrProduct, SalesLedgerRow, InventoryLedgerRow, BalanceReportRow, IvaRetentionExportRow, IslrRetentionExportRow, IslrRetentionExportPayload, GenerateRandomSalesInput, RandomSalesPreview, RandomSalesPreviewLine, GenerateStockAdjustmentInput, StockAdjustmentPreview, StockAdjustmentLine, AdjustmentBaseSource, AdjustmentMode, SaveStockAdjustmentInput, SaveStockAdjustmentOutput, MigratePurchaseInvoicesResult };
+
+export interface IvaRetentionExportPayload {
+    agentRif:     string;
+    periodYyyymm: string;
+    rows:         IvaRetentionExportRow[];
+}
 export type { MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary, MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult };
 
 // Centralised error reporter. Network failures go to console for debugging
@@ -703,6 +711,48 @@ export function useInventory() {
         }
     }, []);
 
+    // ── IVA Retention TXT Export (SENIAT) ──────────────────────────────────────
+
+    const fetchIvaRetentionExport = useCallback(async (
+        companyId: string,
+        period:    string,
+    ): Promise<IvaRetentionExportPayload | null> => {
+        try {
+            const res = await apiFetch(
+                `/api/inventory/iva-retention-export?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
+            );
+            const json = await res.json();
+            if (!res.ok) {
+                notify.error(json.error ?? 'Error al consultar retenciones IVA');
+                return null;
+            }
+            return (json.data ?? null) as IvaRetentionExportPayload | null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
+    const fetchIslrRetentionsExport = useCallback(async (
+        companyId: string,
+        period:    string,
+    ): Promise<IslrRetentionExportPayload | null> => {
+        try {
+            const res = await apiFetch(
+                `/api/inventory/islr-retentions-export?companyId=${encodeURIComponent(companyId)}&period=${encodeURIComponent(period)}`
+            );
+            const json = await res.json();
+            if (!res.ok) {
+                notify.error(json.error ?? 'Error al consultar retenciones ISLR');
+                return null;
+            }
+            return (json.data ?? null) as IslrRetentionExportPayload | null;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, []);
+
     // ── Period Report ──────────────────────────────────────────────────────────
 
     const loadPeriodReport = useCallback(async (companyId: string, period: string) => {
@@ -833,6 +883,8 @@ export function useInventory() {
         generateStockAdjustment, saveStockAdjustment,
         loadInventoryLedger,
         loadBalanceReport,
+        fetchIvaRetentionExport,
+        fetchIslrRetentionsExport,
         // movement drafts
         saveMovementDraft, confirmMovementDraft, getLatestMovementDraft, getMovementDraft, discardMovementDraft,
     };

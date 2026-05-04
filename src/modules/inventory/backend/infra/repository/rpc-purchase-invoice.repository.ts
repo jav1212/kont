@@ -48,6 +48,14 @@ interface InvoiceRpcRow {
   recargo_monto: number | string | null;
   retencion_iva_pct:   number | string | null;
   retencion_iva_monto: number | string | null;
+  comprobante_retencion_iva_numero: string | null;
+  islr_concepto:           string | null;
+  islr_porcentaje:         number | string | null;
+  islr_base_retencion:     number | string | null;
+  islr_sustraendo:         number | string | null;
+  islr_monto:              number | string | null;
+  islr_unidad_tributaria:  number | string | null;
+  comprobante_islr_numero: string | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   created_at: string | null;
@@ -144,6 +152,11 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 recargo_valor:   stringifyNum(invoice.recargoValor),
                 recargo_monto:   stringifyNum(invoice.recargoMonto),
                 retencion_iva_pct: stringifyNum(invoice.retencionIvaPct),
+                islr_concepto:          invoice.islrConcepto ?? '',
+                islr_porcentaje:        stringifyNum(invoice.islrPorcentaje),
+                islr_base_retencion:    stringifyNum(invoice.islrBaseRetencion),
+                islr_sustraendo:        stringifyNum(invoice.islrSustraendo),
+                islr_unidad_tributaria: stringifyNum(invoice.islrUnidadTributaria),
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -289,6 +302,14 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             recargoMonto:   num(row.recargo_monto),
             retencionIvaPct:   num(row.retencion_iva_pct),
             retencionIvaMonto: num(row.retencion_iva_monto),
+            comprobanteRetencionIvaNumero: row.comprobante_retencion_iva_numero ?? null,
+            islrConcepto:          row.islr_concepto ?? null,
+            islrPorcentaje:        num(row.islr_porcentaje),
+            islrBaseRetencion:     num(row.islr_base_retencion),
+            islrSustraendo:        num(row.islr_sustraendo),
+            islrMonto:             num(row.islr_monto),
+            islrUnidadTributaria:  row.islr_unidad_tributaria != null && row.islr_unidad_tributaria !== '' ? Number(row.islr_unidad_tributaria) : undefined,
+            comprobanteIslrNumero: row.comprobante_islr_numero ?? null,
             confirmedAt:   row.confirmada_at ?? null,
             items,
             createdAt:     row.created_at ?? undefined,

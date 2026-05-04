@@ -85,6 +85,40 @@ export interface PurchaseInvoice {
   retencionIvaPct?:   number;  // 0 | 75 | 100
   retencionIvaMonto?: number;  // server-resolved Bs (= ivaMonto × pct/100)
 
+  /**
+   * N° del Comprobante de Retención IVA (mig 090). Asignado server-side al
+   * confirmar la factura cuando hay retención. Formato AAAAMMSSSSSSSS — 14
+   * chars: AAAAMM del período + correlativo de 8 dígitos que reinicia cada
+   * período por empresa. Persistente — no se borra al desconfirmar.
+   */
+  comprobanteRetencionIvaNumero?: string | null;
+
+  // ── Retención ISLR (mig 091) — Decreto 1808 + Anexo 6.1 SENIAT.
+  // El usuario selecciona un concepto del catálogo, define la base y el % se
+  // resuelve del concepto. El sustraendo y el monto final los calcula el
+  // server (auth) usando computeIslrRetention. Persiste el comprobante ISLR
+  // (correlativo anual por empresa) para el XML mensual y el PDF.
+  /** Código del concepto ISLR (3 chars, ej. "002"). */
+  islrConcepto?:        string | null;
+  /** Alícuota aplicada (%); copia del concepto al persistir. */
+  islrPorcentaje?:      number;
+  /** Base imponible para la retención ISLR (Bs). */
+  islrBaseRetencion?:   number;
+  /** Sustraendo aplicado (Bs); 0 si el concepto no aplica fórmula PNR. */
+  islrSustraendo?:      number;
+  /** Monto retenido en Bs (server-resolved). */
+  islrMonto?:           number;
+  /** Valor de la U.T. usado para el cálculo (Bs); persistido para auditoría. */
+  islrUnidadTributaria?: number;
+  /**
+   * N° de Comprobante de Retención ISLR. Formato AAAASSSSSSSS — 12 chars:
+   * AAAA del año fiscal + correlativo de 8 dígitos que reinicia cada año
+   * por empresa. (Convención común venezolana — el manual SENIAT no fija
+   * formato estricto para ISLR, sólo exige numeración consecutiva en Art.
+   * 24 Decreto 1808.)
+   */
+  comprobanteIslrNumero?: string | null;
+
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
   createdAt?: string;

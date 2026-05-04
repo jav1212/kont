@@ -6,7 +6,7 @@
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
 import { useEffect, useState, use, useCallback } from "react";
-import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock } from "lucide-react";
+import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock, Receipt } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -16,6 +16,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/inventory/backend/domain/purchase-invoice";
+import { generateComprobanteIvaPdf } from "@/src/modules/inventory/frontend/utils/comprobante-iva-pdf";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/inventory/frontend/components/factura-items-grid";
 import {
     computeInvoiceTotals,
@@ -26,6 +27,7 @@ import {
 } from "@/src/modules/inventory/shared/totals";
 import { HeaderAdjustmentsSection } from "@/src/modules/inventory/frontend/components/header-adjustments-section";
 import { IvaRetencionToggle } from "@/src/modules/inventory/frontend/components/iva-retencion-toggle";
+import { IslrRetencionSection, emptyIslrValue, type IslrFormValue } from "@/src/modules/inventory/frontend/components/islr-retencion-section";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 import {
     BcvRateInput,
@@ -73,7 +75,7 @@ const fmtDate = (d: string) => {
 export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const {
         products, loadProducts,
         suppliers, loadSuppliers,
@@ -92,6 +94,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
     const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
     const [retencionIvaPct, setRetencionIvaPct] = useState<number>(0);
+    const [islr, setIslr] = useState<IslrFormValue>(() => emptyIslrValue());
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
     const {
         rate: dollarRateStr,
@@ -182,10 +185,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             recargoValor:   currentPurchaseInvoice.recargoValor ?? 0,
         });
         setRetencionIvaPct(currentPurchaseInvoice.retencionIvaPct ?? 0);
+        setIslr({
+            concepto:         currentPurchaseInvoice.islrConcepto ?? null,
+            porcentaje:       currentPurchaseInvoice.islrPorcentaje ?? 0,
+            baseRetencion:    currentPurchaseInvoice.islrBaseRetencion ?? 0,
+            sustraendo:       currentPurchaseInvoice.islrSustraendo ?? 0,
+            monto:            currentPurchaseInvoice.islrMonto ?? 0,
+            unidadTributaria: currentPurchaseInvoice.islrUnidadTributaria ?? 9,
+        });
         const hasAdj =
             (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
             (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0) ||
-            (currentPurchaseInvoice.retencionIvaPct ?? 0) > 0;
+            (currentPurchaseInvoice.retencionIvaPct ?? 0) > 0 ||
+            (currentPurchaseInvoice.islrConcepto != null);
         if (hasAdj) setShowHeaderAdj(true);
         const storedDecimals = currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS;
         if (currentPurchaseInvoice.dollarRate != null) {
@@ -224,7 +236,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const headerAdjActive =
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
         (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0) ||
-        retencionIvaPct > 0;
+        retencionIvaPct > 0 ||
+        islr.concepto != null;
 
     const effectiveDollarRate = (() => {
         const r = parseRateStr(dollarRateStr);
@@ -256,7 +269,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         recargoMonto:   totals.recargoHeader,
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva]);
+        islrConcepto:          islr.concepto,
+        islrPorcentaje:        islr.porcentaje,
+        islrBaseRetencion:     islr.baseRetencion,
+        islrSustraendo:        islr.sustraendo,
+        islrMonto:             islr.monto,
+        islrUnidadTributaria:  islr.unidadTributaria,
+    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -350,6 +369,78 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setJustConfirmed(false);
         await unconfirmPurchaseInvoice(currentPurchaseInvoice.id);
         setUnconfirming(false);
+    }
+
+    async function handleDownloadComprobante() {
+        const inv = currentPurchaseInvoice;
+        if (!inv || !company) return;
+        if (!inv.comprobanteRetencionIvaNumero) {
+            notify.error("Esta factura no tiene un N° de comprobante asignado.");
+            return;
+        }
+        const supplier = suppliers.find((s) => s.id === inv.supplierId);
+        if (!supplier) {
+            notify.error("No se pudo cargar el proveedor.");
+            return;
+        }
+        if (!company.rif) {
+            notify.error("La empresa no tiene RIF configurado.");
+            return;
+        }
+        if (!supplier.rif) {
+            notify.error("El proveedor no tiene RIF — requerido por SENIAT.");
+            return;
+        }
+
+        // Desglose por alícuota a partir de los items para detectar la
+        // alícuota predominante y separar exento.
+        const items = inv.items ?? [];
+        const exemptBase  = items
+            .filter((i) => i.vatRate === "exenta")
+            .reduce((acc, i) => acc + (i.baseIVA ?? i.totalCost ?? 0), 0);
+        const base16 = items
+            .filter((i) => i.vatRate === "general_16")
+            .reduce((acc, i) => acc + (i.baseIVA ?? i.totalCost ?? 0), 0);
+        const base8  = items
+            .filter((i) => i.vatRate === "reducida_8")
+            .reduce((acc, i) => acc + (i.baseIVA ?? i.totalCost ?? 0), 0);
+        // Predominante: la alícuota con mayor base. Si solo hay una, esa.
+        const predominantRate = base16 >= base8 && base16 > 0 ? 16 : base8 > 0 ? 8 : 16;
+        const taxableBase = base16 + base8;
+
+        try {
+            await generateComprobanteIvaPdf({
+                agent: {
+                    name:    company.name,
+                    rif:     company.rif,
+                    address: company.address,
+                },
+                supplier: {
+                    name:    supplier.name,
+                    rif:     supplier.rif,
+                    address: supplier.address,
+                },
+                operation: {
+                    invoiceNumber: inv.invoiceNumber,
+                    controlNumber: inv.controlNumber ?? "",
+                    invoiceDate:   fmtDate(inv.date),
+                    period:        inv.period,
+                },
+                amounts: {
+                    invoiceTotal:    inv.subtotal + inv.vatAmount,
+                    taxableBase,
+                    exemptBase,
+                    ivaRate:         predominantRate,
+                    ivaCaused:       inv.vatAmount,
+                    retentionPct:    inv.retencionIvaPct ?? 0,
+                    retentionAmount: inv.retencionIvaMonto ?? 0,
+                },
+                voucherNumber: inv.comprobanteRetencionIvaNumero,
+            });
+            notify.success("Comprobante de retención IVA generado.");
+        } catch (e) {
+            notify.error(e instanceof Error ? e.message : "Error al generar el comprobante.");
+        }
     }
 
     if (loadingPurchaseInvoice) {
@@ -680,6 +771,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                 readOnly={!isDraft}
                                             />
                                         </div>
+                                        <div className="pt-3 border-t border-border-light/60">
+                                            <IslrRetencionSection
+                                                value={islr}
+                                                onChange={setIslr}
+                                                defaultBase={subtotal}
+                                                readOnly={!isDraft}
+                                            />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -731,10 +830,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dVat8         = t.ivaPorAlicuota.reducida_8;
                                 const dVat16        = t.ivaPorAlicuota.general_16;
                                 const dVatAmount    = t.ivaMonto;
-                                const dTotal        = isDraft ? t.total : invoice.total;
+                                // Total bruto factura (antes de retenciones).
+                                const dGross        = isDraft ? t.total : (invoice.subtotal + invoice.vatAmount);
                                 const dRetencionIva = isDraft ? t.retencionIva : (invoice.retencionIvaMonto ?? 0);
-                                const dTotalAPagar  = dTotal - dRetencionIva;
+                                const dRetencionIslr= isDraft ? islr.monto      : (invoice.islrMonto ?? 0);
+                                const dIslrConcepto = isDraft ? islr.concepto   : (invoice.islrConcepto ?? null);
+                                const dIslrPct      = isDraft ? islr.porcentaje : (invoice.islrPorcentaje ?? 0);
+                                const dTotalAPagar  = dGross - dRetencionIva - dRetencionIslr;
+                                const dTotal        = dGross;
                                 const dHasRetencion = dRetencionPct > 0 && dRetencionIva > 0;
+                                const dHasIslr      = dRetencionIslr > 0;
                                 const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
 
                                 const rateForUsd = isDraft
@@ -870,23 +975,37 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                 )}
 
                                                 <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
-                                                {renderRow(dHasRetencion ? "Total factura" : "Total", dTotal, {
+                                                {renderRow((dHasRetencion || dHasIslr) ? "Total factura" : "Total", dTotal, {
                                                     kind: "total",
                                                     // Only annotate when the equation actually adds two terms.
                                                     note: hasIva ? "= base + IVA" : undefined,
                                                 })}
 
                                                 {dHasRetencion && (
+                                                    renderRow(
+                                                        `Retención IVA ${dRetencionPct}%`,
+                                                        dRetencionIva,
+                                                        { kind: "neg", sign: "−", indent: true, note: `${dRetencionPct}% × IVA` },
+                                                    )
+                                                )}
+
+                                                {dHasIslr && dIslrConcepto && (
+                                                    renderRow(
+                                                        `Retención ISLR ${dIslrPct}%`,
+                                                        dRetencionIslr,
+                                                        { kind: "neg", sign: "−", indent: true, note: `concepto ${dIslrConcepto}` },
+                                                    )
+                                                )}
+
+                                                {(dHasRetencion || dHasIslr) && (
                                                     <>
-                                                        {renderRow(
-                                                            `Retención IVA ${dRetencionPct}%`,
-                                                            dRetencionIva,
-                                                            { kind: "neg", sign: "−", indent: true, note: `${dRetencionPct}% × IVA` },
-                                                        )}
                                                         <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
                                                         {renderRow("Total a pagar", dTotalAPagar, {
                                                             kind: "total",
-                                                            note: "= total − retención",
+                                                            note: dHasIslr && dHasRetencion
+                                                                ? "= total − ret. IVA − ret. ISLR"
+                                                                : dHasIslr ? "= total − ret. ISLR"
+                                                                : "= total − retención",
                                                         })}
                                                     </>
                                                 )}
@@ -928,7 +1047,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         )}
 
                         {isConfirmed && (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-wrap">
                                 <BaseButton.Root
                                     as={Link}
                                     href={`/inventory/movements?periodo=${invoice.period}`}
@@ -938,6 +1057,17 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 >
                                     Ver movimientos
                                 </BaseButton.Root>
+                                {invoice.comprobanteRetencionIvaNumero && (
+                                    <BaseButton.Root
+                                        variant="primary"
+                                        size="md"
+                                        leftIcon={<Receipt size={14} strokeWidth={2} />}
+                                        onClick={handleDownloadComprobante}
+                                        title={`Descargar comprobante Nº ${invoice.comprobanteRetencionIvaNumero} para entregar al proveedor`}
+                                    >
+                                        Comprobante Ret. IVA
+                                    </BaseButton.Root>
+                                )}
                                 <BaseButton.Root
                                     variant="dangerOutline"
                                     size="md"
@@ -1005,6 +1135,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     const summaryRetencionMonto = invoice.retencionIvaMonto ?? 0;
                                     const summaryRetencionPct   = invoice.retencionIvaPct ?? 0;
                                     const summaryHasRetencion   = summaryRetencionMonto > 0;
+                                    const summaryIslrMonto      = invoice.islrMonto ?? 0;
+                                    const summaryIslrConcepto   = invoice.islrConcepto ?? null;
+                                    const summaryHasIslr        = summaryIslrMonto > 0 && !!summaryIslrConcepto;
                                     return (
                                         <>
                                             {summaryHasIva && (
@@ -1043,6 +1176,25 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                             <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
                                                                 <span className="opacity-60 mr-0.5">−</span>
                                                                 ≈ {usd(summaryRetencionMonto)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {summaryHasIslr && (
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">
+                                                        Ret. ISLR ({summaryIslrConcepto})
+                                                    </span>
+                                                    <div className="text-right">
+                                                        <div className="tabular-nums text-error/80">
+                                                            <span className="opacity-60 mr-0.5">−</span>
+                                                            Bs. {fmtN(summaryIslrMonto)}
+                                                        </div>
+                                                        {usd(summaryIslrMonto) && (
+                                                            <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
+                                                                <span className="opacity-60 mr-0.5">−</span>
+                                                                ≈ {usd(summaryIslrMonto)}
                                                             </div>
                                                         )}
                                                     </div>

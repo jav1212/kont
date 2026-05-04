@@ -18,6 +18,8 @@ import {
     Archive,
     Trash2,
     AlertTriangle,
+    Receipt,
+    FileCode,
 } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -26,6 +28,17 @@ import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { InvoiceStatus } from "@/src/modules/inventory/backend/domain/purchase-invoice";
+import { notify } from "@/src/shared/frontend/notify";
+import {
+    buildIvaRetentionTxt,
+    downloadIvaRetentionTxt,
+    defaultIvaRetentionTxtFilename,
+} from "@/src/modules/inventory/frontend/utils/txt-retenciones-iva";
+import {
+    buildPurchaseIslrXml,
+    defaultPurchaseIslrXmlFilename,
+    downloadXmlFile,
+} from "@/src/modules/inventory/frontend/utils/xml-retenciones-islr";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -174,10 +187,12 @@ function PeriodPicker({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EntradasPage() {
-    const { companyId } = useCompany();
+    const { companyId, company } = useCompany();
     const {
         purchaseInvoices, loadingPurchaseInvoices,
         loadPurchaseInvoices, deletePurchaseInvoice,
+        fetchIvaRetentionExport,
+        fetchIslrRetentionsExport,
     } = useInventory();
 
     const [period, setPeriod] = useState<string>(currentPeriodKey());
@@ -186,6 +201,10 @@ export default function EntradasPage() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [confirmDeleteConfirmada, setConfirmDeleteConfirmada] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [exportingTxt, setExportingTxt] = useState(false);
+    const [exportingXml, setExportingXml] = useState(false);
+
+    const isEspecial = company?.taxpayerType === "especial";
 
     useEffect(() => {
         if (companyId) loadPurchaseInvoices(companyId);
@@ -248,6 +267,48 @@ export default function EntradasPage() {
         setConfirmDeleteConfirmada(null);
     }
 
+    async function handleExportTxt() {
+        if (!companyId) return;
+        setExportingTxt(true);
+        try {
+            const payload = await fetchIvaRetentionExport(companyId, period);
+            if (!payload) return;
+            const txt = buildIvaRetentionTxt(payload);
+            const filename = defaultIvaRetentionTxtFilename(payload.agentRif, payload.periodYyyymm);
+            downloadIvaRetentionTxt(txt, filename);
+            if (payload.rows.length === 0) {
+                notify.success(`TXT en cero generado para ${periodLabel(period)} (sin retenciones).`);
+            } else {
+                notify.success(`TXT con ${payload.rows.length} ${payload.rows.length === 1 ? "fila" : "filas"} generado.`);
+            }
+        } catch (e) {
+            notify.error(e instanceof Error ? e.message : "Error al generar TXT");
+        } finally {
+            setExportingTxt(false);
+        }
+    }
+
+    async function handleExportIslrXml() {
+        if (!companyId) return;
+        setExportingXml(true);
+        try {
+            const payload = await fetchIslrRetentionsExport(companyId, period);
+            if (!payload) return;
+            if (payload.rows.length === 0) {
+                notify.warning(`No hay retenciones ISLR sobre compras en ${periodLabel(period)}.`);
+                return;
+            }
+            const xml = buildPurchaseIslrXml({ payload });
+            const filename = defaultPurchaseIslrXmlFilename(payload.agentRif, payload.periodYyyymm);
+            downloadXmlFile(xml, filename);
+            notify.success(`XML con ${payload.rows.length} ${payload.rows.length === 1 ? "retención" : "retenciones"} generado.`);
+        } catch (e) {
+            notify.error(e instanceof Error ? e.message : "Error al generar XML");
+        } finally {
+            setExportingXml(false);
+        }
+    }
+
     // ── render ─────────────────────────────────────────────────────────────────
 
     return (
@@ -256,6 +317,30 @@ export default function EntradasPage() {
                 title="Entradas de Inventario"
                 subtitle={`Tablero · ${periodLabel(period)}`}
             >
+                {isEspecial && (
+                    <>
+                        <BaseButton.Root
+                            variant="ghost"
+                            size="sm"
+                            leftIcon={<Receipt size={14} strokeWidth={2} />}
+                            onClick={handleExportTxt}
+                            disabled={exportingTxt || loadingPurchaseInvoices}
+                            title={`Genera el archivo TXT de retenciones IVA para subir al portal SENIAT (período ${periodLabel(period)})`}
+                        >
+                            {exportingTxt ? "Generando…" : "TXT Ret. IVA"}
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="ghost"
+                            size="sm"
+                            leftIcon={<FileCode size={14} strokeWidth={2} />}
+                            onClick={handleExportIslrXml}
+                            disabled={exportingXml || loadingPurchaseInvoices}
+                            title={`Genera el archivo XML de retenciones ISLR sobre compras (período ${periodLabel(period)}). Si tu empresa también retiene ISLR de nómina, consolida con el XML de nómina antes de subir.`}
+                        >
+                            {exportingXml ? "Generando…" : "XML Ret. ISLR"}
+                        </BaseButton.Root>
+                    </>
+                )}
                 <BaseButton.Root
                     as={Link}
                     href="/inventory/purchase-ledger"
