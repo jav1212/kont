@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { ChevronDown, Download, Menu, X } from "lucide-react";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { BcvPill, useBcvRate, useScrolled } from "@/src/shared/frontend/components/bcv-pill";
+import { usePwaInstall } from "@/src/shared/frontend/hooks/use-pwa-install";
+import { detectDevice, type DeviceOS } from "@/src/shared/frontend/utils/detect-device";
 
 // ----------------------------------------------------------------------------
 // Public navigation (header + footer) for unauthenticated routes.
@@ -174,6 +176,8 @@ export function PublicHeader() {
                 <div className="flex items-center gap-2 sm:gap-3">
                     {bcv && <BcvPill data={bcv} className="hidden lg:inline-flex" />}
 
+                    <NavInstallButton variant="nav" />
+
                     <Link
                         href="/sign-in"
                         className={`${chromeLink} hidden sm:inline-flex items-center h-9 px-3 rounded-lg hover:bg-surface-2`}
@@ -270,6 +274,7 @@ export function PublicHeader() {
                         </div>
 
                         <div className="mt-auto flex flex-col gap-3 pt-10">
+                            <NavInstallButton variant="drawer" onClick={() => setMobileOpen(false)} />
                             <Link
                                 href="/sign-in"
                                 onClick={() => setMobileOpen(false)}
@@ -289,6 +294,87 @@ export function PublicHeader() {
                 </div>
             )}
         </>
+    );
+}
+
+// ----------------------------------------------------------------------------
+// NavInstallButton — atajo de instalación PWA en la navbar / drawer móvil.
+//
+// Comportamiento:
+//   • Si Chrome/Edge ya disparó `beforeinstallprompt`, lanza el prompt nativo.
+//   • Si no, scrollea al bloque de pasos del landing (`#pwa-install-steps`)
+//     cuando estamos en `/`, o navega a esa URL desde otras páginas públicas.
+//   • Se oculta entero cuando el visitante ya corre la app en standalone o
+//     ya completó la instalación — alineado con la sección del landing.
+// ----------------------------------------------------------------------------
+
+function NavInstallButton({
+    variant,
+    onClick,
+}: {
+    variant:  "nav" | "drawer";
+    onClick?: () => void;
+}) {
+    const pathname = usePathname();
+    const [device, setDevice] = useState<{ os: DeviceOS; isStandalone: boolean }>({
+        os:           "unknown",
+        isStandalone: false,
+    });
+    const [mounted, setMounted] = useState(false);
+    const { canPromptInstall, isInstalled, isStandalone, promptInstall } = usePwaInstall();
+
+    useEffect(() => {
+        const d = detectDevice();
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- navigator is browser-only
+        setDevice({ os: d.os, isStandalone: d.isStandalone });
+        setMounted(true);
+    }, []);
+
+    const alreadyOnApp = isStandalone || device.isStandalone || isInstalled;
+    if (mounted && alreadyOnApp) return null;
+
+    function handleClick() {
+        onClick?.();
+        if (canPromptInstall) {
+            void promptInstall();
+            return;
+        }
+        if (pathname === "/" && typeof document !== "undefined") {
+            const el = document.getElementById("pwa-install-steps");
+            if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+            }
+        }
+        if (typeof window !== "undefined") {
+            window.location.assign("/#pwa-install-steps");
+        }
+    }
+
+    if (variant === "drawer") {
+        return (
+            <button
+                type="button"
+                onClick={handleClick}
+                className="inline-flex items-center justify-center gap-2 h-11 rounded-full border border-primary-500/30 bg-primary-500/10 text-primary-500 font-mono text-[12px] uppercase tracking-[0.14em] font-bold hover:bg-primary-500/15 hover:border-primary-500/50 transition-colors"
+            >
+                <Download className="w-[14px] h-[14px]" strokeWidth={2.2} />
+                Instalar app
+            </button>
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={handleClick}
+            aria-label="Instalar Kontave como app"
+            className="hidden md:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-primary-500/30 bg-primary-500/10 text-primary-500 font-mono text-[11px] uppercase tracking-[0.14em] font-bold hover:bg-primary-500/15 hover:border-primary-500/50 transition-colors"
+        >
+            <Download className="w-[13px] h-[13px]" strokeWidth={2.2} />
+            <span className="hidden lg:inline">Instalar app</span>
+            <span className="lg:hidden">Instalar</span>
+        </button>
     );
 }
 

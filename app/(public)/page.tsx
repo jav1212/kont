@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { LiveToolsStrip } from "./_components/live-tools-strip";
+import { PwaInstallSection } from "./_components/pwa-install-section";
 
 interface Plan {
     id:                     string;
@@ -440,6 +441,10 @@ export default function LandingPage() {
                     </div>
                 </div>
             </section>
+
+            {/* 5b. PWA INSTALL — marketing contextual + instalación 1-click si está
+                   disponible. Detecta OS y se oculta si ya estamos en standalone. */}
+            <PwaInstallSection />
 
             {/* 6. PRICING GRID (Smart Integration of the Plans) */}
             <section id="planes" className="bg-background pt-8 pb-32 scroll-mt-24">
