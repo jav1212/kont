@@ -15,6 +15,7 @@ import { GetPurchaseInvoiceUseCase }       from '../app/get-purchase-invoice.use
 import { SavePurchaseInvoiceUseCase }      from '../app/save-purchase-invoice.use-case';
 import { ConfirmPurchaseInvoiceUseCase }   from '../app/confirm-purchase-invoice.use-case';
 import { UnconfirmPurchaseInvoiceUseCase } from '../app/unconfirm-purchase-invoice.use-case';
+import { ImputePurchaseInvoiceItemsUseCase } from '../app/impute-purchase-invoice-items.use-case';
 import { DeletePurchaseInvoiceUseCase }    from '../app/delete-purchase-invoice.use-case';
 import { MigratePurchaseInvoicesUseCase }  from '../app/migrate-purchase-invoices.use-case';
 import { GetIvaRetentionExportUseCase }    from '../app/get-iva-retention-export.use-case';
@@ -38,6 +39,7 @@ export function getPurchasesActions(userId: string) {
         savePurchaseInvoice:     new SavePurchaseInvoiceUseCase(invoiceRepo),
         confirmPurchaseInvoice:  new ConfirmPurchaseInvoiceUseCase(invoiceRepo),
         unconfirmPurchaseInvoice:new UnconfirmPurchaseInvoiceUseCase(invoiceRepo),
+        imputePurchaseInvoiceItems: new ImputePurchaseInvoiceItemsUseCase(invoiceRepo),
         deletePurchaseInvoice:   new DeletePurchaseInvoiceUseCase(invoiceRepo),
         migratePurchaseInvoices: new MigratePurchaseInvoicesUseCase(invoiceRepo),
         // SENIAT exports

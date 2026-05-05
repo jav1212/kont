@@ -63,6 +63,7 @@ interface InvoiceRpcRow {
   igtf_monto:              number | string | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
+  items_count: number | string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -226,6 +227,39 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
         }
     }
 
+    async imputeItems(invoiceId: string, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>> {
+        try {
+            const itemsRow = items.map((i) => ({
+                producto_id:    i.productId,
+                cantidad:       i.quantity,
+                costo_unitario: i.unitCost,
+                costo_total:    i.totalCost,
+                iva_alicuota:   i.vatRate ?? 'general_16',
+                moneda:         i.currency ?? 'B',
+                costo_moneda:   i.currencyCost ?? null,
+                tasa_dolar:     i.dollarRate ?? null,
+                descuento_tipo:  stringifyAdj(i.descuentoTipo),
+                descuento_valor: stringifyNum(i.descuentoValor),
+                descuento_monto: stringifyNum(i.descuentoMonto),
+                recargo_tipo:    stringifyAdj(i.recargoTipo),
+                recargo_valor:   stringifyNum(i.recargoValor),
+                recargo_monto:   stringifyNum(i.recargoMonto),
+                base_iva:       i.baseIVA != null ? String(i.baseIVA) : '',
+                iva_incluido:   i.ivaIncluido ? 'true' : '',
+            }));
+            const { data, error } = await this.source.instance
+                .rpc('tenant_inventario_factura_imputar_items', {
+                    p_user_id:    this.userId,
+                    p_factura_id: invoiceId,
+                    p_items:      itemsRow,
+                });
+            if (error) return Result.fail(error.message);
+            return Result.success(this.mapToDomain(data as InvoiceRpcRow));
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Failed to impute purchase invoice items');
+        }
+    }
+
     async unconfirm(invoiceId: string): Promise<Result<PurchaseInvoice>> {
         try {
             const { data, error } = await this.source.instance
@@ -326,6 +360,7 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             igtfMonto:             num(row.igtf_monto),
             confirmedAt:   row.confirmada_at ?? null,
             items,
+            itemsCount:    row.items_count != null ? Number(row.items_count) : undefined,
             createdAt:     row.created_at ?? undefined,
             updatedAt:     row.updated_at ?? undefined,
         };

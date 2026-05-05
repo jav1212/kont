@@ -137,6 +137,34 @@ export interface PurchaseInvoice {
 
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];
+  /**
+   * Cantidad de items asociados a la factura en la base de datos. Se devuelve
+   * sólo en el listado (`tenant_inventario_facturas_get`) para permitir que el
+   * frontend filtre facturas pendientes de imputar sin tener que cargar el
+   * array completo. En el detalle (`tenant_inventario_factura_get`) viene
+   * `items` y este campo no se setea.
+   */
+  itemsCount?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// ── Derived predicates ──────────────────────────────────────────────────────
+// Una factura "pendiente de imputar" es la que ya cerró contablemente (status =
+// confirmada) pero todavía no tiene detalle de productos cargado. Es el caso
+// del flujo rápido: contadora registra header + total para cuadrar el libro de
+// compras y el asiento; el asistente de inventario imputa los items después.
+export function isPendingImputation(invoice: PurchaseInvoice): boolean {
+  if (invoice.status !== 'confirmada') return false;
+  // En el listado, el repo expone `itemsCount` aunque `items` venga undefined.
+  // En el detalle, viene `items` (array). Ambos casos cubiertos.
+  if (typeof invoice.itemsCount === 'number') return invoice.itemsCount === 0;
+  return (invoice.items?.length ?? 0) === 0;
+}
+
+// Suma los `totalCost` de los items (antes de ajustes y retenciones). Útil
+// para comparar contra `total` del header en la UI de imputación y avisar al
+// usuario si los items no cuadran con el monto declarado.
+export function totalItemsAmount(invoice: PurchaseInvoice): number {
+  return (invoice.items ?? []).reduce((acc, it) => acc + (it.totalCost ?? 0), 0);
 }

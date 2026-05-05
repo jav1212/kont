@@ -211,6 +211,29 @@ export function usePurchases() {
         }
     }, [refetchFullInvoice]);
 
+    const imputePurchaseInvoiceItems = useCallback(async (
+        invoiceId: string,
+        items:     PurchaseInvoiceItem[],
+    ): Promise<PurchaseInvoice | null> => {
+        try {
+            const res = await apiFetch(`/api/purchases/${encodeURIComponent(invoiceId)}/impute-items`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ items }),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al imputar items'); return null; }
+            const headerOnly: PurchaseInvoice = json.data;
+            const full = (await refetchFullInvoice(headerOnly.id!)) ?? headerOnly;
+            setPurchaseInvoices((prev) => prev.map((f) => (f.id === full.id ? full : f)));
+            setCurrentPurchaseInvoice(full);
+            return full;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        }
+    }, [refetchFullInvoice]);
+
     const migratePurchaseInvoices = useCallback(async (
         invoiceIds:      string[],
         targetCompanyId: string,
@@ -290,7 +313,7 @@ export function usePurchases() {
         loadSuppliers, saveSupplier, deleteSupplier,
         // invoice actions
         loadPurchaseInvoices, loadPurchaseInvoice, savePurchaseInvoice, deletePurchaseInvoice,
-        confirmPurchaseInvoice, unconfirmPurchaseInvoice, migratePurchaseInvoices,
+        confirmPurchaseInvoice, unconfirmPurchaseInvoice, imputePurchaseInvoiceItems, migratePurchaseInvoices,
         // SENIAT exports
         fetchIvaRetentionExport, fetchIslrRetentionsExport,
     };

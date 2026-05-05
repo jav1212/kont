@@ -17,6 +17,8 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { Inbox } from "lucide-react";
 import { generateComprobanteIvaPdf } from "@/src/modules/purchases/frontend/utils/comprobante-iva-pdf";
 import { generateComprobanteIslrPdf } from "@/src/modules/purchases/frontend/utils/comprobante-islr-pdf";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
@@ -555,6 +557,29 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                     Volver
                 </BaseButton.Root>
             </PageHeader>
+
+            {/* Banner: factura confirmada sin items detallados (flujo rápido) */}
+            {invoice && isPendingImputation(invoice) && (
+                <div className="px-6 pt-4">
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40 px-4 py-3">
+                        <Inbox size={18} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" strokeWidth={2} />
+                        <div className="flex-1 min-w-0">
+                            <p className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-amber-900 dark:text-amber-200">
+                                Pendiente de imputar inventario
+                            </p>
+                            <p className="font-sans text-[12px] text-amber-800/90 dark:text-amber-300/90 leading-snug mt-0.5">
+                                Esta factura se contabilizó con el total declarado. El detalle de productos puede completarse desde la bandeja de inventario para mover el stock.
+                            </p>
+                        </div>
+                        <Link
+                            href={`/inventory/compras-pendientes/${invoice.id}`}
+                            className="shrink-0 inline-flex items-center h-8 px-3 rounded-lg border border-amber-400/60 bg-amber-100/80 hover:bg-amber-100 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 dark:border-amber-700/60 font-mono text-[11px] uppercase tracking-[0.12em] text-amber-900 dark:text-amber-200 font-semibold transition-colors"
+                        >
+                            Imputar items
+                        </Link>
+                    </div>
+                </div>
+            )}
 
             {/* Purchase Return Modal */}
             {showReturnModal && (

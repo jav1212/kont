@@ -10,6 +10,11 @@ export interface IPurchaseInvoiceRepository {
   save(invoice: PurchaseInvoice, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>>;
   confirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
   unconfirm(invoiceId: string): Promise<Result<PurchaseInvoice>>;
+  /**
+   * Imputa items a una factura ya confirmada que se creó sólo con header.
+   * Crea movimientos, actualiza stock y recalcula totales desde los items.
+   */
+  imputeItems(invoiceId: string, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>>;
   delete(invoiceId: string): Promise<Result<void>>;
   migrate(
     invoiceIds:      string[],

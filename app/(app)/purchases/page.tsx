@@ -346,6 +346,15 @@ export default function EntradasPage() {
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
+                    href="/purchases/new/quick"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<Plus size={14} strokeWidth={2} />}
+                >
+                    Registro rápido
+                </BaseButton.Root>
+                <BaseButton.Root
+                    as={Link}
                     href="/purchases/new"
                     variant="primary"
                     size="sm"
