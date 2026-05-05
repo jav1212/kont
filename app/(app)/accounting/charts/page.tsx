@@ -7,18 +7,58 @@
 
 import { useId, useRef, useState, useMemo }           from 'react';
 import { AnimatePresence, motion }                     from 'framer-motion';
-import { X, Upload, Trash2, Download, ArrowLeft, Check } from 'lucide-react';
+import {
+    X, Upload, Trash2, Download, ArrowLeft, Check,
+    Library, FolderTree, Layers, Pencil, ChevronRight, FileText, Sparkles,
+} from 'lucide-react';
 import { PageHeader }                            from '@/src/shared/frontend/components/page-header';
 import { BaseButton }                            from '@/src/shared/frontend/components/base-button';
 import { BaseInput }                             from '@/src/shared/frontend/components/base-input';
+import { DashboardKpiCard }                      from '@/src/shared/frontend/components/dashboard-kpi-card';
+import { ContextLink as Link }                   from '@/src/shared/frontend/components/context-link';
 import { AccountingAccessGuard }                 from '@/src/modules/accounting/frontend/components/accounting-access-guard';
-import { BaseTable }                             from '@/src/shared/frontend/components/base-table';
 import { useCompany }                            from '@/src/modules/companies/frontend/hooks/use-companies';
 import { useCharts }                             from '@/src/modules/accounting/frontend/hooks/use-charts';
+import { useAccounts }                           from '@/src/modules/accounting/frontend/hooks/use-accounts';
 import { notify }                                from '@/src/shared/frontend/notify';
 import { parseChartFile, detectRoots }           from '@/src/modules/accounting/frontend/utils/chart-import-parser';
 import type { RootEntry, Naturaleza }            from '@/src/modules/accounting/frontend/utils/chart-import-parser';
 import type { AccountChart }                     from '@/src/modules/accounting/backend/domain/account-chart';
+import type { Account }                          from '@/src/modules/accounting/backend/domain/account';
+
+// ── Date formatting ───────────────────────────────────────────────────────────
+
+const MONTHS_SHORT = [
+    'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+    'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+] as const;
+
+function fmtShortDate(iso: string): string {
+    const [y, m, d] = iso.split('T')[0].split('-');
+    if (!y || !m || !d) return iso;
+    const month = MONTHS_SHORT[(Number(m) - 1) | 0] ?? '';
+    return `${parseInt(d, 10)} ${month} ${y}`;
+}
+
+// ── Per-chart metadata derived from the accounts list ────────────────────────
+
+interface ChartMetrics {
+    /** Number of accounts where parentCode === null (root groups). */
+    roots:   number;
+    /** Maximum hierarchical depth observed (levels in the longest code). */
+    depth:   number;
+}
+
+function computeChartMetrics(accounts: Account[]): ChartMetrics {
+    let roots = 0;
+    let depth = 0;
+    for (const a of accounts) {
+        if (a.parentCode === null) roots++;
+        const lvl = a.code.split('.').length;
+        if (lvl > depth) depth = lvl;
+    }
+    return { roots, depth };
+}
 
 // ── Example file ──────────────────────────────────────────────────────────────
 
@@ -99,6 +139,7 @@ export default function ChartsPage() {
     const modalId        = useId();
     const { companyId }  = useCompany();
     const { data: rawData, loading, deleteChart, renameChart, importChart } = useCharts(companyId);
+    const { data: accounts } = useAccounts(companyId);
 
     // Import modal state
     const [importOpen,    setImportOpen]    = useState(false);
@@ -113,25 +154,46 @@ export default function ChartsPage() {
     const [importing,     setImporting]     = useState(false);
     const fileInputRef                      = useRef<HTMLInputElement>(null);
 
-    // Inline rename state
+    // Inline rename state (per-card)
     const [editingId,   setEditingId]   = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const [renaming,    setRenaming]    = useState(false);
 
-    // Force table rows to re-render by returning a new object reference
-    // on every keystroke, while casting to avoid TypeScript errors.
-    const tableData = useMemo(() => {
-        return rawData.map(item => {
-            if (item.id === editingId) {
-                return { ...item, _updateTrigger: editingName } as AccountChart;
-            }
-            return item;
-        });
-    }, [rawData, editingId, editingName]);
-
     // Delete modal state
     const [deleteTarget, setDeleteTarget] = useState<AccountChart | null>(null);
     const [deleting,     setDeleting]     = useState(false);
+
+    // ── Derived metrics ───────────────────────────────────────────────────────
+
+    // Group accounts by chartId once, then compute per-chart metrics on lookup.
+    const accountsByChart = useMemo(() => {
+        const map = new Map<string, Account[]>();
+        for (const a of accounts) {
+            if (!a.chartId) continue;
+            const list = map.get(a.chartId);
+            if (list) list.push(a);
+            else map.set(a.chartId, [a]);
+        }
+        return map;
+    }, [accounts]);
+
+    const chartMetricsById = useMemo(() => {
+        const m = new Map<string, ChartMetrics>();
+        for (const [chartId, list] of accountsByChart.entries()) {
+            m.set(chartId, computeChartMetrics(list));
+        }
+        return m;
+    }, [accountsByChart]);
+
+    // KPI strip metrics
+    const totalAccountsAcrossPlans = useMemo(
+        () => rawData.reduce((sum, c) => sum + (c.accountCount ?? 0), 0),
+        [rawData],
+    );
+    const largestChart = useMemo(() => {
+        if (rawData.length === 0) return null;
+        return rawData.reduce((max, c) => (c.accountCount > (max?.accountCount ?? -1) ? c : max), rawData[0]);
+    }, [rawData]);
 
     // ── Import handlers ───────────────────────────────────────────────────────
 
@@ -249,111 +311,157 @@ export default function ChartsPage() {
 
     // ── Render ────────────────────────────────────────────────────────────────
 
+    const isEmpty = !loading && rawData.length === 0;
+
     return (
         <AccountingAccessGuard>
             <div className="flex flex-col min-h-full bg-surface-2 font-mono">
                 <PageHeader title="Planes de Cuentas" subtitle="Importación y gestión de estructuras de cuentas">
-                    <BaseButton.Root variant="primary" size="sm" onPress={openImport}>
-                        Importar plan
-                    </BaseButton.Root>
+                    {!isEmpty && (
+                        <BaseButton.Root
+                            variant="primary"
+                            size="sm"
+                            onPress={openImport}
+                            leftIcon={<Upload size={14} strokeWidth={2.4} />}
+                        >
+                            Importar plan
+                        </BaseButton.Root>
+                    )}
                 </PageHeader>
 
-                <div className="flex-1 overflow-y-auto p-8">
-                    <div className="max-w-[1100px] mx-auto space-y-5">
-                        <BaseTable.Render<AccountChart>
-                            columns={[
-                                {
-                                    key: 'name',
-                                    label: 'Nombre del Plan',
-                                    render: (_value, item) => editingId === item.id ? (
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <BaseInput.Field
-                                                autoFocus
-                                                type="text"
-                                                value={editingName}
-                                                onValueChange={setEditingName}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter')  { void confirmRename(item); }
-                                                    if (e.key === 'Escape') { cancelEdit(); }
-                                                }}
-                                                isDisabled={renaming}
-                                                className="min-w-0 flex-1"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => { void confirmRename(item); }}
-                                                disabled={renaming}
-                                                className="shrink-0 text-primary-500 hover:text-primary-400 disabled:opacity-40 transition-opacity focus-visible:outline-none"
-                                                aria-label="Guardar nombre"
-                                            >
-                                                <Check size={14} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={cancelEdit}
-                                                disabled={renaming}
-                                                className="shrink-0 text-text-tertiary hover:text-foreground disabled:opacity-40 transition-colors focus-visible:outline-none"
-                                                aria-label="Cancelar"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="font-mono text-[13px] font-semibold text-foreground truncate">
-                                                {item.name}
-                                            </span>
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    key: 'accountCount',
-                                    label: 'Cuentas',
-                                    align: 'end',
-                                    render: (value) => (
-                                        <span className="font-mono text-[13px] text-text-tertiary tabular-nums">
-                                            {Number(value).toLocaleString('es-VE')}
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    key: 'id',
-                                    label: '',
-                                    align: 'end',
-                                    render: (_value, item) => (
-                                        <div className="flex items-center justify-end gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => startEdit(item)}
-                                                className="font-mono text-[12px] text-primary-500 hover:opacity-70 focus-visible:outline-none focus-visible:underline transition-opacity"
-                                            >
-                                                Editar
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setDeleteTarget(item); }}
-                                                className="font-mono text-[12px] text-[var(--text-error)] hover:opacity-70 focus-visible:outline-none focus-visible:underline transition-opacity"
-                                            >
-                                                Eliminar
-                                            </button>
-                                        </div>
-                                    ),
-                                },
-                            ]}
-                            data={tableData}
-                            keyExtractor={(item) => item.id}
-                            isLoading={loading}
-                            emptyContent={
-                                <div className="flex flex-col items-center gap-2">
-                                    <span className="font-mono text-[12px] uppercase tracking-[0.12em] text-text-tertiary font-bold">
-                                        Sin planes de cuentas
-                                    </span>
-                                    <span className="font-mono text-[11px] text-text-tertiary">
-                                        Importa tu primer plan usando el botón de arriba.
-                                    </span>
+                <div className="flex-1 overflow-y-auto px-8 py-8">
+                    <div className="max-w-[1200px] mx-auto flex flex-col gap-8">
+
+                        {/* ── KPI strip — hidden during empty state ─────── */}
+                        {!isEmpty && (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <DashboardKpiCard
+                                    label="Planes activos"
+                                    value={loading ? '—' : rawData.length}
+                                    sublabel={
+                                        loading
+                                            ? 'Cargando…'
+                                            : rawData.length === 1
+                                                ? 'Un único plan en uso'
+                                                : `${rawData.length} estructuras importadas`
+                                    }
+                                    color="primary"
+                                    loading={loading}
+                                    icon={Library}
+                                />
+                                <DashboardKpiCard
+                                    label="Cuentas totales"
+                                    value={loading ? '—' : totalAccountsAcrossPlans.toLocaleString('es-VE')}
+                                    sublabel="Sumadas entre todos los planes"
+                                    color="default"
+                                    loading={loading}
+                                    icon={FolderTree}
+                                />
+                                <DashboardKpiCard
+                                    label="Plan más extenso"
+                                    value={
+                                        loading || !largestChart
+                                            ? '—'
+                                            : largestChart.accountCount.toLocaleString('es-VE')
+                                    }
+                                    sublabel={largestChart ? largestChart.name : 'Sin planes aún'}
+                                    color="default"
+                                    loading={loading}
+                                    icon={Layers}
+                                />
+                            </div>
+                        )}
+
+                        {/* ── Loading state (first paint, no data yet) ─── */}
+                        {loading && rawData.length === 0 && (
+                            <div className="flex items-center justify-center py-20">
+                                <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-text-tertiary animate-pulse">
+                                    Cargando planes…
+                                </span>
+                            </div>
+                        )}
+
+                        {/* ── Empty state ───────────────────────────────── */}
+                        {isEmpty && (
+                            <motion.section
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, ease: 'easeOut' }}
+                                className="relative overflow-hidden rounded-2xl border border-border-light bg-surface-1 px-8 py-14 shadow-sm"
+                            >
+                                {/* Ambient orange bloom — sparingly, signature glow */}
+                                <div
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary-500/10 blur-3xl"
+                                />
+                                <div
+                                    aria-hidden="true"
+                                    className="pointer-events-none absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-primary-500/5 blur-3xl"
+                                />
+
+                                <div className="relative flex flex-col items-center text-center gap-5 max-w-[480px] mx-auto">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-500/10 border border-primary-500/20 text-primary-500">
+                                        <Library size={26} strokeWidth={2} />
+                                    </div>
+
+                                    <div className="flex flex-col gap-2">
+                                        <h2 className="font-mono text-[16px] font-bold uppercase tracking-[0.12em] text-foreground">
+                                            Importa tu primer plan
+                                        </h2>
+                                        <p className="font-sans text-[14px] text-[var(--text-secondary)] leading-snug">
+                                            Carga un archivo TXT o CSV con la estructura de cuentas de la empresa.
+                                            Konta detecta los grupos raíz y propone la naturaleza Debe/Haber automáticamente.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                                        <BaseButton.Root
+                                            variant="primary"
+                                            size="md"
+                                            onPress={openImport}
+                                            leftIcon={<Upload size={14} strokeWidth={2.4} />}
+                                        >
+                                            Importar plan
+                                        </BaseButton.Root>
+                                        <BaseButton.Root
+                                            variant="secondary"
+                                            size="md"
+                                            onPress={downloadExample}
+                                            leftIcon={<Download size={14} strokeWidth={2.2} />}
+                                        >
+                                            Descargar ejemplo
+                                        </BaseButton.Root>
+                                    </div>
+
+                                    <p className="font-sans text-[11px] text-[var(--text-tertiary)] pt-2 inline-flex items-center gap-1.5">
+                                        <Sparkles size={11} strokeWidth={2} className="text-primary-500" />
+                                        Compatible con exportes de MEISTER y Profit Plus
+                                    </p>
                                 </div>
-                            }
-                        />
+                            </motion.section>
+                        )}
+
+                        {/* ── Plan cards grid ───────────────────────────── */}
+                        {!isEmpty && rawData.length > 0 && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                                {rawData.map((chart, idx) => (
+                                    <PlanCard
+                                        key={chart.id}
+                                        chart={chart}
+                                        metrics={chartMetricsById.get(chart.id)}
+                                        index={idx}
+                                        editing={editingId === chart.id}
+                                        editingName={editingName}
+                                        renaming={renaming}
+                                        onStartEdit={() => startEdit(chart)}
+                                        onCancelEdit={cancelEdit}
+                                        onChangeName={setEditingName}
+                                        onConfirmRename={() => { void confirmRename(chart); }}
+                                        onDelete={() => setDeleteTarget(chart)}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -619,5 +727,201 @@ export default function ChartsPage() {
                 )}
             </AnimatePresence>
         </AccountingAccessGuard>
+    );
+}
+
+// ── Plan card ─────────────────────────────────────────────────────────────────
+
+interface PlanCardProps {
+    chart:           AccountChart;
+    metrics:         ChartMetrics | undefined;
+    index:           number;
+    editing:         boolean;
+    editingName:     string;
+    renaming:        boolean;
+    onStartEdit:     () => void;
+    onCancelEdit:    () => void;
+    onChangeName:    (v: string) => void;
+    onConfirmRename: () => void;
+    onDelete:        () => void;
+}
+
+function PlanCard({
+    chart, metrics, index,
+    editing, editingName, renaming,
+    onStartEdit, onCancelEdit, onChangeName, onConfirmRename, onDelete,
+}: PlanCardProps) {
+    // Stagger the entrance subtly so the grid feels composed, not popcorn.
+    const enterDelay = Math.min(index * 0.04, 0.24);
+
+    const cardClasses = [
+        'group relative flex flex-col gap-4 p-5 rounded-2xl border bg-surface-1 shadow-sm',
+        'transition-colors duration-150',
+        editing
+            ? 'border-primary-500/60 ring-2 ring-primary-500/10'
+            : 'border-border-light hover:border-primary-500/40 hover:shadow-md',
+    ].join(' ');
+
+    const accountCount = chart.accountCount ?? 0;
+    const roots        = metrics?.roots ?? 0;
+    const depth        = metrics?.depth ?? 0;
+
+    const Header = (
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-500/10 border border-primary-500/20 text-primary-500">
+                    <Library size={18} strokeWidth={2} />
+                </div>
+
+                {editing ? (
+                    <div
+                        className="flex flex-col gap-2 min-w-0 flex-1"
+                        // Prevent the card-link from intercepting input events while editing.
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <BaseInput.Field
+                            autoFocus
+                            type="text"
+                            value={editingName}
+                            onValueChange={onChangeName}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter')  { onConfirmRename(); }
+                                if (e.key === 'Escape') { onCancelEdit(); }
+                            }}
+                            isDisabled={renaming}
+                        />
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">
+                            Enter para guardar · Esc para cancelar
+                        </span>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <h3 className="font-mono text-[15px] font-bold text-foreground truncate">
+                            {chart.name}
+                        </h3>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">
+                            {accountCount.toLocaleString('es-VE')} {accountCount === 1 ? 'cuenta' : 'cuentas'}
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {!editing && (
+                <ChevronRight
+                    size={18}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                    className="shrink-0 text-text-tertiary group-hover:text-primary-500 transition-colors mt-1"
+                />
+            )}
+        </div>
+    );
+
+    const Metadata = (
+        <div className="flex flex-wrap items-center gap-2">
+            <MetaChip icon={FolderTree} label={`${roots} ${roots === 1 ? 'raíz' : 'raíces'}`} />
+            <MetaChip icon={Layers} label={`${depth || 1} ${depth === 1 ? 'nivel' : 'niveles'}`} />
+            <MetaChip icon={FileText} label={`Act. ${fmtShortDate(chart.updatedAt)}`} />
+        </div>
+    );
+
+    const Actions = (
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-border-light/60">
+            {editing ? (
+                <>
+                    <BaseButton.Root
+                        size="sm"
+                        variant="ghost"
+                        onPress={onCancelEdit}
+                        isDisabled={renaming}
+                    >
+                        Cancelar
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        size="sm"
+                        variant="primary"
+                        onPress={onConfirmRename}
+                        loading={renaming}
+                        leftIcon={<Check size={13} strokeWidth={2.4} />}
+                    >
+                        Guardar
+                    </BaseButton.Root>
+                </>
+            ) : (
+                <>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-primary-500/80 group-hover:text-primary-500 transition-colors inline-flex items-center gap-1">
+                        Abrir cuentas
+                        <ChevronRight size={12} strokeWidth={2.4} />
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onStartEdit();
+                            }}
+                            aria-label={`Renombrar ${chart.name}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:text-foreground hover:bg-surface-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+                        >
+                            <Pencil size={13} strokeWidth={2} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDelete();
+                            }}
+                            aria-label={`Eliminar ${chart.name}`}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-tertiary hover:text-[var(--text-error)] hover:bg-[var(--text-error)]/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text-error)]/40"
+                        >
+                            <Trash2 size={13} strokeWidth={2} />
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+
+    const inner = (
+        <>
+            {Header}
+            {Metadata}
+            {Actions}
+        </>
+    );
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut', delay: enterDelay }}
+        >
+            {editing ? (
+                <div className={cardClasses}>
+                    {inner}
+                </div>
+            ) : (
+                <Link
+                    href={`/accounting/accounts?chart=${chart.id}`}
+                    className={`${cardClasses} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-2`}
+                    aria-label={`Abrir cuentas del plan ${chart.name}`}
+                >
+                    {inner}
+                </Link>
+            )}
+        </motion.div>
+    );
+}
+
+// ── Metadata chip (mono uppercase + lucide icon) ─────────────────────────────
+
+function MetaChip({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
+    return (
+        <span className="inline-flex items-center gap-1.5 h-[22px] px-2 rounded-md border border-border-light bg-surface-2/60 font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
+            <Icon size={11} strokeWidth={2} />
+            {label}
+        </span>
     );
 }
