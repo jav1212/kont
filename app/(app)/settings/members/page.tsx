@@ -347,8 +347,9 @@ function InviteModal({
     const [email,     setEmail]     = useState("");
     const [role,      setRole]      = useState("contable");
     const [loading,   setLoading]   = useState(false);
-    const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
-    const [copied,    setCopied]    = useState(false);
+    const [acceptUrl,      setAcceptUrl]      = useState<string | null>(null);
+    const [copied,         setCopied]         = useState(false);
+    const [emailDelivered, setEmailDelivered] = useState(true);
 
     async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -362,6 +363,7 @@ function InviteModal({
         setLoading(false);
         if (!res.ok) { notify.error(json.error ?? "Error al invitar"); return; }
         setAcceptUrl(json.data?.acceptUrl ?? null);
+        setEmailDelivered(json.data?.emailDelivered !== false);
     }
 
     async function handleCopy() {
@@ -383,9 +385,13 @@ function InviteModal({
                                 <CheckCircle2 size={18} strokeWidth={2} />
                             </div>
                             <div>
-                                <p className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">Invitación creada</p>
+                                <p className="font-mono text-[13px] font-bold uppercase tracking-[0.1em] text-foreground">
+                                    {emailDelivered ? "Invitación enviada" : "Invitación creada"}
+                                </p>
                                 <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-1">
-                                    Comparte este enlace con <span className="text-foreground font-medium">{email}</span>
+                                    {emailDelivered
+                                        ? <>Le enviamos un correo a <span className="text-foreground font-medium">{email}</span> con el enlace.</>
+                                        : <>No pudimos enviar el correo. Comparte este enlace manualmente con <span className="text-foreground font-medium">{email}</span>.</>}
                                 </p>
                             </div>
                         </div>

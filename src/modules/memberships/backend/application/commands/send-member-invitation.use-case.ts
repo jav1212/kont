@@ -20,7 +20,12 @@ interface Input {
     origin:        string;
 }
 
-export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
+export interface SentInvitation extends Invitation {
+    emailDelivered: boolean;
+    emailError?:    string;
+}
+
+export class SendMemberInvitationUseCase extends UseCase<Input, SentInvitation> {
     constructor(
         private readonly repo:     IMembershipsRepository,
         private readonly eventBus?: IEventBus,
@@ -28,7 +33,7 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
         super();
     }
 
-    async execute(input: Input): Promise<Result<Invitation>> {
+    async execute(input: Input): Promise<Result<SentInvitation>> {
         const { tenantOwnerId, invitedBy, email, role, callerRole, origin } = input;
 
         if (!email || !role) {
@@ -47,30 +52,40 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
             return Result.fail("Admins can only invite contable members");
         }
 
+        const normalizedEmail = email.toLowerCase().trim();
+
         const result = await this.repo.sendInvitation({
             tenantOwnerId,
             invitedBy,
-            email: email.toLowerCase().trim(),
+            email: normalizedEmail,
             role,
         });
 
-        if (result.isFailure) return result;
+        if (result.isFailure) return Result.fail(result.getError());
 
         const invitation = result.getValue();
         const acceptUrl  = `${origin}/accept-invite?token=${invitation.token}`;
 
-        // Email is fire-and-forget — invitation is already persisted.
-        // TODO: extract to IEmailService port in a future phase.
-        // role is guaranteed to be "admin" | "contable" by validation above.
-        sendInviteEmail({
-            to:           email.toLowerCase().trim(),
-            role:         role as "admin" | "contable",
-            tenantName:   invitedBy,
-            inviterEmail: invitedBy,
-            acceptUrl,
-        }).catch((err) => {
+        const ctxResult = await this.repo.getInvitationContext(tenantOwnerId, invitedBy);
+        const ctx = ctxResult.isSuccess
+            ? ctxResult.getValue()
+            : { inviterEmail: invitedBy, tenantName: tenantOwnerId };
+
+        let emailDelivered = false;
+        let emailError: string | undefined;
+        try {
+            await sendInviteEmail({
+                to:           normalizedEmail,
+                role:         role as "admin" | "contable",
+                tenantName:   ctx.tenantName,
+                inviterEmail: ctx.inviterEmail,
+                acceptUrl,
+            });
+            emailDelivered = true;
+        } catch (err) {
+            emailError = err instanceof Error ? err.message : String(err);
             console.error("[SendMemberInvitation] Error sending invite email:", err);
-        });
+        }
 
         if (this.eventBus) {
             await this.eventBus.publish<InvitationSentPayload>({
@@ -80,12 +95,17 @@ export class SendMemberInvitationUseCase extends UseCase<Input, Invitation> {
                 payload: {
                     tenantOwnerId,
                     invitedBy,
-                    invitedEmail: email.toLowerCase().trim(),
+                    invitedEmail: normalizedEmail,
                     role,
                 },
             });
         }
 
-        return Result.success({ ...invitation, acceptUrl });
+        return Result.success({
+            ...invitation,
+            acceptUrl,
+            emailDelivered,
+            emailError,
+        });
     }
 }

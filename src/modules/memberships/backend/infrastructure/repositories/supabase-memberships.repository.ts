@@ -4,7 +4,7 @@
 
 import { Result } from "@/src/core/domain/result";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
-import { IMembershipsRepository, SendInvitationInput } from "../../domain/memberships-repository";
+import { IMembershipsRepository, InvitationContext, SendInvitationInput } from "../../domain/memberships-repository";
 import { Membership, UserMembership, MemberRole } from "../../domain/membership";
 import { Invitation, AcceptedInvitation } from "../../domain/invitation";
 
@@ -255,5 +255,26 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             .eq("id", row.id);
 
         return Result.success({ tenantId: row.tenant_id });
+    }
+
+    async getInvitationContext(tenantOwnerId: string, inviterId: string): Promise<Result<InvitationContext>> {
+        const { data: inviter } = await this.source.instance.auth.admin.getUserById(inviterId);
+        const inviterEmail = inviter?.user?.email ?? inviterId;
+
+        const { data: profile } = await this.source.instance
+            .from("profiles")
+            .select("name, email")
+            .eq("id", tenantOwnerId)
+            .maybeSingle();
+
+        const profileRow = profile as { name: string | null; email: string | null } | null;
+
+        let tenantName = profileRow?.name?.trim() || profileRow?.email?.trim() || "";
+        if (!tenantName) {
+            const { data: owner } = await this.source.instance.auth.admin.getUserById(tenantOwnerId);
+            tenantName = owner?.user?.email ?? tenantOwnerId;
+        }
+
+        return Result.success({ inviterEmail, tenantName });
     }
 }

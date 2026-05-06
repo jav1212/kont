@@ -13,6 +13,11 @@ export interface SendInvitationInput {
     role:          MemberRole;
 }
 
+export interface InvitationContext {
+    inviterEmail: string;
+    tenantName:   string;
+}
+
 export interface IMembershipsRepository {
     getUserMemberships(userId: string): Promise<Result<UserMembership[]>>;
     getMembers(tenantOwnerId: string): Promise<Result<Membership[]>>;
@@ -20,4 +25,5 @@ export interface IMembershipsRepository {
     revokeMembership(tenantOwnerId: string, memberId: string): Promise<Result<{ memberRole: MemberRole; isTenantOwner: boolean }>>;
     revokeInvitation(tenantOwnerId: string, invitationId: string): Promise<Result<void>>;
     acceptInvitation(input: { token: string; userId: string; userEmail: string }): Promise<Result<AcceptedInvitation>>;
+    getInvitationContext(tenantOwnerId: string, inviterId: string): Promise<Result<InvitationContext>>;
 }

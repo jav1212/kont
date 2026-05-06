@@ -33,5 +33,13 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const inv = result.getValue();
-    return Response.json({ data: { invitationId: inv.invitationId, expiresAt: inv.expiresAt, acceptUrl: inv.acceptUrl } });
+    return Response.json({
+        data: {
+            invitationId:   inv.invitationId,
+            expiresAt:      inv.expiresAt,
+            acceptUrl:      inv.acceptUrl,
+            emailDelivered: inv.emailDelivered,
+        },
+        ...(inv.emailDelivered ? {} : { warning: "email_send_failed", emailError: inv.emailError }),
+    });
 });
