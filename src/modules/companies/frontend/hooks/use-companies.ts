@@ -127,7 +127,16 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         if (typeof window === "undefined") return null;
         return localStorage.getItem(STORAGE_KEY) ?? null;
     });
-    const [loading, setLoading] = useState(true);
+    // Initial `loading` reflects whether we expect to issue a fetch on mount
+    // — true only when we have a verified tenant or a localStorage hint.
+    // This lets the no-ownerId branch in the effect simply bail without
+    // needing to flip loading back to false (which would require setState
+    // inside an effect — flagged by react-hooks/set-state-in-effect).
+    const [loading, setLoading] = useState(() => {
+        if (activeTenantId != null) return true;
+        if (typeof window === "undefined") return false;
+        return !!localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
+    });
 
     // Tracks the last ownerId we issued a fetch for. Used to suppress the
     // duplicate fetch that would otherwise fire when the optimistic hint
@@ -196,14 +205,6 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         }
     }, [isAuthenticated, user?.id]);
 
-    // Reset helper kept outside the effect body so the lint rule doesn't fire
-    // on direct setState calls inside the effect.
-    const clearCompanyState = useCallback(() => {
-        setCompanies([]);
-        setLoading(false);
-        lastFetchedOwnerId.current = null;
-    }, []);
-
     useEffect(() => {
         if (!isAuthenticated || !user?.id) return;
 
@@ -213,7 +214,11 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
             ownerId = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
         }
         if (!ownerId) {
-            clearCompanyState();
+            // No owner → no fetch. `companies` starts empty and `loading` was
+            // initialized based on the same hint, so render-time state is
+            // already correct. Just clear the fetch tracker so a later
+            // ownerId triggers a real load.
+            lastFetchedOwnerId.current = null;
             return;
         }
 
@@ -223,7 +228,7 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         lastFetchedOwnerId.current = ownerId;
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchFor sets loading before first await (non-cascading in React 18)
         fetchFor(ownerId);
-    }, [isAuthenticated, user?.id, activeTenantId, fetchFor, clearCompanyState]);
+    }, [isAuthenticated, user?.id, activeTenantId, fetchFor]);
 
     const save = useCallback(async (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";

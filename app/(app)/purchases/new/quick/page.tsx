@@ -9,7 +9,7 @@
 // Para el flujo completo (con items por producto) hay que ir a /purchases/new.
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, CheckCircle2, FileText, Info, ArrowRight } from "lucide-react";
+import { ChevronLeft, CheckCircle2, FileText, Info, ArrowRight, Plus, X } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -20,6 +20,7 @@ import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchas
 import { notify } from "@/src/shared/frontend/notify";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import type { PurchaseInvoice } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { SupplierCombobox } from "@/src/modules/purchases/frontend/components/supplier-combobox";
 
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -35,7 +36,7 @@ const fieldCls = [
 export default function NuevaFacturaQuickPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { suppliers, loadSuppliers, savePurchaseInvoice, confirmPurchaseInvoice } = usePurchases();
+    const { suppliers, loadSuppliers, savePurchaseInvoice, confirmPurchaseInvoice, saveSupplier } = usePurchases();
 
     const [supplierId, setSupplierId] = useState("");
     const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -48,6 +49,35 @@ export default function NuevaFacturaQuickPage() {
 
     const [submitting, setSubmitting] = useState(false);
     const [done, setDone] = useState<{ invoiceId: string } | null>(null);
+
+    const [qcOpen, setQcOpen] = useState(false);
+    const [qcSupplier, setQcSupplier] = useState({ name: "", rif: "" });
+    const [qcSaving, setQcSaving] = useState(false);
+
+    async function handleQcSupplier() {
+        if (!qcSupplier.name.trim()) {
+            notify.error("El nombre es requerido");
+            return;
+        }
+        setQcSaving(true);
+        const saved = await saveSupplier({
+            companyId: companyId!,
+            name: qcSupplier.name.trim(),
+            rif: qcSupplier.rif.trim(),
+            contact: "",
+            phone: "",
+            email: "",
+            address: "",
+            notes: "",
+            active: true,
+        });
+        setQcSaving(false);
+        if (saved) {
+            setSupplierId(saved.id!);
+            setQcOpen(false);
+            setQcSupplier({ name: "", rif: "" });
+        }
+    }
 
     useEffect(() => {
         if (companyId) loadSuppliers(companyId);
@@ -222,23 +252,31 @@ export default function NuevaFacturaQuickPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className={labelCls}>Proveedor</label>
-                            <select
-                                className={fieldCls}
-                                value={supplierId}
-                                onChange={(e) => setSupplierId(e.target.value)}
-                            >
-                                <option value="">Selecciona…</option>
-                                {suppliers.filter((s) => s.active !== false).map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.rif ? `${s.rif} · ${s.name}` : s.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="flex gap-2">
+                                <SupplierCombobox
+                                    supplierId={supplierId}
+                                    suppliers={suppliers}
+                                    onChange={setSupplierId}
+                                    onRequestCreate={(search) => {
+                                        setQcSupplier({ name: search, rif: "" });
+                                        setQcOpen(true);
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => { setQcSupplier({ name: "", rif: "" }); setQcOpen(true); }}
+                                    className="h-10 w-10 shrink-0 rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center justify-center"
+                                    title="Crear nuevo proveedor"
+                                    aria-label="Crear nuevo proveedor"
+                                >
+                                    <Plus size={14} strokeWidth={2} />
+                                </button>
+                            </div>
                             {suppliers.length === 0 && (
                                 <p className="text-[11px] text-[var(--text-tertiary)] mt-1">
                                     No hay proveedores.{" "}
                                     <Link href="/purchases/suppliers" className="text-primary-500 hover:underline">
-                                        Crear uno
+                                        Ver listado
                                     </Link>
                                 </p>
                             )}
@@ -356,6 +394,54 @@ export default function NuevaFacturaQuickPage() {
                     </BaseButton.Root>
                 </div>
             </div>
+
+            {qcOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="w-[440px] max-h-[85vh] overflow-y-auto bg-surface-1 rounded-xl border border-border-medium shadow-2xl p-6">
+                        <div className="flex items-center justify-between mb-5">
+                            <h3 className="text-[14px] font-bold uppercase tracking-[0.14em] text-foreground">Nuevo Proveedor</h3>
+                            <button
+                                onClick={() => setQcOpen(false)}
+                                className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
+                                aria-label="Cerrar"
+                            >
+                                <X size={14} strokeWidth={2} />
+                            </button>
+                        </div>
+                        <div className="space-y-3">
+                            <BaseInput.Field
+                                autoFocus
+                                label="Nombre *"
+                                value={qcSupplier.name}
+                                onValueChange={(v) => setQcSupplier((s) => ({ ...s, name: v }))}
+                                placeholder="Nombre del proveedor"
+                                onKeyDown={(e) => { if (e.key === "Enter") handleQcSupplier(); }}
+                            />
+                            <BaseInput.Field
+                                label="RIF"
+                                value={qcSupplier.rif}
+                                onValueChange={(v) => setQcSupplier((s) => ({ ...s, rif: v }))}
+                                placeholder="J-12345678-9"
+                            />
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    onClick={() => setQcOpen(false)}
+                                    className="flex-1 h-9 rounded-lg border border-border-medium bg-surface-2 hover:bg-surface-1 text-foreground text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleQcSupplier}
+                                    disabled={qcSaving}
+                                    className="flex-1 h-9 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-[12px] uppercase tracking-[0.12em] transition-colors"
+                                >
+                                    {qcSaving ? "Guardando…" : "Crear proveedor"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

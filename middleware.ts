@@ -44,6 +44,9 @@ const isPublic      = (p: string) => PUBLIC_PATHS.includes(p);
 const isAppRoute    = (p: string) =>
     p.startsWith('/payroll') ||
     p.startsWith('/inventory') ||
+    p.startsWith('/sales') ||
+    p.startsWith('/purchases') ||
+    p.startsWith('/accounting') ||
     p.startsWith('/companies') ||
     p.startsWith('/billing') ||
     p.startsWith('/documents') ||
@@ -186,6 +189,9 @@ export const config = {
         '/reset-password',
         '/payroll/:path*',
         '/inventory/:path*',
+        '/sales/:path*',
+        '/purchases/:path*',
+        '/accounting/:path*',
         '/companies/:path*',
         '/billing/:path*',
         '/documents/:path*',
