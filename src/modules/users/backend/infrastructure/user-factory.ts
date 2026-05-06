@@ -1,7 +1,13 @@
 // Infrastructure layer — assembles the users module dependency graph.
 // Wires SupabaseUserRepository into all use cases; callers must not instantiate use cases directly.
 // Invariant: callers must not instantiate use cases directly; always go through this factory.
-import { SupabaseSource }        from '@/src/shared/backend/source/infra/supabase';
+//
+// Uses ServerSupabaseSource (service role) instead of the anon-key SupabaseSource:
+// after migration 098 dropped `profiles_service_all`, RLS requires `auth.uid() = id`,
+// and the anon-key client has no JWT here → every read fails with PGRST116 (→ 400).
+// Authorization happens at the route layer (e.g. /api/users/get-by-id checks
+// `id === requireTenant(req).userId` before calling the use case).
+import { ServerSupabaseSource }   from '@/src/shared/backend/source/infra/server-supabase';
 import { LocalEventBus }         from '@/src/shared/backend/infra/local-event-bus';
 import { SupabaseUserRepository } from './repository/supabase-user.repository';
 import { SaveUserUseCase }       from '../application/commands/save-user.use-case';
@@ -12,7 +18,7 @@ import { GetUserByIdUseCase }    from '../application/queries/get-user-by-id.use
 import { GetUserByEmailUseCase } from '../application/queries/get-user-by-email.use-case';
 
 export function getUserActions() {
-    const source     = new SupabaseSource();
+    const source     = new ServerSupabaseSource();
     const repository = new SupabaseUserRepository(source);
     const eventBus   = new LocalEventBus();
 

@@ -26,7 +26,7 @@ export class SupabaseUserRepository implements IUserRepository {
                 .from(this.TABLE)
                 .select('*')
                 .eq('id', id)
-                .single();
+                .maybeSingle();
 
             if (error) return Result.fail(error.message);
             if (!data)  return Result.success(null);
@@ -99,7 +99,7 @@ export class SupabaseUserRepository implements IUserRepository {
                 .from(this.TABLE)
                 .select('*')
                 .eq('email', email)
-                .single();
+                .maybeSingle();
 
             if (error) return Result.fail(error.message);
             return Result.success(data ? this.mapToDomain(data) : null);
