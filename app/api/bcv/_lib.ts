@@ -123,6 +123,11 @@ export function extractCode(items: BcvEntry[], code: string): { rate: number; da
     return null;
 }
 
+// BCV publishes once per day → 1h revalidate is the safe default for both
+// the rate endpoint and the rates aggregation endpoint. Callers can opt into
+// `noStore: true` for diagnostic/admin paths that need a fresh hit.
+const DEFAULT_REVALIDATE_SECONDS = 3600;
+
 /**
  * Fetch the full list from the upstream history endpoint, with an N-day fallback
  * window to cover weekends/holidays when BCV doesn't publish.
@@ -137,9 +142,7 @@ export async function fetchBcvListFallback(
 
     const cache: RequestInit & { next?: { revalidate: number } } = init?.noStore
         ? { cache: "no-store" }
-        : init?.revalidate != null
-            ? { next: { revalidate: init.revalidate } }
-            : { cache: "no-store" };
+        : { next: { revalidate: init?.revalidate ?? DEFAULT_REVALIDATE_SECONDS } };
 
     const res = await fetch(url, cache);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -154,9 +157,7 @@ export async function fetchBcvCurrentAll(init?: { revalidate?: number; noStore?:
     const url = `${BCV_BASE}/exchange-rate`;
     const cache: RequestInit & { next?: { revalidate: number } } = init?.noStore
         ? { cache: "no-store" }
-        : init?.revalidate != null
-            ? { next: { revalidate: init.revalidate } }
-            : { cache: "no-store" };
+        : { next: { revalidate: init?.revalidate ?? DEFAULT_REVALIDATE_SECONDS } };
 
     const res = await fetch(url, cache);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

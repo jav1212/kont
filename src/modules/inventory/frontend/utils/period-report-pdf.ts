@@ -5,7 +5,7 @@
 // fiscal-only ones (Salidas S/IVA, Costo Actual) are intentionally omitted to
 // keep the page legible; the CSV export keeps the full schema.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { PeriodReportRow } from "../../backend/domain/period-report";
 import {
     PAGE,
@@ -130,6 +130,7 @@ export async function generatePeriodReportPdf(
     rows: PeriodReportRow[],
     opts: PeriodReportPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
     const bounds = pageBounds(doc);
 

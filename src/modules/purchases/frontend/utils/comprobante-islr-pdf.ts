@@ -22,7 +22,7 @@
 // Reutiliza primitivas comunes de `pdf-chrome.ts`.
 // =============================================================================
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import {
     PAGE,
     COLORS,
@@ -153,6 +153,7 @@ function drawAmountRow(
 // ── Public entry ──────────────────────────────────────────────────────────────
 
 export async function generateComprobanteIslrPdf(data: ComprobanteIslrPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     const xL = PAGE.marginX;

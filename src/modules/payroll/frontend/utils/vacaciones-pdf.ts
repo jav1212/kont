@@ -2,7 +2,7 @@
 // y fraccionadas (Art. 196). Comparten el chrome Konta con todos los demás
 // reportes (header naranja, footer Kontave, paleta slate + naranja).
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -201,6 +201,7 @@ function drawLegal(doc: Doc, x: number, w: number, y: number, text: string): num
 // ── Vacaciones Completas ──────────────────────────────────────────────────────
 
 export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;
@@ -270,6 +271,7 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
 // ── Vacaciones Fraccionadas ───────────────────────────────────────────────────
 
 export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;

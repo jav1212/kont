@@ -4,7 +4,7 @@
 // each movement, and a product subtotal. Ends with a grand-total row across
 // all products in the report.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { IslrProduct } from "../../backend/domain/islr-report";
 import {
     PAGE,
@@ -102,6 +102,7 @@ export async function generateIslrReportPdf(
     products: IslrProduct[],
     opts: IslrReportPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     const headerOpts: KontaPdfHeaderOpts = {

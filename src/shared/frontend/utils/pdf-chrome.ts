@@ -10,7 +10,11 @@
 // KONTAVE." sits in the footer band on every page. No diagonal water-mark — it
 // would obstruct dense numeric tables.
 
-import jsPDF from "jspdf";
+// `jsPDF` is only used as a TYPE in this file — `Doc = jsPDF`. Keeping it as
+// `import type` ensures pdf-chrome.ts itself does not pull jspdf into the
+// bundle. Each generator file dynamically imports the runtime via
+// `await import("jspdf")` inside its exported function.
+import type jsPDF from "jspdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@
 // (Arts. 143/144). Estilo Konta: header naranja, cuerpo slate + naranja, footer
 // Kontave compartido.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -129,6 +129,7 @@ function drawSectionLabel(doc: Doc, x: number, w: number, y: number, label: stri
 // ── Prestaciones Sociales (Art. 142) ──────────────────────────────────────────
 
 export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;
@@ -231,6 +232,7 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
 // ── Intereses + Anticipo (Art. 143 / 144) ─────────────────────────────────────
 
 export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;

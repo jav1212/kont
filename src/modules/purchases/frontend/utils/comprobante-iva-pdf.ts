@@ -20,7 +20,7 @@
 // Layout: A4 portrait, 1 página por comprobante, header/footer Konta estándar.
 // =============================================================================
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import {
     PAGE,
     COLORS,
@@ -151,6 +151,7 @@ function drawAmountRow(
 // ── Public entry ──────────────────────────────────────────────────────────────
 
 export async function generateComprobanteIvaPdf(data: ComprobanteIvaPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     const xL = PAGE.marginX;

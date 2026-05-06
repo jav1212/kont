@@ -2,7 +2,7 @@
 // empleado, con tabla de conceptos y firma. Estilo Konta — header naranja,
 // footer Kontave compartido en cada página.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -192,6 +192,7 @@ export async function generateLiquidationPdf(employees: LiquidationEmployee[], o
         loadKontaLogo(),
     ]);
 
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     employees.forEach((emp, i) => drawReceipt(doc, emp, opts, i === 0, companyLogo));
 

@@ -3,7 +3,7 @@
 // One row per department with opening / inbound / outbound / closing units +
 // costs. Ends with a TOTAL row.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { BalanceReportRow } from "../../backend/domain/balance-report";
 import {
     PAGE,
@@ -84,6 +84,7 @@ export async function generateBalanceReportPdf(
     rows: BalanceReportRow[],
     opts: BalanceReportPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     const headerOpts: KontaPdfHeaderOpts = {

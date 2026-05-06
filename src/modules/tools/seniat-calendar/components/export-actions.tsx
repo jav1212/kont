@@ -30,10 +30,10 @@ export function ExportActions({
 
     const displayName = companyName ?? rif;
 
-    function handlePdf() {
+    async function handlePdf() {
         setOpen(false);
         try {
-            exportAsPdf({ entries, companyName: displayName, rif, taxpayerType, year });
+            await exportAsPdf({ entries, companyName: displayName, rif, taxpayerType, year });
             toast.success("PDF descargado");
         } catch {
             toast.error("Error al generar el PDF");

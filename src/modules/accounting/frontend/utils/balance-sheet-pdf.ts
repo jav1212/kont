@@ -4,7 +4,6 @@
 //   • Right column — Pasivos + Patrimonio (incluyendo utilidad del ejercicio)
 // Footer summary verifies Activos = Pasivos + Patrimonio.
 
-import jsPDF from 'jspdf';
 import {
     PAGE, COLORS, type Doc,
     drawHeader, drawFooter,
@@ -36,6 +35,7 @@ const LABEL_DENT = 4;
 // ── Public ───────────────────────────────────────────────────────────────────
 
 export async function generateBalanceSheetPdf(input: BalanceSheetPdfInput): Promise<void> {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     // Configure header geometry to portrait page width

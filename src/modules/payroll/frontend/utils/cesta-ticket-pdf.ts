@@ -2,7 +2,7 @@
 // Estilo Konta — header naranja, tabla zebra, recuadros de firma con badge USD,
 // footer Kontave compartido en cada página.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -100,6 +100,7 @@ export async function generateCestaTicketPdf(
         loadKontaLogo(),
     ]);
 
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;

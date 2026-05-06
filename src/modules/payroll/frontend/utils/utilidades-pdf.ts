@@ -1,7 +1,7 @@
 // PDF generators: Utilidades anuales (Art. 131 LOTTT) y utilidades fraccionadas
 // (Art. 175). Estilo Konta — header naranja, footer Kontave compartido.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -125,6 +125,7 @@ function drawLegal(doc: Doc, x: number, w: number, y: number, text: string): num
 // ── Utilidades completas ──────────────────────────────────────────────────────
 
 export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;
@@ -182,6 +183,7 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
 // ── Utilidades fraccionadas ───────────────────────────────────────────────────
 
 export async function generateFractionalProfitSharingPdf(data: FractionalProfitSharingPdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;

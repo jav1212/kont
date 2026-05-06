@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const data = await fetchBcvListFallback(date, 7, { noStore: true });
+        const data = await fetchBcvListFallback(date, 7);
         if (!data.length) {
             return NextResponse.json(
                 { error: "No hay tasa disponible para esa fecha." },

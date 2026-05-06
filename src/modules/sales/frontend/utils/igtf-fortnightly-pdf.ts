@@ -10,7 +10,7 @@
 // G.O. Extraordinaria 6.687 (25/02/2022).
 // =============================================================================
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import {
     PAGE,
     COLORS,
@@ -39,6 +39,7 @@ export async function generateIgtfFortnightlyPdf(
     data: IgtfFortnightlyReport,
     company: { name: string; rif: string; address?: string },
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const xL = PAGE.marginX;
     const xR = PORTRAIT.width - PAGE.marginX;

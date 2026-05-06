@@ -9,10 +9,14 @@
 // <AppSidebar>.
 // ============================================================================
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { apiFetch as tenantApiFetch, fetchJson as tenantFetchJson, type ApiJsonResult } from "@/src/shared/frontend/utils/api-fetch";
 import { notify } from "@/src/shared/frontend/notify";
+
+// Mirrors the key used by useActiveTenant — read here only as an optimistic
+// hint to avoid the auth → memberships → companies waterfall on cold start.
+const ACTIVE_TENANT_STORAGE_KEY = "kont-active-tenant-id";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -125,26 +129,25 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
     });
     const [loading, setLoading] = useState(true);
 
-    const reload = useCallback(async () => {
-        if (!user?.id) return;
-        // Don't query until the active tenant is known. An invited user has no
-        // tenant of their own, so falling back to user.id would hit an RPC with
-        // a schema that doesn't exist and return 400.
-        if (!activeTenantId) {
-            setCompanies([]);
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
+    // Tracks the last ownerId we issued a fetch for. Used to suppress the
+    // duplicate fetch that would otherwise fire when the optimistic hint
+    // matches the verified activeTenantId (the common case).
+    const lastFetchedOwnerId = useRef<string | null>(null);
 
-        const ownerId = activeTenantId;
+    const fetchFor = useCallback(async (ownerId: string) => {
+        setLoading(true);
         const res  = await tenantApiFetch(`/api/companies/get-by-owner?ownerId=${ownerId}`);
         const text = await res.text();
         const json: ApiJsonResult = parseJsonSafe(text, `Error del servidor (${res.status})`);
         const ok = res.ok;
 
         if (!ok) {
-            notify.error(json.error ?? "Error al cargar empresas");
+            // Stale localStorage hint can produce a 403 here; that's expected
+            // and self-heals on the next reload (when activeTenantId is verified).
+            // Surface other errors normally.
+            if (res.status !== 403) {
+                notify.error(json.error ?? "Error al cargar empresas");
+            }
         } else {
             const list: Company[] = (json.data as Company[]) ?? [];
             setCompanies(list);
@@ -161,7 +164,31 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         }
 
         setLoading(false);
-    }, [user, activeTenantId, urlCompanyId]);
+    }, [urlCompanyId]);
+
+    const reload = useCallback(async () => {
+        if (!user?.id) return;
+
+        // Use the verified active tenant when available; otherwise fall back to
+        // a synchronous read of the localStorage hint set by useActiveTenant.
+        // This eliminates the waterfall: companies start loading in parallel
+        // with /api/memberships instead of strictly after it. If the hint is
+        // stale, the API responds 403 and the next effect run (when
+        // activeTenantId has been verified) issues the correct fetch.
+        let ownerId = activeTenantId;
+        if (!ownerId && typeof window !== "undefined") {
+            ownerId = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
+        }
+        if (!ownerId) {
+            setCompanies([]);
+            setLoading(false);
+            lastFetchedOwnerId.current = null;
+            return;
+        }
+
+        lastFetchedOwnerId.current = ownerId;
+        await fetchFor(ownerId);
+    }, [user, activeTenantId, fetchFor]);
 
     useEffect(() => {
         if (!isAuthenticated || !user?.id) {
@@ -169,12 +196,34 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         }
     }, [isAuthenticated, user?.id]);
 
+    // Reset helper kept outside the effect body so the lint rule doesn't fire
+    // on direct setState calls inside the effect.
+    const clearCompanyState = useCallback(() => {
+        setCompanies([]);
+        setLoading(false);
+        lastFetchedOwnerId.current = null;
+    }, []);
+
     useEffect(() => {
-        if (isAuthenticated && user?.id) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() sets loading/error before first await (non-cascading in React 18)
-            reload();
+        if (!isAuthenticated || !user?.id) return;
+
+        // Resolve effective owner: verified > optimistic hint.
+        let ownerId = activeTenantId;
+        if (!ownerId && typeof window !== "undefined") {
+            ownerId = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
         }
-    }, [isAuthenticated, user?.id, activeTenantId, reload]);
+        if (!ownerId) {
+            clearCompanyState();
+            return;
+        }
+
+        // Skip when the verified id matches the hint we already fetched with —
+        // the data is already correct and a duplicate request would be wasted.
+        if (lastFetchedOwnerId.current === ownerId) return;
+        lastFetchedOwnerId.current = ownerId;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchFor sets loading before first await (non-cascading in React 18)
+        fetchFor(ownerId);
+    }, [isAuthenticated, user?.id, activeTenantId, fetchFor, clearCompanyState]);
 
     const save = useCallback(async (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";

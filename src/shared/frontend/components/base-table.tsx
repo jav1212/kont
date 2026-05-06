@@ -319,6 +319,26 @@ const ScanBar = ({ visible }: { visible: boolean }) =>
     ) : null;
 
 // ============================================================================
+// SKELETON ROWS — shown while isLoading and data is still empty
+// ============================================================================
+
+const SKELETON_ROW_COUNT = 6;
+
+// Pseudo-random but deterministic widths so each cell looks varied
+// without re-shuffling between renders.
+const skeletonWidth = (rowIdx: number, colIdx: number) => {
+    const widths = ["55%", "70%", "40%", "85%", "60%", "75%", "45%"];
+    return widths[(rowIdx * 3 + colIdx) % widths.length];
+};
+
+const SkeletonCell = ({ width }: { width: string }) => (
+    <span
+        className="block h-3 rounded-sm bg-neutral-200 dark:bg-neutral-800 animate-pulse"
+        style={{ width }}
+    />
+);
+
+// ============================================================================
 // PAGE BUTTON
 // ============================================================================
 
@@ -729,7 +749,24 @@ export const RenderTable = <T extends object>({
                             </tr>
                         </thead>
                         <tbody>
-                            {displayData.length === 0 ? (
+                            {displayData.length === 0 && (isLoading || isPending) ? (
+                                Array.from({ length: SKELETON_ROW_COUNT }).map((_, rowIdx) => (
+                                    <tr key={`sk-${rowIdx}`} className={S.tr}>
+                                        {columns.map((col, colIdx) => (
+                                            <td
+                                                key={String(col.key)}
+                                                className={[
+                                                    S.td,
+                                                    col.align === "end"    ? "text-right"  : "",
+                                                    col.align === "center" ? "text-center" : "",
+                                                ].join(" ")}
+                                            >
+                                                <SkeletonCell width={skeletonWidth(rowIdx, colIdx)} />
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))
+                            ) : displayData.length === 0 ? (
                                 <tr>
                                     <td colSpan={columns.length}>
                                         <div className={S.empty}>
@@ -828,6 +865,30 @@ export const RenderTable = <T extends object>({
                 <TableBody
                     items={displayData}
                     isLoading={isLoading || isPending}
+                    loadingContent={
+                        <div className="w-full">
+                            {Array.from({ length: SKELETON_ROW_COUNT }).map((_, rowIdx) => (
+                                <div
+                                    key={`sk-${rowIdx}`}
+                                    className="grid items-center border-b border-border-light px-4 py-3.5 gap-4"
+                                    style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0,1fr))` }}
+                                >
+                                    {columns.map((col, colIdx) => (
+                                        <div
+                                            key={String(col.key)}
+                                            className={[
+                                                "flex",
+                                                col.align === "end"    ? "justify-end"    : "",
+                                                col.align === "center" ? "justify-center" : "justify-start",
+                                            ].join(" ")}
+                                        >
+                                            <SkeletonCell width={skeletonWidth(rowIdx, colIdx)} />
+                                        </div>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    }
                     emptyContent={
                         <div className={S.empty}>
                             <EmptyTableIcon />

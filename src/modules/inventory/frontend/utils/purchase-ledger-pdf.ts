@@ -4,7 +4,7 @@
 // movement for the selected month, plus a totals row. Shares the Konta header
 // + footer/watermark with every other inventory PDF (see shared pdf-chrome.ts).
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { Movement } from "../../backend/domain/movement";
 import {
     PAGE,
@@ -86,6 +86,7 @@ export async function generatePurchaseLedgerPdf(
     rows: Movement[],
     opts: PurchaseLedgerPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     const headerOpts: KontaPdfHeaderOpts = {

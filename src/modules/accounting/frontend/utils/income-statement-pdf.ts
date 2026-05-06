@@ -4,7 +4,6 @@
 //   (-) GASTOS ── lista de cuentas tipo expense
 //   = UTILIDAD / PÉRDIDA NETA
 
-import jsPDF from 'jspdf';
 import {
     PAGE, COLORS, type Doc,
     drawHeader, drawFooter,
@@ -34,6 +33,7 @@ const LABEL_DENT = 4;
 // ── Public ───────────────────────────────────────────────────────────────────
 
 export async function generateIncomeStatementPdf(input: IncomeStatementPdfInput): Promise<void> {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const yStart = drawHeader(doc, {

@@ -3,7 +3,7 @@
 // Renders a landscape A4 PDF listing every "salida" / "devolucion_entrada" /
 // "autoconsumo" movement for the selected month, plus a totals row.
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { Movement } from "../../backend/domain/movement";
 import {
     PAGE,
@@ -85,6 +85,7 @@ export async function generateSalesLedgerPdf(
     rows: Movement[],
     opts: SalesLedgerPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     const headerOpts: KontaPdfHeaderOpts = {

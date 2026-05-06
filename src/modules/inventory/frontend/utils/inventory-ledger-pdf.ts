@@ -4,7 +4,7 @@
 // quantity + value for the selected fiscal year. Ends with a totals row
 // (subtotal when filtered, grand total otherwise).
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { InventoryLedgerRow } from "../../backend/domain/inventory-ledger";
 import {
     PAGE,
@@ -98,6 +98,7 @@ export async function generateInventoryLedgerPdf(
     rows: InventoryLedgerRow[],
     opts: InventoryLedgerPdfOpts,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
     const headerOpts: KontaPdfHeaderOpts = {

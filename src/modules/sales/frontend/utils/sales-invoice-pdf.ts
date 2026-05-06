@@ -19,7 +19,7 @@
 // Layout: A4 portrait, header/footer Konta. PDF jsPDF puro.
 // =============================================================================
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import {
     PAGE,
     COLORS,
@@ -77,6 +77,7 @@ export interface SalesInvoicePdfData {
 }
 
 export async function generateSalesInvoicePdf(data: SalesInvoicePdfData): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const xL = PAGE.marginX;
     const xR = PORTRAIT.width - PAGE.marginX;

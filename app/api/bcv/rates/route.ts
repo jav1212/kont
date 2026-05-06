@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
         if (useToday) {
             // Use /exchange-rate — returns all currencies with percentageChange
-            const all = await fetchBcvCurrentAll({ noStore: true });
+            const all = await fetchBcvCurrentAll();
             const rates = all
                 .filter((e) => (ALLOWED_CODES as readonly string[]).includes(e.code))
                 .map(normalizeEntry);
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Historic date — use /exchange-rate/list (no percentageChange provided)
-        const raw = await fetchBcvListFallback(date!, 7, { noStore: true });
+        const raw = await fetchBcvListFallback(date!, 7);
         if (!raw.length) {
             return NextResponse.json({ error: "No hay tasas disponibles para esa fecha." }, { status: 404 });
         }

@@ -3,7 +3,7 @@
 // Follows the pattern of payroll-pdf.ts: pure jsPDF, no server involvement
 // ============================================================================
 
-import jsPDF from "jspdf";
+import type jsPDF from "jspdf";
 import type { CalendarEntry, TaxpayerType } from "../data/types";
 import { MONTHS_ES_FULL } from "./date-helpers";
 
@@ -111,7 +111,8 @@ export interface PdfExportOptions {
     year: number;
 }
 
-export function exportAsPdf({ entries, companyName, rif, taxpayerType, year }: PdfExportOptions): void {
+export async function exportAsPdf({ entries, companyName, rif, taxpayerType, year }: PdfExportOptions): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "letter" });
     const pw = doc.internal.pageSize.getWidth();  // ~215.9
     const ph = doc.internal.pageSize.getHeight(); // ~279.4

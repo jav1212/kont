@@ -6,7 +6,6 @@
 // per-empleado (`generatePayrollPdf`). Disponible desde el último paso del
 // calculador y desde el historial de nómina.
 
-import jsPDF from "jspdf";
 import {
     COLORS,
     PAGE,
@@ -64,6 +63,7 @@ export async function generatePayrollSummaryPdf(
     rows: PayrollSummaryEmployeeRow[],
     opts: PayrollSummaryOptions,
 ): Promise<void> {
+    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = PAGE.marginX;
