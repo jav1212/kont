@@ -6,8 +6,8 @@ import { getMembershipsActions } from "@/src/modules/memberships/backend/members
  * Revokes an accepted membership or deletes a pending invitation.
  * Owners can revoke anyone; admins can only revoke non-owners.
  */
-export const DELETE = withTenant(async (req, { userId, actingAs }) => {
-    const tenantOwnerId = actingAs?.ownerId ?? userId;
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const tenantOwnerId = effectiveOwnerId;
     const callerRole    = actingAs?.role    ?? "owner";
     const memberId      = req.url.split("/").at(-1)!;
 

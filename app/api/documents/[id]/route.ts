@@ -7,8 +7,8 @@ function extractId(url: string): string {
     return segments[segments.length - 1]; // /api/documents/[id]
 }
 
-export const DELETE = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const actions = getDocumentsActions(ownerId);
 
     const id = extractId(req.url);
@@ -31,8 +31,8 @@ export const DELETE = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const PATCH = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const actions = getDocumentsActions(ownerId);
 
     const id   = extractId(req.url);

@@ -6,7 +6,7 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     // URL pattern: /api/purchases/[id]/impute-items
     const segments  = new URL(req.url).pathname.split('/');
     const invoiceId = segments[segments.length - 2];
@@ -16,7 +16,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: 'items debe ser un array' }, { status: 400 });
     }
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result  = await getPurchasesActions(ownerId).imputePurchaseInvoiceItems.execute({
         invoiceId,
         items,

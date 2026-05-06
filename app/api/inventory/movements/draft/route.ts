@@ -10,7 +10,7 @@ import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 import type { MovementDraftKind } from '@/src/modules/inventory/backend/domain/movement-draft';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const url            = new URL(req.url);
     const companyId      = url.searchParams.get('companyId');
     const kind           = url.searchParams.get('kind') as MovementDraftKind | null;
@@ -19,7 +19,7 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     if (!companyId) {
         return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     }
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const actions = getInventoryActions(ownerId);
 
     if (draftGroupId) {
@@ -33,21 +33,21 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const body = await req.json();
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result = await getInventoryActions(ownerId).saveMovementDraft.execute(body);
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { userId, actingAs }) => {
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const url            = new URL(req.url);
     const companyId      = url.searchParams.get('companyId');
     const draftGroupId   = url.searchParams.get('draftGroupId');
     if (!companyId || !draftGroupId) {
         return Response.json({ error: 'companyId y draftGroupId son requeridos' }, { status: 400 });
     }
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result = await getInventoryActions(ownerId)
         .discardMovementDraft.execute({ companyId, draftGroupId });
     return handleResult(result);

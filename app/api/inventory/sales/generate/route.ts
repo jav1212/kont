@@ -5,7 +5,7 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import type { GenerateRandomSalesInput } from '@/src/modules/inventory/backend/app/generate-random-sales.use-case';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const body = await req.json() as Partial<GenerateRandomSalesInput>;
     const {
         companyId,
@@ -37,7 +37,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: 'autoconsumoTarget debe ser numérico cuando autoconsumoMode no es "none"' }, { status: 400 });
     }
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const actions = getInventoryActions(ownerId);
 
     const result = await actions.generateRandomSales.execute({

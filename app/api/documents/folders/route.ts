@@ -2,8 +2,8 @@ import { withTenant } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult } from '@/src/shared/backend/utils/handle-result';
 import { getDocumentsActions } from '@/src/modules/documents/backend/infrastructure/documents-factory';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId  = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId  = effectiveOwnerId;
     const { getFolders } = getDocumentsActions(ownerId);
 
     const url       = new URL(req.url);
@@ -14,8 +14,8 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const { createFolder } = getDocumentsActions(ownerId);
 
     const body = await req.json();

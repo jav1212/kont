@@ -4,15 +4,15 @@ import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 import type { SavePeriodInput } from '@/src/modules/accounting/backend/domain/repository/period.repository';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId   = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId   = effectiveOwnerId;
     const companyId = new URL(req.url).searchParams.get('companyId') ?? '';
     const result    = await getAccountingActions(ownerId).getPeriods.execute(companyId);
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const body    = await req.json() as SavePeriodInput;
     const result  = await getAccountingActions(ownerId).savePeriod.execute(body);
     return handleResult(result, 201);

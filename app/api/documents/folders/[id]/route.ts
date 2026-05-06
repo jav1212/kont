@@ -9,8 +9,8 @@ function extractId(req: Request): string {
     return parts[parts.length - 1] ?? '';
 }
 
-export const PATCH = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const { updateFolder } = getDocumentsActions(ownerId);
     const id   = extractId(req);
     const body = await req.json();
@@ -18,8 +18,8 @@ export const PATCH = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const { deleteFolder } = getDocumentsActions(ownerId);
     const id = extractId(req);
     const result = await deleteFolder.execute({ id });

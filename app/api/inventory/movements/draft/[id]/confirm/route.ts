@@ -7,7 +7,7 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     // Extract draftGroupId from path: /draft/<id>/confirm
     const path  = new URL(req.url).pathname;
     const match = path.match(/\/draft\/([^/]+)\/confirm$/);
@@ -20,7 +20,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     if (!companyId) {
         return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     }
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result = await getInventoryActions(ownerId)
         .confirmMovementDraft.execute({ companyId, draftGroupId });
     return handleResult(result);

@@ -1,13 +1,13 @@
 import { getEmployeeActions } from "@/src/modules/payroll/backend/infrastructure/employee-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     try {
         const { companyId, oldCedula, newCedula } = await req.json();
         if (!companyId)           return Response.json({ error: "companyId es requerido" },           { status: 400 });
         if (!oldCedula || !newCedula) return Response.json({ error: "oldCedula y newCedula son requeridos" }, { status: 400 });
 
-        const ownerId = actingAs?.ownerId ?? userId;
+        const ownerId = effectiveOwnerId;
         const result  = await getEmployeeActions(ownerId).renameEmployeeCedula.execute({
             companyId, oldCedula, newCedula,
         });

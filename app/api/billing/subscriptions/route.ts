@@ -8,8 +8,8 @@ import { handleResult } from '@/src/shared/backend/utils/handle-result';
  * Supports actingAs: when an admin/contable acts on behalf of a tenant owner,
  * returns that tenant's subscriptions instead of the caller's.
  */
-export const GET = withTenant(async (_req, { userId, actingAs }) => {
-    const tenantId = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (_req, { userId, actingAs, effectiveOwnerId}) => {
+    const tenantId = effectiveOwnerId;
     const result   = await getBillingActions().getSubscriptions.execute({ tenantId });
     return handleResult(result);
 });

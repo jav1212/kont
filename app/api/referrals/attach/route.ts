@@ -5,8 +5,8 @@ import { handleResult } from '@/src/shared/backend/utils/handle-result';
 // POST /api/referrals/attach
 // Body: { code: string }
 // Vincula al tenant autenticado con el referidor dueño del código. Idempotente.
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const tenantId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const tenantId = effectiveOwnerId;
 
     let body: { code?: string };
     try {

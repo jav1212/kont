@@ -5,8 +5,8 @@ import { getAccountingActions }        from '@/src/modules/accounting/backend/in
 import type { SaveIntegrationRuleInput } from '@/src/modules/accounting/backend/domain/repository/integration-rule.repository';
 import type { IntegrationSource }      from '@/src/modules/accounting/backend/domain/integration-rule';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId   = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId   = effectiveOwnerId;
     const params    = new URL(req.url).searchParams;
     const companyId = params.get('companyId') ?? '';
     const source    = (params.get('source') ?? undefined) as IntegrationSource | undefined;
@@ -14,8 +14,8 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const body    = await req.json() as SaveIntegrationRuleInput;
     const result  = await getAccountingActions(ownerId).saveIntegrationRule.execute(body);
     return handleResult(result, 201);

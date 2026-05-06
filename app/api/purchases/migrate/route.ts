@@ -9,7 +9,7 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const body = await req.json().catch(() => null) as
         | { invoiceIds?: unknown; targetCompanyId?: unknown; targetPeriod?: unknown }
         | null;
@@ -31,7 +31,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: 'targetCompanyId es requerido' }, { status: 400 });
     }
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result  = await getPurchasesActions(ownerId)
         .migratePurchaseInvoices.execute({ invoiceIds, targetCompanyId, targetPeriod });
 

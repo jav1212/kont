@@ -66,7 +66,7 @@ const PutBodySchema = z.object({
     settings:  PayrollSettingsSchema,
 });
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get('companyId');
     if (!companyId) {
@@ -74,12 +74,12 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     }
 
     // When acting on behalf of another tenant, use that tenant's userId for schema routing.
-    const effectiveUserId = actingAs?.ownerId ?? userId;
+    const effectiveUserId = effectiveOwnerId;
     const result = await getPayrollSettingsActions(effectiveUserId).get.execute(companyId);
     return handleResult(result);
 });
 
-export const PUT = withTenant(async (req, { userId, actingAs }) => {
+export const PUT = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     let rawBody: unknown;
     try {
         rawBody = await req.json();
@@ -94,7 +94,7 @@ export const PUT = withTenant(async (req, { userId, actingAs }) => {
     }
 
     const { companyId, settings } = parsed.data;
-    const effectiveUserId = actingAs?.ownerId ?? userId;
+    const effectiveUserId = effectiveOwnerId;
     const result = await getPayrollSettingsActions(effectiveUserId).save.execute(companyId, settings);
     return handleResult(result);
 });

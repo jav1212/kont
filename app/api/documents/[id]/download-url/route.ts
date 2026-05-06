@@ -2,8 +2,8 @@ import { withTenant } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult } from '@/src/shared/backend/utils/handle-result';
 import { getDocumentsActions } from '@/src/modules/documents/backend/infrastructure/documents-factory';
 
-export const GET = withTenant(async (_req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (_req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const { getDownloadUrl } = getDocumentsActions(ownerId);
 
     const url      = new URL(_req.url);

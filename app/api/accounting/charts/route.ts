@@ -3,15 +3,15 @@ import { withTenant }           from '@/src/shared/backend/utils/require-tenant'
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId    = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId    = effectiveOwnerId;
     const companyId  = new URL(req.url).searchParams.get('companyId') ?? '';
     const result     = await getAccountingActions(ownerId).getCharts.execute(companyId);
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const body    = await req.json() as Record<string, unknown>;
     const result  = await getAccountingActions(ownerId).saveChart.execute({
         id:        typeof body.id === 'string' ? body.id : undefined,

@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint && node scripts/audit-routes.mjs",
+    "audit:routes": "node scripts/audit-routes.mjs"
   },
   "dependencies": {
     "@heroui/accordion": "^2.2.29",

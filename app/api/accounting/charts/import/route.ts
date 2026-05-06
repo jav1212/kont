@@ -4,8 +4,8 @@ import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 import type { ImportAccountInput } from '@/src/modules/accounting/backend/domain/repository/chart.repository';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const body    = await req.json() as Record<string, unknown>;
     const result  = await getAccountingActions(ownerId).importChart.execute({
         companyId: String(body.companyId ?? ''),

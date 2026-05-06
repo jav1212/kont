@@ -4,8 +4,8 @@ import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 import type { SaveEntryInput }  from '@/src/modules/accounting/backend/domain/repository/journal-entry.repository';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId   = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId   = effectiveOwnerId;
     const params    = new URL(req.url).searchParams;
     const companyId = params.get('companyId') ?? '';
     const periodId  = params.get('periodId') ?? undefined;
@@ -13,8 +13,8 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const body    = await req.json() as SaveEntryInput;
     const result  = await getAccountingActions(ownerId).saveEntry.execute(body);
     return handleResult(result, 201);

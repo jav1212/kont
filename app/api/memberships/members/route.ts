@@ -7,8 +7,8 @@ import { handleResult } from "@/src/shared/backend/utils/handle-result";
  * Lists members of the active tenant (accepted + pending invitations).
  * Only accessible by owner or admin.
  */
-export const GET = withTenant(async (_req, { userId, actingAs }) => {
-    const tenantOwnerId = actingAs?.ownerId ?? userId;
+export const GET = withTenant(async (_req, { userId, actingAs, effectiveOwnerId}) => {
+    const tenantOwnerId = effectiveOwnerId;
     const callerRole    = actingAs?.role    ?? "owner";
 
     const result = await getMembershipsActions().getMembers.execute({ tenantOwnerId, callerRole });

@@ -4,11 +4,11 @@
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const companyId = new URL(req.url).searchParams.get('companyId');
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const source = new ServerSupabaseSource();
     const { data, error } = await source.instance.rpc('tenant_inventario_cierres_get', {
         p_user_id:    ownerId,
@@ -18,13 +18,13 @@ export const GET = withTenant(async (req, { userId, actingAs }) => {
     return Response.json({ data: data ?? [] });
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const body = await req.json();
     const { companyId, period, notes, dollarRate } = body;
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     if (!period)    return Response.json({ error: 'period es requerido' },    { status: 400 });
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const source = new ServerSupabaseSource();
     const { data, error } = await source.instance.rpc('tenant_inventario_cierre_save', {
         p_user_id:    ownerId,

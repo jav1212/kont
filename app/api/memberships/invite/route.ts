@@ -7,8 +7,8 @@ import { MemberRole } from "@/src/modules/memberships/backend/domain/membership"
  * Body: { email: string, role: 'admin' | 'contable' }
  * Creates an invitation and sends the invite email to the recipient.
  */
-export const POST = withTenant(async (req, { userId, actingAs }) => {
-    const tenantOwnerId = actingAs?.ownerId ?? userId;
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const tenantOwnerId = effectiveOwnerId;
     const callerRole    = actingAs?.role    ?? "owner";
 
     const body = await req.json() as { email?: string; role?: MemberRole };

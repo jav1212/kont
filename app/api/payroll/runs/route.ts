@@ -1,11 +1,11 @@
 import { getPayrollRunActions } from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
-export const GET = withTenant(async (req, { userId, actingAs }) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const companyId = new URL(req.url).searchParams.get("companyId");
     if (!companyId) return Response.json({ error: "companyId es requerido" }, { status: 400 });
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result = await getPayrollRunActions(ownerId).getRuns.execute(companyId);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
     return Response.json({ data: result.getValue() }, { status: 200 });

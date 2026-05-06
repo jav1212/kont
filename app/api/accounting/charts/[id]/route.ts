@@ -3,8 +3,8 @@ import { withTenant }           from '@/src/shared/backend/utils/require-tenant'
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 
-export const PATCH = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId              = actingAs?.ownerId ?? userId;
+export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId              = effectiveOwnerId;
     const id                   = req.url.split('/').pop()!;
     const body                 = await req.json() as { companyId?: string; name?: string };
     const { companyId, name }  = body;
@@ -15,8 +15,8 @@ export const PATCH = withTenant(async (req, { userId, actingAs }) => {
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { userId, actingAs }) => {
-    const ownerId = actingAs?.ownerId ?? userId;
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+    const ownerId = effectiveOwnerId;
     const id      = req.url.split('/').pop()!;
     const result  = await getAccountingActions(ownerId).deleteChart.execute(id);
     return handleResult(result);

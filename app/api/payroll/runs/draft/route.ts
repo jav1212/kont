@@ -46,7 +46,7 @@ const DraftSchema = z.object({
     receipts: z.array(ReceiptSchema).min(1, "Se requiere al menos un empleado"),
 });
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     let body: unknown;
     try {
         body = await req.json();
@@ -60,7 +60,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ error: first?.message ?? "Datos inválidos." }, { status: 422 });
     }
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const result  = await getPayrollRunActions(ownerId).saveDraft.execute(parsed.data);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
 

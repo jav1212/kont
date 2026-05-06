@@ -11,6 +11,12 @@ export type TenantContext = {
     userId:     string;
     schemaName: string;
     actingAs:   ActingAs | null;
+    /**
+     * UUID del tenant cuyo schema se va a tocar. Es lo que las RPCs `tenant_*`
+     * deben recibir como `p_user_id`. Equivale a `actingAs?.ownerId ?? userId`,
+     * pero al exponerlo aquí evitamos que cada repo lo recalcule (y se equivoque).
+     */
+    effectiveOwnerId: string;
 };
 
 // ── Errors ────────────────────────────────────────────────────────────────────
@@ -68,7 +74,12 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
             .maybeSingle();
 
         if (ownTenant) {
-            return { userId, schemaName: tenantSchemaName(userId), actingAs: null };
+            return {
+                userId,
+                schemaName:       tenantSchemaName(userId),
+                actingAs:         null,
+                effectiveOwnerId: userId,
+            };
         }
 
         // Invitado sin tenant propio → actuar sobre el primer tenant del
@@ -90,8 +101,9 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
         const mb = firstMembership as { tenant_id: string; role: string };
         return {
             userId,
-            schemaName: tenantSchemaName(mb.tenant_id),
-            actingAs:   { ownerId: mb.tenant_id, role: mb.role as ActingAs['role'] },
+            schemaName:       tenantSchemaName(mb.tenant_id),
+            actingAs:         { ownerId: mb.tenant_id, role: mb.role as ActingAs['role'] },
+            effectiveOwnerId: mb.tenant_id,
         };
     }
 
@@ -111,8 +123,9 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
 
     return {
         userId,
-        schemaName: tenantSchemaName(targetId),
-        actingAs:   { ownerId: targetId, role: membership.role as ActingAs['role'] },
+        schemaName:       tenantSchemaName(targetId),
+        actingAs:         { ownerId: targetId, role: membership.role as ActingAs['role'] },
+        effectiveOwnerId: targetId,
     };
 }
 

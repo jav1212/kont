@@ -31,7 +31,7 @@ interface OutboundBody {
     items: OutboundItem[];
 }
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
     const body: OutboundBody = await req.json();
     const { companyId, date, reference, items } = body;
 
@@ -39,7 +39,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
     if (!date)          return Response.json({ error: 'date es requerida' }, { status: 400 });
     if (!items?.length) return Response.json({ error: 'Se requiere al menos un producto' }, { status: 400 });
 
-    const ownerId = actingAs?.ownerId ?? userId;
+    const ownerId = effectiveOwnerId;
     const actions = getInventoryActions(ownerId);
     const saved: Movement[] = [];
 
