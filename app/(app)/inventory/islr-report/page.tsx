@@ -1,5 +1,7 @@
 "use client";
 
+import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
+
 // ISLR Art. 177 report page.
 // Shows per-product movement history for the monthly ISLR inventory registry.
 
@@ -279,6 +281,14 @@ function ProductTable({ product }: { product: IslrProduct }) {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function IslrReportPage() {
+    return (
+        <DesktopOnlyGuard>
+            <IslrReportContent />
+        </DesktopOnlyGuard>
+    );
+}
+
+function IslrReportContent() {
     const { companyId, company } = useCompany();
     const { islrReport, loadingIslrReport, loadIslrReport } = useInventory();
 

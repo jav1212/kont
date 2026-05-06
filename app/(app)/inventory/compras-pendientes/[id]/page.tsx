@@ -114,7 +114,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-6 py-6 max-w-5xl mx-auto space-y-6">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 max-w-5xl mx-auto space-y-4 sm:space-y-6">
                 {/* Tutorial inline */}
                 <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
                     Agrega los productos de la factura abajo. Al guardar, se crearán los movimientos de inventario, se actualizará el stock, y los totales reales reemplazarán el monto declarado del header. El asiento contable se reescribirá con los nuevos totales.
@@ -161,7 +161,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
 
                 {/* Comparación de totales */}
                 <div className={[
-                    "rounded-xl border px-5 py-4 grid grid-cols-3 gap-4",
+                    "rounded-xl border px-4 sm:px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4",
                     cuadra
                         ? "border-emerald-300/50 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800/40"
                         : "border-amber-300/50 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/40",
@@ -178,7 +178,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                             Bs. {fmt(itemsTotal)}
                         </p>
                     </div>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                         <p className={labelCls}>Diferencia</p>
                         <p className={[
                             "text-[13px] tabular-nums mt-1 font-bold",
@@ -188,14 +188,14 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                         </p>
                     </div>
                     {!cuadra && (
-                        <p className="col-span-3 text-[11px] text-amber-800 dark:text-amber-300 font-sans leading-snug">
+                        <p className="col-span-2 sm:col-span-3 text-[11px] text-amber-800 dark:text-amber-300 font-sans leading-snug">
                             Los items no cuadran con el subtotal declarado. Al guardar, el header se recalculará desde los items y el asiento contable se reescribirá con los nuevos montos.
                         </p>
                     )}
                 </div>
 
                 {/* CTA */}
-                <div className="flex items-center justify-end gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
                     <BaseButton.Root
                         variant="secondary"
                         size="md"

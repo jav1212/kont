@@ -1,5 +1,7 @@
 "use client";
 
+import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
+
 // Page: Libro de Entradas (inventory entry ledger for a given period).
 // Architectural role: route-level page component; composes domain types and
 // the useInventory hook — no business logic lives here.
@@ -347,6 +349,14 @@ function DeleteConfirm({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function LibroEntradasPage() {
+    return (
+        <DesktopOnlyGuard>
+            <LibroEntradasContent />
+        </DesktopOnlyGuard>
+    );
+}
+
+function LibroEntradasContent() {
     const { companyId, company } = useCompany();
     const {
         products, movements,

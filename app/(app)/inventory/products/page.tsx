@@ -11,7 +11,9 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import { notify } from "@/src/shared/frontend/notify";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     productsToCsv,
@@ -421,7 +423,7 @@ export default function ProductosPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6 space-y-5">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
 
                 {/* KPI strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -606,32 +608,29 @@ export default function ProductosPage() {
                     </div>
                 )}
 
-                {/* Form panel */}
-                {form && (
-                    <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-border-light flex items-center gap-3 bg-surface-2/40">
-                            <div className="h-9 w-9 rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500 flex items-center justify-center flex-shrink-0">
-                                {form.id ? <Pencil size={15} /> : <Plus size={16} strokeWidth={2.5} />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <h2 className="text-[14px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                    {form.id ? "Editar producto" : "Nuevo producto"}
-                                </h2>
-                                <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
-                                    {form.id ? "Actualiza los datos y guarda los cambios." : "Crea un producto del catálogo. Las existencias se cargan desde compras o ajustes."}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closeForm}
-                                className="text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                                aria-label="Cerrar"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        <div className="px-6 py-5 space-y-1">
+                {/* Form drawer/modal */}
+                <ResponsiveDrawer
+                    isOpen={!!form}
+                    onClose={closeForm}
+                    title={form?.id ? "Editar producto" : "Nuevo producto"}
+                    subtitle={form?.id
+                        ? "Actualiza los datos y guarda los cambios."
+                        : "Crea un producto del catálogo. Las existencias se cargan desde compras o ajustes."}
+                    desktopSize="3xl"
+                    isDismissable={!saving}
+                    footer={
+                        <>
+                            <BaseButton.Root variant="secondary" size="md" onClick={closeForm} isDisabled={saving}>
+                                Cancelar
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="primary" size="md" onClick={handleSave} isDisabled={saving} loading={saving}>
+                                {saving ? "Guardando…" : (form?.id ? "Guardar cambios" : "Crear producto")}
+                            </BaseButton.Root>
+                        </>
+                    }
+                >
+                    {form && (
+                        <div className="space-y-1">
                             <FormSection icon={Tag} title="Identidad" description="Código interno y nombre comercial.">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <BaseInput.Field
@@ -770,17 +769,8 @@ export default function ProductosPage() {
                                 </label>
                             </FormSection>
                         </div>
-
-                        <div className="px-6 py-3 border-t border-border-light flex items-center justify-end gap-2 bg-surface-2/40">
-                            <BaseButton.Root variant="secondary" size="md" onClick={closeForm} isDisabled={saving}>
-                                Cancelar
-                            </BaseButton.Root>
-                            <BaseButton.Root variant="primary" size="md" onClick={handleSave} isDisabled={saving} loading={saving}>
-                                {saving ? "Guardando…" : (form.id ? "Guardar cambios" : "Crear producto")}
-                            </BaseButton.Root>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </ResponsiveDrawer>
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
@@ -817,7 +807,58 @@ export default function ProductosPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile: card list */}
+                        <div className="md:hidden flex flex-col gap-3 p-3">
+                            {filtered.map((p) => (
+                                <BaseListCard
+                                    key={p.id}
+                                    onClick={() => openEdit(p)}
+                                    title={p.code || p.name}
+                                    subtitle={p.code ? p.name : undefined}
+                                    badge={<TipoBadge tipo={p.type} />}
+                                    rows={[
+                                        {
+                                            label: "Existencia",
+                                            value: (
+                                                <>
+                                                    {fmtN(p.currentStock)}{" "}
+                                                    <span className="text-[11px] text-[var(--text-tertiary)]">{p.measureUnit}</span>
+                                                </>
+                                            ),
+                                            align: "right",
+                                            numeric: true,
+                                        },
+                                        {
+                                            label: "Departamento",
+                                            value: p.departmentName || "—",
+                                            align: "right",
+                                        },
+                                        {
+                                            label: "IVA",
+                                            value: p.vatType === "exento" ? "Exento" : "General 16%",
+                                            align: "right",
+                                        },
+                                    ]}
+                                    status={
+                                        p.active ? (
+                                            <span className="inline-flex items-center gap-1.5 text-text-success font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
+                                                Activo
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
+                                                Inactivo
+                                            </span>
+                                        )
+                                    }
+                                />
+                            ))}
+                        </div>
+
+                        {/* Desktop: dense table */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-[13px]">
                                 <thead>
                                     <tr className="bg-surface-2/40 border-b border-border-light">
@@ -962,6 +1003,7 @@ export default function ProductosPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
             </div>

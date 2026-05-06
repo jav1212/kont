@@ -31,7 +31,9 @@ import { ContextLink as Link } from "@/src/shared/frontend/components/context-li
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { DashboardKpiCard } from "@/src/shared/frontend/components/dashboard-kpi-card";
+import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { Movement, MovementType } from "@/src/modules/inventory/backend/domain/movement";
@@ -242,53 +244,56 @@ function EditModal({
     const [notes, setNotes] = useState(mov.notes ?? "");
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-surface-1 border border-border-medium rounded-xl shadow-xl w-full max-w-md mx-4">
-                <div className="px-6 py-4 border-b border-border-light">
-                    <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                        Editar operación
-                    </h2>
-                    <p className="mt-1 font-sans text-[12px] text-[var(--text-tertiary)] leading-snug">
-                        Operación sobre <strong className="text-foreground">{productName}</strong>. Solo se editan fecha, referencia y notas — el saldo no cambia.
-                    </p>
-                </div>
-                <div className="px-6 py-5 space-y-4">
-                    <BaseInput.Field
-                        label="Fecha *"
-                        type="date"
-                        value={date}
-                        onValueChange={setDate}
-                    />
-                    <BaseInput.Field
-                        label="Referencia"
-                        type="text"
-                        value={reference}
-                        onValueChange={setReference}
-                        placeholder="Nº documento, motivo o referencia interna…"
-                    />
-                    <BaseInput.Field
-                        label="Notas"
-                        type="text"
-                        value={notes}
-                        onValueChange={setNotes}
-                        placeholder="Observaciones…"
-                    />
-                </div>
-                <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                    <BaseButton.Root variant="secondary" size="md" onClick={onClose} disabled={saving}>
+        <ResponsiveDrawer
+            isOpen={true}
+            onClose={onClose}
+            title="Editar operación"
+            subtitle={
+                <>
+                    Operación sobre <strong className="text-foreground">{productName}</strong>. Solo se editan fecha, referencia y notas — el saldo no cambia.
+                </>
+            }
+            isDismissable={!saving}
+            footer={
+                <>
+                    <BaseButton.Root variant="secondary" size="md" onClick={onClose} isDisabled={saving}>
                         Cancelar
                     </BaseButton.Root>
                     <BaseButton.Root
                         variant="primary"
                         size="md"
                         onClick={() => onSave(date, reference, notes)}
-                        disabled={saving || !date}
+                        isDisabled={saving || !date}
+                        loading={saving}
                     >
                         {saving ? "Guardando…" : "Guardar"}
                     </BaseButton.Root>
-                </div>
+                </>
+            }
+        >
+            <div className="space-y-4">
+                <BaseInput.Field
+                    label="Fecha *"
+                    type="date"
+                    value={date}
+                    onValueChange={setDate}
+                />
+                <BaseInput.Field
+                    label="Referencia"
+                    type="text"
+                    value={reference}
+                    onValueChange={setReference}
+                    placeholder="Nº documento, motivo o referencia interna…"
+                />
+                <BaseInput.Field
+                    label="Notas"
+                    type="text"
+                    value={notes}
+                    onValueChange={setNotes}
+                    placeholder="Observaciones…"
+                />
             </div>
-        </div>
+        </ResponsiveDrawer>
     );
 }
 
@@ -311,36 +316,42 @@ function DeleteConfirm({
         ? "se descontará"
         : "se incrementará";
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-surface-1 border border-yellow-500/20 rounded-xl shadow-xl w-full max-w-md mx-4">
-                <div className="px-6 py-4 border-b border-yellow-500/20 bg-yellow-500/[0.06] rounded-t-xl flex items-center gap-2">
-                    <AlertTriangle size={16} strokeWidth={2} className="text-yellow-600" />
-                    <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-yellow-600">
-                        Eliminar operación
-                    </h2>
-                </div>
-                <div className="px-6 py-5 font-sans text-[14px] text-foreground leading-relaxed">
-                    <p>
-                        Vas a eliminar la operación sobre <strong>{productName}</strong> del{" "}
-                        <strong className="font-mono uppercase tracking-[0.06em] text-[12px]">{fmtDate(mov.date)}</strong>.
-                    </p>
-                    <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
-                        {fmtN0(mov.quantity)} unidades · Bs {fmtN(mov.totalCost)}
-                    </p>
-                    <p className="mt-3 text-[13px] text-yellow-700 font-medium">
-                        La existencia del producto {reverses} en {fmtN0(mov.quantity)} unidades. ¿Continuar?
-                    </p>
-                </div>
-                <div className="px-6 py-4 border-t border-border-light flex items-center justify-end gap-3">
-                    <BaseButton.Root variant="secondary" size="md" onClick={onClose} disabled={deleting}>
+        <ResponsiveDrawer
+            isOpen={true}
+            onClose={onClose}
+            title="Eliminar operación"
+            header={<AlertTriangle size={16} strokeWidth={2} className="text-yellow-600" />}
+            isDismissable={!deleting}
+            footer={
+                <>
+                    <BaseButton.Root variant="secondary" size="md" onClick={onClose} isDisabled={deleting}>
                         Cancelar
                     </BaseButton.Root>
-                    <BaseButton.Root variant="danger" size="md" onClick={onConfirm} disabled={deleting}>
+                    <BaseButton.Root
+                        variant="danger"
+                        size="md"
+                        onClick={onConfirm}
+                        isDisabled={deleting}
+                        loading={deleting}
+                    >
                         {deleting ? "Eliminando…" : "Eliminar"}
                     </BaseButton.Root>
-                </div>
+                </>
+            }
+        >
+            <div className="font-sans text-[14px] text-foreground leading-relaxed">
+                <p>
+                    Vas a eliminar la operación sobre <strong>{productName}</strong> del{" "}
+                    <strong className="font-mono uppercase tracking-[0.06em] text-[12px]">{fmtDate(mov.date)}</strong>.
+                </p>
+                <p className="mt-2 text-[13px] text-[var(--text-secondary)]">
+                    {fmtN0(mov.quantity)} unidades · Bs {fmtN(mov.totalCost)}
+                </p>
+                <p className="mt-3 text-[13px] text-yellow-700 font-medium">
+                    La existencia del producto {reverses} en {fmtN0(mov.quantity)} unidades. ¿Continuar?
+                </p>
             </div>
-        </div>
+        </ResponsiveDrawer>
     );
 }
 
@@ -508,7 +519,7 @@ export default function OperationsHubPage() {
                 />
             )}
 
-            <div className="px-8 py-6 space-y-6">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <DashboardKpiCard
@@ -635,7 +646,58 @@ export default function OperationsHubPage() {
                             </button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile: card list */}
+                        <div className="md:hidden flex flex-col gap-3 p-3">
+                            {filtered.map((m) => {
+                                const productName = productNameById.get(m.productId) ?? m.productId;
+                                return (
+                                    <BaseListCard
+                                        key={m.id}
+                                        title={productName}
+                                        subtitle={fmtDate(m.date)}
+                                        badge={<TypeBadge type={m.type} />}
+                                        rows={[
+                                            { label: "Cantidad", value: fmtN0(m.quantity), align: "right", numeric: true },
+                                            { label: "Costo unit.", value: fmtN(m.unitCost), align: "right", numeric: true },
+                                            {
+                                                label: "Costo total",
+                                                value: <span className="font-bold">Bs. {fmtN(m.totalCost)}</span>,
+                                                align: "right",
+                                                numeric: true,
+                                            },
+                                            ...(m.reference
+                                                ? [{ label: "Ref.", value: m.reference, align: "right" as const }]
+                                                : []),
+                                        ]}
+                                        status={
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingMov(m)}
+                                                    className="font-mono text-[11px] uppercase tracking-[0.10em] text-primary-500 hover:text-primary-600 transition-colors"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeletingMov(m)}
+                                                    className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                    aria-label="Eliminar"
+                                                >
+                                                    <Trash2 size={12} strokeWidth={2} />
+                                                    Eliminar
+                                                </button>
+                                            </div>
+                                        }
+                                        chevron={false}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop: dense table */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full min-w-[1024px] text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/50">
@@ -714,6 +776,7 @@ export default function OperationsHubPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
 

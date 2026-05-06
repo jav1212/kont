@@ -6,11 +6,11 @@
 // inventario abre cada una para imputar productos y mover stock.
 
 import { useEffect, useMemo } from "react";
-import { ChevronLeft, Inbox, ArrowRight } from "lucide-react";
+import { ChevronLeft, Inbox } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
@@ -55,62 +55,53 @@ export default function ComprasPendientesPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-6 py-6 max-w-5xl mx-auto">
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border-light flex items-center justify-between">
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold">
-                            {pendientes.length} pendiente{pendientes.length === 1 ? "" : "s"}
+            <div className="px-4 sm:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold">
+                        {pendientes.length} pendiente{pendientes.length === 1 ? "" : "s"}
+                    </p>
+                    <p className="hidden sm:block font-sans text-[12px] text-[var(--text-tertiary)]">
+                        Imputar items mueve el stock y reescribe el asiento contable.
+                    </p>
+                </div>
+
+                {loadingPurchaseInvoices ? (
+                    <div className="rounded-xl border border-border-light bg-surface-1 px-4 py-12 text-center font-mono text-[12px] text-[var(--text-tertiary)]">
+                        Cargando…
+                    </div>
+                ) : pendientes.length === 0 ? (
+                    <div className="rounded-xl border border-border-light bg-surface-1 px-4 py-16 flex flex-col items-center justify-center gap-3 text-center">
+                        <div className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center">
+                            <Inbox size={20} className="text-[var(--text-tertiary)]" strokeWidth={1.5} />
+                        </div>
+                        <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                            No hay facturas pendientes
                         </p>
-                        <p className="text-[11px] text-[var(--text-tertiary)]">
-                            Tip: imputar items mueve el stock y reescribe el asiento contable.
+                        <p className="font-sans text-[13px] text-[var(--text-tertiary)] max-w-sm leading-relaxed">
+                            Cuando el contador registre una factura por flujo rápido (sin productos), aparecerá aquí para que la imputes.
                         </p>
                     </div>
-
-                    {loadingPurchaseInvoices ? (
-                        <div className="px-4 py-12 text-center text-[12px] text-[var(--text-tertiary)]">
-                            Cargando…
-                        </div>
-                    ) : pendientes.length === 0 ? (
-                        <div className="px-4 py-16 flex flex-col items-center justify-center gap-3 text-center">
-                            <div className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center">
-                                <Inbox size={20} className="text-[var(--text-tertiary)]" strokeWidth={1.5} />
-                            </div>
-                            <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                No hay facturas pendientes
-                            </p>
-                            <p className="font-sans text-[12px] text-[var(--text-tertiary)] max-w-sm">
-                                Cuando el contador registre una factura por flujo rápido (sin productos), aparecerá aquí para que la imputes.
-                            </p>
-                        </div>
-                    ) : (
-                        <ul className="divide-y divide-border-light">
-                            {pendientes.map((inv) => (
-                                <li key={inv.id}>
-                                    <Link
-                                        href={`/inventory/compras-pendientes/${inv.id}`}
-                                        className="grid grid-cols-[1fr_120px_140px_40px] items-center gap-4 px-4 py-3 hover:bg-surface-2 transition-colors"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="text-[13px] text-foreground font-bold truncate">
-                                                {inv.invoiceNumber || `#${inv.id?.slice(0, 8)}`}
-                                            </p>
-                                            <p className="text-[11px] text-[var(--text-tertiary)] truncate">
-                                                {supplierName(inv.supplierId)}
-                                            </p>
-                                        </div>
-                                        <div className="text-[12px] text-[var(--text-secondary)] tabular-nums">
-                                            {fmtDate(inv.date)}
-                                        </div>
-                                        <div className="text-[13px] text-foreground font-bold tabular-nums text-right">
-                                            Bs. {fmtMoney(inv.total)}
-                                        </div>
-                                        <ArrowRight size={14} className="text-[var(--text-tertiary)]" strokeWidth={2} />
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+                ) : (
+                    <div className="flex flex-col gap-3">
+                        {pendientes.map((inv) => (
+                            <BaseListCard
+                                key={inv.id}
+                                href={`/inventory/compras-pendientes/${inv.id}`}
+                                title={inv.invoiceNumber || `#${inv.id?.slice(0, 8)}`}
+                                subtitle={supplierName(inv.supplierId)}
+                                rows={[
+                                    { label: "Fecha", value: fmtDate(inv.date), align: "right", numeric: true },
+                                    {
+                                        label: "Total",
+                                        value: <span className="font-bold">Bs. {fmtMoney(inv.total)}</span>,
+                                        align: "right",
+                                        numeric: true,
+                                    },
+                                ]}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

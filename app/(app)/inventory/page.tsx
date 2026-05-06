@@ -23,6 +23,7 @@ import {
 import { PageHeader }            from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";
 import { DashboardQuickActions } from "@/src/shared/frontend/components/dashboard-quick-actions";
+import { BaseListCard }          from "@/src/shared/frontend/components/base-list-card";
 import { currentPeriod }         from "@/src/shared/frontend/utils/current-period";
 import { useCompany }            from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory }          from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -144,7 +145,7 @@ export default function InventoryDashboard() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="flex flex-col gap-8 px-8 py-8 max-w-[1400px] mx-auto w-full">
+            <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-[1400px] mx-auto w-full">
 
                 {/* Operational warning: empty catalog */}
                 {!loadingProducts && metrics.total === 0 && (
@@ -177,7 +178,7 @@ export default function InventoryDashboard() {
                 )}
 
                 {/* KPIs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                     <DashboardKpiCard
                         label="Productos activos"
                         value={metrics.active}
@@ -260,7 +261,62 @@ export default function InventoryDashboard() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
+                                <>
+                                {/* Mobile: card list */}
+                                <div className="md:hidden flex flex-col gap-3 px-4 py-4">
+                                    {stockAlerts.map((p) => {
+                                        const stock   = p.currentStock ?? 0;
+                                        const cost    = p.averageCost  ?? 0;
+                                        const valorBs = stock * cost;
+                                        const isOut   = stock <= 0;
+                                        return (
+                                            <BaseListCard
+                                                key={p.id}
+                                                title={p.code || "—"}
+                                                subtitle={p.name}
+                                                badge={<TipoBadge tipo={p.type} />}
+                                                rows={[
+                                                    {
+                                                        label: "Existencia",
+                                                        value: (
+                                                            <>
+                                                                <span className={isOut ? "text-text-error font-bold" : "text-foreground"}>
+                                                                    {fmtQty(stock)}
+                                                                </span>
+                                                                <span className="text-[11px] text-[var(--text-tertiary)] ml-1">
+                                                                    {p.measureUnit}
+                                                                </span>
+                                                            </>
+                                                        ),
+                                                        align: "right",
+                                                        numeric: true,
+                                                    },
+                                                    {
+                                                        label: "Valor (Bs.)",
+                                                        value: fmtBs(valorBs),
+                                                        align: "right",
+                                                        numeric: true,
+                                                    },
+                                                ]}
+                                                status={
+                                                    isOut ? (
+                                                        <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium badge-error border">
+                                                            Agotado
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium badge-warning border">
+                                                            Bajo
+                                                        </span>
+                                                    )
+                                                }
+                                                chevron={false}
+                                            />
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Desktop: dense table */}
+                                <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full text-[13px]" aria-label="Productos con stock bajo">
                                         <thead>
                                             <tr className="bg-surface-2/30 border-b border-border-light">
@@ -335,6 +391,7 @@ export default function InventoryDashboard() {
                                         </tbody>
                                     </table>
                                 </div>
+                                </>
                             )}
                         </motion.div>
                     </div>

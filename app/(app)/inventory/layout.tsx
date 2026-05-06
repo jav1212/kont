@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { ServerSupabaseSource } from "@/src/shared/backend/source/infra/server-supabase";
 import {
     requireTenant,
@@ -34,5 +33,5 @@ export default async function InventoryLayout({ children }: { children: React.Re
     const hasAccess = sub?.status === "active" || sub?.status === "trial";
     if (!hasAccess) redirect("/settings/billing");
 
-    return <DesktopOnlyGuard>{children}</DesktopOnlyGuard>;
+    return <>{children}</>;
 }

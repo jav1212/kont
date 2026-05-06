@@ -3,7 +3,7 @@ export const APP_MODULES = [
     { id: "employees",   label: "Empleados",     href: "/payroll/employees",      desktopOnly: false, paid: false, parentId: "payroll" },
     { id: "purchases",   label: "Compras",       href: "/purchases",              desktopOnly: true,  paid: true              },
     { id: "sales",       label: "Ventas",        href: "/sales",                  desktopOnly: true,  paid: true              },
-    { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: true,  paid: true              },
+    { id: "inventory",   label: "Inventario",    href: "/inventory",              desktopOnly: false, paid: true              },
     { id: "accounting",  label: "Contabilidad",  href: "/accounting",             desktopOnly: true,  paid: true              },
     { id: "tools",       label: "Herramientas",  href: "/tools",                  desktopOnly: false, paid: false             },
     { id: "companies",   label: "Empresas",      href: "/companies",              desktopOnly: false, paid: false             },

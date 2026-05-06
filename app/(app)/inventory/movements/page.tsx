@@ -11,6 +11,7 @@ import { Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import type { MovementType } from "@/src/modules/inventory/backend/domain/movement";
@@ -131,7 +132,7 @@ export default function MovementsPage() {
                 subtitle="Historial completo de entradas, salidas, ajustes, devoluciones y autoconsumo"
             />
 
-            <div className="px-8 py-6 space-y-4">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
 
                 {/* Toolbar de filtros */}
                 <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm px-5 py-4">
@@ -218,7 +219,53 @@ export default function MovementsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile: card list */}
+                        <div className="md:hidden flex flex-col gap-3 p-3">
+                            {filtered.map((m) => {
+                                const prod = products.find((p) => p.id === m.productId);
+                                return (
+                                    <BaseListCard
+                                        key={m.id}
+                                        title={prod?.name ?? m.productId ?? "—"}
+                                        subtitle={m.date}
+                                        badge={
+                                            <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] uppercase tracking-[0.08em] font-medium ${tipoBadgeClass(m.type)}`}>
+                                                {tipoLabel(m.type)}
+                                            </span>
+                                        }
+                                        rows={[
+                                            { label: "Cantidad", value: fmtN(m.quantity), align: "right", numeric: true },
+                                            { label: "Costo U.", value: fmtN(m.unitCost), align: "right", numeric: true },
+                                            {
+                                                label: "Costo total",
+                                                value: <span className="font-bold">Bs. {fmtN(m.totalCost)}</span>,
+                                                align: "right",
+                                                numeric: true,
+                                            },
+                                            ...(m.reference
+                                                ? [{ label: "Ref.", value: m.reference, align: "right" as const }]
+                                                : []),
+                                        ]}
+                                        status={
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleDelete(m.id); }}
+                                                className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-red-500 transition-colors"
+                                                aria-label="Eliminar movimiento"
+                                            >
+                                                <Trash2 size={12} strokeWidth={1.8} />
+                                                Eliminar
+                                            </button>
+                                        }
+                                        chevron={false}
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop: dense table */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light">
@@ -281,6 +328,7 @@ export default function MovementsPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
             </div>

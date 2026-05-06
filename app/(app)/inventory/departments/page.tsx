@@ -9,7 +9,9 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import { notify } from "@/src/shared/frontend/notify";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import type { Department } from "@/src/modules/inventory/backend/domain/department";
 import {
     departmentsToCsv,
@@ -344,7 +346,7 @@ export default function DepartamentosPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6 space-y-5">
+            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
 
                 {/* KPI strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -508,34 +510,29 @@ export default function DepartamentosPage() {
                     </div>
                 )}
 
-                {/* Form panel */}
-                {form && (
-                    <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-border-light flex items-center gap-3 bg-surface-2/40">
-                            <div className="h-9 w-9 rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500 flex items-center justify-center flex-shrink-0">
-                                {form.id ? <Pencil size={15} /> : <Plus size={16} strokeWidth={2.5} />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <h2 className="text-[14px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                    {form.id ? "Editar departamento" : "Nuevo departamento"}
-                                </h2>
-                                <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
-                                    {form.id
-                                        ? "Actualiza nombre, descripción o estado del departamento."
-                                        : "Crea una categoría para clasificar tus productos. El nombre se guarda en mayúsculas."}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={closeForm}
-                                className="text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                                aria-label="Cerrar"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        <div className="px-6 py-5 space-y-1">
+                {/* Form drawer/modal */}
+                <ResponsiveDrawer
+                    isOpen={!!form}
+                    onClose={closeForm}
+                    title={form?.id ? "Editar departamento" : "Nuevo departamento"}
+                    subtitle={form?.id
+                        ? "Actualiza nombre, descripción o estado del departamento."
+                        : "Crea una categoría para clasificar tus productos. El nombre se guarda en mayúsculas."}
+                    desktopSize="2xl"
+                    isDismissable={!saving}
+                    footer={
+                        <>
+                            <BaseButton.Root variant="secondary" size="md" onClick={closeForm} isDisabled={saving}>
+                                Cancelar
+                            </BaseButton.Root>
+                            <BaseButton.Root variant="primary" size="md" onClick={handleSave} isDisabled={saving} loading={saving}>
+                                {saving ? "Guardando…" : (form?.id ? "Guardar cambios" : "Crear departamento")}
+                            </BaseButton.Root>
+                        </>
+                    }
+                >
+                    {form && (
+                        <div className="space-y-1">
                             <FormSection icon={Tag} title="Identidad" description="Nombre visible en filtros, productos y reportes.">
                                 <BaseInput.Field
                                     label="Nombre"
@@ -585,17 +582,8 @@ export default function DepartamentosPage() {
                                 </div>
                             )}
                         </div>
-
-                        <div className="px-6 py-3 border-t border-border-light flex items-center justify-end gap-2 bg-surface-2/40">
-                            <BaseButton.Root variant="secondary" size="md" onClick={closeForm} isDisabled={saving}>
-                                Cancelar
-                            </BaseButton.Root>
-                            <BaseButton.Root variant="primary" size="md" onClick={handleSave} isDisabled={saving} loading={saving}>
-                                {saving ? "Guardando…" : (form.id ? "Guardar cambios" : "Crear departamento")}
-                            </BaseButton.Root>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </ResponsiveDrawer>
 
                 {/* Table */}
                 <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
@@ -632,7 +620,45 @@ export default function DepartamentosPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <>
+                        {/* Mobile: card list */}
+                        <div className="md:hidden flex flex-col gap-3 p-3">
+                            {filtered.map((d) => {
+                                const productCount = d.id ? (productCountByDept.get(d.id) ?? 0) : 0;
+                                return (
+                                    <BaseListCard
+                                        key={d.id}
+                                        onClick={() => openEdit(d)}
+                                        title={d.name}
+                                        subtitle={d.description || undefined}
+                                        rows={[
+                                            {
+                                                label: "Productos",
+                                                value: productCount > 0 ? String(productCount) : "—",
+                                                align: "right",
+                                                numeric: true,
+                                            },
+                                        ]}
+                                        status={
+                                            d.active ? (
+                                                <span className="inline-flex items-center gap-1.5 text-text-success font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
+                                                    Activo
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
+                                                    Inactivo
+                                                </span>
+                                            )
+                                        }
+                                    />
+                                );
+                            })}
+                        </div>
+
+                        {/* Desktop: dense table */}
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="w-full text-[13px]">
                                 <thead>
                                     <tr className="bg-surface-2/40 border-b border-border-light">
@@ -767,6 +793,7 @@ export default function DepartamentosPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </div>
             </div>
