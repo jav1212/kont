@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Download, Menu, X } from "lucide-react";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
-import { BcvPill, useBcvRate, useScrolled } from "@/src/shared/frontend/components/bcv-pill";
+import { useScrolled } from "@/src/shared/frontend/components/bcv-pill";
 import { usePwaInstall } from "@/src/shared/frontend/hooks/use-pwa-install";
 import { detectDevice, type DeviceOS } from "@/src/shared/frontend/utils/detect-device";
 
@@ -46,7 +46,6 @@ export function PublicHeader() {
     const pathname = usePathname();
     const isAuthPage = AUTH_ROUTES.some(route => pathname?.startsWith(route));
     const scrolled = useScrolled();
-    const bcv = useBcvRate();
     const [toolsOpen, setToolsOpen] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const toolsRef = useRef<HTMLDivElement | null>(null);
@@ -172,10 +171,8 @@ export function PublicHeader() {
                     </nav>
                 </div>
 
-                {/* ── Right: BCV pill + auth actions ───────────────────── */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                    {bcv && <BcvPill data={bcv} className="hidden lg:inline-flex" />}
-
+                {/* ── Right: auth actions ──────────────────────────────── */}
+                <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
                     <NavInstallButton variant="nav" />
 
                     <Link
@@ -187,7 +184,7 @@ export function PublicHeader() {
 
                     <Link
                         href="/sign-up"
-                        className="inline-flex items-center justify-center h-10 px-5 rounded-full bg-primary-500 text-white font-mono text-[12px] uppercase tracking-[0.14em] font-bold hover:bg-primary-600 active:bg-primary-700 transition-colors shadow-sm shadow-primary-500/30"
+                        className="inline-flex items-center justify-center h-10 px-4 sm:px-5 rounded-full bg-primary-500 text-white font-mono text-[12px] uppercase tracking-[0.14em] font-bold hover:bg-primary-600 active:bg-primary-700 transition-colors shadow-sm shadow-primary-500/30 whitespace-nowrap"
                     >
                         Crear cuenta
                     </Link>
@@ -235,8 +232,6 @@ export function PublicHeader() {
                                 <X className="w-[18px] h-[18px]" strokeWidth={2} />
                             </button>
                         </div>
-
-                        {bcv && <BcvPill data={bcv} className="self-start mb-8" />}
 
                         <div className="flex flex-col">
                             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary font-semibold mb-1">
