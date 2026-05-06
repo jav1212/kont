@@ -32,6 +32,8 @@ interface DashboardKpiCardProps {
     trend?:     TrendValue;
     /** Explanatory hint rendered as sans-serif footer ("Actualizado hace 3 h"). */
     hint?:      string;
+    /** Extra classes merged onto the root (e.g. `h-full` when wrapped in a Link inside a grid). */
+    className?: string;
 }
 
 // ============================================================================
@@ -93,6 +95,7 @@ export function DashboardKpiCard({
     sublabel,
     trend,
     hint,
+    className,
 }: DashboardKpiCardProps) {
     const config = COLOR_CONFIG[color];
 
@@ -108,6 +111,7 @@ export function DashboardKpiCard({
                 "transition-shadow duration-300 hover:shadow-md",
                 config.border,
                 config.glow,
+                className ?? "",
             ].join(" ")}
             aria-label={label}
             aria-busy={loading}

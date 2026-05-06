@@ -336,18 +336,25 @@ export default function PayrollDashboard() {
 
                 {/* ── KPIs ──────────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <DashboardKpiCard
-                        label="Empleados activos"
-                        value={activeCount}
-                        sublabel={
-                            totalCount === 0
-                                ? "Sin plantilla cargada"
-                                : `${totalCount} total · ${onVacation} vac · ${inactiveCount} inact`
-                        }
-                        color="primary"
-                        loading={empLoading}
-                        icon={Users}
-                    />
+                    <Link
+                        href="/payroll/employees"
+                        aria-label="Ver empleados"
+                        className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0"
+                    >
+                        <DashboardKpiCard
+                            label="Empleados activos"
+                            value={activeCount}
+                            sublabel={
+                                totalCount === 0
+                                    ? "Sin plantilla cargada"
+                                    : `${totalCount} total · ${onVacation} vac · ${inactiveCount} inact`
+                            }
+                            color="primary"
+                            loading={empLoading}
+                            icon={Users}
+                            className="h-full"
+                        />
+                    </Link>
                     <DashboardKpiCard
                         label="Nómina mensual"
                         value={`Bs. ${fmtCompactBs(monthlySalaryBs)}`}
