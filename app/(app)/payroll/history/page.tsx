@@ -122,28 +122,28 @@ function RunRow({ run, isSelected, onSelect }: {
         <button
             onClick={() => onSelect(run.id)}
             className={[
-                "w-full flex items-center justify-between px-5 py-4",
+                "w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 px-4 sm:px-5 py-4",
                 "border-b border-border-light last:border-0 text-left",
                 "transition-colors duration-150",
                 isSelected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]",
             ].join(" ")}
         >
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="font-mono text-[12px] font-semibold text-foreground">
                     {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
                 </span>
-                <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                <span className="font-mono text-[11px] sm:text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">
                     {run.status === "draft" ? "Guardado" : "Confirmada"}: {formatDateTime(run.confirmedAt)}
                 </span>
             </div>
-            <div className="flex items-center gap-6 tabular-nums">
+            <div className="flex items-center gap-3 sm:gap-6 tabular-nums shrink-0">
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
-                    <span className="font-mono text-[13px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
+                    <span className="font-mono text-[10px] sm:text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
+                    <span className="font-mono text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
                 </div>
                 <span
                     className={[
-                        "font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                        "font-mono text-[10px] sm:text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
                         run.status === "draft"
                             ? "border-border-medium bg-foreground/[0.05] text-[var(--text-secondary)]"
                             : "badge-success",
@@ -154,7 +154,7 @@ function RunRow({ run, isSelected, onSelect }: {
                 <svg
                     width="12" height="12" viewBox="0 0 12 12" fill="none"
                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                    className={["transition-transform duration-150 text-[var(--text-tertiary)]", isSelected ? "rotate-90" : ""].join(" ")}
+                    className={["transition-transform duration-150 text-[var(--text-tertiary)] hidden sm:block", isSelected ? "rotate-90" : ""].join(" ")}
                 >
                     <path d="M4 2l4 4-4 4" />
                 </svg>
@@ -184,7 +184,8 @@ function ReceiptsPanel({ receipts, loading }: {
 
     return (
         <div className="space-y-3">
-            <div className="overflow-x-auto border border-border-light rounded-xl bg-surface-1">
+            {/* Desktop table — lg+ */}
+            <div className="hidden lg:block overflow-x-auto border border-border-light rounded-xl bg-surface-1">
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border-light bg-surface-2">
@@ -218,18 +219,64 @@ function ReceiptsPanel({ receipts, loading }: {
                 </table>
             </div>
 
+            {/* Mobile + tablet cards — < lg */}
+            <div className="lg:hidden space-y-2">
+                {receipts.map((r) => (
+                    <div key={r.id} className="rounded-xl border border-border-light bg-surface-1 p-3 space-y-2 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="font-mono text-[13px] font-medium text-foreground truncate">{r.employeeNombre}</p>
+                                <p className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                                    {r.employeeCedula}{r.employeeCargo ? ` · ${r.employeeCargo}` : ""}
+                                </p>
+                            </div>
+                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)] shrink-0">
+                                Bs. {fmt(r.monthlySalary)}
+                            </span>
+                        </div>
+                        <div className="border-t border-border-light/70" />
+                        <dl className="space-y-1 font-mono text-[12px] tabular-nums">
+                            <div className="flex items-center justify-between">
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Asignaciones</dt>
+                                <dd className="text-[var(--text-secondary)]">{fmt(r.totalEarnings)}</dd>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Bonos</dt>
+                                <dd className="text-[var(--text-secondary)]">{fmt(r.totalBonuses)}</dd>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Deducciones</dt>
+                                <dd className="text-error/80">−{fmt(r.totalDeductions)}</dd>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Bruto VES</dt>
+                                <dd className="text-[var(--text-secondary)]">{fmt(r.calculationData?.gross ?? 0)}</dd>
+                            </div>
+                            <div className="flex items-center justify-between pt-1.5 border-t border-border-light/40">
+                                <dt className="text-[var(--text-link)] uppercase tracking-[0.16em] font-bold">Neto VES</dt>
+                                <dd className="text-[15px] font-black text-primary-500">{fmt(r.netPay)}</dd>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Neto USD</dt>
+                                <dd className="text-[var(--text-secondary)]">${fmt(r.calculationData?.netUsd ?? 0)}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                ))}
+            </div>
+
             {/* Totals bar */}
-            <div className="flex justify-end gap-8 px-5 py-3 border border-border-light rounded-xl bg-surface-1">
+            <div className="px-4 sm:px-5 py-3 border border-border-light rounded-xl bg-surface-1 grid grid-cols-2 gap-x-6 gap-y-2 lg:flex lg:justify-end lg:gap-8">
                 <div className="flex flex-col items-end gap-0.5">
                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Bruto</span>
                     <span className="font-mono text-[14px] text-[var(--text-secondary)] tabular-nums">{fmt(totGross)}</span>
                 </div>
-                <div className="w-px bg-border-light" />
+                <div className="hidden lg:block w-px bg-border-light" />
                 <div className="flex flex-col items-end gap-0.5">
                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Neto VES</span>
                     <span className="font-mono text-[18px] font-black text-primary-500 tabular-nums">{fmt(totNet)}</span>
                 </div>
-                <div className="flex flex-col items-end gap-0.5">
+                <div className="flex flex-col items-end gap-0.5 col-span-2 lg:col-span-1">
                     <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Total Neto $</span>
                     <span className="font-mono text-[14px] text-[var(--text-secondary)] tabular-nums">${fmt(totNetUsd)}</span>
                 </div>
@@ -358,7 +405,7 @@ export default function PayrollHistoryPage() {
                 )}
             </PageHeader>
 
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
                 <div className="max-w-[1100px] mx-auto space-y-5">
                     <HistoryTabs active={activeTab} onChange={setActiveTab} />
 

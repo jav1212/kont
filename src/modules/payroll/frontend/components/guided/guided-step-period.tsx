@@ -194,17 +194,17 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                     </div>
                 )}
 
-                <div className="mt-5 px-5 py-4 rounded-xl border border-border-light bg-surface-2 flex items-center justify-around">
+                <div className="mt-5 px-4 sm:px-5 py-4 rounded-xl border border-border-light bg-surface-2 grid grid-cols-3 sm:flex sm:items-center sm:justify-around gap-y-3">
                     <DayStat label="Norm" value={activePeriodInfo.weekdays} />
-                    <div className="w-px h-7 bg-border-light" />
+                    <div className="hidden sm:block w-px h-7 bg-border-light" />
                     <DayStat label="Sáb" value={activePeriodInfo.saturdays} />
-                    <div className="w-px h-7 bg-border-light" />
+                    <div className="hidden sm:block w-px h-7 bg-border-light" />
                     <DayStat label="Dom" value={activePeriodInfo.sundays} />
-                    <div className="w-px h-7 bg-border-light" />
+                    <div className="hidden sm:block w-px h-7 bg-border-light" />
                     <DayStat label="Lun" value={activePeriodInfo.mondays} muted />
                     {activePeriodInfo.holidays > 0 && (
                         <>
-                            <div className="w-px h-7 bg-border-light" />
+                            <div className="hidden sm:block w-px h-7 bg-border-light" />
                             <DayStat label="Fer" value={activePeriodInfo.holidays} />
                         </>
                     )}

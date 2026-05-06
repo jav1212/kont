@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Receipt, Save } from "lucide-react";
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { notify } from "@/src/shared/frontend/notify";
@@ -135,7 +134,6 @@ export default function PayrollCalculatorPage() {
     };
 
     return (
-        <DesktopOnlyGuard>
             <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
                 <PageHeader
                     title="Nómina"
@@ -147,7 +145,7 @@ export default function PayrollCalculatorPage() {
                         </div>
                     }
                 >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
                         {showCestaTicket && (
                             <>
                                 <BaseButton.Root
@@ -157,7 +155,10 @@ export default function PayrollCalculatorPage() {
                                     disabled={savingCtDraft || !activos || cestaTicketAlreadyConfirmed}
                                     leftIcon={<Save size={14} />}
                                 >
-                                    {savingCtDraft ? "Guardando..." : "Guardar borrador"}
+                                    <span className="hidden sm:inline">
+                                        {savingCtDraft ? "Guardando..." : "Guardar borrador"}
+                                    </span>
+                                    <span className="sm:hidden">{savingCtDraft ? "..." : "Borrador"}</span>
                                 </BaseButton.Root>
                                 <BaseButton.Root
                                     variant="primary"
@@ -166,11 +167,20 @@ export default function PayrollCalculatorPage() {
                                     disabled={confirmingCt || !activos || cestaTicketAlreadyConfirmed}
                                     leftIcon={<Check size={14} />}
                                 >
-                                    {confirmingCt
-                                        ? "Confirmando..."
-                                        : cestaTicketAlreadyConfirmed
-                                            ? "Cesta ticket confirmada"
-                                            : "Confirmar cesta ticket"}
+                                    <span className="hidden sm:inline">
+                                        {confirmingCt
+                                            ? "Confirmando..."
+                                            : cestaTicketAlreadyConfirmed
+                                                ? "Cesta ticket confirmada"
+                                                : "Confirmar cesta ticket"}
+                                    </span>
+                                    <span className="sm:hidden">
+                                        {confirmingCt
+                                            ? "..."
+                                            : cestaTicketAlreadyConfirmed
+                                                ? "Confirmada"
+                                                : "Confirmar"}
+                                    </span>
                                 </BaseButton.Root>
                                 <BaseButton.Root
                                     variant="secondary"
@@ -178,7 +188,8 @@ export default function PayrollCalculatorPage() {
                                     onClick={handleCestaTicketPdf}
                                     leftIcon={<Receipt size={14} />}
                                 >
-                                    Cesta Ticket
+                                    <span className="hidden sm:inline">Cesta Ticket</span>
+                                    <span className="sm:hidden">PDF</span>
                                 </BaseButton.Root>
                             </>
                         )}
@@ -191,7 +202,7 @@ export default function PayrollCalculatorPage() {
                         </div>
 
                         {company && (
-                            <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
+                            <span className="hidden md:inline font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
                                 {company.name}
                             </span>
                         )}
@@ -218,6 +229,5 @@ export default function PayrollCalculatorPage() {
                     {currentStep === 5 && <GuidedStepReview state={state} onBack={goBack} />}
                 </div>
             </div>
-        </DesktopOnlyGuard>
     );
 }

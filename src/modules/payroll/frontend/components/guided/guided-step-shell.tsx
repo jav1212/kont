@@ -37,15 +37,15 @@ export function GuidedStepShell({
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-8 py-8">
-                    <header className={["mb-6", centerHeader ? "text-center" : ""].join(" ")}>
-                        <h2 className="font-mono text-[22px] font-black tracking-tight text-foreground leading-tight">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+                    <header className={["mb-5 md:mb-6", centerHeader ? "text-center" : ""].join(" ")}>
+                        <h2 className="font-mono text-[20px] md:text-[22px] font-black tracking-tight text-foreground leading-tight">
                             {title}
                         </h2>
                         {subtitle && (
                             <p
                                 className={[
-                                    "font-mono text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed",
+                                    "font-mono text-[13px] md:text-[14px] text-[var(--text-secondary)] mt-2 leading-relaxed",
                                     centerHeader ? "max-w-2xl mx-auto" : "",
                                 ].join(" ")}
                             >
@@ -53,12 +53,12 @@ export function GuidedStepShell({
                             </p>
                         )}
                     </header>
-                    <div className="space-y-6">{children}</div>
+                    <div className="space-y-5 md:space-y-6">{children}</div>
                 </div>
             </div>
 
             {!hideNav && (
-                <div className="border-t border-border-light bg-surface-1 px-8 py-4">
+                <div className="border-t border-border-light bg-surface-1 px-4 sm:px-6 md:px-8 py-3 md:py-4">
                     <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
                         <div>
                             {onBack && (
@@ -104,7 +104,7 @@ export function StepSection({
     children: ReactNode;
 }) {
     return (
-        <section className="rounded-xl border border-border-light bg-surface-1 px-6 py-5">
+        <section className="rounded-xl border border-border-light bg-surface-1 px-4 sm:px-5 md:px-6 py-4 md:py-5">
             <h3 className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)] mb-1">
                 {title}
             </h3>
@@ -134,7 +134,7 @@ export function AdvancedDisclosure({
             className="group rounded-xl border border-dashed border-border-light bg-surface-1/40"
             {...(defaultOpen ? { open: true } : {})}
         >
-            <summary className="cursor-pointer px-5 py-3 list-none flex items-center justify-between hover:bg-foreground/[0.02] transition-colors rounded-xl">
+            <summary className="cursor-pointer px-4 sm:px-5 py-3 list-none flex items-center justify-between hover:bg-foreground/[0.02] transition-colors rounded-xl">
                 <span className="font-mono text-[12px] uppercase tracking-[0.16em] text-[var(--text-secondary)] group-open:text-foreground">
                     {label}
                 </span>
@@ -146,7 +146,7 @@ export function AdvancedDisclosure({
                     <path d="M2 4l3 3 3-3" />
                 </svg>
             </summary>
-            <div className="px-5 pb-5 pt-1 space-y-4">{children}</div>
+            <div className="px-4 sm:px-5 pb-5 pt-1 space-y-4">{children}</div>
         </details>
     );
 }

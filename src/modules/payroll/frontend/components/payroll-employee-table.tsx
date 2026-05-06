@@ -398,6 +398,120 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidad
 };
 
 // ============================================================================
+// MOBILE EMPLOYEE CARD  — replaces BaseTable on viewports < lg
+// ============================================================================
+
+interface EmployeeMobileCardProps {
+    result:             EmployeeResult;
+    expanded:           boolean;
+    onToggleExpand:     () => void;
+    override:           EmployeeOverride;
+    mondaysInMonth:     number;
+    bcvRate:            number;
+    diasUtilidades:     number;
+    diasBonoVacacional: number;
+    salarioMinimo:      number;
+    onOverrideChange:   (updated: EmployeeOverride) => void;
+}
+
+const EmployeeMobileCard = ({
+    result, expanded, onToggleExpand,
+    override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
+    onOverrideChange,
+}: EmployeeMobileCardProps) => (
+    <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 space-y-3">
+            {/* Header: nombre + estado + extras badge */}
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="font-mono text-[13px] font-bold uppercase tracking-[0.06em] text-foreground leading-tight truncate">
+                        {result.nombre}
+                    </p>
+                    <p className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest mt-0.5">
+                        {result.cedula}{result.cargo ? ` · ${result.cargo}` : ""}
+                    </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {result.hasOverrides && <OverrideBadge />}
+                    <StatusBadge estado={result.estado as EmployeeEstado} />
+                </div>
+            </div>
+
+            {/* Salario row */}
+            <div className="flex items-center justify-between font-mono text-[12px]">
+                <span className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Salario</span>
+                <div className="flex items-center gap-1.5 tabular-nums">
+                    {result.moneda === "USD" ? (
+                        <>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary-500/30 bg-primary-500/[0.08] text-primary-400 uppercase tracking-widest">USD</span>
+                            <span>${fmt(result.salarioMensual)}</span>
+                        </>
+                    ) : (
+                        <span>Bs. {fmt(result.salarioMensual)}</span>
+                    )}
+                </div>
+            </div>
+
+            <div className="border-t border-border-light/70" />
+
+            {/* Numeric breakdown */}
+            <dl className="space-y-1.5 font-mono text-[12px] tabular-nums">
+                <div className="flex items-center justify-between">
+                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Bruto</dt>
+                    <dd className="text-[var(--text-secondary)]">Bs. {fmt(result.gross)}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Deducciones</dt>
+                    <dd className="text-error/80">−Bs. {fmt(result.totalDeductions)}</dd>
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-border-light/40">
+                    <dt className="text-[var(--text-link)] uppercase tracking-[0.16em] font-bold">Neto VES</dt>
+                    <dd className="text-[16px] font-black text-primary-500">Bs. {fmt(result.net)}</dd>
+                </div>
+                <div className="flex items-center justify-between">
+                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Neto USD</dt>
+                    <dd className="text-[var(--text-secondary)]">${fmt(result.netUSD)}</dd>
+                </div>
+            </dl>
+
+            {/* Expand toggle */}
+            <button
+                type="button"
+                onClick={onToggleExpand}
+                className={[
+                    "w-full h-9 rounded-lg border flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors",
+                    expanded
+                        ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500"
+                        : "border-border-light bg-surface-2 text-[var(--text-secondary)] hover:border-border-medium",
+                ].join(" ")}
+            >
+                {expanded ? "Ocultar detalle" : "Ver detalle"}
+                <svg
+                    width="10" height="10" viewBox="0 0 10 10" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
+                >
+                    <path d="M2 4l3 3 3-3" />
+                </svg>
+            </button>
+        </div>
+
+        {expanded && (
+            <ExpandedPanel
+                result={result}
+                override={override}
+                mondaysInMonth={mondaysInMonth}
+                bcvRate={bcvRate}
+                diasUtilidades={diasUtilidades}
+                diasBonoVacacional={diasBonoVacacional}
+                salarioMinimo={salarioMinimo}
+                onChange={onOverrideChange}
+            />
+        )}
+    </div>
+);
+
+// ============================================================================
 // APORTES PATRONALES PANEL
 // ============================================================================
 
@@ -457,8 +571,8 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
 
             {open && (
                 <div className="bg-surface-2 p-4 space-y-3">
-                    {/* Table */}
-                    <div className="overflow-x-auto">
+                    {/* Desktop table (lg+) */}
+                    <div className="hidden lg:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-border-light">
@@ -495,9 +609,66 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                         </table>
                     </div>
 
+                    {/* Mobile cards (< lg) */}
+                    <div className="lg:hidden space-y-2">
+                        {aportes.map((a) => (
+                            <div key={a.cedula} className="rounded-lg border border-border-light bg-surface-1 p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-mono text-[12px] text-foreground truncate">{a.nombre}</p>
+                                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest">{a.cedula}</p>
+                                    </div>
+                                    <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)] shrink-0">
+                                        Sal. {fmtN(a.salarioVES)}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 font-mono text-[11px] tabular-nums">
+                                    <div className="flex items-center justify-between rounded border border-border-light/60 bg-surface-2 px-2 py-1">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">SSO 9%</span>
+                                        <span className="text-[var(--text-secondary)]">{fmtN(a.ssoPatronal)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between rounded border border-border-light/60 bg-surface-2 px-2 py-1">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">BANAVIH</span>
+                                        <span className="text-[var(--text-secondary)]">{fmtN(a.faovPatronal)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between rounded border border-border-light/60 bg-surface-2 px-2 py-1">
+                                        <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">INCES</span>
+                                        <span className="text-[var(--text-secondary)]">{fmtN(a.incesPatronal)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between rounded border border-primary-500/30 bg-primary-500/[0.06] px-2 py-1">
+                                        <span className="text-[var(--text-link)] uppercase tracking-[0.14em] font-bold">Total</span>
+                                        <span className="text-primary-500 font-black">{fmtN(a.total)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {/* Mobile totals card */}
+                        <div className="rounded-lg border border-border-medium bg-surface-1 p-3 space-y-2">
+                            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Totales</p>
+                            <div className="grid grid-cols-2 gap-2 font-mono text-[11px] tabular-nums">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">SSO</span>
+                                    <span className="text-[var(--text-secondary)] font-medium">{fmtN(totals.sso)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">BANAVIH</span>
+                                    <span className="text-[var(--text-secondary)] font-medium">{fmtN(totals.faov)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">INCES</span>
+                                    <span className="text-[var(--text-secondary)] font-medium">{fmtN(totals.inces)}</span>
+                                </div>
+                                <div className="flex items-center justify-between border-t border-border-light/50 col-span-2 pt-1.5 mt-0.5">
+                                    <span className="text-[var(--text-link)] uppercase tracking-[0.16em] font-bold">Total general</span>
+                                    <span className="text-[14px] text-primary-500 font-black">{fmtN(totals.total)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Info + CSV */}
-                    <div className="flex items-center justify-between pt-1">
-                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed">
+                    <div className="flex items-start justify-between gap-2 pt-1 flex-wrap">
+                        <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed flex-1 min-w-[200px]">
                             SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: devengado del período
                         </p>
                         <button
@@ -507,7 +678,8 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M6 1v7M3 5l3 3 3-3" /><path d="M1 10h10" />
                             </svg>
-                            Exportar CSV
+                            <span className="hidden sm:inline">Exportar CSV</span>
+                            <span className="sm:hidden">CSV</span>
                         </button>
                     </div>
                 </div>
@@ -524,9 +696,9 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
     const active = results.filter((r) => r.estado === "activo");
     const T = active.reduce((s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }), { gross: 0, ded: 0, net: 0, usd: 0 });
     return (
-        <div className="flex items-center justify-between px-5 py-3 bg-surface-1 rounded-xl border border-border-light">
+        <div className="px-4 sm:px-5 py-3 bg-surface-1 rounded-xl border border-border-light flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{active.length} empleados activos</span>
-            <div className="flex gap-8 tabular-nums items-center">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2 tabular-nums lg:flex lg:items-center lg:gap-8">
                 <div className="flex flex-col items-end">
                     <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Bruto</span>
                     <span className="font-mono text-[12px] text-[var(--text-secondary)]">{fmt(T.gross)}</span>
@@ -535,7 +707,7 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
                     <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Deducciones</span>
                     <span className="font-mono text-[12px] text-red-500 dark:text-red-400">-{fmt(T.ded)}</span>
                 </div>
-                <div className="w-px h-8 bg-border-light" />
+                <div className="hidden lg:block w-px h-8 bg-border-light" />
                 <div className="flex flex-col items-end">
                     <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Neto VES</span>
                     <span className="font-mono text-[18px] font-black text-primary-500">{fmt(T.net)}</span>
@@ -768,7 +940,7 @@ export const PayrollEmployeeTable = ({
                 {/* Panel */}
                 <div className="relative z-10 w-full max-w-md bg-surface-1 border border-border-default rounded-2xl shadow-lg overflow-hidden">
                     {/* Header */}
-                    <div className="px-6 py-5 border-b border-border-light">
+                    <div className="px-4 sm:px-6 py-5 border-b border-border-light">
                         <div className="flex items-center gap-3 mb-1">
                             <div className="h-px w-5 bg-primary-500/60" />
                             <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--text-link)]">
@@ -781,7 +953,7 @@ export const PayrollEmployeeTable = ({
                     </div>
 
                     {/* Summary */}
-                    <div className="px-6 py-5 space-y-3">
+                    <div className="px-4 sm:px-6 py-5 space-y-3">
                         {/* Meta row */}
                         <div className="flex items-center justify-between py-2 border-b border-border-light">
                             <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
@@ -856,7 +1028,7 @@ export const PayrollEmployeeTable = ({
                     </div>
 
                     {/* Actions */}
-                    <div className="px-6 py-4 border-t border-border-light flex items-center gap-3">
+                    <div className="px-4 sm:px-6 py-4 border-t border-border-light flex items-center gap-3">
                         <button
                             onClick={handleConfirmExecute}
                             disabled={confirmLoading || !!periodAlreadyConfirmed}
@@ -896,15 +1068,15 @@ export const PayrollEmployeeTable = ({
             </div>
         )}
             {/* Toolbar */}
-            <div className="flex items-end justify-between gap-4 flex-wrap">
-                <div>
+            <div className="flex items-end justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
                     <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-neutral-400">Nómina / Empleados</p>
                     <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">
                         Resumen por Empleado
                         <span className="ml-2 font-normal text-[12px] text-[var(--text-tertiary)] tracking-normal normal-case">
                             {results.length} en cálculo
                             {employees.filter(e => e.estado === "inactivo").length > 0 && (
-                                <span className="ml-1 text-[var(--text-disabled)]">· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
+                                <span className="ml-1 text-[var(--text-disabled)] hidden sm:inline">· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
                             )}
                         </span>
                     </h2>
@@ -925,26 +1097,29 @@ export const PayrollEmployeeTable = ({
                             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M6 1v10M1 6h10" />
                             </svg>
-                            Vacaciones {includeVacaciones ? "incluidas" : "excluidas"}
+                            <span className="hidden sm:inline">Vacaciones {includeVacaciones ? "incluidas" : "excluidas"}</span>
+                            <span className="sm:hidden">Vac. {includeVacaciones ? "in" : "ex"}</span>
                         </button>
                     )}
                     <button onClick={handleExportPdf} disabled={results.length === 0} className={toolbarBtnBase}>
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
                         </svg>
-                        Exportar PDF
+                        <span className="hidden sm:inline">Exportar PDF</span>
+                        <span className="sm:hidden">PDF</span>
                     </button>
                     <button onClick={handleExportSummaryPdf} disabled={results.filter(r => r.estado === "activo").length === 0} className={toolbarBtnBase}>
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="1.5" y="2" width="9" height="8" rx="0.5" /><path d="M1.5 5h9M4 2v8M7 2v8" />
                         </svg>
-                        Reporte general
+                        <span className="hidden sm:inline">Reporte general</span>
+                        <span className="sm:hidden">Reporte</span>
                     </button>
                     {draftSavedAt ? (
                         <span
                             className="h-8 px-2 inline-flex items-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.16em]"
                         >
-                            Borrador guardado · {draftSavedAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
+                            <span className="hidden sm:inline">Borrador guardado · </span>{draftSavedAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                     ) : null}
                     {onConfirm && (
@@ -966,7 +1141,8 @@ export const PayrollEmployeeTable = ({
                                     <path d="M2 6l3 3 5-5" />
                                 </svg>
                             )}
-                            {confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Ya confirmada" : "Confirmar nómina"}
+                            <span className="hidden sm:inline">{confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Ya confirmada" : "Confirmar nómina"}</span>
+                            <span className="sm:hidden">{confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Confirmada" : "Confirmar"}</span>
                         </button>
                     )}
                 </div>
@@ -987,26 +1163,55 @@ export const PayrollEmployeeTable = ({
                 />
             )}
 
-            {/* Table */}
+            {/* Table (desktop) / Cards (mobile + tablet) */}
             {showTable ? (
                 <>
-                    <BaseTable.Render
-                        columns={columns} data={filteredResults} keyExtractor={(r) => r.cedula}
-                        pagination
-                        classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
-                        renderExpandedRow={(result) => {
-                            if (expandedId !== result.cedula) return null;
-                            return (
-                                <ExpandedPanel
-                                    result={result} override={getOverride(getEmployeeKey(result))}
-                                    mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
-                                    diasUtilidades={diasUtilidades} diasBonoVacacional={diasBonoVacacional}
+                    {/* Desktop table — lg+ */}
+                    <div className="hidden lg:block">
+                        <BaseTable.Render
+                            columns={columns} data={filteredResults} keyExtractor={(r) => r.cedula}
+                            pagination
+                            classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
+                            renderExpandedRow={(result) => {
+                                if (expandedId !== result.cedula) return null;
+                                return (
+                                    <ExpandedPanel
+                                        result={result} override={getOverride(getEmployeeKey(result))}
+                                        mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
+                                        diasUtilidades={diasUtilidades} diasBonoVacacional={diasBonoVacacional}
+                                        salarioMinimo={salarioMinimo}
+                                        onChange={(updated) => setOverride(getEmployeeKey(result), updated)}
+                                    />
+                                );
+                            }}
+                        />
+                    </div>
+
+                    {/* Mobile + tablet cards — < lg */}
+                    <div className="lg:hidden space-y-3">
+                        {filteredResults.length === 0 ? (
+                            <p className="font-mono text-[13px] text-[var(--text-tertiary)] text-center py-6 border border-dashed border-border-light rounded-xl">
+                                Ningún empleado coincide con la búsqueda.
+                            </p>
+                        ) : (
+                            filteredResults.map((result) => (
+                                <EmployeeMobileCard
+                                    key={result.cedula}
+                                    result={result}
+                                    expanded={expandedId === result.cedula}
+                                    onToggleExpand={() => setExpandedId((prev) => prev === result.cedula ? null : result.cedula)}
+                                    override={getOverride(getEmployeeKey(result))}
+                                    mondaysInMonth={mondaysInMonth}
+                                    bcvRate={bcvRate}
+                                    diasUtilidades={diasUtilidades}
+                                    diasBonoVacacional={diasBonoVacacional}
                                     salarioMinimo={salarioMinimo}
-                                    onChange={(updated) => setOverride(getEmployeeKey(result), updated)}
+                                    onOverrideChange={(updated) => setOverride(getEmployeeKey(result), updated)}
                                 />
-                            );
-                        }}
-                    />
+                            ))
+                        )}
+                    </div>
+
                     <TotalsBar results={results} />
                     <AportesPatronalesPanel
                         results={results}

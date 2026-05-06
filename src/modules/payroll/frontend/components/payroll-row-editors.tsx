@@ -30,9 +30,9 @@ const RemoveButton = ({ onClick, disabled }: { onClick: () => void; disabled?: b
     <button
         onClick={onClick}
         disabled={disabled}
-        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-red-400 hover:border-red-400/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors duration-150"
+        className="shrink-0 w-8 h-8 sm:w-6 sm:h-6 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-red-400 hover:border-red-400/40 disabled:opacity-20 disabled:cursor-not-allowed transition-colors duration-150"
     >
-        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"
+        <svg width="10" height="10" viewBox="0 0 8 8" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M1 1l6 6M7 1L1 7" />
         </svg>
@@ -40,10 +40,12 @@ const RemoveButton = ({ onClick, disabled }: { onClick: () => void; disabled?: b
 );
 
 // ── Result chip ───────────────────────────────────────────────────────────────
+// On mobile (< sm), wraps to its own line and right-aligns. On sm+, sits inline
+// with ml-auto.
 
 const Result = ({ value, negative }: { value: number; negative?: boolean }) => (
     <span className={[
-        "ml-auto shrink-0 font-mono text-[12px] tabular-nums",
+        "ml-auto basis-full text-right sm:basis-auto sm:text-left shrink-0 font-mono text-[12px] tabular-nums",
         negative ? "text-red-400" : "text-[var(--text-secondary)]",
     ].join(" ")}>
         {negative ? "−" : ""}{Math.abs(value).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -100,7 +102,7 @@ export const EarningRowEditor = ({
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: Qty | Factor | Modo | → result */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
                     value={row.quantity}
@@ -196,7 +198,7 @@ export const DeductionRowEditor = ({
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: amount/rate | base | mode toggle | → result */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
                     value={row.rate}
@@ -278,7 +280,7 @@ export const HorasExtrasRowEditor = ({
     };
 
     return (
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
             <button
                 onClick={cycleTipo}
                 className={["h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0 transition-colors duration-150 whitespace-nowrap", TIPO_CLS[row.tipo]].join(" ")}
@@ -334,7 +336,7 @@ export const HorasExtrasGlobalEditor = ({
                     {label} <span className="text-[var(--text-disabled)]">×{mult}</span>
                 </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
                     value={row.hours}
@@ -388,7 +390,7 @@ export const BonusRowEditor = ({
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
             {/* Row 2: Monto USD | → VES result */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
                     value={row.amount}

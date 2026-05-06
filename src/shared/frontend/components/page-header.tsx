@@ -13,8 +13,8 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
     return (
-        <div className="px-8 py-6 border-b border-border-light bg-surface-1">
-            <div className="flex items-center justify-between">
+        <div className="px-4 sm:px-6 md:px-8 py-4 md:py-6 border-b border-border-light bg-surface-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
                 <div className="min-w-0">
                     <h1 className="text-[16px] font-mono font-bold uppercase tracking-[0.14em] text-foreground">
                         {title}
@@ -26,7 +26,7 @@ export function PageHeader({ title, subtitle, children }: PageHeaderProps) {
                     )}
                 </div>
                 {children && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         {children}
                     </div>
                 )}

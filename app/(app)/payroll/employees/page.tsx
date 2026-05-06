@@ -976,10 +976,10 @@ export default function EmployeesPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6 space-y-5">
+            <div className="px-4 sm:px-6 md:px-8 py-4 md:py-6 space-y-5">
 
                 {/* KPI strip */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <StatTile
                         label="Total"
                         value={counts.total}
