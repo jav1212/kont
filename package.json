@@ -8,7 +8,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint && node scripts/audit-routes.mjs",
-    "audit:routes": "node scripts/audit-routes.mjs"
+    "audit:routes": "node scripts/audit-routes.mjs",
+    "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
   },
   "dependencies": {
     "@heroui/accordion": "^2.2.29",
