@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
     Folders,
-    Menu,
     X,
     Loader2,
     AlertCircle,
@@ -19,6 +18,8 @@ import { useDocuments } from '@/src/modules/documents/frontend/hooks/use-documen
 import { FolderTree } from '@/src/modules/documents/frontend/components/folder-tree';
 import { DocumentList } from '@/src/modules/documents/frontend/components/document-list';
 import { UploadButton } from '@/src/modules/documents/frontend/components/upload-button';
+import { MobileFolderPicker } from '@/src/modules/documents/frontend/components/mobile-folder-picker';
+import { MobileFolderSheet } from '@/src/modules/documents/frontend/components/mobile-folder-sheet';
 import { apiFetch } from '@/src/shared/frontend/utils/api-fetch';
 import { PageHeader } from '@/src/shared/frontend/components/page-header';
 import { BaseButton } from '@/src/shared/frontend/components/base-button';
@@ -46,7 +47,7 @@ export default function DocumentsPage() {
     type SourceFolder  = { id: string; name: string };
     type DropProgress  = { id: string; file: string; percent: number; done: boolean; error?: string };
 
-    const [drawerOpen,       setDrawerOpen]       = useState(false);
+    const [sheetOpen,        setSheetOpen]        = useState(false);
     const [replicating,      setReplicating]      = useState(false);
     const [replicResult,     setReplicResult]     = useState<{ tenantId: string; foldersCreated: number; foldersExisting: number; error?: string }[] | null>(null);
     const [replicError,      setReplicError]      = useState<string | null>(null);
@@ -256,7 +257,7 @@ export default function DocumentsPage() {
                 <FolderTree
                     folders={folders}
                     selectedFolderId={selectedFolderId}
-                    onSelect={(id) => { selectFolder(id); setDrawerOpen(false); }}
+                    onSelect={selectFolder}
                     onCreateFolder={createFolder}
                     onRenameFolder={renameFolder}
                     onDeleteFolder={deleteFolder}
@@ -295,52 +296,28 @@ export default function DocumentsPage() {
                 {FoldersPanel}
             </aside>
  
-            {/* ── Mobile drawer ─────────────────────────────────────────── */}
+            {/* ── Mobile bottom sheet (carpetas) ────────────────────────── */}
             <AnimatePresence>
-                {drawerOpen && (
-                    <div className="xl:hidden fixed inset-0 z-[100] flex">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-                            onClick={() => setDrawerOpen(false)}
-                            aria-hidden="true"
-                        />
-                        <motion.aside
-                            initial={{ x: '-100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="relative z-10 w-72 flex flex-col bg-surface-1 border-r border-border-light shadow-2xl"
-                            aria-label="Carpetas móvil"
-                        >
-                            <div className="flex items-center justify-between px-6 py-5 border-b border-border-light">
-                                <div className="flex items-center gap-2">
-                                    <Folders size={16} className="text-primary-500" />
-                                    <span className="text-[12px] font-bold uppercase tracking-widest text-foreground">Explorar</span>
-                                </div>
-                                <BaseButton.Icon
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => setDrawerOpen(false)}
-                                    aria-label="Cerrar"
-                                >
-                                    <X size={16} />
-                                </BaseButton.Icon>
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                {FoldersPanel}
-                            </div>
-                        </motion.aside>
-                    </div>
+                {sheetOpen && (
+                    <MobileFolderSheet
+                        folders={folders}
+                        selectedFolderId={selectedFolderId}
+                        onClose={() => setSheetOpen(false)}
+                        onSelectFolder={selectFolder}
+                        onCreateFolder={createFolder}
+                        onRenameFolder={renameFolder}
+                        onDeleteFolder={deleteFolder}
+                        onMoveDocuments={handleMoveDocuments}
+                        onReplicate={() => { setSheetOpen(false); openReplicModal(); }}
+                        replicating={replicating}
+                    />
                 )}
             </AnimatePresence>
- 
+
             {/* ── Main content ──────────────────────────────────────────── */}
             <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-                <PageHeader 
-                    title="Archivos" 
+                <PageHeader
+                    title="Archivos"
                     subtitle={
                         <div className="flex items-center gap-1.5 min-w-0 font-bold text-primary-500">
                             <BaseButton.Root
@@ -360,18 +337,15 @@ export default function DocumentsPage() {
                         </div>
                     }
                 >
-                    <div className="flex items-center gap-2">
-                        <BaseButton.Icon
-                            variant="secondary"
-                            size="md"
-                            className="xl:hidden"
-                            onClick={() => setDrawerOpen(true)}
-                        >
-                            <Menu size={18} />
-                        </BaseButton.Icon>
-                        <UploadButton onUpload={handleUpload} />
-                    </div>
+                    <UploadButton onUpload={handleUpload} />
                 </PageHeader>
+
+                {/* Mobile-only folder picker — pill that opens the bottom sheet */}
+                <MobileFolderPicker
+                    folderLabel={folderLabel}
+                    isOpen={sheetOpen}
+                    onOpen={() => setSheetOpen(true)}
+                />
 
                 {/* Document list — dropzone container */}
                 <div
