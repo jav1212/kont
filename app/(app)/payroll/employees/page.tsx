@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -178,6 +178,21 @@ function FilterChip({
     );
 }
 
+function StatusDot({ estado }: { estado: EmployeeEstado }) {
+    const colorMap: Record<EmployeeEstado, string> = {
+        activo:   "bg-text-success",
+        vacacion: "bg-text-warning",
+        inactivo: "bg-[var(--text-tertiary)]",
+    };
+    return (
+        <span
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${colorMap[estado]}`}
+            title={ESTADO_LABEL[estado]}
+            aria-label={ESTADO_LABEL[estado]}
+        />
+    );
+}
+
 function StatusBadge({ estado }: { estado: EmployeeEstado }) {
     const map: Record<EmployeeEstado, { cls: string; dot: string }> = {
         activo:   { cls: "badge-success", dot: "bg-text-success" },
@@ -211,11 +226,12 @@ const cellInputCls = [
 ].join(" ");
 
 function MoneySalaryInput({
-    moneda, salarioMensual, onChange,
+    moneda, salarioMensual, onChange, inputRef,
 }: {
     moneda:         EmployeeMoneda;
     salarioMensual: string;
     onChange:       (field: "moneda" | "salarioMensual", value: string) => void;
+    inputRef?:      React.Ref<HTMLInputElement>;
 }) {
     return (
         <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
@@ -234,6 +250,7 @@ function MoneySalaryInput({
                 />
             </div>
             <input
+                ref={inputRef}
                 type="number"
                 step={0.01}
                 min={0}
@@ -242,6 +259,172 @@ function MoneySalaryInput({
                 onChange={(e) => onChange("salarioMensual", e.target.value)}
                 className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
             />
+        </div>
+    );
+}
+
+// ── Shared edit panel (used in desktop colSpan row and mobile card) ─────────
+
+const fieldLabelCls =
+    "block font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mb-1";
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+    return <span className={fieldLabelCls}>{children}</span>;
+}
+
+interface EmployeeEditPanelProps {
+    title:           string;
+    draft:           RowState;
+    saving:          boolean;
+    cedulaTitle?:    string;
+    saveLabel?:      string;
+    savingLabel?:    string;
+    autoFocusField?: "cedula" | "salary";
+    onChange:        (field: keyof RowState, value: string) => void;
+    onSave:          () => void;
+    onCancel:        () => void;
+}
+
+function EmployeeEditPanel({
+    title, draft, saving, cedulaTitle,
+    saveLabel = "Guardar y siguiente", savingLabel = "Guardando…",
+    autoFocusField = "salary",
+    onChange, onSave, onCancel,
+}: EmployeeEditPanelProps) {
+    const focusRef  = useRef<HTMLInputElement>(null);
+    const onKeyDown = makeEditKeyHandler({ onSaveAndNext: onSave, onCancel });
+
+    useEffect(() => {
+        const id = window.setTimeout(() => {
+            focusRef.current?.focus();
+            focusRef.current?.select?.();
+        }, 0);
+        return () => window.clearTimeout(id);
+    }, []);
+
+    const cedulaRef = autoFocusField === "cedula" ? focusRef : undefined;
+    const salaryRef = autoFocusField === "salary" ? focusRef : undefined;
+
+    return (
+        <div
+            onKeyDown={onKeyDown}
+            className="p-4 sm:p-5 space-y-4 bg-primary-500/[0.03]"
+        >
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="font-mono text-[11px] uppercase tracking-[0.16em] font-semibold text-primary-500">
+                    {title}
+                </h3>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] hidden sm:inline">
+                    Enter: guardar y siguiente · Esc: cancelar
+                </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="min-w-0">
+                    <FieldLabel>Cédula</FieldLabel>
+                    <input
+                        ref={cedulaRef}
+                        type="text"
+                        value={draft.cedula}
+                        onChange={(e) => onChange("cedula", e.target.value)}
+                        placeholder="V-12345678-9"
+                        className={cellInputCls}
+                        title={cedulaTitle}
+                    />
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>Estado</FieldLabel>
+                    <div className="relative">
+                        <select
+                            value={draft.estado}
+                            onChange={(e) => onChange("estado", e.target.value)}
+                            className={cellInputCls + " appearance-none pr-8 cursor-pointer"}
+                        >
+                            {ESTADOS.map((s) => (
+                                <option key={s} value={s}>{ESTADO_LABEL[s]}</option>
+                            ))}
+                        </select>
+                        <ChevronDown
+                            size={12}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
+                        />
+                    </div>
+                </div>
+                <div className="min-w-0 sm:col-span-2">
+                    <FieldLabel>Nombre completo</FieldLabel>
+                    <input
+                        type="text"
+                        value={draft.nombre}
+                        onChange={(e) => onChange("nombre", e.target.value)}
+                        placeholder="Nombre completo"
+                        className={cellInputCls}
+                    />
+                </div>
+                <div className="min-w-0 sm:col-span-2">
+                    <FieldLabel>Cargo</FieldLabel>
+                    <input
+                        type="text"
+                        value={draft.cargo}
+                        onChange={(e) => onChange("cargo", e.target.value)}
+                        placeholder="Cargo"
+                        className={cellInputCls}
+                    />
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>Salario mensual</FieldLabel>
+                    <MoneySalaryInput
+                        moneda={draft.moneda}
+                        salarioMensual={draft.salarioMensual}
+                        onChange={(f, v) => onChange(f, v)}
+                        inputRef={salaryRef}
+                    />
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>% ISLR (AR-I)</FieldLabel>
+                    <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
+                        <input
+                            type="number"
+                            step={0.01}
+                            min={0}
+                            max={100}
+                            placeholder="0"
+                            value={draft.porcentajeIslr}
+                            onChange={(e) => onChange("porcentajeIslr", e.target.value)}
+                            className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
+                        />
+                        <span className="border-l border-border-light px-2 flex items-center font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] bg-surface-2">%</span>
+                    </div>
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>Fecha de ingreso</FieldLabel>
+                    <input
+                        type="date"
+                        value={draft.fechaIngreso}
+                        onChange={(e) => onChange("fechaIngreso", e.target.value)}
+                        className={cellInputCls}
+                    />
+                </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-primary-500/15">
+                <BaseButton.Root
+                    variant="secondary" size="sm"
+                    onClick={onCancel}
+                    isDisabled={saving}
+                    leftIcon={<X size={14} />}
+                >
+                    Cancelar
+                </BaseButton.Root>
+                <BaseButton.Root
+                    variant="primary" size="sm"
+                    onClick={onSave}
+                    loading={saving}
+                    isDisabled={saving}
+                    leftIcon={!saving ? <Check size={14} strokeWidth={2.4} /> : undefined}
+                >
+                    {saving ? savingLabel : saveLabel}
+                </BaseButton.Root>
+            </div>
         </div>
     );
 }
@@ -259,7 +442,7 @@ interface EmployeeRowProps {
     onSelect:        (checked: boolean) => void;
     onDraftChange:   (field: keyof RowState, value: string) => void;
     onEdit:          () => void;
-    onSave:          () => void;
+    onSaveAndNext:   () => void;
     onCancel:        () => void;
     onAskDelete:     () => void;
     onConfirmDelete: () => void;
@@ -267,20 +450,54 @@ interface EmployeeRowProps {
     onShowHistory:   () => void;
 }
 
+function makeEditKeyHandler(opts: { onSaveAndNext: () => void; onCancel: () => void }) {
+    return (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            const tag = (e.target as HTMLElement).tagName;
+            // Selects use Enter to open the dropdown — let the browser handle it.
+            if (tag === "SELECT" || tag === "TEXTAREA") return;
+            e.preventDefault();
+            opts.onSaveAndNext();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            opts.onCancel();
+        }
+    };
+}
+
+const TABLE_COL_COUNT = 8; // checkbox + 6 data + actions
+
 function EmployeeRow({
     employee, mode, draft, saving, selected, confirmDelete, deleting,
-    onSelect, onDraftChange, onEdit, onSave, onCancel,
+    onSelect, onDraftChange, onEdit, onSaveAndNext, onCancel,
     onAskDelete, onConfirmDelete, onCancelDelete, onShowHistory,
 }: EmployeeRowProps) {
     const isEditing = mode === "edit";
     const tdCls     = "px-4 py-3 align-middle";
 
+    if (isEditing) {
+        return (
+            <tr className="border-b border-border-light/60 bg-primary-500/[0.03]">
+                <td colSpan={TABLE_COL_COUNT} className="p-0">
+                    <EmployeeEditPanel
+                        title={`Editando · ${employee.nombre || employee.cedula}`}
+                        draft={draft}
+                        saving={saving}
+                        cedulaTitle="Cambiar la cédula también la actualizará en todos los recibos históricos."
+                        onChange={onDraftChange}
+                        onSave={onSaveAndNext}
+                        onCancel={onCancel}
+                    />
+                </td>
+            </tr>
+        );
+    }
+
     return (
         <tr className={[
             "border-b border-border-light/60 transition-colors group",
-            selected      ? "bg-primary-500/5 hover:bg-primary-500/10"
-            : isEditing   ? "bg-primary-500/[0.04]"
-                          : "hover:bg-surface-2/60",
+            selected ? "bg-primary-500/5 hover:bg-primary-500/10"
+                     : "hover:bg-surface-2/60",
         ].join(" ")}>
 
             {/* Selection */}
@@ -289,119 +506,57 @@ function EmployeeRow({
                     type="checkbox"
                     checked={selected}
                     onChange={(e) => onSelect(e.target.checked)}
-                    disabled={isEditing}
-                    className="w-4 h-4 rounded border-border-default text-primary-500 focus:ring-primary-500/20 cursor-pointer disabled:opacity-30"
+                    className="w-4 h-4 rounded border-border-default text-primary-500 focus:ring-primary-500/20 cursor-pointer"
                     aria-label={`Seleccionar ${employee.nombre}`}
                 />
             </td>
 
             {/* Cédula */}
             <td className={tdCls + " w-32"}>
-                {isEditing ? (
-                    <input
-                        type="text"
-                        value={draft.cedula}
-                        onChange={(e) => onDraftChange("cedula", e.target.value)}
-                        placeholder="V-12345678-9"
-                        className={cellInputCls}
-                        title="Cambiar la cédula también la actualizará en todos los recibos históricos."
-                    />
-                ) : (
-                    <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
-                        {employee.cedula}
-                    </span>
-                )}
+                <span className="font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
+                    {employee.cedula}
+                </span>
             </td>
 
             {/* Nombre / Cargo */}
             <td className={tdCls}>
-                {isEditing ? (
-                    <div className="space-y-1.5">
-                        <input
-                            type="text"
-                            value={draft.nombre}
-                            onChange={(e) => onDraftChange("nombre", e.target.value)}
-                            placeholder="Nombre completo"
-                            className={cellInputCls}
-                        />
-                        <input
-                            type="text"
-                            value={draft.cargo}
-                            onChange={(e) => onDraftChange("cargo", e.target.value)}
-                            placeholder="Cargo"
-                            className={cellInputCls + " text-[12px]"}
-                        />
-                    </div>
-                ) : (
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-[13px] font-medium text-foreground truncate">
-                            {employee.nombre}
+                <div className="flex flex-col min-w-0">
+                    <span className="text-[13px] font-medium text-foreground truncate">
+                        {employee.nombre}
+                    </span>
+                    {employee.cargo && (
+                        <span className="font-sans text-[12px] text-[var(--text-tertiary)] truncate">
+                            {employee.cargo}
                         </span>
-                        {employee.cargo && (
-                            <span className="font-sans text-[12px] text-[var(--text-tertiary)] truncate">
-                                {employee.cargo}
-                            </span>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </td>
 
             {/* Salario / Moneda */}
             <td className={tdCls + " w-48"}>
-                {isEditing ? (
-                    <MoneySalaryInput
-                        moneda={draft.moneda}
-                        salarioMensual={draft.salarioMensual}
-                        onChange={(f, v) => onDraftChange(f, v)}
-                    />
-                ) : (
-                    <div className="flex items-baseline justify-end gap-2 tabular-nums">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-                            {employee.moneda === "USD" ? "$" : "Bs."}
-                        </span>
-                        <span className="font-mono text-[14px] font-semibold text-foreground">
-                            {fmtMoney(Number(employee.salarioMensual))}
-                        </span>
-                    </div>
-                )}
+                <div className="flex items-baseline justify-end gap-2 tabular-nums">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                        {employee.moneda === "USD" ? "$" : "Bs."}
+                    </span>
+                    <span className="font-mono text-[14px] font-semibold text-foreground">
+                        {fmtMoney(Number(employee.salarioMensual))}
+                    </span>
+                </div>
             </td>
 
             {/* %ISLR (AR-I) */}
             <td className={tdCls + " w-24"}>
-                {isEditing ? (
-                    <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
-                        <input
-                            type="number"
-                            step={0.01}
-                            min={0}
-                            max={100}
-                            placeholder="0"
-                            value={draft.porcentajeIslr}
-                            onChange={(e) => onDraftChange("porcentajeIslr", e.target.value)}
-                            className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
-                        />
-                        <span className="border-l border-border-light px-2 flex items-center font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] bg-surface-2">%</span>
-                    </div>
-                ) : (
-                    <div className="flex items-baseline justify-end gap-1 tabular-nums">
-                        <span className="font-mono text-[13px] text-[var(--text-secondary)]">
-                            {Number(employee.porcentajeIslr ?? 0).toFixed(2)}
-                        </span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">%</span>
-                    </div>
-                )}
+                <div className="flex items-baseline justify-end gap-1 tabular-nums">
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)]">
+                        {Number(employee.porcentajeIslr ?? 0).toFixed(2)}
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">%</span>
+                </div>
             </td>
 
             {/* Ingreso / Antigüedad */}
             <td className={tdCls + " w-40"}>
-                {isEditing ? (
-                    <input
-                        type="date"
-                        value={draft.fechaIngreso}
-                        onChange={(e) => onDraftChange("fechaIngreso", e.target.value)}
-                        className={cellInputCls}
-                    />
-                ) : employee.fechaIngreso ? (
+                {employee.fechaIngreso ? (
                     <div className="flex flex-col">
                         <span className="font-mono text-[12px] text-[var(--text-secondary)] whitespace-nowrap">
                             {fmtDate(employee.fechaIngreso)}
@@ -417,53 +572,12 @@ function EmployeeRow({
 
             {/* Estado */}
             <td className={tdCls + " w-32"}>
-                {isEditing ? (
-                    <div className="relative">
-                        <select
-                            value={draft.estado}
-                            onChange={(e) => onDraftChange("estado", e.target.value)}
-                            className={cellInputCls + " appearance-none pr-8 cursor-pointer"}
-                        >
-                            {ESTADOS.map((s) => (
-                                <option key={s} value={s}>{ESTADO_LABEL[s]}</option>
-                            ))}
-                        </select>
-                        <ChevronDown
-                            size={12}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
-                        />
-                    </div>
-                ) : (
-                    <StatusBadge estado={employee.estado} />
-                )}
+                <StatusBadge estado={employee.estado} />
             </td>
 
             {/* Actions */}
             <td className={tdCls + " w-36 text-right"}>
-                {saving ? (
-                    <div className="flex justify-end pr-2"><Spinner /></div>
-                ) : isEditing ? (
-                    <div className="flex items-center justify-end gap-1">
-                        <button
-                            type="button"
-                            onClick={onSave}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-success hover:bg-success/10 transition-colors"
-                            title="Guardar"
-                            aria-label="Guardar"
-                        >
-                            <Check size={15} strokeWidth={2.4} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onCancel}
-                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
-                            title="Cancelar"
-                            aria-label="Cancelar"
-                        >
-                            <X size={15} />
-                        </button>
-                    </div>
-                ) : confirmDelete ? (
+                {confirmDelete ? (
                     <div className="flex items-center justify-end gap-2 px-1">
                         <span className="font-sans text-[12px] text-[var(--text-secondary)] hidden sm:inline">
                             ¿Eliminar?
@@ -532,116 +646,227 @@ interface NewRowProps {
 }
 
 function NewEmployeeRow({ draft, saving, onChange, onSave, onCancel }: NewRowProps) {
-    const tdCls = "px-4 py-3 align-middle";
     return (
-        <>
-            <tr className="border-b border-border-light/60 bg-primary-500/[0.04]">
-                <td className={tdCls + " w-10"}>
-                    <div className="w-4 h-4 rounded border-2 border-dashed border-primary-500/40 mx-auto" />
-                </td>
-                <td className={tdCls + " w-32"}>
-                    <input
-                        type="text"
-                        autoFocus
-                        placeholder="V-12345678"
-                        value={draft.cedula}
-                        onChange={(e) => onChange("cedula", e.target.value)}
-                        className={cellInputCls}
+        <tr className="border-b border-border-light/60 bg-primary-500/[0.03]">
+            <td colSpan={TABLE_COL_COUNT} className="p-0">
+                <EmployeeEditPanel
+                    title="Nuevo empleado"
+                    draft={draft}
+                    saving={saving}
+                    autoFocusField="cedula"
+                    saveLabel="Crear empleado"
+                    savingLabel="Creando…"
+                    onChange={onChange}
+                    onSave={onSave}
+                    onCancel={onCancel}
+                />
+            </td>
+        </tr>
+    );
+}
+
+// ── Mobile cards (PWA / phones) ──────────────────────────────────────────────
+
+function EmployeeCard({
+    employee, mode, draft, saving, selected, confirmDelete, deleting,
+    onSelect, onDraftChange, onEdit, onSaveAndNext, onCancel,
+    onAskDelete, onConfirmDelete, onCancelDelete, onShowHistory,
+}: EmployeeRowProps) {
+    const isEditing = mode === "edit";
+    const [expanded, setExpanded] = useState(false);
+
+    if (isEditing) {
+        return (
+            <div className="rounded-xl border-2 border-primary-500/40 bg-surface-1 shadow-sm overflow-hidden">
+                <EmployeeEditPanel
+                    title={`Editando · ${employee.nombre || employee.cedula}`}
+                    draft={draft}
+                    saving={saving}
+                    cedulaTitle="Cambiar la cédula también la actualizará en todos los recibos históricos."
+                    onChange={onDraftChange}
+                    onSave={onSaveAndNext}
+                    onCancel={onCancel}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <article
+            className={[
+                "rounded-xl border bg-surface-1 shadow-sm transition-colors",
+                selected ? "border-primary-500/50 ring-1 ring-primary-500/20"
+                         : "border-border-light",
+            ].join(" ")}
+        >
+            {/* Single-line compact row: select · status dot · name · salary · chevron · edit · delete */}
+            <div className="flex items-center gap-2 px-3 py-2.5">
+                <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={(e) => onSelect(e.target.checked)}
+                    className="w-4 h-4 rounded border-border-default text-primary-500 focus:ring-primary-500/20 cursor-pointer flex-shrink-0"
+                    aria-label={`Seleccionar ${employee.nombre}`}
+                />
+                <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    aria-expanded={expanded}
+                    className="flex-1 min-w-0 flex items-center gap-2 text-left"
+                >
+                    <StatusDot estado={employee.estado} />
+                    <span className="text-[13px] font-medium text-foreground truncate flex-1 min-w-0">
+                        {employee.nombre}
+                    </span>
+                    <span className="flex items-baseline gap-1 tabular-nums flex-shrink-0">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                            {employee.moneda === "USD" ? "$" : "Bs."}
+                        </span>
+                        <span className="font-mono text-[13px] font-semibold text-foreground">
+                            {fmtMoney(Number(employee.salarioMensual))}
+                        </span>
+                    </span>
+                    <ChevronDown
+                        size={14}
+                        className={[
+                            "text-[var(--text-tertiary)] flex-shrink-0 transition-transform",
+                            expanded ? "rotate-180" : "",
+                        ].join(" ")}
                     />
-                </td>
-                <td className={tdCls}>
-                    <div className="space-y-1.5">
-                        <input
-                            type="text"
-                            value={draft.nombre}
-                            onChange={(e) => onChange("nombre", e.target.value)}
-                            placeholder="Nombre completo"
-                            className={cellInputCls}
-                        />
-                        <input
-                            type="text"
-                            value={draft.cargo}
-                            onChange={(e) => onChange("cargo", e.target.value)}
-                            placeholder="Cargo"
-                            className={cellInputCls + " text-[12px]"}
-                        />
-                    </div>
-                </td>
-                <td className={tdCls + " w-48"}>
-                    <MoneySalaryInput
-                        moneda={draft.moneda}
-                        salarioMensual={draft.salarioMensual}
-                        onChange={(f, v) => onChange(f, v)}
-                    />
-                </td>
-                <td className={tdCls + " w-24"}>
-                    <div className="flex h-9 rounded-lg border border-border-default bg-surface-1 hover:border-border-medium focus-within:border-primary-500 transition-colors duration-150 overflow-hidden">
-                        <input
-                            type="number"
-                            step={0.01}
-                            min={0}
-                            max={100}
-                            placeholder="0"
-                            value={draft.porcentajeIslr}
-                            onChange={(e) => onChange("porcentajeIslr", e.target.value)}
-                            className="flex-1 min-w-0 px-3 bg-transparent outline-none font-mono text-[13px] text-right tabular-nums text-foreground placeholder:text-[var(--text-disabled)]"
-                        />
-                        <span className="border-l border-border-light px-2 flex items-center font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] bg-surface-2">%</span>
-                    </div>
-                </td>
-                <td className={tdCls + " w-40"}>
-                    <input
-                        type="date"
-                        value={draft.fechaIngreso}
-                        onChange={(e) => onChange("fechaIngreso", e.target.value)}
-                        className={cellInputCls}
-                    />
-                </td>
-                <td className={tdCls + " w-32"}>
-                    <div className="relative">
-                        <select
-                            value={draft.estado}
-                            onChange={(e) => onChange("estado", e.target.value)}
-                            className={cellInputCls + " appearance-none pr-8 cursor-pointer"}
-                        >
-                            {ESTADOS.map((s) => (
-                                <option key={s} value={s}>{ESTADO_LABEL[s]}</option>
-                            ))}
-                        </select>
-                        <ChevronDown
-                            size={12}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
-                        />
-                    </div>
-                </td>
-                <td className={tdCls + " w-36 text-right"}>
+                </button>
+
+                <div className="flex items-center gap-0.5 flex-shrink-0">
                     {saving ? (
-                        <div className="flex justify-end pr-2"><Spinner /></div>
-                    ) : (
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="w-9 h-9 flex items-center justify-center"><Spinner /></div>
+                    ) : confirmDelete ? (
+                        <>
                             <button
                                 type="button"
-                                onClick={onSave}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-success hover:bg-success/10 transition-colors"
-                                title="Crear"
-                                aria-label="Crear"
+                                onClick={onConfirmDelete}
+                                disabled={deleting}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-error/10 text-text-error hover:bg-error/15 transition-colors disabled:opacity-50"
+                                title={deleting ? "Eliminando…" : "Confirmar eliminación"}
+                                aria-label="Confirmar eliminación"
                             >
-                                <Check size={15} strokeWidth={2.4} />
+                                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} strokeWidth={2.4} />}
                             </button>
                             <button
                                 type="button"
-                                onClick={onCancel}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
-                                title="Descartar"
-                                aria-label="Descartar"
+                                onClick={onCancelDelete}
+                                disabled={deleting}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors disabled:opacity-50"
+                                title="Cancelar"
+                                aria-label="Cancelar"
                             >
                                 <X size={15} />
                             </button>
-                        </div>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onEdit}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
+                                title="Editar"
+                                aria-label="Editar"
+                            >
+                                <Pencil size={15} />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onAskDelete}
+                                className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/10 transition-colors"
+                                title="Eliminar"
+                                aria-label="Eliminar"
+                            >
+                                <Trash2 size={15} />
+                            </button>
+                        </>
                     )}
-                </td>
-            </tr>
-        </>
+                </div>
+            </div>
+
+            {/* Expanded details */}
+            <AnimatePresence initial={false}>
+                {expanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+                        className="overflow-hidden"
+                    >
+                        <dl className="px-3 pb-3 pt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t border-border-light/60">
+                            <dt className="pt-2"><FieldLabel>Estado</FieldLabel></dt>
+                            <dd className="pt-2 flex justify-end">
+                                <StatusBadge estado={employee.estado} />
+                            </dd>
+
+                            <dt><FieldLabel>Cédula</FieldLabel></dt>
+                            <dd className="font-mono text-[12px] tabular-nums text-foreground text-right">
+                                {employee.cedula}
+                            </dd>
+
+                            {employee.cargo && (
+                                <>
+                                    <dt><FieldLabel>Cargo</FieldLabel></dt>
+                                    <dd className="font-sans text-[12px] text-foreground text-right truncate">
+                                        {employee.cargo}
+                                    </dd>
+                                </>
+                            )}
+
+                            <dt><FieldLabel>% ISLR</FieldLabel></dt>
+                            <dd className="font-mono text-[12px] tabular-nums text-foreground text-right">
+                                {Number(employee.porcentajeIslr ?? 0).toFixed(2)}%
+                            </dd>
+
+                            {employee.fechaIngreso && (
+                                <>
+                                    <dt><FieldLabel>Ingreso</FieldLabel></dt>
+                                    <dd className="font-mono text-[12px] text-foreground text-right">
+                                        {fmtDate(employee.fechaIngreso)}
+                                        <span className="ml-2 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                            {calcAntiguedad(employee.fechaIngreso)}
+                                        </span>
+                                    </dd>
+                                </>
+                            )}
+
+                            <dt className="pb-1"><FieldLabel>Historial</FieldLabel></dt>
+                            <dd className="pb-1 text-right">
+                                <button
+                                    type="button"
+                                    onClick={onShowHistory}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors font-mono text-[11px] uppercase tracking-[0.10em]"
+                                >
+                                    <Clock size={12} />
+                                    Ver salarios
+                                </button>
+                            </dd>
+                        </dl>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </article>
+    );
+}
+
+function NewEmployeeCard({ draft, saving, onChange, onSave, onCancel }: NewRowProps) {
+    return (
+        <div className="rounded-xl border-2 border-primary-500/40 bg-surface-1 shadow-sm overflow-hidden">
+            <EmployeeEditPanel
+                title="Nuevo empleado"
+                draft={draft}
+                saving={saving}
+                autoFocusField="cedula"
+                saveLabel="Crear empleado"
+                savingLabel="Creando…"
+                onChange={onChange}
+                onSave={onSave}
+                onCancel={onCancel}
+            />
+        </div>
     );
 }
 
@@ -730,24 +955,24 @@ export default function EmployeesPage() {
         setDrafts((d) => { const n = { ...d }; delete n[cedula]; return n; });
     }, []);
 
-    const saveRow = useCallback(async (cedula: string) => {
+    const saveRow = useCallback(async (cedula: string): Promise<boolean> => {
         const draft = drafts[cedula];
-        if (!draft) return;
+        if (!draft) return false;
 
         const newCedula = draft.cedula.trim();
-        if (!newCedula) { notify.error("La cédula no puede estar vacía."); return; }
+        if (!newCedula) { notify.error("La cédula no puede estar vacía."); return false; }
 
         const cedulaChanged = newCedula !== cedula;
         if (cedulaChanged) {
             if (employees.some((e) => e.cedula !== cedula && e.cedula === newCedula)) {
                 notify.error(`La cédula ${newCedula} ya pertenece a otro empleado.`);
-                return;
+                return false;
             }
             const confirmed = window.confirm(
                 `Vas a cambiar la cédula de ${draft.nombre || "este empleado"} de "${cedula}" a "${newCedula}".\n\n` +
                 "Esto también actualizará la cédula en los recibos de nómina, cesta ticket y el historial salarial. ¿Confirmas?"
             );
-            if (!confirmed) return;
+            if (!confirmed) return false;
         }
 
         const islrParsed = parseFloat((draft.porcentajeIslr ?? "0").replace(",", "."));
@@ -757,7 +982,7 @@ export default function EmployeesPage() {
 
         if (cedulaChanged) {
             const renamed = await renameCedula(cedula, newCedula);
-            if (!renamed) { setSaving((s) => ({ ...s, [cedula]: false })); return; }
+            if (!renamed) { setSaving((s) => ({ ...s, [cedula]: false })); return false; }
         }
 
         const ok = await upsert([{
@@ -772,7 +997,19 @@ export default function EmployeesPage() {
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
+        return ok;
     }, [drafts, employees, upsert, renameCedula, cancelEdit]);
+
+    const saveRowAndAdvance = useCallback(async (cedula: string) => {
+        // Snapshot the next visible employee BEFORE saving (the saved row may
+        // disappear from `filtered` after a state change, e.g., a status flip).
+        const idx     = filtered.findIndex((e) => e.cedula === cedula);
+        const nextEmp = idx >= 0 ? filtered[idx + 1] : undefined;
+
+        const ok = await saveRow(cedula);
+        if (!ok) return;
+        if (nextEmp) startEdit(nextEmp);
+    }, [filtered, saveRow, startEdit]);
 
     // ── New row actions ─────────────────────────────────────────────────────
 
@@ -1121,17 +1358,17 @@ export default function EmployeesPage() {
                     </AnimatePresence>
                 </div>
 
-                {/* Table */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
+                {/* Table / cards */}
+                <div className="lg:rounded-xl lg:border lg:border-border-light lg:bg-surface-1 lg:overflow-hidden lg:shadow-sm">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm lg:border-0 lg:shadow-none lg:bg-transparent flex flex-col items-center justify-center py-16 gap-3">
                             <Loader2 className="animate-spin text-primary-500" size={28} strokeWidth={1.8} />
                             <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
                                 Cargando nómina…
                             </span>
                         </div>
                     ) : employees.length === 0 && newRows.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center px-8 py-16 gap-3 text-center">
+                        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm lg:border-0 lg:shadow-none lg:bg-transparent flex flex-col items-center justify-center px-8 py-16 gap-3 text-center">
                             <div className="h-12 w-12 rounded-2xl bg-surface-2 border border-border-light flex items-center justify-center text-[var(--text-tertiary)]">
                                 <Users size={22} strokeWidth={1.8} />
                             </div>
@@ -1148,7 +1385,7 @@ export default function EmployeesPage() {
                             </BaseButton.Root>
                         </div>
                     ) : filtered.length === 0 && newRows.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center px-8 py-16 gap-3 text-center">
+                        <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm lg:border-0 lg:shadow-none lg:bg-transparent flex flex-col items-center justify-center px-8 py-16 gap-3 text-center">
                             <div className="h-12 w-12 rounded-2xl bg-surface-2 border border-border-light flex items-center justify-center text-[var(--text-tertiary)]">
                                 <Search size={22} strokeWidth={1.8} />
                             </div>
@@ -1163,78 +1400,119 @@ export default function EmployeesPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-[13px]">
-                                <thead>
-                                    <tr className="bg-surface-2/40 border-b border-border-light">
-                                        <th className="px-4 h-10 w-10">
-                                            <input
-                                                type="checkbox"
-                                                checked={allSelected}
-                                                onChange={(e) => toggleAll(e.target.checked)}
-                                                disabled={anyEditing || filtered.length === 0}
-                                                className="w-4 h-4 rounded border-border-default text-primary-500 focus:ring-primary-500/20 cursor-pointer disabled:opacity-30"
-                                                aria-label="Seleccionar todos"
-                                            />
-                                        </th>
-                                        {[
-                                            { label: "Cédula",              align: "text-left"  },
-                                            { label: "Nombre / Cargo",      align: "text-left"  },
-                                            { label: "Salario mensual",     align: "text-right" },
-                                            { label: "% ISLR (AR-I)",       align: "text-right" },
-                                            { label: "Ingreso / Antigüedad",align: "text-left"  },
-                                            { label: "Estado",              align: "text-left"  },
-                                            { label: "",                    align: "text-right" },
-                                        ].map((h, idx) => (
-                                            <th
-                                                key={idx}
-                                                className={`px-4 h-10 ${h.align} text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium whitespace-nowrap`}
-                                            >
-                                                {h.label}
+                        <>
+                            {/* Mobile / PWA: cards (no horizontal scroll) */}
+                            <div className="lg:hidden space-y-3">
+                                {newRows.map((row) => (
+                                    <NewEmployeeCard
+                                        key={row.id}
+                                        draft={row.draft}
+                                        saving={newSaving[row.id] ?? false}
+                                        onChange={(f, v) => updateNewDraft(row.id, f, v)}
+                                        onSave={() => saveNewRow(row.id)}
+                                        onCancel={() => cancelNewRow(row.id)}
+                                    />
+                                ))}
+                                {filtered.map((emp) => (
+                                    <EmployeeCard
+                                        key={emp.cedula}
+                                        employee={emp}
+                                        mode={modes[emp.cedula] ?? "view"}
+                                        draft={drafts[emp.cedula] ?? employeeToRow(emp)}
+                                        saving={saving[emp.cedula] ?? false}
+                                        selected={selected.has(emp.cedula)}
+                                        confirmDelete={confirmDeleteRow === emp.cedula}
+                                        deleting={deletingRow === emp.cedula}
+                                        onSelect={(checked) => toggleSelect(emp.cedula, checked)}
+                                        onDraftChange={(f, v) => setDrafts((d) => ({
+                                            ...d,
+                                            [emp.cedula]: { ...d[emp.cedula], [f]: v },
+                                        }))}
+                                        onEdit={() => startEdit(emp)}
+                                        onSaveAndNext={() => saveRowAndAdvance(emp.cedula)}
+                                        onCancel={() => cancelEdit(emp.cedula)}
+                                        onAskDelete={() => setConfirmDeleteRow(emp.cedula)}
+                                        onConfirmDelete={() => handleRowDelete(emp.cedula)}
+                                        onCancelDelete={() => setConfirmDeleteRow(null)}
+                                        onShowHistory={() => openHistory(emp)}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Desktop: table */}
+                            <div className="hidden lg:block overflow-x-auto">
+                                <table className="w-full text-[13px]">
+                                    <thead>
+                                        <tr className="bg-surface-2/40 border-b border-border-light">
+                                            <th className="px-4 h-10 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={allSelected}
+                                                    onChange={(e) => toggleAll(e.target.checked)}
+                                                    disabled={anyEditing || filtered.length === 0}
+                                                    className="w-4 h-4 rounded border-border-default text-primary-500 focus:ring-primary-500/20 cursor-pointer disabled:opacity-30"
+                                                    aria-label="Seleccionar todos"
+                                                />
                                             </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <AnimatePresence initial={false}>
-                                        {newRows.map((row) => (
-                                            <NewEmployeeRow
-                                                key={row.id}
-                                                draft={row.draft}
-                                                saving={newSaving[row.id] ?? false}
-                                                onChange={(f, v) => updateNewDraft(row.id, f, v)}
-                                                onSave={() => saveNewRow(row.id)}
-                                                onCancel={() => cancelNewRow(row.id)}
+                                            {[
+                                                { label: "Cédula",              align: "text-left"  },
+                                                { label: "Nombre / Cargo",      align: "text-left"  },
+                                                { label: "Salario mensual",     align: "text-right" },
+                                                { label: "% ISLR (AR-I)",       align: "text-right" },
+                                                { label: "Ingreso / Antigüedad",align: "text-left"  },
+                                                { label: "Estado",              align: "text-left"  },
+                                                { label: "",                    align: "text-right" },
+                                            ].map((h, idx) => (
+                                                <th
+                                                    key={idx}
+                                                    className={`px-4 h-10 ${h.align} text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium whitespace-nowrap`}
+                                                >
+                                                    {h.label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <AnimatePresence initial={false}>
+                                            {newRows.map((row) => (
+                                                <NewEmployeeRow
+                                                    key={row.id}
+                                                    draft={row.draft}
+                                                    saving={newSaving[row.id] ?? false}
+                                                    onChange={(f, v) => updateNewDraft(row.id, f, v)}
+                                                    onSave={() => saveNewRow(row.id)}
+                                                    onCancel={() => cancelNewRow(row.id)}
+                                                />
+                                            ))}
+                                        </AnimatePresence>
+                                        {filtered.map((emp) => (
+                                            <EmployeeRow
+                                                key={emp.cedula}
+                                                employee={emp}
+                                                mode={modes[emp.cedula] ?? "view"}
+                                                draft={drafts[emp.cedula] ?? employeeToRow(emp)}
+                                                saving={saving[emp.cedula] ?? false}
+                                                selected={selected.has(emp.cedula)}
+                                                confirmDelete={confirmDeleteRow === emp.cedula}
+                                                deleting={deletingRow === emp.cedula}
+                                                onSelect={(checked) => toggleSelect(emp.cedula, checked)}
+                                                onDraftChange={(f, v) => setDrafts((d) => ({
+                                                    ...d,
+                                                    [emp.cedula]: { ...d[emp.cedula], [f]: v },
+                                                }))}
+                                                onEdit={() => startEdit(emp)}
+                                                onSaveAndNext={() => saveRowAndAdvance(emp.cedula)}
+                                                onCancel={() => cancelEdit(emp.cedula)}
+                                                onAskDelete={() => setConfirmDeleteRow(emp.cedula)}
+                                                onConfirmDelete={() => handleRowDelete(emp.cedula)}
+                                                onCancelDelete={() => setConfirmDeleteRow(null)}
+                                                onShowHistory={() => openHistory(emp)}
                                             />
                                         ))}
-                                    </AnimatePresence>
-                                    {filtered.map((emp) => (
-                                        <EmployeeRow
-                                            key={emp.cedula}
-                                            employee={emp}
-                                            mode={modes[emp.cedula] ?? "view"}
-                                            draft={drafts[emp.cedula] ?? employeeToRow(emp)}
-                                            saving={saving[emp.cedula] ?? false}
-                                            selected={selected.has(emp.cedula)}
-                                            confirmDelete={confirmDeleteRow === emp.cedula}
-                                            deleting={deletingRow === emp.cedula}
-                                            onSelect={(checked) => toggleSelect(emp.cedula, checked)}
-                                            onDraftChange={(f, v) => setDrafts((d) => ({
-                                                ...d,
-                                                [emp.cedula]: { ...d[emp.cedula], [f]: v },
-                                            }))}
-                                            onEdit={() => startEdit(emp)}
-                                            onSave={() => saveRow(emp.cedula)}
-                                            onCancel={() => cancelEdit(emp.cedula)}
-                                            onAskDelete={() => setConfirmDeleteRow(emp.cedula)}
-                                            onConfirmDelete={() => handleRowDelete(emp.cedula)}
-                                            onCancelDelete={() => setConfirmDeleteRow(null)}
-                                            onShowHistory={() => openHistory(emp)}
-                                        />
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </div>
             </div>
