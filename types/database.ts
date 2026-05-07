@@ -1000,6 +1000,23 @@ export type Database = {
           total_debit: number
         }[]
       }
+      tenant_bono_guerra_receipts_by_run: {
+        Args: { p_run_id: string; p_user_id: string }
+        Returns: Json
+      }
+      tenant_bono_guerra_run_save: {
+        Args: {
+          p_receipts: Json
+          p_run: Json
+          p_status?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      tenant_bono_guerra_runs_by_company: {
+        Args: { p_company_id: string; p_user_id: string }
+        Returns: Json
+      }
       tenant_cesta_ticket_receipts_by_run: {
         Args: { p_run_id: string; p_user_id: string }
         Returns: Json
