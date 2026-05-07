@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { SubNavItem } from "@/src/shared/frontend/navigation";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
+import { BetaBadge } from "@/src/shared/frontend/components/beta-badge";
 
 // ── ActiveBar — 2 px orange left edge on the active subnav item ───────────────
 
@@ -64,7 +65,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
 
     return (
         <div className="flex flex-col gap-0.5 ml-4 border-l-0">
-            {subnav.map(({ href, label, group }, index) => {
+            {subnav.map(({ href, label, group, beta }, index) => {
                 const isActive  = pathname === href;
                 const showGroup = group && !seenGroups.has(group) && (() => { seenGroups.add(group); return true; })();
                 const isLast    = index === subnav.length - 1;
@@ -84,6 +85,7 @@ export function SidebarSubnav({ subnav, pathname }: SidebarSubnavProps) {
                             <ActiveBar visible={isActive} />
                             <SubnavIndicator isLast={isLast} />
                             <span className="truncate flex-1">{label}</span>
+                            {beta && <BetaBadge />}
                         </Link>
                     </div>
                 );

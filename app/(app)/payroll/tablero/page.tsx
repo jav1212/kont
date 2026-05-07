@@ -33,9 +33,9 @@ const QUICK_ACTIONS = [
     { href: "/payroll",                 label: "Calculadora",   desc: "Calcular nómina quincenal",        icon: Calculator },
     { href: "/payroll/employees",       label: "Empleados",     desc: "Gestionar plantilla de empleados", icon: Users      },
     { href: "/payroll/history",         label: "Historial",     desc: "Nóminas confirmadas por período",  icon: History    },
-    { href: "/payroll/vacations",       label: "Vacaciones",    desc: "Control de días de vacaciones",    icon: Palmtree   },
-    { href: "/payroll/social-benefits", label: "Prestaciones",  desc: "Cálculo de prestaciones sociales", icon: Coins      },
-    { href: "/payroll/liquidations",    label: "Liquidaciones", desc: "Finiquitos y pagos de salida",     icon: UserMinus  },
+    { href: "/payroll/vacations",       label: "Vacaciones",    desc: "Control de días de vacaciones",    icon: Palmtree,   beta: true },
+    { href: "/payroll/social-benefits", label: "Prestaciones",  desc: "Cálculo de prestaciones sociales", icon: Coins,      beta: true },
+    { href: "/payroll/liquidations",    label: "Liquidaciones", desc: "Finiquitos y pagos de salida",     icon: UserMinus,  beta: true },
 ];
 
 // ── helpers ──────────────────────────────────────────────────────────────────

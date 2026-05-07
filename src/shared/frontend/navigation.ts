@@ -15,18 +15,18 @@ export type AppModule = typeof APP_MODULES[number];
 // ── Sub-navigation per module ─────────────────────────────────────────────────
 // employees is absorbed into payroll subnav and excluded from the module selector.
 
-export type SubNavItem = { href: string; label: string; group?: string | null };
+export type SubNavItem = { href: string; label: string; group?: string | null; beta?: boolean };
 
 export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     payroll: [
-        { href: "/payroll/tablero",           label: "Tablero",       group: null           },
-        { href: "/payroll/employees",         label: "Empleados",     group: null           },
-        { href: "/payroll",                   label: "Calculadora",   group: "Operaciones"  },
-        { href: "/payroll/vacations",         label: "Vacaciones",    group: "Operaciones"  },
-        { href: "/payroll/profit-sharing",    label: "Utilidades",    group: "Operaciones"  },
-        { href: "/payroll/social-benefits",   label: "Prestaciones",  group: "Operaciones"  },
-        { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones"  },
-        { href: "/payroll/history",           label: "Historial",     group: "Histórico"    },
+        { href: "/payroll/tablero",           label: "Tablero",       group: null                         },
+        { href: "/payroll/employees",         label: "Empleados",     group: null                         },
+        { href: "/payroll",                   label: "Calculadora",   group: "Operaciones"                },
+        { href: "/payroll/vacations",         label: "Vacaciones",    group: "Operaciones", beta: true    },
+        { href: "/payroll/profit-sharing",    label: "Utilidades",    group: "Operaciones", beta: true    },
+        { href: "/payroll/social-benefits",   label: "Prestaciones",  group: "Operaciones", beta: true    },
+        { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones", beta: true    },
+        { href: "/payroll/history",           label: "Historial",     group: "Histórico"                  },
     ],
     documents: [
         { href: "/documents",       label: "Tablero",  group: null },

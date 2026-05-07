@@ -8,12 +8,15 @@
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { BetaBadge } from "@/src/shared/frontend/components/beta-badge";
 
 export interface QuickAction {
     href:  string;
     label: string;
     desc?: string;
     icon?: LucideIcon;
+    /** Marca el card con un pill BETA junto al label. */
+    beta?: boolean;
 }
 
 interface DashboardQuickActionsProps {
@@ -57,9 +60,10 @@ export function DashboardQuickActions({
                                         <Icon size={22} strokeWidth={2} />
                                     </div>
                                 )}
-                                <div className="flex flex-col">
-                                    <span className="text-[14px] font-semibold text-foreground group-hover:text-primary-500 transition-colors">
-                                        {action.label}
+                                <div className="flex flex-col min-w-0">
+                                    <span className="flex items-center gap-1.5 text-[14px] font-semibold text-foreground group-hover:text-primary-500 transition-colors">
+                                        <span className="truncate">{action.label}</span>
+                                        {action.beta && <BetaBadge />}
                                     </span>
                                     {action.desc && (
                                         <span className="text-[12px] text-[var(--text-tertiary)] line-clamp-1">
