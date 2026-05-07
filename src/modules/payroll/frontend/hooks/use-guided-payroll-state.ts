@@ -150,6 +150,7 @@ export function useGuidedPayrollState() {
     );
     const [salaryMode, setSalaryMode] = useState<"mensual" | "integral">(savedSettings.salaryMode);
     const [cestaTicketUSD, setCestaTicketUSD] = useState(String(savedSettings.cestaTicketUSD));
+    const [bonoGuerraUSD, setBonoGuerraUSD]   = useState(String(savedSettings.bonoGuerraUSD));
 
     const [horasExtrasGlobal, setHorasExtrasGlobal] = useState<HorasExtrasRow[]>(() =>
         makeHorasExtrasFromDefs(savedSettings.horasExtrasGlobalRows),
@@ -182,6 +183,7 @@ export function useGuidedPayrollState() {
         setDiasBonoVacacional(String(savedSettings.diasBonoVacacional));
         setSalaryMode(savedSettings.salaryMode);
         setCestaTicketUSD(String(savedSettings.cestaTicketUSD));
+        setBonoGuerraUSD(String(savedSettings.bonoGuerraUSD));
         setSalarioMinimoInput(
             savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : "",
         );
@@ -243,6 +245,7 @@ export function useGuidedPayrollState() {
                 diasBonoNum,
                 salaryMode,
                 parseFloat(cestaTicketUSD) || 40,
+                parseFloat(bonoGuerraUSD) || 200,
                 Math.max(0, parseFloat(salarioMinimoInput) || 0),
                 horasExtrasGlobal,
                 pdfVisibility,
@@ -260,6 +263,7 @@ export function useGuidedPayrollState() {
         diasBonoVacacional,
         salaryMode,
         cestaTicketUSD,
+        bonoGuerraUSD,
         salarioMinimoInput,
         horasExtrasGlobal,
         pdfVisibility,
@@ -547,6 +551,10 @@ export function useGuidedPayrollState() {
         // Cesta ticket
         cestaTicketUSD,
         setCestaTicketUSD,
+
+        // Bono Socio Económico de Ayuda Alimenticia (Art. 105 LOTTT — beneficio social no remunerativo)
+        bonoGuerraUSD,
+        setBonoGuerraUSD,
 
         // PDF visibility
         pdfVisibility,

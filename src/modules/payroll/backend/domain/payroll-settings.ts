@@ -69,6 +69,7 @@ export interface PayrollSettings {
     diasBonoVacacional:     number;
     salaryMode:             "mensual" | "integral";
     cestaTicketUSD:         number;
+    bonoGuerraUSD:          number;   // Bono Socio Económico de Ayuda Alimenticia — beneficio social no remunerativo (Art. 105 LOTTT)
     salarioMinimoRef:       number;   // reference minimum salary for SSO cap (10× multiplier)
     horasExtrasGlobalRows:  PayrollHorasExtrasGlobalDef[];
     pdfVisibility:          PdfVisibility;
@@ -96,6 +97,7 @@ export function defaultPayrollSettings(): PayrollSettings {
         diasBonoVacacional: 15,
         salaryMode:         "mensual",
         cestaTicketUSD:     40,
+        bonoGuerraUSD:      200,
         salarioMinimoRef:   0,
         horasExtrasGlobalRows: [
             { tipo: "diurna",   hours: "0", active: false },
@@ -124,6 +126,7 @@ export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollS
         diasBonoVacacional:    stored.diasBonoVacacional    ?? def.diasBonoVacacional,
         salaryMode:            stored.salaryMode            ?? def.salaryMode,
         cestaTicketUSD:        stored.cestaTicketUSD        ?? def.cestaTicketUSD,
+        bonoGuerraUSD:         stored.bonoGuerraUSD         ?? def.bonoGuerraUSD,
         salarioMinimoRef:      stored.salarioMinimoRef      ?? def.salarioMinimoRef,
         horasExtrasGlobalRows: stored.horasExtrasGlobalRows ?? def.horasExtrasGlobalRows,
         pdfVisibility: {

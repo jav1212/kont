@@ -1,6 +1,8 @@
-// PDF generator: Reporte de Cesta Ticket — segunda quincena del mes.
-// Estilo Konta — header naranja, tabla zebra, recuadros de firma con badge USD,
-// footer Kontave compartido en cada página.
+// PDF generator: Reporte de Bono Socio Económico de Ayuda Alimenticia — pago
+// mensual único. Estilo Konta — header naranja, tabla zebra, recuadros de firma
+// con badge USD, footer Kontave compartido en cada página. Pie con fundamento
+// legal detallado citando el Art. 105 de la LOTTT (beneficios sociales no
+// remunerativos: provisión de comidas y alimentos).
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
@@ -24,14 +26,14 @@ import {
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
 
-export interface CestaTicketEmployee {
+export interface BonoGuerraEmployee {
     cedula: string;
     nombre: string;
     cargo:  string;
     estado: string;
 }
 
-export interface CestaTicketOptions {
+export interface BonoGuerraOptions {
     companyName:    string;
     companyId?:     string;
     periodLabel:    string;
@@ -56,7 +58,7 @@ function repaintPageHeader(doc: Doc, opts: PageHeader): number {
     drawHeader(doc, {
         companyName: opts.companyName,
         companyRif:  opts.companyRif,
-        reportTitle: "Cesta Ticket",
+        reportTitle: "Bono Socio Económico",
         periodLabel: opts.periodLabel,
     });
     return PAGE.contentTop as number;
@@ -86,9 +88,9 @@ function drawParamsCard(doc: Doc, x: number, w: number, y: number, montoUSD: num
     return y + H + 5;
 }
 
-export async function generateCestaTicketPdf(
-    employees: CestaTicketEmployee[],
-    opts: CestaTicketOptions,
+export async function generateBonoGuerraPdf(
+    employees: BonoGuerraEmployee[],
+    opts: BonoGuerraOptions,
 ): Promise<void> {
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
@@ -189,7 +191,7 @@ export async function generateCestaTicketPdf(
     const GAP   = 4;
     const PD    = 3;
     const CB    = 2.5;
-    const SIG_LINE_Y_OFFSET   = 6;
+    const SIG_LINE_Y_OFFSET   = 6;  // distancia desde el borde inferior a la línea
     const SIG_LABEL_Y_OFFSET  = 1.5;
 
     active.forEach((emp, i) => {
@@ -205,7 +207,7 @@ export async function generateCestaTicketPdf(
         rect(doc, sx, y, SIG_W, SIG_H, COLORS.border, 0.25);
         fill(doc, sx, y, SIG_W, 1, COLORS.orange);
 
-        // ── Header card: monto USD ──────────────────────────────────────────
+        // ── Header card: monto USD (top-right) ───────────────────────────────
         renderMono(doc, fmtUSD(opts.montoUSD), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
 
         // ── Identificación del empleado ─────────────────────────────────────
@@ -215,11 +217,11 @@ export async function generateCestaTicketPdf(
 
         // ── Checkbox de modalidad ───────────────────────────────────────────
         rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);
-        renderText(doc, "Recibido en Bs. efectivo", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
+        renderText(doc, "Recibido (efectivo / transferencia)", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
 
         // ── Canvas blanco para firma manuscrita (≈12 mm) ────────────────────
-        // El trabajador firma con bolígrafo en este espacio en blanco que
-        // descansa directamente sobre la línea.
+        // Espacio entre y+25 y y+SIG_H-SIG_LINE_Y_OFFSET = y+34, pensado para
+        // que el trabajador firme con bolígrafo sobre la línea.
 
         // ── Línea de firma + label ──────────────────────────────────────────
         hline(doc, sx + PD, y + SIG_H - SIG_LINE_Y_OFFSET, SIG_W - PD * 2, COLORS.borderStr, 0.3);
@@ -228,26 +230,78 @@ export async function generateCestaTicketPdf(
         if (col === 2 || i === active.length - 1) y += SIG_H + 5;
     });
 
-    // ── Legal note ────────────────────────────────────────────────────────────
-    if (y + 18 > pageBounds(doc).contentBot) {
+    // ── Fundamento legal ──────────────────────────────────────────────────────
+    // Detalla el Art. 105 LOTTT (beneficios sociales no remunerativos) y lista
+    // las consecuencias de su naturaleza no salarial sobre prestaciones,
+    // vacaciones, utilidades y aportes patronales.
+
+    const FONT_LEGAL    = 7.6;
+    const LINE_H_LEGAL  = 3.3;
+    const SECTION_TITLE = "FUNDAMENTO LEGAL — ART. 105 LOTTT";
+
+    const legalParas: string[] = [
+        "El presente reporte acredita el pago del BONO SOCIO ECONÓMICO DE AYUDA " +
+        "ALIMENTICIA (anteriormente denominado «Bono Contra la Guerra Económica») " +
+        "correspondiente al período indicado, otorgado por el patrono como ayuda " +
+        "alimentaria a sus trabajadores y trabajadoras.",
+
+        "Este beneficio se enmarca en el Artículo 105 de la Ley Orgánica del Trabajo, " +
+        "los Trabajadores y las Trabajadoras (LOTTT), el cual establece que se " +
+        "consideran beneficios sociales de carácter NO REMUNERATIVO, entre otros: " +
+        "(1) los servicios de comedores y la provisión de comidas y alimentos, " +
+        "(2) los reintegros de gastos médicos, farmacéuticos y odontológicos, " +
+        "(3) las provisiones de ropa de trabajo, (4) las provisiones de útiles " +
+        "escolares y juguetes, (5) el otorgamiento de becas o pago de cursos de " +
+        "capacitación, formación o especialización y (6) el pago de gastos funerarios. " +
+        "El presente bono se otorga bajo el numeral (1), como provisión de comidas y alimentos.",
+
+        "De conformidad con el último aparte del Art. 105 LOTTT, los beneficios sociales " +
+        "NO SERÁN CONSIDERADOS COMO SALARIO, salvo que en convenciones colectivas o " +
+        "contratos individuales de trabajo se estipule lo contrario.",
+
+        "En consecuencia, este pago NO forma parte del salario normal ni del salario " +
+        "integral y NO es cuantificable a efectos del cálculo de: prestaciones sociales " +
+        "(Art. 142 LOTTT), vacaciones y bono vacacional (Art. 192 LOTTT), utilidades " +
+        "(Arts. 131–132 LOTTT), días feriados y de descanso semanal, ni de los aportes " +
+        "patronales al IVSS, FAOV (BANAVIH), INCES y Régimen Prestacional de Empleo.",
+
+        "El trabajador deja constancia de la recepción íntegra del beneficio mediante su firma.",
+    ];
+
+    // Pre-cálculo de altura para decidir si requiere salto de página.
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(FONT_LEGAL);
+    const wrappedParas = legalParas.map((p) => doc.splitTextToSize(p, W) as string[]);
+    const totalLegalLines = wrappedParas.reduce((a, ls) => a + ls.length, 0);
+    const PARA_GAP = 1.6;
+    const TITLE_BLOCK_H = 7.5;
+    const legalHeight = TITLE_BLOCK_H + totalLegalLines * LINE_H_LEGAL + (legalParas.length - 1) * PARA_GAP + 4;
+
+    if (y + legalHeight > pageBounds(doc).contentBot) {
         doc.addPage();
         y = repaintPageHeader(doc, pageHeader);
     }
+
     hline(doc, ML, y, W, COLORS.border, 0.2);
     y += 4;
 
-    const legal =
-        "El presente reporte acredita el pago del beneficio de alimentación (cesta ticket) correspondiente " +
-        "a la segunda quincena del período indicado, de conformidad con la Ley de Alimentación para los " +
-        "Trabajadores y las Trabajadoras (LOTTT). El trabajador confirma la recepción del beneficio con su firma.";
+    renderLabel(doc, SECTION_TITLE, ML, y, "left", COLORS.inkMed, 8);
+    fill(doc, ML, y + 1.6, 18, 0.5, COLORS.orange);
+    y += TITLE_BLOCK_H;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.8);
+    doc.setFontSize(FONT_LEGAL);
     doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
-    const lines = doc.splitTextToSize(legal, W) as string[];
-    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+
+    wrappedParas.forEach((lines, idx) => {
+        lines.forEach((ln, i) => doc.text(ln, ML, y + i * LINE_H_LEGAL));
+        y += lines.length * LINE_H_LEGAL;
+        if (idx < wrappedParas.length - 1) y += PARA_GAP;
+    });
 
     drawFooter(doc, kontaLogo);
 
-    doc.save(`cesta-ticket-${safeFilename(opts.companyName)}-${opts.payrollDate.replaceAll("-", "")}.pdf`);
+    doc.save(
+        `bono-socio-economico-${safeFilename(opts.companyName)}-${opts.payrollDate.replaceAll("-", "")}.pdf`,
+    );
 }

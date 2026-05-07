@@ -18,6 +18,7 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         bcvRate,
         showCestaTicket, periodoMode,
         cestaTicketUSD, setCestaTicketUSD,
+        bonoGuerraUSD, setBonoGuerraUSD,
         salaryMode, setSalaryMode,
         diasUtilidades, setDiasUtilidades,
         diasBonoVacacional, setDiasBonoVacacional,
@@ -71,6 +72,40 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                             <span className="text-[var(--text-tertiary)]">Equivalente en Bs por empleado</span>
                             <span className="text-primary-500 tabular-nums">
                                 {((parseFloat(cestaTicketUSD) || 0) * bcvRate).toLocaleString("es-VE", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                })}{" "}
+                                Bs
+                            </span>
+                        </div>
+                    </div>
+                </StepSection>
+            )}
+
+            {showCestaTicket && (
+                <StepSection
+                    title={
+                        periodoMode === "semanal"
+                            ? "Bono Socio Económico · última semana del mes"
+                            : "Bono Socio Económico · 2ª quincena"
+                    }
+                    description="Bono Socio Económico de Ayuda Alimenticia (antes Bono Contra la Guerra Económica). Pago mensual único — beneficio social no remunerativo bajo el Art. 105 LOTTT, no cuantificable a efectos de prestaciones sociales, vacaciones, utilidades ni aportes patronales."
+                >
+                    <BaseInput.Field
+                        label="Monto por empleado (USD)"
+                        type="number"
+                        step={0.01}
+                        min={0}
+                        value={bonoGuerraUSD}
+                        onValueChange={setBonoGuerraUSD}
+                        prefix="$"
+                        inputClassName="text-right"
+                    />
+                    <div className="mt-3 px-4 py-3 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
+                        <div className="flex justify-between font-mono text-[13px]">
+                            <span className="text-[var(--text-tertiary)]">Equivalente en Bs por empleado</span>
+                            <span className="text-primary-500 tabular-nums">
+                                {((parseFloat(bonoGuerraUSD) || 0) * bcvRate).toLocaleString("es-VE", {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                 })}{" "}

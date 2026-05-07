@@ -13,9 +13,10 @@ import type { PdfEmployeeResult } from "@/src/modules/payroll/frontend/utils/pay
 import { generatePayrollSummaryPdf } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import type { PayrollSummaryEmployeeRow } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
+import { BonoGuerraHistoryView } from "@/src/modules/payroll/frontend/components/bono-guerra-history-view";
 import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
 
-type HistoryTab = "payroll" | "cesta";
+type HistoryTab = "payroll" | "cesta" | "bono";
 
 // ============================================================================
 // HELPERS
@@ -355,7 +356,9 @@ export default function PayrollHistoryPage() {
 
     const subtitle = activeTab === "payroll"
         ? (company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados")
-        : (company ? `Cesta ticket · ${company.name}` : "Cesta ticket");
+        : activeTab === "cesta"
+            ? (company ? `Cesta ticket · ${company.name}` : "Cesta ticket")
+            : (company ? `Bono socio económico · ${company.name}` : "Bono socio económico");
 
     return (
         <div className="min-h-full bg-surface-2 flex flex-col">
@@ -443,8 +446,13 @@ export default function PayrollHistoryPage() {
                                 )}
                             </div>
                         )
-                    ) : (
+                    ) : activeTab === "cesta" ? (
                         <CestaTicketHistoryView
+                            companyId={companyId}
+                            company={company ?? null}
+                        />
+                    ) : (
+                        <BonoGuerraHistoryView
                             companyId={companyId}
                             company={company ?? null}
                         />
@@ -472,6 +480,7 @@ function HistoryTabs({ active, onChange }: {
     const tabs: { id: HistoryTab; label: string }[] = [
         { id: "payroll", label: "Nóminas" },
         { id: "cesta",   label: "Cesta Ticket" },
+        { id: "bono",    label: "Bono Socio Económico" },
     ];
     return (
         <div className="flex items-end border-b border-border-light gap-6">

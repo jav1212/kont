@@ -1,15 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Receipt, Save } from "lucide-react";
+import { Receipt, Shield } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { BenefitActionCluster } from "@/src/modules/payroll/frontend/components/benefit-action-cluster";
 import { notify } from "@/src/shared/frontend/notify";
 import { useGuidedPayrollState } from "@/src/modules/payroll/frontend/hooks/use-guided-payroll-state";
 import {
     useCestaTicketHistory,
     type CestaTicketPayload,
 } from "@/src/modules/payroll/frontend/hooks/use-cesta-ticket-history";
+import {
+    useBonoGuerraHistory,
+    type BonoGuerraPayload,
+} from "@/src/modules/payroll/frontend/hooks/use-bono-guerra-history";
 import {
     GuidedStepperHeader,
     type StepDef,
@@ -20,6 +24,7 @@ import { GuidedStepDeductions } from "@/src/modules/payroll/frontend/components/
 import { GuidedStepBonuses } from "@/src/modules/payroll/frontend/components/guided/guided-step-bonuses";
 import { GuidedStepReview } from "@/src/modules/payroll/frontend/components/guided/guided-step-review";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
+import { generateBonoGuerraPdf } from "@/src/modules/payroll/frontend/utils/bono-guerra-pdf";
 
 const STEPS: StepDef[] = [
     { id: 1, label: "Período" },
@@ -49,6 +54,7 @@ export default function PayrollCalculatorPage() {
         bcvRate,
         showCestaTicket,
         cestaTicketUSD,
+        bonoGuerraUSD,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
 
@@ -57,6 +63,12 @@ export default function PayrollCalculatorPage() {
         saveDraft: saveCtDraft,
         confirm: confirmCt,
     } = useCestaTicketHistory(companyId);
+
+    const {
+        runs: bgRuns,
+        saveDraft: saveBgDraft,
+        confirm: confirmBg,
+    } = useBonoGuerraHistory(companyId);
 
     const cestaTicketAlreadyConfirmed = useMemo(
         () =>
@@ -70,8 +82,22 @@ export default function PayrollCalculatorPage() {
         [ctRuns, companyId, activePeriodInfo],
     );
 
+    const bonoGuerraAlreadyConfirmed = useMemo(
+        () =>
+            bgRuns.some(
+                (r) =>
+                    r.companyId === companyId &&
+                    r.periodStart === activePeriodInfo.startDate &&
+                    r.periodEnd === activePeriodInfo.endDate &&
+                    r.status === "confirmed",
+            ),
+        [bgRuns, companyId, activePeriodInfo],
+    );
+
     const [savingCtDraft, setSavingCtDraft]   = useState(false);
     const [confirmingCt, setConfirmingCt]     = useState(false);
+    const [savingBgDraft, setSavingBgDraft]   = useState(false);
+    const [confirmingBg, setConfirmingBg]     = useState(false);
 
     const buildCtPayload = useCallback((): CestaTicketPayload | null => {
         if (!companyId) return null;
@@ -133,6 +159,68 @@ export default function PayrollCalculatorPage() {
         if (ok) notify.success("Cesta ticket confirmada");
     };
 
+    // ── Bono Socio Económico de Ayuda Alimenticia — mismo flujo que cesta ticket ─
+
+    const buildBgPayload = useCallback((): BonoGuerraPayload | null => {
+        if (!companyId) return null;
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) return null;
+        const montoUsd = parseFloat(bonoGuerraUSD) || 200;
+        const montoVes = montoUsd * bcvRate;
+        return {
+            run: {
+                companyId,
+                periodStart:  activePeriodInfo.startDate,
+                periodEnd:    activePeriodInfo.endDate,
+                montoUsd,
+                exchangeRate: bcvRate,
+            },
+            receipts: active.map((e) => ({
+                companyId,
+                employeeId:     e.cedula,
+                employeeCedula: e.cedula,
+                employeeNombre: e.nombre,
+                employeeCargo:  e.cargo,
+                montoUsd,
+                montoVes,
+            })),
+        };
+    }, [companyId, employees, bonoGuerraUSD, bcvRate, activePeriodInfo]);
+
+    const handleBonoGuerraPdf = () => {
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) return;
+        generateBonoGuerraPdf(
+            active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
+            {
+                companyName: company?.name ?? "",
+                companyId: company?.id,
+                periodLabel: activePeriodInfo.label,
+                payrollDate: activePeriodInfo.endDate,
+                montoUSD: parseFloat(bonoGuerraUSD) || 200,
+                bcvRate,
+            },
+        );
+    };
+
+    const handleSaveBonoGuerraDraft = async () => {
+        const payload = buildBgPayload();
+        if (!payload) { notify.error("No hay empleados activos para guardar"); return; }
+        setSavingBgDraft(true);
+        const { runId } = await saveBgDraft(payload);
+        setSavingBgDraft(false);
+        if (runId) notify.success("Borrador de bono socio económico guardado");
+    };
+
+    const handleConfirmBonoGuerra = async () => {
+        const payload = buildBgPayload();
+        if (!payload) { notify.error("No hay empleados activos para confirmar"); return; }
+        setConfirmingBg(true);
+        const ok = await confirmBg(payload);
+        setConfirmingBg(false);
+        if (ok) notify.success("Bono socio económico confirmado");
+    };
+
     return (
             <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
                 <PageHeader
@@ -147,62 +235,41 @@ export default function PayrollCalculatorPage() {
                 >
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                         {showCestaTicket && (
-                            <>
-                                <BaseButton.Root
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={handleSaveCestaTicketDraft}
-                                    disabled={savingCtDraft || !activos || cestaTicketAlreadyConfirmed}
-                                    leftIcon={<Save size={14} />}
-                                >
-                                    <span className="hidden sm:inline">
-                                        {savingCtDraft ? "Guardando..." : "Guardar borrador"}
-                                    </span>
-                                    <span className="sm:hidden">{savingCtDraft ? "..." : "Borrador"}</span>
-                                </BaseButton.Root>
-                                <BaseButton.Root
-                                    variant="primary"
-                                    size="sm"
-                                    onClick={handleConfirmCestaTicket}
-                                    disabled={confirmingCt || !activos || cestaTicketAlreadyConfirmed}
-                                    leftIcon={<Check size={14} />}
-                                >
-                                    <span className="hidden sm:inline">
-                                        {confirmingCt
-                                            ? "Confirmando..."
-                                            : cestaTicketAlreadyConfirmed
-                                                ? "Cesta ticket confirmada"
-                                                : "Confirmar cesta ticket"}
-                                    </span>
-                                    <span className="sm:hidden">
-                                        {confirmingCt
-                                            ? "..."
-                                            : cestaTicketAlreadyConfirmed
-                                                ? "Confirmada"
-                                                : "Confirmar"}
-                                    </span>
-                                </BaseButton.Root>
-                                <BaseButton.Root
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={handleCestaTicketPdf}
-                                    leftIcon={<Receipt size={14} />}
-                                >
-                                    <span className="hidden sm:inline">Cesta Ticket</span>
-                                    <span className="sm:hidden">PDF</span>
-                                </BaseButton.Root>
-                            </>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <BenefitActionCluster
+                                    label="Cesta Ticket"
+                                    icon={<Receipt size={12} />}
+                                    confirmed={cestaTicketAlreadyConfirmed}
+                                    saving={savingCtDraft}
+                                    confirming={confirmingCt}
+                                    disabled={!activos}
+                                    onSaveDraft={handleSaveCestaTicketDraft}
+                                    onConfirm={handleConfirmCestaTicket}
+                                    onPdf={handleCestaTicketPdf}
+                                />
+                                <BenefitActionCluster
+                                    label="Bono Socio Económico"
+                                    icon={<Shield size={12} />}
+                                    confirmed={bonoGuerraAlreadyConfirmed}
+                                    saving={savingBgDraft}
+                                    confirming={confirmingBg}
+                                    disabled={!activos}
+                                    onSaveDraft={handleSaveBonoGuerraDraft}
+                                    onConfirm={handleConfirmBonoGuerra}
+                                    onPdf={handleBonoGuerraPdf}
+                                />
+                            </div>
                         )}
 
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-2 h-8">
-                            <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
+                        <div className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border-light bg-surface-2 shadow-sm">
+                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">BCV</span>
                             <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
                                 {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
                             </span>
                         </div>
 
                         {company && (
-                            <span className="hidden md:inline font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em]">
+                            <span className="hidden md:inline font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em] truncate max-w-[180px]">
                                 {company.name}
                             </span>
                         )}
