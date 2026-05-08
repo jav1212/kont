@@ -136,6 +136,31 @@
   /* Grid pattern (public layout) */
   --grid-line: rgba(0, 0, 0, 0.045);
 
+  /* ── Motion tokens (mirror of konta-design skill) ─────────────────────
+     One easing curve drives the product. 150ms is the default. Bounce/
+     elastic/back/step easings are anti-patterns — never used. */
+  --motion-fast:    100ms;
+  --motion-base:    150ms;
+  --motion-slow:    300ms;
+  --motion-stagger:  50ms;
+  --easing-out:     cubic-bezier(0.25, 1, 0.5, 1);
+  --easing-in-out:  cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ── Focus ring tokens ─────────────────────────────────────────────── */
+  --focus-ring-color:  var(--primary-500);
+  --focus-ring-width:  2px;
+  --focus-ring-offset: 2px;
+
+  /* ── Z-index scale ─────────────────────────────────────────────────── */
+  --z-base:      0;
+  --z-dropdown: 30;
+  --z-sticky:   40;
+  --z-overlay:  45;
+  --z-modal:    50;
+  --z-popover:  60;
+  --z-toast:    70;
+  --z-tooltip:  80;
+
   /* Radii are defined in the @theme block below so Tailwind generates both
      rounded-* utilities and the :root custom properties. */
 }
@@ -415,10 +440,12 @@ body {
    elements. Form fields (input/textarea/select) are excluded because they
    always live inside a wrapper (HeroUI, BaseInput, BaseSelect) that draws its
    own focus border on the wrapper — applying the global outline on top of the
-   wrapper border produced a doubled stroke with a 2px gap. */
+   wrapper border produced a doubled stroke with a 2px gap.
+
+   Driven by --focus-ring-* tokens (mirror of konta-design skill). */
 :focus-visible {
-  outline: 2px solid var(--primary-500);
-  outline-offset: 2px;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
   border-radius: var(--radius-sm);
 }
 
@@ -430,13 +457,14 @@ select:focus-visible {
 
 /* Smooth theme swap — animate only bg + color globally.
    border-color is dropped because global animation of borders caused hover latency
-   on buttons/inputs. Individual components should animate border-color explicitly. */
+   on buttons/inputs. Individual components should animate border-color explicitly.
+   Driven by --motion-base + --easing-out tokens. */
 *,
 *::before,
 *::after {
   transition-property: background-color, color;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1); /* ease-out, responsive */
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--easing-out);
 }
 
 /* Don't animate transforms / opacity (breaks animations) */
@@ -735,8 +763,19 @@ select:focus-visible {
   animation: icon-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Reduced motion: disable all custom animations */
+/* Reduced motion: neutralize motion tokens AND disable named keyframes.
+   Components that consume --motion-* / --easing-* pick up the override
+   automatically; named keyframes still need to be cancelled explicitly. */
 @media (prefers-reduced-motion: reduce) {
+  :root, .dark {
+    --motion-fast:    0ms;
+    --motion-base:    0ms;
+    --motion-slow:    0ms;
+    --motion-stagger: 0ms;
+    --easing-out:     linear;
+    --easing-in-out:  linear;
+  }
+
   .animate-icon-pulse,
   .animate-pulse {
     animation: none;
