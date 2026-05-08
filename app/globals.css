@@ -411,25 +411,12 @@ body {
   background: rgba(255, 74, 24, 0.22);
 }
 
-/* ── Scrollbar — thin, refined ─────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-medium);
-  border-radius: 99px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
-}
-
+/* ── Scrollbar — standard, restrained ──────────────────────────────────
+   The webkit-specific block was removed (REQ-011) per impeccable
+   anti-patterns: "Don't reinvent standard affordances for flavor."
+   `scrollbar-width: thin` + `scrollbar-color` are the cross-browser
+   tokens; the OS / Firefox / Chromium >= 121 honor them. Older browsers
+   render the native scrollbar — acceptable for a financial product. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-medium) transparent;
