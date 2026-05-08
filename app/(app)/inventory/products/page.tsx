@@ -4,6 +4,7 @@
 // Uses English domain types (Product) and English useInventory() API.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
@@ -16,6 +17,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
+import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     productsToCsv,
@@ -154,6 +156,7 @@ function FormSection({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function ProductosPage() {
+    const router = useRouter();
     const { companyId, company } = useCompany();
     const {
         products, loadingProducts,
@@ -312,34 +315,72 @@ export default function ProductosPage() {
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Productos" subtitle="Catálogo · existencias · IVA">
-                <BaseButton.Root
-                    variant="secondary" size="sm"
-                    onClick={handleExport}
-                    isDisabled={products.length === 0}
-                    leftIcon={<Download size={14} />}
-                >
-                    Exportar
-                </BaseButton.Root>
-                <BaseButton.Root
-                    variant="secondary" size="sm"
-                    onClick={() => { setPasteOpen((v) => !v); }}
-                    leftIcon={<ClipboardPaste size={14} />}
-                >
-                    Pegar CSV
-                </BaseButton.Root>
-                <BaseButton.Root
-                    variant="secondary" size="sm"
-                    onClick={() => fileRef.current?.click()}
-                    isDisabled={loadingDepartments}
-                    title={loadingDepartments ? "Cargando departamentos…" : undefined}
-                    leftIcon={<Upload size={14} />}
-                >
-                    Importar CSV
-                </BaseButton.Root>
+                {/* Desktop (md+): all secondary actions inline */}
+                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                    <BaseButton.Root
+                        variant="secondary" size="sm"
+                        onClick={handleExport}
+                        isDisabled={products.length === 0}
+                        leftIcon={<Download size={14} />}
+                    >
+                        Exportar
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="secondary" size="sm"
+                        onClick={() => { setPasteOpen((v) => !v); }}
+                        leftIcon={<ClipboardPaste size={14} />}
+                    >
+                        Pegar CSV
+                    </BaseButton.Root>
+                    <BaseButton.Root
+                        variant="secondary" size="sm"
+                        onClick={() => fileRef.current?.click()}
+                        isDisabled={loadingDepartments}
+                        title={loadingDepartments ? "Cargando departamentos…" : undefined}
+                        leftIcon={<Upload size={14} />}
+                    >
+                        Importar CSV
+                    </BaseButton.Root>
+                    <BaseButton.Root as={Link} href="/inventory/import" variant="secondary" size="sm" leftIcon={<FileSpreadsheet size={14} />}>
+                        Importar Excel
+                    </BaseButton.Root>
+                </div>
+
+                {/* Mobile (< md): secondary actions collapsed into overflow menu */}
+                <div className="md:hidden">
+                    <OverflowMenu
+                        items={[
+                            {
+                                label:    "Exportar",
+                                icon:     Download,
+                                onClick:  handleExport,
+                                disabled: products.length === 0,
+                            },
+                            {
+                                label:   "Pegar CSV",
+                                icon:    ClipboardPaste,
+                                onClick: () => setPasteOpen((v) => !v),
+                            },
+                            {
+                                label:    "Importar CSV",
+                                icon:     Upload,
+                                onClick:  () => fileRef.current?.click(),
+                                disabled: loadingDepartments,
+                                title:    loadingDepartments ? "Cargando departamentos…" : undefined,
+                            },
+                            {
+                                label:   "Importar Excel",
+                                icon:    FileSpreadsheet,
+                                onClick: () => router.push("/inventory/import"),
+                            },
+                        ]}
+                    />
+                </div>
+
+                {/* File input shared by both mobile and desktop import button */}
                 <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-                <BaseButton.Root as={Link} href="/inventory/import" variant="secondary" size="sm" leftIcon={<FileSpreadsheet size={14} />}>
-                    Importar Excel
-                </BaseButton.Root>
+
+                {/* Primary CTA — always visible */}
                 <BaseButton.Root variant="primary" size="sm" onClick={openNew} leftIcon={<Plus size={14} strokeWidth={2.5} />}>
                     Nuevo producto
                 </BaseButton.Root>
