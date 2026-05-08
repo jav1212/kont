@@ -384,12 +384,20 @@ export function PublicFooter() {
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                 © {new Date().getFullYear()} Kontave
             </span>
-            <Link
-                href="/legal/terminos"
-                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)] hover:text-foreground transition-colors"
-            >
-                Términos y condiciones
-            </Link>
+            <div className="flex items-center gap-5">
+                <Link
+                    href="/legal/terminos"
+                    className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)] hover:text-foreground transition-colors"
+                >
+                    Términos y condiciones
+                </Link>
+                <Link
+                    href="/legal/privacidad"
+                    className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)] hover:text-foreground transition-colors"
+                >
+                    Privacidad
+                </Link>
+            </div>
         </footer>
     );
 }
