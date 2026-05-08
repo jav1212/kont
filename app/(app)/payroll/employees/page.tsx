@@ -1525,196 +1525,138 @@ export default function EmployeesPage() {
                 </div>
             </ResponsiveDrawer>
 
-            {/* ── Salary history modal ──────────────────────────────────── */}
-            <AnimatePresence>
-                {historyModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setHistoryModal(null)}
-                            className="absolute inset-0 bg-black/40"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                            transition={{ duration: 0.15, ease: [0.25, 1, 0.5, 1] }}
-                            className="relative w-full max-w-md bg-surface-1 border border-border-light rounded-xl shadow-lg overflow-hidden flex flex-col"
-                        >
-                            <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border-light bg-surface-2/40">
-                                <div className="min-w-0">
-                                    <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                        Historial salarial
-                                    </h2>
-                                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-0.5 truncate">
-                                        {historyModal.nombre} · {historyModal.cedula}
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setHistoryModal(null)}
-                                    className="text-[var(--text-tertiary)] hover:text-foreground transition-colors flex-shrink-0"
-                                    aria-label="Cerrar"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-
-                            <div className="p-5">
-                                {historyLoading ? (
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3">
-                                        <Spinner />
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                                            Consultando…
-                                        </span>
-                                    </div>
-                                ) : historyData.length === 0 ? (
-                                    <div className="flex flex-col items-center py-10 gap-2 text-center">
-                                        <Clock size={28} strokeWidth={1.5} className="text-[var(--text-tertiary)]" />
-                                        <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
-                                            Sin variaciones registradas
-                                        </p>
-                                        <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
-                                            El salario no ha cambiado desde el alta del empleado.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="border border-border-light rounded-lg overflow-hidden">
-                                        <table className="w-full text-[13px]">
-                                            <thead>
-                                                <tr className="bg-surface-2/40 border-b border-border-light">
-                                                    {["Desde", "Salario", "Mon."].map((h, i) => (
-                                                        <th
-                                                            key={h}
-                                                            className={`px-4 h-9 font-medium text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] ${i === 1 ? "text-right" : "text-left"}`}
-                                                        >
-                                                            {h}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {historyData.map((entry) => (
-                                                    <tr key={entry.id} className="border-b border-border-light/60 last:border-b-0 hover:bg-surface-2/40 transition-colors">
-                                                        <td className="px-4 py-2.5 font-mono text-[12px] text-[var(--text-secondary)] whitespace-nowrap">
-                                                            {fmtDate(entry.fechaDesde)}
-                                                        </td>
-                                                        <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums text-foreground">
-                                                            {fmtMoney(entry.salarioMensual)}
-                                                        </td>
-                                                        <td className="px-4 py-2.5">
-                                                            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
-                                                                {entry.moneda === "USD" ? "$" : "Bs."}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex justify-end px-5 py-3 border-t border-border-light bg-surface-2/40">
-                                <BaseButton.Root variant="secondary" size="sm" onClick={() => setHistoryModal(null)}>
-                                    Cerrar
-                                </BaseButton.Root>
-                            </div>
-                        </motion.div>
+            {/* ── Salary history drawer ─────────────────────────────────── */}
+            <ResponsiveDrawer
+                isOpen={historyModal !== null}
+                onClose={() => setHistoryModal(null)}
+                title="Historial salarial"
+                subtitle={historyModal ? `${historyModal.nombre} · ${historyModal.cedula}` : undefined}
+                desktopSize="md"
+                footer={
+                    <div className="flex justify-end">
+                        <BaseButton.Root variant="secondary" size="sm" onClick={() => setHistoryModal(null)}>
+                            Cerrar
+                        </BaseButton.Root>
                     </div>
-                )}
-            </AnimatePresence>
+                }
+            >
+                <div className="p-5">
+                    {historyLoading ? (
+                        <div className="flex flex-col items-center justify-center py-10 gap-3">
+                            <Spinner />
+                            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
+                                Consultando…
+                            </span>
+                        </div>
+                    ) : historyData.length === 0 ? (
+                        <div className="flex flex-col items-center py-10 gap-2 text-center">
+                            <Clock size={28} strokeWidth={1.5} className="text-[var(--text-tertiary)]" />
+                            <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-[var(--text-secondary)]">
+                                Sin variaciones registradas
+                            </p>
+                            <p className="font-sans text-[12px] text-[var(--text-tertiary)]">
+                                El salario no ha cambiado desde el alta del empleado.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="border border-border-light rounded-lg overflow-hidden">
+                            <table className="w-full text-[13px]">
+                                <thead>
+                                    <tr className="bg-surface-2/40 border-b border-border-light">
+                                        {["Desde", "Salario", "Mon."].map((h, i) => (
+                                            <th
+                                                key={h}
+                                                className={`px-4 h-9 font-medium text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] ${i === 1 ? "text-right" : "text-left"}`}
+                                            >
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {historyData.map((entry) => (
+                                        <tr key={entry.id} className="border-b border-border-light/60 last:border-b-0 hover:bg-surface-2/40 transition-colors">
+                                            <td className="px-4 py-2.5 font-mono text-[12px] text-[var(--text-secondary)] whitespace-nowrap">
+                                                {fmtDate(entry.fechaDesde)}
+                                            </td>
+                                            <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums text-foreground">
+                                                {fmtMoney(entry.salarioMensual)}
+                                            </td>
+                                            <td className="px-4 py-2.5">
+                                                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                                                    {entry.moneda === "USD" ? "$" : "Bs."}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </ResponsiveDrawer>
 
-            {/* ── Paste CSV modal ──────────────────────────────────────── */}
-            <AnimatePresence>
-                {pasteOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={closePasteModal}
-                            className="absolute inset-0 bg-black/40"
-                        />
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-                            transition={{ duration: 0.15, ease: [0.25, 1, 0.5, 1] }}
-                            className="relative w-full max-w-xl bg-surface-1 border border-border-light rounded-xl shadow-lg overflow-hidden flex flex-col"
+            {/* ── Paste CSV drawer ─────────────────────────────────────── */}
+            <ResponsiveDrawer
+                isOpen={pasteOpen}
+                onClose={closePasteModal}
+                title="Pegar CSV"
+                subtitle="La primera fila debe ser el encabezado: cédula, nombre, cargo, salario, estado."
+                desktopSize="xl"
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <BaseButton.Root variant="secondary" size="sm" onClick={closePasteModal}>
+                            Cancelar
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="primary" size="sm"
+                            onClick={handlePasteImport}
+                            isDisabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
+                            loading={pasteImporting}
+                            leftIcon={<ClipboardPaste size={14} />}
                         >
-                            <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-border-light bg-surface-2/40">
-                                <div className="min-w-0">
-                                    <h2 className="font-mono text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                        Pegar CSV
-                                    </h2>
-                                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] mt-0.5">
-                                        La primera fila debe ser el encabezado: cédula, nombre, cargo, salario, estado.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={closePasteModal}
-                                    className="text-[var(--text-tertiary)] hover:text-foreground transition-colors flex-shrink-0"
-                                    aria-label="Cerrar"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-
-                            <div className="p-5 space-y-3">
-                                <pre className="text-[11px] text-[var(--text-secondary)] bg-surface-2 rounded-lg px-3 py-2 border border-border-light select-all overflow-x-auto leading-relaxed">
+                            {pasteImporting ? "Importando…" : "Importar"}
+                        </BaseButton.Root>
+                    </div>
+                }
+            >
+                <div className="p-5 space-y-3">
+                    <pre className="text-[11px] text-[var(--text-secondary)] bg-surface-2 rounded-lg px-3 py-2 border border-border-light select-all overflow-x-auto leading-relaxed">
 {`"cedula","nombre","cargo","salario","estado"
 "V-12345678","JUAN PEREZ","ANALISTA","1250.50","activo"`}
-                                </pre>
-                                <textarea
-                                    autoFocus
-                                    rows={8}
-                                    value={pasteText}
-                                    onChange={(e) => handlePasteChange(e.target.value)}
-                                    placeholder='"cedula","nombre","cargo","salario","estado"'
-                                    className="w-full resize-none rounded-lg border border-border-default bg-surface-1 outline-none p-3 font-mono text-[12px] text-foreground leading-relaxed placeholder:text-[var(--text-disabled)] focus:border-primary-500 hover:border-border-medium transition-colors"
-                                />
+                    </pre>
+                    <textarea
+                        autoFocus
+                        rows={8}
+                        value={pasteText}
+                        onChange={(e) => handlePasteChange(e.target.value)}
+                        placeholder='"cedula","nombre","cargo","salario","estado"'
+                        className="w-full resize-none rounded-lg border border-border-default bg-surface-1 outline-none p-3 font-mono text-[12px] text-foreground leading-relaxed placeholder:text-[var(--text-disabled)] focus:border-primary-500 hover:border-border-medium transition-colors"
+                    />
 
-                                {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
-                                    <div className="flex items-center gap-2 text-text-success font-sans text-[12px]">
-                                        <Check size={14} />
-                                        {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
-                                    </div>
+                    {pasteText.trim() && pasteErrors.length === 0 && pasteCount !== null && (
+                        <div className="flex items-center gap-2 text-text-success font-sans text-[12px]">
+                            <Check size={14} />
+                            {pasteCount} empleado{pasteCount !== 1 ? "s" : ""} listo{pasteCount !== 1 ? "s" : ""} para importar.
+                        </div>
+                    )}
+                    {pasteErrors.length > 0 && (
+                        <div className="rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 flex items-start gap-2">
+                            <AlertTriangle size={14} className="flex-shrink-0 mt-[3px] text-text-error" />
+                            <ul className="space-y-1 flex-1 min-w-0">
+                                {pasteErrors.slice(0, 3).map((e, i) => (
+                                    <li key={i} className="font-sans text-[12px] text-text-error">{e}</li>
+                                ))}
+                                {pasteErrors.length > 3 && (
+                                    <li className="font-sans text-[12px] text-[var(--text-tertiary)]">
+                                        …y {pasteErrors.length - 3} error{pasteErrors.length - 3 !== 1 ? "es" : ""} más.
+                                    </li>
                                 )}
-                                {pasteErrors.length > 0 && (
-                                    <div className="rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 flex items-start gap-2">
-                                        <AlertTriangle size={14} className="flex-shrink-0 mt-[3px] text-text-error" />
-                                        <ul className="space-y-1 flex-1 min-w-0">
-                                            {pasteErrors.slice(0, 3).map((e, i) => (
-                                                <li key={i} className="font-sans text-[12px] text-text-error">{e}</li>
-                                            ))}
-                                            {pasteErrors.length > 3 && (
-                                                <li className="font-sans text-[12px] text-[var(--text-tertiary)]">
-                                                    …y {pasteErrors.length - 3} error{pasteErrors.length - 3 !== 1 ? "es" : ""} más.
-                                                </li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-light bg-surface-2/40">
-                                <BaseButton.Root variant="secondary" size="sm" onClick={closePasteModal}>
-                                    Cancelar
-                                </BaseButton.Root>
-                                <BaseButton.Root
-                                    variant="primary" size="sm"
-                                    onClick={handlePasteImport}
-                                    isDisabled={pasteImporting || pasteErrors.length > 0 || !pasteText.trim() || pasteCount === 0}
-                                    loading={pasteImporting}
-                                    leftIcon={<ClipboardPaste size={14} />}
-                                >
-                                    {pasteImporting ? "Importando…" : "Importar"}
-                                </BaseButton.Root>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </ResponsiveDrawer>
         </div>
     );
 }
