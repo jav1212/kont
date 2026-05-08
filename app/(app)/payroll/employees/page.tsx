@@ -1673,16 +1673,19 @@ export default function EmployeesPage() {
                                     </div>
                                 )}
                                 {pasteErrors.length > 0 && (
-                                    <ul className="space-y-1 pl-1 border-l-2 border-error/30 ml-1">
-                                        {pasteErrors.slice(0, 3).map((e, i) => (
-                                            <li key={i} className="font-sans text-[12px] text-text-error pl-3">{e}</li>
-                                        ))}
-                                        {pasteErrors.length > 3 && (
-                                            <li className="font-sans text-[12px] text-[var(--text-tertiary)] pl-3">
-                                                …y {pasteErrors.length - 3} error{pasteErrors.length - 3 !== 1 ? "es" : ""} más.
-                                            </li>
-                                        )}
-                                    </ul>
+                                    <div className="rounded-lg border border-error/20 bg-error/5 px-3 py-2.5 flex items-start gap-2">
+                                        <AlertTriangle size={14} className="flex-shrink-0 mt-[3px] text-text-error" />
+                                        <ul className="space-y-1 flex-1 min-w-0">
+                                            {pasteErrors.slice(0, 3).map((e, i) => (
+                                                <li key={i} className="font-sans text-[12px] text-text-error">{e}</li>
+                                            ))}
+                                            {pasteErrors.length > 3 && (
+                                                <li className="font-sans text-[12px] text-[var(--text-tertiary)]">
+                                                    …y {pasteErrors.length - 3} error{pasteErrors.length - 3 !== 1 ? "es" : ""} más.
+                                                </li>
+                                            )}
+                                        </ul>
+                                    </div>
                                 )}
                             </div>
 
