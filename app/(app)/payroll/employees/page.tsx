@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
+import { StatTile } from "@/src/shared/frontend/components/stat-tile";
+import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
@@ -104,80 +106,6 @@ function fmtDate(iso: string): string {
 }
 
 // ── Page-local primitives ────────────────────────────────────────────────────
-
-function StatTile({
-    label, value, sublabel, icon: Icon, tone = "default",
-}: {
-    label:    string;
-    value:    string | number;
-    sublabel?: string;
-    icon:     React.ComponentType<{ size?: number; strokeWidth?: number }>;
-    tone?:    "default" | "primary" | "success" | "warning" | "muted";
-}) {
-    const toneCls: Record<string, string> = {
-        default: "bg-surface-2 text-foreground border-border-light",
-        primary: "bg-primary-500/10 text-primary-500 border-primary-500/20",
-        success: "bg-success/10 text-text-success border-success/20",
-        warning: "bg-warning/10 text-text-warning border-warning/20",
-        muted:   "bg-surface-2 text-[var(--text-tertiary)] border-border-light",
-    };
-    return (
-        <div className="rounded-xl border border-border-light bg-surface-1 px-5 py-4 shadow-sm flex items-center gap-4">
-            <div className={`h-10 w-10 rounded-xl border flex items-center justify-center flex-shrink-0 ${toneCls[tone]}`}>
-                <Icon size={18} strokeWidth={2} />
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">
-                    {label}
-                </p>
-                <p className="font-mono text-[22px] font-semibold tabular-nums text-foreground leading-tight">
-                    {value}
-                </p>
-                {sublabel && (
-                    <p className="font-sans text-[12px] text-[var(--text-tertiary)] truncate">
-                        {sublabel}
-                    </p>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function FilterChip({
-    active, onClick, children, count,
-}: {
-    active:    boolean;
-    onClick:   () => void;
-    children:  React.ReactNode;
-    count?:    number;
-}) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-pressed={active}
-            className={[
-                "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border whitespace-nowrap",
-                "font-mono text-[11px] uppercase tracking-[0.12em] font-medium",
-                "transition-colors duration-150",
-                "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1 outline-none",
-                active
-                    ? "border-primary-500 bg-primary-500/10 text-primary-500"
-                    : "border-border-light bg-surface-1 text-[var(--text-secondary)] hover:border-border-default hover:bg-surface-2",
-            ].join(" ")}
-        >
-            <span>{children}</span>
-            {typeof count === "number" && (
-                <span className={[
-                    "tabular-nums text-[10px] px-1 rounded",
-                    active ? "bg-primary-500/15" : "bg-surface-2 border border-border-light",
-                ].join(" ")}>
-                    {count}
-                </span>
-            )}
-        </button>
-    );
-}
 
 function StatusDot({ estado }: { estado: EmployeeEstado }) {
     const colorMap: Record<EmployeeEstado, string> = {
