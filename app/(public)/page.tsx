@@ -49,7 +49,7 @@ function planOrderIndex(name: string): number {
 export default function LandingPage() {
 
     // --- STATE LOGIC (Retained for functionality) ---
-    const [systemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
+    const [systemMessage, setSystemMessage] = useState<{ type: 'error' | 'info', text: string } | null>(() => {
         if (typeof window === "undefined") return null;
         const hashParams  = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
@@ -132,11 +132,21 @@ export default function LandingPage() {
             
             {/* System Message Overlay */}
             {systemMessage && (
-                <div className="w-full bg-red-500/10 border-b border-red-500/20 px-8 py-3 shrink-0 z-50 fixed top-0 left-0 right-0">
+                <div
+                    role="alert"
+                    className="w-full bg-red-500/10 border-b border-red-500/20 px-8 py-3 shrink-0 z-50 fixed top-0 left-0 right-0"
+                >
                     <div className="max-w-7xl mx-auto flex items-center gap-4">
                         <span className="text-[12px] text-red-500 font-bold uppercase tracking-widest">[ ERROR ]</span>
-                        <span className="text-[13px] text-red-800 dark:text-red-200">{systemMessage.text}</span>
+                        <span className="text-[13px] text-red-800 dark:text-red-200 flex-1 min-w-0">{systemMessage.text}</span>
+                        <button
+                            type="button"
+                            onClick={() => setSystemMessage(null)}
+                            aria-label="Cerrar mensaje del sistema"
+                            className="text-[12px] font-bold uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                        >
                             [ CERRAR ]
+                        </button>
                     </div>
                 </div>
             )}
@@ -610,17 +620,33 @@ export default function LandingPage() {
                                 { q: "¿Cómo funcionan las equivalencias para la moneda contable?", a: "Se enlaza en directo con los índices BCV. Además, se guardan los históricos de transacciones con sus paridades funcionales del día del pago exacto de forma transparente." },
                                 { q: "¿Qué sucede al superar mi cuota de usuarios o espacio?", a: "No nos enfocamos en limitar el avance, simplemente se te sugiere subir al próximo nivel tarifario desde tu facturación, o liberar cuentas inactivas de tu tenencia." }
                             ].map((faq, idx) => {
-                                const isOpen = openFaq === idx;
+                                const isOpen   = openFaq === idx;
+                                const panelId  = `faq-panel-${idx}`;
+                                const buttonId = `faq-trigger-${idx}`;
                                 return (
                                     <div key={idx} className={`border rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'bg-background border-primary-500/50 shadow-md' : 'bg-surface-1 border-border-light hover:border-border-medium'}`}>
-                                        <button onClick={() => setOpenFaq(isOpen ? null : idx)} className="w-full flex justify-between items-center p-6 text-left focus-visible:outline-none">
+                                        <button
+                                            id={buttonId}
+                                            type="button"
+                                            onClick={() => setOpenFaq(isOpen ? null : idx)}
+                                            aria-expanded={isOpen}
+                                            aria-controls={panelId}
+                                            aria-label={`${isOpen ? "Contraer" : "Expandir"} pregunta: ${faq.q}`}
+                                            className="w-full flex justify-between items-center p-6 text-left focus-visible:outline-none"
+                                        >
                                             <span className={`font-bold text-[16px] pr-4 transition-colors ${isOpen ? 'text-primary-500' : 'text-foreground'}`}>{faq.q}</span>
-                                            <div className="text-text-tertiary shrink-0">
+                                            <div className="text-text-tertiary shrink-0" aria-hidden="true">
                                                 {isOpen ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                                        : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
                                             </div>
                                         </button>
-                                        <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
+                                        <div
+                                            id={panelId}
+                                            role="region"
+                                            aria-labelledby={buttonId}
+                                            hidden={!isOpen}
+                                            className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96' : 'max-h-0'}`}
+                                        >
                                             <div className="px-6 pb-6 text-[15px] text-text-tertiary leading-relaxed pt-2 border-t border-border-light/50 mx-6">
                                                 {faq.a}
                                             </div>
