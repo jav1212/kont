@@ -221,6 +221,7 @@ export function MarketingFooter() {
                 <Link href="/herramientas/divisas" className="hover:text-foreground transition-colors">Divisas</Link>
                 <Link href="/herramientas/calendario-seniat" className="hover:text-foreground transition-colors">SENIAT</Link>
                 <Link href="/herramientas/status" className="hover:text-foreground transition-colors">Estatus</Link>
+                <Link href="/legal/terminos" className="hover:text-foreground transition-colors">Términos</Link>
                 <Link href="/sign-up" className="hover:text-foreground transition-colors">Registrarse</Link>
                 <Link href="/sign-in" className="hover:text-foreground transition-colors">Ingresar</Link>
             </div>

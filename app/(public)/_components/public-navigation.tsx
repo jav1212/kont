@@ -380,10 +380,16 @@ export function PublicFooter() {
     if (isAuthPage) return null;
 
     return (
-        <footer className="relative z-10 flex items-center justify-between px-8 py-4 border-t border-foreground/[0.07] mt-auto">
+        <footer className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3 px-8 py-4 border-t border-foreground/[0.07] mt-auto">
             <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-disabled)]">
                 © {new Date().getFullYear()} Kontave
             </span>
+            <Link
+                href="/legal/terminos"
+                className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--text-disabled)] hover:text-foreground transition-colors"
+            >
+                Términos y condiciones
+            </Link>
         </footer>
     );
 }
