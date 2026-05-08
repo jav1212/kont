@@ -152,11 +152,21 @@ export const APP_SIZES = {
         /** Top-level module items and action buttons (Sign out, Theme) */
         item: "text-[15px] uppercase tracking-[0.12em]",
 
-        /** Sub-navigation child items (routes within a module) */
-        subItem: "text-[14px] uppercase tracking-[0.10em]",
+        /**
+         * Sub-navigation child items (routes within a module).
+         * Sentence case (NOT uppercase) — these are page destinations, not
+         * chrome labels. Uppercase + tracking on 8–13 stacked rows produced a
+         * "wall of caps" that competed with the module's own name above. The
+         * 13 px floor matches the module-trigger card so destinations never
+         * outweigh their container.
+         */
+        subItem: "text-[13px] tracking-[0.01em]",
 
-        /** Section group headers ("Catálogos", "Operaciones", "Reportes") */
-        group: "text-[13px] uppercase tracking-[0.16em]",
+        /**
+         * Section group headers ("Catálogos", "Operaciones", "Reportes").
+         * Pure chrome — small, tight, clearly subordinate to items.
+         */
+        group: "text-[10px] uppercase tracking-[0.18em] font-semibold",
 
         /** Top-level section labels ("Módulos", "Empresa") */
         sectionLabel: "text-[12px] uppercase tracking-[0.18em]",

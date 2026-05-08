@@ -249,42 +249,29 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 )}
             </div>
 
-            {/* ── Top block: Módulo + Empresa (paired cards) ──────────── */}
+            {/* ── Top block: Módulo + Empresa (paired cards, no labels) ─
+                The avatars already telegraph role: orange-tinted icon = module,
+                dark tile + sync dot = empresa. Mini labels above each card were
+                visual grout (REQ-013-style noise). */}
             <div className={[
                 "border-t border-sidebar-border",
-                isCollapsed ? "px-2 pt-3 pb-2 flex flex-col items-center gap-3" : "px-4 pt-4 pb-2 flex flex-col gap-3",
+                isCollapsed ? "px-2 pt-3 pb-2 flex flex-col items-center gap-2" : "px-4 pt-4 pb-2 flex flex-col gap-2",
             ].join(" ")}>
-                {/* Módulo */}
-                <div className={isCollapsed ? "flex justify-center" : "flex flex-col gap-1.5"}>
-                    {!isCollapsed && (
-                        <p className={`px-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
-                            Módulo
-                        </p>
-                    )}
-                    <SidebarModuleSelector
-                        modules={selectableModules}
-                        activeModuleId={resolvedModuleId}
-                        isCollapsed={isCollapsed}
-                        onSelect={handleSelectModule}
-                        subtitle={moduleSubtitle}
-                    />
-                </div>
+                <SidebarModuleSelector
+                    modules={selectableModules}
+                    activeModuleId={resolvedModuleId}
+                    isCollapsed={isCollapsed}
+                    onSelect={handleSelectModule}
+                    subtitle={moduleSubtitle}
+                />
 
-                {/* Empresa */}
-                <div className={isCollapsed ? "flex justify-center" : "flex flex-col gap-1.5"}>
-                    {!isCollapsed && (
-                        <p className={`px-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
-                            Empresa
-                        </p>
-                    )}
-                    <SidebarCompanySelector
-                        companies={companies}
-                        selectedId={companyId}
-                        loading={companyLoading}
-                        isCollapsed={isCollapsed}
-                        onSelect={selectCompany}
-                    />
-                </div>
+                <SidebarCompanySelector
+                    companies={companies}
+                    selectedId={companyId}
+                    loading={companyLoading}
+                    isCollapsed={isCollapsed}
+                    onSelect={selectCompany}
+                />
             </div>
 
             {/* ── Sub-navigation (workspace) ────────────────────────── */}
@@ -295,10 +282,12 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                         style={{ scrollbarGutter: "stable" }}
                         aria-label="Secciones del módulo"
                     >
-                        {/* Combined "WORKSPACE · NÓMINA" header — 10px / 0.18em per rules */}
+                        {/* "SECCIÓN · NÓMINA" — the only chrome label in this region.
+                            Spanish-only (CONTENT FUNDAMENTALS); "Workspace" was the lone
+                            English word in the sidebar. */}
                         <div className="flex items-center gap-2 px-1 pb-2">
                             <span className={`font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
-                                Workspace
+                                Sección
                             </span>
                             <span aria-hidden="true" className="text-sidebar-label/60 text-[10px]">·</span>
                             <span className={`font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-fg-hover`}>
@@ -373,19 +362,29 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
 // SearchButton — square icon button paired with the wordmark in the brand row
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Search affordance — placeholder until the command palette ships.
+ * Currently disabled (no handler) and rendered with reduced prominence so the
+ * brand row still balances visually but the user is not invited to click a
+ * dead button. Replace the button with an active onClick once the palette is
+ * wired up; the visual treatment stays the same.
+ */
 function SearchButton() {
     return (
         <button
             type="button"
-            aria-label="Buscar (⌘K)"
-            title="Buscar"
-            className="flex items-center justify-center w-10 h-10 rounded-md bg-sidebar-bg-hover text-sidebar-fg hover:bg-sidebar-bg-hover hover:text-sidebar-fg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+            aria-disabled="true"
+            aria-label="Buscar (próximamente)"
+            title="Buscar — próximamente"
+            tabIndex={-1}
+            className="flex items-center gap-1.5 h-9 pl-2 pr-2 rounded-md text-sidebar-label/70 cursor-not-allowed select-none"
         >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
                 strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="7" cy="7" r="4.5" />
                 <path d="M10.3 10.3L13.5 13.5" />
             </svg>
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em]">⌘K</span>
         </button>
     );
 }
@@ -489,7 +488,6 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                     className="relative flex items-center justify-center w-9 h-9 rounded-md bg-sidebar-bg-hover/60 border border-transparent hover:border-sidebar-border hover:bg-sidebar-bg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
                 >
                     <Avatar avatarUrl={avatarUrl} initial={initial} size={28} />
-                    <StatusDot />
                 </button>
 
                 {open && (
@@ -524,23 +522,22 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                         : "bg-sidebar-bg-hover/60 border-sidebar-border hover:bg-sidebar-bg-hover hover:border-border-medium",
                 ].join(" ")}
             >
-                <span className="relative shrink-0">
-                    <Avatar avatarUrl={avatarUrl} initial={initial} size={40} />
-                    <StatusDot />
+                <span className="shrink-0">
+                    <Avatar avatarUrl={avatarUrl} initial={initial} size={32} />
                 </span>
 
                 <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-mono text-[15px] font-semibold text-sidebar-fg-hover truncate">
+                    <span className="font-mono text-[13px] font-medium text-sidebar-fg-hover truncate">
                         {displayName}
                     </span>
                     {email && email !== displayName && (
-                        <span className="font-mono text-[13px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
+                        <span className="font-mono text-[11px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
                             {email}
                         </span>
                     )}
                 </span>
 
-                <DoubleChevron />
+                <UpChevron />
             </button>
 
             {open && (
@@ -576,29 +573,20 @@ function Avatar({ avatarUrl, initial, size }: { avatarUrl?: string | null; initi
     );
 }
 
-function StatusDot() {
-    return (
-        <span
-            aria-hidden="true"
-            className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar-bg"
-        />
-    );
-}
-
 /**
- * Double chevron (up + down) — signals "this opens upward and contains more."
- * Referenced in the rules as "chevrons dobles que abren el menú de cuentas/logout."
+ * Up-chevron — signals "this menu opens upward". Replaces the previous
+ * double-chevron, which over-claimed the affordance: the menu only opens up,
+ * it doesn't go both directions.
  */
-function DoubleChevron() {
+function UpChevron() {
     return (
         <svg
             aria-hidden="true"
             className="shrink-0 text-sidebar-label"
             width="12" height="12" viewBox="0 0 12 12" fill="none"
-            stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
         >
-            <path d="M3 4.5L6 2l3 2.5" />
-            <path d="M3 7.5L6 10l3-2.5" />
+            <path d="M3 7L6 4l3 3" />
         </svg>
     );
 }

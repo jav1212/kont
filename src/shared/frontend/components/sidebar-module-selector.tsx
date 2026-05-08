@@ -158,7 +158,7 @@ export function SidebarModuleSelector({
     }
 
     const dropdownClass = isCollapsed
-        ? "absolute left-full top-0 ml-2 w-56 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
+        ? "absolute left-full top-0 ml-2 w-60 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
         : "absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden";
 
     // ── Collapsed: icon-only trigger ──────────────────────────────────────────
