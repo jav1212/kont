@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
@@ -899,6 +900,11 @@ export default function EmployeesPage() {
     const [confirmDeleteRow, setConfirmDeleteRow] = useState<string | null>(null);
     const [deletingRow, setDeletingRow]           = useState<string | null>(null);
 
+    // Cedula rename confirmation (replaces window.confirm — REQ-004)
+    const [cedulaRenameRequest, setCedulaRenameRequest] =
+        useState<{ oldCedula: string; newCedula: string; draft: RowState; advanceTo?: Employee } | null>(null);
+    const [renamingCedula, setRenamingCedula] = useState(false);
+
     // CSV
     const [csvLoading, setCsvLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -955,25 +961,11 @@ export default function EmployeesPage() {
         setDrafts((d) => { const n = { ...d }; delete n[cedula]; return n; });
     }, []);
 
-    const saveRow = useCallback(async (cedula: string): Promise<boolean> => {
-        const draft = drafts[cedula];
-        if (!draft) return false;
-
-        const newCedula = draft.cedula.trim();
-        if (!newCedula) { notify.error("La cédula no puede estar vacía."); return false; }
-
+    // Internal: actually persist the row. No validation of cedula change here —
+    // the caller is responsible for asking the user to confirm a cedula rename.
+    const performSave = useCallback(async (cedula: string, draft: RowState): Promise<boolean> => {
+        const newCedula     = draft.cedula.trim();
         const cedulaChanged = newCedula !== cedula;
-        if (cedulaChanged) {
-            if (employees.some((e) => e.cedula !== cedula && e.cedula === newCedula)) {
-                notify.error(`La cédula ${newCedula} ya pertenece a otro empleado.`);
-                return false;
-            }
-            const confirmed = window.confirm(
-                `Vas a cambiar la cédula de ${draft.nombre || "este empleado"} de "${cedula}" a "${newCedula}".\n\n` +
-                "Esto también actualizará la cédula en los recibos de nómina, cesta ticket y el historial salarial. ¿Confirmas?"
-            );
-            if (!confirmed) return false;
-        }
 
         const islrParsed = parseFloat((draft.porcentajeIslr ?? "0").replace(",", "."));
         const islr = Number.isFinite(islrParsed) && islrParsed >= 0 && islrParsed <= 100 ? islrParsed : 0;
@@ -998,7 +990,7 @@ export default function EmployeesPage() {
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
         return ok;
-    }, [drafts, employees, upsert, renameCedula, cancelEdit]);
+    }, [upsert, renameCedula, cancelEdit]);
 
     const saveRowAndAdvance = useCallback(async (cedula: string) => {
         // Snapshot the next visible employee BEFORE saving (the saved row may
@@ -1006,10 +998,40 @@ export default function EmployeesPage() {
         const idx     = filtered.findIndex((e) => e.cedula === cedula);
         const nextEmp = idx >= 0 ? filtered[idx + 1] : undefined;
 
-        const ok = await saveRow(cedula);
-        if (!ok) return;
-        if (nextEmp) startEdit(nextEmp);
-    }, [filtered, saveRow, startEdit]);
+        const draft = drafts[cedula];
+        if (!draft) return;
+
+        const newCedula = draft.cedula.trim();
+        if (!newCedula) { notify.error("La cédula no puede estar vacía."); return; }
+
+        const cedulaChanged = newCedula !== cedula;
+        if (cedulaChanged) {
+            if (employees.some((e) => e.cedula !== cedula && e.cedula === newCedula)) {
+                notify.error(`La cédula ${newCedula} ya pertenece a otro empleado.`);
+                return;
+            }
+            // REQ-004: defer to in-system confirmation drawer.
+            setCedulaRenameRequest({ oldCedula: cedula, newCedula, draft, advanceTo: nextEmp });
+            return;
+        }
+
+        const ok = await performSave(cedula, draft);
+        if (ok && nextEmp) startEdit(nextEmp);
+    }, [filtered, drafts, employees, performSave, startEdit]);
+
+    const confirmCedulaRename = useCallback(async () => {
+        if (!cedulaRenameRequest) return;
+        const { oldCedula, draft, advanceTo } = cedulaRenameRequest;
+        setRenamingCedula(true);
+        const ok = await performSave(oldCedula, draft);
+        setRenamingCedula(false);
+        setCedulaRenameRequest(null);
+        if (ok && advanceTo) startEdit(advanceTo);
+    }, [cedulaRenameRequest, performSave, startEdit]);
+
+    const cancelCedulaRename = useCallback(() => {
+        setCedulaRenameRequest(null);
+    }, []);
 
     // ── New row actions ─────────────────────────────────────────────────────
 
@@ -1516,6 +1538,64 @@ export default function EmployeesPage() {
                     )}
                 </div>
             </div>
+
+            {/* ── Cédula rename confirmation drawer (REQ-004) ────────────── */}
+            <ResponsiveDrawer
+                isOpen={cedulaRenameRequest !== null}
+                onClose={cancelCedulaRename}
+                title="Cambiar cédula"
+                subtitle={
+                    cedulaRenameRequest
+                        ? `${cedulaRenameRequest.draft.nombre || "este empleado"} · ${cedulaRenameRequest.oldCedula} → ${cedulaRenameRequest.newCedula}`
+                        : undefined
+                }
+                isDismissable={!renamingCedula}
+                desktopSize="md"
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <BaseButton.Root
+                            variant="secondary" size="sm"
+                            onClick={cancelCedulaRename}
+                            isDisabled={renamingCedula}
+                        >
+                            Cancelar
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="primary" size="sm"
+                            onClick={confirmCedulaRename}
+                            loading={renamingCedula}
+                            isDisabled={renamingCedula}
+                            leftIcon={!renamingCedula ? <Check size={14} strokeWidth={2.4} /> : undefined}
+                        >
+                            {renamingCedula ? "Guardando…" : "Sí, cambiar la cédula"}
+                        </BaseButton.Root>
+                    </div>
+                }
+            >
+                <div className="space-y-3 px-5 py-4">
+                    <p className="font-sans text-[14px] text-[var(--text-secondary)] leading-relaxed">
+                        Vas a cambiar la cédula de{" "}
+                        <span className="font-mono text-foreground">
+                            {cedulaRenameRequest?.draft.nombre || "este empleado"}
+                        </span>{" "}
+                        de{" "}
+                        <span className="font-mono text-foreground tabular-nums">
+                            {cedulaRenameRequest?.oldCedula}
+                        </span>{" "}
+                        a{" "}
+                        <span className="font-mono text-foreground tabular-nums">
+                            {cedulaRenameRequest?.newCedula}
+                        </span>
+                        .
+                    </p>
+                    <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/5 px-3 py-2.5">
+                        <AlertTriangle size={14} className="flex-shrink-0 mt-[3px] text-text-warning" />
+                        <p className="font-sans text-[12px] text-text-warning leading-relaxed">
+                            Esto también actualizará la cédula en los recibos de nómina, cesta ticket y el historial salarial. La operación no se puede deshacer.
+                        </p>
+                    </div>
+                </div>
+            </ResponsiveDrawer>
 
             {/* ── Salary history modal ──────────────────────────────────── */}
             <AnimatePresence>
