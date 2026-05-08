@@ -18,6 +18,7 @@ import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-dr
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
+import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     productsToCsv,
@@ -179,9 +180,31 @@ export default function ProductosPage() {
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
-    const [bulkDeleting, setBulkDeleting] = useState(false);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+
+    // ── Undoable delete (REQ-001) ────────────────────────────────────────
+    const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete<string>({
+        onCommit: async (ids) => {
+            setNotice(null);
+            let softCount = 0;
+            let okAll = true;
+            for (const id of ids) {
+                const r = await deleteProduct(id);
+                if (!r.ok) okAll = false;
+                if (r.ok && r.softDeleted) softCount++;
+            }
+            if (softCount > 0) {
+                setNotice(
+                    softCount === 1
+                        ? "1 producto con historial fue marcado como inactivo en lugar de eliminado."
+                        : `${softCount} productos con historial fueron marcados como inactivos en lugar de eliminados.`,
+                );
+            }
+            return okAll;
+        },
+        formatMessage: (n) =>
+            n === 1 ? "1 producto eliminado" : `${n} productos eliminados`,
+    });
 
     useEffect(() => {
         if (companyId) {
@@ -214,31 +237,17 @@ export default function ProductosPage() {
         if (saved) closeForm();
     }
 
-    async function handleDelete(id: string) {
-        setDeletingId(id);
-        setNotice(null);
-        const result = await deleteProduct(id);
-        setDeletingId(null);
+    function handleDelete(id: string) {
         setConfirmDelete(null);
-        if (result.ok && result.softDeleted) {
-            setNotice("El producto tiene historial (movimientos, facturas o producción) y no puede eliminarse. Se marcó como inactivo.");
-        }
+        setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
+        requestDelete([id]);
     }
 
-    async function handleBulkDelete() {
-        setBulkDeleting(true);
-        setNotice(null);
-        let softCount = 0;
-        for (const id of selected) {
-            const r = await deleteProduct(id);
-            if (r.ok && r.softDeleted) softCount++;
-        }
-        setBulkDeleting(false);
+    function handleBulkDelete() {
+        const ids = [...selected];
         setSelected(new Set());
         setConfirmBulkDelete(false);
-        if (softCount > 0) {
-            setNotice(`${softCount} producto(s) con historial fueron marcados como inactivos en lugar de eliminados.`);
-        }
+        requestDelete(ids);
     }
 
     const set = (k: keyof Product, v: string | number | boolean | null) =>
@@ -288,23 +297,30 @@ export default function ProductosPage() {
     }
 
     // ── derived ─────────────────────────────────────────────────────────────
+    // Visible products: exclude items in the undo window so the list reflects
+    // the soft-delete optimistically (REQ-001).
+    const visibleProducts = useMemo(
+        () => products.filter((p) => !p.id || !pendingDeleteIds.has(p.id)),
+        [products, pendingDeleteIds],
+    );
+
     const stats = useMemo(() => {
-        const active   = products.filter((p) => p.active).length;
-        const inactive = products.length - active;
-        const departmentsUsed = new Set(products.filter((p) => p.departmentId).map((p) => p.departmentId)).size;
-        return { total: products.length, active, inactive, departmentsUsed };
-    }, [products]);
+        const active   = visibleProducts.filter((p) => p.active).length;
+        const inactive = visibleProducts.length - active;
+        const departmentsUsed = new Set(visibleProducts.filter((p) => p.departmentId).map((p) => p.departmentId)).size;
+        return { total: visibleProducts.length, active, inactive, departmentsUsed };
+    }, [visibleProducts]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return products.filter((p) => {
+        return visibleProducts.filter((p) => {
             if (estadoFilter === "activo"   && !p.active) return false;
             if (estadoFilter === "inactivo" &&  p.active) return false;
             if (!q) return true;
             return [p.code, p.name, p.description ?? "", p.departmentName ?? ""]
                 .join(" ").toLowerCase().includes(q);
         });
-    }, [products, search, estadoFilter]);
+    }, [visibleProducts, search, estadoFilter]);
 
     const hasFilters = search.trim() !== "" || estadoFilter !== "todos";
     function clearFilters() {
@@ -450,10 +466,10 @@ export default function ProductosPage() {
                                 {confirmBulkDelete ? (
                                     <div className="flex items-center gap-2">
                                         <span className="font-sans text-[12px] text-[var(--text-secondary)]">¿Eliminar {selected.size} elemento(s)?</span>
-                                        <BaseButton.Root variant="danger" size="sm" onClick={handleBulkDelete} isDisabled={bulkDeleting} loading={bulkDeleting}>
-                                            {bulkDeleting ? "Eliminando…" : "Confirmar"}
+                                        <BaseButton.Root variant="danger" size="sm" onClick={handleBulkDelete}>
+                                            Confirmar
                                         </BaseButton.Root>
-                                        <BaseButton.Root variant="secondary" size="sm" onClick={() => setConfirmBulkDelete(false)} isDisabled={bulkDeleting}>
+                                        <BaseButton.Root variant="secondary" size="sm" onClick={() => setConfirmBulkDelete(false)}>
                                             Cancelar
                                         </BaseButton.Root>
                                     </div>
@@ -925,15 +941,13 @@ export default function ProductosPage() {
                                                             <span className="font-sans text-[12px] text-[var(--text-secondary)] hidden sm:inline">¿Eliminar?</span>
                                                             <button
                                                                 onClick={() => handleDelete(p.id!)}
-                                                                disabled={deletingId === p.id}
-                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-text-error hover:text-error transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-text-error hover:text-error transition-colors"
                                                             >
-                                                                {deletingId === p.id ? "Eliminando…" : "Confirmar"}
+                                                                Confirmar
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(null)}
-                                                                disabled={deletingId === p.id}
-                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-foreground transition-colors disabled:opacity-50"
+                                                                className="font-mono text-[11px] uppercase tracking-[0.10em] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
                                                             >
                                                                 Cancelar
                                                             </button>
@@ -950,8 +964,7 @@ export default function ProductosPage() {
                                                             </button>
                                                             <button
                                                                 onClick={() => setConfirmDelete(p.id!)}
-                                                                disabled={!!deletingId}
-                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/10 transition-colors disabled:opacity-50"
+                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/10 transition-colors"
                                                                 aria-label={`Eliminar ${p.name}`}
                                                                 title="Eliminar"
                                                             >

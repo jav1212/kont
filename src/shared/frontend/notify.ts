@@ -30,6 +30,11 @@ export interface NotifyOpts {
     description?: string;
     duration?:    number;
     id?:          string | number;
+    /** Optional action button rendered next to the toast (e.g. "Deshacer"). */
+    action?: {
+        label:   string;
+        onClick: () => void;
+    };
 }
 
 export const notify = {

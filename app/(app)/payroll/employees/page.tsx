@@ -6,6 +6,7 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
+import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
@@ -820,13 +821,11 @@ export default function EmployeesPage() {
     const [newRows, setNewRows]           = useState<{ id: string; draft: RowState }[]>([]);
     const [newSaving, setNewSaving]       = useState<Record<string, boolean>>({});
     // Selection
-    const [selected, setSelected]               = useState<Set<string>>(new Set());
-    const [bulkDeleting, setBulkDeleting]       = useState(false);
+    const [selected, setSelected]                   = useState<Set<string>>(new Set());
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
 
     // Per-row delete confirmation
     const [confirmDeleteRow, setConfirmDeleteRow] = useState<string | null>(null);
-    const [deletingRow, setDeletingRow]           = useState<string | null>(null);
 
     // Cedula rename confirmation (replaces window.confirm — REQ-004)
     const [cedulaRenameRequest, setCedulaRenameRequest] =
@@ -853,25 +852,40 @@ export default function EmployeesPage() {
     const [search, setSearch]             = useState("");
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
 
+    // ── Undoable delete (REQ-001) ────────────────────────────────────────────
+
+    const { pendingIds: pendingDeleteIds, requestDelete } = useUndoableDelete<string>({
+        onCommit: remove,
+        formatMessage: (n) =>
+            n === 1 ? "1 empleado eliminado" : `${n} empleados eliminados`,
+    });
+
     // ── Derived ─────────────────────────────────────────────────────────────
 
+    // Visible employees: exclude items in the undo window so the list reflects
+    // the soft-delete optimistically.
+    const visibleEmployees = useMemo(
+        () => employees.filter((e) => !pendingDeleteIds.has(e.cedula)),
+        [employees, pendingDeleteIds],
+    );
+
     const counts = useMemo(() => ({
-        total:    employees.length,
-        activo:   employees.filter((e) => e.estado === "activo").length,
-        vacacion: employees.filter((e) => e.estado === "vacacion").length,
-        inactivo: employees.filter((e) => e.estado === "inactivo").length,
-    }), [employees]);
+        total:    visibleEmployees.length,
+        activo:   visibleEmployees.filter((e) => e.estado === "activo").length,
+        vacacion: visibleEmployees.filter((e) => e.estado === "vacacion").length,
+        inactivo: visibleEmployees.filter((e) => e.estado === "inactivo").length,
+    }), [visibleEmployees]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return employees.filter((e) => {
+        return visibleEmployees.filter((e) => {
             if (estadoFilter !== "todos" && e.estado !== estadoFilter) return false;
             if (!q) return true;
             return e.nombre.toLowerCase().includes(q)
                 || e.cedula.toLowerCase().includes(q)
                 || e.cargo.toLowerCase().includes(q);
         });
-    }, [employees, search, estadoFilter]);
+    }, [visibleEmployees, search, estadoFilter]);
 
     const hasFilters = search.trim() !== "" || estadoFilter !== "todos";
     const allSelected = filtered.length > 0 && filtered.every((e) => selected.has(e.cedula));
@@ -1031,24 +1045,22 @@ export default function EmployeesPage() {
         setSelected(checked ? new Set(filtered.map((e) => e.cedula)) : new Set());
     }, [filtered]);
 
-    // ── Per-row delete ──────────────────────────────────────────────────────
+    // ── Per-row delete (with undo — REQ-001) ────────────────────────────────
 
-    const handleRowDelete = useCallback(async (cedula: string) => {
-        setDeletingRow(cedula);
-        const ok = await remove([cedula]);
-        setDeletingRow(null);
+    const handleRowDelete = useCallback((cedula: string) => {
         setConfirmDeleteRow(null);
-        if (ok) setSelected((s) => { const n = new Set(s); n.delete(cedula); return n; });
-    }, [remove]);
+        setSelected((s) => { const n = new Set(s); n.delete(cedula); return n; });
+        requestDelete([cedula]);
+    }, [requestDelete]);
 
-    // ── Bulk delete ─────────────────────────────────────────────────────────
+    // ── Bulk delete (with undo) ─────────────────────────────────────────────
 
-    const handleBulkDelete = useCallback(async () => {
-        setBulkDeleting(true);
-        const ok = await remove([...selected]);
-        setBulkDeleting(false);
-        if (ok) { setSelected(new Set()); setConfirmBulkDelete(false); }
-    }, [remove, selected]);
+    const handleBulkDelete = useCallback(() => {
+        const ids = [...selected];
+        setSelected(new Set());
+        setConfirmBulkDelete(false);
+        requestDelete(ids);
+    }, [requestDelete, selected]);
 
     // ── CSV ─────────────────────────────────────────────────────────────────
 
@@ -1280,14 +1292,12 @@ export default function EmployeesPage() {
                                                 <BaseButton.Root
                                                     variant="danger" size="sm"
                                                     onClick={handleBulkDelete}
-                                                    isDisabled={bulkDeleting} loading={bulkDeleting}
                                                 >
-                                                    {bulkDeleting ? "Eliminando…" : "Confirmar"}
+                                                    Confirmar
                                                 </BaseButton.Root>
                                                 <BaseButton.Root
                                                     variant="secondary" size="sm"
                                                     onClick={() => setConfirmBulkDelete(false)}
-                                                    isDisabled={bulkDeleting}
                                                 >
                                                     Cancelar
                                                 </BaseButton.Root>
@@ -1372,7 +1382,7 @@ export default function EmployeesPage() {
                                         saving={saving[emp.cedula] ?? false}
                                         selected={selected.has(emp.cedula)}
                                         confirmDelete={confirmDeleteRow === emp.cedula}
-                                        deleting={deletingRow === emp.cedula}
+                                        deleting={false}
                                         onSelect={(checked) => toggleSelect(emp.cedula, checked)}
                                         onDraftChange={(f, v) => setDrafts((d) => ({
                                             ...d,
@@ -1444,7 +1454,7 @@ export default function EmployeesPage() {
                                                 saving={saving[emp.cedula] ?? false}
                                                 selected={selected.has(emp.cedula)}
                                                 confirmDelete={confirmDeleteRow === emp.cedula}
-                                                deleting={deletingRow === emp.cedula}
+                                                deleting={false}
                                                 onSelect={(checked) => toggleSelect(emp.cedula, checked)}
                                                 onDraftChange={(f, v) => setDrafts((d) => ({
                                                     ...d,
