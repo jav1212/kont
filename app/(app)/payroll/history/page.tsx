@@ -15,6 +15,7 @@ import type { PayrollSummaryEmployeeRow } from "@/src/modules/payroll/frontend/u
 import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
 import { BonoGuerraHistoryView } from "@/src/modules/payroll/frontend/components/bono-guerra-history-view";
 import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
+import { IslrRetencionesModal } from "@/src/modules/payroll/frontend/components/islr-retenciones-modal";
 
 type HistoryTab = "payroll" | "cesta" | "bono";
 
@@ -301,6 +302,7 @@ export default function PayrollHistoryPage() {
     const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
     const [islrModalOpen, setIslrModalOpen] = useState(false);
+    const [islrPdfModalOpen, setIslrPdfModalOpen] = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -394,15 +396,26 @@ export default function PayrollHistoryPage() {
                             </>
                         )}
                         {runs.length > 0 && (
-                            <BaseButton.Root
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setIslrModalOpen(true)}
-                                leftIcon={<FileCode size={14} />}
-                                title="Generar XML mensual de Retenciones ISLR para el portal del SENIAT"
-                            >
-                                XML SENIAT (ISLR)
-                            </BaseButton.Root>
+                            <>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setIslrPdfModalOpen(true)}
+                                    leftIcon={<FileBarChart size={14} />}
+                                    title="Reporte PDF mensual de Retenciones de ISLR por empleado"
+                                >
+                                    Reporte ISLR (PDF)
+                                </BaseButton.Root>
+                                <BaseButton.Root
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setIslrModalOpen(true)}
+                                    leftIcon={<FileCode size={14} />}
+                                    title="Generar XML mensual de Retenciones ISLR para el portal del SENIAT"
+                                >
+                                    XML SENIAT (ISLR)
+                                </BaseButton.Root>
+                            </>
                         )}
                     </div>
                 )}
@@ -463,6 +476,16 @@ export default function PayrollHistoryPage() {
             <IslrXmlModal
                 open={islrModalOpen}
                 onClose={() => setIslrModalOpen(false)}
+                companyName={company?.name ?? "Empresa"}
+                companyRif={company?.rif ?? company?.id}
+                runs={runs}
+                employees={employees}
+                getReceipts={getReceipts}
+            />
+
+            <IslrRetencionesModal
+                open={islrPdfModalOpen}
+                onClose={() => setIslrPdfModalOpen(false)}
                 companyName={company?.name ?? "Empresa"}
                 companyRif={company?.rif ?? company?.id}
                 runs={runs}
