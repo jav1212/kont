@@ -7,6 +7,7 @@ import type { BcvRate } from "../hooks/use-bcv-rates";
 import { formatVes, parseUserNumber, roundToDecimals } from "../utils/format-number";
 import { CurrencyInlineSelect } from "./currency-inline-select";
 import { AnimatedNumber } from "./animated-number";
+import { CopyableAmount, CopyInputButton } from "./copyable-amount";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 interface Props {
@@ -67,7 +68,9 @@ export function CrossConverter({ rates, decimals }: Props) {
                                 value={amount}
                                 onValueChange={setAmount}
                                 placeholder="0,00"
+                                size="lg"
                                 className="flex-1 min-w-0"
+                                endContent={<CopyInputButton value={amount} ariaLabel="Copiar monto origen" />}
                             />
                         </div>
                     </div>
@@ -110,15 +113,23 @@ export function CrossConverter({ rates, decimals }: Props) {
                                 ariaLabel="Moneda destino"
                                 size="lg"
                             />
-                            <div
-                                className="flex-1 min-w-0 h-12 rounded-lg px-4 flex items-center overflow-hidden border border-primary-500 bg-primary-500"
-                                aria-live="polite"
+                            <CopyableAmount
+                                value={isFinite(result) ? formatVes(result, decimals) : ""}
+                                copyKey="cross-result"
+                                ariaLabel={`Copiar resultado: ${isFinite(result) ? formatVes(result, decimals) : "sin resultado"}`}
+                                block
+                                className="flex-1 min-w-0 h-12 rounded-lg overflow-hidden border border-primary-500 bg-primary-500"
                             >
-                                <AnimatedNumber
-                                    value={isFinite(result) ? formatVes(result, decimals) : "—"}
-                                    className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
-                                />
-                            </div>
+                                <span
+                                    className="w-full h-full px-4 flex items-center"
+                                    aria-live="polite"
+                                >
+                                    <AnimatedNumber
+                                        value={isFinite(result) ? formatVes(result, decimals) : "—"}
+                                        className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
+                                    />
+                                </span>
+                            </CopyableAmount>
                         </div>
                     </div>
                 </div>
@@ -129,9 +140,16 @@ export function CrossConverter({ rates, decimals }: Props) {
                             <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-foreground/50">
                                 Tasa cruzada
                             </span>
-                            <span className="text-[12px] font-mono font-bold tabular-nums text-foreground">
-                                1 {from} ≈ {formatVes(crossRate, decimals)} {to}
-                            </span>
+                            <CopyableAmount
+                                value={formatVes(crossRate, decimals)}
+                                copyKey={`cross-rate-${from}-${to}`}
+                                ariaLabel={`Copiar tasa cruzada: 1 ${from} igual a ${formatVes(crossRate, decimals)} ${to}`}
+                                compact
+                            >
+                                <span className="text-[12px] font-mono font-bold tabular-nums text-foreground">
+                                    1 {from} ≈ {formatVes(crossRate, decimals)} {to}
+                                </span>
+                            </CopyableAmount>
                             <span className="text-[10px] text-foreground/40">· vía BCV</span>
                         </div>
                     </div>

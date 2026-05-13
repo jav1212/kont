@@ -6,6 +6,7 @@ import type { BcvRate } from "../hooks/use-bcv-rates";
 import { currencyMeta } from "../utils/currency-codes";
 import { formatRate, formatPercentage } from "../utils/format-number";
 import { Flag } from "./flag";
+import { CopyableAmount } from "./copyable-amount";
 
 interface Props {
     rates: BcvRate[];
@@ -111,13 +112,29 @@ export function RatesTable({ rates, loading }: Props) {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 text-right text-[13px] font-mono tabular-nums text-foreground/55">
-                                        {formatRate(r.buy)}
+                                    <td className="px-4 py-3.5 text-right">
+                                        <CopyableAmount
+                                            value={formatRate(r.buy)}
+                                            copyKey={`row-${r.code}-buy`}
+                                            ariaLabel={`Copiar precio de compra ${r.code}: ${formatRate(r.buy)} bolívares`}
+                                            compact
+                                        >
+                                            <span className="text-[13px] font-mono tabular-nums text-foreground/55">
+                                                {formatRate(r.buy)}
+                                            </span>
+                                        </CopyableAmount>
                                     </td>
                                     <td className="px-4 py-3.5 text-right">
-                                        <span className="text-[15px] font-mono font-bold tabular-nums text-foreground">
-                                            {formatRate(r.sell)}
-                                        </span>
+                                        <CopyableAmount
+                                            value={formatRate(r.sell)}
+                                            copyKey={`row-${r.code}-sell`}
+                                            ariaLabel={`Copiar precio de venta ${r.code}: ${formatRate(r.sell)} bolívares`}
+                                            compact
+                                        >
+                                            <span className="text-[15px] font-mono font-bold tabular-nums text-foreground">
+                                                {formatRate(r.sell)}
+                                            </span>
+                                        </CopyableAmount>
                                     </td>
                                     <td className="px-5 py-3.5 text-right">
                                         <span

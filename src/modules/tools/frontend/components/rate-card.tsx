@@ -6,6 +6,7 @@ import { currencyMeta } from "../utils/currency-codes";
 import { formatRate, formatPercentage } from "../utils/format-number";
 import { RateSparkline } from "./rate-sparkline";
 import { Flag } from "./flag";
+import { CopyableAmount } from "./copyable-amount";
 
 interface Props {
     rate: BcvRate;
@@ -51,9 +52,15 @@ function RateCardComponent({ rate, highlight }: Props) {
                         <span className="text-[11px] font-mono uppercase tracking-[0.14em] text-foreground/50">
                             Bs.
                         </span>
-                        <span className="text-[34px] sm:text-[40px] leading-none font-mono font-bold tabular-nums text-foreground tracking-tight">
-                            {formatRate(rate.sell)}
-                        </span>
+                        <CopyableAmount
+                            value={formatRate(rate.sell)}
+                            copyKey={`card-${rate.code}-hero`}
+                            ariaLabel={`Copiar tasa ${rate.code}: ${formatRate(rate.sell)} bolívares`}
+                        >
+                            <span className="text-[34px] sm:text-[40px] leading-none font-mono font-bold tabular-nums text-foreground tracking-tight">
+                                {formatRate(rate.sell)}
+                            </span>
+                        </CopyableAmount>
                     </div>
                     <div className="mt-3 flex items-center justify-between gap-3">
                         <div className="text-[10px] text-foreground/50 font-mono uppercase tracking-[0.14em]">
@@ -93,9 +100,15 @@ function RateCardComponent({ rate, highlight }: Props) {
                 </span>
             </div>
             <div>
-                <div className="text-[24px] font-mono font-bold tabular-nums text-foreground leading-tight tracking-tight">
-                    Bs. {formatRate(rate.sell)}
-                </div>
+                <CopyableAmount
+                    value={formatRate(rate.sell)}
+                    copyKey={`card-${rate.code}`}
+                    ariaLabel={`Copiar tasa ${rate.code}: ${formatRate(rate.sell)} bolívares`}
+                >
+                    <span className="text-[24px] font-mono font-bold tabular-nums text-foreground leading-tight tracking-tight">
+                        Bs. {formatRate(rate.sell)}
+                    </span>
+                </CopyableAmount>
                 <div className="text-[11px] text-foreground/50 mt-0.5">
                     1 {rate.code} · {meta.label}
                 </div>

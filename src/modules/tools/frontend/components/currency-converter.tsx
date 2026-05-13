@@ -9,6 +9,7 @@ import type { BcvRate } from "../hooks/use-bcv-rates";
 import { CurrencyInlineSelect } from "./currency-inline-select";
 import { AnimatedNumber } from "./animated-number";
 import { Flag } from "./flag";
+import { CopyableAmount, CopyInputButton } from "./copyable-amount";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 
 interface Props {
@@ -133,7 +134,9 @@ export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
                                 value={amount}
                                 onValueChange={setAmount}
                                 placeholder="0,00"
+                                size="lg"
                                 className="flex-1 min-w-0"
+                                endContent={<CopyInputButton value={amount} ariaLabel="Copiar monto origen" />}
                             />
                         </div>
                     </div>
@@ -182,15 +185,23 @@ export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
                                     size="lg"
                                 />
                             )}
-                            <div
-                                className="flex-1 min-w-0 h-12 rounded-lg px-4 flex items-center overflow-hidden border border-primary-500 bg-primary-500"
-                                aria-live="polite"
+                            <CopyableAmount
+                                value={isFinite(converted) ? formatVes(converted, decimals) : ""}
+                                copyKey="conv-result"
+                                ariaLabel={`Copiar resultado: ${isFinite(converted) ? formatVes(converted, decimals) : "sin resultado"}`}
+                                block
+                                className="flex-1 min-w-0 h-12 rounded-lg overflow-hidden border border-primary-500 bg-primary-500"
                             >
-                                <AnimatedNumber
-                                    value={isFinite(converted) ? formatVes(converted, decimals) : "—"}
-                                    className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
-                                />
-                            </div>
+                                <span
+                                    className="w-full h-full px-4 flex items-center"
+                                    aria-live="polite"
+                                >
+                                    <AnimatedNumber
+                                        value={isFinite(converted) ? formatVes(converted, decimals) : "—"}
+                                        className="text-[22px] sm:text-[26px] leading-none font-mono font-bold tabular-nums text-white truncate"
+                                    />
+                                </span>
+                            </CopyableAmount>
                         </div>
                     </div>
                 </div>
@@ -211,6 +222,7 @@ export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
                                 countryCode="VE"
                                 code="VES"
                                 value={formatVes(amountInVes, decimals)}
+                                copyKey="eq-VES"
                                 highlight={direction === "to-ves"}
                             />
                             {orderedRates.map((r) => {
@@ -223,6 +235,7 @@ export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
                                         countryCode={m.countryCode}
                                         code={r.code}
                                         value={isFinite(eq) ? formatVes(eq, decimals) : "—"}
+                                        copyKey={`eq-${r.code}`}
                                         highlight={r.code === code}
                                     />
                                 );
@@ -235,11 +248,16 @@ export function CurrencyConverter({ rates, rateDate, decimals }: Props) {
     );
 }
 
-function EquivalenceCell({ countryCode, code, value, highlight }: { countryCode: string; code: string; value: string; highlight: boolean }) {
+function EquivalenceCell({ countryCode, code, value, copyKey, highlight }: { countryCode: string; code: string; value: string; copyKey: string; highlight: boolean }) {
     return (
-        <div
+        <CopyableAmount
+            value={value}
+            copyKey={copyKey}
+            ariaLabel={`Copiar equivalente en ${code}: ${value}`}
+            compact
+            block
             className={[
-                "rounded-lg px-3.5 py-3 flex flex-col gap-1 min-w-0",
+                "rounded-lg min-w-0",
                 "transition-[transform,background-color,border-color] duration-200 ease-out",
                 "motion-safe:hover:-translate-y-0.5",
                 highlight
@@ -247,23 +265,25 @@ function EquivalenceCell({ countryCode, code, value, highlight }: { countryCode:
                     : "bg-surface-2 border border-transparent hover:border-border-medium",
             ].join(" ")}
         >
-            <span
-                className={[
-                    "text-[10px] font-bold uppercase tracking-[0.12em] flex items-center gap-1.5 min-w-0",
-                    highlight ? "text-white/85" : "text-foreground/55",
-                ].join(" ")}
-            >
-                <Flag code={countryCode} size={11} />
-                <span className="truncate">{code}</span>
+            <span className="px-3.5 py-3 flex flex-col gap-1 min-w-0">
+                <span
+                    className={[
+                        "text-[10px] font-bold uppercase tracking-[0.12em] flex items-center gap-1.5 min-w-0",
+                        highlight ? "text-white/85" : "text-foreground/55",
+                    ].join(" ")}
+                >
+                    <Flag code={countryCode} size={11} />
+                    <span className="truncate">{code}</span>
+                </span>
+                <span
+                    className={[
+                        "text-[14px] font-mono font-bold tabular-nums truncate [font-variant-numeric:tabular-nums]",
+                        highlight ? "text-white" : "text-foreground",
+                    ].join(" ")}
+                >
+                    {value}
+                </span>
             </span>
-            <span
-                className={[
-                    "text-[14px] font-mono font-bold tabular-nums truncate [font-variant-numeric:tabular-nums]",
-                    highlight ? "text-white" : "text-foreground",
-                ].join(" ")}
-            >
-                {value}
-            </span>
-        </div>
+        </CopyableAmount>
     );
 }

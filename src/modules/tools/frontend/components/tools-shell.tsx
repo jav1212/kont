@@ -14,6 +14,7 @@ import { Flag } from "./flag";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseAccordion, accordionItemProps } from "@/src/shared/frontend/components/base-accordion";
+import { CopyableAmount } from "./copyable-amount";
 import { formatRate, formatPercentage, formatIsoDateEs } from "../utils/format-number";
 
 interface Props {
@@ -225,9 +226,21 @@ function PublicHero({ usd, date, selectedDate, onDateChange, onRefresh, loading,
                         <span className="text-[12px] font-mono uppercase tracking-[0.14em] text-foreground/50">
                             Bs.
                         </span>
-                        <span className="text-[32px] sm:text-[40px] leading-none font-mono font-bold tabular-nums text-foreground tracking-tight">
-                            {usd ? formatRate(usd.sell) : "—"}
-                        </span>
+                        {usd ? (
+                            <CopyableAmount
+                                value={formatRate(usd.sell)}
+                                copyKey="hero-usd"
+                                ariaLabel={`Copiar tasa USD: ${formatRate(usd.sell)} bolívares`}
+                            >
+                                <span className="text-[32px] sm:text-[40px] leading-none font-mono font-bold tabular-nums text-foreground tracking-tight">
+                                    {formatRate(usd.sell)}
+                                </span>
+                            </CopyableAmount>
+                        ) : (
+                            <span className="text-[32px] sm:text-[40px] leading-none font-mono font-bold tabular-nums text-foreground tracking-tight">
+                                —
+                            </span>
+                        )}
                     </div>
                     <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-foreground/50">
                         {date ? `Tasa del ${formatIsoDateEs(date)}` : "Cargando…"}
@@ -340,9 +353,20 @@ function QuickRate({ code, countryCode, rate }: { code: string; countryCode: str
                     {code}
                 </span>
                 <div className="flex items-baseline gap-1.5">
-                    <span className="text-[15px] font-mono font-bold tabular-nums text-foreground leading-none">
-                        {rate ? `Bs. ${formatRate(rate.sell)}` : "—"}
-                    </span>
+                    {rate ? (
+                        <CopyableAmount
+                            value={formatRate(rate.sell)}
+                            copyKey={`quick-${code}`}
+                            ariaLabel={`Copiar tasa ${code}: ${formatRate(rate.sell)} bolívares`}
+                            compact
+                        >
+                            <span className="text-[15px] font-mono font-bold tabular-nums text-foreground leading-none">
+                                Bs. {formatRate(rate.sell)}
+                            </span>
+                        </CopyableAmount>
+                    ) : (
+                        <span className="text-[15px] font-mono font-bold tabular-nums text-foreground leading-none">—</span>
+                    )}
                     {pct != null && (
                         <span
                             className={[
