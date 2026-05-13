@@ -322,10 +322,11 @@ export type Database = {
           categories: string[]
           created_at: string
           days_before: number
-          email: string
+          email: string | null
           enabled: boolean
           id: string
           last_sent_at: string | null
+          phone: string | null
           rif: string
           taxpayer_type: string
           user_id: string
@@ -334,10 +335,11 @@ export type Database = {
           categories?: string[]
           created_at?: string
           days_before?: number
-          email: string
+          email?: string | null
           enabled?: boolean
           id?: string
           last_sent_at?: string | null
+          phone?: string | null
           rif: string
           taxpayer_type: string
           user_id: string
@@ -346,10 +348,11 @@ export type Database = {
           categories?: string[]
           created_at?: string
           days_before?: number
-          email?: string
+          email?: string | null
           enabled?: boolean
           id?: string
           last_sent_at?: string | null
+          phone?: string | null
           rif?: string
           taxpayer_type?: string
           user_id?: string

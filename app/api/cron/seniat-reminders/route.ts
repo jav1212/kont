@@ -3,12 +3,19 @@
 // Disparado diariamente a las 12:00 UTC (08:00 America/Caracas) por Vercel.
 //
 // Variables de entorno requeridas en Vercel:
-//   CRON_SECRET            — secreto compartido que protege este endpoint.
-//                            Vercel lo envía automáticamente como header
-//                            "Authorization: Bearer $CRON_SECRET" en cada ejecución.
-//   SUPABASE_SERVICE_ROLE_KEY — key de service_role para bypass de RLS.
-//   RESEND_API_KEY           — API key de Resend para envío de emails.
-//   RESEND_FROM_EMAIL        — dirección remitente (ej: konta <no-reply@kontave.com>).
+//   CRON_SECRET                — secreto compartido que protege este endpoint.
+//                                Vercel lo envía automáticamente como header
+//                                "Authorization: Bearer $CRON_SECRET" en cada ejecución.
+//   SUPABASE_SERVICE_ROLE_KEY  — key de service_role para bypass de RLS.
+//   RESEND_API_KEY             — API key de Resend para envío de emails.
+//   RESEND_FROM_EMAIL          — dirección remitente (ej: konta <no-reply@kontave.com>).
+//   WHATSAPP_API_KEY           — access token de Meta WhatsApp Cloud API.
+//   WHATSAPP_PHONE_NUMBER_ID   — id del número remitente (Meta Business Manager).
+//
+// Multi-canal: cada suscripción puede tener email, phone, o ambos. El cron
+// envía por todos los canales presentes; si uno falla pero otro tuvo éxito,
+// la suscripción se marca como enviada (no se reintenta hoy) y el error parcial
+// queda en el array `errors` del summary.
 //
 // Para probar manualmente desde local o staging:
 //   curl -X GET http://localhost:3000/api/cron/seniat-reminders \

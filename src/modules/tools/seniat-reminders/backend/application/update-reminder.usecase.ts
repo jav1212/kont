@@ -15,7 +15,10 @@ interface UpdateReminderInput {
     enabled?:    boolean;
     categories?: ObligationCategory[];
     daysBefore?: number;
-    email?:      string;
+    /** Pasar string para asignar correo, null para borrarlo. */
+    email?:      string | null;
+    /** Pasar string E.164 para asignar WhatsApp, null para borrarlo. */
+    phone?:      string | null;
 }
 
 export class UpdateReminderUseCase extends UseCase<UpdateReminderInput, ReminderSubscription> {
@@ -38,8 +41,15 @@ export class UpdateReminderUseCase extends UseCase<UpdateReminderInput, Reminder
             return Result.fail("Los días de anticipación deben estar entre 1 y 7.");
         }
 
-        if (patch.email !== undefined && (!patch.email || !patch.email.includes("@"))) {
+        if (patch.email !== undefined && patch.email !== null && !patch.email.includes("@")) {
             return Result.fail("El email no es válido.");
+        }
+
+        // Garantizar que el patch no deje a la sub sin canales.
+        const nextEmail = patch.email !== undefined ? patch.email : sub.email;
+        const nextPhone = patch.phone !== undefined ? patch.phone : sub.phone;
+        if (!nextEmail && !nextPhone) {
+            return Result.fail("La suscripción debe mantener al menos un correo o un número de WhatsApp.");
         }
 
         const updated = await this.repo.update(id, patch);

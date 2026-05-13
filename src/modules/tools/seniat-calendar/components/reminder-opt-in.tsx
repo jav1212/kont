@@ -19,6 +19,13 @@ interface ReminderOptInProps {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+[1-9]\d{7,14}$/;
+
+function normalizePhone(raw: string): string {
+    const cleaned = raw.replace(/[\s\-()]/g, "");
+    if (!cleaned) return "";
+    return cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
+}
 
 export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: ReminderOptInProps) {
     const [open, setOpen]                 = useState(false);
@@ -27,6 +34,8 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
     const { isAuthenticated, user }       = useAuth();
     const [recipientEmail, setRecipientEmail] = useState("");
     const [emailTouched, setEmailTouched] = useState(false);
+    const [recipientPhone, setRecipientPhone] = useState("");
+    const [phoneTouched, setPhoneTouched] = useState(false);
 
     // Sync the recipient email each time the modal opens or the underlying
     // company / user changes — prefer the client's contact email, fall back
@@ -36,14 +45,31 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
         const next = companyContactEmail?.trim() || user?.email || "";
         setRecipientEmail(next);
         setEmailTouched(false);
+        setRecipientPhone("");
+        setPhoneTouched(false);
     }, [open, companyContactEmail, user?.email]);
 
-    const emailValid = EMAIL_RE.test(recipientEmail.trim());
-    const showEmailError = emailTouched && !emailValid;
+    const trimmedEmail = recipientEmail.trim();
+    const trimmedPhone = recipientPhone.trim();
+    const emailFilled = trimmedEmail.length > 0;
+    const phoneFilled = trimmedPhone.length > 0;
+    const emailValid  = emailFilled && EMAIL_RE.test(trimmedEmail);
+    const phoneValid  = phoneFilled && PHONE_RE.test(normalizePhone(trimmedPhone));
+    const showEmailError = emailTouched && emailFilled && !emailValid;
+    const showPhoneError = phoneTouched && phoneFilled && !phoneValid;
+
+    // Al menos un canal válido y ningún canal inválido (si lo llenó).
+    const hasValidChannel = (emailFilled ? emailValid : false) || (phoneFilled ? phoneValid : false);
+    const noInvalidFilledChannel = (!emailFilled || emailValid) && (!phoneFilled || phoneValid);
+    const canSubmit = hasValidChannel && noInvalidFilledChannel;
 
     async function handleSubmit() {
         if (!isAuthenticated) return;
-        if (!emailValid) { setEmailTouched(true); return; }
+        if (!canSubmit) {
+            setEmailTouched(true);
+            setPhoneTouched(true);
+            return;
+        }
         setLoading(true);
         try {
             const res = await fetch("/api/seniat-reminders/subscribe", {
@@ -52,7 +78,8 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                 body: JSON.stringify({
                     rif,
                     taxpayerType,
-                    email:      recipientEmail.trim(),
+                    email:      emailFilled ? trimmedEmail : undefined,
+                    phone:      phoneFilled ? normalizePhone(trimmedPhone) : undefined,
                     categories: [],   // subscribe to all categories
                     daysBefore: 3,
                 }),
@@ -65,7 +92,7 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                 return;
             }
 
-            toast.success("Recordatorios activados. Le avisaremos al cliente 3 días antes de cada vencimiento.");
+            toast.success("Recordatorios activados. Le avisaremos al cliente 3 días antes por los canales configurados.");
             setOpen(false);
         } catch {
             toast.error("Error de red. Intenta de nuevo.");
@@ -120,7 +147,7 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                         {!isAuthenticated ? (
                             <>
                                 <p className="text-[13px] font-mono text-text-secondary leading-relaxed mt-2">
-                                    Recibe alertas por email 3 días antes de cada vencimiento fiscal.
+                                    Recibe alertas por WhatsApp y/o email 3 días antes de cada vencimiento fiscal.
                                     Crea tu cuenta gratuita y activa recordatorios para el RIF{" "}
                                     <span className="font-bold text-text-primary">{rif}</span>.
                                 </p>
@@ -150,7 +177,7 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                         ) : (
                             <>
                                 <p className="text-[13px] font-mono text-text-secondary leading-relaxed mt-2">
-                                    Activa recordatorios por email para el RIF{" "}
+                                    Activa recordatorios por WhatsApp y/o email para el RIF{" "}
                                     <span className="font-bold text-text-primary">{rif}</span>
                                     {" "}({taxpayerType === "especial" ? "Sujeto Pasivo Especial" : "Contribuyente Ordinario"}).
                                     Le avisaremos al cliente 3 días antes de cada vencimiento.
@@ -158,7 +185,7 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
 
                                 <div className="mt-5 flex flex-col gap-1.5">
                                     <label htmlFor="reminder-recipient-email" className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-tertiary">
-                                        Correo del cliente
+                                        Correo del cliente <span className="text-text-tertiary normal-case tracking-normal">(opcional)</span>
                                     </label>
                                     <BaseInput.Field
                                         id="reminder-recipient-email"
@@ -169,10 +196,24 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                                         placeholder="cliente@empresa.com"
                                         error={showEmailError ? "Correo inválido." : undefined}
                                     />
+                                </div>
+
+                                <div className="mt-3 flex flex-col gap-1.5">
+                                    <label htmlFor="reminder-recipient-phone" className="text-[11px] font-mono uppercase tracking-[0.12em] text-text-tertiary">
+                                        WhatsApp del cliente <span className="text-text-tertiary normal-case tracking-normal">(opcional)</span>
+                                    </label>
+                                    <BaseInput.Field
+                                        id="reminder-recipient-phone"
+                                        type="tel"
+                                        value={recipientPhone}
+                                        onValueChange={(v) => { setRecipientPhone(v); if (!phoneTouched) setPhoneTouched(true); }}
+                                        onBlur={() => setPhoneTouched(true)}
+                                        placeholder="+584141234567"
+                                        error={showPhoneError ? "Formato inválido. Usa +58 + código de área + número." : undefined}
+                                    />
                                     <p className="text-[11px] font-mono text-text-tertiary leading-relaxed">
-                                        Le enviaremos el recordatorio a este correo, firmado por ti
+                                        Llena al menos un canal. Si llenas ambos, mandamos por los dos. El correo va firmado por ti
                                         {user?.email ? <> (<span className="text-text-secondary">{user.email}</span>)</> : null}.
-                                        Si responde, te llegará a ti.
                                     </p>
                                 </div>
 
@@ -182,7 +223,7 @@ export function ReminderOptIn({ rif, taxpayerType, companyContactEmail }: Remind
                                         fullWidth
                                         onClick={() => void handleSubmit()}
                                         loading={loading}
-                                        disabled={loading || !emailValid}
+                                        disabled={loading || !canSubmit}
                                     >
                                         Activar recordatorios
                                     </BaseButton.Root>

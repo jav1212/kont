@@ -16,6 +16,7 @@ import { UnsubscribeReminderUseCase }        from "../application/unsubscribe-re
 import { ListRemindersUseCase }              from "../application/list-reminders.usecase";
 import { UpdateReminderUseCase }             from "../application/update-reminder.usecase";
 import { SendPendingRemindersUseCase }       from "../application/send-pending-reminders.usecase";
+import { SendTestReminderUseCase }           from "../application/send-test-reminder.usecase";
 
 /**
  * Para rutas de usuario autenticado.
@@ -31,6 +32,7 @@ export function getReminderActions() {
         unsubscribe: new UnsubscribeReminderUseCase(repo),
         list:        new ListRemindersUseCase(repo),
         update:      new UpdateReminderUseCase(repo),
+        sendTest:    new SendTestReminderUseCase(repo),
     };
 }
 

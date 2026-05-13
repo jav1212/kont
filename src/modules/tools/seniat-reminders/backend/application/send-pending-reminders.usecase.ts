@@ -14,7 +14,8 @@ import { extractLastDigit } from "@/src/modules/tools/seniat-calendar/utils/rif"
 import type { ObligationCategory, TaxpayerType } from "@/src/modules/tools/seniat-calendar/data/types";
 import type { ReminderSubscriptionRepository } from "../domain/reminder-subscription";
 import type { SendPendingRemindersResult }      from "../domain/reminder-events";
-import { sendSeniatReminderEmail } from "@/src/shared/backend/utils/send-seniat-reminder-email";
+import { sendSeniatReminderEmail }    from "@/src/shared/backend/utils/send-seniat-reminder-email";
+import { sendSeniatReminderWhatsApp } from "@/src/shared/backend/utils/send-seniat-reminder-whatsapp";
 
 // ── Timezone helpers (America/Caracas = UTC-4, no DST) ────────────────────────
 
@@ -123,18 +124,66 @@ export class SendPendingRemindersUseCase extends UseCase<SendPendingRemindersInp
                 const senderName  = meta?.name?.trim() || meta?.email?.split("@")[0] || undefined;
                 const senderEmail = meta?.email;
 
-                await sendSeniatReminderEmail({
-                    to:           sub.email,
-                    rif:          sub.rif,
-                    taxpayerType: sub.taxpayerType as "ordinario" | "especial",
-                    daysBefore:   sub.daysBefore,
-                    obligations:  matching,
-                    senderName,
-                    senderEmail,
-                });
+                // Multi-canal: enviar por WhatsApp si hay teléfono y por email si
+                // hay correo. Errores aislados por canal — si uno falla pero el
+                // otro tiene éxito, marcamos como enviado igual (el cliente ya
+                // recibió el aviso) y registramos el error parcial.
+                const channelErrors: string[] = [];
+                let totalChannels = 0;
+
+                if (sub.phone) {
+                    totalChannels++;
+                    try {
+                        await sendSeniatReminderWhatsApp({
+                            to:           sub.phone,
+                            rif:          sub.rif,
+                            taxpayerType: sub.taxpayerType as "ordinario" | "especial",
+                            daysBefore:   sub.daysBefore,
+                            obligations:  matching,
+                            senderName,
+                        });
+                    } catch (err) {
+                        channelErrors.push(`whatsapp: ${(err as Error).message ?? String(err)}`);
+                    }
+                }
+
+                if (sub.email) {
+                    totalChannels++;
+                    try {
+                        await sendSeniatReminderEmail({
+                            to:           sub.email,
+                            rif:          sub.rif,
+                            taxpayerType: sub.taxpayerType as "ordinario" | "especial",
+                            daysBefore:   sub.daysBefore,
+                            obligations:  matching,
+                            senderName,
+                            senderEmail,
+                        });
+                    } catch (err) {
+                        channelErrors.push(`email: ${(err as Error).message ?? String(err)}`);
+                    }
+                }
+
+                // Defensa: una sub sin canales no debería llegar acá (CHECK en DB),
+                // pero si llega, salta sin tocar last_sent_at.
+                if (totalChannels === 0) {
+                    skipped++;
+                    continue;
+                }
+
+                if (channelErrors.length === totalChannels) {
+                    // Todos los canales fallaron — no actualizamos last_sent_at
+                    // para reintentar mañana.
+                    errors.push({ id: sub.id, error: channelErrors.join(" | ") });
+                    continue;
+                }
 
                 await this.repo.updateLastSent(sub.id, now);
                 sent++;
+                if (channelErrors.length > 0) {
+                    // Éxito parcial: registramos el canal que falló pero igual contamos como sent.
+                    errors.push({ id: sub.id, error: `partial: ${channelErrors.join(" | ")}` });
+                }
             } catch (err) {
                 // Log the error but continue with remaining subscriptions
                 errors.push({ id: sub.id, error: (err as Error).message ?? String(err) });

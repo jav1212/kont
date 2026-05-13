@@ -9,7 +9,10 @@ import type { ObligationCategory, TaxpayerType } from "@/src/modules/tools/senia
 export interface ReminderSubscription {
     id:           string;
     userId:       string;
-    email:        string;
+    /** Correo del cliente. Puede ser null si la suscripción usa solo WhatsApp. */
+    email:        string | null;
+    /** WhatsApp del cliente en E.164 (ej. +584141234567). Null si solo email. */
+    phone:        string | null;
     rif:          string;
     taxpayerType: TaxpayerType;
     categories:   ObligationCategory[];
@@ -32,8 +35,8 @@ export interface ReminderSubscriptionRepository {
     /** Busca por id (cualquier usuario — el caller debe verificar ownership) */
     findById(id: string): Promise<ReminderSubscription | null>;
 
-    /** Actualiza campos parciales de una suscripción (enabled, categories, daysBefore) */
-    update(id: string, patch: Partial<Pick<ReminderSubscription, "enabled" | "categories" | "daysBefore" | "email">>): Promise<ReminderSubscription>;
+    /** Actualiza campos parciales de una suscripción (enabled, categories, daysBefore, email, phone) */
+    update(id: string, patch: Partial<Pick<ReminderSubscription, "enabled" | "categories" | "daysBefore" | "email" | "phone">>): Promise<ReminderSubscription>;
 
     /** Elimina una suscripción por id */
     delete(id: string): Promise<void>;

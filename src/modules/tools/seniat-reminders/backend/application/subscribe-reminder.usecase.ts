@@ -11,7 +11,10 @@ import { validateRif } from "@/src/modules/tools/seniat-calendar/utils/rif";
 
 interface SubscribeReminderInput {
     userId:       string;
-    email:        string;
+    /** Correo del cliente. Null/omitido si la suscripción es solo WhatsApp. */
+    email:        string | null;
+    /** WhatsApp del cliente en E.164. Null/omitido si la suscripción es solo email. */
+    phone:        string | null;
     rif:          string;
     taxpayerType: TaxpayerType;
     categories:   ObligationCategory[];
@@ -24,7 +27,7 @@ export class SubscribeReminderUseCase extends UseCase<SubscribeReminderInput, Re
     }
 
     async execute(input: SubscribeReminderInput): Promise<Result<ReminderSubscription>> {
-        const { userId, email, rif, taxpayerType, categories, daysBefore = 3 } = input;
+        const { userId, email, phone, rif, taxpayerType, categories, daysBefore = 3 } = input;
 
         // Validate RIF format
         if (!validateRif(rif)) {
@@ -36,8 +39,12 @@ export class SubscribeReminderUseCase extends UseCase<SubscribeReminderInput, Re
             return Result.fail("Los días de anticipación deben estar entre 1 y 7.");
         }
 
-        // Validate email
-        if (!email || !email.includes("@")) {
+        // Al menos un canal debe estar presente.
+        if (!email && !phone) {
+            return Result.fail("Debes indicar al menos un correo o un número de WhatsApp.");
+        }
+
+        if (email && !email.includes("@")) {
             return Result.fail("El email no es válido.");
         }
 
@@ -45,6 +52,7 @@ export class SubscribeReminderUseCase extends UseCase<SubscribeReminderInput, Re
             const sub = await this.repo.create({
                 userId,
                 email,
+                phone,
                 rif,
                 taxpayerType,
                 categories,

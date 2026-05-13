@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bell, BellOff, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Bell, BellOff, Trash2, Loader2, RefreshCw, Mail, MessageCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, ModalContent, ModalBody } from "@heroui/react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -55,6 +55,49 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
                 prev.map((s) => s.id === sub.id ? { ...s, enabled: !s.enabled } : s)
             );
             toast.success(sub.enabled ? "Recordatorio pausado." : "Recordatorio activado.");
+        } catch {
+            toast.error("Error de red.");
+        } finally {
+            setActing(null);
+        }
+    }
+
+    async function handleTestSend(id: string) {
+        setActing(id);
+        try {
+            const res  = await fetch("/api/seniat-reminders/test", {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ id }),
+            });
+            const json = await res.json() as {
+                data?: {
+                    channels: Array<
+                        | { channel: "email";    ok: true }
+                        | { channel: "email";    ok: false; error: string }
+                        | { channel: "whatsapp"; ok: true }
+                        | { channel: "whatsapp"; ok: false; error: string }
+                    >;
+                    obligationsCount: number;
+                };
+                error?: string;
+            };
+            if (!res.ok || !json.data) {
+                toast.error(json.error ?? "Error al enviar la prueba.");
+                return;
+            }
+
+            const channels = json.data.channels;
+            const okCh     = channels.filter((c) => c.ok).map((c) => c.channel);
+            const failCh   = channels.filter((c) => !c.ok) as Array<{ channel: string; error: string }>;
+
+            if (okCh.length === channels.length) {
+                toast.success(`Prueba enviada por ${okCh.join(" y ")}.`);
+            } else if (okCh.length > 0) {
+                toast.warning(`Enviado por ${okCh.join(", ")}. Falló ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
+            } else {
+                toast.error(`No se pudo enviar: ${failCh.map((c) => `${c.channel}: ${c.error}`).join(" | ")}`);
+            }
         } catch {
             toast.error("Error de red.");
         } finally {
@@ -148,9 +191,38 @@ export function ReminderManagementPanel({ open, onOpenChange }: ReminderManageme
                                                 {sub.enabled ? "Activo" : "Pausado"}
                                             </span>
                                         </p>
+                                        <div className="flex items-center gap-3 mt-1.5 text-[10px] font-mono text-text-tertiary">
+                                            {sub.phone && (
+                                                <span className="inline-flex items-center gap-1" title="WhatsApp">
+                                                    <MessageCircle size={10} className="text-emerald-500" />
+                                                    <span className="truncate max-w-[140px]">{sub.phone}</span>
+                                                </span>
+                                            )}
+                                            {sub.email && (
+                                                <span className="inline-flex items-center gap-1" title="Email">
+                                                    <Mail size={10} className="text-text-tertiary" />
+                                                    <span className="truncate max-w-[180px]">{sub.email}</span>
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center gap-1 shrink-0">
+                                        {/* Send test (manual trigger) */}
+                                        <button
+                                            onClick={() => void handleTestSend(sub.id)}
+                                            disabled={acting === sub.id}
+                                            className="w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:bg-primary-50 hover:text-primary-500 transition-colors duration-150 disabled:opacity-40 dark:hover:bg-primary-50/10"
+                                            aria-label="Enviar prueba ahora"
+                                            title="Enviar prueba ahora"
+                                        >
+                                            {acting === sub.id ? (
+                                                <Loader2 size={13} className="animate-spin" />
+                                            ) : (
+                                                <Send size={13} />
+                                            )}
+                                        </button>
+
                                         {/* Toggle enable/disable */}
                                         <button
                                             onClick={() => void handleToggle(sub)}

@@ -15,7 +15,8 @@ import type { ObligationCategory, TaxpayerType } from "@/src/modules/tools/senia
 interface DbRow {
     id:            string;
     user_id:       string;
-    email:         string;
+    email:         string | null;
+    phone:         string | null;
     rif:           string;
     taxpayer_type: string;
     categories:    string[];
@@ -29,7 +30,8 @@ function toModel(row: DbRow): ReminderSubscription {
     return {
         id:           row.id,
         userId:       row.user_id,
-        email:        row.email,
+        email:        row.email ?? null,
+        phone:        row.phone ?? null,
         rif:          row.rif,
         taxpayerType: row.taxpayer_type as TaxpayerType,
         categories:   (row.categories ?? []) as ObligationCategory[],
@@ -53,6 +55,7 @@ export class SupabaseReminderRepository implements ReminderSubscriptionRepositor
             .insert({
                 user_id:       data.userId,
                 email:         data.email,
+                phone:         data.phone,
                 rif:           data.rif,
                 taxpayer_type: data.taxpayerType,
                 categories:    data.categories,
@@ -91,13 +94,14 @@ export class SupabaseReminderRepository implements ReminderSubscriptionRepositor
 
     async update(
         id: string,
-        patch: Partial<Pick<ReminderSubscription, "enabled" | "categories" | "daysBefore" | "email">>
+        patch: Partial<Pick<ReminderSubscription, "enabled" | "categories" | "daysBefore" | "email" | "phone">>
     ): Promise<ReminderSubscription> {
         const dbPatch: Record<string, unknown> = {};
-        if (patch.enabled   !== undefined) dbPatch.enabled     = patch.enabled;
+        if (patch.enabled    !== undefined) dbPatch.enabled     = patch.enabled;
         if (patch.categories !== undefined) dbPatch.categories  = patch.categories;
         if (patch.daysBefore !== undefined) dbPatch.days_before = patch.daysBefore;
         if (patch.email      !== undefined) dbPatch.email       = patch.email;
+        if (patch.phone      !== undefined) dbPatch.phone       = patch.phone;
 
         const { data, error } = await this.client
             .from(TABLE)
