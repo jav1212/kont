@@ -87,11 +87,13 @@ export async function sendSeniatReminderWhatsApp(opts: SendSeniatReminderWhatsAp
     const sender    = senderName?.trim() || "Konta";
     const daysLabel = daysBefore === 1 ? "1 día" : `${daysBefore} días`;
 
-    // Lista compacta para WhatsApp — sin HTML, una línea por obligación.
+    // Lista compacta para WhatsApp. Meta NO permite \n, \t ni 4+ espacios
+    // consecutivos dentro de valores de parámetros (cuerpo estático del
+    // template sí los conserva — sólo aplica al valor sustituido).
     const obligationsList = clamp(
         obligations
             .map((ob) => `• ${ob.shortTitle} (vence ${formatDate(ob.dueDate)})`)
-            .join("\n"),
+            .join(" · "),
         PARAM_MAX_CHARS,
     );
 
@@ -130,9 +132,19 @@ export async function sendSeniatReminderWhatsApp(opts: SendSeniatReminderWhatsAp
     if (!res.ok) {
         let detail = `${res.status} ${res.statusText}`;
         try {
-            const json = await res.json() as { error?: { message?: string; code?: number } };
+            const json = await res.json() as {
+                error?: {
+                    message?:    string;
+                    code?:       number;
+                    error_data?: { details?: string };
+                };
+            };
             if (json.error?.message) {
-                detail = `${json.error.code ?? res.status}: ${json.error.message}`;
+                const code    = json.error.code ?? res.status;
+                const details = json.error.error_data?.details;
+                detail = details
+                    ? `${code}: ${json.error.message} — ${details}`
+                    : `${code}: ${json.error.message}`;
             }
         } catch {
             // body no JSON — usa status text
