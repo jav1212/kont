@@ -151,4 +151,30 @@ export async function sendSeniatReminderWhatsApp(opts: SendSeniatReminderWhatsAp
         }
         throw new Error(`WhatsApp API: ${detail}`);
     }
+
+    // Diagnóstico: Meta puede devolver 200 sin entregar. Si `contacts[0].wa_id`
+    // viene vacío => destinatario no tiene WhatsApp. Si la cuenta está en modo
+    // desarrollo y el `to` no es un test recipient, igual responde 200. El
+    // wamid + wa_id quedan en los logs (`vercel logs`) para auditar entregas.
+    try {
+        const json = await res.json() as {
+            contacts?: Array<{ wa_id?: string; input?: string }>;
+            messages?: Array<{ id?: string; message_status?: string }>;
+        };
+        const wamid = json.messages?.[0]?.id     ?? "<sin-wamid>";
+        const waId  = json.contacts?.[0]?.wa_id  ?? "<sin-wa_id>";
+        const to    = normalizeForMeta(opts.to);
+        // eslint-disable-next-line no-console
+        console.log(`[whatsapp] sent to=${to} wa_id=${waId} wamid=${wamid}`);
+        if (!json.contacts?.[0]?.wa_id) {
+            throw new Error(
+                `WhatsApp API: Meta aceptó la request pero el destinatario ${to} no tiene WhatsApp registrado (wa_id vacío).`,
+            );
+        }
+    } catch (err) {
+        if (err instanceof Error && err.message.startsWith("WhatsApp API:")) {
+            throw err;
+        }
+        // Si parsear el body falla, no rompemos — Meta ya devolvió 200.
+    }
 }
