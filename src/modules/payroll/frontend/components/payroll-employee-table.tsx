@@ -30,13 +30,29 @@ import { Employee, EmployeeEstado } from "../hooks/use-employee";
 // ============================================================================
 
 interface EmployeeOverride {
-    extraEarnings:    EarningRow[];
-    extraDeductions:  DeductionRow[];
-    extraBonuses:     BonusRow[];
-    extraHorasExtras: HorasExtrasRow[];
+    extraEarnings:     EarningRow[];
+    extraDeductions:   DeductionRow[];
+    extraBonuses:      BonusRow[];
+    extraHorasExtras:  HorasExtrasRow[];
+    excludedGlobalIds: {
+        earnings:    string[];
+        bonuses:     string[];
+        deductions:  string[];
+        horasExtras: string[];
+    };
 }
 
-interface ComputedLine { label: string; formula: string; amount: number }
+type LineKind =
+    | "earning" | "bonus" | "deduction" | "horas-extras"
+    | "extra-earning" | "extra-bonus" | "extra-deduction" | "extra-horas-extras";
+
+interface ComputedLine {
+    label:      string;
+    formula:    string;
+    amount:     number;
+    sourceId:   string;
+    sourceKind: LineKind;
+}
 
 export interface EmployeeResult extends Employee {
     totalEarnings:   number;
@@ -95,59 +111,79 @@ function computeEmployee(
     const weekly     = (salarioBase * 12) / 52;
     const weeklyBase = weekly * mondaysInMonth;
 
-    const allEarnings = [...earningRows, ...overrides.extraEarnings];
-    const allBonuses  = [...bonusRows,   ...overrides.extraBonuses];
+    // Filter globals by per-employee exclusions before mixing with extras.
+    const excluded = overrides.excludedGlobalIds;
+    const filteredEarningRows = earningRows.filter((r) => !excluded.earnings.includes(r.id));
+    const filteredBonusRows   = bonusRows.filter((r)   => !excluded.bonuses.includes(r.id));
 
     // Apply period-specific rules: rows with quincenaRule "second-half" are excluded in Q1.
     // Extra deduction overrides per employee are never period-filtered.
     const periodFilteredDeductions = deductRows.filter(
-        (r) => !(r.quincenaRule === "second-half" && quincena === 1),
+        (r) => !(r.quincenaRule === "second-half" && quincena === 1) && !excluded.deductions.includes(r.id),
     );
-    const allDeductions = [...periodFilteredDeductions, ...overrides.extraDeductions];
 
     const hourlyRate = salarioVES / 30 / 8;
 
+    const mapEarning = (r: EarningRow, kind: LineKind): ComputedLine => {
+        const qty    = parseFloat(r.quantity)   || 0;
+        const mult   = parseFloat(r.multiplier) || 1;
+        const amount = r.useDaily ? qty * daily * mult : qty;
+        return {
+            label:      r.label || "—",
+            formula:    r.useDaily ? `${qty}d x ${daily.toFixed(2)}${mult !== 1 ? ` x ${mult}` : ""}` : `${qty} VES`,
+            amount,
+            sourceId:   r.id,
+            sourceKind: kind,
+        };
+    };
+
+    const TIPO_LABEL = { diurna: "H.E. Diurnas", nocturna: "H.E. Nocturnas", feriado: "H.E. Feriado" };
+    const mapHorasExtras = (r: HorasExtrasRow, kind: LineKind): ComputedLine => {
+        const hrs    = parseFloat(r.hours) || 0;
+        const mult   = HORAS_EXTRAS_MULTIPLIER[r.tipo];
+        return {
+            label:      TIPO_LABEL[r.tipo],
+            formula:    `${hrs}h x ${hourlyRate.toFixed(2)}/h x ${mult}`,
+            amount:     hrs * hourlyRate * mult,
+            sourceId:   r.id,
+            sourceKind: kind,
+        };
+    };
+
     const earningLines: ComputedLine[] = [
-        ...allEarnings.map((r) => {
-            const qty    = parseFloat(r.quantity)   || 0;
-            const mult   = parseFloat(r.multiplier) || 1;
-            const amount = r.useDaily ? qty * daily * mult : qty;
-            return {
-                label:   r.label || "—",
-                formula: r.useDaily ? `${qty}d x ${daily.toFixed(2)}${mult !== 1 ? ` x ${mult}` : ""}` : `${qty} VES`,
-                amount,
-            };
-        }),
-        ...[
-            ...horasExtrasGlobal.filter((r) => r.active),
-            ...overrides.extraHorasExtras,
-        ]
+        ...filteredEarningRows.map((r) => mapEarning(r, "earning")),
+        ...overrides.extraEarnings.map((r) => mapEarning(r, "extra-earning")),
+        ...horasExtrasGlobal
+            .filter((r) => r.active && parseFloat(r.hours) > 0 && !excluded.horasExtras.includes(r.id))
+            .map((r) => mapHorasExtras(r, "horas-extras")),
+        ...overrides.extraHorasExtras
             .filter((r) => parseFloat(r.hours) > 0)
-            .map((r) => {
-                const hrs    = parseFloat(r.hours) || 0;
-                const mult   = HORAS_EXTRAS_MULTIPLIER[r.tipo];
-                const amount = hrs * hourlyRate * mult;
-                const TIPO_LABEL = { diurna: "H.E. Diurnas", nocturna: "H.E. Nocturnas", feriado: "H.E. Feriado" };
-                return {
-                    label:   TIPO_LABEL[r.tipo],
-                    formula: `${hrs}h x ${hourlyRate.toFixed(2)}/h x ${mult}`,
-                    amount,
-                };
-            }),
+            .map((r) => mapHorasExtras(r, "extra-horas-extras")),
     ];
 
-    const bonusLines: ComputedLine[] = allBonuses.map((r) => {
+    const mapBonus = (r: BonusRow, kind: LineKind): ComputedLine => {
         const usd = parseFloat(r.amount) || 0;
-        return { label: r.label || "—", formula: `${usd}$ x ${bcvRate}`, amount: usd * bcvRate };
-    });
+        return {
+            label:      r.label || "—",
+            formula:    `${usd}$ x ${bcvRate}`,
+            amount:     usd * bcvRate,
+            sourceId:   r.id,
+            sourceKind: kind,
+        };
+    };
+
+    const bonusLines: ComputedLine[] = [
+        ...filteredBonusRows.map((r) => mapBonus(r, "bonus")),
+        ...overrides.extraBonuses.map((r) => mapBonus(r, "extra-bonus")),
+    ];
 
     // SSO cap: base máxima = 10 salarios mínimos (IVSS)
     const cappedWeekly = salarioMinimo > 0 ? Math.min(weeklyBase, 10 * salarioMinimo) : weeklyBase;
 
-    const deductionLines: ComputedLine[] = allDeductions.map((r) => {
+    const mapDeduction = (r: DeductionRow, kind: LineKind): ComputedLine => {
         if (r.mode === "fixed") {
             const amount = parseFloat(r.rate) || 0;
-            return { label: r.label || "—", formula: `${amount.toFixed(2)} Bs fijo`, amount };
+            return { label: r.label || "—", formula: `${amount.toFixed(2)} Bs fijo`, amount, sourceId: r.id, sourceKind: kind };
         }
         const rate = parseFloat(r.rate) || 0;
         const isCapped = r.base === "weekly-capped";
@@ -162,8 +198,13 @@ function computeEmployee(
                 : r.base === "integral"
                     ? `${salarioIntegral.toFixed(2)} integral x ${rate}%`
                     : `${salarioBase.toFixed(2)} x ${rate}%`;
-        return { label: r.label || "—", formula, amount: base * (rate / 100) };
-    });
+        return { label: r.label || "—", formula, amount: base * (rate / 100), sourceId: r.id, sourceKind: kind };
+    };
+
+    const deductionLines: ComputedLine[] = [
+        ...periodFilteredDeductions.map((r) => mapDeduction(r, "deduction")),
+        ...overrides.extraDeductions.map((r) => mapDeduction(r, "extra-deduction")),
+    ];
 
     const totalEarnings   = earningLines.reduce((s, l)   => s + l.amount, 0);
     const totalBonuses    = bonusLines.reduce((s, l)     => s + l.amount, 0);
@@ -177,9 +218,14 @@ function computeEmployee(
         gross, net, netUSD: bcvRate > 0 ? net / bcvRate : 0,
         earningLines, deductionLines, bonusLines,
         hasOverrides:
-            overrides.extraEarnings.length   > 0 ||
-            overrides.extraDeductions.length > 0 ||
-            overrides.extraBonuses.length    > 0,
+            overrides.extraEarnings.length    > 0 ||
+            overrides.extraDeductions.length  > 0 ||
+            overrides.extraBonuses.length     > 0 ||
+            overrides.extraHorasExtras.length > 0 ||
+            excluded.earnings.length          > 0 ||
+            excluded.bonuses.length           > 0 ||
+            excluded.deductions.length        > 0 ||
+            excluded.horasExtras.length       > 0,
         alicuotaUtil, alicuotaBono, salarioIntegral,
         salarioVES,
     };
@@ -197,7 +243,10 @@ const getEmployeeKey = (emp: Employee) => emp.cedula;
 
 // Empty override — overtime rows are now global, not per-employee seeded.
 function buildDefaultOverride(): EmployeeOverride {
-    return { extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [] };
+    return {
+        extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [],
+        excludedGlobalIds: { earnings: [], bonuses: [], deductions: [], horasExtras: [] },
+    };
 }
 
 const fmt = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -237,6 +286,24 @@ const OverrideBadge = () => (
 
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-400 mb-2 mt-4">{children}</p>
+);
+
+const ExcludedChip = ({ label, onRestore }: { label: string; onRestore: () => void }) => (
+    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-amber-500/30 bg-surface-1 font-mono text-[11px] text-[var(--text-secondary)]">
+        <span className="line-through text-[var(--text-disabled)]">{label}</span>
+        <button
+            type="button"
+            onClick={onRestore}
+            title="Restaurar línea para este empleado"
+            aria-label="Restaurar línea"
+            className="w-4 h-4 flex items-center justify-center rounded text-amber-500 hover:bg-amber-500/15 transition-colors"
+        >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 5a3 3 0 1 1 1 2.2" />
+                <path d="M2 2v3h3" />
+            </svg>
+        </button>
+    </span>
 );
 
 const TablePlaceholder = ({ loading }: { loading: boolean }) => (
@@ -280,10 +347,17 @@ interface ExpandedPanelProps {
     diasUtilidades:     number;
     diasBonoVacacional: number;
     salarioMinimo:      number;
+    earningRows:        EarningRow[];
+    bonusRows:          BonusRow[];
+    deductionRows:      DeductionRow[];
+    horasExtrasGlobal:  HorasExtrasRow[];
     onChange:           (updated: EmployeeOverride) => void;
 }
 
-const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo, onChange }: ExpandedPanelProps) => {
+const ExpandedPanel = ({
+    result, override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
+    earningRows, bonusRows, deductionRows, horasExtrasGlobal, onChange,
+}: ExpandedPanelProps) => {
     // Usar salarioVES para que las tasas de los extras sean consistentes con el cálculo principal
     const empDailyRate      = result.salarioVES / 30;
     const empHourlyRate     = empDailyRate / 8;
@@ -309,6 +383,52 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidad
     const updateXH = (id: string, u: HorasExtrasRow) => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.map((r) => r.id === id ? u : r) });
     const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id) });
 
+    // Exclude a global row (sólo para este empleado).
+    const excludeGlobal = (group: keyof EmployeeOverride["excludedGlobalIds"], id: string) =>
+        onChange({
+            ...override,
+            excludedGlobalIds: {
+                ...override.excludedGlobalIds,
+                [group]: override.excludedGlobalIds[group].includes(id)
+                    ? override.excludedGlobalIds[group]
+                    : [...override.excludedGlobalIds[group], id],
+            },
+        });
+
+    // Restore a previously excluded global row.
+    const restoreGlobal = (group: keyof EmployeeOverride["excludedGlobalIds"], id: string) =>
+        onChange({
+            ...override,
+            excludedGlobalIds: {
+                ...override.excludedGlobalIds,
+                [group]: override.excludedGlobalIds[group].filter((x) => x !== id),
+            },
+        });
+
+    // Unified handler: an X click on any audit line either drops an extra or excludes a global.
+    const removeAuditLine = (kind: LineKind, sourceId: string) => {
+        switch (kind) {
+            case "extra-earning":      return removeXE(sourceId);
+            case "extra-bonus":        return removeXB(sourceId);
+            case "extra-deduction":    return removeXD(sourceId);
+            case "extra-horas-extras": return removeXH(sourceId);
+            case "earning":            return excludeGlobal("earnings",    sourceId);
+            case "bonus":              return excludeGlobal("bonuses",     sourceId);
+            case "deduction":          return excludeGlobal("deductions",  sourceId);
+            case "horas-extras":       return excludeGlobal("horasExtras", sourceId);
+        }
+    };
+
+    const excluded = override.excludedGlobalIds;
+    const excludedEarnings    = excluded.earnings.map((id)    => ({ id, label: earningRows.find((r)       => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedBonuses     = excluded.bonuses.map((id)     => ({ id, label: bonusRows.find((r)         => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedDeductions  = excluded.deductions.map((id)  => ({ id, label: deductionRows.find((r)     => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedHorasExtras = excluded.horasExtras.map((id) => {
+        const r = horasExtrasGlobal.find((x) => x.id === id);
+        return { id, label: r ? (r.tipo === "diurna" ? "H.E. Diurnas" : r.tipo === "nocturna" ? "H.E. Nocturnas" : "H.E. Feriado") : id };
+    });
+    const totalExcluded = excludedEarnings.length + excludedBonuses.length + excludedDeductions.length + excludedHorasExtras.length;
+
     const firstName = result.nombre.split(" ")[0];
 
     return (
@@ -331,15 +451,58 @@ const ExpandedPanel = ({ result, override, mondaysInMonth, bcvRate, diasUtilidad
             {/* Audit columns */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
-                    {result.earningLines.map((l, i) => <AuditRow key={i} label={l.label} formula={l.formula} value={l.amount} />)}
+                    {result.earningLines.map((l) => (
+                        <AuditRow
+                            key={`${l.sourceKind}:${l.sourceId}`}
+                            label={l.label} formula={l.formula} value={l.amount}
+                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                        />
+                    ))}
                 </AuditContainer>
                 <AuditContainer title="Bonificaciones" total={result.totalBonuses} type="income">
-                    {result.bonusLines.map((l, i) => <AuditRow key={i} label={l.label} formula={l.formula} value={l.amount} />)}
+                    {result.bonusLines.map((l) => (
+                        <AuditRow
+                            key={`${l.sourceKind}:${l.sourceId}`}
+                            label={l.label} formula={l.formula} value={l.amount}
+                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                        />
+                    ))}
                 </AuditContainer>
                 <AuditContainer title="Deducciones" total={result.totalDeductions} type="deduction">
-                    {result.deductionLines.map((l, i) => <AuditRow key={i} label={l.label} formula={l.formula} value={l.amount} isNegative />)}
+                    {result.deductionLines.map((l) => (
+                        <AuditRow
+                            key={`${l.sourceKind}:${l.sourceId}`}
+                            label={l.label} formula={l.formula} value={l.amount} isNegative
+                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                        />
+                    ))}
                 </AuditContainer>
             </div>
+
+            {totalExcluded > 0 && (
+                <div className="mt-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.05]">
+                    <div className="flex items-center gap-2 mb-2">
+                        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-amber-500">
+                            <path d="M6 1v6M6 9.5v.5" /><circle cx="6" cy="6" r="5" />
+                        </svg>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-500">Líneas excluidas para {firstName}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {excludedEarnings.map((x) => (
+                            <ExcludedChip key={`e:${x.id}`} label={x.label} onRestore={() => restoreGlobal("earnings", x.id)} />
+                        ))}
+                        {excludedBonuses.map((x) => (
+                            <ExcludedChip key={`b:${x.id}`} label={x.label} onRestore={() => restoreGlobal("bonuses", x.id)} />
+                        ))}
+                        {excludedDeductions.map((x) => (
+                            <ExcludedChip key={`d:${x.id}`} label={x.label} onRestore={() => restoreGlobal("deductions", x.id)} />
+                        ))}
+                        {excludedHorasExtras.map((x) => (
+                            <ExcludedChip key={`h:${x.id}`} label={x.label} onRestore={() => restoreGlobal("horasExtras", x.id)} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="flex items-center gap-3 mt-6 mb-1">
                 <div className="flex-1 border-t border-dashed border-border-light" />
@@ -411,12 +574,17 @@ interface EmployeeMobileCardProps {
     diasUtilidades:     number;
     diasBonoVacacional: number;
     salarioMinimo:      number;
+    earningRows:        EarningRow[];
+    bonusRows:          BonusRow[];
+    deductionRows:      DeductionRow[];
+    horasExtrasGlobal:  HorasExtrasRow[];
     onOverrideChange:   (updated: EmployeeOverride) => void;
 }
 
 const EmployeeMobileCard = ({
     result, expanded, onToggleExpand,
     override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
+    earningRows, bonusRows, deductionRows, horasExtrasGlobal,
     onOverrideChange,
 }: EmployeeMobileCardProps) => (
     <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
@@ -505,6 +673,10 @@ const EmployeeMobileCard = ({
                 diasUtilidades={diasUtilidades}
                 diasBonoVacacional={diasBonoVacacional}
                 salarioMinimo={salarioMinimo}
+                earningRows={earningRows}
+                bonusRows={bonusRows}
+                deductionRows={deductionRows}
+                horasExtrasGlobal={horasExtrasGlobal}
                 onChange={onOverrideChange}
             />
         )}
@@ -1180,6 +1352,10 @@ export const PayrollEmployeeTable = ({
                                         mondaysInMonth={mondaysInMonth} bcvRate={bcvRate}
                                         diasUtilidades={diasUtilidades} diasBonoVacacional={diasBonoVacacional}
                                         salarioMinimo={salarioMinimo}
+                                        earningRows={earningRows}
+                                        bonusRows={bonusRows}
+                                        deductionRows={deductionRows}
+                                        horasExtrasGlobal={horasExtrasGlobal}
                                         onChange={(updated) => setOverride(getEmployeeKey(result), updated)}
                                     />
                                 );
@@ -1206,6 +1382,10 @@ export const PayrollEmployeeTable = ({
                                     diasUtilidades={diasUtilidades}
                                     diasBonoVacacional={diasBonoVacacional}
                                     salarioMinimo={salarioMinimo}
+                                    earningRows={earningRows}
+                                    bonusRows={bonusRows}
+                                    deductionRows={deductionRows}
+                                    horasExtrasGlobal={horasExtrasGlobal}
                                     onOverrideChange={(updated) => setOverride(getEmployeeKey(result), updated)}
                                 />
                             ))

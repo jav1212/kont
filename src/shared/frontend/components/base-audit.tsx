@@ -8,6 +8,7 @@ interface AuditRowProps {
     formula: string;
     value: number;
     isNegative?: boolean;
+    onRemove?: () => void;
 }
 
 interface AuditContainerProps {
@@ -17,12 +18,25 @@ interface AuditContainerProps {
     type?: "income" | "deduction";
 }
 
-export const AuditRow = ({ label, formula, value, isNegative = false }: AuditRowProps) => (
-    <div className="flex justify-between text-[10px] items-center text-neutral-500 italic">
-        <span>{label}: ({formula})</span>
-        <span className={`${isNegative ? "text-danger-500" : "text-primary-500"} font-bold tabular-nums`}>
+export const AuditRow = ({ label, formula, value, isNegative = false, onRemove }: AuditRowProps) => (
+    <div className="flex justify-between text-[10px] items-center text-neutral-500 italic gap-2">
+        <span className="flex-1 min-w-0 truncate">{label}: ({formula})</span>
+        <span className={`${isNegative ? "text-danger-500" : "text-primary-500"} font-bold tabular-nums shrink-0`}>
             {isNegative ? "-" : "+"}{value.toFixed(2)}
         </span>
+        {onRemove && (
+            <button
+                type="button"
+                onClick={onRemove}
+                className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-red-400 hover:border-red-400/40 transition-colors duration-150"
+                title="Excluir esta línea para este empleado"
+                aria-label="Excluir línea"
+            >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M1 1l6 6M7 1L1 7" />
+                </svg>
+            </button>
+        )}
     </div>
 );
 
