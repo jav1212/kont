@@ -14,7 +14,7 @@ interface Props {
 
 export function GuidedStepReview({ state, onBack }: Props) {
     const {
-        employees, empLoading,
+        employees, employeesExcludedByDate, empLoading,
         company, companyId,
         earningRows, deductionRows, bonusRows,
         mondaysInMonth, bcvRate,
@@ -49,6 +49,17 @@ export function GuidedStepReview({ state, onBack }: Props) {
             }
             hideNav={false}
         >
+            {employeesExcludedByDate.length > 0 && (
+                <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06]">
+                    <p className="font-mono text-[11px] text-amber-600">
+                        {employeesExcludedByDate.length === 1
+                            ? "1 empleado excluido"
+                            : `${employeesExcludedByDate.length} empleados excluidos`}
+                        {" "}por fecha de ingreso posterior al período ({activePeriodInfo.endDate}).
+                    </p>
+                </div>
+            )}
+
             <PayrollEmployeeTable
                 employees={employees}
                 empLoading={empLoading}

@@ -50,7 +50,7 @@ export type SaveMsg = { ok: boolean; text: string } | null;
 
 export function useGuidedPayrollState() {
     const { companyId, company } = useCompany();
-    const { employees, loading: empLoading } = useEmployee(companyId);
+    const { employees: allEmployees, loading: empLoading } = useEmployee(companyId);
     const { confirm, saveDraft, runs } = usePayrollHistory(companyId);
     const {
         settings: savedSettings,
@@ -93,6 +93,19 @@ export function useGuidedPayrollState() {
     }, [selYear, selMonth, periodoMode, selWeekMonday]);
 
     const activePeriodInfo = periodoMode === "quincenal" ? quincenaInfo : weekInfo;
+
+    // Filter employees by hire date: an employee whose fechaIngreso is after the
+    // period end didn't exist yet for that payroll. Employees without fechaIngreso
+    // (legacy rows) are kept to avoid breaking historical data.
+    const periodEndIso = activePeriodInfo.endDate;
+    const employees = useMemo(
+        () => allEmployees.filter((e) => !e.fechaIngreso || e.fechaIngreso <= periodEndIso),
+        [allEmployees, periodEndIso],
+    );
+    const employeesExcludedByDate = useMemo(
+        () => allEmployees.filter((e) => e.fechaIngreso && e.fechaIngreso > periodEndIso),
+        [allEmployees, periodEndIso],
+    );
 
     const isLastWeekOfMonth =
         periodoMode === "semanal" &&
@@ -511,6 +524,7 @@ export function useGuidedPayrollState() {
         companyId,
         company,
         employees,
+        employeesExcludedByDate,
         empLoading,
         runs,
 

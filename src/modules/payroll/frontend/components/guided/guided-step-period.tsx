@@ -89,6 +89,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
         defaultBenefitsInPeriod,
         includeCestaTicketOverride,        setIncludeCestaTicketOverride,
         includeBonoSocioEconomicoOverride, setIncludeBonoSocioEconomicoOverride,
+        employeesExcludedByDate,
     } = state;
 
     const now = new Date();
@@ -268,6 +269,29 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                                 </span>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {employeesExcludedByDate.length > 0 && (
+                    <div className="mt-3 px-4 py-3 rounded-lg border border-amber-500/30 bg-amber-500/[0.06]">
+                        <p className="font-mono text-[12px] text-amber-600 leading-relaxed">
+                            <span className="font-bold uppercase tracking-[0.14em]">Aviso · </span>
+                            {employeesExcludedByDate.length === 1
+                                ? "1 empleado quedó excluido"
+                                : `${employeesExcludedByDate.length} empleados quedaron excluidos`}
+                            {" "}de esta nómina porque su fecha de ingreso es posterior al{" "}
+                            <span className="tabular-nums">{activePeriodInfo.endDate}</span>.
+                        </p>
+                        <ul className="mt-1.5 font-mono text-[11px] text-amber-600/80 space-y-0.5">
+                            {employeesExcludedByDate.slice(0, 5).map((e) => (
+                                <li key={e.cedula}>
+                                    · {e.nombre} <span className="tabular-nums">({e.fechaIngreso})</span>
+                                </li>
+                            ))}
+                            {employeesExcludedByDate.length > 5 && (
+                                <li>· y {employeesExcludedByDate.length - 5} más…</li>
+                            )}
+                        </ul>
                     </div>
                 )}
             </StepSection>
