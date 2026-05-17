@@ -21,10 +21,14 @@ export function GuidedStepDeductions({ state, onBack, onNext }: Props) {
         salarioMinimo, periodoMode, activeQuincena,
     } = state;
 
-    const showFaovNote =
-        periodoMode === "quincenal" &&
+    const showSecondHalfNote =
         activeQuincena === 1 &&
         deductionRows.some((r) => r.quincenaRule === "second-half");
+
+    const secondHalfNoteText =
+        periodoMode === "semanal"
+            ? "No es la última semana del mes. Las filas marcadas «Solo 2da» no se están aplicando — aparecerán automáticamente en la semana 22–fin."
+            : "Está en la primera quincena. Las filas marcadas «Solo 2da» no se están aplicando — aparecerán automáticamente en la quincena 16–fin.";
 
     return (
         <GuidedStepShell
@@ -51,10 +55,9 @@ export function GuidedStepDeductions({ state, onBack, onNext }: Props) {
                     onRemove={removeDeduction}
                     onAdd={addDeduction}
                 />
-                {showFaovNote && (
+                {showSecondHalfNote && (
                     <p className="mt-3 px-4 py-2.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.06] font-mono text-[12px] text-amber-600 leading-relaxed">
-                        Está en la primera quincena. Las filas de F.A.O.V. (segunda quincena) no se
-                        están aplicando — aparecerán automáticamente en la quincena 16–fin.
+                        {secondHalfNoteText}
                     </p>
                 )}
             </StepSection>

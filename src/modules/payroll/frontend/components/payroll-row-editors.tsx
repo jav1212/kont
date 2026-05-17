@@ -184,6 +184,12 @@ export const DeductionRowEditor = ({
         base: isFixed ? "weekly" : row.base,
     });
 
+    const isSecondHalf  = row.quincenaRule === "second-half";
+    const toggleQuincena = () => onChange({
+        ...row,
+        quincenaRule: isSecondHalf ? "always" : "second-half",
+    });
+
     return (
         <div className="space-y-1.5">
             {/* Row 1: Concepto + remove */}
@@ -237,6 +243,21 @@ export const DeductionRowEditor = ({
                     title={isFixed ? "Modo: monto fijo VES" : "Modo: porcentaje"}
                 >
                     {isFixed ? "Bs fijo" : "% base"}
+                </button>
+                <button
+                    onClick={toggleQuincena}
+                    className={[
+                        "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
+                        "transition-colors duration-150 whitespace-nowrap",
+                        isSecondHalf
+                            ? "border-violet-500/40 bg-violet-500/10 text-violet-500"
+                            : "border-border-light bg-surface-1 text-[var(--text-tertiary)] hover:border-border-medium",
+                    ].join(" ")}
+                    title={isSecondHalf
+                        ? "Aplica solo en la última quincena del mes (16–fin)"
+                        : "Aplica en ambas quincenas"}
+                >
+                    {isSecondHalf ? "Solo 2da" : "Todas"}
                 </button>
                 <Result value={computed} negative />
             </div>

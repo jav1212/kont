@@ -152,7 +152,7 @@ export const DeductionsSection = ({
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly", mode: "rate",
+            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly", mode: "rate", quincenaRule: "always",
         })} />
         <AuditContainer title="Total Retenciones" total={total} type="deduction">
             {values.map((r) => (

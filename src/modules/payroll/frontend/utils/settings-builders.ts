@@ -88,6 +88,10 @@ export function extractEarningDefs(rows: EarningRow[]): PayrollEarningRowDef[] {
     }));
 }
 
+// Labels whose quincenaRule is forzado a "second-half" por convención venezolana,
+// aun si lo guardado dice "always" (auto-corrección de filas tipeadas por el usuario).
+const FORCED_SECOND_HALF = /^INCES$/i;
+
 export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): DeductionRow[] {
     return defs.map((d) => ({
         id: uid("d"),
@@ -95,7 +99,7 @@ export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): Deductio
         rate: d.rate,
         base: d.base,
         mode: d.mode,
-        quincenaRule: d.quincenaRule,
+        quincenaRule: FORCED_SECOND_HALF.test(d.label) ? "second-half" : d.quincenaRule,
     }));
 }
 
@@ -139,7 +143,7 @@ export function buildSettings(
             rate: r.rate,
             base: r.base,
             mode: r.mode ?? "rate",
-            quincenaRule: r.quincenaRule ?? "always",
+            quincenaRule: FORCED_SECOND_HALF.test(r.label) ? "second-half" : (r.quincenaRule ?? "always"),
         })),
         bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount, currency: r.currency })),
         diasUtilidades,

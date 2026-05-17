@@ -93,12 +93,18 @@ export function useGuidedPayrollState() {
     }, [selYear, selMonth, periodoMode, selWeekMonday]);
 
     const activePeriodInfo = periodoMode === "quincenal" ? quincenaInfo : weekInfo;
-    const activeQuincena: 1 | 2 = periodoMode === "semanal" ? 2 : selQuincena;
 
     const isLastWeekOfMonth =
         periodoMode === "semanal" &&
         mondaysOfMonth.length > 0 &&
         selWeekMonday === mondaysOfMonth[mondaysOfMonth.length - 1];
+
+    // En modo semanal, tratamos como "segunda quincena" solo la última semana del mes.
+    // Esto hace que F.A.O.V, INCES y demás retenciones "Solo 2da" se apliquen únicamente
+    // en la última semana, y que INCES patronal (que depende de quincena === 2) también
+    // se calcule una sola vez al mes.
+    const activeQuincena: 1 | 2 =
+        periodoMode === "semanal" ? (isLastWeekOfMonth ? 2 : 1) : selQuincena;
 
     // Default rule: monthly benefits (cesta ticket + bono socio-económico) ride
     // along with the 2nd quincena or the last week of the month. Per-payroll
