@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Receipt, Shield } from "lucide-react";
+import { Coins, Receipt, Shield } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BenefitActionCluster } from "@/src/modules/payroll/frontend/components/benefit-action-cluster";
 import { notify } from "@/src/shared/frontend/notify";
@@ -15,6 +15,10 @@ import {
     type BonoGuerraPayload,
 } from "@/src/modules/payroll/frontend/hooks/use-bono-guerra-history";
 import {
+    useBonificacionesHistory,
+    type BonificacionesPayload,
+} from "@/src/modules/payroll/frontend/hooks/use-bonificaciones-history";
+import {
     GuidedStepperHeader,
     type StepDef,
 } from "@/src/modules/payroll/frontend/components/guided/guided-stepper-header";
@@ -25,6 +29,7 @@ import { GuidedStepBonuses } from "@/src/modules/payroll/frontend/components/gui
 import { GuidedStepReview } from "@/src/modules/payroll/frontend/components/guided/guided-step-review";
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
 import { generateBonoGuerraPdf } from "@/src/modules/payroll/frontend/utils/bono-guerra-pdf";
+import { generateBonificacionesPdf } from "@/src/modules/payroll/frontend/utils/bonificaciones-pdf";
 
 const STEPS: StepDef[] = [
     { id: 1, label: "Período" },
@@ -55,6 +60,7 @@ export default function PayrollCalculatorPage() {
         showCestaTicket,
         cestaTicketUSD,
         bonoGuerraUSD,
+        bonusRows,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
 
@@ -69,6 +75,12 @@ export default function PayrollCalculatorPage() {
         saveDraft: saveBgDraft,
         confirm: confirmBg,
     } = useBonoGuerraHistory(companyId);
+
+    const {
+        runs: bfRuns,
+        saveDraft: saveBfDraft,
+        confirm: confirmBf,
+    } = useBonificacionesHistory(companyId);
 
     const cestaTicketAlreadyConfirmed = useMemo(
         () =>
@@ -94,10 +106,24 @@ export default function PayrollCalculatorPage() {
         [bgRuns, companyId, activePeriodInfo],
     );
 
+    const bonificacionesAlreadyConfirmed = useMemo(
+        () =>
+            bfRuns.some(
+                (r) =>
+                    r.companyId === companyId &&
+                    r.periodStart === activePeriodInfo.startDate &&
+                    r.periodEnd === activePeriodInfo.endDate &&
+                    r.status === "confirmed",
+            ),
+        [bfRuns, companyId, activePeriodInfo],
+    );
+
     const [savingCtDraft, setSavingCtDraft]   = useState(false);
     const [confirmingCt, setConfirmingCt]     = useState(false);
     const [savingBgDraft, setSavingBgDraft]   = useState(false);
     const [confirmingBg, setConfirmingBg]     = useState(false);
+    const [savingBfDraft, setSavingBfDraft]   = useState(false);
+    const [confirmingBf, setConfirmingBf]     = useState(false);
 
     const buildCtPayload = useCallback((): CestaTicketPayload | null => {
         if (!companyId) return null;
@@ -221,6 +247,111 @@ export default function PayrollCalculatorPage() {
         if (ok) notify.success("Bono socio económico confirmado");
     };
 
+    // ── Bonificaciones — borrador + confirmación + PDF ─────────────────────
+
+    type BonusLineComputed = {
+        label:     string;
+        currency:  "USD" | "VES";
+        amount:    number;
+        amountVes: number;
+    };
+
+    const computedBonusLines = useCallback((): BonusLineComputed[] => {
+        return bonusRows
+            .map((r) => {
+                const raw = parseFloat(r.amount) || 0;
+                return {
+                    label:     r.label || "—",
+                    currency:  r.currency,
+                    amount:    raw,
+                    amountVes: r.currency === "VES" ? raw : raw * bcvRate,
+                };
+            })
+            .filter((l) => l.amount > 0);
+    }, [bonusRows, bcvRate]);
+
+    const buildBfPayload = useCallback((): BonificacionesPayload | null => {
+        if (!companyId) return null;
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) return null;
+        const lines = computedBonusLines();
+        if (!lines.length) return null;
+        const totalVesPerEmployee = lines.reduce((s, l) => s + l.amountVes, 0);
+        const totalVes            = totalVesPerEmployee * active.length;
+        return {
+            run: {
+                companyId,
+                periodStart:   activePeriodInfo.startDate,
+                periodEnd:     activePeriodInfo.endDate,
+                exchangeRate:  bcvRate,
+                totalVes,
+                employeeCount: active.length,
+                lineCount:     lines.length,
+            },
+            receipts: active.map((e) => ({
+                companyId,
+                employeeId:     e.cedula,
+                employeeCedula: e.cedula,
+                employeeNombre: e.nombre,
+                employeeCargo:  e.cargo,
+                totalVes:       totalVesPerEmployee,
+                bonusLines:     lines,
+            })),
+        };
+    }, [companyId, employees, computedBonusLines, bcvRate, activePeriodInfo]);
+
+    const handleBonificacionesPdf = () => {
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) { notify.error("No hay empleados activos"); return; }
+        const lines = computedBonusLines();
+        if (!lines.length) {
+            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nómina.");
+            return;
+        }
+        generateBonificacionesPdf(
+            active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
+            {
+                companyName: company?.name ?? "",
+                companyId:   company?.id,
+                periodLabel: activePeriodInfo.label,
+                payrollDate: activePeriodInfo.endDate,
+                bonusLines:  lines.map((l) => ({
+                    label:     l.label,
+                    currency:  l.currency,
+                    amount:    l.amount,
+                    amountVES: l.amountVes,
+                })),
+                bcvRate,
+                logoUrl:       company?.logoUrl,
+                showLogoInPdf: company?.showLogoInPdf,
+            },
+        );
+    };
+
+    const handleSaveBonificacionesDraft = async () => {
+        const payload = buildBfPayload();
+        if (!payload) {
+            notify.error("No hay empleados activos o bonos configurados para guardar");
+            return;
+        }
+        setSavingBfDraft(true);
+        const { runId } = await saveBfDraft(payload);
+        setSavingBfDraft(false);
+        if (runId) notify.success("Borrador de bonificaciones guardado");
+    };
+
+    const handleConfirmBonificaciones = async () => {
+        const payload = buildBfPayload();
+        if (!payload) {
+            notify.error("No hay empleados activos o bonos configurados para confirmar");
+            return;
+        }
+        setConfirmingBf(true);
+        const ok = await confirmBf(payload);
+        setConfirmingBf(false);
+        if (ok) notify.success("Bonificaciones confirmadas");
+    };
+
     return (
             <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
                 <PageHeader
@@ -234,6 +365,18 @@ export default function PayrollCalculatorPage() {
                     }
                 >
                     <div className="flex items-center gap-2 flex-wrap justify-end">
+                        <BenefitActionCluster
+                            label="Bonificaciones"
+                            icon={<Coins size={12} />}
+                            confirmed={bonificacionesAlreadyConfirmed}
+                            saving={savingBfDraft}
+                            confirming={confirmingBf}
+                            disabled={!activos}
+                            onSaveDraft={handleSaveBonificacionesDraft}
+                            onConfirm={handleConfirmBonificaciones}
+                            onPdf={handleBonificacionesPdf}
+                        />
+
                         {showCestaTicket && (
                             <div className="flex items-center gap-2 flex-wrap">
                                 <BenefitActionCluster

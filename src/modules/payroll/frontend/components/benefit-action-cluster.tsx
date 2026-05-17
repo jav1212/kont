@@ -14,16 +14,23 @@ interface BenefitActionClusterProps {
     label:    string;
     /** Lead icon next to the label (Receipt / Shield etc.). */
     icon:     ReactNode;
+    /**
+     * Rendering mode.
+     * - "full" (default): muestra los tres botones [borrador · confirmar · pdf].
+     * - "pdf-only": muestra solo [pdf]. Útil para reportes que no se persisten
+     *   en BD (p. ej. Bonificaciones), reusando el chrome visual del cluster.
+     */
+    mode?: "full" | "pdf-only";
     /** When true, the run for the active period is already confirmed → inputs locked. */
-    confirmed: boolean;
+    confirmed?: boolean;
     /** Disabled while the corresponding network call is inflight. */
-    saving:    boolean;
-    confirming: boolean;
+    saving?:    boolean;
+    confirming?: boolean;
     /** Hard-disable everything (no active employees / no company). */
     disabled?: boolean;
-    onSaveDraft: () => void;
-    onConfirm:   () => void;
-    onPdf:       () => void;
+    onSaveDraft?: () => void;
+    onConfirm?:   () => void;
+    onPdf:        () => void;
 }
 
 // ── Tooltip styling — matches src/modules/tools/frontend/status patterns ───────
@@ -55,9 +62,10 @@ function TooltipLabel({ label, hint }: { label: string; hint?: string }) {
 export function BenefitActionCluster({
     label,
     icon,
-    confirmed,
-    saving,
-    confirming,
+    mode = "full",
+    confirmed = false,
+    saving = false,
+    confirming = false,
     disabled = false,
     onSaveDraft,
     onConfirm,
@@ -65,6 +73,7 @@ export function BenefitActionCluster({
 }: BenefitActionClusterProps) {
     const draftDisabled   = disabled || saving     || confirmed;
     const confirmDisabled = disabled || confirming || confirmed;
+    const isPdfOnly       = mode === "pdf-only";
 
     const innerBtn =
         "flex items-center justify-center px-2.5 h-full transition-colors duration-150 " +
@@ -99,56 +108,59 @@ export function BenefitActionCluster({
                 </span>
             </div>
 
-            {/* Borrador */}
-            <Tooltip {...TOOLTIP_PROPS} content={<TooltipLabel label="Guardar borrador" hint={draftHint} />}>
-                <button
-                    type="button"
-                    onClick={onSaveDraft}
-                    disabled={draftDisabled}
-                    aria-label="Guardar borrador"
-                    className={`${innerBtn} bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2 hover:text-foreground`}
-                >
-                    {saving ? (
-                        <span className="block w-3 h-3 rounded-full border border-current border-r-transparent animate-spin" />
-                    ) : (
-                        <Save size={13} />
-                    )}
-                </button>
-            </Tooltip>
+            {/* Borrador + Confirmar — solo en modo "full" */}
+            {!isPdfOnly && (
+                <>
+                    <Tooltip {...TOOLTIP_PROPS} content={<TooltipLabel label="Guardar borrador" hint={draftHint} />}>
+                        <button
+                            type="button"
+                            onClick={onSaveDraft}
+                            disabled={draftDisabled}
+                            aria-label="Guardar borrador"
+                            className={`${innerBtn} bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2 hover:text-foreground`}
+                        >
+                            {saving ? (
+                                <span className="block w-3 h-3 rounded-full border border-current border-r-transparent animate-spin" />
+                            ) : (
+                                <Save size={13} />
+                            )}
+                        </button>
+                    </Tooltip>
 
-            <div className="w-px bg-border-light" aria-hidden />
+                    <div className="w-px bg-border-light" aria-hidden />
 
-            {/* Confirmar — primary accent en estado activo, success tint si ya está confirmado */}
-            <Tooltip
-                {...TOOLTIP_PROPS}
-                content={
-                    <TooltipLabel
-                        label={confirmed ? `${label} confirmado` : `Confirmar ${label}`}
-                        hint={confirmHint}
-                    />
-                }
-            >
-                <button
-                    type="button"
-                    onClick={onConfirm}
-                    disabled={confirmDisabled}
-                    aria-label={confirmed ? `${label} confirmado` : `Confirmar ${label}`}
-                    className={[
-                        innerBtn,
-                        confirmed
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-                            : "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700",
-                    ].join(" ")}
-                >
-                    {confirming ? (
-                        <span className="block w-3 h-3 rounded-full border border-current border-r-transparent animate-spin" />
-                    ) : (
-                        <Check size={13} strokeWidth={2.5} />
-                    )}
-                </button>
-            </Tooltip>
+                    <Tooltip
+                        {...TOOLTIP_PROPS}
+                        content={
+                            <TooltipLabel
+                                label={confirmed ? `${label} confirmado` : `Confirmar ${label}`}
+                                hint={confirmHint}
+                            />
+                        }
+                    >
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={confirmDisabled}
+                            aria-label={confirmed ? `${label} confirmado` : `Confirmar ${label}`}
+                            className={[
+                                innerBtn,
+                                confirmed
+                                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                                    : "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700",
+                            ].join(" ")}
+                        >
+                            {confirming ? (
+                                <span className="block w-3 h-3 rounded-full border border-current border-r-transparent animate-spin" />
+                            ) : (
+                                <Check size={13} strokeWidth={2.5} />
+                            )}
+                        </button>
+                    </Tooltip>
 
-            <div className="w-px bg-border-light" aria-hidden />
+                    <div className="w-px bg-border-light" aria-hidden />
+                </>
+            )}
 
             {/* PDF */}
             <Tooltip

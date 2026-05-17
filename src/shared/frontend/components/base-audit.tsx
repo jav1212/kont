@@ -19,16 +19,19 @@ interface AuditContainerProps {
 }
 
 export const AuditRow = ({ label, formula, value, isNegative = false, onRemove }: AuditRowProps) => (
-    <div className="flex justify-between text-[10px] items-center text-neutral-500 italic gap-2">
-        <span className="flex-1 min-w-0 truncate">{label}: ({formula})</span>
-        <span className={`${isNegative ? "text-danger-500" : "text-primary-500"} font-bold tabular-nums shrink-0`}>
-            {isNegative ? "-" : "+"}{value.toFixed(2)}
+    <div className="flex items-start text-[11px] text-neutral-500 gap-2">
+        <div className="flex-1 min-w-0 leading-tight">
+            <p className="text-foreground/80 break-words">{label}</p>
+            <p className="text-[10px] italic text-neutral-400 break-words tabular-nums">{formula}</p>
+        </div>
+        <span className={`${isNegative ? "text-danger-500" : "text-primary-500"} font-bold tabular-nums shrink-0 mt-0.5`}>
+            {isNegative ? "−" : "+"}{value.toFixed(2)}
         </span>
         {onRemove && (
             <button
                 type="button"
                 onClick={onRemove}
-                className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-red-400 hover:border-red-400/40 transition-colors duration-150"
+                className="shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-red-400 hover:border-red-400/40 transition-colors duration-150"
                 title="Excluir esta línea para este empleado"
                 aria-label="Excluir línea"
             >

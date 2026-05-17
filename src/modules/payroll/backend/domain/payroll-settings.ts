@@ -31,10 +31,13 @@ export interface PayrollDeductionRowDef {
     quincenaRule: "always" | "second-half";                      // FAOV formal rule
 }
 
-// Bonus row template — amounts in USD, converted at BCV rate on compute.
+// Bonus row template — amount is interpreted by currency: USD se convierte por
+// tasa BCV en el cálculo; VES se usa directamente. Legacy defs sin currency se
+// tratan como USD (retrocompat con JSONBs antiguos).
 export interface PayrollBonusRowDef {
-    label:  string;
-    amount: string;   // default USD amount
+    label:     string;
+    amount:    string;
+    currency?: "USD" | "VES";
 }
 
 // ── Horas extras globales (Art. 118 LOTTT) ───────────────────────────────────
@@ -90,8 +93,8 @@ export function defaultPayrollSettings(): PayrollSettings {
             { label: "F.A.O.V", rate: "1",   base: "monthly",       mode: "rate", quincenaRule: "second-half" },
         ],
         bonusRowDefs: [
-            { label: "Bono Alimentación", amount: "40.00" },
-            { label: "Bono Transporte",   amount: "20.00" },
+            { label: "Bono Alimentación", amount: "40.00", currency: "USD" },
+            { label: "Bono Transporte",   amount: "20.00", currency: "USD" },
         ],
         diasUtilidades:     15,
         diasBonoVacacional: 15,

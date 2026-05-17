@@ -374,7 +374,9 @@ export const BonusRowEditor = ({
     canRemove: boolean;
     bcvRate:   number;
 }) => {
-    const computed = (parseFloat(row.amount) || 0) * bcvRate;
+    const raw      = parseFloat(row.amount) || 0;
+    const isVes    = row.currency === "VES";
+    const computed = isVes ? raw : raw * bcvRate;
 
     return (
         <div className="space-y-1.5">
@@ -389,7 +391,7 @@ export const BonusRowEditor = ({
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            {/* Row 2: Monto USD | → VES result */}
+            {/* Row 2: Monto (USD o VES) | toggle moneda | → VES result */}
             <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
@@ -398,9 +400,22 @@ export const BonusRowEditor = ({
                     placeholder="0.00"
                     className="w-28"
                     inputClassName="text-right"
-                    prefix="$"
-                    step={5}
+                    prefix={isVes ? "Bs" : "$"}
+                    step={isVes ? 1000 : 5}
                 />
+                <button
+                    onClick={() => onChange({ ...row, currency: isVes ? "USD" : "VES" })}
+                    className={[
+                        "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
+                        "transition-colors duration-150 whitespace-nowrap",
+                        isVes
+                            ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                            : "border-primary-500/40 bg-primary-500/10 text-primary-500",
+                    ].join(" ")}
+                    title={isVes ? "Bono en bolívares — click para USD" : "Bono en dólares — click para VES"}
+                >
+                    {isVes ? "VES" : "USD"}
+                </button>
                 <Result value={computed} />
             </div>
         </div>

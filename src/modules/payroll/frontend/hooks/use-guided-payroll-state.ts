@@ -342,10 +342,13 @@ export function useGuidedPayrollState() {
 
     const bonusValues = useMemo<BonusValue[]>(
         () =>
-            bonusRows.map((r) => ({
-                ...r,
-                computed: (parseFloat(r.amount) || 0) * bcvRate,
-            })),
+            bonusRows.map((r) => {
+                const raw = parseFloat(r.amount) || 0;
+                return {
+                    ...r,
+                    computed: r.currency === "VES" ? raw : raw * bcvRate,
+                };
+            }),
         [bonusRows, bcvRate],
     );
 

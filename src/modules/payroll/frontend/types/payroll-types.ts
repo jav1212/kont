@@ -22,9 +22,10 @@ export interface DeductionRow {
 }
 
 export interface BonusRow {
-    id:     string;
-    label:  string;
-    amount: string; // USD amount (string for controlled input)
+    id:       string;
+    label:    string;
+    amount:   string;            // monto en la moneda elegida (string para input controlado)
+    currency: "USD" | "VES";     // USD se convierte a VES por tasa BCV; VES se usa tal cual
 }
 
 // ── Horas extras (Art. 118 LOTTT) ─────────────────────────────────────────

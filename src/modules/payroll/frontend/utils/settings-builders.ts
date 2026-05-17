@@ -100,7 +100,12 @@ export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): Deductio
 }
 
 export function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
-    return defs.map((b) => ({ id: uid("b"), label: b.label, amount: b.amount }));
+    return defs.map((b) => ({
+        id:       uid("b"),
+        label:    b.label,
+        amount:   b.amount,
+        currency: b.currency ?? "USD",
+    }));
 }
 
 export function makeHorasExtrasFromDefs(defs: PayrollHorasExtrasGlobalDef[]): HorasExtrasRow[] {
@@ -136,7 +141,7 @@ export function buildSettings(
             mode: r.mode ?? "rate",
             quincenaRule: r.quincenaRule ?? "always",
         })),
-        bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount })),
+        bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount, currency: r.currency })),
         diasUtilidades,
         diasBonoVacacional: diasBono,
         salaryMode,

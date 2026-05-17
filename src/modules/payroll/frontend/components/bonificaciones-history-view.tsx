@@ -1,0 +1,312 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { FileText } from "lucide-react";
+import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import {
+    useBonificacionesHistory,
+    type BonificacionesRun,
+    type BonificacionesReceipt,
+} from "../hooks/use-bonificaciones-history";
+import { generateBonificacionesPdf } from "../utils/bonificaciones-pdf";
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const fmt = (n: number) =>
+    n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function formatDateShort(iso: string) {
+    return new Date(iso + "T00:00:00").toLocaleDateString("es-VE", {
+        day: "2-digit", month: "short", year: "numeric",
+    });
+}
+
+function formatDateTime(iso: string) {
+    return new Date(iso).toLocaleDateString("es-VE", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+    });
+}
+
+// ============================================================================
+// SUBCOMPONENTS
+// ============================================================================
+
+const Spinner = () => (
+    <svg className="animate-spin text-[var(--text-tertiary)]" width="13" height="13" viewBox="0 0 12 12" fill="none">
+        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);
+
+function BfRunRow({
+    run, isSelected, onSelect,
+}: {
+    run: BonificacionesRun;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+}) {
+    return (
+        <button
+            onClick={() => onSelect(run.id)}
+            className={[
+                "w-full flex items-center justify-between px-5 py-4",
+                "border-b border-border-light last:border-0 text-left",
+                "transition-colors duration-150",
+                isSelected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]",
+            ].join(" ")}
+        >
+            <div className="flex flex-col gap-1">
+                <span className="font-mono text-[12px] font-semibold text-foreground">
+                    {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
+                </span>
+                <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                    {run.status === "draft" ? "Guardado" : "Confirmado"}: {formatDateTime(run.confirmedAt)}
+                </span>
+            </div>
+            <div className="flex items-center gap-6 tabular-nums">
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Empleados</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)]">{run.employeeCount}</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Conceptos</span>
+                    <span className="font-mono text-[13px] text-[var(--text-secondary)]">{run.lineCount}</span>
+                </div>
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Total VES</span>
+                    <span className="font-mono text-[13px] tabular-nums text-primary-500 font-semibold">Bs. {fmt(run.totalVes)}</span>
+                </div>
+                <span
+                    className={[
+                        "font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                        run.status === "draft"
+                            ? "border-border-medium bg-foreground/[0.05] text-[var(--text-secondary)]"
+                            : "badge-success",
+                    ].join(" ")}
+                >
+                    {run.status === "draft" ? "Borrador" : "Confirmado"}
+                </span>
+                <svg
+                    width="12" height="12" viewBox="0 0 12 12" fill="none"
+                    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                    className={["transition-transform duration-150 text-[var(--text-tertiary)]", isSelected ? "rotate-90" : ""].join(" ")}
+                >
+                    <path d="M4 2l4 4-4 4" />
+                </svg>
+            </div>
+        </button>
+    );
+}
+
+function BfReceiptsPanel({ receipts, loading }: {
+    receipts: BonificacionesReceipt[]; loading: boolean;
+}) {
+    if (loading) return (
+        <div className="flex items-center justify-center h-24 gap-2 border border-border-light rounded-xl">
+            <Spinner />
+            <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando recibos…</span>
+        </div>
+    );
+    if (!receipts.length) return (
+        <div className="flex items-center justify-center h-20 border border-border-light rounded-xl">
+            <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Sin recibos</span>
+        </div>
+    );
+
+    const totVes = receipts.reduce((s, r) => s + r.totalVes, 0);
+
+    return (
+        <div className="space-y-3">
+            <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light">
+                {receipts.map((r) => (
+                    <div key={r.id} className="px-5 py-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                                <span className="font-mono text-[13px] font-bold text-foreground truncate">
+                                    {r.employeeNombre}
+                                </span>
+                                <span className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                                    {r.employeeCedula}{r.employeeCargo ? ` · ${r.employeeCargo}` : ""}
+                                </span>
+                            </div>
+                            <span className="font-mono text-[14px] font-bold tabular-nums text-primary-500">
+                                Bs. {fmt(r.totalVes)}
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {r.bonusLines.map((line, i) => (
+                                <div
+                                    key={`${r.id}-${i}`}
+                                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-border-light/60 bg-surface-2"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span
+                                            className={[
+                                                "shrink-0 font-mono text-[10px] uppercase tracking-[0.16em] px-1.5 py-0.5 rounded border",
+                                                line.currency === "USD"
+                                                    ? "border-primary-500/40 bg-primary-500/10 text-primary-500"
+                                                    : "border-amber-500/40 bg-amber-500/10 text-amber-500",
+                                            ].join(" ")}
+                                        >
+                                            {line.currency}
+                                        </span>
+                                        <span className="font-mono text-[12px] text-foreground truncate">
+                                            {line.label}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col items-end shrink-0 tabular-nums">
+                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                                            {line.currency === "USD" ? `$${fmt(line.amount)}` : `Bs. ${fmt(line.amount)}`}
+                                        </span>
+                                        <span className="font-mono text-[12px] font-semibold text-foreground">
+                                            Bs. {fmt(line.amountVes)}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex justify-end gap-8 px-5 py-3 border border-border-light rounded-xl bg-surface-1">
+                <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-[var(--text-tertiary)]">Total VES</span>
+                    <span className="font-mono text-[18px] font-black text-primary-500 tabular-nums">Bs. {fmt(totVes)}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================================================
+// VIEW
+// ============================================================================
+
+export interface BonificacionesHistoryCompany {
+    name?:           string | null;
+    id?:             string | null;
+    logoUrl?:        string | null;
+    showLogoInPdf?:  boolean | null;
+}
+
+export function BonificacionesHistoryView({
+    companyId,
+    company,
+}: {
+    companyId: string | null;
+    company:   BonificacionesHistoryCompany | null;
+}) {
+    const { runs, loading, getReceipts } = useBonificacionesHistory(companyId);
+
+    const [selectedRunId,   setSelectedRunId]   = useState<string | null>(null);
+    const [receipts,        setReceipts]        = useState<BonificacionesReceipt[]>([]);
+    const [receiptsLoading, setReceiptsLoading] = useState(false);
+
+    const handleSelectRun = useCallback(async (runId: string) => {
+        if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
+        setSelectedRunId(runId);
+        setReceiptsLoading(true);
+        const data = await getReceipts(runId);
+        setReceiptsLoading(false);
+        setReceipts(data ?? []);
+    }, [selectedRunId, getReceipts]);
+
+    const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
+
+    const handleDownloadPdf = useCallback(() => {
+        if (!selectedRun || !receipts.length) return;
+        const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
+
+        // Reconstruir bonusLines globales: tomamos las del primer recibo (todos
+        // los empleados de un mismo run tienen exactamente los mismos conceptos
+        // porque el set se aplica uniforme a todos los activos).
+        const bonusLines = receipts[0]?.bonusLines.map((l) => ({
+            label:     l.label,
+            currency:  l.currency,
+            amount:    l.amount,
+            amountVES: l.amountVes,
+        })) ?? [];
+
+        generateBonificacionesPdf(
+            receipts.map((r) => ({
+                cedula: r.employeeCedula,
+                nombre: r.employeeNombre,
+                cargo:  r.employeeCargo,
+                estado: "activo",
+            })),
+            {
+                companyName:    company?.name ?? "",
+                companyId:      company?.id ?? undefined,
+                periodLabel,
+                payrollDate:    selectedRun.periodEnd,
+                bonusLines,
+                bcvRate:        selectedRun.exchangeRate,
+                logoUrl:        company?.logoUrl ?? undefined,
+                showLogoInPdf:  company?.showLogoInPdf ?? undefined,
+            },
+        );
+    }, [selectedRun, receipts, company]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-32 gap-2 border border-border-light rounded-xl bg-surface-1">
+                <Spinner />
+                <span className="font-mono text-[13px] uppercase tracking-widest text-[var(--text-tertiary)]">Cargando historial…</span>
+            </div>
+        );
+    }
+
+    if (runs.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-40 border border-border-light rounded-xl text-[var(--text-tertiary)] gap-3 bg-surface-1">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                <span className="font-mono text-[13px] uppercase tracking-widest">Sin bonificaciones guardadas</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {selectedRun && receipts.length > 0 && (
+                <div className="flex justify-end">
+                    <BaseButton.Root
+                        variant="primary"
+                        size="sm"
+                        onClick={handleDownloadPdf}
+                        leftIcon={<FileText size={14} />}
+                    >
+                        Re-exportar PDF
+                    </BaseButton.Root>
+                </div>
+            )}
+
+            <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
+                {runs.map((run) => (
+                    <BfRunRow
+                        key={run.id}
+                        run={run}
+                        isSelected={selectedRunId === run.id}
+                        onSelect={handleSelectRun}
+                    />
+                ))}
+            </div>
+
+            {selectedRunId && (
+                <BfReceiptsPanel
+                    receipts={receipts}
+                    loading={receiptsLoading}
+                />
+            )}
+        </div>
+    );
+}

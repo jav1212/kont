@@ -203,14 +203,14 @@ export const BonusesSection = ({
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `b_${Date.now()}`, label: "", amount: "0.00",
+            id: `b_${Date.now()}`, label: "", amount: "0.00", currency: "USD",
         })} />
         <AuditContainer title="Total Bonificaciones" total={total} type="income">
             {values.map((r) => (
                 <AuditRow
                     key={r.id}
                     label={r.label || "—"}
-                    formula={`${r.amount}$ × ${bcvRate}`}
+                    formula={r.currency === "VES" ? `${r.amount} Bs` : `${r.amount}$ × ${bcvRate}`}
                     value={r.computed}
                 />
             ))}

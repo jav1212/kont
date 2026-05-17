@@ -14,10 +14,11 @@ import { generatePayrollSummaryPdf } from "@/src/modules/payroll/frontend/utils/
 import type { PayrollSummaryEmployeeRow } from "@/src/modules/payroll/frontend/utils/payroll-summary-pdf";
 import { CestaTicketHistoryView } from "@/src/modules/payroll/frontend/components/cesta-ticket-history-view";
 import { BonoGuerraHistoryView } from "@/src/modules/payroll/frontend/components/bono-guerra-history-view";
+import { BonificacionesHistoryView } from "@/src/modules/payroll/frontend/components/bonificaciones-history-view";
 import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
 import { IslrRetencionesModal } from "@/src/modules/payroll/frontend/components/islr-retenciones-modal";
 
-type HistoryTab = "payroll" | "cesta" | "bono";
+type HistoryTab = "payroll" | "cesta" | "bono" | "bonificaciones";
 
 // ============================================================================
 // HELPERS
@@ -360,7 +361,9 @@ export default function PayrollHistoryPage() {
         ? (company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados")
         : activeTab === "cesta"
             ? (company ? `Cesta ticket · ${company.name}` : "Cesta ticket")
-            : (company ? `Bono socio económico · ${company.name}` : "Bono socio económico");
+            : activeTab === "bono"
+                ? (company ? `Bono socio económico · ${company.name}` : "Bono socio económico")
+                : (company ? `Bonificaciones · ${company.name}` : "Bonificaciones");
 
     return (
         <div className="min-h-full bg-surface-2 flex flex-col">
@@ -464,8 +467,13 @@ export default function PayrollHistoryPage() {
                             companyId={companyId}
                             company={company ?? null}
                         />
-                    ) : (
+                    ) : activeTab === "bono" ? (
                         <BonoGuerraHistoryView
+                            companyId={companyId}
+                            company={company ?? null}
+                        />
+                    ) : (
+                        <BonificacionesHistoryView
                             companyId={companyId}
                             company={company ?? null}
                         />
@@ -501,9 +509,10 @@ function HistoryTabs({ active, onChange }: {
     onChange: (t: HistoryTab) => void;
 }) {
     const tabs: { id: HistoryTab; label: string }[] = [
-        { id: "payroll", label: "Nóminas" },
-        { id: "cesta",   label: "Cesta Ticket" },
-        { id: "bono",    label: "Bono Socio Económico" },
+        { id: "payroll",        label: "Nóminas" },
+        { id: "cesta",          label: "Cesta Ticket" },
+        { id: "bono",           label: "Bono Socio Económico" },
+        { id: "bonificaciones", label: "Bonificaciones" },
     ];
     return (
         <div className="flex items-end border-b border-border-light gap-6">

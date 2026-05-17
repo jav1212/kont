@@ -162,11 +162,12 @@ function computeEmployee(
     ];
 
     const mapBonus = (r: BonusRow, kind: LineKind): ComputedLine => {
-        const usd = parseFloat(r.amount) || 0;
+        const raw = parseFloat(r.amount) || 0;
+        const isVes = r.currency === "VES";
         return {
             label:      r.label || "—",
-            formula:    `${usd}$ x ${bcvRate}`,
-            amount:     usd * bcvRate,
+            formula:    isVes ? `${raw} Bs` : `${raw}$ x ${bcvRate}`,
+            amount:     isVes ? raw : raw * bcvRate,
             sourceId:   r.id,
             sourceKind: kind,
         };
@@ -370,7 +371,7 @@ const ExpandedPanel = ({
     const updateXE = (id: string, u: EarningRow)   => onChange({ ...override, extraEarnings:   override.extraEarnings.map((r)   => r.id === id ? u : r) });
     const removeXE = (id: string)                   => onChange({ ...override, extraEarnings:   override.extraEarnings.filter((r)   => r.id !== id) });
 
-    const addXB    = () => onChange({ ...override, extraBonuses:    [...override.extraBonuses,    { id: uid("xb"), label: "", amount: "0.00" }] });
+    const addXB    = () => onChange({ ...override, extraBonuses:    [...override.extraBonuses,    { id: uid("xb"), label: "", amount: "0.00", currency: "USD" }] });
     const updateXB = (id: string, u: BonusRow)     => onChange({ ...override, extraBonuses:    override.extraBonuses.map((r)    => r.id === id ? u : r) });
     const removeXB = (id: string)                  => onChange({ ...override, extraBonuses:    override.extraBonuses.filter((r)    => r.id !== id) });
 
@@ -449,7 +450,7 @@ const ExpandedPanel = ({
                 <span className="font-mono text-[11px] text-amber-500" title={`Alíc. Bono Vacacional (${diasBonoVacacional}d)`}>bono vac {fmt(result.alicuotaBono)}</span>
             </div>
             {/* Audit columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
                     {result.earningLines.map((l) => (
                         <AuditRow
