@@ -847,7 +847,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                     {/* Info + CSV */}
                     <div className="flex items-start justify-between gap-2 pt-1 flex-wrap">
                         <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed flex-1 min-w-[200px]">
-                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: {applyInces ? "devengado del período" : "se aporta solo en la última quincena"}
+                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: {applyInces ? "salario mensual" : "se aporta solo en la última quincena (sobre salario mensual)"}
                         </p>
                         <button
                             onClick={handleCsv}

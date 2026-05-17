@@ -11,7 +11,7 @@ export interface AporteRow {
     baseSso:        number;  // min(weeklyBase, 10×salMin)
     ssoPatronal:    number;  // 9% base semanal (semanas del período)
     faovPatronal:   number;  // 2% salario mensual
-    incesPatronal:  number;  // 2% sobre total devengado en el período
+    incesPatronal:  number;  // 2% salario mensual (solo última quincena)
     total:          number;
 }
 
@@ -34,7 +34,7 @@ export function computeAportes(
 
     const ssoPatronal   = baseSso * 0.09;                            // IVSS Art. 104 (9%)
     const faovPatronal  = emp.salarioVES * 0.02;                     // BANAVIH (2% mensual)
-    const incesPatronal = applyInces ? emp.gross * 0.02 : 0;         // INCES patronal: solo última quincena
+    const incesPatronal = applyInces ? emp.salarioVES * 0.02 : 0;    // INCES patronal: 2% salario mensual, solo última quincena
 
     const total = ssoPatronal + faovPatronal + incesPatronal;
 
