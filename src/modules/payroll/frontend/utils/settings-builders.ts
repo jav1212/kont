@@ -20,6 +20,33 @@ import type {
 let _seq = 0;
 export const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 
+// Deterministic ID derived from the row's label (or another stable token).
+// Stable across regenerations of the same defs array, so per-employee
+// `excluded.deductions[]` (and equivalents) survive a `setDeductionRows(...)`
+// re-build triggered by `activePeriodInfo` / settings re-fetch.
+//
+// Within a single array, duplicate labels are tie-broken by appearance index
+// (`d:prestamo`, `d:prestamo__1`, …) so each row still gets a unique key.
+function slug(label: string): string {
+    return label
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        || "row";
+}
+
+function makeSlugId(prefix: string) {
+    const seen = new Map<string, number>();
+    return (token: string): string => {
+        const base = `${prefix}:${slug(token)}`;
+        const count = seen.get(base) ?? 0;
+        seen.set(base, count + 1);
+        return count === 0 ? base : `${base}__${count}`;
+    };
+}
+
 // Known calendar-based labels → quantity comes from the period calendar.
 export const CALENDAR_QUANTITY: Record<
     string,
@@ -50,6 +77,7 @@ export function makeEarningsFromDefs(
             ? [...defs, { label: "Feriados Nacionales", multiplier: "1.5", useDaily: true }]
             : defs;
 
+    const nextId = makeSlugId("e");
     return effectiveDefs
         .map((def): EarningRow => {
             let qty: string;
@@ -60,7 +88,7 @@ export function makeEarningsFromDefs(
                 qty = calFn ? String(calFn(wd, sat, sun, hol)) : "0";
             }
             return {
-                id: uid("e"),
+                id: nextId(def.label),
                 label: def.label,
                 quantity: qty,
                 multiplier: def.multiplier,
@@ -93,8 +121,9 @@ export function extractEarningDefs(rows: EarningRow[]): PayrollEarningRowDef[] {
 const FORCED_SECOND_HALF = /^INCES$/i;
 
 export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): DeductionRow[] {
+    const nextId = makeSlugId("d");
     return defs.map((d) => ({
-        id: uid("d"),
+        id: nextId(d.label),
         label: d.label,
         rate: d.rate,
         base: d.base,
@@ -104,8 +133,9 @@ export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): Deductio
 }
 
 export function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
+    const nextId = makeSlugId("b");
     return defs.map((b) => ({
-        id:       uid("b"),
+        id:       nextId(b.label),
         label:    b.label,
         amount:   b.amount,
         currency: b.currency ?? "USD",
@@ -113,7 +143,8 @@ export function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
 }
 
 export function makeHorasExtrasFromDefs(defs: PayrollHorasExtrasGlobalDef[]): HorasExtrasRow[] {
-    return defs.map((d) => ({ id: uid("xhg"), tipo: d.tipo, hours: d.hours, active: d.active }));
+    const nextId = makeSlugId("xhg");
+    return defs.map((d) => ({ id: nextId(d.tipo), tipo: d.tipo, hours: d.hours, active: d.active }));
 }
 
 export function extractHorasExtrasDefs(rows: HorasExtrasRow[]): PayrollHorasExtrasGlobalDef[] {
