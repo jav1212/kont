@@ -16,7 +16,7 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         bonusRows, bonusValues, totalBonuses,
         addBonus, updateBonus, removeBonus,
         bcvRate,
-        showCestaTicket, periodoMode,
+        showCestaTicket, showBonoSocioEconomico, periodoMode,
         cestaTicketUSD, setCestaTicketUSD,
         bonoGuerraUSD, setBonoGuerraUSD,
         salaryMode, setSalaryMode,
@@ -82,7 +82,7 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                 </StepSection>
             )}
 
-            {showCestaTicket && (
+            {showBonoSocioEconomico && (
                 <StepSection
                     title={
                         periodoMode === "semanal"

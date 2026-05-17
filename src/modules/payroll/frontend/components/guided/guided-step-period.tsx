@@ -30,6 +30,52 @@ function DayStat({ label, value, muted }: { label: string; value: number; muted?
     );
 }
 
+// Per-payroll override toggle for monthly benefits (cesta ticket / bono socio-económico).
+// null = follow defaultActive (the period-based automatic rule).
+function BenefitOverrideTriToggle({
+    label,
+    value,
+    defaultActive,
+    onChange,
+}: {
+    label:         string;
+    value:         boolean | null;
+    defaultActive: boolean;
+    onChange:      (v: boolean | null) => void;
+}) {
+    const segBtn = (selected: boolean, onClick: () => void, text: string) => (
+        <button
+            type="button"
+            onClick={onClick}
+            className={[
+                "h-10 rounded-lg border font-mono text-[12px] uppercase tracking-[0.12em] transition-all",
+                selected
+                    ? "bg-primary-500/10 border-primary-500/60 text-primary-600 font-bold"
+                    : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium",
+            ].join(" ")}
+        >
+            {text}
+        </button>
+    );
+
+    return (
+        <div>
+            <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-2 block">
+                {label}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+                {segBtn(
+                    value === null,
+                    () => onChange(null),
+                    `Por defecto · ${defaultActive ? "incluir" : "excluir"}`,
+                )}
+                {segBtn(value === true,  () => onChange(true),  "Forzar incluir")}
+                {segBtn(value === false, () => onChange(false), "Forzar excluir")}
+            </div>
+        </div>
+    );
+}
+
 export function GuidedStepPeriod({ state, onNext }: Props) {
     const {
         periodoMode, setPeriodoMode,
@@ -40,6 +86,9 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
         bcvDate, setBcvDate, exchangeRate, setExchangeRate,
         bcvLoading, bcvFetchError, fetchBcvRate,
         monthlySalary, setMonthlySalary,
+        defaultBenefitsInPeriod,
+        includeCestaTicketOverride,        setIncludeCestaTicketOverride,
+        includeBonoSocioEconomicoOverride, setIncludeBonoSocioEconomicoOverride,
     } = state;
 
     const now = new Date();
@@ -267,6 +316,30 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                     <p className="mt-2 font-mono text-[12px] text-red-400">{bcvFetchError}</p>
                 )}
             </StepSection>
+
+            <AdvancedDisclosure label="Avanzado · beneficios mensuales">
+                <p className="font-mono text-[13px] text-[var(--text-tertiary)] leading-relaxed">
+                    Por defecto, cesta ticket y bono socio-económico solo se incluyen
+                    en la última quincena/semana del mes. Si en esta nómina pagas
+                    estos beneficios en un período distinto, fuérzalos manualmente.
+                    El cambio aplica solo a este cálculo; no altera la configuración
+                    guardada de la empresa.
+                </p>
+
+                <BenefitOverrideTriToggle
+                    label="Cesta ticket en esta nómina"
+                    value={includeCestaTicketOverride}
+                    defaultActive={defaultBenefitsInPeriod}
+                    onChange={setIncludeCestaTicketOverride}
+                />
+
+                <BenefitOverrideTriToggle
+                    label="Bono socio-económico en esta nómina"
+                    value={includeBonoSocioEconomicoOverride}
+                    defaultActive={defaultBenefitsInPeriod}
+                    onChange={setIncludeBonoSocioEconomicoOverride}
+                />
+            </AdvancedDisclosure>
 
             <AdvancedDisclosure label="Avanzado · salario de referencia">
                 <p className="font-mono text-[13px] text-[var(--text-tertiary)] leading-relaxed">

@@ -58,6 +58,7 @@ export default function PayrollCalculatorPage() {
         companyId,
         bcvRate,
         showCestaTicket,
+        showBonoSocioEconomico,
         cestaTicketUSD,
         bonoGuerraUSD,
         bonusRows,
@@ -378,30 +379,31 @@ export default function PayrollCalculatorPage() {
                         />
 
                         {showCestaTicket && (
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <BenefitActionCluster
-                                    label="Cesta Ticket"
-                                    icon={<Receipt size={12} />}
-                                    confirmed={cestaTicketAlreadyConfirmed}
-                                    saving={savingCtDraft}
-                                    confirming={confirmingCt}
-                                    disabled={!activos}
-                                    onSaveDraft={handleSaveCestaTicketDraft}
-                                    onConfirm={handleConfirmCestaTicket}
-                                    onPdf={handleCestaTicketPdf}
-                                />
-                                <BenefitActionCluster
-                                    label="Bono Socio Económico"
-                                    icon={<Shield size={12} />}
-                                    confirmed={bonoGuerraAlreadyConfirmed}
-                                    saving={savingBgDraft}
-                                    confirming={confirmingBg}
-                                    disabled={!activos}
-                                    onSaveDraft={handleSaveBonoGuerraDraft}
-                                    onConfirm={handleConfirmBonoGuerra}
-                                    onPdf={handleBonoGuerraPdf}
-                                />
-                            </div>
+                            <BenefitActionCluster
+                                label="Cesta Ticket"
+                                icon={<Receipt size={12} />}
+                                confirmed={cestaTicketAlreadyConfirmed}
+                                saving={savingCtDraft}
+                                confirming={confirmingCt}
+                                disabled={!activos}
+                                onSaveDraft={handleSaveCestaTicketDraft}
+                                onConfirm={handleConfirmCestaTicket}
+                                onPdf={handleCestaTicketPdf}
+                            />
+                        )}
+
+                        {showBonoSocioEconomico && (
+                            <BenefitActionCluster
+                                label="Bono Socio Económico"
+                                icon={<Shield size={12} />}
+                                confirmed={bonoGuerraAlreadyConfirmed}
+                                saving={savingBgDraft}
+                                confirming={confirmingBg}
+                                disabled={!activos}
+                                onSaveDraft={handleSaveBonoGuerraDraft}
+                                onConfirm={handleConfirmBonoGuerra}
+                                onPdf={handleBonoGuerraPdf}
+                            />
                         )}
 
                         <div className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border-light bg-surface-2 shadow-sm">

@@ -99,8 +99,28 @@ export function useGuidedPayrollState() {
         periodoMode === "semanal" &&
         mondaysOfMonth.length > 0 &&
         selWeekMonday === mondaysOfMonth[mondaysOfMonth.length - 1];
-    const showCestaTicket =
+
+    // Default rule: monthly benefits (cesta ticket + bono socio-económico) ride
+    // along with the 2nd quincena or the last week of the month. Per-payroll
+    // overrides below let the user force-include or force-exclude when paid
+    // outside the default period (e.g., 1st quincena by exception).
+    const defaultBenefitsInPeriod =
         (periodoMode === "quincenal" && selQuincena === 2) || isLastWeekOfMonth;
+
+    const [includeCestaTicketOverride, setIncludeCestaTicketOverride] =
+        useState<boolean | null>(null);
+    const [includeBonoSocioEconomicoOverride, setIncludeBonoSocioEconomicoOverride] =
+        useState<boolean | null>(null);
+
+    const showCestaTicket        = includeCestaTicketOverride        ?? defaultBenefitsInPeriod;
+    const showBonoSocioEconomico = includeBonoSocioEconomicoOverride ?? defaultBenefitsInPeriod;
+
+    // Reset overrides whenever the period selection changes — overrides are
+    // tied to "this payroll", so a new period means a fresh decision.
+    useEffect(() => {
+        setIncludeCestaTicketOverride(null);
+        setIncludeBonoSocioEconomicoOverride(null);
+    }, [periodoMode, selYear, selMonth, selQuincena, selWeekMonday]);
 
     // ── Reference salary + BCV ─────────────────────────────────────────────
     const [exchangeRate, setExchangeRate] = useState("79.59");
@@ -511,7 +531,13 @@ export function useGuidedPayrollState() {
         activePeriodInfo,
         activeQuincena,
         isLastWeekOfMonth,
+        defaultBenefitsInPeriod,
         showCestaTicket,
+        showBonoSocioEconomico,
+        includeCestaTicketOverride,
+        setIncludeCestaTicketOverride,
+        includeBonoSocioEconomicoOverride,
+        setIncludeBonoSocioEconomicoOverride,
         mondaysInMonth,
 
         // BCV
