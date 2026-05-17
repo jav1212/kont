@@ -62,6 +62,8 @@ export default function PayrollCalculatorPage() {
         cestaTicketUSD,
         bonoGuerraUSD,
         bonusRows,
+        cestaTicketExcluded,
+        bonoGuerraExcluded,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
 
@@ -128,7 +130,9 @@ export default function PayrollCalculatorPage() {
 
     const buildCtPayload = useCallback((): CestaTicketPayload | null => {
         if (!companyId) return null;
-        const active = employees.filter((e) => e.estado === "activo");
+        const active = employees.filter(
+            (e) => e.estado === "activo" && !cestaTicketExcluded.has(e.cedula),
+        );
         if (!active.length) return null;
         const montoUsd = parseFloat(cestaTicketUSD) || 40;
         const montoVes = montoUsd * bcvRate;
@@ -150,11 +154,16 @@ export default function PayrollCalculatorPage() {
                 montoVes,
             })),
         };
-    }, [companyId, employees, cestaTicketUSD, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, cestaTicketExcluded, cestaTicketUSD, bcvRate, activePeriodInfo]);
 
     const handleCestaTicketPdf = () => {
-        const active = employees.filter((e) => e.estado === "activo");
-        if (!active.length) return;
+        const active = employees.filter(
+            (e) => e.estado === "activo" && !cestaTicketExcluded.has(e.cedula),
+        );
+        if (!active.length) {
+            notify.error("No hay empleados seleccionados para cesta ticket");
+            return;
+        }
         generateCestaTicketPdf(
             active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
             {
@@ -170,7 +179,7 @@ export default function PayrollCalculatorPage() {
 
     const handleSaveCestaTicketDraft = async () => {
         const payload = buildCtPayload();
-        if (!payload) { notify.error("No hay empleados activos para guardar"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
         setSavingCtDraft(true);
         const { runId } = await saveCtDraft(payload);
         setSavingCtDraft(false);
@@ -179,7 +188,7 @@ export default function PayrollCalculatorPage() {
 
     const handleConfirmCestaTicket = async () => {
         const payload = buildCtPayload();
-        if (!payload) { notify.error("No hay empleados activos para confirmar"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
         setConfirmingCt(true);
         const ok = await confirmCt(payload);
         setConfirmingCt(false);
@@ -190,7 +199,9 @@ export default function PayrollCalculatorPage() {
 
     const buildBgPayload = useCallback((): BonoGuerraPayload | null => {
         if (!companyId) return null;
-        const active = employees.filter((e) => e.estado === "activo");
+        const active = employees.filter(
+            (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
+        );
         if (!active.length) return null;
         const montoUsd = parseFloat(bonoGuerraUSD) || 200;
         const montoVes = montoUsd * bcvRate;
@@ -212,11 +223,16 @@ export default function PayrollCalculatorPage() {
                 montoVes,
             })),
         };
-    }, [companyId, employees, bonoGuerraUSD, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, bonoGuerraExcluded, bonoGuerraUSD, bcvRate, activePeriodInfo]);
 
     const handleBonoGuerraPdf = () => {
-        const active = employees.filter((e) => e.estado === "activo");
-        if (!active.length) return;
+        const active = employees.filter(
+            (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
+        );
+        if (!active.length) {
+            notify.error("No hay empleados seleccionados para bono socio económico");
+            return;
+        }
         generateBonoGuerraPdf(
             active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
             {
@@ -232,7 +248,7 @@ export default function PayrollCalculatorPage() {
 
     const handleSaveBonoGuerraDraft = async () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados activos para guardar"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         setSavingBgDraft(true);
         const { runId } = await saveBgDraft(payload);
         setSavingBgDraft(false);
@@ -241,7 +257,7 @@ export default function PayrollCalculatorPage() {
 
     const handleConfirmBonoGuerra = async () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados activos para confirmar"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         setConfirmingBg(true);
         const ok = await confirmBg(payload);
         setConfirmingBg(false);

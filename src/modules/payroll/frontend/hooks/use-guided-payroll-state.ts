@@ -134,11 +134,34 @@ export function useGuidedPayrollState() {
     const showCestaTicket        = includeCestaTicketOverride        ?? defaultBenefitsInPeriod;
     const showBonoSocioEconomico = includeBonoSocioEconomicoOverride ?? defaultBenefitsInPeriod;
 
+    // Per-employee opt-out for cesta ticket and bono socio económico. Empty set
+    // = todos los activos reciben (comportamiento histórico). El usuario destilda
+    // a quien no aplique. Vive solo en estado de calculadora, no se persiste.
+    const [cestaTicketExcluded, setCestaTicketExcluded] = useState<Set<string>>(() => new Set());
+    const [bonoGuerraExcluded,  setBonoGuerraExcluded]  = useState<Set<string>>(() => new Set());
+
+    const toggleCestaTicketRecipient = useCallback((cedula: string) => {
+        setCestaTicketExcluded((s) => {
+            const next = new Set(s);
+            if (next.has(cedula)) next.delete(cedula); else next.add(cedula);
+            return next;
+        });
+    }, []);
+    const toggleBonoGuerraRecipient = useCallback((cedula: string) => {
+        setBonoGuerraExcluded((s) => {
+            const next = new Set(s);
+            if (next.has(cedula)) next.delete(cedula); else next.add(cedula);
+            return next;
+        });
+    }, []);
+
     // Reset overrides whenever the period selection changes — overrides are
     // tied to "this payroll", so a new period means a fresh decision.
     useEffect(() => {
         setIncludeCestaTicketOverride(null);
         setIncludeBonoSocioEconomicoOverride(null);
+        setCestaTicketExcluded(new Set());
+        setBonoGuerraExcluded(new Set());
     }, [periodoMode, selYear, selMonth, selQuincena, selWeekMonday]);
 
     // ── Reference salary + BCV ─────────────────────────────────────────────
@@ -600,10 +623,14 @@ export function useGuidedPayrollState() {
         // Cesta ticket
         cestaTicketUSD,
         setCestaTicketUSD,
+        cestaTicketExcluded,
+        toggleCestaTicketRecipient,
 
         // Bono Socio Económico de Ayuda Alimenticia (Art. 105 LOTTT — beneficio social no remunerativo)
         bonoGuerraUSD,
         setBonoGuerraUSD,
+        bonoGuerraExcluded,
+        toggleBonoGuerraRecipient,
 
         // PDF visibility
         pdfVisibility,

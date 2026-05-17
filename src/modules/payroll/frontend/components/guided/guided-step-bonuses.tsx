@@ -4,6 +4,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BonusesSection } from "../payroll-accordion-sections";
 import type { GuidedPayrollState } from "../../hooks/use-guided-payroll-state";
 import { GuidedStepShell, StepSection, AdvancedDisclosure } from "./guided-step-shell";
+import { BenefitRecipientsList } from "./benefit-recipients-list";
 
 interface Props {
     state: GuidedPayrollState;
@@ -24,6 +25,11 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         diasBonoVacacional, setDiasBonoVacacional,
         diasUtilNum, diasBonoNum,
         refSalary, alicuotaUtil, alicuotaBono, integralBase,
+        employees,
+        cestaTicketExcluded,
+        toggleCestaTicketRecipient,
+        bonoGuerraExcluded,
+        toggleBonoGuerraRecipient,
     } = state;
 
     return (
@@ -79,6 +85,12 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                             </span>
                         </div>
                     </div>
+                    <BenefitRecipientsList
+                        employees={employees}
+                        excluded={cestaTicketExcluded}
+                        onToggle={toggleCestaTicketRecipient}
+                        benefitNoun="reciben cesta ticket"
+                    />
                 </StepSection>
             )}
 
@@ -113,6 +125,12 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                             </span>
                         </div>
                     </div>
+                    <BenefitRecipientsList
+                        employees={employees}
+                        excluded={bonoGuerraExcluded}
+                        onToggle={toggleBonoGuerraRecipient}
+                        benefitNoun="reciben bono"
+                    />
                 </StepSection>
             )}
 
