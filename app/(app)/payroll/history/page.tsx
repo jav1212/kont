@@ -3,10 +3,12 @@
 import { useState, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
-import { FileText, Download, FileBarChart, FileCode } from "lucide-react";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { FileText, Download, FileBarChart, FileCode, CheckCircle2 } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
-import type { PayrollRun, PayrollReceipt } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
+import type { PayrollRun, PayrollReceipt, ConfirmReceiptPayload } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
+import { notify } from "@/src/shared/frontend/notify";
 import { useEmployee } from "@/src/modules/payroll/frontend/hooks/use-employee";
 import { generatePayrollPdf } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
 import type { PdfEmployeeResult } from "@/src/modules/payroll/frontend/utils/payroll-pdf";
@@ -294,7 +296,7 @@ function ReceiptsPanel({ receipts, loading }: {
 
 export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
-    const { runs, loading, getReceipts } = usePayrollHistory(companyId);
+    const { runs, loading, getReceipts, confirm } = usePayrollHistory(companyId);
     const { employees } = useEmployee(companyId);
 
     const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
@@ -304,6 +306,8 @@ export default function PayrollHistoryPage() {
     const [receiptsLoading, setReceiptsLoading] = useState(false);
     const [islrModalOpen, setIslrModalOpen] = useState(false);
     const [islrPdfModalOpen, setIslrPdfModalOpen] = useState(false);
+    const [confirmDraftOpen, setConfirmDraftOpen] = useState(false);
+    const [confirmingDraft, setConfirmingDraft] = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -357,6 +361,41 @@ export default function PayrollHistoryPage() {
         });
     }, [selectedRun, receipts, company]);
 
+    const handleConfirmDraft = useCallback(async () => {
+        if (!selectedRun || selectedRun.status !== "draft" || receipts.length === 0) return;
+
+        setConfirmingDraft(true);
+        const receiptPayload: ConfirmReceiptPayload[] = receipts.map((r) => ({
+            companyId:       r.companyId,
+            employeeId:      r.employeeCedula,
+            employeeCedula:  r.employeeCedula,
+            employeeNombre:  r.employeeNombre,
+            employeeCargo:   r.employeeCargo,
+            monthlySalary:   r.monthlySalary,
+            totalEarnings:   r.totalEarnings,
+            totalDeductions: r.totalDeductions,
+            totalBonuses:    r.totalBonuses,
+            netPay:          r.netPay,
+            calculationData: r.calculationData,
+        }));
+
+        const ok = await confirm({
+            run: {
+                companyId:    selectedRun.companyId,
+                periodStart:  selectedRun.periodStart,
+                periodEnd:    selectedRun.periodEnd,
+                exchangeRate: selectedRun.exchangeRate,
+            },
+            receipts: receiptPayload,
+        });
+        setConfirmingDraft(false);
+
+        if (ok) {
+            notify.success("Nómina confirmada");
+            setConfirmDraftOpen(false);
+        }
+    }, [selectedRun, receipts, confirm]);
+
     const subtitle = activeTab === "payroll"
         ? (company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados")
         : activeTab === "cesta"
@@ -372,8 +411,18 @@ export default function PayrollHistoryPage() {
                     <div className="flex items-center gap-2">
                         {selectedRun && receipts.length > 0 && (
                             <>
+                                {selectedRun.status === "draft" && (
+                                    <BaseButton.Root
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => setConfirmDraftOpen(true)}
+                                        leftIcon={<CheckCircle2 size={14} />}
+                                    >
+                                        Confirmar nómina
+                                    </BaseButton.Root>
+                                )}
                                 <BaseButton.Root
-                                    variant="primary"
+                                    variant={selectedRun.status === "draft" ? "secondary" : "primary"}
                                     size="sm"
                                     onClick={handleDownloadPdf}
                                     leftIcon={<FileText size={14} />}
@@ -499,6 +548,37 @@ export default function PayrollHistoryPage() {
                 runs={runs}
                 employees={employees}
                 getReceipts={getReceipts}
+            />
+
+            <ConfirmCompanyDialog
+                isOpen={confirmDraftOpen}
+                onClose={() => setConfirmDraftOpen(false)}
+                onConfirm={handleConfirmDraft}
+                loading={confirmingDraft}
+                title="Confirmar nómina"
+                subtitle="Promueve este borrador a nómina confirmada. Se dispara la integración contable del período."
+                summary={selectedRun && (
+                    <>
+                        <SummaryRow
+                            label="Período"
+                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                        />
+                        <SummaryRow label="Tasa BCV" value={fmt(selectedRun.exchangeRate)} />
+                        <SummaryRow label="Empleados" value={receipts.length} />
+                        <SummaryRow
+                            label="Total Neto VES"
+                            value={fmt(receipts.reduce((s, r) => s + r.netPay, 0))}
+                            emphasis
+                        />
+                        <SummaryRow
+                            label="Total Neto USD"
+                            value={`$${fmt(receipts.reduce((s, r) => s + (r.calculationData?.netUsd ?? 0), 0))}`}
+                        />
+                    </>
+                )}
+                warning="Una vez confirmada, la nómina queda bloqueada para este período. No podrás guardarla nuevamente como borrador ni modificar sus recibos desde la calculadora."
+                confirmLabel="Confirmar nómina"
+                confirmIcon={<CheckCircle2 size={14} strokeWidth={2} />}
             />
         </div>
     );
