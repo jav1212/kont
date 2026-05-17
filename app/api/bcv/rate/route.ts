@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractCode, fetchBcvListFallback } from "../_lib";
+import {
+    extractCode,
+    fetchBcvCurrentAll,
+    fetchBcvListFallback,
+    parseVeDate,
+    parseVeNumber,
+    todayCaracas,
+} from "../_lib";
 
 // Public contract (stable): GET /api/bcv/rate?date=YYYY-MM-DD&code=USD
 // Response: { rate: number, date: "YYYY-MM-DD", code: string }
@@ -14,6 +21,29 @@ export async function GET(req: NextRequest) {
     }
 
     try {
+        // Si la fecha pedida es hoy en Caracas, preferimos el endpoint "vigente"
+        // (mismo que usa /api/bcv/rates): devuelve la tasa que BCV ya publicó
+        // como efectiva, incluso fines de semana y feriados en que
+        // /exchange-rate/list todavía no incluye la entrada del próximo día hábil.
+        if (date === todayCaracas()) {
+            try {
+                const all = await fetchBcvCurrentAll();
+                const entry = all.find((e) => e.code === code);
+                if (entry) {
+                    const sell = parseVeNumber(entry.sell);
+                    if (isFinite(sell) && sell > 0) {
+                        return NextResponse.json({
+                            rate: sell,
+                            date: parseVeDate(entry.date),
+                            code,
+                        });
+                    }
+                }
+            } catch {
+                // Cualquier fallo del endpoint vigente cae al path histórico de abajo.
+            }
+        }
+
         const data = await fetchBcvListFallback(date, 7);
         if (!data.length) {
             return NextResponse.json(
