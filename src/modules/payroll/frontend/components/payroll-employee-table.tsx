@@ -694,17 +694,20 @@ interface AportesPanelProps {
     salarioMinimo:  number;
     periodLabel?:   string;
     companyName:    string;
+    quincena:       1 | 2;
 }
 
-const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, periodLabel, companyName }: AportesPanelProps) => {
+const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, periodLabel, companyName, quincena }: AportesPanelProps) => {
     const [open, setOpen] = useState(false);
+
+    const applyInces = quincena === 2;
 
     const aportes = useMemo(() =>
         results.map((r) => computeAportes(
             { salarioVES: r.salarioVES, gross: r.gross, cedula: r.cedula, nombre: r.nombre, cargo: r.cargo },
-            { mondaysInMonth, salarioMinimo },
+            { mondaysInMonth, salarioMinimo, applyInces },
         )),
-        [results, mondaysInMonth, salarioMinimo],
+        [results, mondaysInMonth, salarioMinimo, applyInces],
     );
 
     const totals = useMemo(() => aportes.reduce(
@@ -727,7 +730,9 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
             >
                 <div className="flex items-center gap-3">
                     <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">Aportes Patronales</span>
-                    <span className="font-mono text-[11px] text-[var(--text-tertiary)]">IVSS 9% · BANAVIH 2% · INCES 2%</span>
+                    <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                        IVSS 9% · BANAVIH 2% · {applyInces ? "INCES 2%" : "INCES en última quincena"}
+                    </span>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmtN(totals.total)} Bs</span>
@@ -842,7 +847,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                     {/* Info + CSV */}
                     <div className="flex items-start justify-between gap-2 pt-1 flex-wrap">
                         <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed flex-1 min-w-[200px]">
-                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: devengado del período
+                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: {applyInces ? "devengado del período" : "se aporta solo en la última quincena"}
                         </p>
                         <button
                             onClick={handleCsv}
@@ -1400,6 +1405,7 @@ export const PayrollEmployeeTable = ({
                         salarioMinimo={salarioMinimo}
                         periodLabel={periodLabel}
                         companyName={companyName}
+                        quincena={quincena}
                     />
                 </>
             ) : (

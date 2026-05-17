@@ -18,6 +18,7 @@ export interface AporteRow {
 interface ComputeOpts {
     mondaysInMonth: number;
     salarioMinimo:  number;  // 0 = sin tope
+    applyInces:     boolean; // INCES patronal solo en la última quincena del mes
 }
 
 /** Computes employer contributions for a single employee. */
@@ -25,15 +26,15 @@ export function computeAportes(
     emp: { salarioVES: number; gross: number; cedula: string; nombre: string; cargo: string },
     opts: ComputeOpts,
 ): AporteRow {
-    const { mondaysInMonth, salarioMinimo } = opts;
+    const { mondaysInMonth, salarioMinimo, applyInces } = opts;
 
     const weeklyRate  = (emp.salarioVES * 12) / 52;
     const weeklyBase  = weeklyRate * mondaysInMonth;
     const baseSso     = salarioMinimo > 0 ? Math.min(weeklyBase, 10 * salarioMinimo) : weeklyBase;
 
-    const ssoPatronal   = baseSso * 0.09;          // IVSS Art. 104 (9%)
-    const faovPatronal  = emp.salarioVES * 0.02;   // BANAVIH (2% mensual)
-    const incesPatronal = emp.gross * 0.02;         // INCES patronal (2% sobre devengado)
+    const ssoPatronal   = baseSso * 0.09;                            // IVSS Art. 104 (9%)
+    const faovPatronal  = emp.salarioVES * 0.02;                     // BANAVIH (2% mensual)
+    const incesPatronal = applyInces ? emp.gross * 0.02 : 0;         // INCES patronal: solo última quincena
 
     const total = ssoPatronal + faovPatronal + incesPatronal;
 
