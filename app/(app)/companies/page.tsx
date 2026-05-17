@@ -308,7 +308,17 @@ export default function CompaniesPage() {
         }
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre, rif: row.rif, taxpayerType: row.tipoContribuyente });
+            const err = await save({
+                id: row.rif,
+                name: row.nombre,
+                rif: row.rif,
+                taxpayerType: row.tipoContribuyente,
+                phone: row.telefono,
+                contactEmail: row.correo,
+                address: row.direccion,
+                sector: row.sector,
+                logoUrl: row.logoUrl,
+            });
             if (err && !firstErr) firstErr = err;
         }
         if (firstErr) notify.error(firstErr);
@@ -332,7 +342,17 @@ export default function CompaniesPage() {
         setPasteImporting(true);
         let firstErr: string | null = null;
         for (const row of parsed) {
-            const err = await save({ id: row.rif, name: row.nombre, rif: row.rif, taxpayerType: row.tipoContribuyente });
+            const err = await save({
+                id: row.rif,
+                name: row.nombre,
+                rif: row.rif,
+                taxpayerType: row.tipoContribuyente,
+                phone: row.telefono,
+                contactEmail: row.correo,
+                address: row.direccion,
+                sector: row.sector,
+                logoUrl: row.logoUrl,
+            });
             if (err && !firstErr) firstErr = err;
         }
         setPasteImporting(false);
@@ -352,9 +372,9 @@ export default function CompaniesPage() {
 
     const insertPasteExample = useCallback(() => {
         const example = [
-            '"rif","nombre","tipo_contribuyente"',
-            '"J-12345678-9","Distribuidora El Sol C.A.","ordinario"',
-            '"J-87654321-0","Inversiones Caracas S.A.","especial"',
+            '"rif","nombre","tipo_contribuyente","telefono","correo","direccion","sector","logo_url"',
+            '"J-12345678-9","Distribuidora El Sol C.A.","ordinario","0414-1234567","contacto@elsol.com","Av. Principal, Caracas","supermercado",""',
+            '"J-87654321-0","Inversiones Caracas S.A.","especial","","","","",""',
         ].join("\n");
         handlePasteChange(example);
     }, [handlePasteChange]);
@@ -852,7 +872,7 @@ export default function CompaniesPage() {
                                         Importar desde CSV
                                     </h2>
                                     <p className="font-mono text-[10px] text-[var(--text-tertiary)] mt-0.5 uppercase tracking-[0.12em]">
-                                        Columnas: rif · nombre · tipo_contribuyente (opcional)
+                                        Requeridas: rif · nombre — Opcionales: tipo_contribuyente · telefono · correo · direccion · sector · logo_url
                                     </p>
                                 </div>
                                 <BaseButton.Icon variant="ghost" size="sm" onClick={closePasteModal}>
@@ -868,7 +888,7 @@ export default function CompaniesPage() {
                                         rows={8}
                                         value={pasteText}
                                         onChange={(e) => handlePasteChange(e.target.value)}
-                                        placeholder={`"rif","nombre","tipo_contribuyente"\n"J-12345678-9","Mi Empresa S.A.","ordinario"`}
+                                        placeholder={`"rif","nombre","tipo_contribuyente","telefono","correo","direccion","sector","logo_url"\n"J-12345678-9","Mi Empresa S.A.","ordinario","0414-1234567","contacto@empresa.com","Av. Principal, Caracas","supermercado",""`}
                                         className={[
                                             "w-full resize-none rounded-xl border bg-surface-2/50 outline-none p-4",
                                             "font-mono text-[12px] text-foreground leading-relaxed",

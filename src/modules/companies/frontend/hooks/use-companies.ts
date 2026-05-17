@@ -86,7 +86,17 @@ export interface UseCompanyResult {
     loading:            boolean;
     reload:             () => Promise<void>;
     selectCompany:      (id: string) => void;
-    save:               (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }) => Promise<string | null>;
+    save:               (data: {
+        id: string;
+        name: string;
+        rif?: string;
+        taxpayerType?: TaxpayerType;
+        phone?: string;
+        contactEmail?: string;
+        address?: string;
+        sector?: BusinessSector;
+        logoUrl?: string;
+    }) => Promise<string | null>;
     update:             (id: string, data: CompanyUpdateData)              => Promise<string | null>;
     remove:             (id: string)                                       => Promise<string | null>;
     applySector:        (companyId: string, sector: BusinessSector)        => Promise<string | null>;
@@ -230,7 +240,17 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         fetchFor(ownerId);
     }, [isAuthenticated, user?.id, activeTenantId, fetchFor]);
 
-    const save = useCallback(async (data: { id: string; name: string; rif?: string; taxpayerType?: TaxpayerType }): Promise<string | null> => {
+    const save = useCallback(async (data: {
+        id: string;
+        name: string;
+        rif?: string;
+        taxpayerType?: TaxpayerType;
+        phone?: string;
+        contactEmail?: string;
+        address?: string;
+        sector?: BusinessSector;
+        logoUrl?: string;
+    }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";
         const { ok, json } = await apiFetch("/api/companies/save", {
             method:  "POST",

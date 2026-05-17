@@ -1,8 +1,25 @@
 // src/modules/companies/frontend/utils/company-csv.ts
-import type { TaxpayerType } from "@/src/modules/companies/backend/domain/company";
+import {
+    BUSINESS_SECTORS,
+    type BusinessSector,
+    type TaxpayerType,
+} from "@/src/modules/companies/backend/domain/company";
 
-const HEADERS = ["rif", "nombre", "tipo_contribuyente"] as const;
-const REQUIRED_HEADERS = ["rif", "nombre"] as const;
+// Canonical column order used when exporting. Import is header-driven and accepts
+// any subset as long as `rif` and `nombre` are present.
+const HEADERS = [
+    "rif",
+    "nombre",
+    "tipo_contribuyente",
+    "telefono",
+    "correo",
+    "direccion",
+    "sector",
+    "logo_url",
+] as const;
+
+type HeaderKey = typeof HEADERS[number];
+const KNOWN_HEADERS = new Set<string>(HEADERS);
 
 function csvCell(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
@@ -12,6 +29,11 @@ export interface CompanyRow {
     rif: string;
     nombre: string;
     tipoContribuyente?: TaxpayerType;
+    telefono?: string;
+    correo?: string;
+    direccion?: string;
+    sector?: BusinessSector;
+    logoUrl?: string;
 }
 
 export interface CompanyCsvParseResult {
@@ -19,14 +41,33 @@ export interface CompanyCsvParseResult {
     errors: string[];
 }
 
+// Shape we accept when exporting — a subset of Company that covers what the CSV emits.
+export interface CompanyCsvExportInput {
+    id: string;
+    name: string;
+    taxpayerType?: TaxpayerType;
+    phone?: string;
+    contactEmail?: string;
+    address?: string;
+    sector?: BusinessSector;
+    logoUrl?: string;
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
-export function companiesToCsv(
-    companies: { id: string; name: string; taxpayerType?: TaxpayerType }[],
-): string {
+export function companiesToCsv(companies: CompanyCsvExportInput[]): string {
     const header = HEADERS.join(",");
     const rows = companies.map((c) =>
-        [csvCell(c.id), csvCell(c.name), csvCell(c.taxpayerType ?? "ordinario")].join(","),
+        [
+            csvCell(c.id),
+            csvCell(c.name),
+            csvCell(c.taxpayerType ?? "ordinario"),
+            csvCell(c.phone        ?? ""),
+            csvCell(c.contactEmail ?? ""),
+            csvCell(c.address      ?? ""),
+            csvCell(c.sector       ?? ""),
+            csvCell(c.logoUrl      ?? ""),
+        ].join(","),
     );
     return [header, ...rows].join("\r\n");
 }
@@ -44,6 +85,15 @@ export function downloadCsv(content: string, filename: string) {
 
 // ── Import ────────────────────────────────────────────────────────────────────
 
+function normalizeHeader(raw: string): string {
+    return raw.toLowerCase().trim().replace(/\s/g, "").replace(/^"|"$/g, "").replace(/""/g, "");
+}
+
+function cleanCell(raw: string | undefined): string {
+    if (raw === undefined) return "";
+    return raw.trim().replace(/^"|"$/g, "").replace(/""/g, '"').trim();
+}
+
 export function parseCompaniesCsv(raw: string): CompanyCsvParseResult {
     const normalized = raw.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
     const lines = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -54,19 +104,27 @@ export function parseCompaniesCsv(raw: string): CompanyCsvParseResult {
         return { companies: [], errors: ["El CSV está vacío o no tiene datos."] };
     }
 
-    const headerCols = splitCsvLine(lines[0]).map((h) =>
-        h.toLowerCase().replace(/\s/g, "").replace(/^"|"$/g, "").replace(/""/g, "")
-    );
+    // Build header → column index map. Unknown headers are reported as a non-fatal warning.
+    const headerCols = splitCsvLine(lines[0]).map(normalizeHeader);
+    const colIndex: Partial<Record<HeaderKey, number>> = {};
+    headerCols.forEach((h, i) => {
+        if (KNOWN_HEADERS.has(h)) {
+            colIndex[h as HeaderKey] = i;
+        } else if (h.length > 0) {
+            errors.push(`Encabezado desconocido ignorado: "${h}".`);
+        }
+    });
 
-    // Required headers must be present in order; the 3rd column (tipo_contribuyente) is optional.
-    const hasRif    = headerCols[0] === REQUIRED_HEADERS[0];
-    const hasNombre = headerCols[1] === REQUIRED_HEADERS[1];
-    if (!hasRif || !hasNombre) {
-        errors.push(`Encabezado inválido. Se esperaba al menos: ${REQUIRED_HEADERS.join(",")} (opcional: tipo_contribuyente)`);
-        return { companies: [], errors };
+    if (colIndex.rif === undefined || colIndex.nombre === undefined) {
+        return {
+            companies: [],
+            errors: [
+                `Encabezado inválido. Se requiere al menos "rif" y "nombre". Columnas reconocidas: ${HEADERS.join(", ")}.`,
+            ],
+        };
     }
-    const hasTaxpayerCol = headerCols[2] === "tipo_contribuyente";
-    const expectedCols = hasTaxpayerCol ? 3 : 2;
+
+    const expectedCols = headerCols.length;
 
     for (let i = 1; i < lines.length; i++) {
         const cols = splitCsvLine(lines[i]);
@@ -74,14 +132,22 @@ export function parseCompaniesCsv(raw: string): CompanyCsvParseResult {
             errors.push(`Línea ${i + 1}: se esperaban ${expectedCols} columnas, se encontraron ${cols.length}.`);
             continue;
         }
-        const clean = cols.map((c) => c.trim().replace(/^"|"$/g, "").replace(/""/g, '"').trim());
-        const [rif, nombre, tipoRaw] = clean;
+
+        const get = (key: HeaderKey): string => {
+            const idx = colIndex[key];
+            return idx === undefined ? "" : cleanCell(cols[idx]);
+        };
+
+        const rif    = get("rif");
+        const nombre = get("nombre");
 
         if (!rif)    { errors.push(`Línea ${i + 1}: RIF vacío.`);    continue; }
         if (!nombre) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
 
-        let tipoContribuyente: TaxpayerType | undefined = undefined;
-        if (hasTaxpayerCol && tipoRaw) {
+        // Optional fields with enum validation.
+        let tipoContribuyente: TaxpayerType | undefined;
+        const tipoRaw = get("tipo_contribuyente");
+        if (tipoRaw) {
             const lower = tipoRaw.toLowerCase();
             if (lower === "ordinario" || lower === "especial") {
                 tipoContribuyente = lower;
@@ -91,7 +157,35 @@ export function parseCompaniesCsv(raw: string): CompanyCsvParseResult {
             }
         }
 
-        companies.push({ rif: rif.toUpperCase(), nombre, tipoContribuyente });
+        let sector: BusinessSector | undefined;
+        const sectorRaw = get("sector");
+        if (sectorRaw) {
+            const lower = sectorRaw.toLowerCase();
+            if ((BUSINESS_SECTORS as readonly string[]).includes(lower)) {
+                sector = lower as BusinessSector;
+            } else {
+                errors.push(
+                    `Línea ${i + 1}: sector inválido ("${sectorRaw}"). Valores permitidos: ${BUSINESS_SECTORS.join(", ")}.`,
+                );
+                continue;
+            }
+        }
+
+        const telefono  = get("telefono")  || undefined;
+        const correo    = get("correo")    || undefined;
+        const direccion = get("direccion") || undefined;
+        const logoUrl   = get("logo_url")  || undefined;
+
+        companies.push({
+            rif: rif.toUpperCase(),
+            nombre,
+            tipoContribuyente,
+            telefono,
+            correo,
+            direccion,
+            sector,
+            logoUrl,
+        });
     }
 
     return { companies, errors };
