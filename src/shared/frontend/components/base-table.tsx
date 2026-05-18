@@ -69,6 +69,13 @@ export interface BaseTableProps<T extends object = object>
      * The BaseTable shell must be `position: relative` (it is by default).
      */
     renderExpandedRow?: (item: T) => React.ReactNode;
+    /**
+     * Optional row-level click handler. Only active in the `renderExpandedRow`
+     * branch (native HTML table). When set, the main `<tr>` becomes a
+     * keyboard-focusable button (Space/Enter), gets `cursor-pointer`, and
+     * reflects expanded state via `aria-expanded`.
+     */
+    onRowClick?: (item: T) => void;
 }
 
 // ============================================================================
@@ -579,6 +586,7 @@ export const RenderTable = <T extends object>({
     searchColumns,
     onSearchColumnsChange,
     renderExpandedRow,
+    onRowClick,
     ...props
 }: BaseTableProps<T>) => {
     // Internal state — used when props are NOT controlled
@@ -781,12 +789,30 @@ export const RenderTable = <T extends object>({
                                 displayData.map((item) => {
                                     const key = String(keyExtractor(item, getIdx(item)));
                                     const expandedContent = renderExpandedRow(item);
+                                    const clickable = !!onRowClick;
                                     return (
                                         <React.Fragment key={key}>
-                                            <tr className={[
-                                                S.tr,
-                                                "transition-colors duration-100",
-                                            ].join(" ")}>
+                                            <tr
+                                                className={[
+                                                    S.tr,
+                                                    "transition-colors duration-100",
+                                                    clickable ? "cursor-pointer" : "",
+                                                ].join(" ")}
+                                                onClick={clickable ? () => onRowClick!(item) : undefined}
+                                                onKeyDown={
+                                                    clickable
+                                                        ? (e) => {
+                                                            if (e.key === " " || e.key === "Enter") {
+                                                                e.preventDefault();
+                                                                onRowClick!(item);
+                                                            }
+                                                        }
+                                                        : undefined
+                                                }
+                                                tabIndex={clickable ? 0 : undefined}
+                                                role={clickable ? "button" : undefined}
+                                                aria-expanded={clickable ? expandedContent != null : undefined}
+                                            >
                                                 {columns.map((col) => (
                                                     <td
                                                         key={String(col.key)}

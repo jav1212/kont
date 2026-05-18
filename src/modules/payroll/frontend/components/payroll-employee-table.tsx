@@ -271,7 +271,7 @@ const StatusBadge = ({ estado }: { estado: Employee["estado"] }) => (
 );
 
 const ExpandBtn = ({ open, onClick }: { open: boolean; onClick: () => void }) => (
-    <button onClick={onClick}
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }}
         style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
         className={["w-6 h-6 flex items-center justify-center rounded-md border", open ? "border-primary-500/40 bg-primary-500/[0.08] text-primary-500" : "border-border-light text-[var(--text-tertiary)] hover:border-border-medium"].join(" ")}
     >
@@ -588,7 +588,19 @@ const EmployeeMobileCard = ({
     earningRows, bonusRows, deductionRows, horasExtrasGlobal,
     onOverrideChange,
 }: EmployeeMobileCardProps) => (
-    <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
+    <div
+        className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden cursor-pointer"
+        onClick={onToggleExpand}
+        onKeyDown={(e) => {
+            if (e.key === " " || e.key === "Enter") {
+                e.preventDefault();
+                onToggleExpand();
+            }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-expanded={expanded}
+    >
         <div className="px-4 py-3 space-y-3">
             {/* Header: nombre + estado + extras badge */}
             <div className="flex items-start justify-between gap-2">
@@ -646,7 +658,7 @@ const EmployeeMobileCard = ({
             {/* Expand toggle */}
             <button
                 type="button"
-                onClick={onToggleExpand}
+                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
                 className={[
                     "w-full h-9 rounded-lg border flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] transition-colors",
                     expanded
@@ -666,20 +678,26 @@ const EmployeeMobileCard = ({
         </div>
 
         {expanded && (
-            <ExpandedPanel
-                result={result}
-                override={override}
-                mondaysInMonth={mondaysInMonth}
-                bcvRate={bcvRate}
-                diasUtilidades={diasUtilidades}
-                diasBonoVacacional={diasBonoVacacional}
-                salarioMinimo={salarioMinimo}
-                earningRows={earningRows}
-                bonusRows={bonusRows}
-                deductionRows={deductionRows}
-                horasExtrasGlobal={horasExtrasGlobal}
-                onChange={onOverrideChange}
-            />
+            <div
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+                className="cursor-auto"
+            >
+                <ExpandedPanel
+                    result={result}
+                    override={override}
+                    mondaysInMonth={mondaysInMonth}
+                    bcvRate={bcvRate}
+                    diasUtilidades={diasUtilidades}
+                    diasBonoVacacional={diasBonoVacacional}
+                    salarioMinimo={salarioMinimo}
+                    earningRows={earningRows}
+                    bonusRows={bonusRows}
+                    deductionRows={deductionRows}
+                    horasExtrasGlobal={horasExtrasGlobal}
+                    onChange={onOverrideChange}
+                />
+            </div>
         )}
     </div>
 );
@@ -1350,6 +1368,9 @@ export const PayrollEmployeeTable = ({
                             columns={columns} data={filteredResults} keyExtractor={(r) => r.cedula}
                             pagination
                             classNames={{ wrapper: "border border-border-light rounded-xl shadow-none" }}
+                            onRowClick={(r) =>
+                                setExpandedId((prev) => (prev === r.cedula ? null : r.cedula))
+                            }
                             renderExpandedRow={(result) => {
                                 if (expandedId !== result.cedula) return null;
                                 return (
