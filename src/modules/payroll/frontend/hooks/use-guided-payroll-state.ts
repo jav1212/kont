@@ -625,12 +625,14 @@ export function useGuidedPayrollState() {
         setCestaTicketUSD,
         cestaTicketExcluded,
         toggleCestaTicketRecipient,
+        setCestaTicketExcluded,
 
         // Bono Socio Económico de Ayuda Alimenticia (Art. 105 LOTTT — beneficio social no remunerativo)
         bonoGuerraUSD,
         setBonoGuerraUSD,
         bonoGuerraExcluded,
         toggleBonoGuerraRecipient,
+        setBonoGuerraExcluded,
 
         // PDF visibility
         pdfVisibility,

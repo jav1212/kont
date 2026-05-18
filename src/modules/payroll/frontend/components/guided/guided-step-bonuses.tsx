@@ -28,8 +28,10 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         employees,
         cestaTicketExcluded,
         toggleCestaTicketRecipient,
+        setCestaTicketExcluded,
         bonoGuerraExcluded,
         toggleBonoGuerraRecipient,
+        setBonoGuerraExcluded,
     } = state;
 
     return (
@@ -89,7 +91,7 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                         employees={employees}
                         excluded={cestaTicketExcluded}
                         onToggle={toggleCestaTicketRecipient}
-                        benefitNoun="reciben cesta ticket"
+                        onSetExcluded={setCestaTicketExcluded}
                     />
                 </StepSection>
             )}
@@ -129,7 +131,7 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                         employees={employees}
                         excluded={bonoGuerraExcluded}
                         onToggle={toggleBonoGuerraRecipient}
-                        benefitNoun="reciben bono"
+                        onSetExcluded={setBonoGuerraExcluded}
                     />
                 </StepSection>
             )}
