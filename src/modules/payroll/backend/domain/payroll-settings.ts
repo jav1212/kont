@@ -73,6 +73,11 @@ export interface PayrollSettings {
     salaryMode:             "mensual" | "integral";
     cestaTicketUSD:         number;
     bonoGuerraUSD:          number;   // Bono Socio Económico de Ayuda Alimenticia — beneficio social no remunerativo (Art. 105 LOTTT)
+    // Moneda de entrada para los dos beneficios mensuales. El número en
+    // `cestaTicketUSD`/`bonoGuerraUSD` se interpreta según esta moneda:
+    // si es "VES" el valor es bolívares y el USD se deriva con la tasa BCV.
+    cestaTicketCurrency:    "USD" | "VES";
+    bonoGuerraCurrency:     "USD" | "VES";
     salarioMinimoRef:       number;   // reference minimum salary for SSO cap (10× multiplier)
     horasExtrasGlobalRows:  PayrollHorasExtrasGlobalDef[];
     pdfVisibility:          PdfVisibility;
@@ -99,9 +104,11 @@ export function defaultPayrollSettings(): PayrollSettings {
         diasUtilidades:     15,
         diasBonoVacacional: 15,
         salaryMode:         "mensual",
-        cestaTicketUSD:     40,
-        bonoGuerraUSD:      200,
-        salarioMinimoRef:   0,
+        cestaTicketUSD:      40,
+        bonoGuerraUSD:       200,
+        cestaTicketCurrency: "USD",
+        bonoGuerraCurrency:  "USD",
+        salarioMinimoRef:    0,
         horasExtrasGlobalRows: [
             { tipo: "diurna",   hours: "0", active: false },
             { tipo: "nocturna", hours: "0", active: false },
@@ -130,6 +137,8 @@ export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollS
         salaryMode:            stored.salaryMode            ?? def.salaryMode,
         cestaTicketUSD:        stored.cestaTicketUSD        ?? def.cestaTicketUSD,
         bonoGuerraUSD:         stored.bonoGuerraUSD         ?? def.bonoGuerraUSD,
+        cestaTicketCurrency:   stored.cestaTicketCurrency   ?? def.cestaTicketCurrency,
+        bonoGuerraCurrency:    stored.bonoGuerraCurrency    ?? def.bonoGuerraCurrency,
         salarioMinimoRef:      stored.salarioMinimoRef      ?? def.salarioMinimoRef,
         horasExtrasGlobalRows: stored.horasExtrasGlobalRows ?? def.horasExtrasGlobalRows,
         pdfVisibility: {

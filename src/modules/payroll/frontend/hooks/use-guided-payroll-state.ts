@@ -213,6 +213,14 @@ export function useGuidedPayrollState() {
     const [salaryMode, setSalaryMode] = useState<"mensual" | "integral">(savedSettings.salaryMode);
     const [cestaTicketUSD, setCestaTicketUSD] = useState(String(savedSettings.cestaTicketUSD));
     const [bonoGuerraUSD, setBonoGuerraUSD]   = useState(String(savedSettings.bonoGuerraUSD));
+    // Moneda activa del input "Monto por empleado". Si es "VES" el número
+    // anterior se interpreta como bolívares y el USD se deriva con la tasa BCV
+    // al construir el payload. El nombre del state se mantiene como *USD por
+    // retrocompatibilidad con el resto del hook.
+    const [cestaTicketCurrency, setCestaTicketCurrency] =
+        useState<"USD" | "VES">(savedSettings.cestaTicketCurrency);
+    const [bonoGuerraCurrency,  setBonoGuerraCurrency]  =
+        useState<"USD" | "VES">(savedSettings.bonoGuerraCurrency);
 
     const [horasExtrasGlobal, setHorasExtrasGlobal] = useState<HorasExtrasRow[]>(() =>
         makeHorasExtrasFromDefs(savedSettings.horasExtrasGlobalRows),
@@ -246,6 +254,8 @@ export function useGuidedPayrollState() {
         setSalaryMode(savedSettings.salaryMode);
         setCestaTicketUSD(String(savedSettings.cestaTicketUSD));
         setBonoGuerraUSD(String(savedSettings.bonoGuerraUSD));
+        setCestaTicketCurrency(savedSettings.cestaTicketCurrency);
+        setBonoGuerraCurrency(savedSettings.bonoGuerraCurrency);
         setSalarioMinimoInput(
             savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : "",
         );
@@ -308,6 +318,8 @@ export function useGuidedPayrollState() {
                 salaryMode,
                 parseFloat(cestaTicketUSD) || 40,
                 parseFloat(bonoGuerraUSD) || 200,
+                cestaTicketCurrency,
+                bonoGuerraCurrency,
                 Math.max(0, parseFloat(salarioMinimoInput) || 0),
                 horasExtrasGlobal,
                 pdfVisibility,
@@ -326,6 +338,8 @@ export function useGuidedPayrollState() {
         salaryMode,
         cestaTicketUSD,
         bonoGuerraUSD,
+        cestaTicketCurrency,
+        bonoGuerraCurrency,
         salarioMinimoInput,
         horasExtrasGlobal,
         pdfVisibility,
@@ -623,6 +637,8 @@ export function useGuidedPayrollState() {
         // Cesta ticket
         cestaTicketUSD,
         setCestaTicketUSD,
+        cestaTicketCurrency,
+        setCestaTicketCurrency,
         cestaTicketExcluded,
         toggleCestaTicketRecipient,
         setCestaTicketExcluded,
@@ -630,6 +646,8 @@ export function useGuidedPayrollState() {
         // Bono Socio Económico de Ayuda Alimenticia (Art. 105 LOTTT — beneficio social no remunerativo)
         bonoGuerraUSD,
         setBonoGuerraUSD,
+        bonoGuerraCurrency,
+        setBonoGuerraCurrency,
         bonoGuerraExcluded,
         toggleBonoGuerraRecipient,
         setBonoGuerraExcluded,

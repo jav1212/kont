@@ -57,6 +57,8 @@ const PayrollSettingsSchema = z.object({
     salaryMode:            z.enum(['mensual', 'integral']),
     cestaTicketUSD:        z.number().nonnegative(),
     bonoGuerraUSD:         z.number().nonnegative(),
+    cestaTicketCurrency:   z.enum(['USD', 'VES']),
+    bonoGuerraCurrency:    z.enum(['USD', 'VES']),
     salarioMinimoRef:      z.number().nonnegative(),
     horasExtrasGlobalRows: z.array(HorasExtrasGlobalDefSchema),
     pdfVisibility:         PdfVisibilitySchema,

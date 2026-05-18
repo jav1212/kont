@@ -12,6 +12,32 @@ interface Props {
     onNext: () => void;
 }
 
+// Tabs USD/Bs compactas que cambian la moneda activa del input de monto.
+function CurrencyTabs({
+    value, onChange,
+}: { value: "USD" | "VES"; onChange: (v: "USD" | "VES") => void }) {
+    const tab = (k: "USD" | "VES", label: string) => (
+        <button
+            type="button"
+            onClick={() => onChange(k)}
+            className={[
+                "h-7 px-3 rounded-md font-mono text-[11px] uppercase tracking-[0.14em] transition-all",
+                value === k
+                    ? "bg-primary-500/10 border border-primary-500/60 text-primary-600 font-bold"
+                    : "bg-surface-1 border border-border-light text-[var(--text-secondary)] hover:border-border-medium",
+            ].join(" ")}
+        >
+            {label}
+        </button>
+    );
+    return (
+        <div className="inline-flex gap-1.5">
+            {tab("USD", "USD")}
+            {tab("VES", "Bs")}
+        </div>
+    );
+}
+
 export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
     const {
         bonusRows, bonusValues, totalBonuses,
@@ -19,7 +45,9 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         bcvRate,
         showCestaTicket, showBonoSocioEconomico, periodoMode,
         cestaTicketUSD, setCestaTicketUSD,
+        cestaTicketCurrency, setCestaTicketCurrency,
         bonoGuerraUSD, setBonoGuerraUSD,
+        bonoGuerraCurrency, setBonoGuerraCurrency,
         salaryMode, setSalaryMode,
         diasUtilidades, setDiasUtilidades,
         diasBonoVacacional, setDiasBonoVacacional,
@@ -33,6 +61,21 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         toggleBonoGuerraRecipient,
         setBonoGuerraExcluded,
     } = state;
+
+    // Equivalencia inversa según moneda activa. `raw` ya está parseado.
+    const formatBs = (n: number) =>
+        n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const ctRaw = parseFloat(cestaTicketUSD) || 0;
+    const bgRaw = parseFloat(bonoGuerraUSD) || 0;
+    const ctEquivLabel =
+        cestaTicketCurrency === "USD"
+            ? `${formatBs(ctRaw * bcvRate)} Bs`
+            : `$ ${formatBs(bcvRate > 0 ? ctRaw / bcvRate : 0)}`;
+    const bgEquivLabel =
+        bonoGuerraCurrency === "USD"
+            ? `${formatBs(bgRaw * bcvRate)} Bs`
+            : `$ ${formatBs(bcvRate > 0 ? bgRaw / bcvRate : 0)}`;
 
     return (
         <GuidedStepShell
@@ -65,26 +108,32 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                     }
                     description="Beneficio mensual. Se paga una sola vez al mes — solo aparece en este período."
                 >
+                    <div className="flex items-end justify-between gap-3 mb-2">
+                        <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                            Monto por empleado
+                        </label>
+                        <CurrencyTabs
+                            value={cestaTicketCurrency}
+                            onChange={setCestaTicketCurrency}
+                        />
+                    </div>
                     <BaseInput.Field
-                        label="Monto por empleado (USD)"
                         type="number"
                         step={0.01}
                         min={0}
                         value={cestaTicketUSD}
                         onValueChange={setCestaTicketUSD}
-                        prefix="$"
+                        prefix={cestaTicketCurrency === "USD" ? "$" : "Bs"}
                         inputClassName="text-right"
                     />
                     <div className="mt-3 px-4 py-3 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
                         <div className="flex justify-between font-mono text-[13px]">
-                            <span className="text-[var(--text-tertiary)]">Equivalente en Bs por empleado</span>
-                            <span className="text-primary-500 tabular-nums">
-                                {((parseFloat(cestaTicketUSD) || 0) * bcvRate).toLocaleString("es-VE", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}{" "}
-                                Bs
+                            <span className="text-[var(--text-tertiary)]">
+                                {cestaTicketCurrency === "USD"
+                                    ? "Equivalente en Bs por empleado"
+                                    : "Equivalente en USD por empleado"}
                             </span>
+                            <span className="text-primary-500 tabular-nums">{ctEquivLabel}</span>
                         </div>
                     </div>
                     <BenefitRecipientsList
@@ -105,26 +154,32 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                     }
                     description="Bono Socio Económico de Ayuda Alimenticia (antes Bono Contra la Guerra Económica). Pago mensual único — beneficio social no remunerativo bajo el Art. 105 LOTTT, no cuantificable a efectos de prestaciones sociales, vacaciones, utilidades ni aportes patronales."
                 >
+                    <div className="flex items-end justify-between gap-3 mb-2">
+                        <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
+                            Monto por empleado
+                        </label>
+                        <CurrencyTabs
+                            value={bonoGuerraCurrency}
+                            onChange={setBonoGuerraCurrency}
+                        />
+                    </div>
                     <BaseInput.Field
-                        label="Monto por empleado (USD)"
                         type="number"
                         step={0.01}
                         min={0}
                         value={bonoGuerraUSD}
                         onValueChange={setBonoGuerraUSD}
-                        prefix="$"
+                        prefix={bonoGuerraCurrency === "USD" ? "$" : "Bs"}
                         inputClassName="text-right"
                     />
                     <div className="mt-3 px-4 py-3 rounded-lg border border-primary-500/20 bg-primary-500/[0.04]">
                         <div className="flex justify-between font-mono text-[13px]">
-                            <span className="text-[var(--text-tertiary)]">Equivalente en Bs por empleado</span>
-                            <span className="text-primary-500 tabular-nums">
-                                {((parseFloat(bonoGuerraUSD) || 0) * bcvRate).toLocaleString("es-VE", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}{" "}
-                                Bs
+                            <span className="text-[var(--text-tertiary)]">
+                                {bonoGuerraCurrency === "USD"
+                                    ? "Equivalente en Bs por empleado"
+                                    : "Equivalente en USD por empleado"}
                             </span>
+                            <span className="text-primary-500 tabular-nums">{bgEquivLabel}</span>
                         </div>
                     </div>
                     <BenefitRecipientsList

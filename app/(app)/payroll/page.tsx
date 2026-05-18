@@ -39,6 +39,27 @@ const STEPS: StepDef[] = [
     { id: 5, label: "Revisión" },
 ];
 
+// Deriva (montoUsd, montoVes) a partir del valor del input y la moneda activa.
+// Si el usuario captura en bolívares, USD = Bs / tasa. Redondeo a 2 decimales
+// para alinear con `numeric(14,2)` del schema y mantener
+// `montoUsd × exchangeRate ≈ montoVes` en céntimos.
+function deriveMontos(
+    raw: number,
+    currency: "USD" | "VES",
+    fallbackUsd: number,
+    bcvRate: number,
+): { montoUsd: number; montoVes: number } {
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    if (currency === "USD") {
+        const usd = raw > 0 ? raw : fallbackUsd;
+        return { montoUsd: round2(usd), montoVes: round2(usd * bcvRate) };
+    }
+    return {
+        montoUsd: round2(bcvRate > 0 ? raw / bcvRate : 0),
+        montoVes: round2(raw),
+    };
+}
+
 export default function PayrollCalculatorPage() {
     const state = useGuidedPayrollState();
     const [currentStep, setCurrentStep] = useState(1);
@@ -60,7 +81,9 @@ export default function PayrollCalculatorPage() {
         showCestaTicket,
         showBonoSocioEconomico,
         cestaTicketUSD,
+        cestaTicketCurrency,
         bonoGuerraUSD,
+        bonoGuerraCurrency,
         bonusRows,
         cestaTicketExcluded,
         bonoGuerraExcluded,
@@ -134,8 +157,12 @@ export default function PayrollCalculatorPage() {
             (e) => e.estado === "activo" && !cestaTicketExcluded.has(e.cedula),
         );
         if (!active.length) return null;
-        const montoUsd = parseFloat(cestaTicketUSD) || 40;
-        const montoVes = montoUsd * bcvRate;
+        const { montoUsd, montoVes } = deriveMontos(
+            parseFloat(cestaTicketUSD) || 0,
+            cestaTicketCurrency,
+            40,
+            bcvRate,
+        );
         return {
             run: {
                 companyId,
@@ -154,7 +181,7 @@ export default function PayrollCalculatorPage() {
                 montoVes,
             })),
         };
-    }, [companyId, employees, cestaTicketExcluded, cestaTicketUSD, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, cestaTicketExcluded, cestaTicketUSD, cestaTicketCurrency, bcvRate, activePeriodInfo]);
 
     const handleCestaTicketPdf = () => {
         const active = employees.filter(
@@ -164,6 +191,12 @@ export default function PayrollCalculatorPage() {
             notify.error("No hay empleados seleccionados para cesta ticket");
             return;
         }
+        const { montoUsd } = deriveMontos(
+            parseFloat(cestaTicketUSD) || 0,
+            cestaTicketCurrency,
+            40,
+            bcvRate,
+        );
         generateCestaTicketPdf(
             active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
             {
@@ -171,7 +204,7 @@ export default function PayrollCalculatorPage() {
                 companyId: company?.id,
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
-                montoUSD: parseFloat(cestaTicketUSD) || 40,
+                montoUSD: montoUsd,
                 bcvRate,
             },
         );
@@ -203,8 +236,12 @@ export default function PayrollCalculatorPage() {
             (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
         );
         if (!active.length) return null;
-        const montoUsd = parseFloat(bonoGuerraUSD) || 200;
-        const montoVes = montoUsd * bcvRate;
+        const { montoUsd, montoVes } = deriveMontos(
+            parseFloat(bonoGuerraUSD) || 0,
+            bonoGuerraCurrency,
+            200,
+            bcvRate,
+        );
         return {
             run: {
                 companyId,
@@ -223,7 +260,7 @@ export default function PayrollCalculatorPage() {
                 montoVes,
             })),
         };
-    }, [companyId, employees, bonoGuerraExcluded, bonoGuerraUSD, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, bonoGuerraExcluded, bonoGuerraUSD, bonoGuerraCurrency, bcvRate, activePeriodInfo]);
 
     const handleBonoGuerraPdf = () => {
         const active = employees.filter(
@@ -233,6 +270,12 @@ export default function PayrollCalculatorPage() {
             notify.error("No hay empleados seleccionados para bono socio económico");
             return;
         }
+        const { montoUsd } = deriveMontos(
+            parseFloat(bonoGuerraUSD) || 0,
+            bonoGuerraCurrency,
+            200,
+            bcvRate,
+        );
         generateBonoGuerraPdf(
             active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
             {
@@ -240,7 +283,7 @@ export default function PayrollCalculatorPage() {
                 companyId: company?.id,
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
-                montoUSD: parseFloat(bonoGuerraUSD) || 200,
+                montoUSD: montoUsd,
                 bcvRate,
             },
         );
