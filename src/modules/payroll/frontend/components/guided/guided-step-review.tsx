@@ -48,6 +48,7 @@ export function GuidedStepReview({ state, onBack }: Props) {
                 </BaseButton.Root>
             }
             hideNav={false}
+            contentMaxWidthClass=""
         >
             {employeesExcludedByDate.length > 0 && (
                 <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06]">

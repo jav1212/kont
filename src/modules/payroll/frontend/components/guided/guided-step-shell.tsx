@@ -18,6 +18,8 @@ interface GuidedStepShellProps {
     hideNav?: boolean;
     /** Center-align the title + subtitle. Default left to preserve existing wizards. */
     centerHeader?: boolean;
+    /** Tailwind max-width class for the content + footer wrappers. Pass "" for full width. */
+    contentMaxWidthClass?: string;
 }
 
 // Generous-padding chassis for each wizard step. Mid-aged users benefit from
@@ -33,11 +35,12 @@ export function GuidedStepShell({
     nextDisabled = false,
     hideNav = false,
     centerHeader = false,
+    contentMaxWidthClass = "max-w-4xl",
 }: GuidedStepShellProps) {
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+                <div className={`${contentMaxWidthClass} mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8`}>
                     <header className={["mb-5 md:mb-6", centerHeader ? "text-center" : ""].join(" ")}>
                         <h2 className="font-mono text-[20px] md:text-[22px] font-black tracking-tight text-foreground leading-tight">
                             {title}
@@ -59,7 +62,7 @@ export function GuidedStepShell({
 
             {!hideNav && (
                 <div className="border-t border-border-light bg-surface-1 px-4 sm:px-6 md:px-8 py-3 md:py-4">
-                    <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+                    <div className={`${contentMaxWidthClass} mx-auto flex items-center justify-between gap-3`}>
                         <div>
                             {onBack && (
                                 <BaseButton.Root
