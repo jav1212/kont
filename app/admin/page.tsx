@@ -1466,9 +1466,9 @@ export default function AdminPage() {
                                                     className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer"
                                                 >
                                                     <option value="">Seleccionar plan…</option>
-                                                    {plans.filter((p) => p.isActive && !p.isContactOnly).map((p) => (
+                                                    {plans.filter((p) => p.isActive).map((p) => (
                                                         <option key={p.id} value={p.id}>
-                                                            {p.name} · {p.priceMonthlyUsd === 0 ? "Gratis" : `$${p.priceMonthlyUsd}/mes`}
+                                                            {p.name} · {p.priceMonthlyUsd === 0 && !p.isContactOnly ? "Gratis" : p.isContactOnly ? "Contactar" : `$${p.priceMonthlyUsd}/mes`}
                                                         </option>
                                                     ))}
                                                 </select>
