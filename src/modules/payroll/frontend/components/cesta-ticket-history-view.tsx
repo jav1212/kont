@@ -217,10 +217,11 @@ export function CestaTicketHistoryView({
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
         generateCestaTicketPdf(
             receipts.map((r) => ({
-                cedula: r.employeeCedula,
-                nombre: r.employeeNombre,
-                cargo:  r.employeeCargo,
-                estado: "activo",
+                cedula:   r.employeeCedula,
+                nombre:   r.employeeNombre,
+                cargo:    r.employeeCargo,
+                estado:   "activo",
+                montoUsd: r.montoUsd,
             })),
             {
                 companyName:    company?.name ?? "",
@@ -255,10 +256,12 @@ export function CestaTicketHistoryView({
         );
     }
 
-    // Para mostrar empleados/totales del selected run en su row, derivamos desde receipts cargados.
+    // Para mostrar empleados/totales del selected run en su row, derivamos desde
+    // receipts cargados. Sumamos por recibo (no por count×runMonto) para soportar
+    // montos personalizados por empleado.
     const selectedReceiptsCount = selectedRun ? receipts.length : 0;
-    const selectedTotalUsd      = selectedRun ? selectedReceiptsCount * selectedRun.montoUsd : 0;
-    const selectedTotalVes      = selectedRun ? selectedTotalUsd * selectedRun.exchangeRate : 0;
+    const selectedTotalUsd      = selectedRun ? receipts.reduce((s, r) => s + r.montoUsd, 0) : 0;
+    const selectedTotalVes      = selectedRun ? receipts.reduce((s, r) => s + r.montoVes, 0) : 0;
 
     return (
         <div className="space-y-4">

@@ -29,6 +29,8 @@ export interface CestaTicketEmployee {
     nombre: string;
     cargo:  string;
     estado: string;
+    /** Override por empleado. Si falta, usa opts.montoUSD (default global). */
+    montoUsd?: number;
 }
 
 export interface CestaTicketOptions {
@@ -62,7 +64,12 @@ function repaintPageHeader(doc: Doc, opts: PageHeader): number {
     return PAGE.contentTop as number;
 }
 
-function drawParamsCard(doc: Doc, x: number, w: number, y: number, montoUSD: number, bcvRate: number): number {
+function drawParamsCard(
+    doc: Doc,
+    x: number, w: number, y: number,
+    montoUSD: number, bcvRate: number,
+    customCount: number, minUsd: number, maxUsd: number,
+): number {
     const H = 14;
     fill(doc, x, y, w, H, COLORS.rowAlt);
     fill(doc, x, y, 1.5, H, COLORS.orange);
@@ -73,8 +80,10 @@ function drawParamsCard(doc: Doc, x: number, w: number, y: number, montoUSD: num
     const cx3 = x + w - 3;
 
     const montoVES = montoUSD * bcvRate;
+    const heterogeneous = customCount > 0 && minUsd !== maxUsd;
+    const label1 = heterogeneous ? "Monto por defecto" : "Monto por empleado";
 
-    renderLabel(doc, "Monto por empleado", cx1, y + 5, "left", COLORS.muted, 7);
+    renderLabel(doc, label1, cx1, y + 5, "left", COLORS.muted, 7);
     renderMono(doc, fmtUSD(montoUSD), cx1, y + 11, 10, true, COLORS.ink, "left");
 
     renderLabel(doc, "Tasa BCV", cx2, y + 5, "left", COLORS.muted, 7);
@@ -83,7 +92,16 @@ function drawParamsCard(doc: Doc, x: number, w: number, y: number, montoUSD: num
     renderLabel(doc, "Equiv. por empleado", cx3, y + 5, "right", COLORS.muted, 7);
     renderMono(doc, formatVES(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
 
-    return y + H + 5;
+    let nextY = y + H + 5;
+    if (heterogeneous) {
+        renderLabel(
+            doc,
+            `Montos personalizados: ${customCount} · rango ${fmtUSD(minUsd)} – ${fmtUSD(maxUsd)}`,
+            x, nextY - 1, "left", COLORS.muted, 7.2,
+        );
+        nextY += 3.5;
+    }
+    return nextY;
 }
 
 export async function generateCestaTicketPdf(
@@ -117,7 +135,15 @@ export async function generateCestaTicketPdf(
         try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
     }
 
-    y = drawParamsCard(doc, ML, W, y, opts.montoUSD, opts.bcvRate);
+    // Pre-cálculo de montos por empleado para resolver overrides + heterogeneidad
+    const montosUsd = active.map((e) => e.montoUsd ?? opts.montoUSD);
+    const customCount = active.filter(
+        (e) => typeof e.montoUsd === "number" && e.montoUsd !== opts.montoUSD,
+    ).length;
+    const minUsd = montosUsd.reduce((m, n) => (n < m ? n : m), montosUsd[0]);
+    const maxUsd = montosUsd.reduce((m, n) => (n > m ? n : m), montosUsd[0]);
+
+    y = drawParamsCard(doc, ML, W, y, opts.montoUSD, opts.bcvRate, customCount, minUsd, maxUsd);
 
     // ── Table header ──────────────────────────────────────────────────────────
     const colN     = W * 0.07;
@@ -138,7 +164,6 @@ export async function generateCestaTicketPdf(
 
     y = drawTH(y);
 
-    const montoVES = opts.montoUSD * opts.bcvRate;
     const ROW_H = 6;
     active.forEach((emp, i) => {
         if (y + ROW_H > pageBounds(doc).contentBot) {
@@ -146,12 +171,14 @@ export async function generateCestaTicketPdf(
             y = repaintPageHeader(doc, pageHeader);
             y = drawTH(y);
         }
+        const empMonto    = montosUsd[i];
+        const empMontoVes = empMonto * opts.bcvRate;
         drawRow(doc, y, ROW_H, [
-            { x: ML,                                       w: colN,    text: String(i + 1),         align: "center", size: 8.5, mono: true,            color: COLORS.muted },
-            { x: ML + colN,                                w: colName, text: emp.nombre,            align: "left",   size: 8.5,                       color: COLORS.ink },
-            { x: ML + colN + colName,                      w: colCed,  text: emp.cedula,            align: "left",   size: 8.5, mono: true,            color: COLORS.muted },
-            { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(opts.montoUSD), align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
-            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatVES(montoVES),   align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
+            { x: ML,                                       w: colN,    text: String(i + 1),       align: "center", size: 8.5, mono: true,            color: COLORS.muted },
+            { x: ML + colN,                                w: colName, text: emp.nombre,          align: "left",   size: 8.5,                       color: COLORS.ink },
+            { x: ML + colN + colName,                      w: colCed,  text: emp.cedula,          align: "left",   size: 8.5, mono: true,            color: COLORS.muted },
+            { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(empMonto),    align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
+            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatVES(empMontoVes), align: "right", size: 9,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += ROW_H;
     });
@@ -164,8 +191,8 @@ export async function generateCestaTicketPdf(
         y = repaintPageHeader(doc, pageHeader);
     }
 
-    const totalUSD = opts.montoUSD * active.length;
-    const totalVES = montoVES * active.length;
+    const totalUSD = montosUsd.reduce((s, n) => s + n, 0);
+    const totalVES = totalUSD * opts.bcvRate;
 
     fill(doc, ML, y, W, 0.5, COLORS.orange);
     y += 1.2;
@@ -205,13 +232,16 @@ export async function generateCestaTicketPdf(
         rect(doc, sx, y, SIG_W, SIG_H, COLORS.border, 0.25);
         fill(doc, sx, y, SIG_W, 1, COLORS.orange);
 
+        const empMonto    = montosUsd[i];
+        const empMontoVes = empMonto * opts.bcvRate;
+
         // ── Header card: monto USD ──────────────────────────────────────────
-        renderMono(doc, fmtUSD(opts.montoUSD), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
+        renderMono(doc, fmtUSD(empMonto), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
 
         // ── Identificación del empleado ─────────────────────────────────────
         renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
         renderMono(doc, emp.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
-        renderMono(doc, formatVES(montoVES), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
+        renderMono(doc, formatVES(empMontoVes), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
 
         // ── Checkbox de modalidad ───────────────────────────────────────────
         rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);

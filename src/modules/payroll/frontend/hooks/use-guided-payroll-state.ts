@@ -140,6 +140,14 @@ export function useGuidedPayrollState() {
     const [cestaTicketExcluded, setCestaTicketExcluded] = useState<Set<string>>(() => new Set());
     const [bonoGuerraExcluded,  setBonoGuerraExcluded]  = useState<Set<string>>(() => new Set());
 
+    // Per-employee monto override para esta nómina. Mapa cedula → raw input
+    // (string para no perder formato mientras se tipea). Si una cédula no está
+    // en el mapa, usa el monto global. La moneda la dicta el selector global
+    // (cestaTicketCurrency / bonoGuerraCurrency). Efímero: se resetea al
+    // cambiar de período.
+    const [cestaTicketOverrides, setCestaTicketOverrides] = useState<Map<string, string>>(() => new Map());
+    const [bonoGuerraOverrides,  setBonoGuerraOverrides]  = useState<Map<string, string>>(() => new Map());
+
     const toggleCestaTicketRecipient = useCallback((cedula: string) => {
         setCestaTicketExcluded((s) => {
             const next = new Set(s);
@@ -155,6 +163,21 @@ export function useGuidedPayrollState() {
         });
     }, []);
 
+    const setCestaTicketOverride = useCallback((cedula: string, raw: string) => {
+        setCestaTicketOverrides((m) => {
+            const next = new Map(m);
+            if (raw === "") next.delete(cedula); else next.set(cedula, raw);
+            return next;
+        });
+    }, []);
+    const setBonoGuerraOverride = useCallback((cedula: string, raw: string) => {
+        setBonoGuerraOverrides((m) => {
+            const next = new Map(m);
+            if (raw === "") next.delete(cedula); else next.set(cedula, raw);
+            return next;
+        });
+    }, []);
+
     // Reset overrides whenever the period selection changes — overrides are
     // tied to "this payroll", so a new period means a fresh decision.
     useEffect(() => {
@@ -162,6 +185,8 @@ export function useGuidedPayrollState() {
         setIncludeBonoSocioEconomicoOverride(null);
         setCestaTicketExcluded(new Set());
         setBonoGuerraExcluded(new Set());
+        setCestaTicketOverrides(new Map());
+        setBonoGuerraOverrides(new Map());
     }, [periodoMode, selYear, selMonth, selQuincena, selWeekMonday]);
 
     // ── Reference salary + BCV ─────────────────────────────────────────────
@@ -642,6 +667,9 @@ export function useGuidedPayrollState() {
         cestaTicketExcluded,
         toggleCestaTicketRecipient,
         setCestaTicketExcluded,
+        cestaTicketOverrides,
+        setCestaTicketOverride,
+        setCestaTicketOverrides,
 
         // Bono Socio Económico de Ayuda Alimenticia (Art. 105 LOTTT — beneficio social no remunerativo)
         bonoGuerraUSD,
@@ -651,6 +679,9 @@ export function useGuidedPayrollState() {
         bonoGuerraExcluded,
         toggleBonoGuerraRecipient,
         setBonoGuerraExcluded,
+        bonoGuerraOverrides,
+        setBonoGuerraOverride,
+        setBonoGuerraOverrides,
 
         // PDF visibility
         pdfVisibility,

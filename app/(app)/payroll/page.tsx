@@ -87,6 +87,8 @@ export default function PayrollCalculatorPage() {
         bonusRows,
         cestaTicketExcluded,
         bonoGuerraExcluded,
+        cestaTicketOverrides,
+        bonoGuerraOverrides,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
 
@@ -157,31 +159,41 @@ export default function PayrollCalculatorPage() {
             (e) => e.estado === "activo" && !cestaTicketExcluded.has(e.cedula),
         );
         if (!active.length) return null;
-        const { montoUsd, montoVes } = deriveMontos(
-            parseFloat(cestaTicketUSD) || 0,
-            cestaTicketCurrency,
-            40,
-            bcvRate,
+        // Monto global (default + run-level fallback). Cada empleado puede tener
+        // su propio override; si no, hereda este global.
+        const globalRaw = parseFloat(cestaTicketUSD) || 0;
+        const { montoUsd: globalUsd } = deriveMontos(
+            globalRaw, cestaTicketCurrency, 40, bcvRate,
         );
         return {
             run: {
                 companyId,
                 periodStart:  activePeriodInfo.startDate,
                 periodEnd:    activePeriodInfo.endDate,
-                montoUsd,
+                montoUsd:     globalUsd,
                 exchangeRate: bcvRate,
             },
-            receipts: active.map((e) => ({
-                companyId,
-                employeeId:     e.cedula,
-                employeeCedula: e.cedula,
-                employeeNombre: e.nombre,
-                employeeCargo:  e.cargo,
-                montoUsd,
-                montoVes,
-            })),
+            receipts: active.map((e) => {
+                const overrideRaw = cestaTicketOverrides.get(e.cedula);
+                const rawNum =
+                    overrideRaw && overrideRaw.trim() !== ""
+                        ? parseFloat(overrideRaw) || 0
+                        : globalRaw;
+                const { montoUsd, montoVes } = deriveMontos(
+                    rawNum, cestaTicketCurrency, 40, bcvRate,
+                );
+                return {
+                    companyId,
+                    employeeId:     e.cedula,
+                    employeeCedula: e.cedula,
+                    employeeNombre: e.nombre,
+                    employeeCargo:  e.cargo,
+                    montoUsd,
+                    montoVes,
+                };
+            }),
         };
-    }, [companyId, employees, cestaTicketExcluded, cestaTicketUSD, cestaTicketCurrency, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, cestaTicketExcluded, cestaTicketOverrides, cestaTicketUSD, cestaTicketCurrency, bcvRate, activePeriodInfo]);
 
     const handleCestaTicketPdf = () => {
         const active = employees.filter(
@@ -191,20 +203,28 @@ export default function PayrollCalculatorPage() {
             notify.error("No hay empleados seleccionados para cesta ticket");
             return;
         }
-        const { montoUsd } = deriveMontos(
-            parseFloat(cestaTicketUSD) || 0,
-            cestaTicketCurrency,
-            40,
-            bcvRate,
+        const globalRaw = parseFloat(cestaTicketUSD) || 0;
+        const { montoUsd: globalUsd } = deriveMontos(
+            globalRaw, cestaTicketCurrency, 40, bcvRate,
         );
         generateCestaTicketPdf(
-            active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
+            active.map((e) => {
+                const overrideRaw = cestaTicketOverrides.get(e.cedula);
+                const rawNum =
+                    overrideRaw && overrideRaw.trim() !== ""
+                        ? parseFloat(overrideRaw) || 0
+                        : globalRaw;
+                const { montoUsd } = deriveMontos(
+                    rawNum, cestaTicketCurrency, 40, bcvRate,
+                );
+                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd };
+            }),
             {
                 companyName: company?.name ?? "",
                 companyId: company?.id,
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
-                montoUSD: montoUsd,
+                montoUSD: globalUsd,
                 bcvRate,
             },
         );
@@ -236,31 +256,39 @@ export default function PayrollCalculatorPage() {
             (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
         );
         if (!active.length) return null;
-        const { montoUsd, montoVes } = deriveMontos(
-            parseFloat(bonoGuerraUSD) || 0,
-            bonoGuerraCurrency,
-            200,
-            bcvRate,
+        const globalRaw = parseFloat(bonoGuerraUSD) || 0;
+        const { montoUsd: globalUsd } = deriveMontos(
+            globalRaw, bonoGuerraCurrency, 200, bcvRate,
         );
         return {
             run: {
                 companyId,
                 periodStart:  activePeriodInfo.startDate,
                 periodEnd:    activePeriodInfo.endDate,
-                montoUsd,
+                montoUsd:     globalUsd,
                 exchangeRate: bcvRate,
             },
-            receipts: active.map((e) => ({
-                companyId,
-                employeeId:     e.cedula,
-                employeeCedula: e.cedula,
-                employeeNombre: e.nombre,
-                employeeCargo:  e.cargo,
-                montoUsd,
-                montoVes,
-            })),
+            receipts: active.map((e) => {
+                const overrideRaw = bonoGuerraOverrides.get(e.cedula);
+                const rawNum =
+                    overrideRaw && overrideRaw.trim() !== ""
+                        ? parseFloat(overrideRaw) || 0
+                        : globalRaw;
+                const { montoUsd, montoVes } = deriveMontos(
+                    rawNum, bonoGuerraCurrency, 200, bcvRate,
+                );
+                return {
+                    companyId,
+                    employeeId:     e.cedula,
+                    employeeCedula: e.cedula,
+                    employeeNombre: e.nombre,
+                    employeeCargo:  e.cargo,
+                    montoUsd,
+                    montoVes,
+                };
+            }),
         };
-    }, [companyId, employees, bonoGuerraExcluded, bonoGuerraUSD, bonoGuerraCurrency, bcvRate, activePeriodInfo]);
+    }, [companyId, employees, bonoGuerraExcluded, bonoGuerraOverrides, bonoGuerraUSD, bonoGuerraCurrency, bcvRate, activePeriodInfo]);
 
     const handleBonoGuerraPdf = () => {
         const active = employees.filter(
@@ -270,20 +298,28 @@ export default function PayrollCalculatorPage() {
             notify.error("No hay empleados seleccionados para bono socio económico");
             return;
         }
-        const { montoUsd } = deriveMontos(
-            parseFloat(bonoGuerraUSD) || 0,
-            bonoGuerraCurrency,
-            200,
-            bcvRate,
+        const globalRaw = parseFloat(bonoGuerraUSD) || 0;
+        const { montoUsd: globalUsd } = deriveMontos(
+            globalRaw, bonoGuerraCurrency, 200, bcvRate,
         );
         generateBonoGuerraPdf(
-            active.map((e) => ({ cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado })),
+            active.map((e) => {
+                const overrideRaw = bonoGuerraOverrides.get(e.cedula);
+                const rawNum =
+                    overrideRaw && overrideRaw.trim() !== ""
+                        ? parseFloat(overrideRaw) || 0
+                        : globalRaw;
+                const { montoUsd } = deriveMontos(
+                    rawNum, bonoGuerraCurrency, 200, bcvRate,
+                );
+                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd };
+            }),
             {
                 companyName: company?.name ?? "",
                 companyId: company?.id,
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
-                montoUSD: montoUsd,
+                montoUSD: globalUsd,
                 bcvRate,
             },
         );

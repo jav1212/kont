@@ -57,9 +57,15 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
         cestaTicketExcluded,
         toggleCestaTicketRecipient,
         setCestaTicketExcluded,
+        cestaTicketOverrides,
+        setCestaTicketOverride,
+        setCestaTicketOverrides,
         bonoGuerraExcluded,
         toggleBonoGuerraRecipient,
         setBonoGuerraExcluded,
+        bonoGuerraOverrides,
+        setBonoGuerraOverride,
+        setBonoGuerraOverrides,
     } = state;
 
     // Equivalencia inversa según moneda activa. `raw` ya está parseado.
@@ -141,6 +147,11 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                         excluded={cestaTicketExcluded}
                         onToggle={toggleCestaTicketRecipient}
                         onSetExcluded={setCestaTicketExcluded}
+                        overrides={cestaTicketOverrides}
+                        onAmountChange={setCestaTicketOverride}
+                        onClearOverrides={() => setCestaTicketOverrides(new Map())}
+                        globalAmount={cestaTicketUSD}
+                        currency={cestaTicketCurrency}
                     />
                 </StepSection>
             )}
@@ -187,6 +198,11 @@ export function GuidedStepBonuses({ state, onBack, onNext }: Props) {
                         excluded={bonoGuerraExcluded}
                         onToggle={toggleBonoGuerraRecipient}
                         onSetExcluded={setBonoGuerraExcluded}
+                        overrides={bonoGuerraOverrides}
+                        onAmountChange={setBonoGuerraOverride}
+                        onClearOverrides={() => setBonoGuerraOverrides(new Map())}
+                        globalAmount={bonoGuerraUSD}
+                        currency={bonoGuerraCurrency}
                     />
                 </StepSection>
             )}
