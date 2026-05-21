@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Coins, Receipt, Shield } from "lucide-react";
+import { CheckCircle2, Coins, FileDown, Receipt, Save, Shield } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BenefitActionCluster } from "@/src/modules/payroll/frontend/components/benefit-action-cluster";
 import { notify } from "@/src/shared/frontend/notify";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { useConfirmAction } from "@/src/shared/frontend/hooks/use-confirm-action";
 import { useGuidedPayrollState } from "@/src/modules/payroll/frontend/hooks/use-guided-payroll-state";
 import {
     useCestaTicketHistory,
@@ -91,6 +93,11 @@ export default function PayrollCalculatorPage() {
         bonoGuerraOverrides,
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
+
+    // Diálogo único de confirmación para los 9 disparadores de beneficios.
+    const dialog = useConfirmAction();
+    const fmtNum = (n: number) =>
+        n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const {
         runs: ctRuns,
@@ -448,6 +455,201 @@ export default function PayrollCalculatorPage() {
         if (ok) notify.success("Bonificaciones confirmadas");
     };
 
+    // ── Wrappers que abren el diálogo de confirmación antes de ejecutar ─────
+    // Cada wrapper construye un payload sólo para derivar el summary visible
+    // (cantidad de empleados / montos). Si no se puede armar payload se
+    // dispara el toast de error y NO se abre el diálogo.
+
+    const askSaveCestaTicketDraft = () => {
+        const payload = buildCtPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
+        const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
+        dialog.request({
+            title: "Guardar borrador de Cesta Ticket",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
+            summary: (
+                <>
+                    <SummaryRow label="Período" value={activePeriodInfo.label} />
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                </>
+            ),
+            confirmLabel: "Guardar borrador",
+            confirmIcon: <Save size={14} strokeWidth={2} />,
+            run: handleSaveCestaTicketDraft,
+        });
+    };
+
+    const askConfirmCestaTicket = () => {
+        const payload = buildCtPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
+        const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
+        dialog.request({
+            title: "Confirmar Cesta Ticket",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                </>
+            ),
+            warning: "Esta acción guarda la cesta ticket permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
+            confirmLabel: "Confirmar y guardar",
+            confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
+            run: handleConfirmCestaTicket,
+        });
+    };
+
+    const askCestaTicketPdf = () => {
+        const payload = buildCtPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
+        dialog.request({
+            title: "Descargar PDF de Cesta Ticket",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                </>
+            ),
+            confirmLabel: "Descargar PDF",
+            confirmIcon: <FileDown size={14} strokeWidth={2} />,
+            run: handleCestaTicketPdf,
+        });
+    };
+
+    const askSaveBonoGuerraDraft = () => {
+        const payload = buildBgPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
+        const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
+        dialog.request({
+            title: "Guardar borrador de Bono Socio Económico",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
+            summary: (
+                <>
+                    <SummaryRow label="Período" value={activePeriodInfo.label} />
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                </>
+            ),
+            confirmLabel: "Guardar borrador",
+            confirmIcon: <Save size={14} strokeWidth={2} />,
+            run: handleSaveBonoGuerraDraft,
+        });
+    };
+
+    const askConfirmBonoGuerra = () => {
+        const payload = buildBgPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
+        const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
+        dialog.request({
+            title: "Confirmar Bono Socio Económico",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                </>
+            ),
+            warning: "Esta acción guarda el bono socio económico permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
+            confirmLabel: "Confirmar y guardar",
+            confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
+            run: handleConfirmBonoGuerra,
+        });
+    };
+
+    const askBonoGuerraPdf = () => {
+        const payload = buildBgPayload();
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
+        dialog.request({
+            title: "Descargar PDF de Bono Socio Económico",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={payload.receipts.length} />
+                    <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                </>
+            ),
+            confirmLabel: "Descargar PDF",
+            confirmIcon: <FileDown size={14} strokeWidth={2} />,
+            run: handleBonoGuerraPdf,
+        });
+    };
+
+    const askSaveBonificacionesDraft = () => {
+        const payload = buildBfPayload();
+        if (!payload) { notify.error("No hay empleados activos o bonos configurados para guardar"); return; }
+        dialog.request({
+            title: "Guardar borrador de Bonificaciones",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
+            summary: (
+                <>
+                    <SummaryRow label="Período" value={activePeriodInfo.label} />
+                    <SummaryRow label="Empleados" value={payload.run.employeeCount} />
+                    <SummaryRow label="Líneas de bono" value={payload.run.lineCount} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(payload.run.totalVes)}`} emphasis />
+                </>
+            ),
+            confirmLabel: "Guardar borrador",
+            confirmIcon: <Save size={14} strokeWidth={2} />,
+            run: handleSaveBonificacionesDraft,
+        });
+    };
+
+    const askConfirmBonificaciones = () => {
+        const payload = buildBfPayload();
+        if (!payload) { notify.error("No hay empleados activos o bonos configurados para confirmar"); return; }
+        dialog.request({
+            title: "Confirmar Bonificaciones",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={payload.run.employeeCount} />
+                    <SummaryRow label="Líneas de bono" value={payload.run.lineCount} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Total VES" value={`Bs. ${fmtNum(payload.run.totalVes)}`} emphasis />
+                </>
+            ),
+            warning: "Esta acción guarda las bonificaciones permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
+            confirmLabel: "Confirmar y guardar",
+            confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
+            run: handleConfirmBonificaciones,
+        });
+    };
+
+    const askBonificacionesPdf = () => {
+        // El PDF no requiere payload completo (no persiste); valida lo mismo
+        // que el handler original antes de abrir el diálogo.
+        const active = employees.filter((e) => e.estado === "activo");
+        if (!active.length) { notify.error("No hay empleados activos"); return; }
+        const lines = computedBonusLines();
+        if (!lines.length) {
+            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nómina.");
+            return;
+        }
+        const totalVes = lines.reduce((s, l) => s + l.amountVes, 0);
+        dialog.request({
+            title: "Descargar PDF de Bonificaciones",
+            subtitle: activePeriodInfo.label,
+            summary: (
+                <>
+                    <SummaryRow label="Empleados" value={active.length} />
+                    <SummaryRow label="Líneas de bono" value={lines.length} />
+                    <SummaryRow label="Total por empleado" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                </>
+            ),
+            confirmLabel: "Descargar PDF",
+            confirmIcon: <FileDown size={14} strokeWidth={2} />,
+            run: handleBonificacionesPdf,
+        });
+    };
+
     return (
             <div className="flex flex-1 flex-col bg-surface-2 font-mono overflow-hidden">
                 <PageHeader
@@ -468,9 +670,9 @@ export default function PayrollCalculatorPage() {
                             saving={savingBfDraft}
                             confirming={confirmingBf}
                             disabled={!activos}
-                            onSaveDraft={handleSaveBonificacionesDraft}
-                            onConfirm={handleConfirmBonificaciones}
-                            onPdf={handleBonificacionesPdf}
+                            onSaveDraft={askSaveBonificacionesDraft}
+                            onConfirm={askConfirmBonificaciones}
+                            onPdf={askBonificacionesPdf}
                         />
 
                         {showCestaTicket && (
@@ -481,9 +683,9 @@ export default function PayrollCalculatorPage() {
                                 saving={savingCtDraft}
                                 confirming={confirmingCt}
                                 disabled={!activos}
-                                onSaveDraft={handleSaveCestaTicketDraft}
-                                onConfirm={handleConfirmCestaTicket}
-                                onPdf={handleCestaTicketPdf}
+                                onSaveDraft={askSaveCestaTicketDraft}
+                                onConfirm={askConfirmCestaTicket}
+                                onPdf={askCestaTicketPdf}
                             />
                         )}
 
@@ -495,9 +697,9 @@ export default function PayrollCalculatorPage() {
                                 saving={savingBgDraft}
                                 confirming={confirmingBg}
                                 disabled={!activos}
-                                onSaveDraft={handleSaveBonoGuerraDraft}
-                                onConfirm={handleConfirmBonoGuerra}
-                                onPdf={handleBonoGuerraPdf}
+                                onSaveDraft={askSaveBonoGuerraDraft}
+                                onConfirm={askConfirmBonoGuerra}
+                                onPdf={askBonoGuerraPdf}
                             />
                         )}
 
@@ -535,6 +737,21 @@ export default function PayrollCalculatorPage() {
                     )}
                     {currentStep === 5 && <GuidedStepReview state={state} onBack={goBack} />}
                 </div>
+
+                {/* Diálogo único para los 9 disparadores de beneficios (PDF / borrador / confirmar) */}
+                <ConfirmCompanyDialog
+                    isOpen={!!dialog.pending}
+                    onClose={dialog.clear}
+                    onConfirm={dialog.confirm}
+                    loading={dialog.loading}
+                    title={dialog.pending?.title ?? ""}
+                    subtitle={dialog.pending?.subtitle}
+                    summary={dialog.pending?.summary}
+                    warning={dialog.pending?.warning}
+                    confirmLabel={dialog.pending?.confirmLabel}
+                    confirmIcon={dialog.pending?.confirmIcon}
+                    destructive={dialog.pending?.destructive}
+                />
             </div>
     );
 }

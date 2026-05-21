@@ -6,10 +6,13 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import { toast } from "sonner";
+import { CheckCircle2, FileDown, FileText } from "lucide-react";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
 import type { Column }   from "@/src/shared/frontend/components/base-table";
 import { BaseInput }     from "@/src/shared/frontend/components/base-input";
 import { AuditContainer, AuditRow } from "@/src/shared/frontend/components/base-audit";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { useConfirmAction } from "@/src/shared/frontend/hooks/use-confirm-action";
 import {
     EarningRowEditor,
     DeductionRowEditor,
@@ -321,13 +324,6 @@ const TablePlaceholder = ({ loading }: { loading: boolean }) => (
             <span className="font-mono text-[13px] text-neutral-300 uppercase tracking-widest">Sin empleados. Agrega empleados en la sección de Empleados.</span>
         )}
     </div>
-);
-
-const Spinner = () => (
-    <svg className="animate-spin text-neutral-400" width="13" height="13" viewBox="0 0 12 12" fill="none">
-        <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-        <path d="M11 6A5 5 0 0 0 6 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
 );
 
 const CheckIcon = () => (
@@ -963,11 +959,12 @@ export const PayrollEmployeeTable = ({
 
     const [expandedId,       setExpandedId]       = useState<string | null>(null);
     const [search,           setSearch]           = useState("");
-    const [confirmLoading,   setConfirmLoading]   = useState(false);
     const [confirmOk,        setConfirmOk]        = useState(false);
-    const [showModal,        setShowModal]        = useState(false);
     const [includeVacaciones, setIncludeVacaciones] = useState(true);
     const [draftSavedAt,     setDraftSavedAt]     = useState<Date | null>(null);
+
+    // Diálogo único de confirmación para los 3 disparadores (PDF, reporte, confirmar nómina).
+    const dialog = useConfirmAction();
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback(
@@ -1051,14 +1048,9 @@ export const PayrollEmployeeTable = ({
 
     const handleConfirmExecute = useCallback(async () => {
         if (!onConfirm || !results.length) return;
-        setConfirmLoading(true);
         setConfirmOk(false);
         const ok = await onConfirm(results);
-        setConfirmLoading(false);
-        if (ok) {
-            setShowModal(false);
-            setConfirmOk(true);
-        }
+        if (ok) setConfirmOk(true);
     }, [onConfirm, results]);
 
     const columns: Column<EmployeeResult>[] = [
@@ -1125,144 +1117,6 @@ export const PayrollEmployeeTable = ({
     return (
         <div className="space-y-4">
 
-        {/* ── Confirmation Modal ─────────────────────────────────────────── */}
-        {showModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-                {/* Backdrop */}
-                <div
-                    className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-                    onClick={() => { if (!confirmLoading) setShowModal(false); }}
-                />
-                {/* Panel */}
-                <div className="relative z-10 w-full max-w-md bg-surface-1 border border-border-default rounded-2xl shadow-lg overflow-hidden">
-                    {/* Header */}
-                    <div className="px-4 sm:px-6 py-5 border-b border-border-light">
-                        <div className="flex items-center gap-3 mb-1">
-                            <div className="h-px w-5 bg-primary-500/60" />
-                            <span className="font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--text-link)]">
-                                Confirmar nómina
-                            </span>
-                        </div>
-                        <h2 className="font-mono text-[20px] font-black uppercase tracking-tighter text-foreground leading-none">
-                            {periodLabel ?? "Período seleccionado"}
-                        </h2>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="px-4 sm:px-6 py-5 space-y-3">
-                        {/* Meta row */}
-                        <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                Empleados activos
-                            </span>
-                            <span className="font-mono text-[13px] font-semibold tabular-nums text-foreground">
-                                {activeResults.length}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                Tasa BCV
-                            </span>
-                            <span className="font-mono text-[13px] tabular-nums text-foreground">
-                                Bs. {fmt(bcvRate)} / USD
-                            </span>
-                        </div>
-                        {/* Totals */}
-                        <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                Total bruto
-                            </span>
-                            <span className="font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">
-                                Bs. {fmt(modalTotals.gross)}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between py-2 border-b border-border-light">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                Total deducciones
-                            </span>
-                            <span className="font-mono text-[13px] tabular-nums text-error/80">
-                                -Bs. {fmt(modalTotals.ded)}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between py-3 rounded-xl bg-primary-500/[0.06] border border-primary-500/20 px-4">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-link)]">
-                                Neto a pagar VES
-                            </span>
-                            <span className="font-mono text-[18px] font-black tabular-nums text-primary-500">
-                                Bs. {fmt(modalTotals.net)}
-                            </span>
-                        </div>
-                        <div className="flex items-center justify-between py-2">
-                            <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">
-                                Equivalente USD
-                            </span>
-                            <span className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">
-                                ${fmt(modalTotals.usd)}
-                            </span>
-                        </div>
-
-                        {periodAlreadyConfirmed && (
-                            <div className="px-3 py-2 border border-red-500/20 rounded-lg bg-red-500/[0.06]">
-                                <p className="font-mono text-[12px] text-red-400 leading-relaxed">
-                                    ⚠ Ya existe una nómina confirmada para este período. No se puede confirmar dos veces el mismo período.
-                                </p>
-                            </div>
-                        )}
-
-                        {zeroSalaryCount > 0 && !periodAlreadyConfirmed && (
-                            <div className="px-3 py-2 border border-amber-500/20 rounded-lg bg-amber-500/[0.06]">
-                                <p className="font-mono text-[12px] text-amber-500 leading-relaxed">
-                                    ⚠ {zeroSalaryCount} empleado{zeroSalaryCount > 1 ? "s" : ""} con salario en cero. Verifica antes de confirmar.
-                                </p>
-                            </div>
-                        )}
-
-
-                        <p className="font-mono text-[11px] text-[var(--text-disabled)] leading-relaxed">
-                            Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.
-                        </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="px-4 sm:px-6 py-4 border-t border-border-light flex items-center gap-3">
-                        <button
-                            onClick={handleConfirmExecute}
-                            disabled={confirmLoading || !!periodAlreadyConfirmed}
-                            className={[
-                                "flex-1 h-10 rounded-lg flex items-center justify-center gap-2",
-                                "bg-primary-500 hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed",
-                                "font-mono text-[12px] uppercase tracking-[0.18em] text-white",
-                                "transition-colors duration-150",
-                            ].join(" ")}
-                        >
-                            {confirmLoading ? (
-                                <><Spinner /> Guardando…</>
-                            ) : (
-                                <>
-                                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M2 6l3 3 5-5" />
-                                    </svg>
-                                    Confirmar y guardar
-                                </>
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setShowModal(false)}
-                            disabled={confirmLoading}
-                            className={[
-                                "h-10 px-4 rounded-lg border border-border-light",
-                                "font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-secondary)]",
-                                "hover:border-border-medium hover:text-[var(--text-secondary)]",
-                                "disabled:opacity-40 disabled:cursor-not-allowed",
-                                "transition-colors duration-150",
-                            ].join(" ")}
-                        >
-                            Cancelar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        )}
             {/* Toolbar */}
             <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
@@ -1297,14 +1151,52 @@ export const PayrollEmployeeTable = ({
                             <span className="sm:hidden">Vac. {includeVacaciones ? "in" : "ex"}</span>
                         </button>
                     )}
-                    <button onClick={handleExportPdf} disabled={results.length === 0} className={toolbarBtnBase}>
+                    <button
+                        onClick={() => dialog.request({
+                            title: "Generar recibos PDF",
+                            subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
+                            summary: (
+                                <>
+                                    {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                    <SummaryRow label="Empleados activos" value={activeResults.length} />
+                                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                </>
+                            ),
+                            warning: !periodAlreadyConfirmed
+                                ? "También se guardará un borrador en la base de datos para que tengas respaldo."
+                                : undefined,
+                            confirmLabel: "Generar PDF",
+                            confirmIcon: <FileDown size={14} strokeWidth={2} />,
+                            run: handleExportPdf,
+                        })}
+                        disabled={results.length === 0}
+                        className={toolbarBtnBase}
+                    >
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 2h5l3 3v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" /><path d="M7 2v3h3M4 7h4M4 9h2" />
                         </svg>
                         <span className="hidden sm:inline">Exportar PDF</span>
                         <span className="sm:hidden">PDF</span>
                     </button>
-                    <button onClick={handleExportSummaryPdf} disabled={results.filter(r => r.estado === "activo").length === 0} className={toolbarBtnBase}>
+                    <button
+                        onClick={() => dialog.request({
+                            title: "Generar reporte general",
+                            subtitle: periodLabel ? `Resumen de ${activeResults.length} empleado(s) para el período ${periodLabel}.` : undefined,
+                            summary: (
+                                <>
+                                    {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                    <SummaryRow label="Empleados activos" value={activeResults.length} />
+                                    <SummaryRow label="Total neto VES" value={`Bs. ${fmt(modalTotals.net)}`} emphasis />
+                                    <SummaryRow label="Equivalente USD" value={`$${fmt(modalTotals.usd)}`} />
+                                </>
+                            ),
+                            confirmLabel: "Generar PDF",
+                            confirmIcon: <FileText size={14} strokeWidth={2} />,
+                            run: handleExportSummaryPdf,
+                        })}
+                        disabled={results.filter(r => r.estado === "activo").length === 0}
+                        className={toolbarBtnBase}
+                    >
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                             <rect x="1.5" y="2" width="9" height="8" rx="0.5" /><path d="M1.5 5h9M4 2v8M7 2v8" />
                         </svg>
@@ -1320,7 +1212,26 @@ export const PayrollEmployeeTable = ({
                     ) : null}
                     {onConfirm && (
                         <button
-                            onClick={() => { setShowModal(true); }}
+                            onClick={() => dialog.request({
+                                title: "Confirmar nómina",
+                                subtitle: periodLabel ?? undefined,
+                                summary: (
+                                    <>
+                                        <SummaryRow label="Empleados activos" value={activeResults.length} />
+                                        <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                        <SummaryRow label="Total bruto" value={`Bs. ${fmt(modalTotals.gross)}`} />
+                                        <SummaryRow label="Total deducciones" value={`-Bs. ${fmt(modalTotals.ded)}`} />
+                                        <SummaryRow label="Neto a pagar VES" value={`Bs. ${fmt(modalTotals.net)}`} emphasis />
+                                        <SummaryRow label="Equivalente USD" value={`$${fmt(modalTotals.usd)}`} />
+                                    </>
+                                ),
+                                warning: zeroSalaryCount > 0
+                                    ? `${zeroSalaryCount} empleado${zeroSalaryCount > 1 ? "s" : ""} con salario en cero. Verifica antes de confirmar. Esta acción guarda la nómina permanentemente y no se puede deshacer desde la aplicación.`
+                                    : "Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.",
+                                confirmLabel: "Confirmar y guardar",
+                                confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
+                                run: handleConfirmExecute,
+                            })}
                             disabled={results.length === 0 || confirmOk || !!periodAlreadyConfirmed}
                             title={periodAlreadyConfirmed ? "Período ya confirmado" : undefined}
                             className={[
@@ -1432,6 +1343,21 @@ export const PayrollEmployeeTable = ({
             ) : (
                 <TablePlaceholder loading={empLoading} />
             )}
+
+            {/* Diálogo único de confirmación (PDF / Reporte / Confirmar nómina) */}
+            <ConfirmCompanyDialog
+                isOpen={!!dialog.pending}
+                onClose={dialog.clear}
+                onConfirm={dialog.confirm}
+                loading={dialog.loading}
+                title={dialog.pending?.title ?? ""}
+                subtitle={dialog.pending?.subtitle}
+                summary={dialog.pending?.summary}
+                warning={dialog.pending?.warning}
+                confirmLabel={dialog.pending?.confirmLabel}
+                confirmIcon={dialog.pending?.confirmIcon}
+                destructive={dialog.pending?.destructive}
+            />
         </div>
     );
 };
