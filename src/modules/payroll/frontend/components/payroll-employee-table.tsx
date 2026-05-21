@@ -292,6 +292,26 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-400 mb-2 mt-4">{children}</p>
 );
 
+// Wrapper para los editores inline en las audit columns: borde de acento +
+// botón "Listo" para cerrar el modo edición. Los cambios se persisten en
+// tiempo real al state via `onChange` del editor, por lo que el botón sólo
+// colapsa la línea de vuelta a su forma estándar de audit row.
+const EditorShell = ({ children, onDone }: { children: React.ReactNode; onDone: () => void }) => (
+    <div className="rounded-md border border-primary-500/30 bg-primary-500/[0.04] p-2 space-y-2">
+        {children}
+        <button
+            type="button"
+            onClick={onDone}
+            className="w-full h-7 rounded-md border border-primary-500/30 bg-primary-500/10 text-primary-500 font-mono text-[11px] uppercase tracking-[0.16em] hover:bg-primary-500/20 transition-colors duration-150 flex items-center justify-center gap-1.5"
+        >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 6l3 3 5-5" />
+            </svg>
+            Listo
+        </button>
+    </div>
+);
+
 const ExcludedChip = ({ label, onRestore }: { label: string; onRestore: () => void }) => (
     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-amber-500/30 bg-surface-1 font-mono text-[11px] text-[var(--text-secondary)]">
         <span className="line-through text-[var(--text-disabled)]">{label}</span>
@@ -355,6 +375,9 @@ const ExpandedPanel = ({
     result, override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
     earningRows, bonusRows, deductionRows, horasExtrasGlobal, onChange,
 }: ExpandedPanelProps) => {
+    // Edit-in-place: cuál audit line está en modo edición (id del row extra).
+    const [editing, setEditing] = useState<{ kind: LineKind; id: string } | null>(null);
+
     // Usar salarioVES para que las tasas de los extras sean consistentes con el cálculo principal
     const empDailyRate      = result.salarioVES / 30;
     const empHourlyRate     = empDailyRate / 8;
@@ -379,6 +402,86 @@ const ExpandedPanel = ({
     const addXH    = () => onChange({ ...override, extraHorasExtras: [...override.extraHorasExtras, { id: uid("xh"), tipo: "diurna" as const, hours: "0", active: true }] });
     const updateXH = (id: string, u: HorasExtrasRow) => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.map((r) => r.id === id ? u : r) });
     const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id) });
+
+    // Inicia edición sobre una línea. Si es global, la "promueve" a extra:
+    // clona el row, lo agrega al array extras correspondiente, excluye el
+    // global para este empleado, y deja el editor abierto sobre el nuevo extra.
+    // Si ya es extra, sólo activa el modo edición sin mutar estado.
+    const startEdit = (kind: LineKind, sourceId: string) => {
+        if (kind === "extra-earning" || kind === "extra-bonus" || kind === "extra-deduction" || kind === "extra-horas-extras") {
+            setEditing({ kind, id: sourceId });
+            return;
+        }
+        if (kind === "earning") {
+            const src = earningRows.find((r) => r.id === sourceId);
+            if (!src) return;
+            const cloned: EarningRow = { ...src, id: uid("xe") };
+            onChange({
+                ...override,
+                extraEarnings: [...override.extraEarnings, cloned],
+                excludedGlobalIds: {
+                    ...override.excludedGlobalIds,
+                    earnings: override.excludedGlobalIds.earnings.includes(sourceId)
+                        ? override.excludedGlobalIds.earnings
+                        : [...override.excludedGlobalIds.earnings, sourceId],
+                },
+            });
+            setEditing({ kind: "extra-earning", id: cloned.id });
+            return;
+        }
+        if (kind === "bonus") {
+            const src = bonusRows.find((r) => r.id === sourceId);
+            if (!src) return;
+            const cloned: BonusRow = { ...src, id: uid("xb") };
+            onChange({
+                ...override,
+                extraBonuses: [...override.extraBonuses, cloned],
+                excludedGlobalIds: {
+                    ...override.excludedGlobalIds,
+                    bonuses: override.excludedGlobalIds.bonuses.includes(sourceId)
+                        ? override.excludedGlobalIds.bonuses
+                        : [...override.excludedGlobalIds.bonuses, sourceId],
+                },
+            });
+            setEditing({ kind: "extra-bonus", id: cloned.id });
+            return;
+        }
+        if (kind === "deduction") {
+            const src = deductionRows.find((r) => r.id === sourceId);
+            if (!src) return;
+            const cloned: DeductionRow = { ...src, id: uid("xd") };
+            onChange({
+                ...override,
+                extraDeductions: [...override.extraDeductions, cloned],
+                excludedGlobalIds: {
+                    ...override.excludedGlobalIds,
+                    deductions: override.excludedGlobalIds.deductions.includes(sourceId)
+                        ? override.excludedGlobalIds.deductions
+                        : [...override.excludedGlobalIds.deductions, sourceId],
+                },
+            });
+            setEditing({ kind: "extra-deduction", id: cloned.id });
+            return;
+        }
+        if (kind === "horas-extras") {
+            const src = horasExtrasGlobal.find((r) => r.id === sourceId);
+            if (!src) return;
+            const cloned: HorasExtrasRow = { ...src, id: uid("xh") };
+            onChange({
+                ...override,
+                extraHorasExtras: [...override.extraHorasExtras, cloned],
+                excludedGlobalIds: {
+                    ...override.excludedGlobalIds,
+                    horasExtras: override.excludedGlobalIds.horasExtras.includes(sourceId)
+                        ? override.excludedGlobalIds.horasExtras
+                        : [...override.excludedGlobalIds.horasExtras, sourceId],
+                },
+            });
+            setEditing({ kind: "extra-horas-extras", id: cloned.id });
+        }
+    };
+
+    const closeEdit = () => setEditing(null);
 
     // Exclude a global row (sólo para este empleado).
     const excludeGlobal = (group: keyof EmployeeOverride["excludedGlobalIds"], id: string) =>
@@ -448,31 +551,106 @@ const ExpandedPanel = ({
             {/* Audit columns */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                 <AuditContainer title="Asignaciones" total={result.totalEarnings} type="income">
-                    {result.earningLines.map((l) => (
-                        <AuditRow
-                            key={`${l.sourceKind}:${l.sourceId}`}
-                            label={l.label} formula={l.formula} value={l.amount}
-                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
-                        />
-                    ))}
+                    {result.earningLines.map((l) => {
+                        const isEditing = editing?.kind === l.sourceKind && editing.id === l.sourceId;
+                        if (isEditing && l.sourceKind === "extra-earning") {
+                            const row = override.extraEarnings.find((r) => r.id === l.sourceId);
+                            if (!row) return null;
+                            return (
+                                <EditorShell key={`${l.sourceKind}:${l.sourceId}`} onDone={closeEdit}>
+                                    <EarningRowEditor
+                                        row={row}
+                                        dailyRate={empDailyRate}
+                                        canRemove={false}
+                                        onChange={(u) => updateXE(row.id, u)}
+                                        onRemove={() => {}}
+                                    />
+                                </EditorShell>
+                            );
+                        }
+                        if (isEditing && l.sourceKind === "extra-horas-extras") {
+                            const row = override.extraHorasExtras.find((r) => r.id === l.sourceId);
+                            if (!row) return null;
+                            return (
+                                <EditorShell key={`${l.sourceKind}:${l.sourceId}`} onDone={closeEdit}>
+                                    <HorasExtrasRowEditor
+                                        row={row}
+                                        hourlyRate={empHourlyRate}
+                                        canRemove={false}
+                                        onChange={(u) => updateXH(row.id, u)}
+                                        onRemove={() => {}}
+                                    />
+                                </EditorShell>
+                            );
+                        }
+                        return (
+                            <AuditRow
+                                key={`${l.sourceKind}:${l.sourceId}`}
+                                label={l.label} formula={l.formula} value={l.amount}
+                                onEdit={() => startEdit(l.sourceKind, l.sourceId)}
+                                onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                            />
+                        );
+                    })}
                 </AuditContainer>
                 <AuditContainer title="Bonificaciones" total={result.totalBonuses} type="income">
-                    {result.bonusLines.map((l) => (
-                        <AuditRow
-                            key={`${l.sourceKind}:${l.sourceId}`}
-                            label={l.label} formula={l.formula} value={l.amount}
-                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
-                        />
-                    ))}
+                    {result.bonusLines.map((l) => {
+                        const isEditing = editing?.kind === l.sourceKind && editing.id === l.sourceId;
+                        if (isEditing && l.sourceKind === "extra-bonus") {
+                            const row = override.extraBonuses.find((r) => r.id === l.sourceId);
+                            if (!row) return null;
+                            return (
+                                <EditorShell key={`${l.sourceKind}:${l.sourceId}`} onDone={closeEdit}>
+                                    <BonusRowEditor
+                                        row={row}
+                                        bcvRate={bcvRate}
+                                        canRemove={false}
+                                        onChange={(u) => updateXB(row.id, u)}
+                                        onRemove={() => {}}
+                                    />
+                                </EditorShell>
+                            );
+                        }
+                        return (
+                            <AuditRow
+                                key={`${l.sourceKind}:${l.sourceId}`}
+                                label={l.label} formula={l.formula} value={l.amount}
+                                onEdit={() => startEdit(l.sourceKind, l.sourceId)}
+                                onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                            />
+                        );
+                    })}
                 </AuditContainer>
                 <AuditContainer title="Deducciones" total={result.totalDeductions} type="deduction">
-                    {result.deductionLines.map((l) => (
-                        <AuditRow
-                            key={`${l.sourceKind}:${l.sourceId}`}
-                            label={l.label} formula={l.formula} value={l.amount} isNegative
-                            onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
-                        />
-                    ))}
+                    {result.deductionLines.map((l) => {
+                        const isEditing = editing?.kind === l.sourceKind && editing.id === l.sourceId;
+                        if (isEditing && l.sourceKind === "extra-deduction") {
+                            const row = override.extraDeductions.find((r) => r.id === l.sourceId);
+                            if (!row) return null;
+                            return (
+                                <EditorShell key={`${l.sourceKind}:${l.sourceId}`} onDone={closeEdit}>
+                                    <DeductionRowEditor
+                                        row={row}
+                                        weeklyBase={empWeeklyBase}
+                                        monthlyBase={result.salarioMensual}
+                                        integralBase={empIntegralBase}
+                                        cappedWeeklyBase={empCappedWeekly}
+                                        canRemove={false}
+                                        onChange={(u) => updateXD(row.id, u)}
+                                        onRemove={() => {}}
+                                    />
+                                </EditorShell>
+                            );
+                        }
+                        return (
+                            <AuditRow
+                                key={`${l.sourceKind}:${l.sourceId}`}
+                                label={l.label} formula={l.formula} value={l.amount} isNegative
+                                onEdit={() => startEdit(l.sourceKind, l.sourceId)}
+                                onRemove={() => removeAuditLine(l.sourceKind, l.sourceId)}
+                            />
+                        );
+                    })}
                 </AuditContainer>
             </div>
 

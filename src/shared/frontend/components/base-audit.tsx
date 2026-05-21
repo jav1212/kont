@@ -9,6 +9,7 @@ interface AuditRowProps {
     value: number;
     isNegative?: boolean;
     onRemove?: () => void;
+    onEdit?: () => void;
 }
 
 interface AuditContainerProps {
@@ -18,7 +19,7 @@ interface AuditContainerProps {
     type?: "income" | "deduction";
 }
 
-export const AuditRow = ({ label, formula, value, isNegative = false, onRemove }: AuditRowProps) => (
+export const AuditRow = ({ label, formula, value, isNegative = false, onRemove, onEdit }: AuditRowProps) => (
     <div className="flex items-start text-[11px] text-neutral-500 gap-2">
         <div className="flex-1 min-w-0 leading-tight">
             <p className="text-foreground/80 break-words">{label}</p>
@@ -27,6 +28,19 @@ export const AuditRow = ({ label, formula, value, isNegative = false, onRemove }
         <span className={`${isNegative ? "text-danger-500" : "text-primary-500"} font-bold tabular-nums shrink-0 mt-0.5`}>
             {isNegative ? "−" : "+"}{value.toFixed(2)}
         </span>
+        {onEdit && (
+            <button
+                type="button"
+                onClick={onEdit}
+                className="shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center rounded-md border border-border-light text-[var(--text-disabled)] hover:text-primary-500 hover:border-primary-500/40 transition-colors duration-150"
+                title="Editar esta línea para este empleado"
+                aria-label="Editar línea"
+            >
+                <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M7 1.5l1.5 1.5L3 8.5H1.5V7L7 1.5z" />
+                </svg>
+            </button>
+        )}
         {onRemove && (
             <button
                 type="button"
