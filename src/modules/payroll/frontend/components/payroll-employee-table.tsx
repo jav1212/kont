@@ -1183,6 +1183,7 @@ export interface PayrollEmployeeTableProps {
     periodStart?:             string;
     periodLabel?:             string;
     periodAlreadyConfirmed?:  boolean;
+    confirmBlockedReason?:    string | null;
     salaryMode?:              "mensual" | "integral";
     // REQ-005: period for FAOV/quincena rule application
     quincena?:                1 | 2;
@@ -1197,7 +1198,7 @@ export const PayrollEmployeeTable = ({
     horasExtrasGlobal = [], salarioMinimo = 0,
     companyName, companyId, companyLogoUrl, showLogoInPdf,
     payrollDate, periodStart, periodLabel,
-    periodAlreadyConfirmed, salaryMode,
+    periodAlreadyConfirmed, confirmBlockedReason, salaryMode,
     quincena = 1, pdfVisibility,
 }: PayrollEmployeeTableProps) => {
 
@@ -1538,8 +1539,8 @@ export const PayrollEmployeeTable = ({
                                 confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
                                 run: handleConfirmExecute,
                             })}
-                            disabled={results.length === 0 || confirmOk || !!periodAlreadyConfirmed}
-                            title={periodAlreadyConfirmed ? "Período ya confirmado" : undefined}
+                            disabled={results.length === 0 || confirmOk || !!periodAlreadyConfirmed || !!confirmBlockedReason}
+                            title={confirmBlockedReason ?? (periodAlreadyConfirmed ? "Período ya confirmado" : undefined)}
                             className={[
                                 "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                 "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",

@@ -20,7 +20,9 @@ import { calculateWeeklyFactor } from "../utils/payroll-helper";
 import {
     getQuincenaInfo,
     getWeekInfo,
+    getMonthInfo,
     getMondaysOfMonth,
+    MONTH_NAMES,
     type Quincena,
     type PeriodoMode,
 } from "../utils/period-info";
@@ -83,6 +85,10 @@ export function useGuidedPayrollState() {
         [selYear, selMonth],
     );
     const weekInfo = useMemo(() => getWeekInfo(selWeekMonday), [selWeekMonday]);
+    const monthInfo = useMemo(
+        () => getMonthInfo(selYear, selMonth),
+        [selYear, selMonth],
+    );
 
     useEffect(() => {
         if (periodoMode !== "semanal") return;
@@ -92,7 +98,10 @@ export function useGuidedPayrollState() {
         }
     }, [selYear, selMonth, periodoMode, selWeekMonday]);
 
-    const activePeriodInfo = periodoMode === "quincenal" ? quincenaInfo : weekInfo;
+    const activePeriodInfo =
+        periodoMode === "quincenal" ? quincenaInfo
+        : periodoMode === "semanal" ? weekInfo
+        : monthInfo;
 
     // Filter employees by hire date: an employee whose fechaIngreso is after the
     // period end didn't exist yet for that payroll. Employees without fechaIngreso
@@ -112,19 +121,25 @@ export function useGuidedPayrollState() {
         mondaysOfMonth.length > 0 &&
         selWeekMonday === mondaysOfMonth[mondaysOfMonth.length - 1];
 
-    // En modo semanal, tratamos como "segunda quincena" solo la última semana del mes.
-    // Esto hace que F.A.O.V, INCES y demás retenciones "Solo 2da" se apliquen únicamente
-    // en la última semana, y que INCES patronal (que depende de quincena === 2) también
-    // se calcule una sola vez al mes.
+    // En modo semanal, tratamos como "segunda quincena" solo la última semana del
+    // mes. En modo mensual la corrida cubre todo el mes — las retenciones de
+    // "Solo 2da" (F.A.O.V, INCES, etc.) se aplican una sola vez. Esto hace que
+    // INCES patronal y demás dependientes de quincena === 2 se calculen una vez
+    // por mes en ambos modos.
     const activeQuincena: 1 | 2 =
-        periodoMode === "semanal" ? (isLastWeekOfMonth ? 2 : 1) : selQuincena;
+        periodoMode === "mensual" ? 2
+        : periodoMode === "semanal" ? (isLastWeekOfMonth ? 2 : 1)
+        : selQuincena;
 
     // Default rule: monthly benefits (cesta ticket + bono socio-económico) ride
-    // along with the 2nd quincena or the last week of the month. Per-payroll
-    // overrides below let the user force-include or force-exclude when paid
-    // outside the default period (e.g., 1st quincena by exception).
+    // along with the 2nd quincena, the last week of the month, or — in modo
+    // mensual — la única corrida del mes. Per-payroll overrides below let the
+    // user force-include or force-exclude when paid outside the default period
+    // (e.g., 1st quincena by exception).
     const defaultBenefitsInPeriod =
-        (periodoMode === "quincenal" && selQuincena === 2) || isLastWeekOfMonth;
+        periodoMode === "mensual" ||
+        (periodoMode === "quincenal" && selQuincena === 2) ||
+        isLastWeekOfMonth;
 
     const [includeCestaTicketOverride, setIncludeCestaTicketOverride] =
         useState<boolean | null>(null);
@@ -520,6 +535,59 @@ export function useGuidedPayrollState() {
         [runs, companyId, activePeriodInfo],
     );
 
+    // Coexistence guard: mensual y quincenal/semanal son mutuamente excluyentes
+    // por mes. Si se intenta correr mensual y ya hay una quincena/semana
+    // confirmada del mismo mes (o viceversa), se bloquea la confirmación.
+    // Drafts no cuentan.
+    const periodBlockedByCoexistence = useMemo<{
+        blocked: boolean;
+        reason: string | null;
+    }>(() => {
+        if (!companyId) return { blocked: false, reason: null };
+        const monthKey = activePeriodInfo.startDate.slice(0, 7);
+        const [yStr, mStr] = monthKey.split("-");
+        const year = Number(yStr);
+        const month = Number(mStr);
+        if (!year || !month) return { blocked: false, reason: null };
+        const lastDay = new Date(year, month, 0).getDate();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const monthStart = `${monthKey}-01`;
+        const monthEnd = `${monthKey}-${pad(lastDay)}`;
+        const monthName = `${MONTH_NAMES[month - 1]} ${year}`;
+
+        if (periodoMode === "mensual") {
+            const collision = runs.find(
+                (r) =>
+                    r.companyId === companyId &&
+                    r.status === "confirmed" &&
+                    r.periodStart.slice(0, 7) === monthKey &&
+                    !(r.periodStart === monthStart && r.periodEnd === monthEnd),
+            );
+            if (collision) {
+                return {
+                    blocked: true,
+                    reason: `Ya existe una nómina confirmada (${collision.periodStart} → ${collision.periodEnd}) dentro de ${monthName}. No se puede correr nómina mensual en paralelo con quincenas o semanas confirmadas.`,
+                };
+            }
+            return { blocked: false, reason: null };
+        }
+
+        const monthlyRun = runs.find(
+            (r) =>
+                r.companyId === companyId &&
+                r.status === "confirmed" &&
+                r.periodStart === monthStart &&
+                r.periodEnd === monthEnd,
+        );
+        if (monthlyRun) {
+            return {
+                blocked: true,
+                reason: `Ya existe una nómina mensual confirmada para ${monthName}. No se pueden confirmar quincenas ni semanas adicionales del mismo mes.`,
+            };
+        }
+        return { blocked: false, reason: null };
+    }, [companyId, runs, activePeriodInfo, periodoMode]);
+
     // ── Persistence: confirm / draft ────────────────────────────────────────
     const buildPayload = useCallback(
         (results: EmployeeResult[]) => {
@@ -563,11 +631,18 @@ export function useGuidedPayrollState() {
 
     const handleConfirm = useCallback(
         async (results: EmployeeResult[]): Promise<boolean> => {
+            if (periodBlockedByCoexistence.blocked) {
+                notify.error(
+                    periodBlockedByCoexistence.reason ??
+                        "No se puede confirmar este período.",
+                );
+                return false;
+            }
             const payload = buildPayload(results);
             if (!payload) { notify.error("No hay empresa seleccionada"); return false; }
             return confirm(payload);
         },
-        [buildPayload, confirm],
+        [buildPayload, confirm, periodBlockedByCoexistence],
     );
 
     const handleSaveDraft = useCallback(
@@ -610,6 +685,7 @@ export function useGuidedPayrollState() {
         mondaysOfMonth,
         quincenaInfo,
         weekInfo,
+        monthInfo,
         activePeriodInfo,
         activeQuincena,
         isLastWeekOfMonth,
@@ -719,6 +795,7 @@ export function useGuidedPayrollState() {
         handleConfirm,
         handleSaveDraft,
         periodAlreadyConfirmed,
+        periodBlockedByCoexistence,
     };
 }
 

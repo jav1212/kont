@@ -20,7 +20,7 @@ export function GuidedStepReview({ state, onBack }: Props) {
         mondaysInMonth, bcvRate,
         diasUtilNum, diasBonoNum,
         horasExtrasGlobal, salarioMinimo,
-        activePeriodInfo, periodAlreadyConfirmed,
+        activePeriodInfo, periodAlreadyConfirmed, periodBlockedByCoexistence,
         salaryMode, activeQuincena,
         pdfVisibility, setPdfVisibility,
         handleConfirm, handleSaveDraft,
@@ -83,6 +83,9 @@ export function GuidedStepReview({ state, onBack }: Props) {
                 periodStart={activePeriodInfo.startDate}
                 periodLabel={activePeriodInfo.label}
                 periodAlreadyConfirmed={periodAlreadyConfirmed}
+                confirmBlockedReason={
+                    periodBlockedByCoexistence.blocked ? periodBlockedByCoexistence.reason : null
+                }
                 salaryMode={salaryMode}
                 quincena={activeQuincena}
                 pdfVisibility={pdfVisibility}

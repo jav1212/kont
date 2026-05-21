@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, CalendarDays, ChevronDown, RefreshCw } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange, ChevronDown, RefreshCw } from "lucide-react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { MONTH_NAMES } from "../../utils/period-info";
@@ -104,9 +104,9 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
         >
             <StepSection
                 title="Modalidad de pago"
-                description="¿Paga cada quincena (dos pagos al mes) o cada semana?"
+                description="¿Paga cada quincena, cada semana, o una sola corrida al mes?"
             >
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                     <button
                         onClick={() => setPeriodoMode("quincenal")}
                         className={[
@@ -129,10 +129,28 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                     >
                         <Calendar size={18} /> Semanal
                     </button>
+                    <button
+                        onClick={() => setPeriodoMode("mensual")}
+                        className={[
+                            "flex items-center justify-center gap-2 h-14 rounded-xl border font-mono text-[14px] uppercase tracking-[0.12em] transition-all shadow-sm",
+                            periodoMode === "mensual"
+                                ? "bg-primary-500/10 border-primary-500/60 text-primary-600 font-bold ring-1 ring-primary-500/40"
+                                : "bg-surface-1 border-border-light text-[var(--text-secondary)] hover:border-border-medium hover:text-foreground",
+                        ].join(" ")}
+                    >
+                        <CalendarRange size={18} /> Mensual
+                    </button>
                 </div>
             </StepSection>
 
-            <StepSection title="Período" description="Mes, año y quincena/semana a calcular.">
+            <StepSection
+                title="Período"
+                description={
+                    periodoMode === "mensual"
+                        ? "Mes y año a calcular. La corrida cubre todo el mes calendario."
+                        : "Mes, año y quincena/semana a calcular."
+                }
+            >
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
@@ -343,11 +361,11 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
 
             <AdvancedDisclosure label="Avanzado · beneficios mensuales">
                 <p className="font-mono text-[13px] text-[var(--text-tertiary)] leading-relaxed">
-                    Por defecto, cesta ticket y bono socio-económico solo se incluyen
-                    en la última quincena/semana del mes. Si en esta nómina pagas
-                    estos beneficios en un período distinto, fuérzalos manualmente.
-                    El cambio aplica solo a este cálculo; no altera la configuración
-                    guardada de la empresa.
+                    Por defecto, cesta ticket y bono socio-económico se incluyen en
+                    la última quincena/semana del mes (o en la corrida mensual
+                    completa). Si en esta nómina pagas estos beneficios en un período
+                    distinto, fuérzalos manualmente. El cambio aplica solo a este
+                    cálculo; no altera la configuración guardada de la empresa.
                 </p>
 
                 <BenefitOverrideTriToggle
