@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
-import { FileText, Download, FileBarChart, FileCode, CheckCircle2 } from "lucide-react";
+import { FileText, Download, FileBarChart, FileCode, CheckCircle2, ChevronDown, Scissors } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt, ConfirmReceiptPayload } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
@@ -308,6 +308,7 @@ export default function PayrollHistoryPage() {
     const [islrPdfModalOpen, setIslrPdfModalOpen] = useState(false);
     const [confirmDraftOpen, setConfirmDraftOpen] = useState(false);
     const [confirmingDraft, setConfirmingDraft] = useState(false);
+    const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -320,7 +321,7 @@ export default function PayrollHistoryPage() {
 
     const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
 
-    const handleDownloadPdf = useCallback(async () => {
+    const handleDownloadPdf = useCallback(async (pdfMode: "simple" | "duplicado") => {
         if (!selectedRun || !receipts.length) return;
         const employees = buildPdfEmployees(receipts);
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
@@ -334,6 +335,7 @@ export default function PayrollHistoryPage() {
             mondaysInMonth: receipts[0]?.calculationData?.mondaysInMonth ?? 4,
             logoUrl: company?.logoUrl,
             showLogoInPdf: company?.showLogoInPdf,
+            pdfMode,
         });
     }, [selectedRun, receipts, company]);
 
@@ -421,14 +423,51 @@ export default function PayrollHistoryPage() {
                                         Confirmar nómina
                                     </BaseButton.Root>
                                 )}
-                                <BaseButton.Root
-                                    variant={selectedRun.status === "draft" ? "secondary" : "primary"}
-                                    size="sm"
-                                    onClick={handleDownloadPdf}
-                                    leftIcon={<FileText size={14} />}
-                                >
-                                    Descargar PDF
-                                </BaseButton.Root>
+                                <div className="relative">
+                                    <BaseButton.Root
+                                        variant={selectedRun.status === "draft" ? "secondary" : "primary"}
+                                        size="sm"
+                                        onClick={() => setPdfMenuOpen((v) => !v)}
+                                        leftIcon={<FileText size={14} />}
+                                        rightIcon={<ChevronDown size={12} />}
+                                        aria-haspopup="menu"
+                                        aria-expanded={pdfMenuOpen}
+                                    >
+                                        Descargar PDF
+                                    </BaseButton.Root>
+                                    {pdfMenuOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setPdfMenuOpen(false)} />
+                                            <div className="absolute right-0 top-full mt-1.5 z-50 rounded-xl border border-border-light bg-surface-1 shadow-lg p-1 min-w-[300px]">
+                                                <button
+                                                    onClick={() => { setPdfMenuOpen(false); void handleDownloadPdf("duplicado"); }}
+                                                    className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                                                >
+                                                    <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo cortable</div>
+                                                        <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                                            Oficio · 2 copias por hoja (Original + Copia) con línea de corte
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                                <div className="my-1 border-t border-border-light" />
+                                                <button
+                                                    onClick={() => { setPdfMenuOpen(false); void handleDownloadPdf("simple"); }}
+                                                    className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                                                >
+                                                    <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo simple</div>
+                                                        <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                                            A4 · 1 recibo por hoja, sin copia para pagador
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
                                 <BaseButton.Root
                                     variant="secondary"
                                     size="sm"

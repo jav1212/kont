@@ -32,6 +32,13 @@ import { GuidedStepReview } from "@/src/modules/payroll/frontend/components/guid
 import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/cesta-ticket-pdf";
 import { generateBonoGuerraPdf } from "@/src/modules/payroll/frontend/utils/bono-guerra-pdf";
 import { generateBonificacionesPdf } from "@/src/modules/payroll/frontend/utils/bonificaciones-pdf";
+import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
+
+const MODE_LABEL: Record<ReportMode, string> = {
+    general:    "General · consolidado",
+    individual: "Hoja por empleado · A4",
+    duplicado:  "Cortable · oficio Original + Copia",
+};
 
 const STEPS: StepDef[] = [
     { id: 1, label: "Período" },
@@ -202,7 +209,7 @@ export default function PayrollCalculatorPage() {
         };
     }, [companyId, employees, cestaTicketExcluded, cestaTicketOverrides, cestaTicketUSD, cestaTicketCurrency, bcvRate, activePeriodInfo]);
 
-    const handleCestaTicketPdf = () => {
+    const handleCestaTicketPdf = (pdfMode: ReportMode) => {
         const active = employees.filter(
             (e) => e.estado === "activo" && !cestaTicketExcluded.has(e.cedula),
         );
@@ -233,6 +240,7 @@ export default function PayrollCalculatorPage() {
                 payrollDate: activePeriodInfo.endDate,
                 montoUSD: globalUsd,
                 bcvRate,
+                pdfMode,
             },
         );
     };
@@ -297,7 +305,7 @@ export default function PayrollCalculatorPage() {
         };
     }, [companyId, employees, bonoGuerraExcluded, bonoGuerraOverrides, bonoGuerraUSD, bonoGuerraCurrency, bcvRate, activePeriodInfo]);
 
-    const handleBonoGuerraPdf = () => {
+    const handleBonoGuerraPdf = (pdfMode: ReportMode) => {
         const active = employees.filter(
             (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
         );
@@ -328,6 +336,7 @@ export default function PayrollCalculatorPage() {
                 payrollDate: activePeriodInfo.endDate,
                 montoUSD: globalUsd,
                 bcvRate,
+                pdfMode,
             },
         );
     };
@@ -403,7 +412,7 @@ export default function PayrollCalculatorPage() {
         };
     }, [companyId, employees, computedBonusLines, bcvRate, activePeriodInfo]);
 
-    const handleBonificacionesPdf = () => {
+    const handleBonificacionesPdf = (pdfMode: ReportMode) => {
         const active = employees.filter((e) => e.estado === "activo");
         if (!active.length) { notify.error("No hay empleados activos"); return; }
         const lines = computedBonusLines();
@@ -427,6 +436,7 @@ export default function PayrollCalculatorPage() {
                 bcvRate,
                 logoUrl:       company?.logoUrl,
                 showLogoInPdf: company?.showLogoInPdf,
+                pdfMode,
             },
         );
     };
@@ -503,7 +513,7 @@ export default function PayrollCalculatorPage() {
         });
     };
 
-    const askCestaTicketPdf = () => {
+    const askCestaTicketPdf = (pdfMode: ReportMode) => {
         const payload = buildCtPayload();
         if (!payload) { notify.error("No hay empleados seleccionados para cesta ticket"); return; }
         dialog.request({
@@ -513,11 +523,12 @@ export default function PayrollCalculatorPage() {
                 <>
                     <SummaryRow label="Empleados" value={payload.receipts.length} />
                     <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Modalidad" value={MODE_LABEL[pdfMode]} />
                 </>
             ),
             confirmLabel: "Descargar PDF",
             confirmIcon: <FileDown size={14} strokeWidth={2} />,
-            run: handleCestaTicketPdf,
+            run: () => handleCestaTicketPdf(pdfMode),
         });
     };
 
@@ -564,7 +575,7 @@ export default function PayrollCalculatorPage() {
         });
     };
 
-    const askBonoGuerraPdf = () => {
+    const askBonoGuerraPdf = (pdfMode: ReportMode) => {
         const payload = buildBgPayload();
         if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         dialog.request({
@@ -574,11 +585,12 @@ export default function PayrollCalculatorPage() {
                 <>
                     <SummaryRow label="Empleados" value={payload.receipts.length} />
                     <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
+                    <SummaryRow label="Modalidad" value={MODE_LABEL[pdfMode]} />
                 </>
             ),
             confirmLabel: "Descargar PDF",
             confirmIcon: <FileDown size={14} strokeWidth={2} />,
-            run: handleBonoGuerraPdf,
+            run: () => handleBonoGuerraPdf(pdfMode),
         });
     };
 
@@ -623,7 +635,7 @@ export default function PayrollCalculatorPage() {
         });
     };
 
-    const askBonificacionesPdf = () => {
+    const askBonificacionesPdf = (pdfMode: ReportMode) => {
         // El PDF no requiere payload completo (no persiste); valida lo mismo
         // que el handler original antes de abrir el diálogo.
         const active = employees.filter((e) => e.estado === "activo");
@@ -642,11 +654,12 @@ export default function PayrollCalculatorPage() {
                     <SummaryRow label="Empleados" value={active.length} />
                     <SummaryRow label="Líneas de bono" value={lines.length} />
                     <SummaryRow label="Total por empleado" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
+                    <SummaryRow label="Modalidad" value={MODE_LABEL[pdfMode]} />
                 </>
             ),
             confirmLabel: "Descargar PDF",
             confirmIcon: <FileDown size={14} strokeWidth={2} />,
-            run: handleBonificacionesPdf,
+            run: () => handleBonificacionesPdf(pdfMode),
         });
     };
 
@@ -673,6 +686,7 @@ export default function PayrollCalculatorPage() {
                             onSaveDraft={askSaveBonificacionesDraft}
                             onConfirm={askConfirmBonificaciones}
                             onPdf={askBonificacionesPdf}
+                            pdfMenuPlacement="left"
                         />
 
                         {showCestaTicket && (

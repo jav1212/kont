@@ -1,10 +1,14 @@
 // PDF generator: Reporte de Bono Socio Económico de Ayuda Alimenticia — pago
-// mensual único. Estilo Konta — header naranja, tabla zebra, recuadros de firma
-// con badge USD, footer Kontave compartido en cada página. Pie con fundamento
-// legal detallado citando el Art. 105 de la LOTTT (beneficios sociales no
-// remunerativos: provisión de comidas y alimentos).
+// mensual único.
+//
+// Tres modalidades:
+//   - "general"     → consolidado actual (tabla + firmas 3 por hoja + fundamento legal).
+//   - "individual"  → A4 portrait, un comprobante completo por empleado con firma
+//                     y nota legal abreviada del Art. 105 LOTTT.
+//   - "duplicado"   → Oficio 216×330mm, dos copias por hoja (Original + Copia)
+//                     con línea de corte.
 
-import type jsPDF from "jspdf";
+import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import {
     COLORS,
@@ -25,6 +29,18 @@ import {
     renderLabel,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
+import {
+    OFICIO_FORMAT,
+    HALF_TOP_Y,
+    HALF_BOTTOM_Y,
+    HALF_HEIGHT,
+    CUT_LINE_Y,
+    drawCutLine,
+    drawCompactHeader,
+    drawOriginalCopyChip,
+    drawSignatures,
+    type ReportMode,
+} from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 
 export interface BonoGuerraEmployee {
     cedula: string;
@@ -44,6 +60,12 @@ export interface BonoGuerraOptions {
     bcvRate:        number;
     logoUrl?:       string;
     showLogoInPdf?: boolean;
+    /**
+     * "general" (default)  → tabla consolidada como hasta hoy.
+     * "individual"         → A4 portrait, un comprobante completo por empleado.
+     * "duplicado"          → Oficio, dos copias (Original + Copia) por hoja.
+     */
+    pdfMode?:       ReportMode;
 }
 
 const fmtUSD = (n: number) => "$ " + formatN(n);
@@ -106,21 +128,14 @@ function drawParamsCard(
     return nextY;
 }
 
-export async function generateBonoGuerraPdf(
-    employees: BonoGuerraEmployee[],
+// ── Modo CONSOLIDADO (general) ────────────────────────────────────────────────
+
+async function generateGeneralPdf(
+    active: BonoGuerraEmployee[],
     opts: BonoGuerraOptions,
+    companyLogo: string | null,
+    kontaLogo: string | null,
 ): Promise<void> {
-    const active = employees.filter((e) => e.estado === "activo");
-    if (active.length === 0) return;
-
-    const [companyLogo, kontaLogo] = await Promise.all([
-        opts.showLogoInPdf && opts.logoUrl
-            ? loadImageAsBase64(opts.logoUrl).catch(() => null)
-            : Promise.resolve(null),
-        loadKontaLogo(),
-    ]);
-
-    const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const PW = doc.internal.pageSize.getWidth();
     const ML = 12, W = PW - 2 * ML;
@@ -146,7 +161,6 @@ export async function generateBonoGuerraPdf(
 
     y = drawParamsCard(doc, ML, W, y, opts.montoUSD, opts.bcvRate, customCount, minUsd, maxUsd);
 
-    // ── Table header ──────────────────────────────────────────────────────────
     const colN     = W * 0.07;
     const colName  = W * 0.40;
     const colCed   = W * 0.18;
@@ -186,7 +200,6 @@ export async function generateBonoGuerraPdf(
 
     y += 2;
 
-    // ── Totals row (orange-accented) ──────────────────────────────────────────
     if (y + 14 > pageBounds(doc).contentBot) {
         doc.addPage();
         y = repaintPageHeader(doc, pageHeader);
@@ -204,7 +217,6 @@ export async function generateBonoGuerraPdf(
     renderMono(doc, formatVES(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
     y += 12 + 8;
 
-    // ── Signature boxes ───────────────────────────────────────────────────────
     if (y + 8 > pageBounds(doc).contentBot) {
         doc.addPage();
         y = repaintPageHeader(doc, pageHeader);
@@ -213,11 +225,11 @@ export async function generateBonoGuerraPdf(
     y += 6;
 
     const SIG_W = (W - 8) / 3;
-    const SIG_H = 40;       // 28 → 40 mm: canvas vacío de ~12 mm para la firma manuscrita
+    const SIG_H = 40;
     const GAP   = 4;
     const PD    = 3;
     const CB    = 2.5;
-    const SIG_LINE_Y_OFFSET   = 6;  // distancia desde el borde inferior a la línea
+    const SIG_LINE_Y_OFFSET   = 6;
     const SIG_LABEL_Y_OFFSET  = 1.5;
 
     active.forEach((emp, i) => {
@@ -236,34 +248,21 @@ export async function generateBonoGuerraPdf(
         const empMonto    = montosUsd[i];
         const empMontoVes = empMonto * opts.bcvRate;
 
-        // ── Header card: monto USD (top-right) ───────────────────────────────
         renderMono(doc, fmtUSD(empMonto), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
-
-        // ── Identificación del empleado ─────────────────────────────────────
         renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
         renderMono(doc, emp.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
         renderMono(doc, formatVES(empMontoVes), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
 
-        // ── Checkbox de modalidad ───────────────────────────────────────────
         rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);
         renderText(doc, "Recibido (efectivo / transferencia)", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
 
-        // ── Canvas blanco para firma manuscrita (≈12 mm) ────────────────────
-        // Espacio entre y+25 y y+SIG_H-SIG_LINE_Y_OFFSET = y+34, pensado para
-        // que el trabajador firme con bolígrafo sobre la línea.
-
-        // ── Línea de firma + label ──────────────────────────────────────────
         hline(doc, sx + PD, y + SIG_H - SIG_LINE_Y_OFFSET, SIG_W - PD * 2, COLORS.borderStr, 0.3);
         renderLabel(doc, "Firma", sx + SIG_W / 2, y + SIG_H - SIG_LABEL_Y_OFFSET, "center", COLORS.muted, 7);
 
         if (col === 2 || i === active.length - 1) y += SIG_H + 5;
     });
 
-    // ── Fundamento legal ──────────────────────────────────────────────────────
-    // Detalla el Art. 105 LOTTT (beneficios sociales no remunerativos) y lista
-    // las consecuencias de su naturaleza no salarial sobre prestaciones,
-    // vacaciones, utilidades y aportes patronales.
-
+    // ── Fundamento legal completo ─────────────────────────────────────────────
     const FONT_LEGAL    = 7.6;
     const LINE_H_LEGAL  = 3.3;
     const SECTION_TITLE = "FUNDAMENTO LEGAL — ART. 105 LOTTT";
@@ -297,7 +296,6 @@ export async function generateBonoGuerraPdf(
         "El trabajador deja constancia de la recepción íntegra del beneficio mediante su firma.",
     ];
 
-    // Pre-cálculo de altura para decidir si requiere salto de página.
     doc.setFont("helvetica", "normal");
     doc.setFontSize(FONT_LEGAL);
     const wrappedParas = legalParas.map((p) => doc.splitTextToSize(p, W) as string[]);
@@ -333,4 +331,218 @@ export async function generateBonoGuerraPdf(
     doc.save(
         `bono-socio-economico-${safeFilename(opts.companyName)}-${opts.payrollDate.replaceAll("-", "")}.pdf`,
     );
+}
+
+// ── Modo PER-EMPLEADO (individual + duplicado) ────────────────────────────────
+
+type ReceiptMode =
+    | "full-single"
+    | "full-original"
+    | "full-copy"
+    | "compact-top"
+    | "compact-bottom";
+
+function estimateCompactReceiptHeight(hasCompanyLogo: boolean): number {
+    const headerH    = 10;
+    const logoH      = hasCompanyLogo ? 7 : 0;
+    const identityH  = 12 + 2;
+    const conceptH   = 24 + 2;
+    const signaturesH = 16 + 2;
+    return headerH + logoH + identityH + conceptH + signaturesH;
+}
+
+function drawReceiptInRegion(
+    doc: Doc,
+    emp: BonoGuerraEmployee,
+    opts: BonoGuerraOptions,
+    empMontoUsd: number,
+    yStart: number,
+    companyLogo: string | null,
+    mode: ReceiptMode,
+): number {
+    const isCompact = mode === "compact-top" || mode === "compact-bottom";
+    const showBadge = mode !== "full-single";
+    const label     = mode === "compact-top" || mode === "full-original" ? "ORIGINAL" : "COPIA";
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX   = 12;
+    const xL        = marginX;
+    const xR        = pageWidth - marginX;
+    const contentW  = xR - xL;
+
+    const empMontoVes = empMontoUsd * opts.bcvRate;
+
+    let y: number;
+
+    if (isCompact) {
+        y = drawCompactHeader(doc, opts, xL, xR, yStart, label as "ORIGINAL" | "COPIA", opts.periodLabel, "BONO SOCIO ECONÓMICO");
+    } else {
+        if (showBadge) drawOriginalCopyChip(doc, xR, yStart, label as "ORIGINAL" | "COPIA");
+        y = yStart;
+    }
+
+    // Logo opcional
+    if (companyLogo) {
+        try {
+            const logoW = isCompact ? 16 : 18;
+            const logoH = isCompact ? 6  : 7;
+            doc.addImage(companyLogo, "JPEG", xL, y, logoW, logoH, undefined, "FAST");
+        } catch { /* */ }
+        y += isCompact ? 7 : 9;
+    }
+
+    // Tarjeta de identidad
+    const idH = isCompact ? 12 : 16;
+    fill(doc, xL, y, contentW, idH, COLORS.rowAlt);
+    rect(doc, xL, y, contentW, idH, COLORS.border, 0.2);
+
+    const colId  = xL + 3;
+    const colCed = xL + contentW * 0.45;
+    const colBcv = xR - 3;
+
+    if (isCompact) {
+        renderLabel(doc, "Trabajador", colId, y + 3, "left", COLORS.muted, 6);
+        renderText(doc, emp.nombre.toUpperCase(), colId, y + 7, 9, true, COLORS.ink, "left", contentW * 0.42);
+        if (emp.cargo) renderText(doc, emp.cargo, colId, y + 10.5, 7, false, COLORS.muted, "left", contentW * 0.42, "helvetica");
+
+        renderLabel(doc, "Cédula", colCed, y + 3, "left", COLORS.muted, 6);
+        renderMono(doc, emp.cedula, colCed, y + 7, 9, true, COLORS.ink, "left");
+
+        renderLabel(doc, "Tasa BCV", colBcv, y + 3, "right", COLORS.muted, 6);
+        renderMono(doc, `Bs. ${formatN(opts.bcvRate)} / USD`, colBcv, y + 7, 8.5, true, COLORS.inkMed, "right");
+    } else {
+        renderLabel(doc, "Trabajador", colId, y + 4, "left", COLORS.muted, 7);
+        renderText(doc, emp.nombre.toUpperCase(), colId, y + 9, 10.5, true, COLORS.ink, "left", contentW * 0.42);
+        if (emp.cargo) renderText(doc, emp.cargo, colId, y + 13.5, 8, false, COLORS.muted, "left", contentW * 0.42, "helvetica");
+
+        renderLabel(doc, "Cédula", colCed, y + 4, "left", COLORS.muted, 7);
+        renderMono(doc, emp.cedula, colCed, y + 9, 10.5, true, COLORS.ink, "left");
+
+        renderLabel(doc, "Tasa BCV", colBcv, y + 4, "right", COLORS.muted, 7);
+        renderMono(doc, `Bs. ${formatN(opts.bcvRate)} / USD`, colBcv, y + 9, 10, true, COLORS.inkMed, "right");
+    }
+
+    y += idH + (isCompact ? 2 : 6);
+
+    // Caja única: concepto + monto USD + equiv VES
+    const conceptH = isCompact ? 22 : 28;
+    fill(doc, xL, y, contentW, conceptH, COLORS.bandHead);
+    rect(doc, xL, y, contentW, conceptH, COLORS.border, 0.2);
+    fill(doc, xL, y, contentW, 0.5, COLORS.orange);
+
+    if (isCompact) {
+        renderLabel(doc, "Concepto", xL + 3, y + 4, "left", COLORS.muted, 6.5);
+        renderText(doc, "Bono Socio Económico de Ayuda Alimenticia", xL + 3, y + 8.5, 9.5, true, COLORS.ink, "left", contentW * 0.55);
+
+        renderLabel(doc, "Monto USD", xR - 3, y + 4, "right", COLORS.muted, 6.5);
+        renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 9.5, 12.5, true, COLORS.ink, "right");
+
+        renderLabel(doc, "Equivalente VES", xL + 3, y + 14, "left", COLORS.muted, 6.5);
+        renderMono(doc, formatVES(empMontoVes), xR - 3, y + 18, 11, true, COLORS.ink, "right");
+
+        rect(doc, xL + 3, y + conceptH - 4.5, 2, 2, COLORS.borderStr, 0.3);
+        renderText(doc, "Recibido (efectivo/transferencia)", xL + 7, y + conceptH - 3, 6.5, false, COLORS.muted, "left", undefined, "helvetica");
+    } else {
+        renderLabel(doc, "Concepto", xL + 3, y + 5, "left", COLORS.muted, 7);
+        renderText(doc, "Bono Socio Económico de Ayuda Alimenticia", xL + 3, y + 10, 11, true, COLORS.ink, "left", contentW * 0.55);
+
+        renderLabel(doc, "Monto USD", xR - 3, y + 5, "right", COLORS.muted, 7);
+        renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 11, 14, true, COLORS.ink, "right");
+
+        renderLabel(doc, "Equivalente VES", xL + 3, y + 17, "left", COLORS.muted, 7);
+        renderMono(doc, formatVES(empMontoVes), xR - 3, y + 22, 13, true, COLORS.ink, "right");
+    }
+
+    y += conceptH + (isCompact ? 2 : 5);
+
+    // Nota legal abreviada (solo full): cita Art. 105 LOTTT en 2-3 líneas
+    if (!isCompact) {
+        const legal = "Beneficio social NO REMUNERATIVO conforme al Art. 105 LOTTT (provisión de comidas y alimentos). No forma parte del salario ni se computa para prestaciones, vacaciones, utilidades ni aportes patronales.";
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.4);
+        doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+        const wrap = doc.splitTextToSize(legal, contentW) as string[];
+        wrap.forEach((ln, i) => doc.text(ln, xL, y + i * 3.4));
+        y += wrap.length * 3.4 + 4;
+    }
+
+    // Firmas
+    return drawSignatures(doc, xL, contentW, y, {
+        compact:         isCompact,
+        conformityText:  "Declaro haber recibido el bono socio económico reflejado",
+    });
+}
+
+async function generatePerEmployeePdf(
+    active: BonoGuerraEmployee[],
+    opts: BonoGuerraOptions,
+    companyLogo: string | null,
+    kontaLogo: string | null,
+    mode: "individual" | "duplicado",
+): Promise<void> {
+    const doc = mode === "individual"
+        ? new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+        : new jsPDF({ orientation: "portrait", unit: "mm", format: OFICIO_FORMAT });
+
+    const pageHeader: PageHeader = {
+        companyName: opts.companyName,
+        companyRif:  opts.companyId,
+        periodLabel: opts.periodLabel,
+    };
+
+    active.forEach((emp, i) => {
+        if (i > 0) doc.addPage();
+
+        const empMontoUsd = emp.montoUsd ?? opts.montoUSD;
+
+        if (mode === "individual") {
+            repaintPageHeader(doc, pageHeader);
+            drawReceiptInRegion(doc, emp, opts, empMontoUsd, 32, companyLogo, "full-single");
+            return;
+        }
+
+        // duplicado
+        const h = estimateCompactReceiptHeight(!!companyLogo);
+        if (h <= HALF_HEIGHT) {
+            drawReceiptInRegion(doc, emp, opts, empMontoUsd, HALF_TOP_Y,    companyLogo, "compact-top");
+            drawCutLine(doc, CUT_LINE_Y);
+            drawReceiptInRegion(doc, emp, opts, empMontoUsd, HALF_BOTTOM_Y, companyLogo, "compact-bottom");
+        } else {
+            repaintPageHeader(doc, pageHeader);
+            drawReceiptInRegion(doc, emp, opts, empMontoUsd, 32, companyLogo, "full-original");
+            doc.addPage();
+            repaintPageHeader(doc, pageHeader);
+            drawReceiptInRegion(doc, emp, opts, empMontoUsd, 32, companyLogo, "full-copy");
+        }
+    });
+
+    drawFooter(doc, kontaLogo);
+
+    doc.save(
+        `bono-socio-economico-${safeFilename(opts.companyName)}-${opts.payrollDate.replaceAll("-", "")}.pdf`,
+    );
+}
+
+// ── Entry point ───────────────────────────────────────────────────────────────
+
+export async function generateBonoGuerraPdf(
+    employees: BonoGuerraEmployee[],
+    opts: BonoGuerraOptions,
+): Promise<void> {
+    const active = employees.filter((e) => e.estado === "activo");
+    if (active.length === 0) return;
+
+    const [companyLogo, kontaLogo] = await Promise.all([
+        opts.showLogoInPdf && opts.logoUrl
+            ? loadImageAsBase64(opts.logoUrl).catch(() => null)
+            : Promise.resolve(null),
+        loadKontaLogo(),
+    ]);
+
+    const pdfMode: ReportMode = opts.pdfMode ?? "general";
+
+    if (pdfMode === "general") {
+        return generateGeneralPdf(active, opts, companyLogo, kontaLogo);
+    }
+    return generatePerEmployeePdf(active, opts, companyLogo, kontaLogo, pdfMode);
 }

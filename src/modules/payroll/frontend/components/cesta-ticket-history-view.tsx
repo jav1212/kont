@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { FileText } from "lucide-react";
+import { BarChart3, ChevronDown, FileText, Scissors } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import {
     useCestaTicketHistory,
@@ -9,6 +9,7 @@ import {
     type CestaTicketReceipt,
 } from "../hooks/use-cesta-ticket-history";
 import { generateCestaTicketPdf } from "../utils/cesta-ticket-pdf";
+import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 
 // ============================================================================
 // HELPERS
@@ -200,6 +201,7 @@ export function CestaTicketHistoryView({
     const [selectedRunId,      setSelectedRunId]      = useState<string | null>(null);
     const [receipts,           setReceipts]           = useState<CestaTicketReceipt[]>([]);
     const [receiptsLoading,    setReceiptsLoading]    = useState(false);
+    const [pdfMenuOpen,        setPdfMenuOpen]        = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -212,7 +214,7 @@ export function CestaTicketHistoryView({
 
     const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
 
-    const handleDownloadPdf = useCallback(() => {
+    const handleDownloadPdf = useCallback((pdfMode: ReportMode) => {
         if (!selectedRun || !receipts.length) return;
         const periodLabel = `${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`;
         generateCestaTicketPdf(
@@ -232,6 +234,7 @@ export function CestaTicketHistoryView({
                 bcvRate:        selectedRun.exchangeRate,
                 logoUrl:        company?.logoUrl ?? undefined,
                 showLogoInPdf:  company?.showLogoInPdf ?? undefined,
+                pdfMode,
             },
         );
     }, [selectedRun, receipts, company]);
@@ -267,14 +270,58 @@ export function CestaTicketHistoryView({
         <div className="space-y-4">
             {selectedRun && receipts.length > 0 && (
                 <div className="flex justify-end">
-                    <BaseButton.Root
-                        variant="primary"
-                        size="sm"
-                        onClick={handleDownloadPdf}
-                        leftIcon={<FileText size={14} />}
-                    >
-                        Re-exportar PDF
-                    </BaseButton.Root>
+                    <div className="relative">
+                        <BaseButton.Root
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setPdfMenuOpen((v) => !v)}
+                            leftIcon={<FileText size={14} />}
+                            rightIcon={<ChevronDown size={12} />}
+                            aria-haspopup="menu"
+                            aria-expanded={pdfMenuOpen}
+                        >
+                            Re-exportar PDF
+                        </BaseButton.Root>
+                        {pdfMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setPdfMenuOpen(false)} />
+                                <div className="absolute right-0 top-full mt-1.5 z-50 rounded-xl border border-border-light bg-surface-1 shadow-lg p-1 min-w-[320px]">
+                                    <button
+                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("general"); }}
+                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                                    >
+                                        <BarChart3 size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                        <div className="min-w-0">
+                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">General</div>
+                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Reporte consolidado en un solo documento</div>
+                                        </div>
+                                    </button>
+                                    <div className="my-1 border-t border-border-light" />
+                                    <button
+                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("individual"); }}
+                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                                    >
+                                        <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                        <div className="min-w-0">
+                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Hoja por empleado</div>
+                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">A4 · 1 página completa por empleado, con firma</div>
+                                        </div>
+                                    </button>
+                                    <div className="my-1 border-t border-border-light" />
+                                    <button
+                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("duplicado"); }}
+                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                                    >
+                                        <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
+                                        <div className="min-w-0">
+                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Cortable</div>
+                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Oficio · 2 copias por hoja (Original + Copia) con línea de corte</div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
 

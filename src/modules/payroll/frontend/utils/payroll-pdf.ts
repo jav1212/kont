@@ -1,8 +1,19 @@
-// PDF generator: Recibo de Nómina (one A4-portrait page per active employee).
+// PDF generator: Recibo de Nómina.
 //
-// Renders the per-employee payroll receipt using the shared Konta chrome —
-// orange-accent header, table-style sections, watermark footer. Conserves the
-// per-company `pdfVisibility` flags (REQ-005) and the `salaryMode` switch.
+// Cada hoja OFICIO (216 × 330mm) portrait lleva DOS copias del recibo del
+// mismo empleado — mitad superior "ORIGINAL" (queda con el trabajador),
+// mitad inferior "COPIA" (queda con el pagador) — separadas por una línea
+// punteada horizontal en Y=160mm para recortar con tijera o guillotina.
+// Si los conceptos del empleado no caben en 150mm de alto, ese empleado
+// cae a un fallback de dos hojas oficio completas (página 1 = Original,
+// página 2 = Copia) con el layout extendido de siempre.
+//
+// El formato OFICIO se usa solo para este recibo (el resto de PDFs sigue
+// en A4) porque permite las dos copias por hoja sin comprimir la nómina
+// más allá de lo legible.
+//
+// Conserva los flags per-company `pdfVisibility` (REQ-005) y el switch
+// `salaryMode`.
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
@@ -13,7 +24,6 @@ import {
     drawHeaderRow,
     drawRow,
     fill,
-    hline,
     rect,
     formatVES,
     loadKontaLogo,
@@ -22,6 +32,17 @@ import {
     renderLabel,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
+import {
+    OFICIO_FORMAT,
+    HALF_TOP_Y,
+    HALF_BOTTOM_Y,
+    HALF_HEIGHT,
+    CUT_LINE_Y,
+    drawCutLine,
+    drawCompactHeader,
+    drawOriginalCopyChip,
+    drawSignatures,
+} from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -52,6 +73,8 @@ export interface PdfEmployeeResult {
     salarioIntegral: number;
 }
 
+export type PdfPayrollMode = "simple" | "duplicado";
+
 export interface PdfPayrollOptions {
     companyName:    string;
     companyId?:     string;
@@ -65,6 +88,12 @@ export interface PdfPayrollOptions {
     logoUrl?:       string;
     showLogoInPdf?: boolean;
     pdfVisibility?: PdfVisibility;
+    /**
+     * "simple"     → A4 portrait, un recibo completo por hoja (layout clásico).
+     * "duplicado"  → Oficio 216×330mm, dos copias (Original + Copia) por hoja
+     *                con línea de corte intermedia. Es el default.
+     */
+    pdfMode?:       PdfPayrollMode;
 }
 
 export function makePayrollSerial(periodStart: string): string {
@@ -73,7 +102,58 @@ export function makePayrollSerial(periodStart: string): string {
     return `NOM-${year}-${month}-Q${q}`;
 }
 
-// ── Section table ─────────────────────────────────────────────────────────────
+// La geometría OFICIO (HALF_TOP_Y, HALF_BOTTOM_Y, HALF_HEIGHT, CUT_LINE_Y,
+// OFICIO_FORMAT) y los helpers drawCutLine/drawCompactHeader/drawOriginalCopyChip/
+// drawSignatures viven en `pdf-receipt-chrome` y se importan arriba para ser
+// reutilizados por los PDFs hermanos (bonificaciones, cesta ticket, bono guerra).
+// COMPACT_MAX = HALF_HEIGHT: umbral para decidir compacto vs fallback completo.
+
+type ReceiptMode =
+    | "full-single"      // modo simple: un recibo completo por hoja, sin badge
+    | "full-original"    // fallback duplicado p.1 (modo "duplicado", overflow)
+    | "full-copy"        // fallback duplicado p.2 (modo "duplicado", overflow)
+    | "compact-top"      // mitad superior (modo "duplicado", caso normal)
+    | "compact-bottom";  // mitad inferior (modo "duplicado", caso normal)
+
+// ── Densidad de las secciones (modo normal vs compacto) ───────────────────────
+
+interface SectionDensity {
+    titleH:      number;
+    headerRowH:  number;
+    rowH:        number;
+    gap:         number;
+    fontConcept: number;
+    fontFormula: number;
+    fontAmount:  number;
+    titleSize:   number;
+    totalSize:   number;
+}
+
+const NORMAL_DENSITY: SectionDensity = {
+    titleH:      6.5,
+    headerRowH:  5.5,
+    rowH:        5.6,
+    gap:         3,
+    fontConcept: 8.5,
+    fontFormula: 8,
+    fontAmount:  9,
+    titleSize:   8,
+    totalSize:   10,
+};
+
+const COMPACT_DENSITY: SectionDensity = {
+    titleH:      5.5,
+    headerRowH:  4.8,
+    rowH:        4.8,
+    gap:         1.5,
+    fontConcept: 7.8,
+    fontFormula: 7,
+    fontAmount:  8.2,
+    titleSize:   7,
+    totalSize:   9,
+};
+
+// ── Section table (densidad parametrizada) ────────────────────────────────────
 
 type Doc = jsPDF;
 
@@ -86,82 +166,87 @@ function drawSection(
     lines: PdfComputedLine[],
     total: number,
     sign: "+" | "-",
+    d: SectionDensity,
 ): number {
     // Section title bar with right-aligned total
-    fill(doc, x, y, w, 6.5, COLORS.bandHead);
-    renderLabel(doc, title, x + 2, y + 4.6, "left", COLORS.inkMed, 8);
-    renderMono(doc, `${sign} ${formatVES(total)}`, x + w - 2, y + 4.6, 10, true, COLORS.ink, "right");
-    y += 6.5;
+    fill(doc, x, y, w, d.titleH, COLORS.bandHead);
+    renderLabel(doc, title, x + 2, y + d.titleH - 1.9, "left", COLORS.inkMed, d.titleSize);
+    renderMono(doc, `${sign} ${formatVES(total)}`, x + w - 2, y + d.titleH - 1.9, d.totalSize, true, COLORS.ink, "right");
+    y += d.titleH;
 
     if (lines.length === 0) {
-        renderText(doc, "Sin conceptos", x + 2, y + 4.5, 8.5, false, COLORS.muted, "left", undefined, "helvetica");
-        y += 6.5;
-        return y + 3;
+        renderText(doc, "Sin conceptos", x + 2, y + d.rowH - 1.1, d.fontConcept, false, COLORS.muted, "left", undefined, "helvetica");
+        y += d.rowH;
+        return y + d.gap;
     }
 
     // Mini table header row
     const colConcept = w * 0.42;
     const colFormula = w * 0.32;
     const colAmount  = w * 0.26;
-    drawHeaderRow(doc, y, 5.5, [
-        { x: x,                         w: colConcept,  text: "Concepto",  align: "left"  },
-        { x: x + colConcept,            w: colFormula,  text: "Cálculo",   align: "left"  },
-        { x: x + colConcept + colFormula, w: colAmount, text: "Monto",     align: "right" },
+    drawHeaderRow(doc, y, d.headerRowH, [
+        { x: x,                           w: colConcept, text: "Concepto", align: "left"  },
+        { x: x + colConcept,              w: colFormula, text: "Cálculo",  align: "left"  },
+        { x: x + colConcept + colFormula, w: colAmount,  text: "Monto",    align: "right" },
     ]);
-    y += 5.5;
+    y += d.headerRowH;
 
     lines.forEach((line, i) => {
-        drawRow(doc, y, 5.6, [
-            { x: x,                         w: colConcept,  text: line.label,                align: "left",  size: 8.5, color: COLORS.inkMed },
-            { x: x + colConcept,            w: colFormula,  text: line.formula,              align: "left",  size: 8,   mono: true, color: COLORS.muted },
-            { x: x + colConcept + colFormula, w: colAmount, text: formatVES(line.amount),    align: "right", size: 9,   mono: true, bold: true, color: COLORS.ink },
+        drawRow(doc, y, d.rowH, [
+            { x: x,                           w: colConcept, text: line.label,             align: "left",  size: d.fontConcept, color: COLORS.inkMed },
+            { x: x + colConcept,              w: colFormula, text: line.formula,           align: "left",  size: d.fontFormula, mono: true, color: COLORS.muted },
+            { x: x + colConcept + colFormula, w: colAmount,  text: formatVES(line.amount), align: "right", size: d.fontAmount,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
-        y += 5.6;
+        y += d.rowH;
     });
 
-    return y + 3;
+    return y + d.gap;
 }
 
-// ── Signatures block ──────────────────────────────────────────────────────────
+// ── Estimador de altura (decide compact vs fallback) ──────────────────────────
 
-function drawSignatures(doc: Doc, marginLeft: number, contentWidth: number, y: number): number {
-    const SIG_WIDTH  = (contentWidth - 16) / 2;
-    const SIG_HEIGHT = 26;
+function estimateCompactHeight(emp: PdfEmployeeResult, opts: PdfPayrollOptions, hasCompanyLogo: boolean): number {
+    const headerH   = 10;                       // mini-header (chip + título + empresa + regla)
+    const logoH     = hasCompanyLogo ? 7 : 0;   // logo opcional empresa (6mm + 1mm gap)
+    const identityH = 12 + 2;                   // tarjeta de identidad + gap
+    const netH      = 1.2 + 11 + 2;             // acento naranja + neto + gap
+    const signaturesH = 16 + 2;                 // firmas compactas + gap
 
-    // Employer
-    const sx1 = marginLeft;
-    rect(doc, sx1, y, SIG_WIDTH, SIG_HEIGHT, COLORS.borderStr, 0.3);
-    hline(doc, sx1 + 8, y + SIG_HEIGHT - 9, SIG_WIDTH - 16, COLORS.borderStr, 0.3);
-    renderLabel(doc, "Empleador", sx1 + SIG_WIDTH / 2, y + SIG_HEIGHT - 5, "center", COLORS.muted, 7.5);
+    const vis = opts.pdfVisibility;
+    const filteredEarnings = vis
+        ? emp.earningLines.filter((l) => {
+              const isOvertime = l.label.startsWith("H.E.");
+              if (isOvertime && vis.showOvertime === false) return false;
+              return true;
+          })
+        : emp.earningLines;
 
-    // Worker
-    const sx2 = marginLeft + (SIG_WIDTH + 16);
-    rect(doc, sx2, y, SIG_WIDTH, SIG_HEIGHT, COLORS.borderStr, 0.3);
+    const d = COMPACT_DENSITY;
+    const sectionH = (n: number) => d.titleH + d.headerRowH + Math.max(1, n) * d.rowH + d.gap;
 
-    // Conformity checkbox + line
-    const cbSize = 2.5;
-    const cbX = sx2 + 4;
-    const cbY = y + 4;
-    rect(doc, cbX, cbY, cbSize, cbSize, COLORS.borderStr, 0.3);
-    renderText(doc, "Declaro haber recibido el pago en Bolívares (VES)", cbX + cbSize + 1.5, cbY + cbSize - 0.4, 7.5, false, COLORS.muted, "left", SIG_WIDTH - cbSize - 8, "helvetica");
+    let sumSections = 0;
+    if (!vis || vis.showEarnings   !== false) sumSections += sectionH(filteredEarnings.length);
+    if (!vis || vis.showBonuses    !== false) sumSections += sectionH(emp.bonusLines.length);
+    if (!vis || vis.showDeductions !== false) sumSections += sectionH(emp.deductionLines.length);
 
-    hline(doc, sx2 + 8, y + SIG_HEIGHT - 9, SIG_WIDTH - 16, COLORS.borderStr, 0.3);
-    renderLabel(doc, "Trabajador / Conforme", sx2 + SIG_WIDTH / 2, y + SIG_HEIGHT - 5, "center", COLORS.muted, 7.5);
-
-    return y + SIG_HEIGHT + 6;
+    return headerH + logoH + identityH + sumSections + netH + signaturesH;
 }
 
-// ── Per-employee receipt ──────────────────────────────────────────────────────
+// ── Recibo dentro de una región vertical arbitraria ───────────────────────────
 
-function drawReceipt(
+function drawReceiptInRegion(
     doc: Doc,
     emp: PdfEmployeeResult,
     opts: PdfPayrollOptions,
-    isFirst: boolean,
+    yStart: number,
     empIdx: number,
     companyLogo: string | null,
-): void {
-    if (!isFirst) doc.addPage();
+    mode: ReceiptMode,
+): number {
+    const isCompact = mode === "compact-top" || mode === "compact-bottom";
+    const showBadge = mode === "compact-top" || mode === "compact-bottom"
+                   || mode === "full-original" || mode === "full-copy";
+    const label     = mode === "compact-top" || mode === "full-original" ? "ORIGINAL" : "COPIA";
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const marginX   = 12;
@@ -174,55 +259,85 @@ function drawReceipt(
         ? `${opts.receiptSerial}-${String(empIdx + 1).padStart(4, "0")}`
         : `NOM-${empIdx + 1}`;
 
-    // Konta header (orange accent rule + company name + report title + period)
-    drawHeader(doc, {
-        companyName: opts.companyName,
-        companyRif:  opts.companyId,
-        reportTitle: "Recibo de Nómina",
-        periodLabel,
-    });
+    let y: number;
 
-    let y = 32;
+    if (isCompact) {
+        // Mini-header propio (drawHeader global NO se llama para mitades).
+        y = drawCompactHeader(doc, opts, xL, xR, yStart, label as "ORIGINAL" | "COPIA", periodLabel, "RECIBO DE NÓMINA");
+    } else {
+        // Modo completo: el caller ya llamó drawHeader. Si corresponde, colocamos el chip
+        // ORIGINAL/COPIA arriba a la derecha; en modo simple no se dibuja chip.
+        if (showBadge) {
+            drawOriginalCopyChip(doc, xR, yStart, label as "ORIGINAL" | "COPIA");
+        }
+        y = yStart;
+    }
 
-    // ── Optional company logo (user-provided) above the employee identity card ─
+    // ── Logo opcional empresa ─────────────────────────────────────────────────
     if (companyLogo) {
         try {
-            doc.addImage(companyLogo, "JPEG", xL, y, 18, 7, undefined, "FAST");
+            const logoW = isCompact ? 16 : 18;
+            const logoH = isCompact ? 6  : 7;
+            doc.addImage(companyLogo, "JPEG", xL, y, logoW, logoH, undefined, "FAST");
         } catch { /* */ }
-        y += 9;
+        y += isCompact ? 7 : 9;
     }
 
-    // ── Identity card ─────────────────────────────────────────────────────────
-    fill(doc, xL, y, contentW, 16, COLORS.rowAlt);
-    rect(doc, xL, y, contentW, 16, COLORS.border, 0.2);
+    // ── Tarjeta de identidad ──────────────────────────────────────────────────
+    const idH = isCompact ? 12 : 16;
+    fill(doc, xL, y, contentW, idH, COLORS.rowAlt);
+    rect(doc, xL, y, contentW, idH, COLORS.border, 0.2);
 
-    const colId   = xL + 3;
-    const colCed  = xL + contentW * 0.45;
-    const colSal  = xR - 3;
+    const colId  = xL + 3;
+    const colCed = xL + contentW * 0.45;
+    const colSal = xR - 3;
 
-    renderLabel(doc, "Trabajador", colId, y + 4, "left", COLORS.muted, 7);
-    renderText(doc, emp.nombre.toUpperCase(), colId, y + 9, 10.5, true, COLORS.ink, "left", contentW * 0.42);
-    if (emp.cargo) {
-        renderText(doc, emp.cargo, colId, y + 13.5, 8, false, COLORS.muted, "left", contentW * 0.42, "helvetica");
-    }
-
-    renderLabel(doc, "Cédula", colCed, y + 4, "left", COLORS.muted, 7);
-    renderMono(doc, emp.cedula, colCed, y + 9, 10.5, true, COLORS.ink, "left");
-    renderMono(doc, `ID  ${empSerial}`, colCed, y + 13.5, 7.5, false, COLORS.muted, "left");
-
-    renderLabel(doc, "Salario", colSal, y + 4, "right", COLORS.muted, 7);
     const effectiveSalaryMode = opts.pdfVisibility?.showAlicuotaBreakdown === false ? "mensual" : opts.salaryMode;
-    if (effectiveSalaryMode === "integral") {
-        renderMono(doc, formatVES(emp.salarioIntegral), colSal, y + 9, 10, true, COLORS.ink, "right");
-        renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
+
+    if (isCompact) {
+        renderLabel(doc, "Trabajador", colId, y + 3, "left", COLORS.muted, 6);
+        renderText(doc, emp.nombre.toUpperCase(), colId, y + 7, 9, true, COLORS.ink, "left", contentW * 0.42);
+        if (emp.cargo) {
+            renderText(doc, emp.cargo, colId, y + 10.5, 7, false, COLORS.muted, "left", contentW * 0.42, "helvetica");
+        }
+
+        renderLabel(doc, "Cédula", colCed, y + 3, "left", COLORS.muted, 6);
+        renderMono(doc, emp.cedula, colCed, y + 7, 9, true, COLORS.ink, "left");
+        renderMono(doc, `ID ${empSerial}`, colCed, y + 10.5, 6.5, false, COLORS.muted, "left");
+
+        renderLabel(doc, "Salario", colSal, y + 3, "right", COLORS.muted, 6);
+        if (effectiveSalaryMode === "integral") {
+            renderMono(doc, formatVES(emp.salarioIntegral), colSal, y + 7, 8.5, true, COLORS.ink, "right");
+            renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, colSal, y + 10.5, 6.5, false, COLORS.muted, "right");
+        } else {
+            renderMono(doc, formatVES(emp.salarioMensual), colSal, y + 7, 8.5, true, COLORS.ink, "right");
+            renderMono(doc, "Mensual", colSal, y + 10.5, 6.5, false, COLORS.muted, "right");
+        }
     } else {
-        renderMono(doc, formatVES(emp.salarioMensual), colSal, y + 9, 10, true, COLORS.ink, "right");
-        renderMono(doc, "Mensual", colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
+        renderLabel(doc, "Trabajador", colId, y + 4, "left", COLORS.muted, 7);
+        renderText(doc, emp.nombre.toUpperCase(), colId, y + 9, 10.5, true, COLORS.ink, "left", contentW * 0.42);
+        if (emp.cargo) {
+            renderText(doc, emp.cargo, colId, y + 13.5, 8, false, COLORS.muted, "left", contentW * 0.42, "helvetica");
+        }
+
+        renderLabel(doc, "Cédula", colCed, y + 4, "left", COLORS.muted, 7);
+        renderMono(doc, emp.cedula, colCed, y + 9, 10.5, true, COLORS.ink, "left");
+        renderMono(doc, `ID  ${empSerial}`, colCed, y + 13.5, 7.5, false, COLORS.muted, "left");
+
+        renderLabel(doc, "Salario", colSal, y + 4, "right", COLORS.muted, 7);
+        if (effectiveSalaryMode === "integral") {
+            renderMono(doc, formatVES(emp.salarioIntegral), colSal, y + 9, 10, true, COLORS.ink, "right");
+            renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
+        } else {
+            renderMono(doc, formatVES(emp.salarioMensual), colSal, y + 9, 10, true, COLORS.ink, "right");
+            renderMono(doc, "Mensual", colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
+        }
     }
 
-    y += 16 + 6;
+    y += idH + (isCompact ? 2 : 6);
 
-    // ── SECTIONS ──────────────────────────────────────────────────────────────
+    // ── Secciones ─────────────────────────────────────────────────────────────
+    const density = isCompact ? COMPACT_DENSITY : NORMAL_DENSITY;
     const vis = opts.pdfVisibility;
 
     const filteredEarningLines = vis
@@ -234,43 +349,55 @@ function drawReceipt(
         : emp.earningLines;
 
     if (!vis || vis.showEarnings !== false) {
-        y = drawSection(doc, xL, y, contentW, "Asignaciones", filteredEarningLines, emp.totalEarnings, "+");
+        y = drawSection(doc, xL, y, contentW, "Asignaciones", filteredEarningLines, emp.totalEarnings, "+", density);
     }
     if (!vis || vis.showBonuses !== false) {
-        y = drawSection(doc, xL, y, contentW, "Bonificaciones", emp.bonusLines, emp.totalBonuses, "+");
+        y = drawSection(doc, xL, y, contentW, "Bonificaciones", emp.bonusLines, emp.totalBonuses, "+", density);
     }
     if (!vis || vis.showDeductions !== false) {
-        y = drawSection(doc, xL, y, contentW, "Deducciones", emp.deductionLines, emp.totalDeductions, "-");
+        y = drawSection(doc, xL, y, contentW, "Deducciones", emp.deductionLines, emp.totalDeductions, "-", density);
     }
 
-    y += 2;
+    y += isCompact ? 0.5 : 2;
 
-    // ── Net summary (orange-accented bar then bold value) ─────────────────────
-    fill(doc, xL, y, contentW, 0.6, COLORS.orange);
-    y += 2;
-    fill(doc, xL, y, contentW, 16, COLORS.bandHead);
-    rect(doc, xL, y, contentW, 16, COLORS.border, 0.2);
+    // ── Resumen Neto ──────────────────────────────────────────────────────────
+    if (isCompact) {
+        fill(doc, xL, y, contentW, 0.4, COLORS.orange);
+        y += 1.2;
+        fill(doc, xL, y, contentW, 11, COLORS.bandHead);
+        rect(doc, xL, y, contentW, 11, COLORS.border, 0.2);
+        renderLabel(doc, "Neto a cobrar (VES)", xL + 3, y + 7, "left", COLORS.inkMed, 7.5);
+        renderMono(doc, formatVES(emp.net), xR - 3, y + 7.5, 12, true, COLORS.ink, "right");
+        y += 11 + 2;
+    } else {
+        fill(doc, xL, y, contentW, 0.6, COLORS.orange);
+        y += 2;
+        fill(doc, xL, y, contentW, 16, COLORS.bandHead);
+        rect(doc, xL, y, contentW, 16, COLORS.border, 0.2);
+        renderLabel(doc, "Neto a cobrar (VES)", xL + 3, y + 9.5, "left", COLORS.inkMed, 9);
+        renderMono(doc, formatVES(emp.net), xR - 3, y + 10.5, 16, true, COLORS.ink, "right");
+        y += 16 + 6;
 
-    renderLabel(doc, "Neto a cobrar (VES)", xL + 3, y + 9.5, "left", COLORS.inkMed, 9);
-    renderMono(doc, formatVES(emp.net), xR - 3, y + 10.5, 16, true, COLORS.ink, "right");
-    y += 16 + 6;
+        // Nota legal (sólo en versión completa)
+        const legal =
+            "El presente recibo acredita el pago de los haberes correspondientes al período indicado, " +
+            "de conformidad con la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+            "Ambas partes declaran su conformidad con los montos reflejados en este documento.";
 
-    // ── Legal note (sans, muted, justified-ish via splitTextToSize) ───────────
-    const legal =
-        "El presente recibo acredita el pago de los haberes correspondientes al período indicado, " +
-        "de conformidad con la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
-        "Ambas partes declaran su conformidad con los montos reflejados en este documento.";
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.8);
+        doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
+        const legalLines = doc.splitTextToSize(legal, contentW) as string[];
+        legalLines.forEach((line, i) => doc.text(line, xL, y + i * 3.5));
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.8);
-    doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
-    const legalLines = doc.splitTextToSize(legal, contentW) as string[];
-    legalLines.forEach((line, i) => doc.text(line, xL, y + i * 3.5));
+        y += legalLines.length * 3.5 + 6;
+    }
 
-    y += legalLines.length * 3.5 + 6;
-
-    // ── Signatures ────────────────────────────────────────────────────────────
-    drawSignatures(doc, xL, contentW, y);
+    // ── Firmas ────────────────────────────────────────────────────────────────
+    return drawSignatures(doc, xL, contentW, y, {
+        compact:         isCompact,
+        conformityText:  "Declaro haber recibido el pago en Bolívares (VES)",
+    });
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -294,8 +421,55 @@ export async function generatePayrollPdf(
         loadKontaLogo(),
     ]);
 
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    active.forEach((emp, i) => drawReceipt(doc, emp, optsWithSerial, i === 0, i, companyLogo));
+    const pdfMode = opts.pdfMode ?? "duplicado";
+    const periodLabel = (optsWithSerial.periodLabel ?? optsWithSerial.payrollDate).toUpperCase();
+
+    const doc = pdfMode === "simple"
+        ? new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+        : new jsPDF({ orientation: "portrait", unit: "mm", format: OFICIO_FORMAT });
+
+    active.forEach((emp, i) => {
+        if (i > 0) doc.addPage();
+
+        if (pdfMode === "simple") {
+            // Modo SIMPLE: A4, un recibo completo por hoja, sin badge Original/Copia.
+            drawHeader(doc, {
+                companyName: optsWithSerial.companyName,
+                companyRif:  optsWithSerial.companyId,
+                reportTitle: "Recibo de Nómina",
+                periodLabel,
+            });
+            drawReceiptInRegion(doc, emp, optsWithSerial, 32, i, companyLogo, "full-single");
+            return;
+        }
+
+        // Modo DUPLICADO: oficio con dos copias por hoja, fallback a dos hojas completas
+        // si el contenido no cabe en una mitad.
+        const compactHeight = estimateCompactHeight(emp, optsWithSerial, !!companyLogo);
+
+        if (compactHeight <= HALF_HEIGHT) {
+            drawReceiptInRegion(doc, emp, optsWithSerial, HALF_TOP_Y,    i, companyLogo, "compact-top");
+            drawCutLine(doc, CUT_LINE_Y);
+            drawReceiptInRegion(doc, emp, optsWithSerial, HALF_BOTTOM_Y, i, companyLogo, "compact-bottom");
+        } else {
+            drawHeader(doc, {
+                companyName: optsWithSerial.companyName,
+                companyRif:  optsWithSerial.companyId,
+                reportTitle: "Recibo de Nómina",
+                periodLabel,
+            });
+            drawReceiptInRegion(doc, emp, optsWithSerial, 32, i, companyLogo, "full-original");
+
+            doc.addPage();
+            drawHeader(doc, {
+                companyName: optsWithSerial.companyName,
+                companyRif:  optsWithSerial.companyId,
+                reportTitle: "Recibo de Nómina",
+                periodLabel,
+            });
+            drawReceiptInRegion(doc, emp, optsWithSerial, 32, i, companyLogo, "full-copy");
+        }
+    });
 
     drawFooter(doc, kontaLogo);
 
