@@ -43,6 +43,17 @@ interface EmployeeOverride {
         deductions:  string[];
         horasExtras: string[];
     };
+    // Mapeo de extras "promovidos" desde un global vía botón editar.
+    // Clave = id del extra; valor = id del global original (que también está
+    // en excludedGlobalIds[group]). Sirve para (a) no pintar el global en la
+    // sección "Líneas excluidas" (es una edición, no una exclusión) y (b)
+    // restaurar el global automáticamente si el usuario elimina el extra.
+    promotedGlobalIds: {
+        earnings:    Record<string, string>;
+        bonuses:     Record<string, string>;
+        deductions:  Record<string, string>;
+        horasExtras: Record<string, string>;
+    };
 }
 
 type LineKind =
@@ -250,6 +261,7 @@ function buildDefaultOverride(): EmployeeOverride {
     return {
         extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [],
         excludedGlobalIds: { earnings: [], bonuses: [], deductions: [], horasExtras: [] },
+        promotedGlobalIds: { earnings: {}, bonuses: {}, deductions: {}, horasExtras: {} },
     };
 }
 
@@ -386,22 +398,49 @@ const ExpandedPanel = ({
     const empCappedWeekly   = salarioMinimo > 0 ? Math.min(empWeeklyBase, 10 * salarioMinimo) : empWeeklyBase;
     const empIntegralBase   = result.salarioIntegral;
 
+    // Al eliminar un extra que fue promovido desde un global, también restauramos
+    // el global (lo sacamos de excludedGlobalIds) y limpiamos el mapeo de
+    // promociones, para que la línea vuelva a su forma global original.
+    const removePromoted = (
+        group: keyof EmployeeOverride["excludedGlobalIds"],
+        extraId: string,
+    ): Pick<EmployeeOverride, "excludedGlobalIds" | "promotedGlobalIds"> => {
+        const globalId = override.promotedGlobalIds[group][extraId];
+        if (!globalId) {
+            return {
+                excludedGlobalIds: override.excludedGlobalIds,
+                promotedGlobalIds: override.promotedGlobalIds,
+            };
+        }
+        const { [extraId]: _omit, ...restPromoted } = override.promotedGlobalIds[group];
+        return {
+            excludedGlobalIds: {
+                ...override.excludedGlobalIds,
+                [group]: override.excludedGlobalIds[group].filter((x) => x !== globalId),
+            },
+            promotedGlobalIds: {
+                ...override.promotedGlobalIds,
+                [group]: restPromoted,
+            },
+        };
+    };
+
     const addXE    = () => onChange({ ...override, extraEarnings:   [...override.extraEarnings,   { id: uid("xe"), label: "", quantity: "0", multiplier: "1.0", useDaily: true }] });
     const updateXE = (id: string, u: EarningRow)   => onChange({ ...override, extraEarnings:   override.extraEarnings.map((r)   => r.id === id ? u : r) });
-    const removeXE = (id: string)                   => onChange({ ...override, extraEarnings:   override.extraEarnings.filter((r)   => r.id !== id) });
+    const removeXE = (id: string)                   => onChange({ ...override, extraEarnings:   override.extraEarnings.filter((r)   => r.id !== id), ...removePromoted("earnings", id) });
 
     const addXB    = () => onChange({ ...override, extraBonuses:    [...override.extraBonuses,    { id: uid("xb"), label: "", amount: "0.00", currency: "USD" }] });
     const updateXB = (id: string, u: BonusRow)     => onChange({ ...override, extraBonuses:    override.extraBonuses.map((r)    => r.id === id ? u : r) });
-    const removeXB = (id: string)                  => onChange({ ...override, extraBonuses:    override.extraBonuses.filter((r)    => r.id !== id) });
+    const removeXB = (id: string)                  => onChange({ ...override, extraBonuses:    override.extraBonuses.filter((r)    => r.id !== id), ...removePromoted("bonuses", id) });
 
     const addXD    = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "", rate: "0", base: "monthly" as const, mode: "rate" as const }] });
     const addLoan  = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "Préstamo / Anticipo", rate: "0", base: "monthly" as const, mode: "fixed" as const }] });
     const updateXD = (id: string, u: DeductionRow) => onChange({ ...override, extraDeductions: override.extraDeductions.map((r) => r.id === id ? u : r) });
-    const removeXD = (id: string)                  => onChange({ ...override, extraDeductions: override.extraDeductions.filter((r) => r.id !== id) });
+    const removeXD = (id: string)                  => onChange({ ...override, extraDeductions: override.extraDeductions.filter((r) => r.id !== id), ...removePromoted("deductions", id) });
 
     const addXH    = () => onChange({ ...override, extraHorasExtras: [...override.extraHorasExtras, { id: uid("xh"), tipo: "diurna" as const, hours: "0", active: true }] });
     const updateXH = (id: string, u: HorasExtrasRow) => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.map((r) => r.id === id ? u : r) });
-    const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id) });
+    const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id), ...removePromoted("horasExtras", id) });
 
     // Inicia edición sobre una línea. Si es global, la "promueve" a extra:
     // clona el row, lo agrega al array extras correspondiente, excluye el
@@ -425,6 +464,10 @@ const ExpandedPanel = ({
                         ? override.excludedGlobalIds.earnings
                         : [...override.excludedGlobalIds.earnings, sourceId],
                 },
+                promotedGlobalIds: {
+                    ...override.promotedGlobalIds,
+                    earnings: { ...override.promotedGlobalIds.earnings, [cloned.id]: sourceId },
+                },
             });
             setEditing({ kind: "extra-earning", id: cloned.id });
             return;
@@ -441,6 +484,10 @@ const ExpandedPanel = ({
                     bonuses: override.excludedGlobalIds.bonuses.includes(sourceId)
                         ? override.excludedGlobalIds.bonuses
                         : [...override.excludedGlobalIds.bonuses, sourceId],
+                },
+                promotedGlobalIds: {
+                    ...override.promotedGlobalIds,
+                    bonuses: { ...override.promotedGlobalIds.bonuses, [cloned.id]: sourceId },
                 },
             });
             setEditing({ kind: "extra-bonus", id: cloned.id });
@@ -459,6 +506,10 @@ const ExpandedPanel = ({
                         ? override.excludedGlobalIds.deductions
                         : [...override.excludedGlobalIds.deductions, sourceId],
                 },
+                promotedGlobalIds: {
+                    ...override.promotedGlobalIds,
+                    deductions: { ...override.promotedGlobalIds.deductions, [cloned.id]: sourceId },
+                },
             });
             setEditing({ kind: "extra-deduction", id: cloned.id });
             return;
@@ -475,6 +526,10 @@ const ExpandedPanel = ({
                     horasExtras: override.excludedGlobalIds.horasExtras.includes(sourceId)
                         ? override.excludedGlobalIds.horasExtras
                         : [...override.excludedGlobalIds.horasExtras, sourceId],
+                },
+                promotedGlobalIds: {
+                    ...override.promotedGlobalIds,
+                    horasExtras: { ...override.promotedGlobalIds.horasExtras, [cloned.id]: sourceId },
                 },
             });
             setEditing({ kind: "extra-horas-extras", id: cloned.id });
@@ -520,10 +575,21 @@ const ExpandedPanel = ({
     };
 
     const excluded = override.excludedGlobalIds;
-    const excludedEarnings    = excluded.earnings.map((id)    => ({ id, label: earningRows.find((r)       => r.id === id)?.label ?? id })).filter((x) => x.label);
-    const excludedBonuses     = excluded.bonuses.map((id)     => ({ id, label: bonusRows.find((r)         => r.id === id)?.label ?? id })).filter((x) => x.label);
-    const excludedDeductions  = excluded.deductions.map((id)  => ({ id, label: deductionRows.find((r)     => r.id === id)?.label ?? id })).filter((x) => x.label);
-    const excludedHorasExtras = excluded.horasExtras.map((id) => {
+    // Las exclusiones provenientes de una edición (promoción) NO se muestran
+    // como "líneas excluidas" — desde la óptica del usuario están editadas, no
+    // eliminadas. Filtramos los globalIds que aparecen como valores en el
+    // mapeo de promociones.
+    const promotedGlobalSet = (group: keyof EmployeeOverride["promotedGlobalIds"]) =>
+        new Set(Object.values(override.promotedGlobalIds[group]));
+    const promotedEarnings    = promotedGlobalSet("earnings");
+    const promotedBonuses     = promotedGlobalSet("bonuses");
+    const promotedDeductions  = promotedGlobalSet("deductions");
+    const promotedHorasExtras = promotedGlobalSet("horasExtras");
+
+    const excludedEarnings    = excluded.earnings.filter((id) => !promotedEarnings.has(id)).map((id) => ({ id, label: earningRows.find((r) => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedBonuses     = excluded.bonuses.filter((id) => !promotedBonuses.has(id)).map((id) => ({ id, label: bonusRows.find((r) => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedDeductions  = excluded.deductions.filter((id) => !promotedDeductions.has(id)).map((id) => ({ id, label: deductionRows.find((r) => r.id === id)?.label ?? id })).filter((x) => x.label);
+    const excludedHorasExtras = excluded.horasExtras.filter((id) => !promotedHorasExtras.has(id)).map((id) => {
         const r = horasExtrasGlobal.find((x) => x.id === id);
         return { id, label: r ? (r.tipo === "diurna" ? "H.E. Diurnas" : r.tipo === "nocturna" ? "H.E. Nocturnas" : "H.E. Feriado") : id };
     });
