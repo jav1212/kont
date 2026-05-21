@@ -352,15 +352,20 @@ export default function NuevaFacturaPage() {
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
-    const itemsForSave = useCallback((): PurchaseInvoiceItem[] => items.map((it, idx) => {
-        const t = totals.items[idx];
-        return {
-            ...it,
-            descuentoMonto: t.descuentoMonto,
-            recargoMonto:   t.recargoMonto,
-            baseIVA:        t.baseIVAFinal,
-        };
-    }), [items, totals]);
+    // Filtramos filas en blanco (productId vacío o cantidad ≤ 0) para que el
+    // autosave no dispare FK violations contra inventario_facturas_compra_items.
+    const itemsForSave = useCallback((): PurchaseInvoiceItem[] => items
+        .map((it, idx) => {
+            const t = totals.items[idx];
+            return {
+                ...it,
+                descuentoMonto: t.descuentoMonto,
+                recargoMonto:   t.recargoMonto,
+                baseIVA:        t.baseIVAFinal,
+            };
+        })
+        .filter((it) => it.productId && it.quantity > 0),
+        [items, totals]);
 
     // ── Auto-save ─────────────────────────────────────────────────────────────
     // Snapshots only the user-editable shape so the watcher fires on real
@@ -399,10 +404,9 @@ export default function NuevaFacturaPage() {
 
     function validate(): boolean {
         if (!supplierId) { notify.error("Selecciona un proveedor"); return false; }
-        if (items.length === 0) { notify.error("Agrega al menos un producto"); return false; }
-        for (const item of items) {
-            if (!item.productId) { notify.error("Selecciona un producto en cada fila"); return false; }
-            if (item.quantity <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
+        if (itemsForSave().length === 0) {
+            notify.error("Agrega al menos un producto con cantidad mayor a 0");
+            return false;
         }
         return true;
     }
