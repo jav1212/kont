@@ -29,8 +29,9 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/payroll/history",           label: "Historial",     group: "Histórico"                  },
     ],
     documents: [
-        { href: "/documents",       label: "Tablero",  group: null },
-        { href: "/documents/files", label: "Archivos", group: null },
+        { href: "/documents",            label: "Tablero",   group: null        },
+        { href: "/documents/files",      label: "Archivos",  group: null        },
+        { href: "/documents/contracts",  label: "Contratos", group: "Generador" },
     ],
     purchases: [
         { href: "/purchases",                 label: "Tablero",             group: null          },

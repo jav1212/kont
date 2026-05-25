@@ -1,81 +1,77 @@
 "use client";
 
-import React from "react";
-import { Switch, SwitchProps } from "@heroui/react";
+import React, { useId } from "react";
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-interface BaseSwitchProps extends Omit<SwitchProps, "color" | "size"> {
-    label?:       string;
-    rate?:        string;   // right-side annotation — e.g. "4%", "days"
-    description?: string;
+interface BaseSwitchProps {
+    isSelected?:    boolean;
+    onValueChange?: (value: boolean) => void;
+    label?:         string;
+    description?:   string;
+    isDisabled?:    boolean;
+    className?:     string;
 }
 
-// ============================================================================
-// COMPONENT
-// ============================================================================
+const InputField = ({
+    isSelected = false,
+    onValueChange,
+    label,
+    description,
+    isDisabled = false,
+    className = "",
+}: BaseSwitchProps) => {
+    const id = useId();
 
-export abstract class BaseSwitch {
-
-    static Field = ({
-        label,
-        rate,
-        description,
-        className = "",
-        ...props
-    }: BaseSwitchProps) => (
-        <Switch
-            color="primary"
-            size="sm"
-            classNames={{
-                base: [
-                    "group cursor-pointer select-none",
-                    "inline-flex items-center gap-2",
-                    className,
-                ].join(" "),
-                wrapper: [
-                    // Fixed size + overflow-hidden to clip the thumb
-                    "!w-8 !h-4 !min-w-[2rem]",
-                    "!rounded-full !overflow-hidden",
-                    "!p-0 !m-0",
-                    // Colors
-                    "!bg-neutral-200 dark:!bg-neutral-700",
-                    "group-data-[selected=true]:!bg-primary-500",
-                    "transition-colors duration-200",
-                ].join(" "),
-                thumb: [
-                    // Must be smaller than track height (16px) with room for padding
-                    "!w-3 !h-3",
-                    "!bg-white !shadow-sm !rounded-full",
-                    "transition-transform duration-200",
-                ].join(" "),
-                label: "flex-1 min-w-0",
-            }}
-            {...props}
+    return (
+        <label
+            htmlFor={id}
+            className={[
+                "inline-flex items-center gap-2.5 select-none",
+                isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                className,
+            ].join(" ")}
         >
-            {(label || rate || description) && (
-                <span className="flex items-center justify-between gap-1 min-w-0">
-                    <span className="flex flex-col min-w-0">
-                        {label && (
-                            <span className="font-mono text-[11px] text-foreground leading-none">
-                                {label}
-                            </span>
-                        )}
-                        {description && (
-                            <span className="font-mono text-[10px] text-neutral-400 leading-tight mt-0.5">
-                                {description}
-                            </span>
-                        )}
-                    </span>
-                    {rate && (
-                        <span className="ml-1 font-mono text-[10px] text-neutral-400 tabular-nums shrink-0">
-                            {rate}
+            <span
+                id={id}
+                role="switch"
+                tabIndex={0}
+                aria-checked={isSelected}
+                onClick={() => { if (!isDisabled) onValueChange?.(!isSelected); }}
+                onKeyDown={(e) => { if (!isDisabled && (e.key === " " || e.key === "Enter")) { e.preventDefault(); onValueChange?.(!isSelected); } }}
+                className={[
+                    "relative inline-flex items-center w-9 h-5 rounded-full transition-colors duration-150 flex-shrink-0 overflow-hidden",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-1",
+                    isSelected
+                        ? "bg-primary-500"
+                        : "bg-neutral-300 dark:bg-neutral-600",
+                ].join(" ")}
+            >
+                <span
+                    aria-hidden
+                    className={[
+                        "inline-block w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-transform duration-150",
+                        isSelected ? "translate-x-[19px]" : "translate-x-[3px]",
+                    ].join(" ")}
+                />
+            </span>
+
+            {(label || description) && (
+                <span className="flex flex-col min-w-0">
+                    {label && (
+                        <span className="font-mono text-[11px] text-foreground leading-none">
+                            {label}
+                        </span>
+                    )}
+                    {description && (
+                        <span className="font-mono text-[10px] text-neutral-400 leading-tight mt-0.5">
+                            {description}
                         </span>
                     )}
                 </span>
             )}
-        </Switch>
+        </label>
     );
-}
+};
+
+export const BaseSwitch = {
+    Field: InputField,
+} as const;
