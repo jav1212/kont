@@ -69,6 +69,7 @@ function SignUpPageInner() {
 
     const [stage,   setStage]   = useState<Stage>("form");
     const [name,    setName]    = useState("");
+    const [phone,   setPhone]   = useState("");
     const [email,   setEmail]   = useState("");
     const [pass,    setPass]    = useState("");
     const [confirm, setConfirm] = useState("");
@@ -129,7 +130,7 @@ function SignUpPageInner() {
         if (validationError) { notify.error(validationError); return; }
 
         setLoading(true);
-        const err = await signUp(email, pass, name);
+        const err = await signUp(email, pass, name, phone.trim() || undefined);
         setLoading(false);
 
         if (err) { notify.error(err); return; }
@@ -198,6 +199,8 @@ function SignUpPageInner() {
                         )}
 
                         <BaseInput.Field label="Nombre" type="text" placeholder="Tu nombre completo" value={name} onValueChange={setName} isDisabled={loading} />
+
+                        <BaseInput.Field label="Teléfono" type="tel" inputMode="tel" placeholder="+58 412 1234567" value={phone} onValueChange={setPhone} isDisabled={loading} />
 
                         <BaseInput.Field label="Correo" type="email" placeholder="usuario@empresa.com" value={email} onValueChange={setEmail} isDisabled={loading} />
 

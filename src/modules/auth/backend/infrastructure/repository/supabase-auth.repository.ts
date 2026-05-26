@@ -31,13 +31,14 @@ export class SupabaseAuthRepository implements IAuthRepository {
         }
     }
 
-    async signUp(email: string, pass: string, emailRedirectTo?: string): Promise<Result<Auth>> {
+    async signUp(email: string, pass: string, emailRedirectTo?: string, metadata?: { name?: string; phone?: string }): Promise<Result<Auth>> {
         try {
             const { data, error } = await this.source.instance.auth.signUp({
                 email,
                 password: pass,
                 options: {
                     emailRedirectTo: emailRedirectTo ?? 'http://localhost:3000/api/auth/callback',
+                    data: metadata,
                 },
             });
 

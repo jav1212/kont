@@ -10,6 +10,7 @@ interface RawUserRow {
     id:         string;
     email:      string;
     name:       string | null;
+    phone:      string | null;
     avatar_url: string | null;
     created_at: string | null;
     updated_at: string | null;
@@ -47,6 +48,7 @@ export class SupabaseUserRepository implements IUserRepository {
                     id:         user.id,
                     email:      user.email,
                     name:       user.name      ?? null,
+                    phone:      user.phone     ?? null,
                     avatar_url: user.avatarUrl ?? null,
                     created_at: user.createdAt ? user.createdAt.toISOString() : now,
                     updated_at: user.updatedAt ? user.updatedAt.toISOString() : now,
@@ -65,6 +67,7 @@ export class SupabaseUserRepository implements IUserRepository {
                 .from(this.TABLE)
                 .update({
                     name:       user.name      ?? null,
+                    phone:      user.phone     ?? null,
                     avatar_url: user.avatarUrl ?? null,
                     updated_at: new Date().toISOString(),
                 })
@@ -126,6 +129,7 @@ export class SupabaseUserRepository implements IUserRepository {
             id:        row.id,
             email:     row.email,
             name:      row.name      ?? undefined,
+            phone:     row.phone     ?? undefined,
             avatarUrl: row.avatar_url ?? undefined,
             createdAt: row.created_at ? new Date(row.created_at) : undefined,
             updatedAt: row.updated_at ? new Date(row.updated_at) : undefined,

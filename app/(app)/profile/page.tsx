@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, ShieldCheck, Mail, User as UserIcon } from "lucide-react";
+import { Camera, ShieldCheck, Mail, User as UserIcon, Phone } from "lucide-react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { PageHeader }  from "@/src/shared/frontend/components/page-header";
@@ -15,6 +15,7 @@ export default function ProfilePage() {
     const { user } = useAuth();
 
     const [name,       setName]       = useState("");
+    const [phone,      setPhone]      = useState("");
     const [nameLoaded, setNameLoaded] = useState(false);
     const [saving,     setSaving]     = useState(false);
     const [avatarUrl,  setAvatarUrl]  = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function ProfilePage() {
             .then((r) => {
                 if (r.data) {
                     setName(r.data.name ?? "");
+                    setPhone(r.data.phone ?? "");
                     setAvatarUrl(r.data.avatarUrl ?? null);
                     setCreatedAt(r.data.createdAt ?? null);
                 }
@@ -44,7 +46,7 @@ export default function ProfilePage() {
         const res  = await fetch("/api/users/update", {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id: user.id, data: { name: name.trim() } }),
+            body:    JSON.stringify({ id: user.id, data: { name: name.trim(), phone: phone.trim() || null } }),
         });
         const json = await res.json();
         setSaving(false);
@@ -172,6 +174,15 @@ export default function ProfilePage() {
                                     />
                                 </div>
 
+                                <BaseInput.Field
+                                    label="Teléfono"
+                                    type="tel"
+                                    inputMode="tel"
+                                    placeholder="+58 412 1234567"
+                                    value={phone}
+                                    onValueChange={setPhone}
+                                />
+
 
                                 <div className="pt-1 flex justify-end">
                                     <BaseButton.Root
@@ -207,6 +218,12 @@ export default function ProfilePage() {
                                 icon={<UserIcon size={14} />}
                                 label="Nombre"
                                 value={displayName}
+                            />
+                            <MetaRow
+                                icon={<Phone size={14} />}
+                                label="Teléfono"
+                                value={phone || "—"}
+                                mono
                             />
                             <MetaRow
                                 icon={<ShieldCheck size={14} />}

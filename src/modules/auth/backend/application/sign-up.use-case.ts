@@ -9,6 +9,8 @@ export interface SignUpInput {
     email: string;
     pass: string;
     emailRedirectTo?: string;
+    name?: string;
+    phone?: string;
 }
 
 export class SignUpUseCase extends UseCase<SignUpInput, Auth> {
@@ -17,6 +19,9 @@ export class SignUpUseCase extends UseCase<SignUpInput, Auth> {
     }
 
     async execute(input: SignUpInput): Promise<Result<Auth>> {
-        return await this.authRepository.signUp(input.email, input.pass, input.emailRedirectTo);
+        const metadata = (input.name || input.phone)
+            ? { name: input.name, phone: input.phone }
+            : undefined;
+        return await this.authRepository.signUp(input.email, input.pass, input.emailRedirectTo, metadata);
     }
 }

@@ -146,9 +146,9 @@ async function signIn(email: string, password: string): Promise<string | null> {
     return null;
 }
 
-async function signUp(email: string, password: string, name?: string): Promise<string | null> {
+async function signUp(email: string, password: string, name?: string, phone?: string): Promise<string | null> {
     dispatch({ type: "LOADING" });
-    const { ok, json } = await apiFetch("/api/auth/sign-up", { email, password, name });
+    const { ok, json } = await apiFetch("/api/auth/sign-up", { email, password, name, phone });
     if (!ok) { dispatch({ type: "SET_ERROR", error: json.error }); return json.error; }
     dispatch({ type: "CLEAR_USER" }); // pendiente de confirmar email
     return null;
@@ -189,7 +189,7 @@ export function useAuth() {
         isLoading:       _state.status === "loading",
         isAuthenticated: _state.status === "authenticated",
         signIn:          useCallback((email: string, password: string) => signIn(email, password), []),
-        signUp:          useCallback((email: string, password: string, name?: string) => signUp(email, password, name), []),
+        signUp:          useCallback((email: string, password: string, name?: string, phone?: string) => signUp(email, password, name, phone), []),
         signOut:         useCallback(() => signOut(), []),
         resetPassword:   useCallback((email: string) => resetPassword(email), []),
         resendConfirmation: useCallback((email: string) => resendConfirmation(email), []),

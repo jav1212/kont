@@ -11,13 +11,15 @@ export async function POST(req: NextRequest) {
     const denied = await rateLimit(req, { bucket: "auth-sign-up", limit: 5, windowSec: 3600 });
     if (denied) return denied;
 
-    const { email, password } = await req.json();
+    const { email, password, name, phone } = await req.json();
     const { origin } = new URL(req.url);
 
     const result = await getAuthActions().signUp.execute({
         email,
         pass: password,
         emailRedirectTo: `${origin}/api/auth/callback`,
+        name,
+        phone,
     });
 
     return handleResult(result, 201);
