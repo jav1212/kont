@@ -169,7 +169,7 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 igtf_porcentaje:        stringifyNum(invoice.igtfPorcentaje),
                 igtf_base_divisa:       stringifyNum(invoice.igtfBaseDivisa),
                 igtf_base_bs:           stringifyNum(invoice.igtfBaseBs),
-                impuestos:              JSON.stringify(invoice.impuestos ?? []),
+                impuestos:              invoice.impuestos ?? [],
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
