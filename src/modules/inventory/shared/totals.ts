@@ -18,6 +18,20 @@
 
 export type AdjustmentKind = 'monto' | 'porcentaje';
 
+export type TaxBase = 'pre_iva' | 'post_iva';
+
+export interface InvoiceTax {
+    nombre: string;
+    tipo:   AdjustmentKind;
+    valor:  number;
+    base:   TaxBase;
+    monto:  number;
+}
+
+export function emptyInvoiceTax(): InvoiceTax {
+    return { nombre: '', tipo: 'porcentaje', valor: 0, base: 'pre_iva', monto: 0 };
+}
+
 export interface LineAdjustments {
     descuentoTipo:  AdjustmentKind | null;
     descuentoValor: number;
@@ -159,6 +173,8 @@ export interface InvoiceTotals {
     ivaPorAlicuota:  { exenta: number; reducida_8: number; general_16: number };
     ivaMonto:        number;  // Σ ivaMontoFinal
     total:           number;  // baseIVA + ivaMonto — total factura (lo que firma el proveedor)
+    impuestos:       InvoiceTax[];
+    totalImpuestos:  number;
     retencionIvaPct: number;  // 0 | 75 | 100
     retencionIva:    number;  // ivaMonto × pct/100 (post-IVA, no afecta base ni IVA débito)
     totalAPagar:     number;  // total − retencionIva (lo que efectivamente se gira al proveedor)
@@ -169,6 +185,7 @@ export function computeInvoiceTotals(
     header: HeaderAdjustments,
     decimals = 2,
     retencionIvaPct = 0,
+    impuestos: InvoiceTax[] = [],
 ): InvoiceTotals {
     const r = (n: number) => roundN(n, decimals);
 
@@ -229,9 +246,22 @@ export function computeInvoiceTotals(
     });
 
     const total        = r(baseIVA + ivaMonto);
+
+    const resolvedImpuestos: InvoiceTax[] = impuestos.map((tax) => {
+        let monto = 0;
+        if (tax.tipo === 'monto') {
+            monto = r(Math.max(0, tax.valor));
+        } else if (tax.tipo === 'porcentaje' && tax.valor > 0) {
+            const taxBase = tax.base === 'post_iva' ? total : baseIVA;
+            monto = r(taxBase * tax.valor / 100);
+        }
+        return { ...tax, monto };
+    });
+    const totalImpuestos = r(resolvedImpuestos.reduce((acc, t) => acc + t.monto, 0));
+
     const safePct      = Number.isFinite(retencionIvaPct) ? Math.max(0, Math.min(100, retencionIvaPct)) : 0;
     const retencionIva = r(ivaMonto * safePct / 100);
-    const totalAPagar  = r(total - retencionIva);
+    const totalAPagar  = r(total + totalImpuestos - retencionIva);
 
     return {
         items,
@@ -244,6 +274,8 @@ export function computeInvoiceTotals(
         ivaPorAlicuota,
         ivaMonto,
         total,
+        impuestos: resolvedImpuestos,
+        totalImpuestos,
         retencionIvaPct: safePct,
         retencionIva,
         totalAPagar,

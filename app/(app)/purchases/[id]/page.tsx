@@ -27,10 +27,12 @@ import {
     emptyHeaderAdjustments,
     type HeaderAdjustments,
     type AdjustmentKind,
+    type InvoiceTax,
     type LineInput,
 } from "@/src/modules/inventory/shared/totals";
 import { HeaderAdjustmentsSection } from "@/src/modules/purchases/frontend/components/header-adjustments-section";
 import { IvaRetencionToggle } from "@/src/modules/purchases/frontend/components/iva-retencion-toggle";
+import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components/invoice-taxes-section";
 import { IslrRetencionSection, emptyIslrValue, type IslrFormValue } from "@/src/modules/purchases/frontend/components/islr-retencion-section";
 import { IgtfSection, emptyIgtfValue, type IgtfFormValue } from "@/src/modules/purchases/frontend/components/igtf-section";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
@@ -102,6 +104,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
     const [headerAdj, setHeaderAdj] = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
     const [retencionIvaPct, setRetencionIvaPct] = useState<number>(0);
+    const [impuestos, setImpuestos] = useState<InvoiceTax[]>([]);
     const [islr, setIslr] = useState<IslrFormValue>(() => emptyIslrValue());
     const [igtf, setIgtf] = useState<IgtfFormValue>(() => emptyIgtfValue());
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
@@ -194,6 +197,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             recargoValor:   currentPurchaseInvoice.recargoValor ?? 0,
         });
         setRetencionIvaPct(currentPurchaseInvoice.retencionIvaPct ?? 0);
+        setImpuestos(currentPurchaseInvoice.impuestos ?? []);
         setIslr({
             concepto:         currentPurchaseInvoice.islrConcepto ?? null,
             porcentaje:       currentPurchaseInvoice.islrPorcentaje ?? 0,
@@ -213,6 +217,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
             (currentPurchaseInvoice.recargoTipo   != null && (currentPurchaseInvoice.recargoValor   ?? 0) > 0) ||
             (currentPurchaseInvoice.retencionIvaPct ?? 0) > 0 ||
+            (currentPurchaseInvoice.impuestos && currentPurchaseInvoice.impuestos.length > 0) ||
             (currentPurchaseInvoice.islrConcepto != null) ||
             (currentPurchaseInvoice.igtfAplica === true);
         if (hasAdj) setShowHeaderAdj(true);
@@ -243,7 +248,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -254,6 +259,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
         (headerAdj.recargoTipo   != null && headerAdj.recargoValor   > 0) ||
         retencionIvaPct > 0 ||
+        impuestos.length > 0 ||
         islr.concepto != null ||
         igtf.aplica;
 
@@ -298,7 +304,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         igtfBaseDivisa: igtf.baseDivisa,
         igtfBaseBs:     igtf.baseBs,
         igtfMonto:      igtf.monto,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf]);
+        impuestos:      totals.impuestos,
+    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -858,6 +865,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} />
                                         </div>
                                         <div className="pt-3 border-t border-border-light/60">
+                                            <InvoiceTaxesSection
+                                                value={isDraft ? impuestos : (invoice.impuestos ?? [])}
+                                                onChange={setImpuestos}
+                                                baseIVA={subtotal}
+                                                total={subtotal + vatAmount}
+                                                decimals={effectiveDecimals}
+                                                readOnly={!isDraft}
+                                            />
+                                        </div>
+                                        <div className="pt-3 border-t border-border-light/60">
                                             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
                                                 Se aplica POST-IVA y reduce el total a pagar al proveedor
                                             </p>
@@ -927,7 +944,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     },
                                 }));
                                 const dRetencionPct = isDraft ? retencionIvaPct : (invoice.retencionIvaPct ?? 0);
-                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct);
+                                const dImpuestos = isDraft ? impuestos : (invoice.impuestos ?? []);
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos);
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
@@ -936,17 +954,20 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const dVatAmount    = t.ivaMonto;
                                 // Total bruto factura (antes de retenciones).
                                 const dGross        = isDraft ? t.total : (invoice.subtotal + invoice.vatAmount);
+                                const dTotalImpuestos = t.totalImpuestos;
+                                const dResolvedImpuestos = t.impuestos;
                                 const dRetencionIva = isDraft ? t.retencionIva : (invoice.retencionIvaMonto ?? 0);
                                 const dRetencionIslr= isDraft ? islr.monto      : (invoice.islrMonto ?? 0);
                                 const dIslrConcepto = isDraft ? islr.concepto   : (invoice.islrConcepto ?? null);
                                 const dIslrPct      = isDraft ? islr.porcentaje : (invoice.islrPorcentaje ?? 0);
                                 const dIgtfMonto    = isDraft ? igtf.monto      : (invoice.igtfMonto ?? 0);
                                 const dIgtfPct      = isDraft ? igtf.porcentaje : (invoice.igtfPorcentaje ?? 0);
-                                const dTotalAPagar  = dGross - dRetencionIva - dRetencionIslr + dIgtfMonto;
-                                const dTotal        = dGross;
+                                const dTotalAPagar  = dGross + dTotalImpuestos - dRetencionIva - dRetencionIslr + dIgtfMonto;
+                                const dTotal        = dGross + dTotalImpuestos;
                                 const dHasRetencion = dRetencionPct > 0 && dRetencionIva > 0;
                                 const dHasIslr      = dRetencionIslr > 0;
                                 const dHasIgtf      = dIgtfMonto > 0;
+                                const dHasImpuestos = dTotalImpuestos > 0;
                                 const hasLineOrHeaderAdj = (t.descuentoLinea + t.descuentoHeader + t.recargoLinea + t.recargoHeader) > 0;
 
                                 const rateForUsd = isDraft
@@ -1081,11 +1102,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                         : renderRow("IVA 16%", dVat16, { kind: "neutral", note: "16% × base" })
                                                 )}
 
+                                                {/* Block 4b — Dynamic taxes */}
+                                                {dHasImpuestos && dResolvedImpuestos.map((tax, idx) => (
+                                                    renderRow(
+                                                        tax.nombre || `Impuesto ${idx + 1}`,
+                                                        tax.monto,
+                                                        { kind: "pos", sign: "+", indent: true, note: tax.tipo === "porcentaje" ? `${tax.valor}% ${tax.base === "post_iva" ? "post-IVA" : "pre-IVA"}` : undefined },
+                                                    )
+                                                ))}
+
                                                 <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
                                                 {renderRow((dHasRetencion || dHasIslr) ? "Total factura" : "Total", dTotal, {
                                                     kind: "total",
-                                                    // Only annotate when the equation actually adds two terms.
-                                                    note: hasIva ? "= base + IVA" : undefined,
+                                                    note: hasIva || dHasImpuestos ? "= base + IVA + impuestos" : undefined,
                                                 })}
 
                                                 {dHasRetencion && (

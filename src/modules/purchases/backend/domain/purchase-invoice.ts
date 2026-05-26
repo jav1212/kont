@@ -1,6 +1,8 @@
 // Domain entity: PurchaseInvoice
 // Represents a supplier purchase invoice with line items.
 // VatRate, ItemCurrency, InvoiceStatus string literal values are DB contracts — do not change.
+import type { InvoiceTax } from '@/src/modules/inventory/shared/totals';
+
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
 export type ItemCurrency = 'B' | 'D';
 export type AdjustmentKind = 'monto' | 'porcentaje';
@@ -134,6 +136,10 @@ export interface PurchaseInvoice {
   igtfBaseBs?:     number;
   /** Monto IGTF en Bs (server-resolved). */
   igtfMonto?:      number;
+
+  // ── Impuestos dinámicos (mig 111) — lista de impuestos adicionales
+  // a nivel cabecera. Se suman al total de la factura.
+  impuestos?: InvoiceTax[];
 
   confirmedAt?: string | null;
   items?: PurchaseInvoiceItem[];

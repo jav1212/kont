@@ -13,6 +13,7 @@ import {
     ItemCurrency,
     AdjustmentKind,
 } from '../../domain/purchase-invoice';
+import type { InvoiceTax, TaxBase, AdjustmentKind as AdjKind } from '@/src/modules/inventory/shared/totals';
 import {
     MigratePurchaseInvoicesResult,
     MigratedInvoice,
@@ -61,6 +62,7 @@ interface InvoiceRpcRow {
   igtf_base_divisa:        number | string | null;
   igtf_base_bs:            number | string | null;
   igtf_monto:              number | string | null;
+  impuestos:               unknown[] | null;
   confirmada_at: string | null;
   items: InvoiceItemRpcRow[] | null;
   items_count: number | string | null;
@@ -167,6 +169,7 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                 igtf_porcentaje:        stringifyNum(invoice.igtfPorcentaje),
                 igtf_base_divisa:       stringifyNum(invoice.igtfBaseDivisa),
                 igtf_base_bs:           stringifyNum(invoice.igtfBaseBs),
+                impuestos:              JSON.stringify(invoice.impuestos ?? []),
             };
             const itemsRow = items.map((i) => ({
                 producto_id:    i.productId,
@@ -358,6 +361,15 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
             igtfBaseDivisa:        num(row.igtf_base_divisa),
             igtfBaseBs:            num(row.igtf_base_bs),
             igtfMonto:             num(row.igtf_monto),
+            impuestos: Array.isArray(row.impuestos)
+                ? (row.impuestos as Array<Record<string, unknown>>).map((t): InvoiceTax => ({
+                    nombre: String(t.nombre ?? ''),
+                    tipo:   (t.tipo === 'monto' || t.tipo === 'porcentaje' ? t.tipo : 'porcentaje') as AdjKind,
+                    valor:  num(t.valor as number | string | null),
+                    base:   (t.base === 'post_iva' ? 'post_iva' : 'pre_iva') as TaxBase,
+                    monto:  num(t.monto as number | string | null),
+                }))
+                : [],
             confirmedAt:   row.confirmada_at ?? null,
             items,
             itemsCount:    row.items_count != null ? Number(row.items_count) : undefined,
