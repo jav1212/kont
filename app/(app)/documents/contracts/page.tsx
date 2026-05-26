@@ -74,6 +74,9 @@ export default function ContractsPage() {
 
     const [companyCity, setCompanyCity]         = useState("");
     const [companyRegistro, setCompanyRegistro] = useState("");
+    const [registroNro, setRegistroNro]         = useState("");
+    const [registroTomo, setRegistroTomo]       = useState("");
+    const [registroFecha, setRegistroFecha]     = useState("");
     const [companyAddress, setCompanyAddress]   = useState("");
 
     const [repName, setRepName]           = useState("");
@@ -84,6 +87,7 @@ export default function ContractsPage() {
     const [selectedEmpKeys, setSelectedEmpKeys] = useState<Set<string | number>>(new Set());
     const [empNationality, setEmpNationality]   = useState<Set<string | number>>(new Set(["venezolano(a)"]));
 
+    const [beneficioNombre, setBeneficioNombre] = useState("Beneficio socio económico complementario");
     const [montoUsd, setMontoUsd]               = useState("");
     const [fechaInicio, setFechaInicio]         = useState(firstOfMonth);
     const [ciudadFirma, setCiudadFirma]         = useState("");
@@ -135,6 +139,9 @@ export default function ContractsPage() {
                 companyRif:     company?.id ?? "",
                 companyCity:    city,
                 companyRegistro: companyRegistro.trim(),
+                registroNro:    registroNro.trim() || undefined,
+                registroTomo:   registroTomo.trim() || undefined,
+                registroFecha:  registroFecha || undefined,
                 companyAddress: companyAddress.trim() || company?.address || "",
                 logoUrl:        company?.logoUrl,
                 showLogo,
@@ -148,6 +155,7 @@ export default function ContractsPage() {
                 empCedula:      emp.cedula,
                 empNationality: empNat,
 
+                beneficioNombre: beneficioNombre.trim() || undefined,
                 montoUsd:       parseFloat(montoUsd),
                 fechaInicio,
                 ciudadFirma:    city,
@@ -167,13 +175,14 @@ export default function ContractsPage() {
         }
     }, [
         validate, repNationality, empNationality, ciudadFirma, companyCity, employees,
-        selectedEmpKeys, company, companyRegistro, companyAddress, showLogo, repName,
-        repCedula, repCargo, montoUsd, fechaInicio, fechaDocumento, lawyerName, lawyerInpre,
+        selectedEmpKeys, company, companyRegistro, registroNro, registroTomo, registroFecha,
+        companyAddress, showLogo, repName, repCedula, repCargo, beneficioNombre, montoUsd,
+        fechaInicio, fechaDocumento, lawyerName, lawyerInpre,
     ]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
-            <PageHeader title="Generar Convenio" subtitle="Beneficio socio económico complementario — Art. 105 LOTTT">
+            <PageHeader title="Generar Convenio" subtitle={`${beneficioNombre || "Beneficio socio económico complementario"} — Art. 105 LOTTT`}>
                 <CompanyContextPill />
                 <BaseButton.Root
                     variant="primary"
@@ -222,6 +231,27 @@ export default function ContractsPage() {
                                 value={companyRegistro}
                                 onValueChange={setCompanyRegistro}
                             />
+
+                            <div className="grid grid-cols-3 gap-3.5">
+                                <BaseInput.Field
+                                    label="Nro"
+                                    placeholder="123"
+                                    value={registroNro}
+                                    onValueChange={setRegistroNro}
+                                />
+                                <BaseInput.Field
+                                    label="Tomo"
+                                    placeholder="45"
+                                    value={registroTomo}
+                                    onValueChange={setRegistroTomo}
+                                />
+                                <BaseInput.Field
+                                    label="Fecha"
+                                    type="date"
+                                    value={registroFecha}
+                                    onValueChange={setRegistroFecha}
+                                />
+                            </div>
 
                             <BaseInput.Field
                                 label="Dirección"
@@ -324,6 +354,14 @@ export default function ContractsPage() {
                             title="Términos del Convenio"
                             description="Condiciones económicas y fechas del acuerdo."
                         >
+                            <BaseInput.Field
+                                label="Tipo de beneficio"
+                                placeholder="Beneficio socio económico complementario"
+                                value={beneficioNombre}
+                                onValueChange={setBeneficioNombre}
+                                helperText="Ej: Beneficio social de alimentación, Bono de productividad"
+                            />
+
                             <BaseInput.Field
                                 label="Monto mensual"
                                 placeholder="500,00"

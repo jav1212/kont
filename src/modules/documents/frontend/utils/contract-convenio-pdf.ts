@@ -20,6 +20,9 @@ export interface ConvenioData {
     companyRif: string;
     companyCity: string;
     companyRegistro: string;
+    registroNro?: string;
+    registroTomo?: string;
+    registroFecha?: string;
     companyAddress: string;
     logoUrl?: string;
     showLogo?: boolean;
@@ -33,6 +36,7 @@ export interface ConvenioData {
     empCedula: string;
     empNationality: string;
 
+    beneficioNombre?: string;
     montoUsd: number;
     fechaInicio: string;
     ciudadFirma: string;
@@ -78,6 +82,16 @@ function ordinal(n: number): string {
 function bold(text: string): RichSegment { return { text, bold: true }; }
 function normal(text: string): RichSegment { return { text }; }
 
+function buildRegistroText(data: ConvenioData): string {
+    let text = `inscrita en el ${data.companyRegistro}`;
+    const parts: string[] = [];
+    if (data.registroNro) parts.push(`bajo el N° ${data.registroNro}`);
+    if (data.registroTomo) parts.push(`Tomo ${data.registroTomo}`);
+    if (data.registroFecha) parts.push(`de fecha ${fmtDateLong(data.registroFecha)}`);
+    if (parts.length > 0) text += `, ${parts.join(", ")}`;
+    return text;
+}
+
 function drawDocumentForEmployee(
     doc: Doc,
     data: ConvenioData,
@@ -109,26 +123,26 @@ function drawDocumentForEmployee(
         }
     }
 
-    renderMono(doc, `RIF: ${data.companyRif}`, xL, y + 18, 8, false, COLORS.muted, "left");
+    renderText(doc, data.companyName.toUpperCase(), xL, y + 14, 8.5, true, COLORS.ink, "left", contentW * 0.5);
+    renderMono(doc, `RIF: ${data.companyRif}`, xL, y + 18.5, 8, false, COLORS.muted, "left");
 
-    y += 24;
+    y += 27;
 
     // ── Title ────────────────────────────────────────────────────
-    const titleLine1 = "CONVENIO DE BENEFICIO SOCIO ECONÓMICO";
-    const titleLine2 = "COMPLEMENTARIO PARA EL TRABAJADOR";
-
-    renderText(doc, titleLine1, pw / 2, y, 11, true, color, "center");
-    y += 5;
-    renderText(doc, titleLine2, pw / 2, y, 11, true, color, "center");
+    const beneficio = data.beneficioNombre?.trim() || "Beneficio socio económico complementario";
+    const titleFull = `CONVENIO DE ${beneficio.toUpperCase()} PARA EL TRABAJADOR`;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    const w1 = (doc.getStringUnitWidth(titleLine1) * 11) / doc.internal.scaleFactor;
-    const w2 = (doc.getStringUnitWidth(titleLine2) * 11) / doc.internal.scaleFactor;
-    hline(doc, (pw - w1) / 2, y - 4.2, w1, COLORS.ink, 0.3);
-    hline(doc, (pw - w2) / 2, y + 0.8, w2, COLORS.ink, 0.3);
+    const titleLines: string[] = doc.splitTextToSize(titleFull, contentW * 0.85);
 
-    y += 8;
+    for (const line of titleLines) {
+        renderText(doc, line, pw / 2, y, 11, true, color, "center");
+        const lw = (doc.getStringUnitWidth(line) * 11) / doc.internal.scaleFactor;
+        hline(doc, (pw - lw) / 2, y + 0.8, lw, COLORS.ink, 0.3);
+        y += 5;
+    }
+    y += 3;
 
     // ── Opening paragraph ────────────────────────────────────────
     const cedPrefix = (ced: string): string => {
@@ -140,7 +154,7 @@ function drawDocumentForEmployee(
     const openingSegments: RichSegment[] = [
         normal("Entre la Sociedad Mercantil"),
         bold(` ${data.companyName},`),
-        normal(` domiciliada en ${data.companyCity} e inscrita en el ${data.companyRegistro}, representada para este Acto por su ${data.repCargo},`),
+        normal(` domiciliada en ${data.companyCity} e ${buildRegistroText(data)}, representada para este Acto por su ${data.repCargo},`),
         bold(` ${data.repName.toUpperCase()},`),
         normal(` mayor de edad, de nacionalidad ${data.repNationality}, titular de la cédula de identidad`),
         bold(` ${cedPrefix(data.repCedula)},`),
@@ -151,7 +165,7 @@ function drawDocumentForEmployee(
         normal(" quien en lo adelante se denominará TRABAJADOR, se celebra el presente acuerdo sometido a las siguientes estipulaciones:"),
     ];
 
-    y = renderRichParagraph(doc, openingSegments, xL, y, contentW, BODY_FONT, LINE_H, color);
+    y = renderRichParagraph(doc, openingSegments, xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += CLAUSE_GAP;
 
     // ── Helper: check page break before clause ───────────────────
@@ -167,8 +181,8 @@ function drawDocumentForEmployee(
     checkBreak(20);
     y = renderRichParagraph(doc, [
         bold("PRIMERA:"),
-        normal(" El objeto del acuerdo es implementar un beneficio social de carácter no remunerativo, conforme a lo establecido en el artículo 105, de la Ley Orgánica del Trabajo, de los Trabajadores, complementario."),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+        normal(` El objeto del acuerdo es implementar un ${beneficio.toLowerCase()} de carácter no remunerativo, conforme a lo establecido en el artículo 105 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras.`),
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += CLAUSE_GAP;
 
     // ── SEGUNDA ──────────────────────────────────────────────────
@@ -178,7 +192,7 @@ function drawDocumentForEmployee(
         normal(" El monto del presente bono será de"),
         bold(` USD ${formatN(data.montoUsd)}$,`),
         normal(" el cual será cancelado mensualmente, en base a la tasa del tipo de cambio oficial publicada por el BCV, vigente para el día del pago."),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += CLAUSE_GAP;
 
     // ── TERCERA ──────────────────────────────────────────────────
@@ -186,7 +200,7 @@ function drawDocumentForEmployee(
     y = renderRichParagraph(doc, [
         bold("TERCERA:"),
         normal(" El mencionado beneficio no reviste carácter salarial y constituye una liberación de la Empresa, por lo que podrá ser modificado o eliminado cuando ésta lo disponga."),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += CLAUSE_GAP;
 
     // ── CUARTA ───────────────────────────────────────────────────
@@ -194,7 +208,7 @@ function drawDocumentForEmployee(
     y = renderRichParagraph(doc, [
         bold("CUARTA:"),
         normal(" EL (LA) TRABAJADOR (A) será desincorporado del presente beneficio, siempre y cuando se presenten los siguientes supuestos:"),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += 2;
 
     const subItems = [
@@ -203,7 +217,7 @@ function drawDocumentForEmployee(
         "c. Por cualquier causa que la ENTIDAD DE TRABAJO así lo crea conveniente a sus fines, ya que el presente servicio, no es de ningún modo un beneficio adquirido.",
     ];
     for (const item of subItems) {
-        y = renderRichParagraph(doc, [normal(item)], xL + INDENT_SUB, y, contentW - INDENT_SUB, BODY_FONT, LINE_H, color);
+        y = renderRichParagraph(doc, [normal(item)], xL + INDENT_SUB, y, contentW - INDENT_SUB, BODY_FONT, LINE_H, color, true);
         y += 1.5;
     }
     y += CLAUSE_GAP - 1.5;
@@ -221,7 +235,7 @@ function drawDocumentForEmployee(
         normal(" acepta que la"),
         bold(" ENTIDAD DE TRABAJO"),
         normal(" podrá en cualquier momento decidir eliminarlo o realizar cambios para el otorgamiento de dicho beneficio, tales como, formas de hacerlo efectivo, cuantía, frecuencia, cambio de proveedor, entre otros."),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += CLAUSE_GAP;
 
     // ── SEXTA ────────────────────────────────────────────────────
@@ -229,7 +243,7 @@ function drawDocumentForEmployee(
     y = renderRichParagraph(doc, [
         bold("SEXTA:"),
         normal(` Se hace un (1) ejemplar de un mismo tenor y a un solo efecto, en la Ciudad de ${data.ciudadFirma} al ${fmtDay(data.fechaDocumento)}.`),
-    ], xL, y, contentW, BODY_FONT, LINE_H, color);
+    ], xL, y, contentW, BODY_FONT, LINE_H, color, true);
     y += 12;
 
     // ── Signatures ───────────────────────────────────────────────

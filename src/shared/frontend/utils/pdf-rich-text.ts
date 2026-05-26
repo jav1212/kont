@@ -20,6 +20,7 @@ export function renderRichParagraph(
     fontSize: number,
     lineHeight: number,
     color: RGB,
+    justify?: boolean,
 ): number {
     doc.setFontSize(fontSize);
     doc.setTextColor(color[0], color[1], color[2]);
@@ -50,7 +51,18 @@ export function renderRichParagraph(
     let lineW = 0;
     let curY = y;
 
-    const flushLine = () => {
+    const flushLine = (lastLine: boolean) => {
+        if (lineWords.length === 0) return;
+
+        const shouldJustify = justify && !lastLine && lineWords.length > 1;
+        let gapW = spaceW;
+
+        if (shouldJustify) {
+            const totalWordW = lineWords.reduce((s, tw) => s + measure(tw.word, tw.bold), 0);
+            const candidate = (maxWidth - totalWordW) / (lineWords.length - 1);
+            if (candidate <= spaceW * 3) gapW = candidate;
+        }
+
         let cx = x;
         for (let i = 0; i < lineWords.length; i++) {
             const tw = lineWords[i]!;
@@ -59,7 +71,7 @@ export function renderRichParagraph(
             doc.setTextColor(color[0], color[1], color[2]);
             doc.text(tw.word, cx, curY);
             cx += measure(tw.word, tw.bold);
-            if (i < lineWords.length - 1) cx += spaceW;
+            if (i < lineWords.length - 1) cx += gapW;
         }
         curY += lineHeight;
         lineWords = [];
@@ -71,7 +83,7 @@ export function renderRichParagraph(
         const needed = lineWords.length === 0 ? ww : spaceW + ww;
 
         if (lineW + needed > maxWidth && lineWords.length > 0) {
-            flushLine();
+            flushLine(false);
         }
 
         if (lineWords.length > 0) lineW += spaceW;
@@ -79,7 +91,7 @@ export function renderRichParagraph(
         lineW += measure(tw.word, tw.bold);
     }
 
-    if (lineWords.length > 0) flushLine();
+    if (lineWords.length > 0) flushLine(true);
 
     return curY;
 }
