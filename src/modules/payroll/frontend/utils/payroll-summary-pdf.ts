@@ -15,12 +15,14 @@ import {
     drawHeaderRow,
     drawRow,
     fill,
+    hline,
     rect,
     formatN,
     formatVES,
     loadKontaLogo,
     renderLabel,
     renderMono,
+    renderText,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
 
@@ -215,6 +217,56 @@ export async function generatePayrollSummaryPdf(
     colsWithX.slice(4).forEach((c) => {
         const value = totalsByKey[c.key as string];
         renderMono(doc, fmtCell(c, value), c.x + c.width - 1, y + 5.6, c.bold ? 9 : 8.5, true, COLORS.ink, "right");
+    });
+
+    y += 8 + 8;
+
+    // ── Firma de recibo ─────────────────────────────────────────────────────────
+    // Una tarjeta por empleado con su neto, para que el trabajador deje constancia
+    // de la recepción del pago. 4 tarjetas por fila (A4 horizontal).
+    if (y + 8 > pageBounds(doc).contentBot) {
+        doc.addPage();
+        drawHeader(doc, headerOpts);
+        y = PAGE.contentTop as number;
+    }
+    renderLabel(doc, "Firma de recibo", ML, y, "left", COLORS.inkMed, 8);
+    y += 6;
+
+    const SIG_COLS = 4;
+    const SIG_GAP  = 4;
+    const SIG_W    = (W - SIG_GAP * (SIG_COLS - 1)) / SIG_COLS;
+    const SIG_H    = 40;
+    const PD       = 3;
+    const CB       = 2.5;
+    const SIG_LINE_Y_OFFSET  = 6;
+    const SIG_LABEL_Y_OFFSET = 1.5;
+
+    rows.forEach((row, i) => {
+        const col = i % SIG_COLS;
+        const sx  = ML + col * (SIG_W + SIG_GAP);
+
+        if (col === 0 && i > 0 && y + SIG_H > pageBounds(doc).contentBot) {
+            doc.addPage();
+            drawHeader(doc, headerOpts);
+            y = PAGE.contentTop as number;
+        }
+
+        fill(doc, sx, y, SIG_W, SIG_H, COLORS.white);
+        rect(doc, sx, y, SIG_W, SIG_H, COLORS.border, 0.25);
+        fill(doc, sx, y, SIG_W, 1, COLORS.orange);
+
+        renderMono(doc, formatVES(row.net), sx + SIG_W - PD, y + 6, 9, true, COLORS.ink, "right");
+        renderText(doc, row.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
+        renderMono(doc, row.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
+        renderMono(doc, `$ ${formatN(row.netUSD)}`, sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
+
+        rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);
+        renderText(doc, "Recibido (efectivo / transferencia)", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
+
+        hline(doc, sx + PD, y + SIG_H - SIG_LINE_Y_OFFSET, SIG_W - PD * 2, COLORS.borderStr, 0.3);
+        renderLabel(doc, "Firma", sx + SIG_W / 2, y + SIG_H - SIG_LABEL_Y_OFFSET, "center", COLORS.muted, 7);
+
+        if (col === SIG_COLS - 1 || i === rows.length - 1) y += SIG_H + 5;
     });
 
     drawFooter(doc, kontaLogo);
