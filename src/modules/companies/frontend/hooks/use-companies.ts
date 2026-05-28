@@ -111,14 +111,6 @@ function parseJsonSafe(text: string, fallbackError: string): ApiJsonResult {
     catch { return { error: fallbackError }; }
 }
 
-// Uses raw fetch (not tenant-aware) — company CRUD routes rely on auth session only.
-async function apiFetch(path: string, options?: RequestInit): Promise<{ ok: boolean; json: ApiJsonResult }> {
-    const res  = await fetch(path, options);
-    const text = await res.text();
-    const json = parseJsonSafe(text, `Error del servidor (${res.status})`);
-    return { ok: res.ok, json };
-}
-
 const STORAGE_KEY = "kont-company-id";
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -252,7 +244,11 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
         logoUrl?: string;
     }): Promise<string | null> => {
         if (!user?.id) return "No autenticado";
-        const { ok, json } = await apiFetch("/api/companies/save", {
+        // Tenant-aware: envía X-Tenant-Id para que la empresa se cree en el
+        // mismo tenant que la lista lee (clave al actuar sobre otro tenant o
+        // siendo invitado sin tenant propio). El backend ignora body.ownerId y
+        // usa effectiveOwnerId derivado del header.
+        const { ok, json } = await tenantFetchJson("/api/companies/save", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ ...data, ownerId: user.id }),
@@ -263,7 +259,7 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
     }, [user, reload]);
 
     const update = useCallback(async (id: string, data: CompanyUpdateData): Promise<string | null> => {
-        const { ok, json } = await apiFetch("/api/companies/update", {
+        const { ok, json } = await tenantFetchJson("/api/companies/update", {
             method:  "PATCH",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ id, ...data }),
@@ -274,7 +270,7 @@ export function useCompanyState(activeTenantId?: string | null, urlCompanyId?: s
     }, [reload]);
 
     const remove = useCallback(async (id: string): Promise<string | null> => {
-        const { ok, json } = await apiFetch(`/api/companies/delete?id=${id}`, { method: "DELETE" });
+        const { ok, json } = await tenantFetchJson(`/api/companies/delete?id=${id}`, { method: "DELETE" });
         if (!ok) return json.error ?? "Error al eliminar";
         await reload();
         return null;
