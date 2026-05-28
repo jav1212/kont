@@ -1,10 +1,14 @@
 "use client";
 
-// CompanyEditModal — formulario de edición de empresa en modal centrado.
-// Reemplaza la edición inline dentro de la fila de la tabla, que apretaba
-// 6 inputs en una fila y rompía la jerarquía visual. Aquí cada campo tiene
-// su propio espacio y agrupamos por contexto: Identidad, Logo, Contacto,
-// Operación.
+// CompanyEditModal — formulario de empresa en modal centrado, usado tanto
+// para CREAR como para EDITAR. Reemplaza la edición/alta inline dentro de la
+// fila de la tabla, que apretaba los inputs en una fila y rompía la jerarquía
+// visual. Aquí cada campo tiene su propio espacio y agrupamos por contexto:
+// Identidad, Logo, Contacto, Operación.
+//
+// En modo creación el RIF es un input editable (es la PK de la empresa) y se
+// guarda con `onCreate`; en modo edición el RIF es de solo lectura y se guarda
+// con `onSave` + `onApplySector`.
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -47,28 +51,45 @@ const FIELD_LABEL =
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
+export interface CompanyCreateData {
+    id:            string;
+    name:          string;
+    rif?:          string;
+    taxpayerType?: TaxpayerType;
+    phone?:        string;
+    contactEmail?: string;
+    address?:      string;
+    sector?:       BusinessSector;
+    logoUrl?:      string;
+}
+
 interface Props {
+    /** Empresa a editar. `null` → no se abre en modo edición. */
     company:    Company | null;
+    /** `true` → abre el modal en modo creación (RIF editable). */
+    creating?:  boolean;
     userId:     string | null;
     onClose:    () => void;
     onSave:     (id: string, patch: CompanyUpdateData) => Promise<string | null>;
+    onCreate:   (data: CompanyCreateData) => Promise<string | null>;
     onApplySector: (id: string, sector: BusinessSector) => Promise<string | null>;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function CompanyEditModal({ company, userId, onClose, onSave, onApplySector }: Props) {
-    const open = company !== null;
+export function CompanyEditModal({ company, creating = false, userId, onClose, onSave, onCreate, onApplySector }: Props) {
+    const open = company !== null || creating;
 
     return (
         <AnimatePresence>
-            {open && company && (
+            {open && (
                 <CompanyEditModalBody
-                    key={company.id}
+                    key={company?.id ?? "__new__"}
                     company={company}
                     userId={userId}
                     onClose={onClose}
                     onSave={onSave}
+                    onCreate={onCreate}
                     onApplySector={onApplySector}
                 />
             )}
@@ -78,21 +99,28 @@ export function CompanyEditModal({ company, userId, onClose, onSave, onApplySect
 
 // ── Inner body (re-mounts on open so state initializes from current company) ──
 
-function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector }: Required<Omit<Props, "company">> & { company: Company }) {
-    // Form state — initialized from the company on mount
-    const [name, setName]             = useState(company.name);
-    const [phone, setPhone]           = useState(company.phone ?? "");
-    const [address, setAddress]       = useState(company.address ?? "");
-    const [contactEmail, setContactEmail] = useState(company.contactEmail ?? "");
-    const [logoUrl, setLogoUrl]       = useState<string | undefined>(company.logoUrl);
-    const [sector, setSector]         = useState<BusinessSector | undefined>(company.sector);
-    const [taxpayerType, setTaxpayerType] = useState<TaxpayerType>(company.taxpayerType ?? "ordinario");
+function CompanyEditModalBody({ company, userId, onClose, onSave, onCreate, onApplySector }: Omit<Props, "company" | "creating"> & { company: Company | null }) {
+    const isCreate = company === null;
+
+    // Form state — initialized from the company on mount (blank in create mode)
+    const [rif, setRif]               = useState(company?.id ?? "");
+    const [name, setName]             = useState(company?.name ?? "");
+    const [phone, setPhone]           = useState(company?.phone ?? "");
+    const [address, setAddress]       = useState(company?.address ?? "");
+    const [contactEmail, setContactEmail] = useState(company?.contactEmail ?? "");
+    const [logoUrl, setLogoUrl]       = useState<string | undefined>(company?.logoUrl);
+    const [sector, setSector]         = useState<BusinessSector | undefined>(company?.sector);
+    const [taxpayerType, setTaxpayerType] = useState<TaxpayerType>(company?.taxpayerType ?? "ordinario");
 
     const [logoUploading, setLogoUploading] = useState(false);
     const [logoUploadOk, setLogoUploadOk]   = useState(false);
     const [saving, setSaving]               = useState(false);
 
     const logoInputRef = useRef<HTMLInputElement>(null);
+
+    // Effective company id used for storage paths and persistence. In create
+    // mode it's the (normalized) RIF the user is typing; in edit mode it's fixed.
+    const effectiveId = isCreate ? rif.trim().toUpperCase() : company.id;
 
     // Esc to close, Cmd/Ctrl+Enter to save
     useEffect(() => {
@@ -114,6 +142,11 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
     async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file || !userId) return;
+        if (isCreate && !effectiveId) {
+            notify.error("Primero ingresa el RIF para poder subir el logo.");
+            if (logoInputRef.current) logoInputRef.current.value = "";
+            return;
+        }
         const MAX = 2 * 1024 * 1024;
         if (file.size > MAX) {
             notify.error("El logo debe ser menor a 2 MB.");
@@ -123,7 +156,7 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
         setLogoUploading(true);
         setLogoUploadOk(false);
         const ext = file.name.split(".").pop();
-        const path = `${userId}/${company.id}/logo.${ext}`;
+        const path = `${userId}/${effectiveId}/logo.${ext}`;
         const { error } = await getSupabaseBrowser().storage
             .from("logos")
             .upload(path, file, { upsert: true });
@@ -147,11 +180,41 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
 
     async function handleSave() {
         if (saving || logoUploading) return;
+        if (isCreate && !effectiveId) {
+            notify.error("El RIF es obligatorio.");
+            return;
+        }
         if (!name.trim()) {
-            notify.error("El nombre es obligatorio.");
+            notify.error("La razón social es obligatoria.");
             return;
         }
         setSaving(true);
+
+        // ── Create ──────────────────────────────────────────────────────────
+        if (isCreate) {
+            const err = await onCreate({
+                id:           effectiveId,
+                name:         name.trim(),
+                rif:          effectiveId,
+                taxpayerType,
+                phone:        phone.trim() || undefined,
+                contactEmail: contactEmail.trim() || undefined,
+                address:      address.trim() || undefined,
+                sector,
+                logoUrl,
+            });
+            if (err) {
+                setSaving(false);
+                notify.error(err);
+                return;
+            }
+            setSaving(false);
+            notify.success("Empresa creada.");
+            onClose();
+            return;
+        }
+
+        // ── Edit ────────────────────────────────────────────────────────────
         const sectorChanged = sector !== company.sector;
         const err = await onSave(company.id, {
             name:         name.trim(),
@@ -207,10 +270,10 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
                         </div>
                         <div className="min-w-0">
                             <h2 id="company-edit-title" className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                Editar empresa
+                                {isCreate ? "Nueva empresa" : "Editar empresa"}
                             </h2>
                             <p className="font-mono text-[11px] text-[var(--text-tertiary)] tabular-nums truncate">
-                                {company.id}
+                                {isCreate ? (effectiveId || "Completa los datos para registrarla") : company.id}
                             </p>
                         </div>
                     </div>
@@ -230,15 +293,31 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
 
                         <div className="grid grid-cols-3 gap-3">
                             <div className="col-span-1">
-                                <label className={FIELD_LABEL}>RIF</label>
-                                <div className="h-10 px-3 rounded-lg border border-border-light bg-surface-2 flex items-center font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
-                                    {company.id}
-                                </div>
+                                <label className={FIELD_LABEL}>
+                                    RIF{isCreate && <span className="text-error/80 ml-1" aria-hidden="true">*</span>}
+                                </label>
+                                {isCreate ? (
+                                    <BaseInput.Field
+                                        autoFocus
+                                        className="w-full"
+                                        value={rif}
+                                        onValueChange={setRif}
+                                        placeholder="J-12345678-9"
+                                        inputClassName="uppercase tracking-wide"
+                                        onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+                                    />
+                                ) : (
+                                    <div className="h-10 px-3 rounded-lg border border-border-light bg-surface-2 flex items-center font-mono text-[13px] text-[var(--text-secondary)] tabular-nums">
+                                        {company.id}
+                                    </div>
+                                )}
                             </div>
                             <div className="col-span-2">
-                                <label className={FIELD_LABEL}>Razón social</label>
+                                <label className={FIELD_LABEL}>
+                                    Razón social{isCreate && <span className="text-error/80 ml-1" aria-hidden="true">*</span>}
+                                </label>
                                 <BaseInput.Field
-                                    autoFocus
+                                    autoFocus={!isCreate}
                                     className="w-full"
                                     value={name}
                                     onValueChange={setName}
@@ -463,7 +542,7 @@ function CompanyEditModalBody({ company, userId, onClose, onSave, onApplySector 
                             isDisabled={logoUploading}
                             leftIcon={<Check size={14} strokeWidth={2.2} />}
                         >
-                            Guardar cambios
+                            {isCreate ? "Crear empresa" : "Guardar cambios"}
                         </BaseButton.Root>
                     </div>
                 </div>

@@ -6,8 +6,8 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
-import type { Company, BusinessSector, TaxpayerType } from "@/src/modules/companies/frontend/hooks/use-companies";
-import { SECTOR_LABELS, BUSINESS_SECTORS, TAXPAYER_TYPES, TAXPAYER_TYPE_LABELS } from "@/src/modules/companies/backend/domain/company";
+import type { Company, TaxpayerType } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { SECTOR_LABELS } from "@/src/modules/companies/backend/domain/company";
 import { companiesToCsv, downloadCsv, parseCompaniesCsv } from "@/src/modules/companies/frontend/utils/company-csv";
 import { useCapacity } from "@/src/modules/billing/frontend/hooks/use-capacity";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
@@ -32,23 +32,11 @@ import {
     CircleDot,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { InlineSelect } from "@/src/shared/frontend/components/inline-select";
-import type { InlineSelectOption } from "@/src/shared/frontend/components/inline-select";
 import { CompanyEditModal } from "@/src/modules/companies/frontend/components/company-edit-modal";
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-
-const TAXPAYER_OPTIONS: InlineSelectOption<TaxpayerType>[] = TAXPAYER_TYPES.map((t) => ({
-    value: t,
-    label: TAXPAYER_TYPE_LABELS[t],
-}));
-
-const SECTOR_OPTIONS: InlineSelectOption<BusinessSector>[] = BUSINESS_SECTORS.map((s) => ({
-    value: s,
-    label: SECTOR_LABELS[s],
-}));
 
 type FilterId = "todas" | "especial" | "ordinario" | "sin_sector" | "incompletas";
 
@@ -57,7 +45,6 @@ type FilterId = "todas" | "especial" | "ordinario" | "sin_sector" | "incompletas
 // ============================================================================
 
 const Spinner = () => <Loader2 className="animate-spin text-[var(--text-tertiary)]" size={13} />;
-const IconSave = () => <Check size={14} />;
 const IconCancel = () => <X size={14} />;
 const IconEdit = () => <Edit3 size={14} />;
 const IconTrash = () => <Trash2 size={14} />;
@@ -186,17 +173,11 @@ export default function CompaniesPage() {
     const { user } = useAuth();
     const atCompanyLimit = !canAddCompany();
 
-    // ── Edit state ────────────────────────────────────────────────────────
-    // The whole edit form lives in <CompanyEditModal/>; here we only track
-    // which company is currently being edited.
+    // ── Create / edit state ─────────────────────────────────────────────────
+    // Both alta and edición share <CompanyEditModal/>. Here we only track which
+    // company is being edited, or whether the modal is open in create mode.
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-
-    // ── New row state ──────────────────────────────────────────────────────
-    const [showNew, setShowNew] = useState(false);
-    const [newRif, setNewRif] = useState("");
-    const [newName, setNewName] = useState("");
-    const [newTaxpayerType, setNewTaxpayerType] = useState<TaxpayerType>("ordinario");
-    const [newSaving, setNewSaving] = useState(false);
+    const [creating, setCreating] = useState(false);
 
     // ── Delete confirm state ───────────────────────────────────────────────
     const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -252,28 +233,14 @@ export default function CompaniesPage() {
         });
     }, [companies, search, filter]);
 
-    // ── Edit actions ───────────────────────────────────────────────────────
-    // `update` and `applySector` come from the company hook and are passed
-    // straight to the modal; nothing to wrap here.
+    // ── Create / edit actions ───────────────────────────────────────────────
+    // `save`, `update` and `applySector` come from the company hook and are
+    // passed straight to the modal; nothing to wrap here. Opening the modal is
+    // just a state flip.
 
-    // ── New actions ────────────────────────────────────────────────────────
-
-    const saveNew = useCallback(async () => {
-        if (!newRif.trim())  { notify.error("El RIF es obligatorio"); return; }
-        if (!newName.trim()) { notify.error("El nombre es obligatorio"); return; }
-        setNewSaving(true);
-        const idRif = newRif.trim().toUpperCase();
-        const err = await save({ id: idRif, name: newName.trim(), rif: idRif, taxpayerType: newTaxpayerType });
-        setNewSaving(false);
-        if (err) notify.error(err);
-        else     { setShowNew(false); setNewRif(""); setNewName(""); setNewTaxpayerType("ordinario"); }
-    }, [newRif, newName, newTaxpayerType, save]);
-
-    const cancelNew = useCallback(() => {
-        setShowNew(false);
-        setNewRif("");
-        setNewName("");
-        setNewTaxpayerType("ordinario");
+    const closeModal = useCallback(() => {
+        setEditingCompany(null);
+        setCreating(false);
     }, []);
 
     // ── Delete actions ─────────────────────────────────────────────────────
@@ -441,8 +408,8 @@ export default function CompaniesPage() {
                     <BaseButton.Root
                         variant="primary"
                         size="sm"
-                        onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); }}
-                        isDisabled={showNew || atCompanyLimit}
+                        onClick={() => setCreating(true)}
+                        isDisabled={creating || atCompanyLimit}
                         title={atCompanyLimit ? "Límite de empresas alcanzado" : undefined}
                         leftIcon={<IconPlus />}
                     >
@@ -535,75 +502,8 @@ export default function CompaniesPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border-light/40">
 
-                                        {showNew && (
-                                            <tr className="bg-primary-500/[0.04] border-l-2 border-l-primary-500/40">
-                                                {/* RIF */}
-                                                <td className="px-5 py-4 w-40">
-                                                    <BaseInput.Field
-                                                        autoFocus
-                                                        className="w-full"
-                                                        placeholder="J-12345678-9"
-                                                        value={newRif}
-                                                        onValueChange={setNewRif}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter") saveNew();
-                                                            if (e.key === "Escape") cancelNew();
-                                                        }}
-                                                    />
-                                                </td>
-                                                {/* Nombre */}
-                                                <td className="px-5 py-4">
-                                                    <BaseInput.Field
-                                                        className="w-full"
-                                                        placeholder="Razón social"
-                                                        value={newName}
-                                                        onValueChange={setNewName}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter") saveNew();
-                                                            if (e.key === "Escape") cancelNew();
-                                                        }}
-                                                    />
-                                                </td>
-                                                <td className="px-5 py-4 hidden sm:table-cell">
-                                                    <span className="text-[11px] text-[var(--text-disabled)]">—</span>
-                                                </td>
-                                                <td className="px-5 py-4 hidden sm:table-cell">
-                                                    <span className="text-[11px] text-[var(--text-disabled)]">—</span>
-                                                </td>
-                                                <td className="px-5 py-4 hidden sm:table-cell">
-                                                    <span className="text-[11px] text-[var(--text-disabled)]">—</span>
-                                                </td>
-                                                <td className="px-5 py-4 hidden sm:table-cell">
-                                                    <InlineSelect
-                                                        value={newTaxpayerType}
-                                                        onChange={(v) => setNewTaxpayerType(v)}
-                                                        options={TAXPAYER_OPTIONS}
-                                                        ariaLabel="Tipo de contribuyente"
-                                                        size="sm"
-                                                    />
-                                                </td>
-                                                <td className="px-5 py-4 hidden sm:table-cell">
-                                                    <span className="text-[11px] text-[var(--text-disabled)]">—</span>
-                                                </td>
-                                                <td className="px-5 py-4 text-right">
-                                                    {newSaving ? (
-                                                        <div className="flex justify-end"><Spinner /></div>
-                                                    ) : (
-                                                        <div className="flex items-center justify-end gap-1">
-                                                            <BaseButton.Icon variant="ghost" size="sm" onClick={saveNew} className="text-[var(--text-success)] hover:bg-[var(--badge-success-bg)]">
-                                                                <IconSave />
-                                                            </BaseButton.Icon>
-                                                            <BaseButton.Icon variant="ghost" size="sm" onClick={cancelNew} className="text-[var(--text-tertiary)]">
-                                                                <IconCancel />
-                                                            </BaseButton.Icon>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )}
-
                                         {/* Existing rows */}
-                                        {filtered.length === 0 && !showNew ? (
+                                        {filtered.length === 0 ? (
                                             <tr>
                                                 <td colSpan={8} className="px-5 py-20">
                                                     <div className="flex flex-col items-center justify-center text-center gap-4 max-w-sm mx-auto">
@@ -630,7 +530,7 @@ export default function CompaniesPage() {
                                                             <BaseButton.Root
                                                                 variant="primary"
                                                                 size="sm"
-                                                                onClick={() => { setShowNew(true); setNewRif(""); setNewName(""); }}
+                                                                onClick={() => setCreating(true)}
                                                                 isDisabled={atCompanyLimit}
                                                                 leftIcon={<IconPlus />}
                                                             >
@@ -838,12 +738,14 @@ export default function CompaniesPage() {
 
             </div>
 
-            {/* ── Edit company modal ──────────────────────────────────────────── */}
+            {/* ── Create / edit company modal ─────────────────────────────────── */}
             <CompanyEditModal
                 company={editingCompany}
+                creating={creating}
                 userId={user?.id ?? null}
-                onClose={() => setEditingCompany(null)}
+                onClose={closeModal}
                 onSave={update}
+                onCreate={save}
                 onApplySector={applySector}
             />
 
