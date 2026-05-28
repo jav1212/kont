@@ -9,6 +9,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
+    drawCompanyLogo,
     fill,
     hline,
     rect,
@@ -125,7 +126,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     let y = 32;
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     // ── Intro paragraph ───────────────────────────────────────────────────────

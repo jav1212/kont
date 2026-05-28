@@ -8,6 +8,7 @@ import {
     COLORS,
     drawHeader,
     drawFooter,
+    drawCompanyLogo,
     fill,
     hline,
     rect,
@@ -151,7 +152,7 @@ export async function generateSocialBenefitsPdf(data: SocialBenefitsPdfData): Pr
     let y = 32;
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,
@@ -254,7 +255,7 @@ export async function generateInterestsAndAdvancePdf(data: SocialBenefitsPdfData
     let y = 32;
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,

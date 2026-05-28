@@ -9,6 +9,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
+    drawCompanyLogo,
     fill,
     hline,
     rect,
@@ -108,7 +109,7 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     let y = 32;
 
     if (_logoBase64) {
-        try { doc.addImage(_logoBase64, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, _logoBase64, ML, y, 18, 7); y += 9;
     }
 
     const dailySalary = emp.lines.length > 0 && emp.lines[0].salary && emp.lines[0].salary > 0

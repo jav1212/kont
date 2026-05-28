@@ -20,6 +20,7 @@ import {
     drawFooter,
     drawHeaderRow,
     drawRow,
+    drawCompanyLogo,
     fill,
     hline,
     rect,
@@ -152,7 +153,7 @@ async function generateGeneralPdf(
     let y = repaintPageHeader(doc, pageHeader);
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     y = drawParamsCard(doc, ML, W, y, opts.bcvRate, lines, active.length);
@@ -309,11 +310,7 @@ function drawReceiptInRegion(
 
     // Logo opcional
     if (companyLogo) {
-        try {
-            const logoW = isCompact ? 16 : 18;
-            const logoH = isCompact ? 6  : 7;
-            doc.addImage(companyLogo, "JPEG", xL, y, logoW, logoH, undefined, "FAST");
-        } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, xL, y, isCompact ? 16 : 18, isCompact ? 6 : 7);
         y += isCompact ? 7 : 9;
     }
 

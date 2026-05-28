@@ -7,6 +7,7 @@ import {
     COLORS,
     drawHeader,
     drawFooter,
+    drawCompanyLogo,
     fill,
     hline,
     rect,
@@ -147,7 +148,7 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
     let y = 32;
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,
@@ -205,7 +206,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
     let y = 32;
 
     if (companyLogo) {
-        try { doc.addImage(companyLogo, "JPEG", ML, y, 18, 7, undefined, "FAST"); y += 9; } catch { /* */ }
+        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,

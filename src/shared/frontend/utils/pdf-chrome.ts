@@ -219,6 +219,36 @@ export async function loadKontaLogo(): Promise<string | null> {
     }
 }
 
+// ── Company logo (aspect-ratio preserving) ──────────────────────────────────
+//
+// The company logo is user-uploaded and usually square. Drawing it with a fixed
+// width AND height (e.g. 18×7mm) stretches a square logo into a wide box. This
+// helper fits the logo inside a maxW×maxH box anchored top-left at (x, y) while
+// preserving its natural aspect ratio: the height never exceeds maxH (so the
+// vertical layout budget reserved by callers stays correct) and the width grows
+// only up to maxW. A square logo comes out square.
+
+export function drawCompanyLogo(
+    doc: Doc,
+    logoBase64: string,
+    x: number,
+    y: number,
+    maxW: number,
+    maxH: number,
+): void {
+    try {
+        const props = doc.getImageProperties(logoBase64);
+        const ratio = props.width / props.height;   // natural aspect ratio
+        let h = maxH;
+        let w = maxH * ratio;
+        if (w > maxW) { w = maxW; h = maxW / ratio; }
+        const fmt = props.fileType || "PNG";          // real format (PNG/JPEG/…)
+        doc.addImage(logoBase64, fmt, x, y, w, h, undefined, "FAST");
+    } catch {
+        // silent — the receipt still renders without the logo
+    }
+}
+
 // ── Header ────────────────────────────────────────────────────────────────────
 //
 // Top 24mm of every page. Returns Y where caller can start drawing content.
