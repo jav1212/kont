@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { FileDown, Users, Building2, UserCog, Briefcase, Settings2 } from "lucide-react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
@@ -24,6 +24,56 @@ const NATIONALITY_ITEMS: SelectItemData[] = [
 function firstOfMonth(): string {
     const today = getTodayIsoDate();
     return today.slice(0, 8) + "01";
+}
+
+// ── draft persistence (per company) ───────────────────────────────────────────
+
+const DRAFT_KEY_PREFIX = "kont-contract-draft";
+const draftKey = (companyId: string) => `${DRAFT_KEY_PREFIX}:${companyId}`;
+
+interface ContractDraft {
+    companyCity: string;
+    companyRegistro: string;
+    registroNro: string;
+    registroTomo: string;
+    registroFecha: string;
+    companyAddress: string;
+    repName: string;
+    repCedula: string;
+    repCargo: string;
+    repNationality: string;
+    empNationality: string;
+    beneficioNombre: string;
+    montoUsd: string;
+    ciudadFirma: string;
+    showLogo: boolean;
+    lawyerName: string;
+    lawyerInpre: string;
+    batchMode: boolean;
+}
+
+function loadDraft(companyId: string): ContractDraft | null {
+    if (typeof window === "undefined" || !companyId) return null;
+    try {
+        const raw = localStorage.getItem(draftKey(companyId));
+        return raw ? (JSON.parse(raw) as ContractDraft) : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveDraft(companyId: string, draft: ContractDraft): void {
+    if (typeof window === "undefined" || !companyId) return;
+    try {
+        localStorage.setItem(draftKey(companyId), JSON.stringify(draft));
+    } catch {
+        /* ignore quota / serialization errors */
+    }
+}
+
+function clearDraft(companyId: string): void {
+    if (typeof window === "undefined" || !companyId) return;
+    localStorage.removeItem(draftKey(companyId));
 }
 
 // ── SectionCard ──────────────────────────────────────────────────────────────
@@ -99,6 +149,94 @@ export default function ContractsPage() {
 
     const [generating, setGenerating] = useState(false);
     const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+    const [remember, setRemember] = useState(false);
+    const hydratedRef = useRef(false);
+
+    // Load saved draft (or reset to defaults) whenever the company changes.
+    useEffect(() => {
+        hydratedRef.current = false;
+        const draft = companyId ? loadDraft(companyId) : null;
+
+        if (draft) {
+            setCompanyCity(draft.companyCity ?? "");
+            setCompanyRegistro(draft.companyRegistro ?? "");
+            setRegistroNro(draft.registroNro ?? "");
+            setRegistroTomo(draft.registroTomo ?? "");
+            setRegistroFecha(draft.registroFecha ?? "");
+            setCompanyAddress(draft.companyAddress ?? "");
+            setRepName(draft.repName ?? "");
+            setRepCedula(draft.repCedula ?? "");
+            setRepCargo(draft.repCargo ?? "Director");
+            setRepNationality(new Set([draft.repNationality || "venezolano(a)"]));
+            setEmpNationality(new Set([draft.empNationality || "venezolano(a)"]));
+            setBeneficioNombre(draft.beneficioNombre ?? "Beneficio socio económico complementario");
+            setMontoUsd(draft.montoUsd ?? "");
+            setCiudadFirma(draft.ciudadFirma ?? "");
+            setShowLogo(draft.showLogo ?? true);
+            setLawyerName(draft.lawyerName ?? "");
+            setLawyerInpre(draft.lawyerInpre ?? "");
+            setBatchMode(draft.batchMode ?? false);
+            setRemember(true);
+        } else {
+            setCompanyCity("");
+            setCompanyRegistro("");
+            setRegistroNro("");
+            setRegistroTomo("");
+            setRegistroFecha("");
+            setCompanyAddress("");
+            setRepName("");
+            setRepCedula("");
+            setRepCargo("Director");
+            setRepNationality(new Set(["venezolano(a)"]));
+            setEmpNationality(new Set(["venezolano(a)"]));
+            setBeneficioNombre("Beneficio socio económico complementario");
+            setMontoUsd("");
+            setCiudadFirma("");
+            setShowLogo(true);
+            setLawyerName("");
+            setLawyerInpre("");
+            setBatchMode(false);
+            setRemember(false);
+        }
+
+        hydratedRef.current = true;
+    }, [companyId]);
+
+    // Persist (or clear) the draft when the toggle or any remembered field changes.
+    useEffect(() => {
+        if (!hydratedRef.current || !companyId) return;
+
+        if (remember) {
+            saveDraft(companyId, {
+                companyCity,
+                companyRegistro,
+                registroNro,
+                registroTomo,
+                registroFecha,
+                companyAddress,
+                repName,
+                repCedula,
+                repCargo,
+                repNationality: ([...repNationality][0] as string) ?? "venezolano(a)",
+                empNationality: ([...empNationality][0] as string) ?? "venezolano(a)",
+                beneficioNombre,
+                montoUsd,
+                ciudadFirma,
+                showLogo,
+                lawyerName,
+                lawyerInpre,
+                batchMode,
+            });
+        } else {
+            clearDraft(companyId);
+        }
+    }, [
+        remember, companyId,
+        companyCity, companyRegistro, registroNro, registroTomo, registroFecha, companyAddress,
+        repName, repCedula, repCargo, repNationality, empNationality,
+        beneficioNombre, montoUsd, ciudadFirma, showLogo, lawyerName, lawyerInpre, batchMode,
+    ]);
 
     const employeeItems: SelectItemData[] = useMemo(
         () => employees
@@ -407,6 +545,13 @@ export default function ContractsPage() {
                             title="Opciones"
                             description="Personalización del documento generado."
                         >
+                            <BaseSwitch.Field
+                                isSelected={remember}
+                                onValueChange={setRemember}
+                                label="Recordar mis datos"
+                                description="Guarda estos datos para este RIF en este navegador."
+                            />
+
                             <BaseSwitch.Field
                                 isSelected={showLogo}
                                 onValueChange={setShowLogo}
