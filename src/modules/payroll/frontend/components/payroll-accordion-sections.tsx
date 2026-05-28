@@ -146,7 +146,7 @@ export const DeductionsSection = ({
                 monthlyBase={parseFloat(monthlySalary) || 0}
                 integralBase={integralBase}
                 cappedWeeklyBase={cappedWeeklyBase ?? weeklyBase}
-                canRemove={rows.length > 1}
+                canRemove={true}
                 onChange={(updated) => onUpdate(row.id, updated)}
                 onRemove={() => onRemove(row.id)}
             />
