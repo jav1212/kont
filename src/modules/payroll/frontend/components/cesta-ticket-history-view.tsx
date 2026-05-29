@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { BarChart3, ChevronDown, FileText, Scissors, RotateCcw } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
 import { notify } from "@/src/shared/frontend/notify";
 import {
@@ -204,6 +205,7 @@ export function CestaTicketHistoryView({
     const [receipts,           setReceipts]           = useState<CestaTicketReceipt[]>([]);
     const [receiptsLoading,    setReceiptsLoading]    = useState(false);
     const [pdfMenuOpen,        setPdfMenuOpen]        = useState(false);
+    const pdfBtnRef = useRef<HTMLDivElement>(null);
     const [unconfirmOpen,      setUnconfirmOpen]      = useState(false);
     const [unconfirming,       setUnconfirming]       = useState(false);
 
@@ -295,7 +297,7 @@ export function CestaTicketHistoryView({
                             Desconfirmar
                         </BaseButton.Root>
                     )}
-                    <div className="relative">
+                    <div className="relative" ref={pdfBtnRef}>
                         <BaseButton.Root
                             variant="primary"
                             size="sm"
@@ -307,45 +309,46 @@ export function CestaTicketHistoryView({
                         >
                             Re-exportar PDF
                         </BaseButton.Root>
-                        {pdfMenuOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setPdfMenuOpen(false)} />
-                                <div className="absolute right-0 top-full mt-1.5 z-50 rounded-xl border border-border-light bg-surface-1 shadow-lg p-1 min-w-[320px]">
-                                    <button
-                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("general"); }}
-                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
-                                    >
-                                        <BarChart3 size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">General</div>
-                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Reporte consolidado en un solo documento</div>
-                                        </div>
-                                    </button>
-                                    <div className="my-1 border-t border-border-light" />
-                                    <button
-                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("individual"); }}
-                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
-                                    >
-                                        <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Hoja por empleado</div>
-                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">A4 · 1 página completa por empleado, con firma</div>
-                                        </div>
-                                    </button>
-                                    <div className="my-1 border-t border-border-light" />
-                                    <button
-                                        onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("duplicado"); }}
-                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
-                                    >
-                                        <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Cortable</div>
-                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Oficio · 2 copias por hoja (Original + Copia) con línea de corte</div>
-                                        </div>
-                                    </button>
+                        <PortalMenu
+                            open={pdfMenuOpen}
+                            onClose={() => setPdfMenuOpen(false)}
+                            anchorRef={pdfBtnRef}
+                            align="right"
+                            className="min-w-[320px]"
+                        >
+                            <button
+                                onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("general"); }}
+                                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                            >
+                                <BarChart3 size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">General</div>
+                                    <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Reporte consolidado en un solo documento</div>
                                 </div>
-                            </>
-                        )}
+                            </button>
+                            <div className="my-1 border-t border-border-light" />
+                            <button
+                                onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("individual"); }}
+                                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                            >
+                                <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Hoja por empleado</div>
+                                    <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">A4 · 1 página completa por empleado, con firma</div>
+                                </div>
+                            </button>
+                            <div className="my-1 border-t border-border-light" />
+                            <button
+                                onClick={() => { setPdfMenuOpen(false); handleDownloadPdf("duplicado"); }}
+                                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                            >
+                                <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Cortable</div>
+                                    <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">Oficio · 2 copias por hoja (Original + Copia) con línea de corte</div>
+                                </div>
+                            </button>
+                        </PortalMenu>
                     </div>
                 </div>
             )}

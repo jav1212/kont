@@ -4,9 +4,10 @@
 // PAYROLL EMPLOYEE TABLE  v5
 // ============================================================================
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, ChevronDown, FileDown, FileText, Scissors } from "lucide-react";
+import { PortalMenu }    from "@/src/shared/frontend/components/portal-menu";
 import { BaseTable }     from "@/src/shared/frontend/components/base-table";
 import type { Column }   from "@/src/shared/frontend/components/base-table";
 import { BaseInput }     from "@/src/shared/frontend/components/base-input";
@@ -1208,6 +1209,7 @@ export const PayrollEmployeeTable = ({
     const [includeVacaciones, setIncludeVacaciones] = useState(true);
     const [draftSavedAt,     setDraftSavedAt]     = useState<Date | null>(null);
     const [pdfMenuOpen,      setPdfMenuOpen]      = useState(false);
+    const pdfBtnRef = useRef<HTMLDivElement>(null);
 
     // Diálogo único de confirmación para los 3 disparadores (PDF, reporte, confirmar nómina).
     const dialog = useConfirmAction();
@@ -1397,7 +1399,7 @@ export const PayrollEmployeeTable = ({
                             <span className="sm:hidden">Vac. {includeVacaciones ? "in" : "ex"}</span>
                         </button>
                     )}
-                    <div className="relative">
+                    <div className="relative" ref={pdfBtnRef}>
                         <button
                             onClick={() => setPdfMenuOpen((v) => !v)}
                             disabled={results.length === 0}
@@ -1412,78 +1414,79 @@ export const PayrollEmployeeTable = ({
                             <span className="sm:hidden">PDF</span>
                             <ChevronDown size={11} strokeWidth={2} />
                         </button>
-                        {pdfMenuOpen && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setPdfMenuOpen(false)} />
-                                <div className="absolute right-0 top-full mt-1.5 z-50 rounded-xl border border-border-light bg-surface-1 shadow-lg p-1 min-w-[300px]">
-                                    <button
-                                        onClick={() => {
-                                            setPdfMenuOpen(false);
-                                            dialog.request({
-                                                title: "Generar recibos PDF",
-                                                subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
-                                                summary: (
-                                                    <>
-                                                        {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
-                                                        <SummaryRow label="Empleados activos" value={activeResults.length} />
-                                                        <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
-                                                        <SummaryRow label="Modalidad" value="Cortable · Oficio" />
-                                                    </>
-                                                ),
-                                                warning: !periodAlreadyConfirmed
-                                                    ? "También se guardará un borrador en la base de datos para que tengas respaldo."
-                                                    : undefined,
-                                                confirmLabel: "Generar PDF",
-                                                confirmIcon: <FileDown size={14} strokeWidth={2} />,
-                                                run: () => handleExportPdf("duplicado"),
-                                            });
-                                        }}
-                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
-                                    >
-                                        <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo cortable</div>
-                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
-                                                Oficio · 2 copias por hoja (Original + Copia) con línea de corte
-                                            </div>
-                                        </div>
-                                    </button>
-                                    <div className="my-1 border-t border-border-light" />
-                                    <button
-                                        onClick={() => {
-                                            setPdfMenuOpen(false);
-                                            dialog.request({
-                                                title: "Generar recibos PDF",
-                                                subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
-                                                summary: (
-                                                    <>
-                                                        {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
-                                                        <SummaryRow label="Empleados activos" value={activeResults.length} />
-                                                        <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
-                                                        <SummaryRow label="Modalidad" value="Simple · A4" />
-                                                    </>
-                                                ),
-                                                warning: !periodAlreadyConfirmed
-                                                    ? "También se guardará un borrador en la base de datos para que tengas respaldo."
-                                                    : undefined,
-                                                confirmLabel: "Generar PDF",
-                                                confirmIcon: <FileDown size={14} strokeWidth={2} />,
-                                                run: () => handleExportPdf("simple"),
-                                            });
-                                        }}
-                                        className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
-                                    >
-                                        <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo simple</div>
-                                            <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
-                                                A4 · 1 recibo por hoja, sin copia para pagador
-                                            </div>
-                                        </div>
-                                    </button>
+                        <PortalMenu
+                            open={pdfMenuOpen}
+                            onClose={() => setPdfMenuOpen(false)}
+                            anchorRef={pdfBtnRef}
+                            align="right"
+                            className="min-w-[300px]"
+                        >
+                            <button
+                                onClick={() => {
+                                    setPdfMenuOpen(false);
+                                    dialog.request({
+                                        title: "Generar recibos PDF",
+                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
+                                        summary: (
+                                            <>
+                                                {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                                <SummaryRow label="Empleados activos" value={activeResults.length} />
+                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                                <SummaryRow label="Modalidad" value="Cortable · Oficio" />
+                                            </>
+                                        ),
+                                        warning: !periodAlreadyConfirmed
+                                            ? "También se guardará un borrador en la base de datos para que tengas respaldo."
+                                            : undefined,
+                                        confirmLabel: "Generar PDF",
+                                        confirmIcon: <FileDown size={14} strokeWidth={2} />,
+                                        run: () => handleExportPdf("duplicado"),
+                                    });
+                                }}
+                                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                            >
+                                <Scissors size={13} strokeWidth={1.8} className="mt-1 text-primary-500 shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo cortable</div>
+                                    <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                        Oficio · 2 copias por hoja (Original + Copia) con línea de corte
+                                    </div>
                                 </div>
-                            </>
-                        )}
+                            </button>
+                            <div className="my-1 border-t border-border-light" />
+                            <button
+                                onClick={() => {
+                                    setPdfMenuOpen(false);
+                                    dialog.request({
+                                        title: "Generar recibos PDF",
+                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
+                                        summary: (
+                                            <>
+                                                {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                                <SummaryRow label="Empleados activos" value={activeResults.length} />
+                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                                <SummaryRow label="Modalidad" value="Simple · A4" />
+                                            </>
+                                        ),
+                                        warning: !periodAlreadyConfirmed
+                                            ? "También se guardará un borrador en la base de datos para que tengas respaldo."
+                                            : undefined,
+                                        confirmLabel: "Generar PDF",
+                                        confirmIcon: <FileDown size={14} strokeWidth={2} />,
+                                        run: () => handleExportPdf("simple"),
+                                    });
+                                }}
+                                className="flex items-start gap-2.5 w-full px-3 py-2.5 rounded-lg text-left cursor-pointer transition-colors duration-150 hover:bg-surface-2"
+                            >
+                                <FileText size={13} strokeWidth={1.8} className="mt-1 text-[var(--text-secondary)] shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo simple</div>
+                                    <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
+                                        A4 · 1 recibo por hoja, sin copia para pagador
+                                    </div>
+                                </div>
+                            </button>
+                        </PortalMenu>
                     </div>
                     <button
                         onClick={() => dialog.request({
