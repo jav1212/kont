@@ -251,6 +251,8 @@ export default function AdminPage() {
     const [newSubSaving,        setNewSubSaving]        = useState(false);
     const [newSubError,         setNewSubError]         = useState<string | null>(null);
     const [newSubOk,            setNewSubOk]            = useState(false);
+    // Bulk plan assignment (por lotes)
+    const [selectedTenants,     setSelectedTenants]     = useState<Set<string>>(new Set());
 
     // Admin users
     const [admins,       setAdmins]       = useState<AdminUser[]>([]);
@@ -429,6 +431,42 @@ export default function AdminPage() {
         }
     }, [newSubTenantId, newSubProductSlug, newSubStatus, newSubPlanId, loadSubscriptions]);
     void handleNewSub;
+
+    // ── Bulk plan assignment (por lotes) ──────────────────────────────────
+    const toggleTenantSelected = useCallback((tenantId: string) => {
+        setSelectedTenants((prev) => {
+            const next = new Set(prev);
+            if (next.has(tenantId)) next.delete(tenantId);
+            else next.add(tenantId);
+            return next;
+        });
+    }, []);
+
+    const handleBulkAssign = useCallback(async () => {
+        if (selectedTenants.size === 0 || !newSubPlanId) return;
+        setNewSubSaving(true);
+        setNewSubError(null);
+        const res = await fetch("/api/admin/tenants/bulk-plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                tenantIds: [...selectedTenants],
+                planId:    newSubPlanId,
+                status:    newSubStatus,
+            }),
+        });
+        const json = await res.json();
+        setNewSubSaving(false);
+        if (!res.ok) {
+            setNewSubError(json.error ?? "Error al asignar plan.");
+        } else {
+            setNewSubOk(true);
+            setSelectedTenants(new Set());
+            setNewSubPlanId("");
+            await loadAll();
+            setTimeout(() => setNewSubOk(false), 3000);
+        }
+    }, [selectedTenants, newSubPlanId, newSubStatus, loadAll]);
 
     // ── Load admins (lazy, solo cuando se abre la pestaña) ───────────────
     const loadAdmins = useCallback(async () => {
@@ -1434,29 +1472,25 @@ export default function AdminPage() {
                         {tab === "subscriptions" && (
                             <div className="space-y-4">
 
-                                {/* Quick plan assignment form */}
+                                {/* Bulk plan assignment form (por lotes) */}
                                 <div className="border border-border-light rounded-xl bg-surface-1 divide-y divide-border-light/60">
-                                    <div className="px-5 py-3">
+                                    <div className="px-5 py-3 flex items-center justify-between gap-3">
                                         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
-                                            Asignar plan a tenant
+                                            Asignar plan por lotes
                                         </p>
+                                        <span className="font-mono text-[10px] text-[var(--text-secondary)] tabular-nums">
+                                            {selectedTenants.size} seleccionado{selectedTenants.size === 1 ? "" : "s"}
+                                        </span>
                                     </div>
                                     <div className="px-5 py-4">
                                         <div className="flex items-end gap-3 flex-wrap">
                                             <div>
-                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Tenant</label>
-                                                <select
-                                                    value={newSubTenantId}
-                                                    onChange={(e) => setNewSubTenantId(e.target.value)}
-                                                    className="h-8 px-2 rounded-lg border border-border-light bg-surface-1 font-mono text-[11px] text-foreground outline-none focus:border-primary-500/60 cursor-pointer w-72"
-                                                >
-                                                    <option value="">Seleccionar tenant…</option>
-                                                    {tenants.map((t) => (
-                                                        <option key={t.tenant_id} value={t.tenant_id}>
-                                                            {t.email ?? t.tenant_id.slice(0, 8)} · {t.plan_name ?? "Sin plan"}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Tenants</label>
+                                                <p className="h-8 flex items-center font-mono text-[11px] text-[var(--text-secondary)]">
+                                                    {selectedTenants.size === 0
+                                                        ? "Marca tenants en la tabla ↓"
+                                                        : `${selectedTenants.size} tenant${selectedTenants.size === 1 ? "" : "s"} marcado${selectedTenants.size === 1 ? "" : "s"}`}
+                                                </p>
                                             </div>
                                             <div>
                                                 <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] mb-1 block">Nuevo plan</label>
@@ -1482,33 +1516,23 @@ export default function AdminPage() {
                                                 </select>
                                             </div>
                                             <button
-                                                onClick={async () => {
-                                                    if (!newSubTenantId || !newSubPlanId) return;
-                                                    setNewSubSaving(true);
-                                                    setNewSubError(null);
-                                                    const res = await fetch(`/api/admin/tenants/${newSubTenantId}`, {
-                                                        method: "PATCH",
-                                                        headers: { "Content-Type": "application/json" },
-                                                        body: JSON.stringify({ planId: newSubPlanId, status: newSubStatus }),
-                                                    });
-                                                    const json = await res.json();
-                                                    setNewSubSaving(false);
-                                                    if (!res.ok) {
-                                                        setNewSubError(json.error ?? "Error al asignar plan.");
-                                                    } else {
-                                                        setNewSubOk(true);
-                                                        setNewSubTenantId("");
-                                                        setNewSubPlanId("");
-                                                        await loadAll();
-                                                        setTimeout(() => setNewSubOk(false), 3000);
-                                                    }
-                                                }}
-                                                disabled={newSubSaving || !newSubTenantId || !newSubPlanId}
+                                                onClick={handleBulkAssign}
+                                                disabled={newSubSaving || selectedTenants.size === 0 || !newSubPlanId}
                                                 className="h-9 px-4 rounded-lg bg-primary-500 text-white font-mono text-[10px] uppercase tracking-widest hover:bg-primary-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
                                             >
                                                 {newSubSaving && <Spinner />}
-                                                {newSubSaving ? "Guardando…" : "Asignar"}
+                                                {newSubSaving
+                                                    ? "Guardando…"
+                                                    : `Asignar a ${selectedTenants.size || ""} tenant${selectedTenants.size === 1 ? "" : "s"}`.trim()}
                                             </button>
+                                            {selectedTenants.size > 0 && !newSubSaving && (
+                                                <button
+                                                    onClick={() => setSelectedTenants(new Set())}
+                                                    className="h-9 px-3 rounded-lg border border-border-light text-[var(--text-secondary)] font-mono text-[10px] uppercase tracking-widest hover:bg-foreground/[0.03] transition-colors"
+                                                >
+                                                    Limpiar
+                                                </button>
+                                            )}
                                         </div>
                                         {newSubError && <p className="font-mono text-[10px] text-red-500 mt-2">{newSubError}</p>}
                                         {newSubOk    && <p className="font-mono text-[10px] text-green-500 mt-2">Plan asignado correctamente.</p>}
@@ -1520,6 +1544,22 @@ export default function AdminPage() {
                                     <table className="w-full">
                                         <thead>
                                             <tr className="border-b border-border-light bg-surface-2">
+                                                <th className="px-3 py-2.5 w-9">
+                                                    <input
+                                                        type="checkbox"
+                                                        aria-label="Seleccionar todos"
+                                                        className="cursor-pointer accent-primary-500"
+                                                        checked={tenants.length > 0 && selectedTenants.size === tenants.length}
+                                                        ref={(el) => {
+                                                            if (el) el.indeterminate = selectedTenants.size > 0 && selectedTenants.size < tenants.length;
+                                                        }}
+                                                        onChange={(e) => {
+                                                            setSelectedTenants(e.target.checked
+                                                                ? new Set(tenants.map((t) => t.tenant_id))
+                                                                : new Set());
+                                                        }}
+                                                    />
+                                                </th>
                                                 {["Email", "Plan actual", "Estado", "Empresas", "Período fin"].map((h) => (
                                                     <th key={h} className="px-3 py-2.5 text-left font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
                                                         {h}
@@ -1530,12 +1570,21 @@ export default function AdminPage() {
                                         <tbody>
                                             {tenants.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
+                                                    <td colSpan={6} className="px-4 py-10 text-center font-mono text-[11px] text-[var(--text-disabled)] uppercase tracking-widest">
                                                         Sin tenants
                                                     </td>
                                                 </tr>
                                             ) : tenants.map((t) => (
                                                 <tr key={t.tenant_id} className="border-b border-border-light/60 last:border-b-0 hover:bg-foreground/[0.02] transition-colors">
+                                                    <td className="px-3 py-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            aria-label={`Seleccionar ${t.email ?? t.tenant_id}`}
+                                                            className="cursor-pointer accent-primary-500"
+                                                            checked={selectedTenants.has(t.tenant_id)}
+                                                            onChange={() => toggleTenantSelected(t.tenant_id)}
+                                                        />
+                                                    </td>
                                                     <td className="px-3 py-3 font-mono text-[11px] text-foreground max-w-[200px] truncate">
                                                         {t.email ?? t.tenant_id.slice(0, 8) + "…"}
                                                     </td>
