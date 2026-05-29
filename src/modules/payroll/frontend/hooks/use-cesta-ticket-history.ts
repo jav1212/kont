@@ -39,6 +39,7 @@ interface UseCestaTicketHistoryResult {
     reload:      () => Promise<void>;
     getReceipts: (runId: string) => Promise<CestaTicketReceipt[] | null>;
     confirm:     (payload: CestaTicketPayload) => Promise<boolean>;
+    unconfirm:   (runId: string) => Promise<boolean>;
     saveDraft:   (payload: CestaTicketPayload) => Promise<{ runId: string | null }>;
 }
 
@@ -83,6 +84,17 @@ export function useCestaTicketHistory(companyId: string | null): UseCestaTicketH
         return true;
     }, [reload]);
 
+    const unconfirm = useCallback(async (runId: string): Promise<boolean> => {
+        const { ok, json } = await fetchJson("/api/payroll/cesta-ticket/runs/unconfirm", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ runId }),
+        });
+        if (!ok) { notify.error(json.error ?? "Error al desconfirmar cesta ticket"); return false; }
+        await reload();
+        return true;
+    }, [reload]);
+
     const saveDraft = useCallback(async (payload: CestaTicketPayload): Promise<{ runId: string | null }> => {
         const { ok, json } = await fetchJson("/api/payroll/cesta-ticket/runs/draft", {
             method:  "POST",
@@ -101,6 +113,7 @@ export function useCestaTicketHistory(companyId: string | null): UseCestaTicketH
         reload,
         getReceipts,
         confirm,
+        unconfirm,
         saveDraft,
     };
 }

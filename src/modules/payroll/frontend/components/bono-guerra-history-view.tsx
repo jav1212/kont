@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { BarChart3, ChevronDown, FileText, Scissors } from "lucide-react";
+import { BarChart3, ChevronDown, FileText, Scissors, RotateCcw } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { notify } from "@/src/shared/frontend/notify";
 import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 import {
     useBonoGuerraHistory,
@@ -196,12 +198,14 @@ export function BonoGuerraHistoryView({
     companyId: string | null;
     company:   BonoGuerraHistoryCompany | null;
 }) {
-    const { runs, loading, getReceipts } = useBonoGuerraHistory(companyId);
+    const { runs, loading, getReceipts, unconfirm } = useBonoGuerraHistory(companyId);
 
     const [selectedRunId,      setSelectedRunId]      = useState<string | null>(null);
     const [receipts,           setReceipts]           = useState<BonoGuerraReceipt[]>([]);
     const [receiptsLoading,    setReceiptsLoading]    = useState(false);
     const [pdfMenuOpen,        setPdfMenuOpen]        = useState(false);
+    const [unconfirmOpen,      setUnconfirmOpen]      = useState(false);
+    const [unconfirming,       setUnconfirming]       = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -265,10 +269,31 @@ export function BonoGuerraHistoryView({
     const selectedTotalUsd      = selectedRun ? receipts.reduce((s, r) => s + r.montoUsd, 0) : 0;
     const selectedTotalVes      = selectedRun ? receipts.reduce((s, r) => s + r.montoVes, 0) : 0;
 
+    const handleUnconfirm = async () => {
+        if (!selectedRun || selectedRun.status !== "confirmed") return;
+        setUnconfirming(true);
+        const ok = await unconfirm(selectedRun.id);
+        setUnconfirming(false);
+        if (ok) {
+            notify.success("Bono devuelto a borrador");
+            setUnconfirmOpen(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {selectedRun && receipts.length > 0 && (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                    {selectedRun.status === "confirmed" && (
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setUnconfirmOpen(true)}
+                            leftIcon={<RotateCcw size={14} />}
+                        >
+                            Desconfirmar
+                        </BaseButton.Root>
+                    )}
                     <div className="relative">
                         <BaseButton.Root
                             variant="primary"
@@ -347,6 +372,28 @@ export function BonoGuerraHistoryView({
                     loading={receiptsLoading}
                 />
             )}
+
+            <ConfirmCompanyDialog
+                isOpen={unconfirmOpen}
+                onClose={() => setUnconfirmOpen(false)}
+                onConfirm={handleUnconfirm}
+                loading={unconfirming}
+                destructive
+                title="Desconfirmar bono socio económico"
+                subtitle="Devuelve este bono a borrador para poder editarlo y volver a confirmarlo."
+                summary={selectedRun && (
+                    <>
+                        <SummaryRow
+                            label="Período"
+                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                        />
+                        <SummaryRow label="Empleados" value={selectedReceiptsCount} />
+                        <SummaryRow label="Total USD" value={`$${fmt(selectedTotalUsd)}`} emphasis />
+                    </>
+                )}
+                confirmLabel="Desconfirmar"
+                confirmIcon={<RotateCcw size={14} strokeWidth={2} />}
+            />
         </div>
     );
 }

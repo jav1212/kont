@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
-import { FileText, Download, FileBarChart, FileCode, CheckCircle2, ChevronDown, Scissors } from "lucide-react";
+import { FileText, Download, FileBarChart, FileCode, CheckCircle2, ChevronDown, Scissors, RotateCcw } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt, ConfirmReceiptPayload } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
@@ -296,7 +296,7 @@ function ReceiptsPanel({ receipts, loading }: {
 
 export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
-    const { runs, loading, getReceipts, confirm } = usePayrollHistory(companyId);
+    const { runs, loading, getReceipts, confirm, unconfirm } = usePayrollHistory(companyId);
     const { employees } = useEmployee(companyId);
 
     const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
@@ -308,6 +308,8 @@ export default function PayrollHistoryPage() {
     const [islrPdfModalOpen, setIslrPdfModalOpen] = useState(false);
     const [confirmDraftOpen, setConfirmDraftOpen] = useState(false);
     const [confirmingDraft, setConfirmingDraft] = useState(false);
+    const [unconfirmOpen, setUnconfirmOpen] = useState(false);
+    const [unconfirming, setUnconfirming] = useState(false);
     const [pdfMenuOpen, setPdfMenuOpen] = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
@@ -398,6 +400,17 @@ export default function PayrollHistoryPage() {
         }
     }, [selectedRun, receipts, confirm]);
 
+    const handleUnconfirm = useCallback(async () => {
+        if (!selectedRun || selectedRun.status !== "confirmed") return;
+        setUnconfirming(true);
+        const ok = await unconfirm(selectedRun.id);
+        setUnconfirming(false);
+        if (ok) {
+            notify.success("Nómina devuelta a borrador");
+            setUnconfirmOpen(false);
+        }
+    }, [selectedRun, unconfirm]);
+
     const subtitle = activeTab === "payroll"
         ? (company ? `${runs.length} período${runs.length !== 1 ? "s" : ""} · ${company.name}` : "Carga de períodos confirmados")
         : activeTab === "cesta"
@@ -421,6 +434,16 @@ export default function PayrollHistoryPage() {
                                         leftIcon={<CheckCircle2 size={14} />}
                                     >
                                         Confirmar nómina
+                                    </BaseButton.Root>
+                                )}
+                                {selectedRun.status === "confirmed" && (
+                                    <BaseButton.Root
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setUnconfirmOpen(true)}
+                                        leftIcon={<RotateCcw size={14} />}
+                                    >
+                                        Desconfirmar
                                     </BaseButton.Root>
                                 )}
                                 <div className="relative">
@@ -618,6 +641,29 @@ export default function PayrollHistoryPage() {
                 warning="Una vez confirmada, la nómina queda bloqueada para este período. No podrás guardarla nuevamente como borrador ni modificar sus recibos desde la calculadora."
                 confirmLabel="Confirmar nómina"
                 confirmIcon={<CheckCircle2 size={14} strokeWidth={2} />}
+            />
+
+            <ConfirmCompanyDialog
+                isOpen={unconfirmOpen}
+                onClose={() => setUnconfirmOpen(false)}
+                onConfirm={handleUnconfirm}
+                loading={unconfirming}
+                destructive
+                title="Desconfirmar nómina"
+                subtitle="Devuelve esta nómina a borrador para poder editarla y volver a confirmarla."
+                summary={selectedRun && (
+                    <>
+                        <SummaryRow
+                            label="Período"
+                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                        />
+                        <SummaryRow label="Tasa BCV" value={fmt(selectedRun.exchangeRate)} />
+                        <SummaryRow label="Empleados" value={receipts.length} />
+                    </>
+                )}
+                warning="Se revertirán los asientos contables generados al confirmar esta nómina. Vuelve a confirmarla para regenerarlos."
+                confirmLabel="Desconfirmar"
+                confirmIcon={<RotateCcw size={14} strokeWidth={2} />}
             />
         </div>
     );

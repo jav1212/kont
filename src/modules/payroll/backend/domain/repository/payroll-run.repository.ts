@@ -15,8 +15,16 @@ export interface SavePayrollRunInput {
     receipts: Omit<PayrollReceipt, "id" | "runId" | "createdAt">[];
 }
 
+/** Run identity returned after reverting a confirmed run back to draft. */
+export interface UnconfirmedRun {
+    id:        string;
+    companyId: string;
+}
+
 export interface IPayrollRunRepository {
     save(input: SavePayrollRunInput): Promise<Result<string>>;
     findByCompany(companyId: string): Promise<Result<PayrollRun[]>>;
     findReceiptsByRun(runId: string): Promise<Result<PayrollReceipt[]>>;
+    /** Reverts a confirmed run to draft so it can be edited and re-confirmed. */
+    unconfirm(runId: string): Promise<Result<UnconfirmedRun>>;
 }

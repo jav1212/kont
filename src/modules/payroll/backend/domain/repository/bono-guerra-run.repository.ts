@@ -16,8 +16,16 @@ export interface SaveBonoGuerraRunInput {
     receipts: Omit<BonoGuerraReceipt, "id" | "runId" | "createdAt">[];
 }
 
+/** Run identity returned after reverting a confirmed run back to draft. */
+export interface UnconfirmedRun {
+    id:        string;
+    companyId: string;
+}
+
 export interface IBonoGuerraRunRepository {
     save(input: SaveBonoGuerraRunInput): Promise<Result<string>>;
     findByCompany(companyId: string): Promise<Result<BonoGuerraRun[]>>;
     findReceiptsByRun(runId: string): Promise<Result<BonoGuerraReceipt[]>>;
+    /** Reverts a confirmed run to draft so it can be edited and re-confirmed. */
+    unconfirm(runId: string): Promise<Result<UnconfirmedRun>>;
 }

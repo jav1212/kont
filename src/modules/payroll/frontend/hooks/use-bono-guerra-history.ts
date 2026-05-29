@@ -39,6 +39,7 @@ interface UseBonoGuerraHistoryResult {
     reload:      () => Promise<void>;
     getReceipts: (runId: string) => Promise<BonoGuerraReceipt[] | null>;
     confirm:     (payload: BonoGuerraPayload) => Promise<boolean>;
+    unconfirm:   (runId: string) => Promise<boolean>;
     saveDraft:   (payload: BonoGuerraPayload) => Promise<{ runId: string | null }>;
 }
 
@@ -83,6 +84,17 @@ export function useBonoGuerraHistory(companyId: string | null): UseBonoGuerraHis
         return true;
     }, [reload]);
 
+    const unconfirm = useCallback(async (runId: string): Promise<boolean> => {
+        const { ok, json } = await fetchJson("/api/payroll/bono-guerra/runs/unconfirm", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ runId }),
+        });
+        if (!ok) { notify.error(json.error ?? "Error al desconfirmar bono socio económico"); return false; }
+        await reload();
+        return true;
+    }, [reload]);
+
     const saveDraft = useCallback(async (payload: BonoGuerraPayload): Promise<{ runId: string | null }> => {
         const { ok, json } = await fetchJson("/api/payroll/bono-guerra/runs/draft", {
             method:  "POST",
@@ -101,6 +113,7 @@ export function useBonoGuerraHistory(companyId: string | null): UseBonoGuerraHis
         reload,
         getReceipts,
         confirm,
+        unconfirm,
         saveDraft,
     };
 }

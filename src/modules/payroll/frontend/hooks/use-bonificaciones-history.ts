@@ -44,6 +44,7 @@ interface UseBonificacionesHistoryResult {
     reload:      () => Promise<void>;
     getReceipts: (runId: string) => Promise<BonificacionesReceipt[] | null>;
     confirm:     (payload: BonificacionesPayload) => Promise<boolean>;
+    unconfirm:   (runId: string) => Promise<boolean>;
     saveDraft:   (payload: BonificacionesPayload) => Promise<{ runId: string | null }>;
 }
 
@@ -88,6 +89,17 @@ export function useBonificacionesHistory(companyId: string | null): UseBonificac
         return true;
     }, [reload]);
 
+    const unconfirm = useCallback(async (runId: string): Promise<boolean> => {
+        const { ok, json } = await fetchJson("/api/payroll/bonificaciones/runs/unconfirm", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ runId }),
+        });
+        if (!ok) { notify.error(json.error ?? "Error al desconfirmar bonificaciones"); return false; }
+        await reload();
+        return true;
+    }, [reload]);
+
     const saveDraft = useCallback(async (payload: BonificacionesPayload): Promise<{ runId: string | null }> => {
         const { ok, json } = await fetchJson("/api/payroll/bonificaciones/runs/draft", {
             method:  "POST",
@@ -106,6 +118,7 @@ export function useBonificacionesHistory(companyId: string | null): UseBonificac
         reload,
         getReceipts,
         confirm,
+        unconfirm,
         saveDraft,
     };
 }

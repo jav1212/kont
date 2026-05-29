@@ -5,6 +5,7 @@ import { ServerSupabaseSource }          from '@/src/shared/backend/source/infra
 import { LocalEventBus }                 from '@/src/shared/backend/infra/local-event-bus';
 import { RpcPayrollRunRepository }        from './repository/rpc-payroll-run.repository';
 import { ConfirmPayrollRunUseCase }    from '../application/commands/confirm-payroll-run.use-case';
+import { UnconfirmPayrollRunUseCase }  from '../application/commands/unconfirm-payroll-run.use-case';
 import { SaveDraftPayrollRunUseCase }  from '../application/commands/save-draft-payroll-run.use-case';
 import { GetPayrollRunsUseCase }       from '../application/queries/get-payroll-runs.use-case';
 import { GetPayrollReceiptsUseCase }   from '../application/queries/get-payroll-receipts.use-case';
@@ -16,6 +17,7 @@ export function getPayrollRunActions(userId: string) {
 
     return {
         confirm:     new ConfirmPayrollRunUseCase(repository, eventBus),
+        unconfirm:   new UnconfirmPayrollRunUseCase(repository),
         saveDraft:   new SaveDraftPayrollRunUseCase(repository),
         getRuns:     new GetPayrollRunsUseCase(repository),
         getReceipts: new GetPayrollReceiptsUseCase(repository),

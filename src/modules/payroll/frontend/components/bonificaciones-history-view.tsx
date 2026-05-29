@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { BarChart3, ChevronDown, FileText, Scissors } from "lucide-react";
+import { BarChart3, ChevronDown, FileText, Scissors, RotateCcw } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
+import { notify } from "@/src/shared/frontend/notify";
 import {
     useBonificacionesHistory,
     type BonificacionesRun,
@@ -205,12 +207,14 @@ export function BonificacionesHistoryView({
     companyId: string | null;
     company:   BonificacionesHistoryCompany | null;
 }) {
-    const { runs, loading, getReceipts } = useBonificacionesHistory(companyId);
+    const { runs, loading, getReceipts, unconfirm } = useBonificacionesHistory(companyId);
 
     const [selectedRunId,   setSelectedRunId]   = useState<string | null>(null);
     const [receipts,        setReceipts]        = useState<BonificacionesReceipt[]>([]);
     const [receiptsLoading, setReceiptsLoading] = useState(false);
     const [pdfMenuOpen,     setPdfMenuOpen]     = useState(false);
+    const [unconfirmOpen,   setUnconfirmOpen]   = useState(false);
+    const [unconfirming,    setUnconfirming]    = useState(false);
 
     const handleSelectRun = useCallback(async (runId: string) => {
         if (selectedRunId === runId) { setSelectedRunId(null); setReceipts([]); return; }
@@ -278,10 +282,31 @@ export function BonificacionesHistoryView({
         );
     }
 
+    const handleUnconfirm = async () => {
+        if (!selectedRun || selectedRun.status !== "confirmed") return;
+        setUnconfirming(true);
+        const ok = await unconfirm(selectedRun.id);
+        setUnconfirming(false);
+        if (ok) {
+            notify.success("Bonificaciones devueltas a borrador");
+            setUnconfirmOpen(false);
+        }
+    };
+
     return (
         <div className="space-y-4">
             {selectedRun && receipts.length > 0 && (
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                    {selectedRun.status === "confirmed" && (
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setUnconfirmOpen(true)}
+                            leftIcon={<RotateCcw size={14} />}
+                        >
+                            Desconfirmar
+                        </BaseButton.Root>
+                    )}
                     <div className="relative">
                         <BaseButton.Root
                             variant="primary"
@@ -354,6 +379,28 @@ export function BonificacionesHistoryView({
                     loading={receiptsLoading}
                 />
             )}
+
+            <ConfirmCompanyDialog
+                isOpen={unconfirmOpen}
+                onClose={() => setUnconfirmOpen(false)}
+                onConfirm={handleUnconfirm}
+                loading={unconfirming}
+                destructive
+                title="Desconfirmar bonificaciones"
+                subtitle="Devuelve estas bonificaciones a borrador para poder editarlas y volver a confirmarlas."
+                summary={selectedRun && (
+                    <>
+                        <SummaryRow
+                            label="Período"
+                            value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
+                        />
+                        <SummaryRow label="Empleados" value={receipts.length} />
+                        <SummaryRow label="Total VES" value={fmt(selectedRun.totalVes)} emphasis />
+                    </>
+                )}
+                confirmLabel="Desconfirmar"
+                confirmIcon={<RotateCcw size={14} strokeWidth={2} />}
+            />
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { ServerSupabaseSource }              from '@/src/shared/backend/source/i
 import { LocalEventBus }                     from '@/src/shared/backend/infra/local-event-bus';
 import { RpcCestaTicketRunRepository }       from './repository/rpc-cesta-ticket-run.repository';
 import { ConfirmCestaTicketRunUseCase }      from '../application/commands/confirm-cesta-ticket-run.use-case';
+import { UnconfirmCestaTicketRunUseCase }    from '../application/commands/unconfirm-cesta-ticket-run.use-case';
 import { SaveDraftCestaTicketRunUseCase }    from '../application/commands/save-draft-cesta-ticket-run.use-case';
 import { GetCestaTicketRunsUseCase }         from '../application/queries/get-cesta-ticket-runs.use-case';
 import { GetCestaTicketReceiptsUseCase }     from '../application/queries/get-cesta-ticket-receipts.use-case';
@@ -14,6 +15,7 @@ export function getCestaTicketRunActions(userId: string) {
 
     return {
         confirm:     new ConfirmCestaTicketRunUseCase(repository, eventBus),
+        unconfirm:   new UnconfirmCestaTicketRunUseCase(repository),
         saveDraft:   new SaveDraftCestaTicketRunUseCase(repository),
         getRuns:     new GetCestaTicketRunsUseCase(repository),
         getReceipts: new GetCestaTicketReceiptsUseCase(repository),

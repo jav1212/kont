@@ -54,6 +54,7 @@ interface UsePayrollHistoryResult {
     reload:      () => Promise<void>;
     getReceipts: (runId: string) => Promise<PayrollReceipt[] | null>;
     confirm:     (payload: ConfirmPayload) => Promise<boolean>;
+    unconfirm:   (runId: string) => Promise<boolean>;
     saveDraft:   (payload: ConfirmPayload) => Promise<{ runId: string | null }>;
 }
 
@@ -98,6 +99,17 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         return true;
     }, [reload]);
 
+    const unconfirm = useCallback(async (runId: string): Promise<boolean> => {
+        const { ok, json } = await fetchJson("/api/payroll/runs/unconfirm", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ runId }),
+        });
+        if (!ok) { notify.error(json.error ?? "Error al desconfirmar nómina"); return false; }
+        await reload();
+        return true;
+    }, [reload]);
+
     const saveDraft = useCallback(async (payload: ConfirmPayload): Promise<{ runId: string | null }> => {
         const { ok, json } = await fetchJson("/api/payroll/runs/draft", {
             method:  "POST",
@@ -116,6 +128,7 @@ export function usePayrollHistory(companyId: string | null): UsePayrollHistoryRe
         reload,
         getReceipts,
         confirm,
+        unconfirm,
         saveDraft,
     };
 }

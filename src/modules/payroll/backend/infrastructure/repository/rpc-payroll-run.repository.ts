@@ -1,6 +1,6 @@
 // Infrastructure layer — Supabase RPC implementation of IPayrollRunRepository.
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IPayrollRunRepository, SavePayrollRunInput } from '../../domain/repository/payroll-run.repository';
+import { IPayrollRunRepository, SavePayrollRunInput, UnconfirmedRun } from '../../domain/repository/payroll-run.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
 import { PayrollRun } from '../../domain/payroll-run';
@@ -82,6 +82,21 @@ export class RpcPayrollRunRepository implements IPayrollRunRepository {
             return Result.success(((data as RawPayrollReceiptRow[]) ?? []).map(this.mapReceiptToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error fetching receipts');
+        }
+    }
+
+    async unconfirm(runId: string): Promise<Result<UnconfirmedRun>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_payroll_run_unconfirm', {
+                    p_user_id: this.userId,
+                    p_run_id:  runId,
+                });
+            if (error) return Result.fail(error.message);
+            const row = data as { id: string; company_id: string };
+            return Result.success({ id: row.id, companyId: row.company_id });
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error unconfirming payroll');
         }
     }
 

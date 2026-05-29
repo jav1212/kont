@@ -1,6 +1,6 @@
 // Infrastructure layer — Supabase RPC implementation of IBonificacionesRunRepository.
 import { SupabaseClient } from '@supabase/supabase-js';
-import { IBonificacionesRunRepository, SaveBonificacionesRunInput } from '../../domain/repository/bonificaciones-run.repository';
+import { IBonificacionesRunRepository, SaveBonificacionesRunInput, UnconfirmedRun } from '../../domain/repository/bonificaciones-run.repository';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { Result } from '@/src/core/domain/result';
 import { BonificacionesRun } from '../../domain/bonificaciones-run';
@@ -95,6 +95,21 @@ export class RpcBonificacionesRunRepository implements IBonificacionesRunReposit
             return Result.success(((data as RawBonificacionesReceiptRow[]) ?? []).map(this.mapReceiptToDomain));
         } catch (err) {
             return Result.fail(err instanceof Error ? err.message : 'Error fetching bonificaciones receipts');
+        }
+    }
+
+    async unconfirm(runId: string): Promise<Result<UnconfirmedRun>> {
+        try {
+            const { data, error } = await this.source.instance
+                .rpc('tenant_bonificaciones_run_unconfirm', {
+                    p_user_id: this.userId,
+                    p_run_id:  runId,
+                });
+            if (error) return Result.fail(error.message);
+            const row = data as { id: string; company_id: string };
+            return Result.success({ id: row.id, companyId: row.company_id });
+        } catch (err) {
+            return Result.fail(err instanceof Error ? err.message : 'Error unconfirming bonificaciones');
         }
     }
 
