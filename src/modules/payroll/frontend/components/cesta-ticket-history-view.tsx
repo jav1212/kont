@@ -230,6 +230,7 @@ export function CestaTicketHistoryView({
                 cargo:    r.employeeCargo,
                 estado:   "activo",
                 montoUsd: r.montoUsd,
+                montoVes: r.montoVes,
             })),
             {
                 companyName:    company?.name ?? "",

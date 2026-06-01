@@ -48,6 +48,12 @@ export interface CestaTicketEmployee {
     estado: string;
     /** Override por empleado. Si falta, usa opts.montoUSD (default global). */
     montoUsd?: number;
+    /**
+     * Monto en bolívares exacto (capturado manualmente o derivado). Si falta,
+     * se recalcula como montoUsd × bcvRate. Preserva el monto manual en Bs sin
+     * round-trip VES→USD→VES.
+     */
+    montoVes?: number;
 }
 
 export interface CestaTicketOptions {
@@ -56,6 +62,8 @@ export interface CestaTicketOptions {
     periodLabel:    string;
     payrollDate:    string;
     montoUSD:       number;
+    /** Equivalente global en Bs. Si falta, se usa montoUSD × bcvRate. */
+    montoVES?:      number;
     bcvRate:        number;
     logoUrl?:       string;
     showLogoInPdf?: boolean;
@@ -90,7 +98,7 @@ function repaintPageHeader(doc: Doc, opts: PageHeader): number {
 function drawParamsCard(
     doc: Doc,
     x: number, w: number, y: number,
-    montoUSD: number, bcvRate: number,
+    montoUSD: number, montoVES: number, bcvRate: number,
     customCount: number, minUsd: number, maxUsd: number,
 ): number {
     const H = 14;
@@ -101,8 +109,6 @@ function drawParamsCard(
     const cx1 = x + 4;
     const cx2 = x + w * 0.36;
     const cx3 = x + w - 3;
-
-    const montoVES = montoUSD * bcvRate;
     const heterogeneous = customCount > 0 && minUsd !== maxUsd;
     const label1 = heterogeneous ? "Monto por defecto" : "Monto por empleado";
 
@@ -152,13 +158,15 @@ async function generateGeneralPdf(
     }
 
     const montosUsd = active.map((e) => e.montoUsd ?? opts.montoUSD);
+    const montosVes = active.map((e, i) => e.montoVes ?? montosUsd[i] * opts.bcvRate);
     const customCount = active.filter(
         (e) => typeof e.montoUsd === "number" && e.montoUsd !== opts.montoUSD,
     ).length;
     const minUsd = montosUsd.reduce((m, n) => (n < m ? n : m), montosUsd[0]);
     const maxUsd = montosUsd.reduce((m, n) => (n > m ? n : m), montosUsd[0]);
 
-    y = drawParamsCard(doc, ML, W, y, opts.montoUSD, opts.bcvRate, customCount, minUsd, maxUsd);
+    const globalMontoVes = opts.montoVES ?? opts.montoUSD * opts.bcvRate;
+    y = drawParamsCard(doc, ML, W, y, opts.montoUSD, globalMontoVes, opts.bcvRate, customCount, minUsd, maxUsd);
 
     const colN     = W * 0.07;
     const colName  = W * 0.40;
@@ -186,7 +194,7 @@ async function generateGeneralPdf(
             y = drawTH(y);
         }
         const empMonto    = montosUsd[i];
-        const empMontoVes = empMonto * opts.bcvRate;
+        const empMontoVes = montosVes[i];
         drawRow(doc, y, ROW_H, [
             { x: ML,                                       w: colN,    text: String(i + 1),       align: "center", size: 8.5, mono: true,            color: COLORS.muted },
             { x: ML + colN,                                w: colName, text: emp.nombre,          align: "left",   size: 8.5,                       color: COLORS.ink },
@@ -205,7 +213,7 @@ async function generateGeneralPdf(
     }
 
     const totalUSD = montosUsd.reduce((s, n) => s + n, 0);
-    const totalVES = totalUSD * opts.bcvRate;
+    const totalVES = montosVes.reduce((s, n) => s + n, 0);
 
     fill(doc, ML, y, W, 0.5, COLORS.orange);
     y += 1.2;
@@ -245,7 +253,7 @@ async function generateGeneralPdf(
         fill(doc, sx, y, SIG_W, 1, COLORS.orange);
 
         const empMonto    = montosUsd[i];
-        const empMontoVes = empMonto * opts.bcvRate;
+        const empMontoVes = montosVes[i];
 
         renderMono(doc, fmtUSD(empMonto), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
         renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
@@ -321,7 +329,7 @@ function drawReceiptInRegion(
     const xR        = pageWidth - marginX;
     const contentW  = xR - xL;
 
-    const empMontoVes = empMontoUsd * opts.bcvRate;
+    const empMontoVes = emp.montoVes ?? empMontoUsd * opts.bcvRate;
 
     let y: number;
 

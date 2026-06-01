@@ -219,7 +219,7 @@ export default function PayrollCalculatorPage() {
             return;
         }
         const globalRaw = parseFloat(cestaTicketUSD) || 0;
-        const { montoUsd: globalUsd } = deriveMontos(
+        const { montoUsd: globalUsd, montoVes: globalVes } = deriveMontos(
             globalRaw, cestaTicketCurrency, 40, bcvRate,
         );
         generateCestaTicketPdf(
@@ -229,10 +229,10 @@ export default function PayrollCalculatorPage() {
                     overrideRaw && overrideRaw.trim() !== ""
                         ? parseFloat(overrideRaw) || 0
                         : globalRaw;
-                const { montoUsd } = deriveMontos(
+                const { montoUsd, montoVes } = deriveMontos(
                     rawNum, cestaTicketCurrency, 40, bcvRate,
                 );
-                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd };
+                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd, montoVes };
             }),
             {
                 companyName: company?.name ?? "",
@@ -240,6 +240,7 @@ export default function PayrollCalculatorPage() {
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
                 montoUSD: globalUsd,
+                montoVES: globalVes,
                 bcvRate,
                 pdfMode,
             },
@@ -315,7 +316,7 @@ export default function PayrollCalculatorPage() {
             return;
         }
         const globalRaw = parseFloat(bonoGuerraUSD) || 0;
-        const { montoUsd: globalUsd } = deriveMontos(
+        const { montoUsd: globalUsd, montoVes: globalVes } = deriveMontos(
             globalRaw, bonoGuerraCurrency, 200, bcvRate,
         );
         generateBonoGuerraPdf(
@@ -325,10 +326,10 @@ export default function PayrollCalculatorPage() {
                     overrideRaw && overrideRaw.trim() !== ""
                         ? parseFloat(overrideRaw) || 0
                         : globalRaw;
-                const { montoUsd } = deriveMontos(
+                const { montoUsd, montoVes } = deriveMontos(
                     rawNum, bonoGuerraCurrency, 200, bcvRate,
                 );
-                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd };
+                return { cedula: e.cedula, nombre: e.nombre, cargo: e.cargo, estado: e.estado, montoUsd, montoVes };
             }),
             {
                 companyName: company?.name ?? "",
@@ -336,6 +337,7 @@ export default function PayrollCalculatorPage() {
                 periodLabel: activePeriodInfo.label,
                 payrollDate: activePeriodInfo.endDate,
                 montoUSD: globalUsd,
+                montoVES: globalVes,
                 bcvRate,
                 pdfMode,
             },
