@@ -8,6 +8,11 @@ const ES_VE_OPTS: Intl.NumberFormatOptions = {
     maximumFractionDigits: 2,
 };
 
+const BCV_RATE_OPTS: Intl.NumberFormatOptions = {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+};
+
 const MONTHS_LONG = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio",
     "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
@@ -26,6 +31,11 @@ export function formatNumber(n: number): string {
 /** $166,29 USD */
 export function formatUsd(n: number): string {
     return "$" + n.toLocaleString("es-VE", ES_VE_OPTS) + " USD";
+}
+
+/** 79,5912 — tasa BCV, siempre 4 decimales (coincide con el input del paso 1). */
+export function formatBcvRate(n: number): string {
+    return n.toLocaleString("es-VE", BCV_RATE_OPTS);
 }
 
 /** 23 de abril de 2026 — long humanised date for constancia headers */

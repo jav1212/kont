@@ -21,6 +21,7 @@ import {
     formatCurrency,
     formatNumber,
     formatUsd,
+    formatBcvRate,
     LABEL_CLS,
     useCalculatorBcv,
     SectionHeader,
@@ -278,7 +279,7 @@ function KpiTotalTile({ valueBs, bcvRate }: { valueBs: number; bcvRate: number }
                 {bcvRate > 0 && valueBs > 0 && (
                     <p className="font-mono text-[11px] tabular-nums text-[var(--text-secondary)] mt-1.5 font-medium">
                         ≈ {formatUsd(valueBs / bcvRate)}
-                        <span className="text-[var(--text-tertiary)] ml-1.5">· BCV {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}</span>
+                        <span className="text-[var(--text-tertiary)] ml-1.5">· BCV {formatBcvRate(bcvRate)}</span>
                     </p>
                 )}
             </div>
@@ -844,7 +845,7 @@ export default function LiquidacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        {bcvLoading ? "..." : formatBcvRate(bcvRate)}
                     </span>
                     {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>

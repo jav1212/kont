@@ -475,7 +475,7 @@ export default function PayrollDashboard() {
                                                 </div>
                                                 <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0">
                                                     <span className="font-mono text-[12px] font-bold tabular-nums text-foreground">
-                                                        {fmtBs(run.exchangeRate, 2)}
+                                                        {fmtBs(run.exchangeRate, 4)}
                                                     </span>
                                                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
                                                         Bs / USD

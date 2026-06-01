@@ -3,7 +3,7 @@
 import {
     AlertTriangle, Clock, FileText, Sparkles, Users,
 } from "lucide-react";
-import { formatCurrency, formatDateLong, formatDateUpper, formatUsd } from "./formatters";
+import { formatBcvRate, formatCurrency, formatDateLong, formatDateUpper, formatUsd } from "./formatters";
 
 // All the visual fragments of a payroll "constancia" preview card.
 // Composed by every sister calculator's right-hand panel:
@@ -205,7 +205,7 @@ export function LiquidoTotal({
                 {totalUsd != null && (
                     <p className="font-mono text-[12px] tabular-nums text-[var(--text-secondary)] mt-2 font-medium">
                         ≈ {formatUsd(totalUsd)}
-                        <span className="text-[var(--text-tertiary)]"> · BCV {bcvRate!.toLocaleString("es-VE", { minimumFractionDigits: 2 })}</span>
+                        <span className="text-[var(--text-tertiary)]"> · BCV {formatBcvRate(bcvRate!)}</span>
                     </p>
                 )}
             </div>

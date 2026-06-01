@@ -119,7 +119,7 @@ function drawParamsCard(
     const totalVesPorEmpleado = bonusLines.reduce((s, l) => s + l.amountVES, 0);
 
     renderLabel(doc, "Tasa BCV", cx1, y + 5, "left", COLORS.muted, 7);
-    renderMono(doc, `Bs. ${formatN(bcvRate)} / USD`, cx1, y + 11, 10, true, COLORS.inkMed, "left");
+    renderMono(doc, `Bs. ${formatN(bcvRate, 4)} / USD`, cx1, y + 11, 10, true, COLORS.inkMed, "left");
 
     renderLabel(doc, "Bonos por empleado", cx2, y + 5, "left", COLORS.muted, 7);
     renderMono(doc, `${bonusLines.length} concepto${bonusLines.length !== 1 ? "s" : ""}`, cx2, y + 11, 10, true, COLORS.ink, "left");
@@ -334,7 +334,7 @@ function drawReceiptInRegion(
         renderMono(doc, emp.cedula, colCed, y + 7, 9, true, COLORS.ink, "left");
 
         renderLabel(doc, "Tasa BCV", colBcv, y + 3, "right", COLORS.muted, 6);
-        renderMono(doc, `Bs. ${formatN(opts.bcvRate)} / USD`, colBcv, y + 7, 8.5, true, COLORS.inkMed, "right");
+        renderMono(doc, `Bs. ${formatN(opts.bcvRate, 4)} / USD`, colBcv, y + 7, 8.5, true, COLORS.inkMed, "right");
     } else {
         renderLabel(doc, "Trabajador", colId, y + 4, "left", COLORS.muted, 7);
         renderText(doc, emp.nombre.toUpperCase(), colId, y + 9, 10.5, true, COLORS.ink, "left", contentW * 0.42);
@@ -346,7 +346,7 @@ function drawReceiptInRegion(
         renderMono(doc, emp.cedula, colCed, y + 9, 10.5, true, COLORS.ink, "left");
 
         renderLabel(doc, "Tasa BCV", colBcv, y + 4, "right", COLORS.muted, 7);
-        renderMono(doc, `Bs. ${formatN(opts.bcvRate)} / USD`, colBcv, y + 9, 10, true, COLORS.inkMed, "right");
+        renderMono(doc, `Bs. ${formatN(opts.bcvRate, 4)} / USD`, colBcv, y + 9, 10, true, COLORS.inkMed, "right");
     }
 
     y += idH + (isCompact ? 2 : 6);

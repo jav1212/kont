@@ -20,6 +20,7 @@ import { BonoGuerraHistoryView } from "@/src/modules/payroll/frontend/components
 import { BonificacionesHistoryView } from "@/src/modules/payroll/frontend/components/bonificaciones-history-view";
 import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
 import { IslrRetencionesModal } from "@/src/modules/payroll/frontend/components/islr-retenciones-modal";
+import { formatBcvRate } from "@/src/modules/payroll/frontend/components/calculator/formatters";
 
 type HistoryTab = "payroll" | "cesta" | "bono" | "bonificaciones";
 
@@ -145,7 +146,7 @@ function RunRow({ run, isSelected, onSelect }: {
             <div className="flex items-center gap-3 sm:gap-6 tabular-nums shrink-0">
                 <div className="flex flex-col items-end gap-0.5">
                     <span className="font-mono text-[10px] sm:text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
-                    <span className="font-mono text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{fmt(run.exchangeRate)}</span>
+                    <span className="font-mono text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{formatBcvRate(run.exchangeRate)}</span>
                 </div>
                 <span
                     className={[
@@ -628,7 +629,7 @@ export default function PayrollHistoryPage() {
                             label="Período"
                             value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
                         />
-                        <SummaryRow label="Tasa BCV" value={fmt(selectedRun.exchangeRate)} />
+                        <SummaryRow label="Tasa BCV" value={formatBcvRate(selectedRun.exchangeRate)} />
                         <SummaryRow label="Empleados" value={receipts.length} />
                         <SummaryRow
                             label="Total Neto VES"
@@ -660,7 +661,7 @@ export default function PayrollHistoryPage() {
                             label="Período"
                             value={`${formatDateShort(selectedRun.periodStart)} — ${formatDateShort(selectedRun.periodEnd)}`}
                         />
-                        <SummaryRow label="Tasa BCV" value={fmt(selectedRun.exchangeRate)} />
+                        <SummaryRow label="Tasa BCV" value={formatBcvRate(selectedRun.exchangeRate)} />
                         <SummaryRow label="Empleados" value={receipts.length} />
                     </>
                 )}

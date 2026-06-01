@@ -15,6 +15,7 @@ import { generateSocialBenefitsPdf } from "@/src/modules/payroll/frontend/utils/
 import {
     formatCurrency,
     formatNumber,
+    formatBcvRate,
     formatDateLong,
     makeDocumentId,
     useCalculatorBcv,
@@ -381,7 +382,7 @@ export default function PrestacionesPage() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-light bg-surface-1 h-8 shadow-sm">
                     <span className="font-mono text-[10px] uppercase tracking-widest text-[var(--text-tertiary)]">BCV</span>
                     <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                        {bcvLoading ? "..." : bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                        {bcvLoading ? "..." : formatBcvRate(bcvRate)}
                     </span>
                     {bcvFetchError && <span className="w-1.5 h-1.5 rounded-full bg-red-400" title={bcvFetchError} />}
                 </div>

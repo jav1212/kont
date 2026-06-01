@@ -33,6 +33,7 @@ import { generateCestaTicketPdf } from "@/src/modules/payroll/frontend/utils/ces
 import { generateBonoGuerraPdf } from "@/src/modules/payroll/frontend/utils/bono-guerra-pdf";
 import { generateBonificacionesPdf } from "@/src/modules/payroll/frontend/utils/bonificaciones-pdf";
 import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
+import { formatBcvRate } from "@/src/modules/payroll/frontend/components/calculator/formatters";
 
 const MODE_LABEL: Record<ReportMode, string> = {
     general:    "General · consolidado",
@@ -502,7 +503,7 @@ export default function PayrollCalculatorPage() {
                 <>
                     <SummaryRow label="Empleados" value={payload.receipts.length} />
                     <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
-                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${formatBcvRate(bcvRate)} / USD`} />
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
                 </>
             ),
@@ -564,7 +565,7 @@ export default function PayrollCalculatorPage() {
                 <>
                     <SummaryRow label="Empleados" value={payload.receipts.length} />
                     <SummaryRow label="Monto global USD" value={`$${fmtNum(payload.run.montoUsd)}`} />
-                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${formatBcvRate(bcvRate)} / USD`} />
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
                 </>
             ),
@@ -624,7 +625,7 @@ export default function PayrollCalculatorPage() {
                 <>
                     <SummaryRow label="Empleados" value={payload.run.employeeCount} />
                     <SummaryRow label="Líneas de bono" value={payload.run.lineCount} />
-                    <SummaryRow label="Tasa BCV" value={`Bs. ${fmtNum(bcvRate)} / USD`} />
+                    <SummaryRow label="Tasa BCV" value={`Bs. ${formatBcvRate(bcvRate)} / USD`} />
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(payload.run.totalVes)}`} emphasis />
                 </>
             ),
@@ -720,7 +721,7 @@ export default function PayrollCalculatorPage() {
                         <div className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border-light bg-surface-2 shadow-sm">
                             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">BCV</span>
                             <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                                {bcvRate.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
+                                {formatBcvRate(bcvRate)}
                             </span>
                         </div>
 

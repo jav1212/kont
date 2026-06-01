@@ -7,6 +7,7 @@ export {
     formatCurrency,
     formatNumber,
     formatUsd,
+    formatBcvRate,
     formatDateLong,
     formatDateUpper,
     makeDocumentId,

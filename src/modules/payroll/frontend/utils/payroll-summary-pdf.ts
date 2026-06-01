@@ -104,7 +104,7 @@ export async function generatePayrollSummaryPdf(
     rect(doc, ML, y, W, kpiH, COLORS.border, 0.2);
 
     const kpis: [string, string][] = [
-        ["BCV",          `Bs. ${formatN(opts.bcvRate)} / USD`],
+        ["BCV",          `Bs. ${formatN(opts.bcvRate, 4)} / USD`],
         ["Empleados",    String(rows.length)],
         ["Total Neto",   formatVES(totals.net)],
         ["Total Neto $", `$ ${formatN(totals.netUSD)}`],
