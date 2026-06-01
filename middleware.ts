@@ -164,9 +164,23 @@ export async function middleware(request: NextRequest) {
                 .limit(1);
 
             if (!memberships || memberships.length === 0) {
-                // Sesión realmente huérfana → cerrar sesión
+                // Sesión sin acceso a ninguna empresa (sin tenant propio y sin
+                // membresía aceptada/vigente). Antes esto era un rebote silencioso
+                // al login —el usuario veía el botón "no hacer nada"—. Ahora
+                // cerramos sesión y devolvemos un ?error= que /sign-in muestra como
+                // toast, para que entienda por qué no puede entrar.
                 await supabase.auth.signOut();
-                return NextResponse.redirect(new URL('/sign-in', request.url));
+                const url = new URL('/sign-in', request.url);
+                url.searchParams.set(
+                    'error',
+                    'Tu cuenta no tiene acceso a ninguna empresa. Pídele al administrador que te invite nuevamente.',
+                );
+                const redirect = NextResponse.redirect(url);
+                // NextResponse.redirect() crea una respuesta nueva que no hereda las
+                // cookies de `response`; propagamos las que escribió signOut() para
+                // que el cierre de sesión llegue efectivamente al browser.
+                response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+                return redirect;
             }
             // Miembro invitado: ActiveTenantProvider seleccionará el tenant activo.
             return response;
