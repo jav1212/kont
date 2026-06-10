@@ -1387,16 +1387,22 @@ export default function NuevaFacturaPage() {
                         <SummaryRow label="Proveedor" value={supplierName ?? "—"} />
                         <SummaryRow label="Período" value={(periodoManual && periodo) || date.slice(0, 7) || "—"} />
                         <SummaryRow label="Ítems" value={String(itemCount)} />
-                        <div className="border-t border-border-light/60 pt-2.5 mt-1">
+                        <div className="border-t border-border-light/60 pt-2.5 mt-1 space-y-2.5">
+                            {hasImpuestos && (
+                                <SummaryRow
+                                    label="Impuestos"
+                                    value={`+ Bs. ${fmtN(totalImpuestos)}`}
+                                />
+                            )}
                             <SummaryRow
                                 label="Total"
-                                value={`Bs. ${fmtN(total)}`}
+                                value={`Bs. ${fmtN(heroTotal)}`}
                                 emphasis
                             />
-                            {effectiveDollarRate && total > 0 && (
+                            {effectiveDollarRate && heroTotal > 0 && (
                                 <SummaryRow
                                     label="≈ USD"
-                                    value={`$ ${fmtN(total / effectiveDollarRate)}`}
+                                    value={`$ ${fmtN(heroTotal / effectiveDollarRate)}`}
                                 />
                             )}
                             {hasRetencion && (

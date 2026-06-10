@@ -5,7 +5,7 @@
 // Architectural role: Page-level composition using inventory hook and English domain types.
 // All identifiers use English; JSX user-facing text remains in Spanish.
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, use, useCallback, Fragment } from "react";
 import { ChevronLeft, ArrowRight, RotateCcw, Save, CheckCircle2, X, Lock, Unlock, Receipt } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
@@ -22,6 +22,7 @@ import { Inbox } from "lucide-react";
 import { generateComprobanteIvaPdf } from "@/src/modules/purchases/frontend/utils/comprobante-iva-pdf";
 import { generateComprobanteIslrPdf } from "@/src/modules/purchases/frontend/utils/comprobante-islr-pdf";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
+import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
 import {
     computeInvoiceTotals,
     emptyHeaderAdjustments,
@@ -121,6 +122,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [unconfirming, setUnconfirming] = useState(false);
     const [justConfirmed, setJustConfirmed] = useState(false);
 
@@ -254,6 +256,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const total     = totals.total;
     const retencionIva = totals.retencionIva;
     const totalAPagar  = totals.totalAPagar;
+    const heroTotal    = total + totals.totalImpuestos;
+    const hasImpuestos = totals.totalImpuestos > 0;
     const hasRetencion = retencionIvaPct > 0 && retencionIva > 0;
     const headerAdjActive =
         (headerAdj.descuentoTipo != null && headerAdj.descuentoValor > 0) ||
@@ -379,13 +383,18 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setSaving(false);
     }
 
-    async function handleConfirm() {
+    function handleConfirm() {
         if (!validate()) return;
+        setShowConfirm(true);
+    }
+
+    async function handleConfirmInvoice() {
         setConfirming(true);
         const saved = await savePurchaseInvoice(buildInvoice(), itemsForSave());
         if (!saved) { setConfirming(false); return; }
         const confirmed = await confirmPurchaseInvoice(saved.id!);
         setConfirming(false);
+        setShowConfirm(false);
         if (confirmed) setJustConfirmed(true);
     }
 
@@ -587,6 +596,41 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                     </div>
                 </div>
             )}
+
+            {/* Confirm dialog — always shown before (re)confirming */}
+            <ConfirmCompanyDialog
+                isOpen={showConfirm}
+                onClose={() => { if (!confirming) setShowConfirm(false); }}
+                onConfirm={handleConfirmInvoice}
+                loading={confirming}
+                title="Confirmar factura de compra"
+                subtitle="Al confirmar, las existencias y el costo promedio se actualizan inmediatamente y la factura entra en el período contable seleccionado."
+                summary={
+                    <>
+                        <SummaryRow label="Nº Factura" value={invoiceNumber || "—"} />
+                        {controlNumber && <SummaryRow label="Nº Control" value={controlNumber} />}
+                        <SummaryRow label="Proveedor" value={suppliers.find((s) => s.id === supplierId)?.name ?? "—"} />
+                        <SummaryRow label="Período" value={(periodoManual && periodo) || date.slice(0, 7) || "—"} />
+                        <SummaryRow label="Ítems" value={String(items.filter((i) => i.productId).length)} />
+                        <div className="border-t border-border-light/60 pt-2.5 mt-1 space-y-2.5">
+                            {hasImpuestos && (
+                                <SummaryRow label="Impuestos" value={`+ Bs. ${fmtN(totals.totalImpuestos)}`} />
+                            )}
+                            <SummaryRow label="Total" value={`Bs. ${fmtN(heroTotal)}`} emphasis />
+                            {effectiveDollarRate && heroTotal > 0 && (
+                                <SummaryRow label="≈ USD" value={`$ ${fmtN(heroTotal / effectiveDollarRate)}`} />
+                            )}
+                            {hasRetencion && (
+                                <SummaryRow label="Total a pagar" value={`Bs. ${fmtN(totalAPagar)}`} />
+                            )}
+                        </div>
+                    </>
+                }
+                warning={hasRetencion
+                    ? `Se retendrá Bs. ${fmtN(retencionIva)} (${retencionIvaPct}% IVA) que se enteran a SENIAT.`
+                    : undefined}
+                confirmLabel={confirming ? "Confirmando…" : "Sí, confirmar"}
+            />
 
             {/* Purchase Return Modal */}
             {showReturnModal && (
@@ -1104,11 +1148,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                                                 {/* Block 4b — Dynamic taxes */}
                                                 {dHasImpuestos && dResolvedImpuestos.map((tax, idx) => (
-                                                    renderRow(
-                                                        tax.nombre || `Impuesto ${idx + 1}`,
-                                                        tax.monto,
-                                                        { kind: "pos", sign: "+", indent: true, note: tax.tipo === "porcentaje" ? `${tax.valor}% ${tax.base === "post_iva" ? "post-IVA" : "pre-IVA"}` : undefined },
-                                                    )
+                                                    <Fragment key={`tax-${idx}`}>
+                                                        {renderRow(
+                                                            tax.nombre || `Impuesto ${idx + 1}`,
+                                                            tax.monto,
+                                                            { kind: "pos", sign: "+", indent: true, note: tax.tipo === "porcentaje" ? `${tax.valor}% ${tax.base === "post_iva" ? "post-IVA" : "pre-IVA"}` : undefined },
+                                                        )}
+                                                    </Fragment>
                                                 ))}
 
                                                 <div className="col-span-3 h-px bg-border-light my-1" aria-hidden="true" />
@@ -1303,6 +1349,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     const summaryIgtfMonto      = invoice.igtfMonto ?? 0;
                                     const summaryIgtfPct        = invoice.igtfPorcentaje ?? 0;
                                     const summaryHasIgtf        = (invoice.igtfAplica ?? false) && summaryIgtfMonto > 0;
+                                    // Impuestos adicionales (mig. 111): ya están sumados en invoice.total,
+                                    // se listan aquí para que Base + IVA + Impuestos − retenciones = Total cuadre.
+                                    const summaryImpuestos      = (invoice.impuestos ?? []).filter((t) => (t.monto ?? 0) > 0);
                                     return (
                                         <>
                                             {summaryHasIva && (
@@ -1327,6 +1376,25 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                     </div>
                                                 </>
                                             )}
+                                            {summaryImpuestos.map((tax, i) => (
+                                                <div key={`imp-${i}`} className="flex justify-between items-baseline gap-3">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px] truncate">
+                                                        {tax.nombre || `Impuesto ${i + 1}`}
+                                                    </span>
+                                                    <div className="text-right">
+                                                        <div className="tabular-nums text-amber-600">
+                                                            <span className="opacity-60 mr-0.5">+</span>
+                                                            Bs. {fmtN(tax.monto)}
+                                                        </div>
+                                                        {usd(tax.monto) && (
+                                                            <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">
+                                                                <span className="opacity-60 mr-0.5">+</span>
+                                                                ≈ {usd(tax.monto)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
                                             {summaryHasRetencion && (
                                                 <div className="flex justify-between items-baseline">
                                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">
