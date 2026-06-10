@@ -93,7 +93,7 @@ export function drawCompactHeader(
     // Título arriba-derecha (alineado con el chip)
     renderText(doc, reportTitle, xR, yStart + chipH - 1, 9, true, COLORS.ink, "right");
 
-    let y = yStart + chipH + 1;
+    const y = yStart + chipH + 1;
 
     // Empresa + RIF (izquierda)
     renderText(doc, opts.companyName, xL, y + 3, 9, true, COLORS.ink, "left", contentW * 0.55);
