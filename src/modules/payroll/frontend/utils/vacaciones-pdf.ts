@@ -13,7 +13,9 @@ import {
     fill,
     hline,
     rect,
+    formatN,
     formatVES,
+    formatUSD,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -47,6 +49,7 @@ export interface VacCompletasPdfData {
     montoDisfrute:    number;
     montoBono:        number;
     total:            number;
+    bcvRate?:         number;
     logoUrl?:         string;
     showLogoInPdf?:   boolean;
 }
@@ -68,6 +71,7 @@ export interface VacFraccionadasPdfData {
     montoDisfrute:     number;
     montoBono:         number;
     total:             number;
+    bcvRate?:          number;
     logoUrl?:          string;
     showLogoInPdf?:    boolean;
 }
@@ -256,6 +260,13 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
         },
     ], "Total a recibir", data.diasDisfrute + data.diasBono, data.total);
 
+    // ── USD equivalent + BCV rate (only when a rate is available) ──
+    if (data.bcvRate && data.bcvRate > 0) {
+        renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
+        renderMono(doc, formatUSD(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+        y += 6;
+    }
+
     y = drawSignatures(doc, ML, W, y);
 
     drawLegal(doc, ML, W, y,
@@ -335,6 +346,13 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
             monto:    data.montoBono,
         },
     ], "Total Fraccionado", data.fraccionDisfrute + data.fraccionBono, data.total);
+
+    // ── USD equivalent + BCV rate (only when a rate is available) ──
+    if (data.bcvRate && data.bcvRate > 0) {
+        renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
+        renderMono(doc, formatUSD(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+        y += 6;
+    }
 
     // Salary recap
     fill(doc, ML, y, W, 12, COLORS.rowAlt);

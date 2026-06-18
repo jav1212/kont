@@ -486,6 +486,7 @@ export default function VacacionesPage() {
                         montoDisfrute:  r.calc.montoDisfrute,
                         montoBono:      r.calc.montoBono,
                         total:          r.calc.total,
+                        bcvRate:        bcvRate || undefined,
                         logoUrl:       company.logoUrl,
                         showLogoInPdf: company.showLogoInPdf,
                     });
@@ -505,6 +506,7 @@ export default function VacacionesPage() {
                         montoDisfrute:     r.calc.montoDisfrute,
                         montoBono:         r.calc.montoBono,
                         total:             r.calc.total,
+                        bcvRate:           bcvRate || undefined,
                         logoUrl:       company.logoUrl,
                         showLogoInPdf: company.showLogoInPdf,
                     });
