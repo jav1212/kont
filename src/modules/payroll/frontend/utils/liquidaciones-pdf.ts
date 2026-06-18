@@ -13,7 +13,9 @@ import {
     fill,
     hline,
     rect,
+    formatN,
     formatVES,
+    formatUSD,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -153,7 +155,15 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     rect(doc, ML, y, W, 14, COLORS.border, 0.2);
     renderLabel(doc, "Líquido a recibir", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
     renderMono(doc, formatVES(emp.total), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
-    y += 14 + 6;
+    y += 14;
+
+    // ── USD equivalent + BCV rate (only when a rate is available) ──────────────
+    if (opts.bcvRate && opts.bcvRate > 0) {
+        y += 5;
+        renderMono(doc, `Tasa BCV: ${formatN(opts.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
+        renderMono(doc, formatUSD(emp.total / opts.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+    }
+    y += 6;
 
     // ── Legal ─────────────────────────────────────────────────────────────────
     const legal =

@@ -161,6 +161,8 @@ export const formatN = (n: number, dec = 2): string =>
 
 export const formatVES = (n: number): string => "Bs. " + formatN(n);
 
+export const formatUSD = (n: number): string => "$" + formatN(n) + " USD";
+
 export const formatQty = (n: number): string => {
     if (!Number.isFinite(n)) return "—";
     const isInt = Math.abs(n - Math.round(n)) < 1e-9;
