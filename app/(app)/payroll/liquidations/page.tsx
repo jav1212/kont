@@ -58,6 +58,11 @@ interface LiquidationResult {
     fractionalProfitSharing: number;
     fractionalVacations:    number;
     fractionalVacationBonus: number;
+    accruedVacations:        number;
+    accruedVacationBonus:    number;
+    accruedVacationDays:     number;
+    accruedProfitSharing:    number;
+    accruedProfitSharingDays: number;
     terminationIndemnity:   number;
     total:                  number;
     warning?:               string;
@@ -70,6 +75,8 @@ function calculateLiquidation(
     profitSharingDays: number,
     vacationBonusDays: number,
     bcvRate:           number,
+    unpaidVacationsAccrued:     boolean,
+    unpaidProfitSharingAccrued: boolean,
 ): LiquidationResult {
     const base: LiquidationResult = {
         employee, salaryVES: 0, integratedDailySalary: 0,
@@ -77,6 +84,8 @@ function calculateLiquidation(
         daysSeniority: 0, daysSeniorityQuarterly: 0, daysSeniorityExtra: 0,
         socialBenefits: 0, daysInCurrentYear: 0, daysSinceAnniversary: 0,
         fractionalProfitSharing: 0, fractionalVacations: 0, fractionalVacationBonus: 0,
+        accruedVacations: 0, accruedVacationBonus: 0, accruedVacationDays: 0,
+        accruedProfitSharing: 0, accruedProfitSharingDays: 0,
         terminationIndemnity: 0, total: 0,
     };
 
@@ -125,15 +134,39 @@ function calculateLiquidation(
     const fractionalVacations     = (salaryVES / 30) * baseVacationDays * (daysSinceAnniversary / 365);
     const fractionalVacationBonus = (salaryVES / 30) * vacationBonusDays * (daysSinceAnniversary / 365);
 
+    // ── ACCRUED (UNPAID) VACATIONS, BONUS & PROFIT SHARING ────────────────
+    // When prior whole periods were never paid, the liquidation owes them in
+    // full, on top of the current-period fraction above. Vacations accrue per
+    // completed YEAR OF SERVICE (anniversary → yearsOfService); profit sharing
+    // accrues per prior CALENDAR YEAR (totalDays − daysInCurrentYear, so it can
+    // be > 0 even with yearsOfService === 0 when hired in a prior year). All
+    // paid at the last (current) salary.
+    let accruedVacationDays = 0;
+    if (unpaidVacationsAccrued) {
+        for (let k = 1; k <= yearsOfService; k++) {
+            // LOTTT Art. 190/192: 15 base days + 1 per year from the 2nd, capped at +15.
+            accruedVacationDays += 15 + (k >= 2 ? Math.min(k - 1, 15) : 0);
+        }
+    }
+    const accruedVacations         = (salaryVES / 30) * accruedVacationDays;
+    const accruedVacationBonus     = (salaryVES / 30) * (unpaidVacationsAccrued ? vacationBonusDays * yearsOfService : 0);
+
+    const accruedProfitSharingDays = unpaidProfitSharingAccrued ? Math.max(0, totalDays - daysInCurrentYear) : 0;
+    const accruedProfitSharing     = (salaryVES / 30) * profitSharingDays * (accruedProfitSharingDays / 365);
+
     const terminationIndemnity = reason === "despido_injustificado" ? socialBenefits : 0;
-    const total = socialBenefits + fractionalProfitSharing + fractionalVacations + fractionalVacationBonus + terminationIndemnity;
+    const total = socialBenefits + fractionalProfitSharing + fractionalVacations + fractionalVacationBonus
+        + accruedVacations + accruedVacationBonus + accruedProfitSharing + terminationIndemnity;
 
     return {
         employee, salaryVES, integratedDailySalary,
         yearsOfService, totalDays,
         daysSeniority, daysSeniorityQuarterly, daysSeniorityExtra,
         socialBenefits, daysInCurrentYear, daysSinceAnniversary,
-        fractionalProfitSharing, fractionalVacations, fractionalVacationBonus, terminationIndemnity, total,
+        fractionalProfitSharing, fractionalVacations, fractionalVacationBonus,
+        accruedVacations, accruedVacationBonus, accruedVacationDays,
+        accruedProfitSharing, accruedProfitSharingDays,
+        terminationIndemnity, total,
     };
 }
 
@@ -363,7 +396,7 @@ function LiquidationsTable({ results, bcvRate, showIndem, profitSharingDays, vac
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Antig.</p>
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">S.Integral</p>
                 <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Prestaciones</p>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Fracciones</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-tertiary)] text-right">Utilid. y vac.</p>
                 {showIndem && (
                     <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-rose-500 text-right">Indemniz.</p>
                 )}
@@ -400,7 +433,8 @@ function LiquidationsTableRow({
     result, bcvRate, showIndem, cols, profitSharingDays, vacationBonusDays,
 }: LiquidationsTableRowProps) {
     const [expanded, setExpanded] = useState(false);
-    const fracciones = result.fractionalProfitSharing + result.fractionalVacations + result.fractionalVacationBonus;
+    const fracciones = result.fractionalProfitSharing + result.fractionalVacations + result.fractionalVacationBonus
+        + result.accruedVacations + result.accruedVacationBonus + result.accruedProfitSharing;
 
     if (result.warning) {
         return (
@@ -568,6 +602,16 @@ function BreakdownPanel({
             amount:   result.fractionalProfitSharing,
         });
     }
+    if (result.accruedProfitSharing > 0) {
+        lines.push({
+            icon:     PieChart,
+            label:    "Utilidades vencidas",
+            sublabel: "Años anteriores no pagados",
+            formula:  `${profitSharingDays} d utilidad × ${result.accruedProfitSharingDays}/365 año × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${result.accruedProfitSharingDays} d previos`,
+            amount:   result.accruedProfitSharing,
+        });
+    }
     if (result.fractionalVacations > 0) {
         lines.push({
             icon:     Plane,
@@ -578,6 +622,16 @@ function BreakdownPanel({
             amount:   result.fractionalVacations,
         });
     }
+    if (result.accruedVacations > 0) {
+        lines.push({
+            icon:     Plane,
+            label:    "Vacaciones vencidas",
+            sublabel: `${result.yearsOfService} año(s) no pagados`,
+            formula:  `${result.accruedVacationDays} d vacación × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${result.accruedVacationDays} días`,
+            amount:   result.accruedVacations,
+        });
+    }
     if (result.fractionalVacationBonus > 0) {
         lines.push({
             icon:     Gift,
@@ -586,6 +640,16 @@ function BreakdownPanel({
             formula:  `${vacationBonusDays} d bono × Bs. ${formatNumber(baseDailySalary)} / día`,
             chip:     `${fractionPercent.toFixed(1)}% desde aniv.`,
             amount:   result.fractionalVacationBonus,
+        });
+    }
+    if (result.accruedVacationBonus > 0) {
+        lines.push({
+            icon:     Gift,
+            label:    "Bono vacacional vencido",
+            sublabel: `${result.yearsOfService} año(s) no pagados`,
+            formula:  `${vacationBonusDays} d bono × ${result.yearsOfService} año(s) × Bs. ${formatNumber(baseDailySalary)} / día`,
+            chip:     `${result.yearsOfService} año(s)`,
+            amount:   result.accruedVacationBonus,
         });
     }
     if (result.terminationIndemnity > 0) {
@@ -706,6 +770,8 @@ export default function LiquidacionesPage() {
     const [vacationBonusDays, setVacationBonusDays] = useState("15");
     const [onlyActive,        setOnlyActive]        = useState(true);
     const [selectedIdNumber,  setSelectedIdNumber]  = useState<string>("");
+    const [unpaidVacationsAccrued,     setUnpaidVacationsAccrued]     = useState(false);
+    const [unpaidProfitSharingAccrued, setUnpaidProfitSharingAccrued] = useState(false);
 
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedIdNumber),
@@ -731,8 +797,10 @@ export default function LiquidacionesPage() {
             parseFloat(profitSharingDays) || 120,
             parseFloat(vacationBonusDays) || 15,
             bcvRate,
+            unpaidVacationsAccrued,
+            unpaidProfitSharingAccrued,
         )),
-        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate],
+        [filteredEmployees, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate, unpaidVacationsAccrued, unpaidProfitSharingAccrued],
     );
 
     const validResults = useMemo(() => liquidationResults.filter(r => !r.warning), [liquidationResults]);
@@ -746,34 +814,34 @@ export default function LiquidacionesPage() {
         () => validResults.reduce((s, r) => s + r.socialBenefits, 0),
         [validResults],
     );
-    const totalUtilidadesFrac = useMemo(
-        () => validResults.reduce((s, r) => s + r.fractionalProfitSharing, 0),
+    const totalUtilidades = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalProfitSharing + r.accruedProfitSharing, 0),
         [validResults],
     );
-    const totalVacacionesFrac = useMemo(
-        () => validResults.reduce((s, r) => s + r.fractionalVacations, 0),
+    const totalVacaciones = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalVacations + r.accruedVacations, 0),
         [validResults],
     );
-    const totalBonoVacFrac = useMemo(
-        () => validResults.reduce((s, r) => s + r.fractionalVacationBonus, 0),
+    const totalBonoVac = useMemo(
+        () => validResults.reduce((s, r) => s + r.fractionalVacationBonus + r.accruedVacationBonus, 0),
         [validResults],
     );
-    const totalFracciones = totalUtilidadesFrac + totalVacacionesFrac + totalBonoVacFrac;
+    const totalFracciones = totalUtilidades + totalVacaciones + totalBonoVac;
 
     const showIndem = reason === "despido_injustificado";
 
     const distributionSegments = useMemo<DistributionSegment[]>(() => {
         const segs: DistributionSegment[] = [
-            { key: "prestaciones", label: "Prestaciones",     amount: totalPrestaciones,  bg: "bg-primary-500" },
-            { key: "utilidades",   label: "Utilidades frac.", amount: totalUtilidadesFrac, bg: "bg-primary-500/70" },
-            { key: "vacaciones",   label: "Vacaciones frac.", amount: totalVacacionesFrac, bg: "bg-primary-500/40" },
-            { key: "bono",         label: "Bono vac. frac.",  amount: totalBonoVacFrac,    bg: "bg-primary-500/25" },
+            { key: "prestaciones", label: "Prestaciones", amount: totalPrestaciones, bg: "bg-primary-500" },
+            { key: "utilidades",   label: "Utilidades",   amount: totalUtilidades,   bg: "bg-primary-500/70" },
+            { key: "vacaciones",   label: "Vacaciones",   amount: totalVacaciones,   bg: "bg-primary-500/40" },
+            { key: "bono",         label: "Bono vac.",    amount: totalBonoVac,      bg: "bg-primary-500/25" },
         ];
         if (showIndem && indemnizacionTotal > 0) {
             segs.push({ key: "indemnizacion", label: "Indemnización", amount: indemnizacionTotal, bg: "bg-rose-500/70" });
         }
         return segs;
-    }, [totalPrestaciones, totalUtilidadesFrac, totalVacacionesFrac, totalBonoVacFrac, indemnizacionTotal, showIndem]);
+    }, [totalPrestaciones, totalUtilidades, totalVacaciones, totalBonoVac, indemnizacionTotal, showIndem]);
 
     // ── Export ──────────────────────────────────────────────────────────────
     const handlePdf = useCallback(() => {
@@ -796,16 +864,34 @@ export default function LiquidacionesPage() {
                     amount:  r.fractionalProfitSharing,
                 },
                 {
+                    label:   "Utilidades vencidas (años anteriores)",
+                    formula: `${r.accruedProfitSharingDays}d previos × ${profitSharingDays}d util / 365`,
+                    salary:  simpleDailySalary,
+                    amount:  r.accruedProfitSharing,
+                },
+                {
                     label:   "Vacaciones fraccionadas",
                     formula: `${r.daysSinceAnniversary}d / 365 × ${Math.max(15, 15 + Math.max(0, r.yearsOfService - 1))}d vac.`,
                     salary:  simpleDailySalary,
                     amount:  r.fractionalVacations,
                 },
                 {
+                    label:   "Vacaciones vencidas",
+                    formula: `${r.accruedVacationDays}d vac. (${r.yearsOfService} año/s)`,
+                    salary:  simpleDailySalary,
+                    amount:  r.accruedVacations,
+                },
+                {
                     label:   "Bono vacacional fraccionado",
                     formula: `${r.daysSinceAnniversary}d / 365 × ${vacationBonusDays}d bono`,
                     salary:  simpleDailySalary,
                     amount:  r.fractionalVacationBonus,
+                },
+                {
+                    label:   "Bono vacacional vencido",
+                    formula: `${vacationBonusDays}d bono × ${r.yearsOfService} año/s`,
+                    salary:  simpleDailySalary,
+                    amount:  r.accruedVacationBonus,
                 },
                 ...(r.terminationIndemnity > 0
                     ? [{ label: "Indemnización por despido (Art. 92)", days: r.daysSeniority, salary: integratedDailySalary, amount: r.terminationIndemnity, highlight: "amber" as const }]
@@ -942,6 +1028,22 @@ export default function LiquidacionesPage() {
                             <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
                                 Las utilidades y el bono vacacional se fraccionan proporcional al tiempo trabajado en el año en curso. Mínimos legales: <span className="font-mono font-semibold text-foreground">30d</span> utilidad / <span className="font-mono font-semibold text-foreground">15d</span> bono. Art. 131 / 192 / 196 LOTTT.
                             </p>
+                            <div className="pt-1 space-y-2.5 border-t border-border-light/60">
+                                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold pt-3">Acreencias vencidas</p>
+                                <OnlyActiveToggle
+                                    checked={unpaidVacationsAccrued}
+                                    onChange={setUnpaidVacationsAccrued}
+                                    label="Vacaciones no pagadas"
+                                />
+                                <OnlyActiveToggle
+                                    checked={unpaidProfitSharingAccrued}
+                                    onChange={setUnpaidProfitSharingAccrued}
+                                    label="Utilidades no pagadas"
+                                />
+                                <p className="font-sans text-[12px] text-[var(--text-secondary)] leading-relaxed">
+                                    Márcalas si al trabajador no se le pagaron vacaciones o utilidades de años anteriores: se suman los períodos completos vencidos (por antigüedad) además de la fracción del período en curso.
+                                </p>
+                            </div>
                         </div>
 
                         {/* ── Tasa BCV ──────────────────────────────────────── */}
@@ -1008,7 +1110,7 @@ export default function LiquidacionesPage() {
                                     bcvRate={bcvRate}
                                 />
                                 <KpiTile
-                                    label="Fracciones"
+                                    label="Utilid. y vac."
                                     icon={Receipt}
                                     valueBs={totalFracciones}
                                     bcvRate={bcvRate}
