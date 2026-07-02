@@ -398,6 +398,10 @@ export default function VacacionesPage() {
     const [, setUserEditedCulm] = useState(false);
     const [userEditedReint, setUserEditedReint]   = useState(false);
 
+    // ── Disfrute acumulado (tiempo ilimitado, > tope legal) ─────────────────
+    const [disfruteOverride,   setDisfruteOverride]   = useState(false);
+    const [diasDisfruteManual, setDiasDisfruteManual] = useState("");
+
     // ── Selected employee + salary sync ─────────────────────────────────────
     const selectedEmp = useMemo(
         () => employees.find(e => e.cedula === selectedCedula),
@@ -438,18 +442,21 @@ export default function VacacionesPage() {
             const ing = emp.fechaIngreso ?? "";
 
             if (mode === "completas") {
-                const anios = calcAniosAt(ing, fechaInicio);
-                const dL    = 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
-                const culm  = calculateCulminacion(fechaInicio, dL);
-                const reint = nextWorkingDay(culm);
-                const c     = computeVac(ves, ing, fechaInicio, culm);
+                const anios  = calcAniosAt(ing, fechaInicio);
+                const dL     = 15 + (anios >= 2 ? Math.min(anios - 1, 15) : 0);
+                // Manual override wins when "disfrute acumulado" is on; empty/0 falls back to the legal cap.
+                const manual = disfruteOverride ? Math.max(0, parseInt(diasDisfruteManual, 10) || 0) : 0;
+                const dias   = manual > 0 ? manual : dL;
+                const culm   = calculateCulminacion(fechaInicio, dias);
+                const reint  = nextWorkingDay(culm);
+                const c      = computeVac(ves, ing, fechaInicio, culm);
                 return { emp, calc: c, dates: { start: fechaInicio, end: culm, rest: reint } };
             } else {
                 const c = computeVacFrac(ves, ing, fechaEgreso);
                 return { emp, calc: c };
             }
         });
-    }, [filtered, mode, bcvRate, fechaInicio, fechaEgreso]);
+    }, [filtered, mode, bcvRate, fechaInicio, fechaEgreso, disfruteOverride, diasDisfruteManual]);
 
     const totalGral = useMemo(() => results.reduce((acc, r) => acc + (r.calc?.total ?? 0), 0), [results]);
 
@@ -644,19 +651,48 @@ export default function VacacionesPage() {
                                         onValueChange={handleInicioChange}
                                         startContent={<Calendar size={14} className="text-[var(--text-tertiary)]" />}
                                     />
+                                    <OnlyActiveToggle
+                                        label="Disfrute acumulado (tiempo ilimitado)"
+                                        checked={disfruteOverride}
+                                        onChange={setDisfruteOverride}
+                                    />
+                                    {disfruteOverride && (
+                                        <BaseInput.Field
+                                            label="Días de disfrute"
+                                            type="number"
+                                            min={0}
+                                            step={1}
+                                            value={diasDisfruteManual}
+                                            onValueChange={setDiasDisfruteManual}
+                                            placeholder={
+                                                calcDisplay
+                                                    ? `Tope legal: ${(calcDisplay as VacCalc).diasLegalDisfrute} días`
+                                                    : "Días de disfrute"
+                                            }
+                                            inputClassName="text-right"
+                                        />
+                                    )}
                                     {selectedCedula && (
                                         <div className="grid grid-cols-2 gap-3">
                                             <BaseInput.Field
                                                 label="Culminación"
                                                 type="date"
-                                                value={fechaCulminacion || (datesDisplay?.end ?? "")}
+                                                value={disfruteOverride
+                                                    ? (datesDisplay?.end ?? "")
+                                                    : (fechaCulminacion || (datesDisplay?.end ?? ""))}
                                                 onValueChange={handleCulminacionChange}
+                                                isReadOnly={disfruteOverride}
+                                                isDisabled={disfruteOverride}
                                             />
                                             <BaseInput.Field
                                                 label="Reintegro"
                                                 type="date"
-                                                value={fechaReintegro || (datesDisplay?.rest ?? "")}
+                                                value={disfruteOverride
+                                                    ? (datesDisplay?.rest ?? "")
+                                                    : (fechaReintegro || (datesDisplay?.rest ?? ""))}
                                                 onValueChange={setFechaReintegro}
+                                                isReadOnly={disfruteOverride}
+                                                isDisabled={disfruteOverride}
                                             />
                                         </div>
                                     )}
