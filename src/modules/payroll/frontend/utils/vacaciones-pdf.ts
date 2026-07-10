@@ -47,6 +47,7 @@ export interface VacCompletasPdfData {
     diasDisfrute:     number;
     diasBono:         number;
     montoDisfrute:    number;
+    montoDescanso:    number;
     montoBono:        number;
     total:            number;
     bcvRate?:         number;
@@ -68,8 +69,10 @@ export interface VacFraccionadasPdfData {
     salarioDia:        number;
     fraccionDisfrute:  number;
     fraccionBono:      number;
+    diasDescanso:      number;
     montoDisfrute:     number;
     montoBono:         number;
+    montoDescanso:     number;
     total:             number;
     bcvRate?:          number;
     logoUrl?:          string;
@@ -245,20 +248,28 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
         { label: "Cal · Háb · Desc", value: `${data.diasCalendario} · ${data.diasHabiles} · ${data.diasDescanso}` },
     ]);
 
-    y = drawConceptTable(doc, ML, W, y, [
+    const completasRows: ConceptRow[] = [
         {
             label:    "Disfrute Vacacional",
             subtitle: "Art. 190 LOTTT · 15 días base + adicionales",
             dias:     data.diasDisfrute,
             monto:    data.montoDisfrute,
         },
-        {
-            label:    "Bono Vacacional",
-            subtitle: "Art. 192 LOTTT · 15 días base + adicionales",
-            dias:     data.diasBono,
-            monto:    data.montoBono,
-        },
-    ], "Total a recibir", data.diasDisfrute + data.diasBono, data.total);
+    ];
+    if (data.diasDescanso > 0) completasRows.push({
+        label:    "Feriados y días de descanso",
+        subtitle: `${data.diasDescanso} días de descanso y feriados dentro del disfrute`,
+        dias:     data.diasDescanso,
+        monto:    data.montoDescanso,
+    });
+    completasRows.push({
+        label:    "Bono Vacacional",
+        subtitle: "Art. 192 LOTTT · 15 días base + adicionales",
+        dias:     data.diasBono,
+        monto:    data.montoBono,
+    });
+    y = drawConceptTable(doc, ML, W, y, completasRows, "Total a recibir",
+        data.diasDisfrute + data.diasDescanso + data.diasBono, data.total);
 
     // ── USD equivalent + BCV rate (only when a rate is available) ──
     if (data.bcvRate && data.bcvRate > 0) {
@@ -332,20 +343,28 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     );
     y += formulaH + 5;
 
-    y = drawConceptTable(doc, ML, W, y, [
+    const fraccRows: ConceptRow[] = [
         {
             label:    "Disfrute Fraccionado",
             subtitle: `Art. 190 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
             dias:     data.fraccionDisfrute,
             monto:    data.montoDisfrute,
         },
-        {
-            label:    "Bono Vacacional Fraccionado",
-            subtitle: `Art. 192 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
-            dias:     data.fraccionBono,
-            monto:    data.montoBono,
-        },
-    ], "Total Fraccionado", data.fraccionDisfrute + data.fraccionBono, data.total);
+    ];
+    if (data.diasDescanso > 0) fraccRows.push({
+        label:    "Feriados y días de descanso",
+        subtitle: `${data.diasDescanso} días de descanso (proyección de la fracción)`,
+        dias:     data.diasDescanso,
+        monto:    data.montoDescanso,
+    });
+    fraccRows.push({
+        label:    "Bono Vacacional Fraccionado",
+        subtitle: `Art. 192 + 196 LOTTT · ${data.diasAnuales}d/12 × ${data.mesesFraccion} meses`,
+        dias:     data.fraccionBono,
+        monto:    data.montoBono,
+    });
+    y = drawConceptTable(doc, ML, W, y, fraccRows, "Total Fraccionado",
+        data.fraccionDisfrute + data.diasDescanso + data.fraccionBono, data.total);
 
     // ── USD equivalent + BCV rate (only when a rate is available) ──
     if (data.bcvRate && data.bcvRate > 0) {

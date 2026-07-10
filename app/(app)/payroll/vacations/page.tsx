@@ -143,7 +143,7 @@ function getPeriodStats(inicio: string, culminacion: string): PeriodStats {
 // ── Vacaciones completas ─────────────────────────────────────────────────────
 
 interface VacCalc {
-    diasCalendario: number; diasHabiles: number; diasDescanso: number; feriadoList: string[];
+    diasCalendario: number; diasHabiles: number; diasDescanso: number; montoDescanso: number; feriadoList: string[];
     salarioVES: number; salarioDia: number; anios: number;
     diasLegalDisfrute: number; diasDisfrute: number; diasAdicDisfrute: number; montoDisfrute: number;
     diasLegalBono: number; diasBono: number; diasAdicBono: number; montoBono: number;
@@ -165,11 +165,11 @@ function computeVac(
     const diasBono         = diasLegalBono;
     const salarioDia       = salarioVES / 30;
     return {
-        diasCalendario, diasHabiles: habiles, diasDescanso: descanso, feriadoList,
+        diasCalendario, diasHabiles: habiles, diasDescanso: descanso, montoDescanso: descanso * salarioDia, feriadoList,
         salarioVES, salarioDia, anios,
         diasLegalDisfrute, diasDisfrute, diasAdicDisfrute, montoDisfrute: diasDisfrute * salarioDia,
         diasLegalBono, diasBono, diasAdicBono, montoBono: diasBono * salarioDia,
-        total: (diasDisfrute + diasBono) * salarioDia,
+        total: (diasDisfrute + diasBono + descanso) * salarioDia,
     };
 }
 
@@ -185,8 +185,10 @@ interface VacFracCalc {
     diasAnuales:       number;
     fraccionDisfrute:  number;
     fraccionBono:      number;
+    diasDescanso:      number;
     montoDisfrute:     number;
     montoBono:         number;
+    montoDescanso:     number;
     total:             number;
 }
 
@@ -211,12 +213,19 @@ function computeVacFrac(salarioVES: number, fechaIngreso: string, fechaEgreso: s
     const montoDisfrute = fraccionDisfrute * salarioDia;
     const montoBono     = fraccionBono * salarioDia;
 
+    // No hay período de disfrute real en fraccionadas: se proyecta el tramo de la fracción
+    // (mismos días hábiles) desde la fecha de egreso para contar sus días de descanso y feriados.
+    const diasDescanso  = fraccionDisfrute > 0
+        ? getPeriodStats(fechaEgreso, calculateCulminacion(fechaEgreso, fraccionDisfrute)).descanso
+        : 0;
+    const montoDescanso = diasDescanso * salarioDia;
+
     return {
         salarioVES, salarioDia, aniosCompletos, ultimoAniversario,
         mesesFraccion, diasAdicAnuales, diasAnuales,
-        fraccionDisfrute, fraccionBono,
-        montoDisfrute, montoBono,
-        total: montoDisfrute + montoBono,
+        fraccionDisfrute, fraccionBono, diasDescanso,
+        montoDisfrute, montoBono, montoDescanso,
+        total: montoDisfrute + montoBono + montoDescanso,
     };
 }
 
@@ -275,6 +284,13 @@ function ConstanciaCompleta({
                     formula={`Art. 190 LOTTT — 15 días base${calc.diasAdicDisfrute > 0 ? ` + ${calc.diasAdicDisfrute} adicional${calc.diasAdicDisfrute !== 1 ? "es" : ""}` : ""}`}
                     value={formatCurrency(calc.montoDisfrute)}
                 />
+                {calc.diasDescanso > 0 && (
+                    <CalcRow
+                        label="Feriados y días de descanso"
+                        formula={`${calc.diasDescanso} día${calc.diasDescanso !== 1 ? "s" : ""} de descanso y feriados dentro del disfrute`}
+                        value={formatCurrency(calc.montoDescanso)}
+                    />
+                )}
                 <CalcRow
                     label="Bono Vacacional"
                     formula={`Art. 192 LOTTT — 15 días base${calc.diasAdicBono > 0 ? ` + ${calc.diasAdicBono} adicional${calc.diasAdicBono !== 1 ? "es" : ""}` : ""}`}
@@ -351,6 +367,13 @@ function ConstanciaFraccionada({
                     formula={`Art. 190 + 196 LOTTT — ${calc.fraccionDisfrute} d`}
                     value={formatCurrency(calc.montoDisfrute)}
                 />
+                {calc.diasDescanso > 0 && (
+                    <CalcRow
+                        label="Feriados y días de descanso"
+                        formula={`${calc.diasDescanso} día${calc.diasDescanso !== 1 ? "s" : ""} de descanso (proyección de la fracción)`}
+                        value={formatCurrency(calc.montoDescanso)}
+                    />
+                )}
                 <CalcRow
                     label="Bono Vacacional Fracc."
                     formula={`Art. 192 + 196 LOTTT — ${calc.fraccionBono} d`}
@@ -491,6 +514,7 @@ export default function VacacionesPage() {
                         diasDisfrute:   (r.calc as VacCalc).diasDisfrute,
                         diasBono:       (r.calc as VacCalc).diasBono,
                         montoDisfrute:  r.calc.montoDisfrute,
+                        montoDescanso:  (r.calc as VacCalc).montoDescanso,
                         montoBono:      r.calc.montoBono,
                         total:          r.calc.total,
                         bcvRate:        bcvRate || undefined,
@@ -510,8 +534,10 @@ export default function VacacionesPage() {
                         salarioDia:        r.calc.salarioDia,
                         fraccionDisfrute:  (r.calc as VacFracCalc).fraccionDisfrute,
                         fraccionBono:      (r.calc as VacFracCalc).fraccionBono,
+                        diasDescanso:      (r.calc as VacFracCalc).diasDescanso,
                         montoDisfrute:     r.calc.montoDisfrute,
                         montoBono:         r.calc.montoBono,
+                        montoDescanso:     (r.calc as VacFracCalc).montoDescanso,
                         total:             r.calc.total,
                         bcvRate:           bcvRate || undefined,
                         logoUrl:       company.logoUrl,
@@ -722,6 +748,9 @@ export default function VacacionesPage() {
                                     </div>
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <SummaryRow label="Días disfrute"    value={`${(calcDisplay as VacCalc).diasDisfrute} días`} />
+                                        {(calcDisplay as VacCalc).diasDescanso > 0 && (
+                                            <SummaryRow label="Días descanso" value={`${(calcDisplay as VacCalc).diasDescanso} días`} dim />
+                                        )}
                                         <SummaryRow label="Bono vacacional"  value={`${(calcDisplay as VacCalc).diasBono} días`} dim />
                                     </div>
                                     <div className="px-4 py-3.5 flex justify-between items-center bg-surface-1">
@@ -737,6 +766,9 @@ export default function VacacionesPage() {
                                     </div>
                                     <div className="px-4 py-3 space-y-1.5 border-b border-border-light/60">
                                         <SummaryRow label="Meses fracción" value={`${(calcDisplay as VacFracCalc).mesesFraccion} meses`} />
+                                        {(calcDisplay as VacFracCalc).diasDescanso > 0 && (
+                                            <SummaryRow label="Días descanso" value={`${(calcDisplay as VacFracCalc).diasDescanso} días`} dim />
+                                        )}
                                         <SummaryRow label="Días totales"   value={`${(calcDisplay as VacFracCalc).fraccionDisfrute + (calcDisplay as VacFracCalc).fraccionBono} días`} dim />
                                     </div>
                                     <div className="px-4 py-3.5 flex justify-between items-center bg-surface-1">
