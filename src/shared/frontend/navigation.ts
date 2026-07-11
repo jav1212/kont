@@ -26,6 +26,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
         { href: "/payroll/profit-sharing",    label: "Utilidades",    group: "Operaciones", beta: true    },
         { href: "/payroll/social-benefits",   label: "Prestaciones",  group: "Operaciones", beta: true    },
         { href: "/payroll/liquidations",      label: "Liquidaciones", group: "Operaciones", beta: true    },
+        { href: "/payroll/ari",               label: "AR-I (ISLR)",   group: "Operaciones", beta: true    },
         { href: "/payroll/history",           label: "Historial",     group: "Histórico"                  },
     ],
     documents: [
