@@ -15,7 +15,7 @@ import { UseCase } from '@/src/core/domain/use-case';
 import { Result } from '@/src/core/domain/result';
 import { IProductRepository } from '../domain/repository/product.repository';
 import { IBalanceReportRepository } from '../domain/repository/balance-report.repository';
-import { Product, ProductType } from '../domain/product';
+import { Product, ProductType, MeasureUnit } from '../domain/product';
 
 export type AdjustmentBaseSource = 'entradas' | 'ventas';
 export type AdjustmentMode = 'porcentaje' | 'monto';
@@ -60,6 +60,13 @@ export interface StockAdjustmentPreview {
 
 const ROUND2 = (n: number) => Math.round(n * 100) / 100;
 const ROUND4 = (n: number) => Math.round(n * 10000) / 10000;
+
+// Unidades de medida continuas: sólo en éstas es físicamente admisible una existencia
+// fraccionaria. En unidades discretas (unidad, caja, rollo, paquete) el stock debe ser
+// entero — el Libro de Inventario refleja la existencia física real (Código de Comercio
+// Art. 32/34). Por eso el producto sumidero del cuadre sólo puede recibir un delta
+// fraccionario si su unidad es continua.
+const CONTINUOUS_UNITS = new Set<MeasureUnit>(['kg', 'g', 'm', 'm2', 'm3', 'litro']);
 
 export class GenerateStockAdjustmentUseCase
     extends UseCase<GenerateStockAdjustmentInput, StockAdjustmentPreview> {
@@ -178,6 +185,36 @@ export class GenerateStockAdjustmentUseCase
             const d = drafts[best.idx];
             const minDelta = -(d.product.currentStock ?? 0);
             d.capped = d.deltaQty < minDelta + 0.5 && d.deltaQty <= minDelta;
+        }
+
+        // ── Absorber el residuo de redondeo en un producto sumidero con un delta
+        // fraccionario. Como averageCost es inmutable (la persistencia sólo mueve stock),
+        // la única palanca para cuadrar Σ(deltaQty × cost) con deltaTotalBs al céntimo es
+        // una cantidad fraccionaria. Sólo es admisible en productos de unidad CONTINUA
+        // (kg, litro, m…): en unidades discretas una existencia con decimales es
+        // físicamente imposible y no sobrevive un conteo. Se elige el candidato continuo,
+        // no topado, de mayor costo (fracción más pequeña). Si no hay ninguno, NO se fuerza
+        // el cuadre y el residuo queda reportado en residualBs (como el residuo por topes).
+        {
+            const residual = deltaTotalBs - totalBs(drafts);
+            if (Math.abs(residual) >= 0.01) {
+                let sinkIdx = -1;
+                for (let i = 0; i < drafts.length; i++) {
+                    const d = drafts[i];
+                    const cost = d.product.averageCost ?? 0;
+                    if (cost <= 0 || d.capped) continue;
+                    if (!CONTINUOUS_UNITS.has(d.product.measureUnit)) continue;
+                    const newStock = (d.product.currentStock ?? 0) + d.deltaQty + residual / cost;
+                    if (newStock < 0) continue;
+                    if (sinkIdx === -1 || cost > (drafts[sinkIdx].product.averageCost ?? 0)) {
+                        sinkIdx = i;
+                    }
+                }
+                if (sinkIdx >= 0) {
+                    const cost = drafts[sinkIdx].product.averageCost ?? 0;
+                    drafts[sinkIdx].deltaQty = ROUND4(drafts[sinkIdx].deltaQty + residual / cost);
+                }
+            }
         }
 
         // ── Construir líneas finales ordenadas por valor actual descendente

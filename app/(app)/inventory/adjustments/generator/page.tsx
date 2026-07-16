@@ -170,6 +170,18 @@ export default function StockAdjustmentGeneratorPage() {
             return;
         }
 
+        // Guardia cap-aware: no persistir si la existencia nueva se desvía más de 0,5% del
+        // target y ningún producto está topado en 0 (con topes el gap es legítimo).
+        const target = preview?.targetBs ?? 0;
+        const hasCaps = lines.some((l) => l.capped);
+        if (target > 0 && !hasCaps) {
+            const sumNew = lines.reduce((s, l) => s + l.newValueBs, 0);
+            if (Math.abs(sumNew - target) > target * 0.005) {
+                notify.error("La existencia nueva se desvía más de 0,5% del target. Ajusta los deltas o regenera antes de guardar.");
+                return;
+            }
+        }
+
         setSaving(true);
         const result = await saveStockAdjustment({ companyId, items });
         setSaving(false);
@@ -182,7 +194,7 @@ export default function StockAdjustmentGeneratorPage() {
             setShowConfirmDialog(false);
             router.push(`/inventory/balance-report?period=${encodeURIComponent(period)}`);
         }
-    }, [companyId, lines, period, saveStockAdjustment, router]);
+    }, [companyId, lines, period, preview, saveStockAdjustment, router]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono flex flex-col">

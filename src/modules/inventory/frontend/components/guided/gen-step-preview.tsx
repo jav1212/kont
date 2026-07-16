@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import { Trash2, RefreshCw, Check, ChevronRight, ArrowLeft, Loader2 } from "lucide-react";
+import { Trash2, RefreshCw, Check, ChevronRight, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import type {
     RandomSalesPreview,
@@ -70,6 +70,11 @@ export function GenStepPreview({
     const salidasTargetBs = preview?.salidasTotalBs ?? 0;
     const autoTargetBs = preview?.autoconsumoTotalBs ?? 0;
     const drift = sumSinIVA - targetBs;
+    // Tolerancia dura: la suma no puede desviarse más de 0,5% del target. Tras generar
+    // el residuo es ~0; sólo ediciones manuales (cantidad / eliminar línea) pueden
+    // romperlo, en cuyo caso se bloquea el guardado.
+    const driftPct = targetBs > 0 ? Math.abs(drift) / targetBs : 0;
+    const driftExceeds = driftPct > 0.005;
     const isAutoActive = (preview?.autoconsumoTotalBs ?? 0) > 0;
 
     return (
@@ -416,25 +421,37 @@ export function GenStepPreview({
             </div>
 
             <div className="border-t border-border-light bg-surface-1 px-8 py-4">
-                <div className="max-w-[1400px] mx-auto flex items-center justify-between gap-3">
-                    <BaseButton.Root
-                        variant="secondary"
-                        size="md"
-                        onClick={onBack}
-                        leftIcon={<ArrowLeft size={16} />}
-                    >
-                        Anterior
-                    </BaseButton.Root>
-                    <BaseButton.Root
-                        onClick={onConfirmRequest}
-                        variant="primary"
-                        size="md"
-                        loading={saving}
-                        leftIcon={<Check size={16} />}
-                        isDisabled={lines.length === 0 || loading}
-                    >
-                        Confirmar y guardar
-                    </BaseButton.Root>
+                <div className="max-w-[1400px] mx-auto space-y-3">
+                    {preview && driftExceeds && (
+                        <div className="px-3.5 py-2.5 rounded-lg border border-amber-500/40 bg-amber-500/[0.06] flex items-start gap-2.5">
+                            <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+                            <p className="font-mono text-[12px] text-amber-700 leading-relaxed">
+                                La suma del preview se desvía Δ {drift >= 0 ? "+" : ""}{fmtN(drift)} Bs
+                                ({(driftPct * 100).toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%) del target,
+                                por encima del máximo permitido de 0,5%. Ajusta cantidades o regenera antes de guardar.
+                            </p>
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between gap-3">
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="md"
+                            onClick={onBack}
+                            leftIcon={<ArrowLeft size={16} />}
+                        >
+                            Anterior
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            onClick={onConfirmRequest}
+                            variant="primary"
+                            size="md"
+                            loading={saving}
+                            leftIcon={<Check size={16} />}
+                            isDisabled={lines.length === 0 || loading || driftExceeds}
+                        >
+                            Confirmar y guardar
+                        </BaseButton.Root>
+                    </div>
                 </div>
             </div>
         </div>

@@ -270,13 +270,16 @@ export class GenerateRandomSalesUseCase
         const draftsSalidas    = buildDrafts(salidasProducts, finalLinesSalidas, salidasBs);
         const draftsAutoconsumo = buildDrafts(autoProducts,    finalLinesAutoconsumo, autoBs);
 
-        // ── Construir líneas finales: precio uniforme, sin ajuste de residuo en precio.
+        // ── Construir líneas finales. El precio es uniforme (costo × factor) salvo en
+        // UNA línea sumidero, cuyo precio se ajusta al final para absorber el residuo de
+        // redondeo entero y que Σ totalSinIVA == subT exactamente (ver bloque al final).
         // Acumula stockShortfall por producto para repartir entre las líneas que comparten
         // el mismo producto: si un producto aparece en N drafts y la suma de qty supera el
         // stock, cada línea reporta su porción proporcional del faltante.
         const buildLines = (
             drafts: Draft[],
             tipo: 'salida' | 'autoconsumo',
+            subT: number,
         ): RandomSalesPreviewLine[] => {
             // Suma de qty por producto, para distribuir el shortfall entre líneas duplicadas
             const qtyByProduct = new Map<string, number>();
@@ -285,7 +288,7 @@ export class GenerateRandomSalesUseCase
                 qtyByProduct.set(key, (qtyByProduct.get(key) ?? 0) + d.quantity);
             }
 
-            return drafts
+            const built = drafts
                 .sort((a, b) => a.date.localeCompare(b.date))
                 .map((d) => {
                     const cost = d.product.averageCost ?? 0;
@@ -319,10 +322,56 @@ export class GenerateRandomSalesUseCase
                         stockShortfall:      lineShortfall,
                     };
                 });
+
+            // ── Absorber el residuo de redondeo en el precio de UNA línea sumidero.
+            // Cada línea vale precio × qty con qty entero, así que la suma nunca cae
+            // exactamente en subT. En vez de dejar esa deriva (acotada por ~½ del precio
+            // unitario más barato), se ajusta el precio de venta de la línea de mayor
+            // cantidad — la de menor distorsión por unidad — para que Σ totalSinIVA == subT.
+            // La UI ya resalta esa línea porque su factor difiere del global. El total se
+            // recomputa con la MISMA fórmula que persiste el backend (precio × qty) para
+            // que el preview coincida exactamente con lo guardado.
+            if (built.length > 0 && subT > 0) {
+                const sumTotal = built.reduce((s, l) => s + l.totalSinIVA, 0);
+                const residual = ROUND2(subT - sumTotal);
+                if (Math.abs(residual) >= 0.01) {
+                    let sinkIdx = 0;
+                    for (let i = 1; i < built.length; i++) {
+                        if (built[i].quantity > built[sinkIdx].quantity) sinkIdx = i;
+                    }
+                    const sink = built[sinkIdx];
+                    const newTotal = ROUND2(sink.totalSinIVA + residual);
+                    if (newTotal > 0 && sink.quantity > 0) {
+                        // Clamp del precio sumidero: nunca por debajo del costo (una venta bajo
+                        // costo es una bandera típica de fiscalización SENIAT) ni por encima de un
+                        // techo de sanidad sobre el markup configurado. Si el residuo no cabe en el
+                        // rango, queda un remanente que el guard de 0,5% del preview/confirm detecta.
+                        // Negocios regulados por SUNDDE (Ley de Precios Justos, margen máx. 30%)
+                        // deben mantener markupPct ≤ 30 en la configuración del generador.
+                        const cost = sink.unitCost;
+                        const minPrecio = cost;
+                        const maxPrecio = cost * markupFactor * 1.5;
+                        const rawPrecio = newTotal / sink.quantity;
+                        const precioVentaUnitario = ROUND4(Math.min(maxPrecio, Math.max(minPrecio, rawPrecio)));
+                        const totalSinIVA = ROUND2(precioVentaUnitario * sink.quantity);
+                        const ivaPct = sink.vatType === 'general' ? 0.16 : 0;
+                        const iva = ROUND2(totalSinIVA * ivaPct);
+                        built[sinkIdx] = {
+                            ...sink,
+                            precioVentaUnitario,
+                            totalSinIVA,
+                            iva,
+                            totalConIVA: ROUND2(totalSinIVA + iva),
+                        };
+                    }
+                }
+            }
+
+            return built;
         };
 
-        const lines            = buildLines(draftsSalidas,    'salida');
-        const autoconsumoLines = buildLines(draftsAutoconsumo, 'autoconsumo');
+        const lines            = buildLines(draftsSalidas,    'salida',      salidasBs);
+        const autoconsumoLines = buildLines(draftsAutoconsumo, 'autoconsumo', autoBs);
 
         return Result.success({
             period,

@@ -210,6 +210,16 @@ export default function SalesGeneratorPage() {
             return;
         }
 
+        // Guardia dura: no permitir persistir si la suma se desvía más de 0,5% del target.
+        const target = preview?.targetBs ?? 0;
+        if (target > 0) {
+            const sum = lines.reduce((s, l) => s + l.totalSinIVA, 0);
+            if (Math.abs(sum - target) > target * 0.005) {
+                notify.error("La suma del preview se desvía más de 0,5% del target. Ajusta cantidades o regenera antes de guardar.");
+                return;
+            }
+        }
+
         // Stock shortfall combinado por producto (salida + autoconsumo) — sólo informativo:
         // se permite vender más de lo que dice el inventario porque al iniciar con el sistema
         // no se cuenta con historial completo. El backend acepta el shortfall enviando
@@ -232,7 +242,7 @@ export default function SalesGeneratorPage() {
             setShowConfirmDialog(false);
             router.push(`/inventory/movements?period=${encodeURIComponent(period)}`);
         }
-    }, [companyId, lines, reference, period, saveOutbound, router]);
+    }, [companyId, lines, reference, period, preview, saveOutbound, router]);
 
     return (
         <div className="min-h-full bg-surface-2 font-mono flex flex-col">
