@@ -6,13 +6,12 @@
  * Nº 43.273 de fecha 09 de diciembre de 2025 (Caracas, 24 de noviembre de 2025).
  *
  * Complementado con:
- *   · Providencia SNAT/2025/000092 — Juegos de Envite o Azar no especiales
  *   · Providencia SNAT/2025/000093 — Contribución Especial Pensiones (Bloqueo Imperialista)
  *
  * Para contribuyentes ordinarios se aplican las reglas generales de la Ley del IVA
  * (Art. 47) y la Ley de ISLR (Art. 146) dado que no existe calendario especial.
  *
- * Última actualización: 2026-05-04
+ * Última actualización: 2026-07-18
  */
 
 import type { CalendarYear, ObligationCategory, ObligationDefinition, Periodicity, TaxpayerType } from "./types";
@@ -77,26 +76,6 @@ function expandPairSchedule(
     return result;
 }
 
-/**
- * Tabla "0 al 9": misma fecha por mes para todos los dígitos del RIF
- * (usada en literales d, e.1 y e.2 — Juegos de Envite y Premios de Lotería).
- */
-function expandUniformSchedule(
-    monthlyDays: number[],
-): Record<number, { byLastDigit: Record<string, number[]> }> {
-    const result: Record<number, { byLastDigit: Record<string, number[]> }> = {};
-    for (let m = 0; m < 12; m++) {
-        const day = monthlyDays[m];
-        result[m + 1] = {
-            byLastDigit: {
-                "0": [day], "1": [day], "2": [day], "3": [day], "4": [day],
-                "5": [day], "6": [day], "7": [day], "8": [day], "9": [day],
-            },
-        };
-    }
-    return result;
-}
-
 // ── Tablas oficiales de la Providencia SNAT/2025/000091 ────────────────────────
 
 // Art. 1 · literal a.1 — Retenciones IVA practicadas entre los días 01 al 15 de cada mes
@@ -129,10 +108,9 @@ const IVA_RET_2DA_TABLE: Record<string, number[]> = {
     "9": [14,  6,  5, 15,  8,  9, 13, 11,  7,  1, 10, 14],
 };
 
-// Art. 1 · literal b — Estimadas ISLR (Porciones Ejercicios Regulares e Irregulares)
-// NOTA: esta misma tabla aplica también a:
-//   · IVA Mensual de Sujetos Pasivos Especiales (Art. 2)
-//   · Aporte del 70% Servicios Desconcentrados (Art. 1 · literal i)
+// Art. 1 · literal b — tabla oficial de fechas por pares de dígitos.
+// Se conserva porque la Declaración IVA Mensual de Sujetos Pasivos Especiales (Art. 2)
+// reutiliza estas mismas fechas de vencimiento.
 const ISLR_ESTIMADA_TABLE: Partial<Record<"0y8" | "1y4" | "2y3" | "5y9" | "6y7", number[]>> = {
     "0y8": [15,  9, 13, 10, 12, 12,  8, 14,  8,  9, 13,  9],
     "1y4": [ 9, 10, 11, 14, 13, 11, 10, 13,  9, 14, 12, 15],
@@ -159,29 +137,6 @@ const GRANDES_PATRIMONIOS_TABLE: Partial<Record<"0y8" | "1y4" | "2y3" | "5y9" | 
     "6y7": { oct: 13, nov: 11 },
 };
 
-// Art. 1 · literal d — Juegos de Envite o Azar
-// Mismas fechas tanto para sujetos pasivos especiales (SNAT/2025/000091)
-// como para no especiales (SNAT/2025/000092). Aplica a todos los dígitos del RIF.
-const JUEGOS_AZAR_TABLE: number[] = [9, 9, 9, 8, 11, 9, 9, 10, 8, 8, 10, 9];
-
-// Art. 1 · literal e.1 — Retenciones ISLR sobre Premios de Lotería (días 01 al 15)
-const PREMIOS_LOTERIA_1RA_TABLE: number[] = [20, 18, 17, 21, 19, 17, 17, 20, 17, 19, 17, 17];
-
-// Art. 1 · literal e.2 — Retenciones ISLR sobre Premios de Lotería (días 16 al último)
-const PREMIOS_LOTERIA_2DA_TABLE: number[] = [6, 3, 3, 6, 5, 3, 2, 4, 2, 2, 3, 2];
-
-// Art. 1 · literal g — Autoliquidación ISLR Ejercicios Irregulares (mensual por pares)
-const ISLR_IRREGULAR_TABLE: Partial<Record<"0y8" | "1y4" | "2y3" | "5y9" | "6y7", number[]>> = {
-    "0y8": [26, 20, 23, 20, 23, 17, 26, 17, 20, 24, 16, 16],
-    "1y4": [23, 23, 27, 21, 19, 21, 25, 18, 22, 20, 22, 22],
-    "2y3": [21, 18, 21, 22, 18, 23, 18, 24, 21, 23, 17, 17],
-    "5y9": [22, 19, 22, 25, 17, 22, 21, 23, 19, 18, 17, 17],
-    "6y7": [27, 24, 24, 19, 22, 20, 20, 22, 21, 19, 18, 18],
-};
-
-// Art. 1 · literal i — Aporte 70% Servicios Desconcentrados / Entes Descentralizados:
-// mismas fechas que ISLR_ESTIMADA_TABLE (no requiere tabla aparte).
-
 // Providencia SNAT/2025/000093 — Contribución Especial Pensiones (nueva 2026)
 const CONTRIBUCION_PENSIONES_TABLE: Record<string, number[]> = {
     "0": [28, 20, 25, 23, 20, 29, 27, 17, 29, 20, 27, 16],
@@ -195,15 +150,6 @@ const CONTRIBUCION_PENSIONES_TABLE: Record<string, number[]> = {
     "8": [26, 26, 31, 29, 27, 23, 17, 26, 17, 26, 24, 30],
     "9": [29, 27, 17, 28, 25, 25, 29, 27, 23, 19, 16, 23],
 };
-
-// Art. 1 · literal f — Autoliquidación Anual ISLR (ejercicio fiscal 2025 → pago 2026)
-const ISLR_ANUAL_DATES = [
-    { pair: "2y3", month: 1, day: 30 },  // 30/01/2026
-    { pair: "5y9", month: 2, day: 27 },  // 27/02/2026
-    { pair: "0y8", month: 3, day:  6 },  // 06/03/2026
-    { pair: "1y4", month: 3, day: 11 },  // 11/03/2026
-    { pair: "6y7", month: 3, day: 16 },  // 16/03/2026
-] as const;
 
 // ── Definiciones de obligaciones ──────────────────────────────────────────────
 
@@ -246,18 +192,6 @@ const OBLIGATIONS_2026 = {
         periodicity: "mensual" as Periodicity,
         colorToken: "info",
     },
-    ISLR_ESTIMADA: {
-        id: "islr-estimada",
-        category: "ISLR_ESTIMADA" as ObligationCategory,
-        title: "Declaración Estimada ISLR — Porciones",
-        shortTitle: "ISLR Estimada",
-        description:
-            "Declaración y pago de las porciones de la Declaración Estimada de Impuesto sobre la Renta para ejercicios regulares e irregulares. La fecha se asigna según el último dígito del RIF agrupado en pares.",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1, literal b",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "mensual" as Periodicity,
-        colorToken: "warning",
-    },
     ISLR_RETENCIONES: {
         id: "islr-retenciones",
         category: "ISLR_RETENCIONES" as ObligationCategory,
@@ -269,18 +203,6 @@ const OBLIGATIONS_2026 = {
         appliesTo: ["especial"] as TaxpayerType[],
         periodicity: "mensual" as Periodicity,
         colorToken: "warning",
-    },
-    ISLR_ANUAL_ESPECIAL: {
-        id: "islr-anual-especial",
-        category: "ISLR_ANUAL" as ObligationCategory,
-        title: "Autoliquidación Anual ISLR — Ejercicio 2025",
-        shortTitle: "ISLR Anual",
-        description:
-            "Declaración definitiva y pago del Impuesto sobre la Renta correspondiente al ejercicio fiscal del 01/01/2025 al 31/12/2025. La fecha de vencimiento depende del último dígito del RIF agrupado en pares (2-3 en enero; 5-9 en febrero; 0-8, 1-4 y 6-7 en marzo).",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1, literal f",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "anual" as Periodicity,
-        colorToken: "error",
     },
     GRANDES_PATRIMONIOS: {
         id: "grandes-patrimonios",
@@ -306,78 +228,6 @@ const OBLIGATIONS_2026 = {
         periodicity: "mensual" as Periodicity,
         colorToken: "neutral",
     },
-    LOCTI: {
-        id: "locti",
-        category: "LOCTI" as ObligationCategory,
-        title: "Aporte LOCTI (FONACIT)",
-        shortTitle: "LOCTI",
-        description:
-            "Aporte anual al Fondo Nacional de Ciencia, Tecnología e Innovación. Aplica a empresas con ingresos brutos superiores al umbral legal durante el ejercicio fiscal anterior. Vencimiento dentro del segundo trimestre del año.",
-        legalBasis: "Ley Orgánica de Ciencia, Tecnología e Innovación (LOCTI) · Art. 26",
-        appliesTo: ["ordinario", "especial"] as TaxpayerType[],
-        periodicity: "anual" as Periodicity,
-        colorToken: "success",
-    },
-    JUEGOS_AZAR: {
-        id: "juegos-azar",
-        category: "OTROS" as ObligationCategory,
-        title: "Declaración Actividades de Juegos de Envite o Azar",
-        shortTitle: "Juegos Azar",
-        description:
-            "Declaración y pago del impuesto sobre actividades de juegos de envite o azar. Aplica tanto a sujetos pasivos especiales como a no especiales con la misma fecha de vencimiento, independientemente del último dígito del RIF.",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1 literal d · Providencia SNAT/2025/000092 · Ley de Impuestos a las Actividades de Juegos de Envite o Azar",
-        appliesTo: ["ordinario", "especial"] as TaxpayerType[],
-        periodicity: "mensual" as Periodicity,
-        colorToken: "neutral",
-    },
-    PREMIOS_LOTERIA_1RA: {
-        id: "premios-loteria-1ra",
-        category: "ISLR_RETENCIONES" as ObligationCategory,
-        title: "Retenciones ISLR Premios de Lotería — 1ª Quincena",
-        shortTitle: "Ret. Loter. 1Q",
-        description:
-            "Enteramiento de las retenciones del Impuesto sobre la Renta practicadas sobre premios de lotería entre los días 1 y 15 de cada mes. Aplica a todos los dígitos del RIF en la misma fecha.",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1 literal e.1",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "quincenal" as Periodicity,
-        colorToken: "warning",
-    },
-    PREMIOS_LOTERIA_2DA: {
-        id: "premios-loteria-2da",
-        category: "ISLR_RETENCIONES" as ObligationCategory,
-        title: "Retenciones ISLR Premios de Lotería — 2ª Quincena",
-        shortTitle: "Ret. Loter. 2Q",
-        description:
-            "Enteramiento de las retenciones del Impuesto sobre la Renta practicadas sobre premios de lotería entre los días 16 y el último de cada mes. Aplica a todos los dígitos del RIF en la misma fecha.",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1 literal e.2",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "quincenal" as Periodicity,
-        colorToken: "warning",
-    },
-    ISLR_IRREGULAR: {
-        id: "islr-irregular",
-        category: "ISLR_ANUAL" as ObligationCategory,
-        title: "Autoliquidación ISLR — Ejercicios Irregulares",
-        shortTitle: "ISLR Irreg.",
-        description:
-            "Declaración y pago de la autoliquidación del Impuesto sobre la Renta correspondiente a ejercicios fiscales irregulares (distintos al período 01/01/2025 al 31/12/2025). La fecha de vencimiento depende del último dígito del RIF agrupado en pares.",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1 literal g",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "mensual" as Periodicity,
-        colorToken: "error",
-    },
-    APORTE_70: {
-        id: "aporte-70",
-        category: "OTROS" as ObligationCategory,
-        title: "Aporte 70% Servicios Desconcentrados",
-        shortTitle: "Aporte 70%",
-        description:
-            "Declaración del aporte del 70% de los ingresos de los servicios desconcentrados, servicios autónomos y entes descentralizados. La fecha se asigna según el último dígito del RIF agrupado en pares (mismas fechas que la Estimada de ISLR).",
-        legalBasis: "Providencia SNAT/2025/000091 · Art. 1 literal i",
-        appliesTo: ["especial"] as TaxpayerType[],
-        periodicity: "mensual" as Periodicity,
-        colorToken: "neutral",
-    },
 
     // ── CONTRIBUYENTES ORDINARIOS ─────────────────────────────────────────────
 
@@ -393,48 +243,9 @@ const OBLIGATIONS_2026 = {
         periodicity: "mensual" as Periodicity,
         colorToken: "info",
     },
-    ISLR_ANUAL_ORDINARIO: {
-        id: "islr-anual-ordinario",
-        category: "ISLR_ANUAL" as ObligationCategory,
-        title: "Declaración Anual ISLR — Ordinario",
-        shortTitle: "ISLR Anual",
-        description:
-            "Declaración definitiva de rentas del Impuesto sobre la Renta para personas jurídicas con cierre al 31 de diciembre. Debe presentarse dentro de los tres meses siguientes al cierre del ejercicio fiscal.",
-        legalBasis: "Ley de ISLR · Art. 146 · Reglamento · Art. 172",
-        appliesTo: ["ordinario"] as TaxpayerType[],
-        periodicity: "anual" as Periodicity,
-        colorToken: "error",
-    },
 } satisfies Record<string, ObligationDefinition>;
 
 // ── Construcción de schedules no-genéricos ────────────────────────────────────
-
-function buildIslrAnualSchedule(): Record<number, { byLastDigit: Record<string, number[]> }> {
-    const pairMap: Record<string, string[]> = {
-        "0y8": ["0", "8"],
-        "1y4": ["1", "4"],
-        "2y3": ["2", "3"],
-        "5y9": ["5", "9"],
-        "6y7": ["6", "7"],
-    };
-    const empty = { "0": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": [], "7": [], "8": [], "9": [] } as Record<string, number[]>;
-    const result: Record<number, { byLastDigit: Record<string, number[]> }> = {};
-
-    for (const entry of ISLR_ANUAL_DATES) {
-        const digits = pairMap[entry.pair];
-        if (!result[entry.month]) {
-            result[entry.month] = { byLastDigit: { ...empty } };
-            // reset arrays — cada mes tiene su propio array por dígito
-            for (const k of Object.keys(result[entry.month].byLastDigit)) {
-                result[entry.month].byLastDigit[k] = [];
-            }
-        }
-        for (const d of digits) {
-            result[entry.month].byLastDigit[d] = [entry.day];
-        }
-    }
-    return result;
-}
 
 function buildGrandesPatrimoniosSchedule(): Record<number, { byLastDigit: Record<string, number[]> }> {
     const pairMap: Record<string, string[]> = {
@@ -476,24 +287,9 @@ export const CALENDAR_2026: CalendarYear = {
         [OBLIGATIONS_2026.IVA_RETENCIONES_1RA.id]: expandPerDigitSchedule(IVA_RET_1RA_TABLE),
         [OBLIGATIONS_2026.IVA_RETENCIONES_2DA.id]: expandPerDigitSchedule(IVA_RET_2DA_TABLE),
         [OBLIGATIONS_2026.IVA_MENSUAL_ESPECIAL.id]: expandPairSchedule(ISLR_ESTIMADA_TABLE),
-        [OBLIGATIONS_2026.ISLR_ESTIMADA.id]: expandPairSchedule(ISLR_ESTIMADA_TABLE),
         [OBLIGATIONS_2026.ISLR_RETENCIONES.id]: expandPairSchedule(ISLR_RETENCIONES_TABLE),
-        [OBLIGATIONS_2026.ISLR_ANUAL_ESPECIAL.id]: buildIslrAnualSchedule(),
         [OBLIGATIONS_2026.GRANDES_PATRIMONIOS.id]: buildGrandesPatrimoniosSchedule(),
         [OBLIGATIONS_2026.CONTRIBUCION_PENSIONES.id]: expandPerDigitSchedule(CONTRIBUCION_PENSIONES_TABLE),
-        [OBLIGATIONS_2026.JUEGOS_AZAR.id]: expandUniformSchedule(JUEGOS_AZAR_TABLE),
-        [OBLIGATIONS_2026.PREMIOS_LOTERIA_1RA.id]: expandUniformSchedule(PREMIOS_LOTERIA_1RA_TABLE),
-        [OBLIGATIONS_2026.PREMIOS_LOTERIA_2DA.id]: expandUniformSchedule(PREMIOS_LOTERIA_2DA_TABLE),
-        [OBLIGATIONS_2026.ISLR_IRREGULAR.id]: expandPairSchedule(ISLR_IRREGULAR_TABLE),
-        [OBLIGATIONS_2026.APORTE_70.id]: expandPairSchedule(ISLR_ESTIMADA_TABLE),
-        [OBLIGATIONS_2026.LOCTI.id]: {
-            6: {
-                byLastDigit: {
-                    "0": [30], "1": [30], "2": [30], "3": [30], "4": [30],
-                    "5": [30], "6": [30], "7": [30], "8": [30], "9": [30],
-                },
-            },
-        },
     },
 
     ordinarioSchedule: {
@@ -511,17 +307,6 @@ export const CALENDAR_2026: CalendarYear = {
             10: [15],  // declara período SEP 2026
             11: [15],  // declara período OCT 2026
             12: [15],  // declara período NOV 2026
-        },
-        [OBLIGATIONS_2026.ISLR_ANUAL_ORDINARIO.id]: {
-            3: [31],   // 31 de marzo
-        },
-        [OBLIGATIONS_2026.LOCTI.id]: {
-            6: [30],   // 30 de junio
-        },
-        // Juegos de Envite o Azar — SNAT/2025/000092 (no especiales): mismas fechas que especiales
-        [OBLIGATIONS_2026.JUEGOS_AZAR.id]: {
-            1: [9], 2: [9], 3: [9], 4: [8], 5: [11], 6: [9],
-            7: [9], 8: [10], 9: [8], 10: [8], 11: [10], 12: [9],
         },
     },
 

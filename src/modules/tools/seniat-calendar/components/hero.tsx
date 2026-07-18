@@ -133,7 +133,7 @@ export function Hero({ nextEntry, hasRif }: HeroProps) {
 
                     {/* Quick stats pills */}
                     <div className="flex items-center gap-2 flex-wrap">
-                        {(["IVA mensual", "ISLR anual", "IGTF", "LOCTI"] as const).map((label) => (
+                        {(["IVA mensual", "Ret. ISLR", "Grandes Patrimonios", "Pensiones"] as const).map((label) => (
                             <span
                                 key={label}
                                 className="inline-flex items-center gap-1 h-5 px-2 rounded border border-border-light bg-surface-2 text-[10px] font-mono text-text-tertiary"
