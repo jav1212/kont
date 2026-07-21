@@ -9,7 +9,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
     fill,
     hline,
     rect,
@@ -111,7 +111,7 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     let y = 32;
 
     if (_logoBase64) {
-        drawCompanyLogo(doc, _logoBase64, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, _logoBase64, ML, y, "full");
     }
 
     const dailySalary = emp.lines.length > 0 && emp.lines[0].salary && emp.lines[0].salary > 0

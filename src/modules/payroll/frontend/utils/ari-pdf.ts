@@ -10,7 +10,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
     fill,
     hline,
     rect,
@@ -170,7 +170,7 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     y = drawEmployeeCard(doc, ML, W, y, data.employee, `${data.cargasFamiliares} carga${data.cargasFamiliares !== 1 ? "s" : ""} familiar${data.cargasFamiliares !== 1 ? "es" : ""}`);

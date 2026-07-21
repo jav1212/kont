@@ -18,7 +18,8 @@ import {
     drawFooter,
     drawHeaderRow,
     drawRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
+    companyLogoBandHeight,
     fill,
     hline,
     rect,
@@ -156,7 +157,7 @@ async function generateGeneralPdf(
     let y = repaintPageHeader(doc, pageHeader);
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     const montosUsd = active.map((e) => e.montoUsd ?? opts.montoUSD);
@@ -353,7 +354,7 @@ type ReceiptMode =
 
 function estimateCompactReceiptHeight(hasCompanyLogo: boolean): number {
     const headerH    = 10;
-    const logoH      = hasCompanyLogo ? 7 : 0;
+    const logoH      = companyLogoBandHeight(hasCompanyLogo, "compact");
     const identityH  = 12 + 2;
     const conceptH   = 24 + 2;
     const signaturesH = 16 + 2;
@@ -392,8 +393,7 @@ function drawReceiptInRegion(
 
     // Logo opcional
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, xL, y, isCompact ? 16 : 18, isCompact ? 6 : 7);
-        y += isCompact ? 7 : 9;
+        y = drawCompanyLogoBand(doc, companyLogo, xL, y, isCompact ? "compact" : "full");
     }
 
     // Tarjeta de identidad

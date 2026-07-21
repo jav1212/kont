@@ -229,6 +229,10 @@ export async function loadKontaLogo(): Promise<string | null> {
 // preserving its natural aspect ratio: the height never exceeds maxH (so the
 // vertical layout budget reserved by callers stays correct) and the width grows
 // only up to maxW. A square logo comes out square.
+//
+// Because height is the binding constraint for a square logo, maxH — not maxW —
+// is what decides how big the logo actually prints. Keep maxH generous: a 7mm
+// cap renders a square logo as a 7×7mm speck on paper.
 
 export function drawCompanyLogo(
     doc: Doc,
@@ -249,6 +253,43 @@ export function drawCompanyLogo(
     } catch {
         // silent — the receipt still renders without the logo
     }
+}
+
+// ── Company logo band (single source of truth for the vertical budget) ──────
+//
+// Every payroll report reserves a horizontal band for the company logo before
+// the identity card. `advance` is the Y the caller must consume (box height +
+// gap); the height estimators that decide compact-vs-fallback layouts must use
+// the same number, so both read it from here instead of hardcoding 7mm.
+
+export const COMPANY_LOGO_BAND = {
+    /** Half-sheet receipts (two copies per oficio page). */
+    compact: { maxW: 34, maxH: 13, advance: 15 },
+    /** Full-page reports and the overflow fallback. */
+    full:    { maxW: 42, maxH: 17, advance: 19 },
+} as const;
+
+export type CompanyLogoBandVariant = keyof typeof COMPANY_LOGO_BAND;
+
+/** Height a caller must reserve for the logo band, 0 when there is no logo. */
+export function companyLogoBandHeight(
+    hasLogo: boolean,
+    variant: CompanyLogoBandVariant = "compact",
+): number {
+    return hasLogo ? COMPANY_LOGO_BAND[variant].advance : 0;
+}
+
+/** Draws the logo band at (x, y) and returns the Y where content resumes. */
+export function drawCompanyLogoBand(
+    doc: Doc,
+    logoBase64: string,
+    x: number,
+    y: number,
+    variant: CompanyLogoBandVariant = "full",
+): number {
+    const band = COMPANY_LOGO_BAND[variant];
+    drawCompanyLogo(doc, logoBase64, x, y, band.maxW, band.maxH);
+    return y + band.advance;
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────

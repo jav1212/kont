@@ -9,7 +9,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
     fill,
     hline,
     rect,
@@ -126,7 +126,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     // ── Intro paragraph ───────────────────────────────────────────────────────

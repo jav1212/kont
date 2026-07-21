@@ -7,7 +7,7 @@ import {
     COLORS,
     drawHeader,
     drawFooter,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
     fill,
     hline,
     rect,
@@ -148,7 +148,7 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,
@@ -206,7 +206,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     y = drawIdentityCard(doc, ML, W, y, data.employee,

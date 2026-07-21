@@ -23,7 +23,8 @@ import {
     drawFooter,
     drawHeaderRow,
     drawRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
+    companyLogoBandHeight,
     fill,
     rect,
     formatVES,
@@ -208,7 +209,7 @@ function drawSection(
 
 function estimateCompactHeight(emp: PdfEmployeeResult, opts: PdfPayrollOptions, hasCompanyLogo: boolean): number {
     const headerH   = 10;                       // mini-header (chip + título + empresa + regla)
-    const logoH     = hasCompanyLogo ? 7 : 0;   // logo opcional empresa (6mm + 1mm gap)
+    const logoH     = companyLogoBandHeight(hasCompanyLogo, "compact");
     const identityH = 12 + 2;                   // tarjeta de identidad + gap
     const netH      = 1.2 + 11 + 2;             // acento naranja + neto + gap
     const signaturesH = 16 + 2;                 // firmas compactas + gap
@@ -276,8 +277,7 @@ function drawReceiptInRegion(
 
     // ── Logo opcional empresa ─────────────────────────────────────────────────
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, xL, y, isCompact ? 16 : 18, isCompact ? 6 : 7);
-        y += isCompact ? 7 : 9;
+        y = drawCompanyLogoBand(doc, companyLogo, xL, y, isCompact ? "compact" : "full");
     }
 
     // ── Tarjeta de identidad ──────────────────────────────────────────────────

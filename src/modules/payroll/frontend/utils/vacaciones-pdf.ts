@@ -9,7 +9,7 @@ import {
     drawHeader,
     drawFooter,
     drawHeaderRow,
-    drawCompanyLogo,
+    drawCompanyLogoBand,
     fill,
     hline,
     rect,
@@ -231,7 +231,7 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     y = drawEmployeeCard(
@@ -316,7 +316,7 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     let y = 32;
 
     if (companyLogo) {
-        drawCompanyLogo(doc, companyLogo, ML, y, 18, 7); y += 9;
+        y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
     y = drawEmployeeCard(
