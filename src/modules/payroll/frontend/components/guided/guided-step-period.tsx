@@ -323,7 +323,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                 description={`Bolívares por ${referenceCurrencyLabel(exchangeCurrencyCode).toLowerCase()}. Se usa para convertir bonos en la divisa elegida y mostrar el neto equivalente.`}
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
+                    <div className="min-w-0">
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
                             Divisa
                         </label>
@@ -351,16 +351,17 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                             }}
                             classNames={{
                                 trigger: [
-                                    "w-full h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1",
+                                    "w-full min-w-0 h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1",
                                     "transition-colors duration-150",
                                     "data-[hover=true]:border-border-medium",
                                     "data-[open=true]:border-primary-500/60",
                                 ].join(" "),
-                                value: "flex items-center w-full",
+                                value: "flex min-w-0 items-center w-full",
                                 selectorIcon: "text-[var(--text-tertiary)]",
                                 popoverContent: "bg-surface-1 border border-border-light rounded-xl overflow-hidden",
                                 listbox: "p-1",
                             }}
+                            className="w-full min-w-0"
                         >
                             {PAYROLL_REFERENCE_CURRENCIES.map((currency) => (
                                 <SelectItem
@@ -389,7 +390,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                             ))}
                         </Select>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
                             Fecha
                         </label>
@@ -400,17 +401,18 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                             onValueChange={(v) => setBcvDate(v)}
                         />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
                             Tasa (Bs. por {exchangeCurrencyCode})
                         </label>
-                        <div className="flex gap-2">
+                        <div className="flex min-w-0 gap-2">
                             <BaseInput.Field
                                 type="number"
                                 step={0.0001}
                                 value={exchangeRate}
                                 onValueChange={setExchangeRate}
                                 prefix="Bs."
+                                className="min-w-0 flex-1"
                                 inputClassName="text-right"
                             />
                             <button
