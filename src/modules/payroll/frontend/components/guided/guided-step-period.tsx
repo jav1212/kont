@@ -1,5 +1,6 @@
 "use client";
 
+import { Select, SelectItem } from "@heroui/react";
 import { Calendar, CalendarDays, CalendarRange, ChevronDown, RefreshCw } from "lucide-react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
@@ -7,6 +8,7 @@ import { MONTH_NAMES } from "../../utils/period-info";
 import type { GuidedPayrollState } from "../../hooks/use-guided-payroll-state";
 import { GuidedStepShell, StepSection, AdvancedDisclosure } from "./guided-step-shell";
 import { PAYROLL_REFERENCE_CURRENCIES, referenceCurrencyLabel } from "../../../shared/reference-currency";
+import { Flag } from "@/src/modules/tools/frontend/components/flag";
 
 interface Props {
     state: GuidedPayrollState;
@@ -325,23 +327,67 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
                             Divisa
                         </label>
-                        <div className="relative">
-                            <select
-                                value={exchangeCurrencyCode}
-                                onChange={(e) => setExchangeCurrencyCode(e.target.value as typeof exchangeCurrencyCode)}
-                                className="w-full h-11 px-3 pr-9 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[14px] text-foreground appearance-none focus:border-primary-500/60 hover:border-border-medium transition-colors"
-                            >
-                                {PAYROLL_REFERENCE_CURRENCIES.map((currency) => (
-                                    <option key={currency.code} value={currency.code}>
-                                        {currency.code} · {currency.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown
-                                size={16}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
-                            />
-                        </div>
+                        <Select
+                            aria-label="Divisa de referencia"
+                            selectedKeys={[exchangeCurrencyCode]}
+                            onSelectionChange={(keys) => {
+                                const next = Array.from(keys as Set<string>)[0];
+                                if (next) setExchangeCurrencyCode(next as typeof exchangeCurrencyCode);
+                            }}
+                            selectorIcon={<ChevronDown size={16} />}
+                            renderValue={() => {
+                                const current = PAYROLL_REFERENCE_CURRENCIES.find(
+                                    (currency) => currency.code === exchangeCurrencyCode,
+                                );
+                                if (!current) return null;
+                                return (
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <Flag code={current.countryCode} size={16} />
+                                        <span className="font-mono text-[14px] font-medium text-foreground truncate">
+                                            {current.code} · {current.label}
+                                        </span>
+                                    </div>
+                                );
+                            }}
+                            classNames={{
+                                trigger: [
+                                    "w-full h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1",
+                                    "transition-colors duration-150",
+                                    "data-[hover=true]:border-border-medium",
+                                    "data-[open=true]:border-primary-500/60",
+                                ].join(" "),
+                                value: "flex items-center w-full",
+                                selectorIcon: "text-[var(--text-tertiary)]",
+                                popoverContent: "bg-surface-1 border border-border-light rounded-xl overflow-hidden",
+                                listbox: "p-1",
+                            }}
+                        >
+                            {PAYROLL_REFERENCE_CURRENCIES.map((currency) => (
+                                <SelectItem
+                                    key={currency.code}
+                                    textValue={`${currency.code} ${currency.label}`}
+                                    classNames={{
+                                        base: [
+                                            "rounded-md px-2 py-1.5",
+                                            "data-[hover=true]:bg-surface-2",
+                                            "data-[selected=true]:bg-surface-2 data-[selected=true]:text-foreground",
+                                        ].join(" "),
+                                    }}
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <Flag code={currency.countryCode} size={16} />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="font-mono text-[12px] font-bold text-foreground">
+                                                {currency.code}
+                                            </span>
+                                            <span className="text-[10px] text-foreground/50 truncate">
+                                                {currency.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </Select>
                     </div>
                     <div>
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
