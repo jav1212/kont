@@ -11,6 +11,7 @@ import { z }                         from 'zod';
 import { getPayrollSettingsActions } from '@/src/modules/payroll/backend/infrastructure/payroll-settings-factory';
 import { handleResult }              from '@/src/shared/backend/utils/handle-result';
 import { withTenant }                from '@/src/shared/backend/utils/require-tenant';
+import { PAYROLL_REFERENCE_CURRENCY_CODES } from '@/src/modules/payroll/shared/reference-currency';
 
 // ── Zod validation schema ─────────────────────────────────────────────────────
 
@@ -30,8 +31,9 @@ const DeductionRowDefSchema = z.object({
 });
 
 const BonusRowDefSchema = z.object({
-    label:  z.string().min(1),
-    amount: z.string(),
+    label:    z.string().min(1),
+    amount:   z.string(),
+    currency: z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']).optional(),
 });
 
 const PdfVisibilitySchema = z.object({
@@ -57,8 +59,8 @@ const PayrollSettingsSchema = z.object({
     salaryMode:            z.enum(['mensual', 'integral']),
     cestaTicketUSD:        z.number().nonnegative(),
     bonoGuerraUSD:         z.number().nonnegative(),
-    cestaTicketCurrency:   z.enum(['USD', 'VES']),
-    bonoGuerraCurrency:    z.enum(['USD', 'VES']),
+    cestaTicketCurrency:   z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']),
+    bonoGuerraCurrency:    z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']),
     salarioMinimoRef:      z.number().nonnegative(),
     horasExtrasGlobalRows: z.array(HorasExtrasGlobalDefSchema),
     pdfVisibility:         PdfVisibilitySchema,

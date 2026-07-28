@@ -5,6 +5,7 @@ import type { PayrollRun }     from "@/src/modules/payroll/backend/domain/payrol
 import { fetchJson } from "@/src/shared/frontend/utils/api-fetch";
 import { notify } from "@/src/shared/frontend/notify";
 import type { PayrollReceipt } from "@/src/modules/payroll/backend/domain/payroll-receipt";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 export type { PayrollRun, PayrollReceipt };
 
@@ -26,6 +27,7 @@ export interface ConfirmReceiptPayload {
     calculationData: {
         gross:          number;
         netUsd:         number;
+        exchangeCurrencyCode?: PayrollReferenceCurrencyCode;
         mondaysInMonth: number;
         diasUtilidades?: number;
         diasBonoVacacional?: number;
@@ -44,6 +46,7 @@ export interface ConfirmPayload {
         periodStart:  string;
         periodEnd:    string;
         exchangeRate: number;
+        exchangeCurrencyCode?: PayrollReferenceCurrencyCode;
     };
     receipts: ConfirmReceiptPayload[];
 }

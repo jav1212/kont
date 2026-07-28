@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { getBonificacionesRunActions } from "@/src/modules/payroll/backend/infrastructure/bonificaciones-run-factory";
 import { withTenant }                  from "@/src/shared/backend/utils/require-tenant";
+import { PAYROLL_REFERENCE_CURRENCY_CODES } from "@/src/modules/payroll/shared/reference-currency";
 
 const BonusLineSchema = z.object({
     label:     z.string().min(1, "El concepto del bono es requerido"),
-    currency:  z.enum(["USD", "VES"]),
+    currency:  z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, "VES"]),
     amount:    z.number().nonnegative(),
     amountVes: z.number().nonnegative(),
 });

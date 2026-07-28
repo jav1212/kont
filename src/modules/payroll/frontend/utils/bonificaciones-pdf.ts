@@ -45,6 +45,7 @@ import {
     drawSignatures,
     type ReportMode,
 } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
+import type { PayrollInputCurrency } from "../../shared/reference-currency";
 
 export interface BonificacionesEmployee {
     cedula: string;
@@ -55,7 +56,7 @@ export interface BonificacionesEmployee {
 
 export interface BonificacionesBonusLine {
     label:     string;
-    currency:  "USD" | "VES";
+    currency:  PayrollInputCurrency;
     amount:    number;   // monto en la moneda original
     amountVES: number;   // equivalente VES (USD × BCV o el mismo monto si ya es VES)
 }

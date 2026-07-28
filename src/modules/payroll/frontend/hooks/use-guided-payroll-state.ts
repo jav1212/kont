@@ -47,6 +47,11 @@ import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 import type { EmployeeResult } from "../components/payroll-employee-table";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { notify } from "@/src/shared/frontend/notify";
+import type { PayrollInputCurrency, PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
+import {
+    DEFAULT_REFERENCE_CURRENCY,
+    normalizePayrollInputCurrency,
+} from "../../shared/reference-currency";
 
 export type SaveMsg = { ok: boolean; text: string } | null;
 
@@ -206,6 +211,8 @@ export function useGuidedPayrollState() {
 
     // ── Reference salary + BCV ─────────────────────────────────────────────
     const [exchangeRate, setExchangeRate] = useState("79.59");
+    const [exchangeCurrencyCode, setExchangeCurrencyCode] =
+        useState<PayrollReferenceCurrencyCode>(DEFAULT_REFERENCE_CURRENCY);
     const [monthlySalary, setMonthlySalary] = useState("130.00");
     const [bcvDate, setBcvDate] = useState(() => getTodayIsoDate());
     const [bcvLoading, setBcvLoading] = useState(false);
@@ -215,7 +222,7 @@ export function useGuidedPayrollState() {
         setBcvLoading(true);
         setBcvFetchError(null);
         try {
-            const res = await fetch(`/api/bcv/rate?date=${bcvDate}`);
+            const res = await fetch(`/api/bcv/rate?date=${bcvDate}&code=${exchangeCurrencyCode}`);
             const data = await res.json();
             if (!res.ok) {
                 setBcvFetchError(data.error ?? "Error al consultar.");
@@ -227,7 +234,7 @@ export function useGuidedPayrollState() {
         } finally {
             setBcvLoading(false);
         }
-    }, [bcvDate]);
+    }, [bcvDate, exchangeCurrencyCode]);
 
     // ── Row lists ───────────────────────────────────────────────────────────
     const [earningRows, setEarningRows] = useState<EarningRow[]>(() =>
@@ -258,9 +265,9 @@ export function useGuidedPayrollState() {
     // al construir el payload. El nombre del state se mantiene como *USD por
     // retrocompatibilidad con el resto del hook.
     const [cestaTicketCurrency, setCestaTicketCurrency] =
-        useState<"USD" | "VES">(savedSettings.cestaTicketCurrency);
+        useState<PayrollInputCurrency>(normalizePayrollInputCurrency(savedSettings.cestaTicketCurrency));
     const [bonoGuerraCurrency,  setBonoGuerraCurrency]  =
-        useState<"USD" | "VES">(savedSettings.bonoGuerraCurrency);
+        useState<PayrollInputCurrency>(normalizePayrollInputCurrency(savedSettings.bonoGuerraCurrency));
 
     const [horasExtrasGlobal, setHorasExtrasGlobal] = useState<HorasExtrasRow[]>(() =>
         makeHorasExtrasFromDefs(savedSettings.horasExtrasGlobalRows),
@@ -294,8 +301,8 @@ export function useGuidedPayrollState() {
         setSalaryMode(savedSettings.salaryMode);
         setCestaTicketUSD(String(savedSettings.cestaTicketUSD));
         setBonoGuerraUSD(String(savedSettings.bonoGuerraUSD));
-        setCestaTicketCurrency(savedSettings.cestaTicketCurrency);
-        setBonoGuerraCurrency(savedSettings.bonoGuerraCurrency);
+        setCestaTicketCurrency(normalizePayrollInputCurrency(savedSettings.cestaTicketCurrency));
+        setBonoGuerraCurrency(normalizePayrollInputCurrency(savedSettings.bonoGuerraCurrency));
         setSalarioMinimoInput(
             savedSettings.salarioMinimoRef > 0 ? String(savedSettings.salarioMinimoRef) : "",
         );
@@ -613,6 +620,7 @@ export function useGuidedPayrollState() {
                     calculationData: {
                         gross: r.gross,
                         netUsd: r.netUSD,
+                        exchangeCurrencyCode,
                         mondaysInMonth,
                         diasUtilidades: diasUtilNum,
                         diasBonoVacacional: diasBonoNum,
@@ -626,7 +634,7 @@ export function useGuidedPayrollState() {
                 })),
             };
         },
-        [companyId, activePeriodInfo, bcvRate, mondaysInMonth, diasUtilNum, diasBonoNum],
+        [companyId, activePeriodInfo, bcvRate, exchangeCurrencyCode, mondaysInMonth, diasUtilNum, diasBonoNum],
     );
 
     const handleConfirm = useCallback(
@@ -701,6 +709,8 @@ export function useGuidedPayrollState() {
         // BCV
         exchangeRate,
         setExchangeRate,
+        exchangeCurrencyCode,
+        setExchangeCurrencyCode,
         bcvDate,
         setBcvDate,
         bcvLoading,

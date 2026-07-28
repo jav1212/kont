@@ -5,6 +5,7 @@ import { ISource } from '@/src/shared/backend/source/domain/repository/source.re
 import { Result } from '@/src/core/domain/result';
 import { BonificacionesRun } from '../../domain/bonificaciones-run';
 import { BonificacionesReceipt, BonificacionesBonusLineSnapshot } from '../../domain/bonificaciones-receipt';
+import { normalizePayrollInputCurrency } from '../../../shared/reference-currency';
 
 interface RawBonificacionesRunRow {
     id:             string;
@@ -37,11 +38,9 @@ function normalizeBonusLines(raw: unknown): BonificacionesBonusLineSnapshot[] {
     if (!Array.isArray(raw)) return [];
     return raw.map((line) => {
         const obj = line as Record<string, unknown>;
-        const currencyRaw = String(obj.currency ?? "USD").toUpperCase();
-        const currency: "USD" | "VES" = currencyRaw === "VES" ? "VES" : "USD";
         return {
             label:     String(obj.label ?? ""),
-            currency,
+            currency:  normalizePayrollInputCurrency(String(obj.currency ?? "USD").toUpperCase()),
             amount:    Number(obj.amount ?? 0),
             amountVes: Number(obj.amountVes ?? obj.amount_ves ?? 0),
         };

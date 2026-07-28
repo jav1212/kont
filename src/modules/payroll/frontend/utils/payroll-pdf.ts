@@ -46,6 +46,7 @@ import {
     drawSignatures,
 } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 import type { PdfVisibility } from "../../backend/domain/payroll-settings";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export interface PdfEmployeeResult {
     gross:           number;
     net:             number;
     netUSD:          number;
+    exchangeCurrencyCode?: PayrollReferenceCurrencyCode;
     alicuotaUtil:    number;
     alicuotaBono:    number;
     salarioIntegral: number;
@@ -84,6 +86,7 @@ export interface PdfPayrollOptions {
     periodStart?:   string;
     periodLabel?:   string;
     bcvRate?:       number;
+    referenceCurrencyCode?: PayrollReferenceCurrencyCode;
     mondaysInMonth: number;
     receiptSerial?: string;
     salaryMode?:    "mensual" | "integral";

@@ -34,6 +34,7 @@ import { generateBonoGuerraPdf } from "@/src/modules/payroll/frontend/utils/bono
 import { generateBonificacionesPdf } from "@/src/modules/payroll/frontend/utils/bonificaciones-pdf";
 import type { ReportMode } from "@/src/shared/frontend/utils/pdf-receipt-chrome";
 import { formatBcvRate } from "@/src/modules/payroll/frontend/components/calculator/formatters";
+import type { PayrollInputCurrency } from "@/src/modules/payroll/shared/reference-currency";
 
 const MODE_LABEL: Record<ReportMode, string> = {
     general:    "General · consolidado",
@@ -55,12 +56,12 @@ const STEPS: StepDef[] = [
 // `montoUsd × exchangeRate ≈ montoVes` en céntimos.
 function deriveMontos(
     raw: number,
-    currency: "USD" | "VES",
+    currency: PayrollInputCurrency,
     fallbackUsd: number,
     bcvRate: number,
 ): { montoUsd: number; montoVes: number } {
     const round2 = (n: number) => Math.round(n * 100) / 100;
-    if (currency === "USD") {
+    if (currency !== "VES") {
         const usd = raw > 0 ? raw : fallbackUsd;
         return { montoUsd: round2(usd), montoVes: round2(usd * bcvRate) };
     }
@@ -366,7 +367,7 @@ export default function PayrollCalculatorPage() {
 
     type BonusLineComputed = {
         label:     string;
-        currency:  "USD" | "VES";
+        currency:  PayrollInputCurrency;
         amount:    number;
         amountVes: number;
     };

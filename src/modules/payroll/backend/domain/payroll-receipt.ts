@@ -1,3 +1,5 @@
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
+
 export interface ReceiptComputedLine {
     label:   string;
     formula: string;
@@ -7,6 +9,7 @@ export interface ReceiptComputedLine {
 export interface ReceiptCalculationData {
     gross:              number;
     netUsd:             number;
+    exchangeCurrencyCode?: PayrollReferenceCurrencyCode;
     mondaysInMonth:     number;
     // Sprint 2: alícuotas (opcionales para compatibilidad con recibos anteriores)
     diasUtilidades?:    number;

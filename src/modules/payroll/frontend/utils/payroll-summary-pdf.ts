@@ -25,6 +25,7 @@ import {
     renderText,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ export interface PayrollSummaryEmployeeRow {
     totalDeductions: number;
     net:             number;
     netUSD:          number;
+    exchangeCurrencyCode?: PayrollReferenceCurrencyCode;
 }
 
 export interface PayrollSummaryOptions {
@@ -47,6 +49,7 @@ export interface PayrollSummaryOptions {
     periodStart?: string;
     periodEnd?:   string;
     bcvRate:      number;
+    referenceCurrencyCode?: PayrollReferenceCurrencyCode;
 }
 
 // ── Implementation ────────────────────────────────────────────────────────────

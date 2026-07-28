@@ -17,7 +17,7 @@ export function GuidedStepReview({ state, onBack }: Props) {
         employees, employeesExcludedByDate, empLoading,
         company, companyId,
         earningRows, deductionRows, bonusRows,
-        mondaysInMonth, bcvRate,
+        mondaysInMonth, bcvRate, exchangeCurrencyCode,
         diasUtilNum, diasBonoNum,
         horasExtrasGlobal, salarioMinimo,
         activePeriodInfo, periodAlreadyConfirmed, periodBlockedByCoexistence,
@@ -71,6 +71,7 @@ export function GuidedStepReview({ state, onBack }: Props) {
                 bonusRows={bonusRows}
                 mondaysInMonth={mondaysInMonth}
                 bcvRate={bcvRate}
+                exchangeCurrencyCode={exchangeCurrencyCode}
                 diasUtilidades={diasUtilNum}
                 diasBonoVacacional={diasBonoNum}
                 horasExtrasGlobal={horasExtrasGlobal}

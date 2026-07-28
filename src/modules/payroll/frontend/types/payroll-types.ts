@@ -1,3 +1,5 @@
+import type { PayrollInputCurrency } from "../../shared/reference-currency";
+
 // ============================================================================
 // PAYROLL TYPES — shared across all payroll components
 // ============================================================================
@@ -25,7 +27,7 @@ export interface BonusRow {
     id:       string;
     label:    string;
     amount:   string;            // monto en la moneda elegida (string para input controlado)
-    currency: "USD" | "VES";     // USD se convierte a VES por tasa BCV; VES se usa tal cual
+    currency: PayrollInputCurrency; // divisa BCV seleccionada se convierte a VES; VES se usa tal cual
 }
 
 // ── Horas extras (Art. 118 LOTTT) ─────────────────────────────────────────

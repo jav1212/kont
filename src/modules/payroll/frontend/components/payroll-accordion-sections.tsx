@@ -11,6 +11,7 @@ import { AuditContainer, AuditRow } from "@/src/shared/frontend/components/base-
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { EarningRow, EarningValue, DeductionRow, DeductionValue, BonusRow, BonusValue } from "../types/payroll-types";
 import { EarningRowEditor, AddRowButton, DeductionRowEditor, BonusRowEditor } from "./payroll-row-editors";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 
 
@@ -180,13 +181,14 @@ export const DeductionsSection = ({
 
 export const BonusesSection = ({
     rows, values, total,
-    bcvRate,
+    bcvRate, referenceCurrencyCode = "USD",
     onUpdate, onRemove, onAdd,
 }: {
     rows:    BonusRow[];
     values:  BonusValue[];
     total:   number;
     bcvRate: number;
+    referenceCurrencyCode?: PayrollReferenceCurrencyCode;
     onUpdate: (id: string, updated: BonusRow) => void;
     onRemove: (id: string) => void;
     onAdd:    (blank: BonusRow) => void;
@@ -197,20 +199,21 @@ export const BonusesSection = ({
                 key={row.id}
                 row={row}
                 bcvRate={bcvRate}
+                referenceCurrencyCode={referenceCurrencyCode}
                 canRemove={true}
                 onChange={(updated) => onUpdate(row.id, updated)}
                 onRemove={() => onRemove(row.id)}
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `b_${Date.now()}`, label: "", amount: "0.00", currency: "USD",
+            id: `b_${Date.now()}`, label: "", amount: "0.00", currency: referenceCurrencyCode,
         })} />
         <AuditContainer title="Total Bonificaciones" total={total} type="income">
             {values.map((r) => (
                 <AuditRow
                     key={r.id}
                     label={r.label || "—"}
-                    formula={r.currency === "VES" ? `${r.amount} Bs` : `${r.amount}$ × ${bcvRate}`}
+                    formula={r.currency === "VES" ? `${r.amount} Bs` : `${r.amount} ${r.currency} × ${bcvRate}`}
                     value={r.computed}
                 />
             ))}

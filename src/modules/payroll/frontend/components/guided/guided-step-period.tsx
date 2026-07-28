@@ -6,6 +6,7 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { MONTH_NAMES } from "../../utils/period-info";
 import type { GuidedPayrollState } from "../../hooks/use-guided-payroll-state";
 import { GuidedStepShell, StepSection, AdvancedDisclosure } from "./guided-step-shell";
+import { PAYROLL_REFERENCE_CURRENCIES, referenceCurrencyLabel } from "../../../shared/reference-currency";
 
 interface Props {
     state: GuidedPayrollState;
@@ -84,6 +85,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
         selWeekMonday, setSelWeekMonday,
         mondaysOfMonth, activePeriodInfo,
         bcvDate, setBcvDate, exchangeRate, setExchangeRate,
+        exchangeCurrencyCode, setExchangeCurrencyCode,
         bcvLoading, bcvFetchError, fetchBcvRate,
         monthlySalary, setMonthlySalary,
         defaultBenefitsInPeriod,
@@ -98,7 +100,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
     return (
         <GuidedStepShell
             title="¿Cuándo y cómo paga la nómina?"
-            subtitle="Elija la modalidad y el período de pago. La tasa BCV se cargará automáticamente para esa fecha."
+            subtitle="Elija la modalidad, el período y la divisa de referencia. La tasa BCV se cargará automáticamente para esa fecha."
             onNext={onNext}
             nextDisabled={!validBcv}
         >
@@ -316,9 +318,31 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
 
             <StepSection
                 title="Tasa de cambio (BCV)"
-                description="Bolívares por dólar. Se usa para convertir bonos en USD y mostrar el neto en dólares."
+                description={`Bolívares por ${referenceCurrencyLabel(exchangeCurrencyCode).toLowerCase()}. Se usa para convertir bonos en la divisa elegida y mostrar el neto equivalente.`}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
+                            Divisa
+                        </label>
+                        <div className="relative">
+                            <select
+                                value={exchangeCurrencyCode}
+                                onChange={(e) => setExchangeCurrencyCode(e.target.value as typeof exchangeCurrencyCode)}
+                                className="w-full h-11 px-3 pr-9 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[14px] text-foreground appearance-none focus:border-primary-500/60 hover:border-border-medium transition-colors"
+                            >
+                                {PAYROLL_REFERENCE_CURRENCIES.map((currency) => (
+                                    <option key={currency.code} value={currency.code}>
+                                        {currency.code} · {currency.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown
+                                size={16}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
                             Fecha
@@ -332,7 +356,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                     </div>
                     <div>
                         <label className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] mb-1.5 block">
-                            Tasa (Bs. por $)
+                            Tasa (Bs. por {exchangeCurrencyCode})
                         </label>
                         <div className="flex gap-2">
                             <BaseInput.Field

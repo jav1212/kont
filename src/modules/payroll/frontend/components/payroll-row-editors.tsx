@@ -8,6 +8,7 @@
 
 import { BonusRow, DeductionRow, EarningRow, HorasExtrasRow, HorasExtrasTipo, HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 // ── Add row button ─────────────────────────────────────────────────────────────
 
@@ -387,13 +388,14 @@ export const HorasExtrasGlobalEditor = ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BonusRowEditor = ({
-    row, onChange, onRemove, canRemove, bcvRate,
+    row, onChange, onRemove, canRemove, bcvRate, referenceCurrencyCode = "USD",
 }: {
     row:       BonusRow;
     onChange:  (updated: BonusRow) => void;
     onRemove:  () => void;
     canRemove: boolean;
     bcvRate:   number;
+    referenceCurrencyCode?: PayrollReferenceCurrencyCode;
 }) => {
     const raw      = parseFloat(row.amount) || 0;
     const isVes    = row.currency === "VES";
@@ -412,7 +414,7 @@ export const BonusRowEditor = ({
                 />
                 <RemoveButton onClick={onRemove} disabled={!canRemove} />
             </div>
-            {/* Row 2: Monto (USD o VES) | toggle moneda | → VES result */}
+            {/* Row 2: Monto (divisa BCV o VES) | toggle moneda | → VES result */}
             <div className="flex flex-wrap items-center gap-1.5 gap-y-2">
                 <BaseInput.Field
                     type="number"
@@ -421,11 +423,11 @@ export const BonusRowEditor = ({
                     placeholder="0.00"
                     className="w-28"
                     inputClassName="text-right"
-                    prefix={isVes ? "Bs" : "$"}
+                    prefix={isVes ? "Bs" : referenceCurrencyCode}
                     step={isVes ? 1000 : 5}
                 />
                 <button
-                    onClick={() => onChange({ ...row, currency: isVes ? "USD" : "VES" })}
+                    onClick={() => onChange({ ...row, currency: isVes ? referenceCurrencyCode : "VES" })}
                     className={[
                         "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
                         "transition-colors duration-150 whitespace-nowrap",
@@ -433,9 +435,9 @@ export const BonusRowEditor = ({
                             ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
                             : "border-primary-500/40 bg-primary-500/10 text-primary-500",
                     ].join(" ")}
-                    title={isVes ? "Bono en bolívares — click para USD" : "Bono en dólares — click para VES"}
+                    title={isVes ? `Bono en bolívares — click para ${referenceCurrencyCode}` : `Bono en ${referenceCurrencyCode} — click para VES`}
                 >
-                    {isVes ? "VES" : "USD"}
+                    {isVes ? "VES" : referenceCurrencyCode}
                 </button>
                 <Result value={computed} />
             </div>

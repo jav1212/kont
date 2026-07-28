@@ -16,6 +16,8 @@ import type {
     PayrollSettings,
     PdfVisibility,
 } from "../../backend/domain/payroll-settings";
+import type { PayrollInputCurrency } from "../../shared/reference-currency";
+import { normalizePayrollInputCurrency } from "../../shared/reference-currency";
 
 let _seq = 0;
 export const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
@@ -138,7 +140,7 @@ export function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
         id:       nextId(b.label),
         label:    b.label,
         amount:   b.amount,
-        currency: b.currency ?? "USD",
+        currency: normalizePayrollInputCurrency(b.currency),
     }));
 }
 
@@ -163,8 +165,8 @@ export function buildSettings(
     salaryMode: "mensual" | "integral",
     cestaTicketUSD: number,
     bonoGuerraUSD: number,
-    cestaTicketCurrency: "USD" | "VES",
-    bonoGuerraCurrency: "USD" | "VES",
+    cestaTicketCurrency: PayrollInputCurrency,
+    bonoGuerraCurrency: PayrollInputCurrency,
     salarioMinimo: number,
     horasExtrasGlobal: HorasExtrasRow[],
     pdfVisibility: PdfVisibility,

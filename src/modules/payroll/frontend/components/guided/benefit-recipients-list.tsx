@@ -20,7 +20,7 @@ interface BenefitRecipientsListProps {
     /** Monto global (raw input), se muestra como placeholder del override. */
     globalAmount?: string;
     /** Moneda activa del global; dicta el prefix ("$" o "Bs"). */
-    currency?: "USD" | "VES";
+    currency?: PayrollInputCurrency;
 }
 
 export function BenefitRecipientsList({
@@ -251,3 +251,4 @@ function BulkAction({
 function Separator() {
     return <span className="font-mono text-[10px] text-[var(--text-tertiary)]/40">·</span>;
 }
+import type { PayrollInputCurrency } from "../../../shared/reference-currency";

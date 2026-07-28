@@ -37,7 +37,7 @@ export interface PayrollDeductionRowDef {
 export interface PayrollBonusRowDef {
     label:     string;
     amount:    string;
-    currency?: "USD" | "VES";
+    currency?: PayrollInputCurrency;
 }
 
 // ── Horas extras globales (Art. 118 LOTTT) ───────────────────────────────────
@@ -76,8 +76,8 @@ export interface PayrollSettings {
     // Moneda de entrada para los dos beneficios mensuales. El número en
     // `cestaTicketUSD`/`bonoGuerraUSD` se interpreta según esta moneda:
     // si es "VES" el valor es bolívares y el USD se deriva con la tasa BCV.
-    cestaTicketCurrency:    "USD" | "VES";
-    bonoGuerraCurrency:     "USD" | "VES";
+    cestaTicketCurrency:    PayrollInputCurrency;
+    bonoGuerraCurrency:     PayrollInputCurrency;
     salarioMinimoRef:       number;   // reference minimum salary for SSO cap (10× multiplier)
     horasExtrasGlobalRows:  PayrollHorasExtrasGlobalDef[];
     pdfVisibility:          PdfVisibility;
@@ -147,3 +147,4 @@ export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollS
         },
     };
 }
+import type { PayrollInputCurrency } from "../../shared/reference-currency";

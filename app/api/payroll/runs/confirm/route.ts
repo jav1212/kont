@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getPayrollRunActions }  from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
 import { getAccountingActions }  from "@/src/modules/accounting/backend/infrastructure/accounting-factory";
 import { withTenant }            from "@/src/shared/backend/utils/require-tenant";
+import { PAYROLL_REFERENCE_CURRENCY_CODES } from "@/src/modules/payroll/shared/reference-currency";
 
 const ComputedLineSchema = z.object({
     label:   z.string(),
@@ -12,6 +13,7 @@ const ComputedLineSchema = z.object({
 const CalculationDataSchema = z.object({
     gross:          z.number(),
     netUsd:         z.number(),
+    exchangeCurrencyCode: z.enum(PAYROLL_REFERENCE_CURRENCY_CODES).optional(),
     mondaysInMonth: z.number().int().nonnegative(),
     diasUtilidades: z.number().nonnegative().optional(),
     diasBonoVacacional: z.number().nonnegative().optional(),
@@ -43,6 +45,7 @@ const ConfirmSchema = z.object({
         periodStart:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (YYYY-MM-DD)"),
         periodEnd:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Formato de fecha inválido (YYYY-MM-DD)"),
         exchangeRate: z.number().positive("La tasa BCV debe ser mayor a 0"),
+        exchangeCurrencyCode: z.enum(PAYROLL_REFERENCE_CURRENCY_CODES).optional(),
     }),
     receipts: z.array(ReceiptSchema).min(1, "Se requiere al menos un empleado"),
 });

@@ -28,6 +28,7 @@ import { generatePayrollSummaryPdf } from "../utils/payroll-summary-pdf";
 import type { PdfVisibility } from "../../backend/domain/payroll-settings";
 import { computeAportes, downloadAportesCsv } from "../utils/aportes-patronales";
 import { Employee, EmployeeEstado } from "../hooks/use-employee";
+import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 // ============================================================================
 // TYPES
@@ -76,6 +77,7 @@ export interface EmployeeResult extends Employee {
     gross:           number;
     net:             number;
     netUSD:          number;
+    exchangeCurrencyCode: PayrollReferenceCurrencyCode;
     earningLines:    ComputedLine[];
     deductionLines:  ComputedLine[];
     bonusLines:      ComputedLine[];
@@ -100,6 +102,7 @@ function computeEmployee(
     overrides:              EmployeeOverride,
     mondaysInMonth:         number,
     bcvRate:                number,
+    exchangeCurrencyCode:   PayrollReferenceCurrencyCode,
     diasUtilidades:         number,
     diasBonoVacacional:     number,
     horasExtrasGlobal:      HorasExtrasRow[],
@@ -181,7 +184,7 @@ function computeEmployee(
         const isVes = r.currency === "VES";
         return {
             label:      r.label || "—",
-            formula:    isVes ? `${raw} Bs` : `${raw}$ x ${bcvRate}`,
+            formula:    isVes ? `${raw} Bs` : `${raw} ${r.currency} x ${bcvRate}`,
             amount:     isVes ? raw : raw * bcvRate,
             sourceId:   r.id,
             sourceKind: kind,
@@ -231,7 +234,7 @@ function computeEmployee(
     return {
         ...emp,
         totalEarnings, totalDeductions, totalBonuses,
-        gross, net, netUSD: bcvRate > 0 ? net / bcvRate : 0,
+        gross, net, netUSD: bcvRate > 0 ? net / bcvRate : 0, exchangeCurrencyCode,
         earningLines, deductionLines, bonusLines,
         hasOverrides:
             overrides.extraEarnings.length    > 0 ||
@@ -671,6 +674,7 @@ const ExpandedPanel = ({
                                     <BonusRowEditor
                                         row={row}
                                         bcvRate={bcvRate}
+                                        referenceCurrencyCode={result.exchangeCurrencyCode}
                                         canRemove={false}
                                         onChange={(u) => updateXB(row.id, u)}
                                         onRemove={() => {}}
@@ -774,7 +778,7 @@ const ExpandedPanel = ({
             {override.extraBonuses.length === 0 && <p className="font-mono text-[12px] text-neutral-300 italic mb-1">Sin bonos extra.</p>}
             <div className="space-y-2">
                 {override.extraBonuses.map((row) => (
-                    <BonusRowEditor key={row.id} row={row} bcvRate={bcvRate} canRemove onChange={(u) => updateXB(row.id, u)} onRemove={() => removeXB(row.id)} />
+                    <BonusRowEditor key={row.id} row={row} bcvRate={bcvRate} referenceCurrencyCode={result.exchangeCurrencyCode} canRemove onChange={(u) => updateXB(row.id, u)} onRemove={() => removeXB(row.id)} />
                 ))}
             </div>
             <AddRowButton onClick={addXB} />
@@ -891,8 +895,8 @@ const EmployeeMobileCard = ({
                     <dd className="text-[16px] font-black text-primary-500">Bs. {fmt(result.net)}</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Neto USD</dt>
-                    <dd className="text-[var(--text-secondary)]">${fmt(result.netUSD)}</dd>
+                    <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Neto {result.exchangeCurrencyCode}</dt>
+                    <dd className="text-[var(--text-secondary)]">{result.exchangeCurrencyCode} {fmt(result.netUSD)}</dd>
                 </div>
             </dl>
 
@@ -1132,6 +1136,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
 const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
     const active = results.filter((r) => r.estado === "activo");
     const T = active.reduce((s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }), { gross: 0, ded: 0, net: 0, usd: 0 });
+    const exchangeCurrencyCode = active[0]?.exchangeCurrencyCode ?? "USD";
     return (
         <div className="px-4 sm:px-5 py-3 bg-surface-1 rounded-xl border border-border-light flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">{active.length} empleados activos</span>
@@ -1150,8 +1155,8 @@ const TotalsBar = ({ results }: { results: EmployeeResult[] }) => {
                     <span className="font-mono text-[18px] font-black text-primary-500">{fmt(T.net)}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Neto USD</span>
-                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">${fmt(T.usd)}</span>
+                    <span className="font-mono text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Neto {exchangeCurrencyCode}</span>
+                    <span className="font-mono text-[12px] text-[var(--text-secondary)]">{exchangeCurrencyCode} {fmt(T.usd)}</span>
                 </div>
             </div>
         </div>
@@ -1172,6 +1177,7 @@ export interface PayrollEmployeeTableProps {
     bonusRows:                BonusRow[];
     mondaysInMonth:           number;
     bcvRate:                  number;
+    exchangeCurrencyCode?:    PayrollReferenceCurrencyCode;
     diasUtilidades:           number;
     diasBonoVacacional:       number;
     horasExtrasGlobal?:       HorasExtrasRow[];
@@ -1195,6 +1201,7 @@ export interface PayrollEmployeeTableProps {
 export const PayrollEmployeeTable = ({
     employees, empLoading, onConfirm, onSaveDraft,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
+    exchangeCurrencyCode = "USD",
     diasUtilidades, diasBonoVacacional,
     horasExtrasGlobal = [], salarioMinimo = 0,
     companyName, companyId, companyLogoUrl, showLogoInPdf,
@@ -1232,12 +1239,12 @@ export const PayrollEmployeeTable = ({
     const results = useMemo<EmployeeResult[]>(() =>
         activeEmployees.map((emp) => computeEmployee(
             emp, earningRows, deductionRows, bonusRows,
-            getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate,
+            getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate, exchangeCurrencyCode,
             diasUtilidades, diasBonoVacacional,
             horasExtrasGlobal, salarioMinimo,
             salaryMode, quincena,
         )),
-        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, getOverride]
+        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, exchangeCurrencyCode, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, getOverride]
     );
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);
@@ -1250,10 +1257,11 @@ export const PayrollEmployeeTable = ({
                 earningLines: r.earningLines, bonusLines: r.bonusLines, deductionLines: r.deductionLines,
                 totalEarnings: r.totalEarnings, totalBonuses: r.totalBonuses, totalDeductions: r.totalDeductions,
                 gross: r.gross, net: r.net, netUSD: r.netUSD,
+                exchangeCurrencyCode: r.exchangeCurrencyCode,
                 alicuotaUtil: r.alicuotaUtil, alicuotaBono: r.alicuotaBono, salarioIntegral: r.salarioIntegral,
             })),
             {
-                companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode,
+                companyName, companyId, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, referenceCurrencyCode: exchangeCurrencyCode,
                 logoUrl: companyLogoUrl, showLogoInPdf, pdfVisibility, pdfMode,
             }
         );
@@ -1282,6 +1290,7 @@ export const PayrollEmployeeTable = ({
                 totalDeductions: r.totalDeductions,
                 net:             r.net,
                 netUSD:          r.netUSD,
+                exchangeCurrencyCode: r.exchangeCurrencyCode,
             })),
             {
                 companyName,
@@ -1290,6 +1299,7 @@ export const PayrollEmployeeTable = ({
                 periodStart,
                 periodEnd:   payrollDate,
                 bcvRate,
+                referenceCurrencyCode: exchangeCurrencyCode,
             },
         );
     }, [results, companyName, companyId, periodLabel, periodStart, payrollDate, bcvRate]);
@@ -1337,7 +1347,7 @@ export const PayrollEmployeeTable = ({
         { key: "gross", label: "Bruto VES", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums">{fmt(r.gross)}</span> },
         { key: "totalDeductions", label: "Deducciones", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-error/70">-{fmt(r.totalDeductions)}</span> },
         { key: "net", label: "Neto VES", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[13px] font-semibold tabular-nums text-primary-500">{fmt(r.net)}</span> },
-        { key: "netUSD", label: "Neto $", sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-neutral-400">{fmt(r.netUSD)}</span> },
+        { key: "netUSD", label: `Neto ${exchangeCurrencyCode}`, sortable: true, align: "end", render: (_, r) => <span className="font-mono text-[12px] tabular-nums text-neutral-400">{fmt(r.netUSD)}</span> },
         {
             key: "_expand" as string, label: "", align: "center", width: 48,
             render: (_, r) => <ExpandBtn open={expandedId === r.cedula} onClick={() => setExpandedId((prev) => prev === r.cedula ? null : r.cedula)} />,
@@ -1431,7 +1441,7 @@ export const PayrollEmployeeTable = ({
                                             <>
                                                 {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
                                                 <SummaryRow label="Empleados activos" value={activeResults.length} />
-                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / ${exchangeCurrencyCode}`} />
                                                 <SummaryRow label="Modalidad" value="Cortable · Oficio" />
                                             </>
                                         ),
@@ -1464,7 +1474,7 @@ export const PayrollEmployeeTable = ({
                                             <>
                                                 {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
                                                 <SummaryRow label="Empleados activos" value={activeResults.length} />
-                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                                <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / ${exchangeCurrencyCode}`} />
                                                 <SummaryRow label="Modalidad" value="Simple · A4" />
                                             </>
                                         ),
@@ -1497,7 +1507,7 @@ export const PayrollEmployeeTable = ({
                                     {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
                                     <SummaryRow label="Empleados activos" value={activeResults.length} />
                                     <SummaryRow label="Total neto VES" value={`Bs. ${fmt(modalTotals.net)}`} emphasis />
-                                    <SummaryRow label="Equivalente USD" value={`$${fmt(modalTotals.usd)}`} />
+                                    <SummaryRow label={`Equivalente ${exchangeCurrencyCode}`} value={`${exchangeCurrencyCode} ${fmt(modalTotals.usd)}`} />
                                 </>
                             ),
                             confirmLabel: "Generar PDF",
@@ -1528,11 +1538,11 @@ export const PayrollEmployeeTable = ({
                                 summary: (
                                     <>
                                         <SummaryRow label="Empleados activos" value={activeResults.length} />
-                                        <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / USD`} />
+                                        <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / ${exchangeCurrencyCode}`} />
                                         <SummaryRow label="Total bruto" value={`Bs. ${fmt(modalTotals.gross)}`} />
                                         <SummaryRow label="Total deducciones" value={`-Bs. ${fmt(modalTotals.ded)}`} />
                                         <SummaryRow label="Neto a pagar VES" value={`Bs. ${fmt(modalTotals.net)}`} emphasis />
-                                        <SummaryRow label="Equivalente USD" value={`$${fmt(modalTotals.usd)}`} />
+                                        <SummaryRow label={`Equivalente ${exchangeCurrencyCode}`} value={`${exchangeCurrencyCode} ${fmt(modalTotals.usd)}`} />
                                     </>
                                 ),
                                 warning: zeroSalaryCount > 0
