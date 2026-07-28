@@ -1,6 +1,6 @@
 // app/api/payroll/ari/route.ts
 //
-// API de declaraciones AR-I (retención de ISLR) por empresa.
+// API de declaraciones AR-I trimestrales (retención de ISLR) por empresa.
 //   GET    ?companyId=...              → AriDeclaration[]
 //   PUT    { companyId, declaration }  → upsert (recalcula % en el use-case)
 //   DELETE { id }                      → elimina una declaración
@@ -21,8 +21,9 @@ const DeclarationSchema = z.object({
     employeeId:              z.string().min(1),
     employeeCedula:          z.string().min(1),
     anioGravable:            z.number().int().gte(2000).lte(2100),
+    trimestreGravable:       z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     valorUT:                 z.number().nonnegative(),
-    remuneracionAnual:       z.number().nonnegative(),
+    remuneracionTrimestral:  z.number().nonnegative(),
     usarDesgravamenUnico:    z.boolean(),
     desgEducacion:           z.number().nonnegative(),
     desgSeguros:             z.number().nonnegative(),

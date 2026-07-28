@@ -17,8 +17,9 @@ interface RawAriRow {
     employee_id:                string;
     employee_cedula:            string;
     anio_gravable:              number;
+    trimestre_gravable:         number;
     valor_ut:                   number;
-    remuneracion_anual:         number;
+    remuneracion_trimestral:    number;
     usar_desgravamen_unico:     boolean;
     desg_educacion:             number;
     desg_seguros:               number;
@@ -82,8 +83,9 @@ export class RpcAriDeclarationRepository implements IAriDeclarationRepository {
             employeeId:              row.employee_id,
             employeeCedula:          row.employee_cedula,
             anioGravable:            Number(row.anio_gravable),
+            trimestreGravable:       Number(row.trimestre_gravable) as 1 | 2 | 3 | 4,
             valorUT:                 Number(row.valor_ut),
-            remuneracionAnual:       Number(row.remuneracion_anual),
+            remuneracionTrimestral:  Number(row.remuneracion_trimestral),
             usarDesgravamenUnico:    row.usar_desgravamen_unico,
             desgEducacion:           Number(row.desg_educacion),
             desgSeguros:             Number(row.desg_seguros),
@@ -103,8 +105,9 @@ export class RpcAriDeclarationRepository implements IAriDeclarationRepository {
             employee_id:                d.employeeId,
             employee_cedula:            d.employeeCedula,
             anio_gravable:              d.anioGravable,
+            trimestre_gravable:         d.trimestreGravable,
             valor_ut:                   d.valorUT,
-            remuneracion_anual:         d.remuneracionAnual,
+            remuneracion_trimestral:    d.remuneracionTrimestral,
             usar_desgravamen_unico:     d.usarDesgravamenUnico,
             desg_educacion:             d.desgEducacion,
             desg_seguros:               d.desgSeguros,

@@ -36,8 +36,9 @@ export interface AriPdfData {
     companyId?:            string;
     employee:              AriPdfEmployee;
     anioGravable:          number;
+    trimestreGravable:     1 | 2 | 3 | 4;
     valorUT:               number;
-    remuneracionAnual:     number;      // casilla A (Bs)
+    remuneracionTrimestral:number;      // casilla A (Bs)
     usarDesgravamenUnico:  boolean;
     totalDesgravamenesBs:  number;
     cargasFamiliares:      number;
@@ -62,6 +63,7 @@ export interface AriPdfData {
 type Doc = jsPDF;
 
 const formatUT = (n: number): string => `${formatN(n)} U.T.`;
+const quarterLabel = (quarter: 1 | 2 | 3 | 4): string => `Trimestre ${quarter}`;
 
 function drawEmployeeCard(doc: Doc, x: number, w: number, y: number, employee: AriPdfEmployee, rightSub: string): number {
     const H = 16;
@@ -163,7 +165,7 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
         companyName:  data.companyName,
         companyRif:   data.companyId,
         reportTitle:  "Retención de ISLR (AR-I)",
-        periodLabel:  `Año Gravable ${data.anioGravable}`,
+        periodLabel:  `${quarterLabel(data.trimestreGravable)} · ${data.anioGravable}`,
         legalCaption: "Determinación del %",
     });
 
@@ -177,15 +179,15 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
 
     y = drawParamsStrip(doc, ML, W, y, [
         { label: "Valor U.T.",         value: formatPayrollAmount(data.valorUT) },
-        { label: "Remuneración anual", value: formatPayrollAmount(data.remuneracionAnual), accent: true },
-        { label: "Desgravamen",        value: data.usarDesgravamenUnico ? "Único (774 U.T.)" : "Detallado" },
+        { label: "Remuneración trimestral", value: formatPayrollAmount(data.remuneracionTrimestral), accent: true },
+        { label: "Desgravamen",        value: data.usarDesgravamenUnico ? "Único (193,5 U.T.)" : "Detallado" },
     ]);
 
     const deduccionUT = data.desgravamenesUT > 0 ? data.desgravamenesUT : data.desgravamenUnicoUT;
     const rows: AriRow[] = [
         {
             label: "A/B · Remuneración estimada",
-            sub:   `${formatPayrollAmount(data.remuneracionAnual)} ÷ ${formatPayrollAmount(data.valorUT)}`,
+            sub:   `${formatPayrollAmount(data.remuneracionTrimestral)} ÷ ${formatPayrollAmount(data.valorUT)}`,
             value: formatUT(data.remuneracionUT),
         },
         {
@@ -205,11 +207,11 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
         },
         {
             label: "H · Rebajas (personal + cargas)",
-            sub:   "Art. 61 Ley ISLR · 10 U.T. + 10 U.T./carga",
+            sub:   "Art. 61 Ley ISLR · 2,5 U.T. + 2,5 U.T./carga",
             value: `− ${formatUT(data.rebajasUT)}`,
         },
         {
-            label:  "I · Impuesto a retener en el año",
+            label:  "I · Impuesto a retener en el trimestre",
             value:  formatUT(data.impuestoARetenerUT),
             strong: true,
         },
@@ -226,7 +228,7 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
     y += 13 + 5;
 
     if (!data.sujetoARetencion) {
-        renderMono(doc, "Remuneración anual < 1.000 U.T. — no sujeto a retención.", ML + 3, y, 8, false, COLORS.muted, "left");
+        renderMono(doc, "Remuneración trimestral < 250 U.T. — no sujeto a retención.", ML + 3, y, 8, false, COLORS.muted, "left");
         y += 6;
     }
 
@@ -236,11 +238,11 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
         "La presente determinación reproduce las secciones A–J de la Forma AR-I para el cálculo del porcentaje " +
         "inicial de retención del Impuesto Sobre la Renta sobre sueldos, salarios y demás remuneraciones, de " +
         "conformidad con la Ley de ISLR y el Decreto 1808 sobre Retenciones. El porcentaje resultante se aplica " +
-        "sobre cada pago o abono en cuenta que efectúe el agente de retención durante el año gravable.",
+        "sobre cada pago o abono en cuenta que efectúe el agente de retención durante el trimestre gravable.",
     );
 
     drawFooter(doc, kontaLogo);
 
-    doc.save(`ari-${safeFilename(data.employee.cedula)}-${data.anioGravable}.pdf`);
+    doc.save(`ari-${safeFilename(data.employee.cedula)}-${data.anioGravable}-t${data.trimestreGravable}.pdf`);
 }
 

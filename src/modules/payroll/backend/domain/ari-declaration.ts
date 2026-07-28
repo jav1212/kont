@@ -1,7 +1,7 @@
 // src/modules/payroll/backend/domain/ari-declaration.ts
 //
 // Dominio de la declaración AR-I (retención de ISLR sobre sueldos y salarios).
-// La Forma AR-I del SENIAT estima el enriquecimiento anual del trabajador y
+// La Forma AR-I del SENIAT estima el enriquecimiento trimestral del trabajador y
 // determina el PORCENTAJE inicial de retención (casilla J). Ese porcentaje se
 // guarda en employees.porcentaje_islr y alimenta el XML/PDF mensual de
 // Retenciones ISLR.
@@ -14,18 +14,18 @@
 
 // ── Constantes legales (Ley de ISLR / Decreto 1808 — Tarifa Nº 1) ─────────────
 
-/** Desgravamen único (Art. 60 Ley ISLR), en U.T. */
-export const ARI_DESGRAVAMEN_UNICO_UT = 774;
-/** Rebaja personal del contribuyente (Art. 61 Ley ISLR), en U.T. */
-export const ARI_REBAJA_PERSONAL_UT = 10;
-/** Rebaja por cada carga familiar (Art. 61 Ley ISLR), en U.T. */
-export const ARI_REBAJA_CARGA_UT = 10;
+/** Desgravamen único trimestral prorrateado (Art. 60 Ley ISLR), en U.T. */
+export const ARI_DESGRAVAMEN_UNICO_UT = 774 / 4;
+/** Rebaja personal trimestral prorrateada (Art. 61 Ley ISLR), en U.T. */
+export const ARI_REBAJA_PERSONAL_UT = 10 / 4;
+/** Rebaja trimestral prorrateada por cada carga familiar (Art. 61 Ley ISLR), en U.T. */
+export const ARI_REBAJA_CARGA_UT = 10 / 4;
 /**
  * Umbral (U.T.) a partir del cual el trabajador está sujeto a retención. Se
- * evalúa sobre la REMUNERACIÓN BRUTA anual estimada (casilla B), no sobre el
+ * evalúa sobre la REMUNERACIÓN BRUTA trimestral estimada (casilla B), no sobre el
  * enriquecimiento neto F. (Validado con normativa: gate sobre B.)
  */
-export const ARI_UMBRAL_SUJETO_UT = 1000;
+export const ARI_UMBRAL_SUJETO_UT = 1000 / 4;
 
 /**
  * Tarifa Nº 1 del ISLR para personas naturales residentes.
@@ -46,12 +46,13 @@ export const ARI_TARIFA: ReadonlyArray<readonly [number, number, number]> = [
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
-/** Entradas manuales del formulario AR-I (por empleado y año gravable). */
+/** Entradas manuales del formulario AR-I (por empleado, año y trimestre gravable). */
 export interface AriDeclarationInput {
     anioGravable:            number;
+    trimestreGravable:       1 | 2 | 3 | 4;
     valorUT:                 number;   // valor de la U.T. en Bs
-    remuneracionAnual:       number;   // casilla A (Bs), total manual
-    usarDesgravamenUnico:    boolean;  // true → 774 U.T.; false → detallados
+    remuneracionTrimestral:  number;   // casilla A (Bs), total manual
+    usarDesgravamenUnico:    boolean;  // true → 193,5 U.T.; false → detallados
     desgEducacion:           number;   // Bs
     desgSeguros:             number;   // Bs (primas HCM)
     desgMedicos:             number;   // Bs
@@ -83,7 +84,7 @@ export interface AriResult {
     rebajasUT:             number;   // H
     impuestoARetenerUT:    number;   // I
     porcentaje:            number;   // J (%)
-    sujetoARetencion:      boolean;  // remuneración bruta anual (B) > 1000 U.T.
+    sujetoARetencion:      boolean;  // remuneración bruta trimestral (B) > 250 U.T.
 }
 
 // ── Cálculo ───────────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
     const valorUT = input.valorUT > 0 ? input.valorUT : 0;
 
     // B — remuneración estimada en U.T.
-    const remuneracionUT = valorUT > 0 ? input.remuneracionAnual / valorUT : 0;
+    const remuneracionUT = valorUT > 0 ? input.remuneracionTrimestral / valorUT : 0;
 
     // C / D / E — desgravámenes
     const totalDesgravamenesBs = input.usarDesgravamenUnico
@@ -119,7 +120,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
     // F — enriquecimiento neto gravable en U.T.
     const enriquecimientoNetoUT = remuneracionUT - deduccionUT;
 
-    // G — impuesto del año gravable según la Tarifa Nº 1
+    // G — impuesto del trimestre gravable según la Tarifa Nº 1
     const { alicuota, sustraendo } = tramoTarifa(Math.max(0, enriquecimientoNetoUT));
     const impuestoUT = enriquecimientoNetoUT > 0
         ? enriquecimientoNetoUT * alicuota - sustraendo
@@ -132,7 +133,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
         ARI_REBAJA_CARGA_UT * cargas +
         (valorUT > 0 ? input.impuestosRetenidosDeMas / valorUT : 0);
 
-    // I — impuesto (estimado) a retener en el año
+    // I — impuesto (estimado) a retener en el trimestre
     const impuestoARetenerUT = impuestoUT < rebajasUT ? 0 : impuestoUT - rebajasUT;
 
     // J — porcentaje inicial de retención
