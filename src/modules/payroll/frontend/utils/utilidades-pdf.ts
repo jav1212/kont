@@ -1,5 +1,5 @@
 // PDF generators: Utilidades anuales (Art. 131 LOTTT) y utilidades fraccionadas
-// (Art. 175). Estilo Konta — header naranja, footer Kontave compartido.
+// (Art. 175). Estilo Konta - header naranja, footer Kontave compartido.
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
@@ -11,7 +11,6 @@ import {
     fill,
     hline,
     rect,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -19,8 +18,7 @@ import {
     safeFilename,
     fmtDateEs,
 } from "@/src/shared/frontend/utils/pdf-chrome";
-
-// ── Public types ──────────────────────────────────────────────────────────────
+import { formatPayrollAmount } from "./payroll-pdf-format";
 
 export interface ProfitSharingPdfEmployee {
     name: string;
@@ -60,8 +58,6 @@ export interface FractionalProfitSharingPdfData {
     showLogoInPdf?:    boolean;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 type Doc = jsPDF;
 
 function drawSignatures(doc: Doc, x: number, w: number, y: number): number {
@@ -94,7 +90,7 @@ function drawIdentityCard(
     renderText(doc, employee.name.toUpperCase(), c1, y + 9, 10.5, true, COLORS.ink, "left", c2 - c1 - 4, "helvetica");
     if (employee.role) renderText(doc, employee.role, c1, y + 13.5, 7.8, false, COLORS.muted, "left", c2 - c1 - 4, "helvetica");
 
-    renderLabel(doc, "Cédula", c2, y + 4, "left", COLORS.muted, 7);
+    renderLabel(doc, "Cedula", c2, y + 4, "left", COLORS.muted, 7);
     renderMono(doc, employee.idNumber, c2, y + 9, 10.5, true, COLORS.ink, "left");
 
     renderLabel(doc, rightLabel, c3, y + 4, "right", COLORS.muted, 7);
@@ -123,8 +119,6 @@ function drawLegal(doc: Doc, x: number, w: number, y: number, text: string): num
     return y + lines.length * 3.5 + 6;
 }
 
-// ── Utilidades completas ──────────────────────────────────────────────────────
-
 export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfData): Promise<void> {
     const { default: jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -142,7 +136,7 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
         companyName: data.companyName,
         companyRif:  data.companyId,
         reportTitle: "Constancia de Utilidades",
-        periodLabel: `Año Fiscal ${data.fiscalYear}`,
+        periodLabel: `Ano Fiscal ${data.fiscalYear}`,
     });
 
     let y = 32;
@@ -151,28 +145,46 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
         y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
-    y = drawIdentityCard(doc, ML, W, y, data.employee,
-        "Sal. Mensual", formatVES(data.salaryVES), `Diario ${formatVES(data.dailySalary)}`);
+    y = drawIdentityCard(
+        doc,
+        ML,
+        W,
+        y,
+        data.employee,
+        "Sal. Mensual",
+        formatPayrollAmount(data.salaryVES),
+        `Diario ${formatPayrollAmount(data.dailySalary)}`,
+    );
 
-    // Días base + fórmula
     fill(doc, ML, y, W, 11, COLORS.bandHead);
     rect(doc, ML, y, W, 11, COLORS.border, 0.2);
-    renderLabel(doc, "Días de utilidades base · Art. 131 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
-    renderMono(doc, `${data.profitSharingDays} días`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
+    renderLabel(doc, "Dias de utilidades base - Art. 131 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
+    renderMono(doc, `${data.profitSharingDays} dias`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
     y += 11 + 4;
 
-    renderLabel(doc, "Fórmula", ML, y + 3.5, "left", COLORS.muted, 7);
-    renderMono(doc,
-        `${data.profitSharingDays} días × ${formatVES(data.dailySalary)} / día  =  ${formatVES(data.amount)}`,
-        ML, y + 9, 9.5, true, COLORS.inkMed, "left");
+    renderLabel(doc, "Formula", ML, y + 3.5, "left", COLORS.muted, 7);
+    renderMono(
+        doc,
+        `${data.profitSharingDays} dias x ${formatPayrollAmount(data.dailySalary)} / dia = ${formatPayrollAmount(data.amount)}`,
+        ML,
+        y + 9,
+        9.5,
+        true,
+        COLORS.inkMed,
+        "left",
+    );
     y += 14;
 
-    y = drawTotalCard(doc, ML, W, y, "Monto a pagar (utilidades netas)", formatVES(data.amount));
+    y = drawTotalCard(doc, ML, W, y, "Monto a pagar (utilidades netas)", formatPayrollAmount(data.amount));
 
-    y = drawLegal(doc, ML, W, y,
-        `La presente constancia certifica el pago de utilidades correspondientes al año fiscal ${data.fiscalYear}, ` +
-        "de conformidad con los Arts. 131 y 174 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
-        "El cálculo se realiza sobre el salario normal del trabajador. La firma de ambas partes confirma la recepción de dicho beneficio.",
+    y = drawLegal(
+        doc,
+        ML,
+        W,
+        y,
+        `La presente constancia certifica el pago de utilidades correspondientes al ano fiscal ${data.fiscalYear}, ` +
+            "de conformidad con los Arts. 131 y 174 de la Ley Organica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+            "El calculo se realiza sobre el salario normal del trabajador. La firma de ambas partes confirma la recepcion de dicho beneficio.",
     );
 
     drawSignatures(doc, ML, W, y);
@@ -180,8 +192,6 @@ export async function generateFullProfitSharingPdf(data: FullProfitSharingPdfDat
 
     doc.save(`utilidades-${safeFilename(data.employee.idNumber)}-${data.fiscalYear}.pdf`);
 }
-
-// ── Utilidades fraccionadas ───────────────────────────────────────────────────
 
 export async function generateFractionalProfitSharingPdf(data: FractionalProfitSharingPdfData): Promise<void> {
     const { default: jsPDF } = await import("jspdf");
@@ -200,7 +210,7 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
         companyName: data.companyName,
         companyRif:  data.companyId,
         reportTitle: "Utilidades Fraccionadas",
-        periodLabel: `Año Fiscal ${data.fiscalYear}`,
+        periodLabel: `Ano Fiscal ${data.fiscalYear}`,
     });
 
     let y = 32;
@@ -209,34 +219,56 @@ export async function generateFractionalProfitSharingPdf(data: FractionalProfitS
         y = drawCompanyLogoBand(doc, companyLogo, ML, y, "full");
     }
 
-    y = drawIdentityCard(doc, ML, W, y, data.employee,
+    y = drawIdentityCard(
+        doc,
+        ML,
+        W,
+        y,
+        data.employee,
         "Meses Trabajados",
         `${data.monthsWorked} mes${data.monthsWorked !== 1 ? "es" : ""}`,
-        `${fmtDateEs(data.periodStart)} → ${fmtDateEs(data.cutoffDate)}`,
+        `${fmtDateEs(data.periodStart)} -> ${fmtDateEs(data.cutoffDate)}`,
     );
 
-    // Días fraccionados
     fill(doc, ML, y, W, 11, COLORS.bandHead);
     rect(doc, ML, y, W, 11, COLORS.border, 0.2);
-    renderLabel(doc, "Días fraccionados · Art. 175 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
-    renderMono(doc, `${data.fractionalDays} días`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
+    renderLabel(doc, "Dias fraccionados - Art. 175 LOTTT", ML + 3, y + 7, "left", COLORS.inkMed, 8);
+    renderMono(doc, `${data.fractionalDays} dias`, ML + W - 3, y + 7.2, 11, true, COLORS.ink, "right");
     y += 11 + 4;
 
-    renderLabel(doc, "Fórmula", ML, y + 3.5, "left", COLORS.muted, 7);
-    renderMono(doc,
-        `(${data.profitSharingDays} d / 12 m) × ${data.monthsWorked} meses = ${data.fractionalDays} d`,
-        ML, y + 9, 9.5, true, COLORS.inkMed, "left");
-    renderMono(doc,
-        `${data.fractionalDays} días × ${formatVES(data.dailySalary)} / día = ${formatVES(data.amount)}`,
-        ML, y + 14.5, 9.5, true, COLORS.inkMed, "left");
+    renderLabel(doc, "Formula", ML, y + 3.5, "left", COLORS.muted, 7);
+    renderMono(
+        doc,
+        `(${data.profitSharingDays} d / 12 m) x ${data.monthsWorked} meses = ${data.fractionalDays} d`,
+        ML,
+        y + 9,
+        9.5,
+        true,
+        COLORS.inkMed,
+        "left",
+    );
+    renderMono(
+        doc,
+        `${data.fractionalDays} dias x ${formatPayrollAmount(data.dailySalary)} / dia = ${formatPayrollAmount(data.amount)}`,
+        ML,
+        y + 14.5,
+        9.5,
+        true,
+        COLORS.inkMed,
+        "left",
+    );
     y += 20;
 
-    y = drawTotalCard(doc, ML, W, y, "Monto fraccionado", formatVES(data.amount));
+    y = drawTotalCard(doc, ML, W, y, "Monto fraccionado", formatPayrollAmount(data.amount));
 
-    y = drawLegal(doc, ML, W, y,
-        `La presente constancia certifica el pago de utilidades fraccionadas correspondientes al período trabajado en el año fiscal ${data.fiscalYear}, ` +
-        "de conformidad con el Art. 175 de la Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
-        "El cálculo es proporcional a los meses completos laborados desde el inicio del año fiscal o de la relación laboral (lo que ocurra después).",
+    y = drawLegal(
+        doc,
+        ML,
+        W,
+        y,
+        `La presente constancia certifica el pago de utilidades fraccionadas correspondientes al periodo trabajado en el ano fiscal ${data.fiscalYear}, ` +
+            "de conformidad con el Art. 175 de la Ley Organica del Trabajo, los Trabajadores y las Trabajadoras (LOTTT). " +
+            "El calculo es proporcional a los meses completos laborados desde el inicio del ano fiscal o de la relacion laboral (lo que ocurra despues).",
     );
 
     drawSignatures(doc, ML, W, y);

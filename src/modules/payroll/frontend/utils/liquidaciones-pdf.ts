@@ -4,6 +4,7 @@
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     drawHeader,
@@ -14,8 +15,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
-    formatUSD,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -88,7 +87,7 @@ function drawIdentityCard(doc: Doc, x: number, w: number, y: number, emp: Liquid
     renderMono(doc, `Egreso ${fmtDateEs(emp.terminationDate)}`, c2, y + 16.8, 7.8, false, COLORS.muted, "left");
 
     renderLabel(doc, "Salario Base / Día", c3, y + 4, "right", COLORS.muted, 7);
-    renderMono(doc, dailySalary > 0 ? formatVES(dailySalary) : "—", c3, y + 9, 10, true, COLORS.ink, "right");
+    renderMono(doc, dailySalary > 0 ? formatPayrollAmount(dailySalary) : "—", c3, y + 9, 10, true, COLORS.ink, "right");
 
     return y + H + 5;
 }
@@ -141,7 +140,7 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
         if (line.days !== undefined) {
             renderMono(doc, String(line.days), ML + colConcept + colDias / 2, y + (line.formula ? 6 : 4.5), 9, false, COLORS.muted, "center");
         }
-        renderMono(doc, formatVES(line.amount), ML + colConcept + colDias + colMonto - 2, y + (line.formula ? 6 : 4.5), 9.5, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(line.amount), ML + colConcept + colDias + colMonto - 2, y + (line.formula ? 6 : 4.5), 9.5, true, COLORS.ink, "right");
         y += H;
         hline(doc, ML, y, W, COLORS.border, 0.2);
     });
@@ -154,14 +153,14 @@ function drawReceipt(doc: Doc, emp: LiquidationEmployee, opts: LiquidationOption
     fill(doc, ML, y, W, 14, COLORS.bandHead);
     rect(doc, ML, y, W, 14, COLORS.border, 0.2);
     renderLabel(doc, "Líquido a recibir", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
-    renderMono(doc, formatVES(emp.total), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(emp.total), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
     y += 14;
 
     // ── USD equivalent + BCV rate (only when a rate is available) ──────────────
     if (opts.bcvRate && opts.bcvRate > 0) {
         y += 5;
         renderMono(doc, `Tasa BCV: ${formatN(opts.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
-        renderMono(doc, formatUSD(emp.total / opts.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+        renderMono(doc, formatPayrollAmount(emp.total / opts.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
     }
     y += 6;
 
@@ -211,3 +210,4 @@ export async function generateLiquidationPdf(employees: LiquidationEmployee[], o
 
     doc.save(`liquidaciones-${safeFilename(opts.companyName)}-${opts.documentDate.replaceAll("-", "")}.pdf`);
 }
+

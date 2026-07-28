@@ -10,6 +10,7 @@
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     PAGE,
@@ -24,7 +25,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -122,7 +122,7 @@ function drawParamsCard(
     renderMono(doc, `Bs. ${formatN(bcvRate, 4)} / USD`, cx2, y + 11, 10, true, COLORS.inkMed, "left");
 
     renderLabel(doc, "Equiv. por empleado", cx3, y + 5, "right", COLORS.muted, 7);
-    renderMono(doc, formatVES(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
 
     let nextY = y + H + 5;
     if (heterogeneous) {
@@ -203,7 +203,7 @@ async function generateGeneralPdf(
             { x: ML + colN,                                w: colName, text: emp.nombre,          align: "left",   size: 8.5,                       color: COLORS.ink },
             { x: ML + colN + colName,                      w: colCed,  text: emp.cedula,          align: "left",   size: 8.5, mono: true,            color: COLORS.muted },
             { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(empMonto),    align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
-            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatVES(empMontoVes), align: "right", size: 9,  mono: true, bold: true, color: COLORS.ink },
+            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatPayrollAmount(empMontoVes), align: "right", size: 9,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += ROW_H;
     });
@@ -224,7 +224,7 @@ async function generateGeneralPdf(
     rect(doc, ML, y, W, 12, COLORS.border, 0.2);
     renderLabel(doc, `Total · ${active.length} empleado${active.length !== 1 ? "s" : ""}`, ML + 3, y + 7.8, "left", COLORS.inkMed, 9);
     renderMono(doc, fmtUSD(totalUSD),  ML + colN + colName + colCed + colUSD - 1, y + 7.8, 10, true, COLORS.ink, "right");
-    renderMono(doc, formatVES(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
     y += 12 + 8;
 
     if (y + 8 > pageBounds(doc).contentBot) {
@@ -261,7 +261,7 @@ async function generateGeneralPdf(
         renderMono(doc, fmtUSD(empMonto), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
         renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
         renderMono(doc, emp.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
-        renderMono(doc, formatVES(empMontoVes), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
+        renderMono(doc, formatPayrollAmount(empMontoVes), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
 
         rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);
         renderText(doc, "Recibido (efectivo / transferencia)", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");
@@ -443,7 +443,7 @@ function drawReceiptInRegion(
         renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 9.5, 12.5, true, COLORS.ink, "right");
 
         renderLabel(doc, "Equivalente VES", xL + 3, y + 14, "left", COLORS.muted, 6.5);
-        renderMono(doc, formatVES(empMontoVes), xR - 3, y + 18, 11, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(empMontoVes), xR - 3, y + 18, 11, true, COLORS.ink, "right");
 
         rect(doc, xL + 3, y + conceptH - 4.5, 2, 2, COLORS.borderStr, 0.3);
         renderText(doc, "Recibido (efectivo/transferencia)", xL + 7, y + conceptH - 3, 6.5, false, COLORS.muted, "left", undefined, "helvetica");
@@ -455,7 +455,7 @@ function drawReceiptInRegion(
         renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 11, 14, true, COLORS.ink, "right");
 
         renderLabel(doc, "Equivalente VES", xL + 3, y + 17, "left", COLORS.muted, 7);
-        renderMono(doc, formatVES(empMontoVes), xR - 3, y + 22, 13, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(empMontoVes), xR - 3, y + 22, 13, true, COLORS.ink, "right");
     }
 
     y += conceptH + (isCompact ? 2 : 5);
@@ -551,3 +551,4 @@ export async function generateBonoGuerraPdf(
     }
     return generatePerEmployeePdf(active, opts, companyLogo, kontaLogo, pdfMode);
 }
+

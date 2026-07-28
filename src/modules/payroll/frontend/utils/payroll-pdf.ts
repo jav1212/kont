@@ -27,13 +27,13 @@ import {
     companyLogoBandHeight,
     fill,
     rect,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
     renderLabel,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     OFICIO_FORMAT,
     HALF_TOP_Y,
@@ -176,7 +176,7 @@ function drawSection(
     // Section title bar with right-aligned total
     fill(doc, x, y, w, d.titleH, COLORS.bandHead);
     renderLabel(doc, title, x + 2, y + d.titleH - 1.9, "left", COLORS.inkMed, d.titleSize);
-    renderMono(doc, `${sign} ${formatVES(total)}`, x + w - 2, y + d.titleH - 1.9, d.totalSize, true, COLORS.ink, "right");
+    renderMono(doc, `${sign} ${formatPayrollAmount(total)}`, x + w - 2, y + d.titleH - 1.9, d.totalSize, true, COLORS.ink, "right");
     y += d.titleH;
 
     if (lines.length === 0) {
@@ -200,7 +200,7 @@ function drawSection(
         drawRow(doc, y, d.rowH, [
             { x: x,                           w: colConcept, text: line.label,             align: "left",  size: d.fontConcept, color: COLORS.inkMed },
             { x: x + colConcept,              w: colFormula, text: line.formula,           align: "left",  size: d.fontFormula, mono: true, color: COLORS.muted },
-            { x: x + colConcept + colFormula, w: colAmount,  text: formatVES(line.amount), align: "right", size: d.fontAmount,  mono: true, bold: true, color: COLORS.ink },
+            { x: x + colConcept + colFormula, w: colAmount,  text: formatPayrollAmount(line.amount), align: "right", size: d.fontAmount,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += d.rowH;
     });
@@ -307,10 +307,10 @@ function drawReceiptInRegion(
 
         renderLabel(doc, "Salario", colSal, y + 3, "right", COLORS.muted, 6);
         if (effectiveSalaryMode === "integral") {
-            renderMono(doc, formatVES(emp.salarioIntegral), colSal, y + 7, 8.5, true, COLORS.ink, "right");
-            renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, colSal, y + 10.5, 6.5, false, COLORS.muted, "right");
+            renderMono(doc, formatPayrollAmount(emp.salarioIntegral), colSal, y + 7, 8.5, true, COLORS.ink, "right");
+            renderMono(doc, `Base: ${formatPayrollAmount(emp.salarioMensual)}`, colSal, y + 10.5, 6.5, false, COLORS.muted, "right");
         } else {
-            renderMono(doc, formatVES(emp.salarioMensual), colSal, y + 7, 8.5, true, COLORS.ink, "right");
+            renderMono(doc, formatPayrollAmount(emp.salarioMensual), colSal, y + 7, 8.5, true, COLORS.ink, "right");
             renderMono(doc, "Mensual", colSal, y + 10.5, 6.5, false, COLORS.muted, "right");
         }
     } else {
@@ -326,10 +326,10 @@ function drawReceiptInRegion(
 
         renderLabel(doc, "Salario", colSal, y + 4, "right", COLORS.muted, 7);
         if (effectiveSalaryMode === "integral") {
-            renderMono(doc, formatVES(emp.salarioIntegral), colSal, y + 9, 10, true, COLORS.ink, "right");
-            renderMono(doc, `Base: ${formatVES(emp.salarioMensual)}`, colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
+            renderMono(doc, formatPayrollAmount(emp.salarioIntegral), colSal, y + 9, 10, true, COLORS.ink, "right");
+            renderMono(doc, `Base: ${formatPayrollAmount(emp.salarioMensual)}`, colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
         } else {
-            renderMono(doc, formatVES(emp.salarioMensual), colSal, y + 9, 10, true, COLORS.ink, "right");
+            renderMono(doc, formatPayrollAmount(emp.salarioMensual), colSal, y + 9, 10, true, COLORS.ink, "right");
             renderMono(doc, "Mensual", colSal, y + 13.5, 7.5, false, COLORS.muted, "right");
         }
     }
@@ -366,16 +366,16 @@ function drawReceiptInRegion(
         y += 1.2;
         fill(doc, xL, y, contentW, 11, COLORS.bandHead);
         rect(doc, xL, y, contentW, 11, COLORS.border, 0.2);
-        renderLabel(doc, "Neto a cobrar (VES)", xL + 3, y + 7, "left", COLORS.inkMed, 7.5);
-        renderMono(doc, formatVES(emp.net), xR - 3, y + 7.5, 12, true, COLORS.ink, "right");
+        renderLabel(doc, "Neto a cobrar", xL + 3, y + 7, "left", COLORS.inkMed, 7.5);
+        renderMono(doc, formatPayrollAmount(emp.net), xR - 3, y + 7.5, 12, true, COLORS.ink, "right");
         y += 11 + 2;
     } else {
         fill(doc, xL, y, contentW, 0.6, COLORS.orange);
         y += 2;
         fill(doc, xL, y, contentW, 16, COLORS.bandHead);
         rect(doc, xL, y, contentW, 16, COLORS.border, 0.2);
-        renderLabel(doc, "Neto a cobrar (VES)", xL + 3, y + 9.5, "left", COLORS.inkMed, 9);
-        renderMono(doc, formatVES(emp.net), xR - 3, y + 10.5, 16, true, COLORS.ink, "right");
+        renderLabel(doc, "Neto a cobrar", xL + 3, y + 9.5, "left", COLORS.inkMed, 9);
+        renderMono(doc, formatPayrollAmount(emp.net), xR - 3, y + 10.5, 16, true, COLORS.ink, "right");
         y += 16 + 6;
 
         // Nota legal (sólo en versión completa)

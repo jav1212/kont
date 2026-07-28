@@ -5,6 +5,7 @@
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     drawHeader,
@@ -15,7 +16,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -176,8 +176,8 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
     y = drawEmployeeCard(doc, ML, W, y, data.employee, `${data.cargasFamiliares} carga${data.cargasFamiliares !== 1 ? "s" : ""} familiar${data.cargasFamiliares !== 1 ? "es" : ""}`);
 
     y = drawParamsStrip(doc, ML, W, y, [
-        { label: "Valor U.T.",         value: formatVES(data.valorUT) },
-        { label: "Remuneración anual", value: formatVES(data.remuneracionAnual), accent: true },
+        { label: "Valor U.T.",         value: formatPayrollAmount(data.valorUT) },
+        { label: "Remuneración anual", value: formatPayrollAmount(data.remuneracionAnual), accent: true },
         { label: "Desgravamen",        value: data.usarDesgravamenUnico ? "Único (774 U.T.)" : "Detallado" },
     ]);
 
@@ -185,12 +185,12 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
     const rows: AriRow[] = [
         {
             label: "A/B · Remuneración estimada",
-            sub:   `${formatVES(data.remuneracionAnual)} ÷ ${formatVES(data.valorUT)}`,
+            sub:   `${formatPayrollAmount(data.remuneracionAnual)} ÷ ${formatPayrollAmount(data.valorUT)}`,
             value: formatUT(data.remuneracionUT),
         },
         {
             label: data.usarDesgravamenUnico ? "E · Desgravamen único" : "C/D · Desgravámenes",
-            sub:   data.usarDesgravamenUnico ? "Art. 60 Ley ISLR" : `${formatVES(data.totalDesgravamenesBs)} ÷ ${formatVES(data.valorUT)}`,
+            sub:   data.usarDesgravamenUnico ? "Art. 60 Ley ISLR" : `${formatPayrollAmount(data.totalDesgravamenesBs)} ÷ ${formatPayrollAmount(data.valorUT)}`,
             value: `− ${formatUT(deduccionUT)}`,
         },
         {
@@ -243,3 +243,4 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
 
     doc.save(`ari-${safeFilename(data.employee.cedula)}-${data.anioGravable}.pdf`);
 }
+

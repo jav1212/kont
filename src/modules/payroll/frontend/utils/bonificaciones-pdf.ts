@@ -12,6 +12,7 @@
 
 import jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     PAGE,
@@ -26,7 +27,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -80,7 +80,7 @@ export interface BonificacionesOptions {
 
 const fmtUSD = (n: number) => "$ " + formatN(n);
 const fmtOriginal = (line: BonificacionesBonusLine) =>
-    line.currency === "VES" ? formatVES(line.amount) : fmtUSD(line.amount);
+    line.currency === "VES" ? formatPayrollAmount(line.amount) : fmtUSD(line.amount);
 
 type Doc = jsPDF;
 
@@ -127,7 +127,7 @@ function drawParamsCard(
     renderMono(doc, `${bonusLines.length} concepto${bonusLines.length !== 1 ? "s" : ""}`, cx2, y + 11, 10, true, COLORS.ink, "left");
 
     renderLabel(doc, "Subtotal por empleado", cx3, y + 5, "right", COLORS.muted, 7);
-    renderMono(doc, formatVES(totalVesPorEmpleado), cx3, y + 11, 10, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(totalVesPorEmpleado), cx3, y + 11, 10, true, COLORS.ink, "right");
 
     void employeeCount;
     return y + H + 5;
@@ -208,7 +208,7 @@ async function generateGeneralPdf(
                 { x: ML,                                          w: colConcept,  text: line.label,            align: "left",   size: 8.5,                       color: COLORS.ink },
                 { x: ML + colConcept,                             w: colCurrency, text: line.currency,         align: "center", size: 8.5, mono: true, bold: true, color: line.currency === "USD" ? COLORS.orange : COLORS.amber },
                 { x: ML + colConcept + colCurrency,               w: colOriginal, text: fmtOriginal(line),     align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
-                { x: ML + colConcept + colCurrency + colOriginal, w: colVES,      text: formatVES(line.amountVES), align: "right", size: 9, mono: true, bold: true, color: COLORS.ink },
+                { x: ML + colConcept + colCurrency + colOriginal, w: colVES,      text: formatPayrollAmount(line.amountVES), align: "right", size: 9, mono: true, bold: true, color: COLORS.ink },
             ], { zebra: i % 2 === 1 });
             y += ROW_H;
         });
@@ -216,7 +216,7 @@ async function generateGeneralPdf(
         fill(doc, ML, y, W, SUBT_H, COLORS.bandHead);
         rect(doc, ML, y, W, SUBT_H, COLORS.border, 0.2);
         renderLabel(doc, "Subtotal", ML + colConcept + colCurrency + colOriginal - 2, y + 5, "right", COLORS.muted, 8);
-        renderMono(doc, formatVES(totalVesPorEmpleado), ML + W - 3, y + 5, 10, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(totalVesPorEmpleado), ML + W - 3, y + 5, 10, true, COLORS.ink, "right");
         y += SUBT_H + GAP_BLOCK;
     });
 
@@ -232,7 +232,7 @@ async function generateGeneralPdf(
     fill(doc, ML, y, W, 12, COLORS.bandHead);
     rect(doc, ML, y, W, 12, COLORS.border, 0.2);
     renderLabel(doc, `Total · ${active.length} empleado${active.length !== 1 ? "s" : ""}`, ML + 3, y + 7.8, "left", COLORS.inkMed, 9);
-    renderMono(doc, formatVES(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
     y += 12 + 6;
 
     if (y + 16 > pageBounds(doc).contentBot) {
@@ -364,7 +364,7 @@ function drawReceiptInRegion(
     // Section title bar
     fill(doc, xL, y, contentW, titleH, COLORS.bandHead);
     renderLabel(doc, "Bonificaciones", xL + 2, y + titleH - 1.9, "left", COLORS.inkMed, titleSize);
-    renderMono(doc, `+ ${formatVES(totalVes)}`, xR - 2, y + titleH - 1.9, totalSize, true, COLORS.ink, "right");
+    renderMono(doc, `+ ${formatPayrollAmount(totalVes)}`, xR - 2, y + titleH - 1.9, totalSize, true, COLORS.ink, "right");
     y += titleH;
 
     const colConcept  = contentW * 0.50;
@@ -385,7 +385,7 @@ function drawReceiptInRegion(
             { x: xL,                                          w: colConcept,  text: line.label,                align: "left",   size: fontConcept,                       color: COLORS.ink },
             { x: xL + colConcept,                             w: colCurrency, text: line.currency,             align: "center", size: fontConcept, mono: true, bold: true, color: line.currency === "USD" ? COLORS.orange : COLORS.amber },
             { x: xL + colConcept + colCurrency,               w: colOriginal, text: fmtOriginal(line),         align: "right",  size: fontAmount,  mono: true, bold: true, color: COLORS.ink },
-            { x: xL + colConcept + colCurrency + colOriginal, w: colVES,      text: formatVES(line.amountVES), align: "right",  size: fontAmount,  mono: true, bold: true, color: COLORS.ink },
+            { x: xL + colConcept + colCurrency + colOriginal, w: colVES,      text: formatPayrollAmount(line.amountVES), align: "right",  size: fontAmount,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += rowH;
     });
@@ -399,7 +399,7 @@ function drawReceiptInRegion(
         fill(doc, xL, y, contentW, 8, COLORS.bandHead);
         rect(doc, xL, y, contentW, 8, COLORS.border, 0.2);
         renderLabel(doc, "Total a recibir (VES)", xL + 3, y + 5.2, "left", COLORS.inkMed, 7.5);
-        renderMono(doc, formatVES(totalVes), xR - 3, y + 5.5, 11, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(totalVes), xR - 3, y + 5.5, 11, true, COLORS.ink, "right");
         y += 8 + 2;
     } else {
         fill(doc, xL, y, contentW, 0.6, COLORS.orange);
@@ -407,7 +407,7 @@ function drawReceiptInRegion(
         fill(doc, xL, y, contentW, 13, COLORS.bandHead);
         rect(doc, xL, y, contentW, 13, COLORS.border, 0.2);
         renderLabel(doc, "Total a recibir (VES)", xL + 3, y + 8, "left", COLORS.inkMed, 9);
-        renderMono(doc, formatVES(totalVes), xR - 3, y + 8.5, 14, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(totalVes), xR - 3, y + 8.5, 14, true, COLORS.ink, "right");
         y += 13 + 5;
 
         // Nota legal abreviada en modo individual
@@ -501,3 +501,4 @@ export async function generateBonificacionesPdf(
     }
     return generatePerEmployeePdf(active, lines, opts, companyLogo, kontaLogo, pdfMode);
 }
+

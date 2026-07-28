@@ -18,13 +18,13 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
     loadKontaLogo,
     renderLabel,
     renderMono,
     renderText,
     safeFilename,
 } from "@/src/shared/frontend/utils/pdf-chrome";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -107,10 +107,10 @@ export async function generatePayrollSummaryPdf(
     rect(doc, ML, y, W, kpiH, COLORS.border, 0.2);
 
     const kpis: [string, string][] = [
-        ["BCV",          `Bs. ${formatN(opts.bcvRate, 4)} / USD`],
+        ["BCV",          `${formatN(opts.bcvRate, 4)} / USD`],
         ["Empleados",    String(rows.length)],
-        ["Total Neto",   formatVES(totals.net)],
-        ["Total Neto $", `$ ${formatN(totals.netUSD)}`],
+        ["Total Neto",   formatPayrollAmount(totals.net)],
+        ["Total Neto ref.", formatN(totals.netUSD)],
     ];
     const colWk = (W - 4) / kpis.length;
     kpis.forEach(([label, value], i) => {
@@ -145,8 +145,8 @@ export async function generatePayrollSummaryPdf(
     }
 
     function fmtCell(col: ColumnSpec, value: number | string): string {
-        if (col.format === "ves")    return formatN(value as number);
-        if (col.format === "usd")    return formatN(value as number);
+        if (col.format === "ves")    return formatPayrollAmount(value as number);
+        if (col.format === "usd")    return formatPayrollAmount(value as number);
         if (col.format === "number") return formatN(value as number);
         return String(value);
     }
@@ -258,10 +258,10 @@ export async function generatePayrollSummaryPdf(
         rect(doc, sx, y, SIG_W, SIG_H, COLORS.border, 0.25);
         fill(doc, sx, y, SIG_W, 1, COLORS.orange);
 
-        renderMono(doc, formatVES(row.net), sx + SIG_W - PD, y + 6, 9, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(row.net), sx + SIG_W - PD, y + 6, 9, true, COLORS.ink, "right");
         renderText(doc, row.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
         renderMono(doc, row.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
-        renderMono(doc, `$ ${formatN(row.netUSD)}`, sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
+        renderMono(doc, formatPayrollAmount(row.netUSD), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
 
         rect(doc, sx + PD, y + 21, CB, CB, COLORS.borderStr, 0.3);
         renderText(doc, "Recibido (efectivo / transferencia)", sx + PD + CB + 1.5, y + 23.5, 7, false, COLORS.muted, "left", SIG_W - PD * 2 - CB - 2, "helvetica");

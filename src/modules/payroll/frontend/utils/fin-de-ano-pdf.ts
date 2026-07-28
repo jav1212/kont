@@ -4,6 +4,7 @@
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     drawHeader,
@@ -14,7 +15,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -179,7 +179,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
             renderMono(doc, formatN(c.salario), ML + colConcept + colDias + colSalario / 2, y + 4.2, 8.5, false, COLORS.muted, "center");
         }
         if (c.monto > 0) {
-            renderMono(doc, formatVES(c.monto), ML + colConcept + colDias + colSalario + colMonto - 2, y + 4.2, 9, true, COLORS.ink, "right");
+            renderMono(doc, formatPayrollAmount(c.monto), ML + colConcept + colDias + colSalario + colMonto - 2, y + 4.2, 9, true, COLORS.ink, "right");
         }
         y += ROW_H;
         hline(doc, ML, y, W, COLORS.border, 0.15);
@@ -190,7 +190,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     fill(doc, ML, y, W, 8, COLORS.bandHead);
     rect(doc, ML, y, W, 8, COLORS.border, 0.2);
     renderLabel(doc, "Subtotal", ML + 3, y + 5.5, "left", COLORS.inkMed, 8.5);
-    renderMono(doc, formatVES(emp.subtotal), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(emp.subtotal), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
     y += 8 + 6;
 
     // ── Deductions ────────────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     emp.deductions.forEach((d, i) => {
         if (i % 2 === 1) fill(doc, ML, y, W, ROW_H, COLORS.rowAlt);
         renderText(doc, d.label, ML + 3, y + 4.2, 8.5, false, COLORS.inkMed, "left", W - colMonto - 4, "helvetica");
-        renderMono(doc, formatVES(d.monto), ML + W - 3, y + 4.2, 9, d.monto > 0, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(d.monto), ML + W - 3, y + 4.2, 9, d.monto > 0, COLORS.ink, "right");
         y += ROW_H;
         hline(doc, ML, y, W, COLORS.border, 0.15);
     });
@@ -212,7 +212,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     fill(doc, ML, y, W, 8, COLORS.bandHead);
     rect(doc, ML, y, W, 8, COLORS.border, 0.2);
     renderLabel(doc, "Total deducciones", ML + 3, y + 5.5, "left", COLORS.inkMed, 8.5);
-    renderMono(doc, formatVES(emp.totalDed), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(emp.totalDed), ML + W - 3, y + 5.8, 10, true, COLORS.ink, "right");
     y += 8 + 5;
 
     // ── Total recibido (orange-accented) ──────────────────────────────────────
@@ -221,7 +221,7 @@ function drawReceipt(doc: Doc, emp: FinDeAnoEmployee, opts: FinDeAnoOptions, isF
     fill(doc, ML, y, W, 14, COLORS.bandHead);
     rect(doc, ML, y, W, 14, COLORS.border, 0.2);
     renderLabel(doc, "Total recibido", ML + 3, y + 8.5, "left", COLORS.inkMed, 9);
-    renderMono(doc, formatVES(emp.totalRecibido), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(emp.totalRecibido), ML + W - 3, y + 9, 14, true, COLORS.ink, "right");
     y += 14 + 6;
 
     // ── Legal note ────────────────────────────────────────────────────────────
@@ -273,3 +273,4 @@ export async function generateFinDeAnoPdf(employees: FinDeAnoEmployee[], opts: F
 
     doc.save(`fin-de-ano-${safeFilename(opts.companyName)}-${opts.periodEnd.replaceAll("/", "")}.pdf`);
 }
+

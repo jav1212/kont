@@ -4,6 +4,7 @@
 
 import type jsPDF from "jspdf";
 import { loadImageAsBase64 } from "./pdf-image-helper";
+import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
     COLORS,
     drawHeader,
@@ -14,8 +15,6 @@ import {
     hline,
     rect,
     formatN,
-    formatVES,
-    formatUSD,
     loadKontaLogo,
     renderText,
     renderMono,
@@ -144,7 +143,7 @@ function drawConceptTable(
         renderText(doc, row.label,    x + 3, y + 4.2, 9.5, true,  COLORS.ink,      "left", colConcept - 4, "helvetica");
         renderText(doc, row.subtitle, x + 3, y + 8.2, 7.5, false, COLORS.muted,    "left", colConcept - 4, "helvetica");
         renderMono(doc, `${row.dias} d`, x + colConcept + colDias - 2, y + 6.5, 9, false, COLORS.muted, "right");
-        renderMono(doc, formatVES(row.monto), x + colConcept + colDias + colMonto - 2, y + 6.5, 10, true, COLORS.ink, "right");
+        renderMono(doc, formatPayrollAmount(row.monto), x + colConcept + colDias + colMonto - 2, y + 6.5, 10, true, COLORS.ink, "right");
         y += H;
     });
 
@@ -154,7 +153,7 @@ function drawConceptTable(
     fill(doc, x, y, w, 12, COLORS.bandHead);
     rect(doc, x, y, w, 12, COLORS.border, 0.2);
     renderLabel(doc, `${totalLabel} · ${totalDias} días`, x + 3, y + 7.8, "left", COLORS.inkMed, 9);
-    renderMono(doc, formatVES(total), x + w - 3, y + 8.2, 13, true, COLORS.ink, "right");
+    renderMono(doc, formatPayrollAmount(total), x + w - 3, y + 8.2, 13, true, COLORS.ink, "right");
     return y + 12 + 6;
 }
 
@@ -242,8 +241,8 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
 
     // Reintegro card (orange-accented strip)
     y = drawParamsStrip(doc, ML, W, y, [
-        { label: "Salario Mensual", value: formatVES(data.salarioVES) },
-        { label: "Salario Diario",  value: formatVES(data.salarioDia) },
+        { label: "Salario Mensual", value: formatPayrollAmount(data.salarioVES) },
+        { label: "Salario Diario",  value: formatPayrollAmount(data.salarioDia) },
         { label: "Reintegro",       value: formatDateES(data.fechaReintegro), accent: true },
         { label: "Cal · Háb · Desc", value: `${data.diasCalendario} · ${data.diasHabiles} · ${data.diasDescanso}` },
     ]);
@@ -274,7 +273,7 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
     // ── USD equivalent + BCV rate (only when a rate is available) ──
     if (data.bcvRate && data.bcvRate > 0) {
         renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
-        renderMono(doc, formatUSD(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+        renderMono(doc, formatPayrollAmount(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
         y += 6;
     }
 
@@ -369,7 +368,7 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     // ── USD equivalent + BCV rate (only when a rate is available) ──
     if (data.bcvRate && data.bcvRate > 0) {
         renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
-        renderMono(doc, formatUSD(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
+        renderMono(doc, formatPayrollAmount(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
         y += 6;
     }
 
@@ -377,9 +376,9 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     fill(doc, ML, y, W, 12, COLORS.rowAlt);
     rect(doc, ML, y, W, 12, COLORS.border, 0.2);
     renderLabel(doc, "Salario Mensual",  ML + 3,           y + 4.5, "left", COLORS.muted, 7);
-    renderMono(doc,  formatVES(data.salarioVES), ML + 3,           y + 9.5, 9.5, true, COLORS.inkMed, "left");
+    renderMono(doc,  formatPayrollAmount(data.salarioVES), ML + 3,           y + 9.5, 9.5, true, COLORS.inkMed, "left");
     renderLabel(doc, "Salario Diario",   ML + W * 0.5,     y + 4.5, "left", COLORS.muted, 7);
-    renderMono(doc,  formatVES(data.salarioDia), ML + W * 0.5,     y + 9.5, 9.5, true, COLORS.inkMed, "left");
+    renderMono(doc,  formatPayrollAmount(data.salarioDia), ML + W * 0.5,     y + 9.5, 9.5, true, COLORS.inkMed, "left");
     y += 12 + 6;
 
     y = drawSignatures(doc, ML, W, y);
@@ -394,3 +393,4 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
 
     doc.save(`vacaciones-fraccionadas-${safeFilename(data.employee.cedula)}-${data.fechaEgreso.replaceAll("-", "")}.pdf`);
 }
+
