@@ -361,7 +361,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                         <div className="flex gap-2">
                             <BaseInput.Field
                                 type="number"
-                                step={0.01}
+                                step={0.0001}
                                 value={exchangeRate}
                                 onValueChange={setExchangeRate}
                                 prefix="Bs."

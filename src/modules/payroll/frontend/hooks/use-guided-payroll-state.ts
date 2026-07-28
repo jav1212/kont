@@ -55,6 +55,14 @@ import {
 
 export type SaveMsg = { ok: boolean; text: string } | null;
 
+const BCV_RATE_DECIMALS = 4;
+
+function normalizeBcvRateInput(raw: string | number): string {
+    const parsed = typeof raw === "number" ? raw : parseFloat(raw);
+    if (!isFinite(parsed) || parsed <= 0) return "";
+    return parsed.toFixed(BCV_RATE_DECIMALS);
+}
+
 export function useGuidedPayrollState() {
     const { companyId, company } = useCompany();
     const { employees: allEmployees, loading: empLoading } = useEmployee(companyId);
@@ -210,13 +218,23 @@ export function useGuidedPayrollState() {
     }, [periodoMode, selYear, selMonth, selQuincena, selWeekMonday]);
 
     // ── Reference salary + BCV ─────────────────────────────────────────────
-    const [exchangeRate, setExchangeRate] = useState("79.59");
+    const [exchangeRate, setExchangeRateState] = useState("79.5900");
     const [exchangeCurrencyCode, setExchangeCurrencyCode] =
         useState<PayrollReferenceCurrencyCode>(DEFAULT_REFERENCE_CURRENCY);
     const [monthlySalary, setMonthlySalary] = useState("130.00");
     const [bcvDate, setBcvDate] = useState(() => getTodayIsoDate());
     const [bcvLoading, setBcvLoading] = useState(false);
     const [bcvFetchError, setBcvFetchError] = useState<string | null>(null);
+
+    const setExchangeRate = useCallback((value: string) => {
+        const trimmed = value.trim();
+        if (trimmed === "") {
+            setExchangeRateState("");
+            return;
+        }
+        const normalized = normalizeBcvRateInput(trimmed);
+        setExchangeRateState(normalized || trimmed);
+    }, []);
 
     const fetchBcvRate = useCallback(async () => {
         setBcvLoading(true);
@@ -228,7 +246,12 @@ export function useGuidedPayrollState() {
                 setBcvFetchError(data.error ?? "Error al consultar.");
                 return;
             }
-            setExchangeRate(String(data.rate));
+            const normalizedRate = normalizeBcvRateInput(data.rate);
+            if (!normalizedRate) {
+                setBcvFetchError("La API BCV devolvió una tasa inválida.");
+                return;
+            }
+            setExchangeRateState(normalizedRate);
         } catch {
             setBcvFetchError("No se pudo conectar con la API BCV.");
         } finally {
