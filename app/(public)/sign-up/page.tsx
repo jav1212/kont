@@ -66,6 +66,7 @@ function SignUpPageInner() {
     const router = useRouter();
     const { signUp, resendConfirmation } = useAuth();
     const searchParams = useSearchParams();
+    const redirectTo = searchParams.get("redirect") ?? searchParams.get("redirectTo") ?? "/documents";
 
     const [stage,   setStage]   = useState<Stage>("form");
     const [name,    setName]    = useState("");
@@ -162,7 +163,7 @@ function SignUpPageInner() {
 
         // Sesión activa: useAuth().onAuthStateChange recoge la sesión y
         // attachPendingReferralCode toma el ref en el primer login.
-        router.replace("/documents");
+        router.replace(redirectTo);
     }
 
     const visual = (

@@ -5,6 +5,8 @@ import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { invalidateModuleAccessCache } from "@/src/modules/billing/frontend/hooks/use-module-access";
 
 const STORAGE_KEY = "kont-active-tenant-id";
+const COMPANY_STORAGE_KEY = "kont-company-id";
+const SESSION_USER_KEY = "kont-session-user-id";
 const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface TenantEntry {
@@ -41,12 +43,39 @@ export function useActiveTenant(urlTenantId?: string | null): UseActiveTenantRes
         }
     }, []);
 
+    // If a different user signs in on the same browser, wipe tenant/company
+    // selections from the previous session before any tenant-aware fetch runs.
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        if (!isAuthenticated || !userId) {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(COMPANY_STORAGE_KEY);
+            localStorage.removeItem(SESSION_USER_KEY);
+            return;
+        }
+
+        const previousUserId = localStorage.getItem(SESSION_USER_KEY);
+        if (previousUserId && previousUserId !== userId) {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(COMPANY_STORAGE_KEY);
+            invalidateModuleAccessCache();
+            notifyTenantChange();
+            setActiveTenantId(null);
+            setAllTenants([]);
+        }
+
+        localStorage.setItem(SESSION_USER_KEY, userId);
+    }, [isAuthenticated, userId, notifyTenantChange]);
+
     // Fetch all accessible tenants
     useEffect(() => {
         if (!isAuthenticated || !userId) {
             // Clear stale tenant selection on sign-out so the next user starts fresh
             if (typeof window !== "undefined") {
                 localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(COMPANY_STORAGE_KEY);
+                localStorage.removeItem(SESSION_USER_KEY);
             }
             setAllTenants([]);
             setActiveTenantId(null);

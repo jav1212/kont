@@ -89,7 +89,7 @@ function SignInFormContent() {
             return;
         }
 
-        const redirectTo = searchParams.get("redirectTo") ?? "/documents";
+        const redirectTo = searchParams.get("redirect") ?? searchParams.get("redirectTo") ?? "/documents";
         router.replace(redirectTo);
     }
 

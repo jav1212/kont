@@ -49,7 +49,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { tenantId } = result.getValue();
-    const dashUrl      = new URL("/", req.url);
-    dashUrl.searchParams.set("switchTenant", tenantId);
+    // Redirect straight into the protected app with an explicit tenant context.
+    // Going through "/" loses query params in middleware's public->app redirect
+    // and can leave the browser using a stale X-Tenant-Id from localStorage.
+    const dashUrl      = new URL("/payroll", req.url);
+    dashUrl.searchParams.set("tid", tenantId);
     return NextResponse.redirect(dashUrl);
 }
