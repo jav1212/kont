@@ -19,6 +19,7 @@ export interface PayrollEarningRowDef {
     multiplier: string;   // e.g. "1.0" for weekdays, "1.5" for Sundays
     useDaily:   boolean;  // true → qty × dailyRate × mult | false → qty = fixed VES
     quantity?:  string;   // only stored for useDaily=false; calendar rows auto-fill
+    currency?:  PayrollInputCurrency;
 }
 
 // Deduction row template.
@@ -29,6 +30,7 @@ export interface PayrollDeductionRowDef {
     base:         "weekly" | "monthly" | "integral" | "weekly-capped";
     mode:         "rate" | "fixed";
     quincenaRule: "always" | "second-half";                      // FAOV formal rule
+    currency?:    PayrollInputCurrency;
 }
 
 // Bonus row template — amount is interpreted by currency: USD se convierte por

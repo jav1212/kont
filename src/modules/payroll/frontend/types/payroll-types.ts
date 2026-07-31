@@ -10,6 +10,7 @@ export interface EarningRow {
     quantity:   string;  // days / units (string for controlled input)
     multiplier: string;  // weight factor e.g. "1.5" for sundays
     useDaily:   boolean; // true → qty × dailyRate × mult | false → qty = full VES
+    currency?:  PayrollInputCurrency;
 }
 
 export interface DeductionRow {
@@ -21,6 +22,7 @@ export interface DeductionRow {
     // Period rule: "second-half" → row is excluded when computing first-half (Q1) payroll.
     // Enables the formal FAOV rule per REQ-005 without ad-hoc row editing.
     quincenaRule?: "always" | "second-half";
+    currency?:    PayrollInputCurrency;
 }
 
 export interface BonusRow {

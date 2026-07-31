@@ -9,6 +9,7 @@
 import { BonusRow, DeductionRow, EarningRow, HorasExtrasRow, HorasExtrasTipo, HORAS_EXTRAS_MULTIPLIER } from "../types/payroll-types";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import type { PayrollReferenceCurrencyCode } from "../../shared/reference-currency";
+import { PAYROLL_REFERENCE_CURRENCIES } from "../../shared/reference-currency";
 
 // ── Add row button ─────────────────────────────────────────────────────────────
 
@@ -123,6 +124,7 @@ export const EarningRowEditor = ({
                         step={0.5}
                     />
                 )}
+                {!row.useDaily && <select value={row.currency ?? "VES"} onChange={(e) => onChange({ ...row, currency: e.target.value as EarningRow["currency"] })} className="h-8 rounded-md border border-border-light bg-surface-1 px-2 font-mono text-[11px]">{<option value="VES">VES</option>}{PAYROLL_REFERENCE_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}</select>}
                 <Toggle
                     active={row.useDaily}
                     activeLabel="× diario"
@@ -232,8 +234,8 @@ export const DeductionRowEditor = ({
                         {BASE_LABELS[row.base]}
                     </button>
                 )}
+                {isFixed && <select value={row.currency ?? "VES"} onChange={(e) => onChange({ ...row, currency: e.target.value as DeductionRow["currency"] })} className="h-8 rounded-md border border-border-light bg-surface-1 px-2 font-mono text-[11px]">{<option value="VES">VES</option>}{PAYROLL_REFERENCE_CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}</select>}
                 <button
-                    onClick={toggleMode}
                     className={[
                         "h-8 px-2 rounded-md border font-mono text-[11px] uppercase tracking-[0.1em] shrink-0",
                         "transition-colors duration-150 whitespace-nowrap",

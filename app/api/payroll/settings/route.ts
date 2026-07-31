@@ -20,6 +20,7 @@ const EarningRowDefSchema = z.object({
     multiplier: z.string(),
     useDaily:   z.boolean(),
     quantity:   z.string().optional(),
+    currency:   z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']).optional(),
 });
 
 const DeductionRowDefSchema = z.object({
@@ -28,6 +29,7 @@ const DeductionRowDefSchema = z.object({
     base:         z.enum(['weekly', 'monthly', 'integral', 'weekly-capped']),
     mode:         z.enum(['rate', 'fixed']),
     quincenaRule: z.enum(['always', 'second-half']),
+    currency:     z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']).optional(),
 });
 
 const BonusRowDefSchema = z.object({

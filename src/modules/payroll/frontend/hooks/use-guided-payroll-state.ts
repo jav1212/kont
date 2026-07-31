@@ -225,6 +225,7 @@ export function useGuidedPayrollState() {
     const [bcvDate, setBcvDate] = useState(() => getTodayIsoDate());
     const [bcvLoading, setBcvLoading] = useState(false);
     const [bcvFetchError, setBcvFetchError] = useState<string | null>(null);
+    const [bcvRates, setBcvRates] = useState<Record<string, number>>({ USD: 79.59 });
 
     const setExchangeRate = useCallback((value: string) => {
         const trimmed = value.trim();
@@ -240,6 +241,13 @@ export function useGuidedPayrollState() {
         setBcvLoading(true);
         setBcvFetchError(null);
         try {
+            const ratesRes = await fetch(`/api/bcv/rates?date=${bcvDate}`);
+            if (ratesRes.ok) {
+                const ratesData = await ratesRes.json();
+                const nextRates: Record<string, number> = {};
+                for (const item of ratesData.rates ?? []) if (item.code && Number(item.sell) > 0) nextRates[item.code] = Number(item.sell);
+                if (Object.keys(nextRates).length) setBcvRates(nextRates);
+            }
             const res = await fetch(`/api/bcv/rate?date=${bcvDate}&code=${exchangeCurrencyCode}`);
             const data = await res.json();
             if (!res.ok) {
@@ -468,9 +476,9 @@ export function useGuidedPayrollState() {
                 ...r,
                 computed: r.useDaily
                     ? (parseFloat(r.quantity) || 0) * dailyRate * (parseFloat(r.multiplier) || 1)
-                    : parseFloat(r.quantity) || 0,
+                    : (parseFloat(r.quantity) || 0) * (r.currency === "VES" || !r.currency ? 1 : (bcvRates[r.currency] ?? bcvRate)),
             })),
-        [earningRows, dailyRate],
+        [earningRows, dailyRate, bcvRates, bcvRate],
     );
 
     const deductionValues = useMemo<DeductionValue[]>(
@@ -478,7 +486,7 @@ export function useGuidedPayrollState() {
             deductionRows
                 .filter((r) => !(r.quincenaRule === "second-half" && activeQuincena === 1))
                 .map((r) => {
-                    if (r.mode === "fixed") return { ...r, computed: parseFloat(r.rate) || 0 };
+                    if (r.mode === "fixed") return { ...r, computed: (parseFloat(r.rate) || 0) * (r.currency === "VES" || !r.currency ? 1 : (bcvRates[r.currency] ?? bcvRate)) };
                     const base =
                         r.base === "weekly-capped"
                             ? cappedWeeklyBase
@@ -489,7 +497,7 @@ export function useGuidedPayrollState() {
                                     : refSalary;
                     return { ...r, computed: base * ((parseFloat(r.rate) || 0) / 100) };
                 }),
-        [deductionRows, activeQuincena, weeklyBase, cappedWeeklyBase, integralBase, refSalary],
+        [deductionRows, activeQuincena, weeklyBase, cappedWeeklyBase, integralBase, refSalary, bcvRates, bcvRate],
     );
 
     const bonusValues = useMemo<BonusValue[]>(
@@ -498,10 +506,10 @@ export function useGuidedPayrollState() {
                 const raw = parseFloat(r.amount) || 0;
                 return {
                     ...r,
-                    computed: r.currency === "VES" ? raw : raw * bcvRate,
+                    computed: r.currency === "VES" ? raw : raw * (bcvRates[r.currency] ?? bcvRate),
                 };
             }),
-        [bonusRows, bcvRate],
+        [bonusRows, bcvRates, bcvRate],
     );
 
     const totalEarnings = useMemo(
@@ -695,6 +703,7 @@ export function useGuidedPayrollState() {
     );
 
     return {
+        bcvRates,
         // Tenancy / data
         companyId,
         company,

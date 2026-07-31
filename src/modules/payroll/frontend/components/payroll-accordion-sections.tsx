@@ -97,7 +97,7 @@ export const EarningsSection = ({
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `e_${Date.now()}`, label: "", quantity: "0", multiplier: "1.0", useDaily: true,
+            id: `e_${Date.now()}`, label: "", quantity: "0", multiplier: "1.0", useDaily: true, currency: "VES",
         })} />
         <AuditContainer title="Subtotal Asignaciones" total={total} type="income">
             {values.map((r) => (
@@ -153,7 +153,7 @@ export const DeductionsSection = ({
             />
         ))}
         <AddRowButton onClick={() => onAdd({
-            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly", mode: "rate", quincenaRule: "always",
+            id: `d_${Date.now()}`, label: "", rate: "0", base: "monthly", mode: "rate", currency: "VES", quincenaRule: "always",
         })} />
         <AuditContainer title="Total Retenciones" total={total} type="deduction">
             {values.map((r) => (

@@ -95,6 +95,7 @@ export function makeEarningsFromDefs(
                 quantity: qty,
                 multiplier: def.multiplier,
                 useDaily: def.useDaily,
+                currency: def.currency,
             };
         })
         // Drop calendar-based rows whose quantity is "0" (e.g. no Saturdays in period)
@@ -114,6 +115,7 @@ export function extractEarningDefs(rows: EarningRow[]): PayrollEarningRowDef[] {
         label: r.label,
         multiplier: r.multiplier,
         useDaily: r.useDaily,
+        ...(r.currency ? { currency: r.currency } : {}),
         ...(r.useDaily ? {} : { quantity: r.quantity }),
     }));
 }
@@ -131,6 +133,7 @@ export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): Deductio
         base: d.base,
         mode: d.mode,
         quincenaRule: FORCED_SECOND_HALF.test(d.label) ? "second-half" : d.quincenaRule,
+        currency: d.currency,
     }));
 }
 

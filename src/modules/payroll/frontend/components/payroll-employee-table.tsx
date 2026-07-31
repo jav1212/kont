@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // ============================================================================
 // PAYROLL EMPLOYEE TABLE  v5
@@ -103,6 +103,7 @@ function computeEmployee(
     overrides:              EmployeeOverride,
     mondaysInMonth:         number,
     bcvRate:                number,
+    bcvRates:               Record<string, number> = {},
     exchangeCurrencyCode:   PayrollReferenceCurrencyCode,
     diasUtilidades:         number,
     diasBonoVacacional:     number,
@@ -149,10 +150,10 @@ function computeEmployee(
     const mapEarning = (r: EarningRow, kind: LineKind): ComputedLine => {
         const qty    = parseFloat(r.quantity)   || 0;
         const mult   = parseFloat(r.multiplier) || 1;
-        const amount = r.useDaily ? qty * daily * mult : qty;
+        const amount = r.useDaily ? qty * daily * mult : qty * (r.currency === "VES" || !r.currency ? 1 : (bcvRates[r.currency] ?? bcvRate));
         return {
             label:      r.label || "—",
-            formula:    r.useDaily ? `${qty}d x ${daily.toFixed(2)}${mult !== 1 ? ` x ${mult}` : ""}` : `${qty} VES`,
+            formula:    r.useDaily ? `${qty}d x ${daily.toFixed(2)}${mult !== 1 ? ` x ${mult}` : ""}` : `${qty} ${r.currency ?? "VES"}`,
             amount,
             sourceId:   r.id,
             sourceKind: kind,
@@ -189,8 +190,8 @@ function computeEmployee(
         const isVes = r.currency === "VES";
         return {
             label:      r.label || "—",
-            formula:    isVes ? `${raw} Bs` : `${raw} ${r.currency} x ${bcvRate}`,
-            amount:     isVes ? raw : raw * bcvRate,
+            formula:    isVes ? `${raw} Bs` : `${raw} ${r.currency} x ${bcvRates[r.currency] ?? bcvRate}`,
+            amount:     isVes ? raw : raw * (bcvRates[r.currency] ?? bcvRate),
             sourceId:   r.id,
             sourceKind: kind,
         };
@@ -206,8 +207,8 @@ function computeEmployee(
 
     const mapDeduction = (r: DeductionRow, kind: LineKind): ComputedLine => {
         if (r.mode === "fixed") {
-            const amount = parseFloat(r.rate) || 0;
-            return { label: r.label || "—", formula: `${amount.toFixed(2)} Bs fijo`, amount, sourceId: r.id, sourceKind: kind };
+            const amount = (parseFloat(r.rate) || 0) * (r.currency === "VES" || !r.currency ? 1 : (bcvRates[r.currency] ?? bcvRate));
+            return { label: r.label || "—", formula: `${amount.toFixed(2)} ${r.currency ?? "VES"} fijo`, amount, sourceId: r.id, sourceKind: kind };
         }
         const rate = parseFloat(r.rate) || 0;
         const isCapped = r.base === "weekly-capped";
@@ -1192,6 +1193,7 @@ export interface PayrollEmployeeTableProps {
     bonusRows:                BonusRow[];
     mondaysInMonth:           number;
     bcvRate:                  number;
+    bcvRates?:                 Record<string, number>;
     exchangeCurrencyCode?:    PayrollReferenceCurrencyCode;
     diasUtilidades:           number;
     diasBonoVacacional:       number;
@@ -1217,6 +1219,7 @@ export const PayrollEmployeeTable = ({
     employees, empLoading, onConfirm, onSaveDraft,
     earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate,
     exchangeCurrencyCode = "USD",
+    bcvRates = {},
     diasUtilidades, diasBonoVacacional,
     horasExtrasGlobal = [], salarioMinimo = 0,
     companyName, companyId, companyLogoUrl, showLogoInPdf,
@@ -1256,13 +1259,13 @@ export const PayrollEmployeeTable = ({
     const results = useMemo<EmployeeResult[]>(() =>
         activeEmployees.map((emp) => computeEmployee(
             emp, earningRows, deductionRows, bonusRows,
-            getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate, exchangeCurrencyCode,
+            getOverride(getEmployeeKey(emp)), mondaysInMonth, bcvRate, bcvRates, exchangeCurrencyCode,
             diasUtilidades, diasBonoVacacional,
             horasExtrasGlobal, salarioMinimo,
             salaryMode, quincena,
             parseFloat(periodHours[getEmployeeKey(emp)] ?? "0") || 0,
         )),
-        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, exchangeCurrencyCode, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, periodHours, getOverride]
+        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, bcvRates, exchangeCurrencyCode, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, periodHours, getOverride]
     );
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);
