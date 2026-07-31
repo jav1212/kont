@@ -484,7 +484,19 @@ export async function generateBonificacionesPdf(
 ): Promise<void> {
     const active = employees.filter((e) => e.estado === "activo");
     if (active.length === 0) return;
-    const lines = opts.bonusLines.filter((l) => l.amount > 0);
+    // Use the converted VES amount for filtering. Older saved runs can have
+    // amountVES populated while the original amount is zero or unavailable.
+    const lines = opts.bonusLines
+        .map((line) => ({
+            ...line,
+            amountVES:
+                line.amountVES > 0
+                    ? line.amountVES
+                    : line.currency === "VES"
+                        ? line.amount
+                        : line.amount * opts.bcvRate,
+        }))
+        .filter((l) => l.amountVES > 0);
     if (lines.length === 0) return;
 
     const [companyLogo, kontaLogo] = await Promise.all([
