@@ -6,7 +6,6 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollSettings } from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
-import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import type { PayrollBonusRowDef, PayrollSettings } from "@/src/modules/payroll/backend/domain/payroll-settings";
 
 const inputClass = "w-full h-9 rounded-lg border border-border-default bg-surface-1 px-3 font-mono text-[13px] text-foreground outline-none focus:border-primary-500";
@@ -17,8 +16,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function PayrollSettingsPage() {
     const { company, companyId } = useCompany();
-    const { activeTenantRole } = useActiveTenantContext();
-    const canEdit = activeTenantRole !== "contable";
+    const canEdit = true;
     const { settings, loading, save } = usePayrollSettings(companyId);
     const [draft, setDraft] = useState<PayrollSettings>(settings);
     const [saving, setSaving] = useState(false);
@@ -61,7 +59,6 @@ export default function PayrollSettingsPage() {
             <BaseButton.Root variant="primary" size="sm" onClick={handleSave} loading={saving} isDisabled={!companyId || loading || !canEdit} leftIcon={!saving ? <Save size={14} /> : undefined}>Guardar cambios</BaseButton.Root>
         </PageHeader>
         <main className="max-w-4xl mx-auto p-4 sm:p-6 space-y-5">
-            {!canEdit && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 font-mono text-[12px] text-amber-700">Vista de solo lectura para contables invitados. Los cambios de configuracion los realiza el administrador.</div>}
             {message && <div className="rounded-lg border border-primary-500/30 bg-primary-500/10 px-4 py-3 font-mono text-[12px] text-primary-500">{message}</div>}
             {!companyId ? <div className="rounded-xl border border-dashed border-border-light p-10 text-center font-mono text-[12px] text-[var(--text-tertiary)]">Selecciona una empresa para configurar su nomina.</div> : <>
                 <Section title="Modalidades disponibles">

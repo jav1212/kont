@@ -103,9 +103,6 @@ export const PUT = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
     }
 
     const { companyId } = parsed.data;
-    if (actingAs?.role === "contable") {
-        return Response.json({ error: "Los contables invitados tienen acceso de lectura a esta configuracion." }, { status: 403 });
-    }
     const settings = { ...parsed.data.settings, enabledPaymentModes: parsed.data.settings.enabledPaymentModes ?? ["diario"], cestaTicketEnabled: parsed.data.settings.cestaTicketEnabled ?? true, bonoGuerraEnabled: parsed.data.settings.bonoGuerraEnabled ?? true };
     const effectiveUserId = effectiveOwnerId;
     const result = await getPayrollSettingsActions(effectiveUserId).save.execute(companyId, settings);
