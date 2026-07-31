@@ -54,6 +54,7 @@ export interface AriPdfData {
     impuestoARetenerUT:    number;      // I
     porcentaje:            number;      // J
     sujetoARetencion:      boolean;
+    motivoPorcentajeCero?: "no_sujeto_umbral" | "sin_enriquecimiento_gravable" | "rebajas_agotan_impuesto" | null;
     logoUrl?:              string;
     showLogoInPdf?:        boolean;
 }
@@ -64,6 +65,19 @@ type Doc = jsPDF;
 
 const formatUT = (n: number): string => `${formatN(n)} U.T.`;
 const quarterLabel = (quarter: 1 | 2 | 3 | 4): string => `Trimestre ${quarter}`;
+
+function getZeroReasonText(motivo: AriPdfData["motivoPorcentajeCero"]): string | null {
+    switch (motivo) {
+        case "no_sujeto_umbral":
+            return "Remuneracion trimestral <= 250 U.T. - no sujeto a retencion.";
+        case "sin_enriquecimiento_gravable":
+            return "Desgravamenes consumen la base gravable - no hay enriquecimiento neto gravable.";
+        case "rebajas_agotan_impuesto":
+            return "Las rebajas agotan el impuesto determinado - no corresponde retencion.";
+        default:
+            return null;
+    }
+}
 
 function drawEmployeeCard(doc: Doc, x: number, w: number, y: number, employee: AriPdfEmployee, rightSub: string): number {
     const H = 16;
@@ -227,7 +241,13 @@ export async function generateAriPdf(data: AriPdfData): Promise<void> {
     renderMono(doc, `${formatN(data.porcentaje)} %`, ML + W - 3, y + 8.8, 15, true, COLORS.ink, "right");
     y += 13 + 5;
 
-    if (!data.sujetoARetencion) {
+    const zeroReasonText = getZeroReasonText(data.motivoPorcentajeCero);
+    if (zeroReasonText) {
+        renderMono(doc, zeroReasonText, ML + 3, y, 8, false, COLORS.muted, "left");
+        y += 6;
+    }
+
+    if (!zeroReasonText && !data.sujetoARetencion) {
         renderMono(doc, "Remuneración trimestral < 250 U.T. — no sujeto a retención.", ML + 3, y, 8, false, COLORS.muted, "left");
         y += 6;
     }

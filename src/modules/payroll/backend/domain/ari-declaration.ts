@@ -85,6 +85,7 @@ export interface AriResult {
     impuestoARetenerUT:    number;   // I
     porcentaje:            number;   // J (%)
     sujetoARetencion:      boolean;  // remuneración bruta trimestral (B) > 250 U.T.
+    motivoPorcentajeCero:  "no_sujeto_umbral" | "sin_enriquecimiento_gravable" | "rebajas_agotan_impuesto" | null;
 }
 
 // ── Cálculo ───────────────────────────────────────────────────────────────────
@@ -108,6 +109,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
 
     // B — remuneración estimada en U.T.
     const remuneracionUT = valorUT > 0 ? input.remuneracionTrimestral / valorUT : 0;
+    const sujetoARetencion = remuneracionUT > ARI_UMBRAL_SUJETO_UT;
 
     // C / D / E — desgravámenes
     const totalDesgravamenesBs = input.usarDesgravamenUnico
@@ -122,7 +124,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
 
     // G — impuesto del trimestre gravable según la Tarifa Nº 1
     const { alicuota, sustraendo } = tramoTarifa(Math.max(0, enriquecimientoNetoUT));
-    const impuestoUT = enriquecimientoNetoUT > 0
+    const impuestoUT = sujetoARetencion && enriquecimientoNetoUT > 0
         ? enriquecimientoNetoUT * alicuota - sustraendo
         : 0;
 
@@ -134,12 +136,21 @@ export function computeAri(input: AriDeclarationInput): AriResult {
         (valorUT > 0 ? input.impuestosRetenidosDeMas / valorUT : 0);
 
     // I — impuesto (estimado) a retener en el trimestre
-    const impuestoARetenerUT = impuestoUT < rebajasUT ? 0 : impuestoUT - rebajasUT;
+    const impuestoARetenerUT = !sujetoARetencion || impuestoUT < rebajasUT ? 0 : impuestoUT - rebajasUT;
 
     // J — porcentaje inicial de retención
-    const porcentaje = remuneracionUT > 0
+    const porcentaje = sujetoARetencion && remuneracionUT > 0
         ? round2((impuestoARetenerUT / remuneracionUT) * 100)
         : 0;
+
+    const motivoPorcentajeCero =
+        !sujetoARetencion && remuneracionUT > 0
+            ? "no_sujeto_umbral"
+            : enriquecimientoNetoUT <= 0
+                ? "sin_enriquecimiento_gravable"
+                : impuestoARetenerUT <= 0 && impuestoUT > 0
+                    ? "rebajas_agotan_impuesto"
+                    : null;
 
     return {
         remuneracionUT:        round2(remuneracionUT),
@@ -153,6 +164,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
         rebajasUT:             round2(rebajasUT),
         impuestoARetenerUT:    round2(impuestoARetenerUT),
         porcentaje,
-        sujetoARetencion:      remuneracionUT > ARI_UMBRAL_SUJETO_UT,
+        sujetoARetencion,
+        motivoPorcentajeCero,
     };
 }

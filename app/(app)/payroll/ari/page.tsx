@@ -50,6 +50,32 @@ function toInt(s: string): number {
 
 const formatUT = (n: number): string => `${formatNumber(n)} U.T.`;
 
+function getZeroReasonMessageLegacy(result: ReturnType<typeof computeAri>): string | null {
+    switch (result.motivoPorcentajeCero) {
+        case "no_sujeto_umbral":
+            return "RemuneraciÃ³n trimestral <= 250 U.T. â€” el trabajador no estÃ¡ sujeto a retenciÃ³n en este trimestre.";
+        case "sin_enriquecimiento_gravable":
+            return "Los desgravÃ¡menes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
+        case "rebajas_agotan_impuesto":
+            return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retenciÃ³n.";
+        default:
+            return null;
+    }
+}
+
+function getZeroReasonMessage(result: ReturnType<typeof computeAri>): string | null {
+    switch (result.motivoPorcentajeCero) {
+        case "no_sujeto_umbral":
+            return "Remuneracion trimestral <= 250 U.T. - el trabajador no esta sujeto a retencion en este trimestre.";
+        case "sin_enriquecimiento_gravable":
+            return "Los desgravamenes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
+        case "rebajas_agotan_impuesto":
+            return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retencion.";
+        default:
+            return null;
+    }
+}
+
 export default function AriPage() {
     const { companyId, company } = useCompany();
     const { employees, loading } = useEmployee(companyId);
@@ -128,6 +154,7 @@ export default function AriPage() {
 
     const result = useMemo(() => computeAri(input), [input]);
     const deduccionUT = result.desgravamenesUT > 0 ? result.desgravamenesUT : result.desgravamenUnicoUT;
+    const zeroReasonMessage = getZeroReasonMessage(result) ?? getZeroReasonMessageLegacy(result);
 
     const handleSave = async () => {
         if (!selectedEmp) { notify.error("Selecciona un empleado"); return; }
@@ -176,6 +203,7 @@ export default function AriPage() {
                 impuestoARetenerUT: result.impuestoARetenerUT,
                 porcentaje: result.porcentaje,
                 sujetoARetencion: result.sujetoARetencion,
+                motivoPorcentajeCero: result.motivoPorcentajeCero,
                 logoUrl: company.logoUrl,
                 showLogoInPdf: company.showLogoInPdf,
             });
@@ -432,10 +460,11 @@ export default function AriPage() {
                                     </p>
                                 </div>
 
-                                {!result.sujetoARetencion && input.remuneracionTrimestral > 0 && (
+                                {zeroReasonMessage && input.remuneracionTrimestral > 0 && (
                                     <div className="mt-4 flex items-center gap-3 bg-amber-500/5 border border-amber-500/30 rounded-lg px-4 py-3">
                                         <AlertTriangle size={16} className="text-amber-600 shrink-0" />
-                                        <p className="font-mono text-[11px] text-amber-700">
+                                        <p className="font-mono text-[11px] text-amber-700">{zeroReasonMessage}</p>
+                                        <p className="hidden">
                                             Remuneración trimestral &lt; 250 U.T. — el trabajador no está sujeto a retención.
                                         </p>
                                     </div>
