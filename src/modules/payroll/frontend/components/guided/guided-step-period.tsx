@@ -92,6 +92,7 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
         monthlySalary, setMonthlySalary,
         defaultBenefitsInPeriod,
         includeCestaTicketOverride,        setIncludeCestaTicketOverride,
+        showCestaTicket, showBonoSocioEconomico,
         includeBonoSocioEconomicoOverride, setIncludeBonoSocioEconomicoOverride,
         employeesExcludedByDate,
     } = state;

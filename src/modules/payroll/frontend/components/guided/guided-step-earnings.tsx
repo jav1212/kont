@@ -17,29 +17,42 @@ export function GuidedStepEarnings({ state, onBack, onNext }: Props) {
         addEarning, updateEarning, removeEarning,
         dailyRate,
         horasExtrasGlobal, updateHorasExtrasGlobal,
+        employees,
     } = state;
+
+    const hasHourlyEmployees = employees.some((employee) => employee.modalidadPago === "hora");
+    const hasDailyEmployees = employees.some((employee) => (employee.modalidadPago ?? "diario") === "diario");
 
     return (
         <GuidedStepShell
             title="¿Qué se le paga al empleado?"
-            subtitle="Días normales, sábados, domingos, feriados, y horas extras. Las cantidades de calendario se rellenan automáticamente según el período que eligió."
+            subtitle="Los empleados por día usan las cantidades del calendario. Los empleados por hora se calculan con las horas trabajadas y su tarifa horaria."
             onBack={onBack}
             onNext={onNext}
         >
-            <StepSection
-                title="Asignaciones"
-                description="Cada fila se calcula como: cantidad × salario diario × multiplicador (o monto fijo)."
-            >
-                <EarningsSection
-                    rows={earningRows}
-                    values={earningValues}
-                    total={totalEarnings}
-                    dailyRate={dailyRate}
-                    onUpdate={updateEarning}
-                    onRemove={removeEarning}
-                    onAdd={addEarning}
-                />
-            </StepSection>
+            {hasDailyEmployees && (
+                <StepSection
+                    title="Asignaciones para empleados por día"
+                    description="Cada fila se calcula como: cantidad × salario diario × multiplicador (o monto fijo)."
+                >
+                    <EarningsSection
+                        rows={earningRows}
+                        values={earningValues}
+                        total={totalEarnings}
+                        dailyRate={dailyRate}
+                        onUpdate={updateEarning}
+                        onRemove={removeEarning}
+                        onAdd={addEarning}
+                    />
+                </StepSection>
+            )}
+
+            {hasHourlyEmployees && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    <p className="font-semibold">Empleados por hora</p>
+                    <p className="mt-1">Sus días normales, sábados, domingos y feriados no se calculan como días. En la revisión se registran las horas trabajadas del período y se aplican sus tarifas horarias.</p>
+                </div>
+            )}
 
             <StepSection
                 title="Horas extras (Art. 118 LOTTT)"

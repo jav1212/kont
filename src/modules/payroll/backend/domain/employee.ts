@@ -1,5 +1,7 @@
+import type { PayrollInputCurrency } from "../../shared/reference-currency";
 export type EmployeeEstado = "activo" | "inactivo" | "vacacion";
 export type EmployeeMoneda = "VES" | "USD";
+export type EmployeeModalidadPago = "diario" | "hora";
 
 export interface Employee {
     id?:            string;           // cedula como PK — opcional al crear
@@ -9,6 +11,9 @@ export interface Employee {
     cargo:          string;
     salarioMensual: number;           // en la moneda indicada por `moneda`
     moneda:         EmployeeMoneda;   // VES (default) o USD
+    tarifaHora?:    number;           // tarifa horaria en la moneda indicada
+    tarifaHoraMoneda?: PayrollInputCurrency;
+    modalidadPago?: EmployeeModalidadPago; // diario por compatibilidad
     estado:         EmployeeEstado;
     fechaIngreso?:  string | null;    // YYYY-MM-DD, opcional
     porcentajeIslr?: number;          // % declarado en AR-I, default 0; usado en XML SENIAT mensual

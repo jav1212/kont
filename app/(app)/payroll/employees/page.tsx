@@ -43,6 +43,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { PAYROLL_REFERENCE_CURRENCIES } from "@/src/modules/payroll/shared/reference-currency";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,9 @@ interface RowState {
     estado:         EmployeeEstado;
     fechaIngreso:   string;
     porcentajeIslr: string;
+    modalidadPago: "diario" | "hora";
+    tarifaHora: string;
+    tarifaHoraMoneda: string;
 }
 
 const ESTADOS: EmployeeEstado[] = ["activo", "vacacion", "inactivo"];
@@ -79,6 +83,9 @@ function employeeToRow(e: Employee): RowState {
         estado:         e.estado,
         fechaIngreso:   e.fechaIngreso ?? "",
         porcentajeIslr: String(e.porcentajeIslr ?? 0),
+        modalidadPago: e.modalidadPago ?? "diario",
+        tarifaHora: String(e.tarifaHora ?? 0),
+        tarifaHoraMoneda: e.tarifaHoraMoneda ?? "VES",
     };
 }
 
@@ -308,6 +315,33 @@ function EmployeeEditPanel({
                         onChange={(f, v) => onChange(f, v)}
                         inputRef={salaryRef}
                     />
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>Modalidad de pago</FieldLabel>
+                    <select
+                        value={draft.modalidadPago}
+                        onChange={(e) => onChange("modalidadPago", e.target.value)}
+                        className={cellInputCls + " appearance-none pr-8 cursor-pointer"}
+                    >
+                        <option value="diario">Pago por dia</option>
+                        <option value="hora">Pago por hora</option>
+                    </select>
+                </div>
+                <div className="min-w-0">
+                    <FieldLabel>Tarifa por hora (VES)</FieldLabel>
+                    <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={draft.tarifaHora}
+                        onChange={(e) => onChange("tarifaHora", e.target.value)}
+                        className={cellInputCls + " text-right"}
+                        disabled={draft.modalidadPago !== "hora"}
+                    />
+                    <select value={draft.tarifaHoraMoneda} onChange={(e) => onChange("tarifaHoraMoneda", e.target.value)} className={cellInputCls + " mt-2"} disabled={draft.modalidadPago !== "hora"}>
+                        <option value="VES">VES</option>
+                        {PAYROLL_REFERENCE_CURRENCIES.map((currency) => <option key={currency.code} value={currency.code}>{currency.code}</option>)}
+                    </select>
                 </div>
                 <div className="min-w-0">
                     <FieldLabel>% ISLR (AR-I)</FieldLabel>
@@ -928,6 +962,9 @@ export default function EmployeesPage() {
             estado:         draft.estado,
             fechaIngreso:   draft.fechaIngreso || null,
             porcentajeIslr: islr,
+            modalidadPago: draft.modalidadPago,
+            tarifaHora: parseFloat(draft.tarifaHora.replace(",", ".")) || 0,
+            tarifaHoraMoneda: draft.tarifaHoraMoneda as any,
         }]);
         setSaving((s) => ({ ...s, [cedula]: false }));
         if (ok) cancelEdit(cedula);
@@ -987,6 +1024,9 @@ export default function EmployeesPage() {
                 salarioMensual: "", moneda: "VES",
                 estado: "activo", fechaIngreso: "",
                 porcentajeIslr: "0",
+                modalidadPago: "diario",
+                tarifaHora: "0",
+                tarifaHoraMoneda: "VES",
             },
         }, ...r]);
     }, [atLimit]);
@@ -1026,6 +1066,9 @@ export default function EmployeesPage() {
             estado:         draft.estado,
             fechaIngreso:   draft.fechaIngreso || null,
             porcentajeIslr: islr,
+            modalidadPago: draft.modalidadPago,
+            tarifaHora: parseFloat(draft.tarifaHora.replace(",", ".")) || 0,
+            tarifaHoraMoneda: draft.tarifaHoraMoneda as any,
         }]);
         setNewSaving((s) => ({ ...s, [id]: false }));
         if (ok) cancelNewRow(id);

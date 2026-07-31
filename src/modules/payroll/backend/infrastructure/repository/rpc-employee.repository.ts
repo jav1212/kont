@@ -20,6 +20,9 @@ interface RawEmployeeRow {
     estado:          string;
     fecha_ingreso:   string | null;
     porcentaje_islr: number | null;
+    tarifa_hora: number | null;
+    modalidad_pago: string | null;
+    tarifa_hora_moneda: string | null;
 }
 
 interface RawSalaryHistoryRow {
@@ -64,6 +67,9 @@ export class RpcEmployeeRepository implements IEmployeeRepository {
                 moneda:          e.moneda ?? "VES",
                 fecha_ingreso:   e.fechaIngreso ?? null,
                 porcentaje_islr: e.porcentajeIslr ?? 0,
+                tarifa_hora: e.tarifaHora ?? 0,
+                modalidad_pago: e.modalidadPago ?? "diario",
+                tarifa_hora_moneda: e.tarifaHoraMoneda ?? "VES",
             }));
             const { error } = await this.source.instance
                 .rpc('tenant_employees_upsert', {
@@ -141,6 +147,9 @@ export class RpcEmployeeRepository implements IEmployeeRepository {
             estado:         row.estado as EmployeeEstado,
             fechaIngreso:   row.fecha_ingreso ?? null,
             porcentajeIslr: row.porcentaje_islr != null ? Number(row.porcentaje_islr) : 0,
+            tarifaHora: row.tarifa_hora != null ? Number(row.tarifa_hora) : 0,
+            modalidadPago: row.modalidad_pago === "hora" ? "hora" : "diario",
+            tarifaHoraMoneda: (row.tarifa_hora_moneda ?? "VES") as Employee["tarifaHoraMoneda"],
         };
     }
 }

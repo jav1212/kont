@@ -34,6 +34,7 @@ const BonusRowDefSchema = z.object({
     label:    z.string().min(1),
     amount:   z.string(),
     currency: z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']).optional(),
+    active: z.boolean().optional(),
 });
 
 const PdfVisibilitySchema = z.object({
@@ -58,12 +59,15 @@ const PayrollSettingsSchema = z.object({
     diasBonoVacacional:    z.number().nonnegative(),
     salaryMode:            z.enum(['mensual', 'integral']),
     cestaTicketUSD:        z.number().nonnegative(),
+    cestaTicketEnabled:    z.boolean().optional(),
     bonoGuerraUSD:         z.number().nonnegative(),
+    bonoGuerraEnabled:     z.boolean().optional(),
     cestaTicketCurrency:   z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']),
     bonoGuerraCurrency:    z.enum([...PAYROLL_REFERENCE_CURRENCY_CODES, 'VES']),
     salarioMinimoRef:      z.number().nonnegative(),
     horasExtrasGlobalRows: z.array(HorasExtrasGlobalDefSchema),
     pdfVisibility:         PdfVisibilitySchema,
+    enabledPaymentModes:   z.array(z.enum(["diario", "hora"])).optional(),
 });
 
 const PutBodySchema = z.object({
@@ -98,7 +102,8 @@ export const PUT = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
         return Response.json({ error: message }, { status: 400 });
     }
 
-    const { companyId, settings } = parsed.data;
+    const { companyId } = parsed.data;
+    const settings = { ...parsed.data.settings, enabledPaymentModes: parsed.data.settings.enabledPaymentModes ?? ["diario"], cestaTicketEnabled: parsed.data.settings.cestaTicketEnabled ?? true, bonoGuerraEnabled: parsed.data.settings.bonoGuerraEnabled ?? true };
     const effectiveUserId = effectiveOwnerId;
     const result = await getPayrollSettingsActions(effectiveUserId).save.execute(companyId, settings);
     return handleResult(result);

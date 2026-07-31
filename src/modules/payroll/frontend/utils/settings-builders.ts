@@ -136,11 +136,12 @@ export function makeDeductionsFromDefs(defs: PayrollDeductionRowDef[]): Deductio
 
 export function makeBonusesFromDefs(defs: PayrollBonusRowDef[]): BonusRow[] {
     const nextId = makeSlugId("b");
-    return defs.map((b) => ({
+    return defs.filter((b) => b.active !== false).map((b) => ({
         id:       nextId(b.label),
         label:    b.label,
         amount:   b.amount,
         currency: normalizePayrollInputCurrency(b.currency),
+        active: b.active !== false,
     }));
 }
 
@@ -170,8 +171,14 @@ export function buildSettings(
     salarioMinimo: number,
     horasExtrasGlobal: HorasExtrasRow[],
     pdfVisibility: PdfVisibility,
+    enabledPaymentModes: Array<"diario" | "hora"> = ["diario"],
+    cestaTicketEnabled = true,
+    bonoGuerraEnabled = true,
 ): PayrollSettings {
     return {
+        enabledPaymentModes,
+        cestaTicketEnabled,
+        bonoGuerraEnabled,
         earningRowDefs: extractEarningDefs(earningRows),
         deductionRowDefs: deductionRows.map((r) => ({
             label: r.label,
@@ -180,7 +187,7 @@ export function buildSettings(
             mode: r.mode ?? "rate",
             quincenaRule: FORCED_SECOND_HALF.test(r.label) ? "second-half" : (r.quincenaRule ?? "always"),
         })),
-        bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount, currency: r.currency })),
+        bonusRowDefs: bonusRows.map((r) => ({ label: r.label, amount: r.amount, currency: r.currency, active: r.active !== false })),
         diasUtilidades,
         diasBonoVacacional: diasBono,
         salaryMode,

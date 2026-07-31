@@ -38,6 +38,7 @@ export interface PayrollBonusRowDef {
     label:     string;
     amount:    string;
     currency?: PayrollInputCurrency;
+    active?: boolean;
 }
 
 // ── Horas extras globales (Art. 118 LOTTT) ───────────────────────────────────
@@ -65,6 +66,7 @@ export interface PdfVisibility {
 // ── Main settings type ────────────────────────────────────────────────────────
 
 export interface PayrollSettings {
+    enabledPaymentModes:   Array<"diario" | "hora">;
     earningRowDefs:         PayrollEarningRowDef[];
     deductionRowDefs:       PayrollDeductionRowDef[];
     bonusRowDefs:           PayrollBonusRowDef[];
@@ -72,7 +74,9 @@ export interface PayrollSettings {
     diasBonoVacacional:     number;
     salaryMode:             "mensual" | "integral";
     cestaTicketUSD:         number;
-    bonoGuerraUSD:          number;   // Bono Socio Económico de Ayuda Alimenticia — beneficio social no remunerativo (Art. 105 LOTTT)
+    cestaTicketEnabled:  boolean;
+    bonoGuerraUSD:          number;
+    bonoGuerraEnabled:    boolean;   // Bono Socio Económico de Ayuda Alimenticia — beneficio social no remunerativo (Art. 105 LOTTT)
     // Moneda de entrada para los dos beneficios mensuales. El número en
     // `cestaTicketUSD`/`bonoGuerraUSD` se interpreta según esta moneda:
     // si es "VES" el valor es bolívares y el USD se deriva con la tasa BCV.
@@ -87,6 +91,7 @@ export interface PayrollSettings {
 
 export function defaultPayrollSettings(): PayrollSettings {
     return {
+        enabledPaymentModes: ["diario"],
         earningRowDefs: [
             { label: "Días Normales", multiplier: "1.0", useDaily: true },
             { label: "Sábados",       multiplier: "1.0", useDaily: true },
@@ -99,13 +104,15 @@ export function defaultPayrollSettings(): PayrollSettings {
         ],
         bonusRowDefs: [
             { label: "Bono Alimentación", amount: "40.00", currency: "USD" },
-            { label: "Bono Transporte",   amount: "20.00", currency: "USD" },
+            { label: "Bono Transporte",   amount: "20.00", currency: "USD", active: true },
         ],
         diasUtilidades:     15,
         diasBonoVacacional: 15,
         salaryMode:         "mensual",
         cestaTicketUSD:      40,
+        cestaTicketEnabled:  true,
         bonoGuerraUSD:       200,
+        bonoGuerraEnabled:   true,
         cestaTicketCurrency: "USD",
         bonoGuerraCurrency:  "USD",
         salarioMinimoRef:    0,
@@ -129,6 +136,7 @@ export function defaultPayrollSettings(): PayrollSettings {
 export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollSettings {
     const def = defaultPayrollSettings();
     return {
+        enabledPaymentModes:   stored.enabledPaymentModes ?? def.enabledPaymentModes,
         earningRowDefs:        stored.earningRowDefs        ?? def.earningRowDefs,
         deductionRowDefs:      stored.deductionRowDefs      ?? def.deductionRowDefs,
         bonusRowDefs:          stored.bonusRowDefs          ?? def.bonusRowDefs,
@@ -136,7 +144,9 @@ export function mergePayrollSettings(stored: Partial<PayrollSettings>): PayrollS
         diasBonoVacacional:    stored.diasBonoVacacional    ?? def.diasBonoVacacional,
         salaryMode:            stored.salaryMode            ?? def.salaryMode,
         cestaTicketUSD:        stored.cestaTicketUSD        ?? def.cestaTicketUSD,
+        cestaTicketEnabled:     stored.cestaTicketEnabled ?? def.cestaTicketEnabled,
         bonoGuerraUSD:         stored.bonoGuerraUSD         ?? def.bonoGuerraUSD,
+        bonoGuerraEnabled:       stored.bonoGuerraEnabled     ?? def.bonoGuerraEnabled,
         cestaTicketCurrency:   stored.cestaTicketCurrency   ?? def.cestaTicketCurrency,
         bonoGuerraCurrency:    stored.bonoGuerraCurrency    ?? def.bonoGuerraCurrency,
         salarioMinimoRef:      stored.salarioMinimoRef      ?? def.salarioMinimoRef,

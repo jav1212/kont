@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // ============================================================================
 // PAYROLL EMPLOYEE TABLE  v5
@@ -45,11 +45,11 @@ interface EmployeeOverride {
         deductions:  string[];
         horasExtras: string[];
     };
-    // Mapeo de extras "promovidos" desde un global vía botón editar.
-    // Clave = id del extra; valor = id del global original (que también está
+    // Mapeo de extras "promovidos" desde un global vÃ­a botÃ³n editar.
+    // Clave = id del extra; valor = id del global original (que tambiÃ©n estÃ¡
     // en excludedGlobalIds[group]). Sirve para (a) no pintar el global en la
-    // sección "Líneas excluidas" (es una edición, no una exclusión) y (b)
-    // restaurar el global automáticamente si el usuario elimina el extra.
+    // secciÃ³n "LÃ­neas excluidas" (es una ediciÃ³n, no una exclusiÃ³n) y (b)
+    // restaurar el global automÃ¡ticamente si el usuario elimina el extra.
     promotedGlobalIds: {
         earnings:    Record<string, string>;
         bonuses:     Record<string, string>;
@@ -82,12 +82,13 @@ export interface EmployeeResult extends Employee {
     deductionLines:  ComputedLine[];
     bonusLines:      ComputedLine[];
     hasOverrides:    boolean;
-    // Sprint 2: alícuotas
+    // Sprint 2: alÃ­cuotas
     alicuotaUtil:    number;
     alicuotaBono:    number;
     salarioIntegral: number;
     // Sprint 3: multi-moneda
-    salarioVES:      number;   // siempre en VES, independiente de moneda
+    salarioVES:      number;
+    horasTrabajadas: number;
 }
 
 // ============================================================================
@@ -110,20 +111,23 @@ function computeEmployee(
     salaryMode:             "mensual" | "integral" = "mensual",
     // quincena is used to apply period-specific deduction rules (e.g. FAOV second-half rule)
     quincena:               1 | 2 = 1,
+    periodHours:            number = 0,
 ): EmployeeResult {
-    // Sprint 3: convertir USD → VES para todos los cálculos
+    // Sprint 3: convertir USD â†’ VES para todos los cÃ¡lculos
     const salarioVES = emp.moneda === "USD"
         ? emp.salarioMensual * (bcvRate || 1)
         : emp.salarioMensual;
 
-    // Alícuotas (año comercial venezolano ÷ 360)
+    // AlÃ­cuotas (aÃ±o comercial venezolano Ã· 360)
     const salarioDiarioPuro = salarioVES / 30;
     const alicuotaUtil      = salarioDiarioPuro * (diasUtilidades    / 360);
     const alicuotaBono      = salarioDiarioPuro * (diasBonoVacacional / 360);
     const salarioIntegral   = salarioVES + alicuotaUtil + alicuotaBono;
 
-    // Base salarial según modo: mensual o integral
-    const salarioBase = salaryMode === "integral" ? salarioIntegral : salarioVES;
+    // Base salarial segÃºn modo: mensual o integral
+    const tarifaHoraVES = emp.tarifaHoraMoneda === "VES" ? (emp.tarifaHora ?? 0) : (emp.tarifaHora ?? 0) * (bcvRate || 1);
+    const hourlyPeriodBase = emp.modalidadPago === "hora" ? tarifaHoraVES * periodHours : salarioVES;
+    const salarioBase = emp.modalidadPago === "hora" ? hourlyPeriodBase : (salaryMode === "integral" ? salarioIntegral : salarioVES);
 
     const daily      = salarioBase / 30;
     const weekly     = (salarioBase * 12) / 52;
@@ -132,7 +136,7 @@ function computeEmployee(
     // Filter globals by per-employee exclusions before mixing with extras.
     const excluded = overrides.excludedGlobalIds;
     const filteredEarningRows = earningRows.filter((r) => !excluded.earnings.includes(r.id));
-    const filteredBonusRows   = bonusRows.filter((r)   => !excluded.bonuses.includes(r.id));
+    const filteredBonusRows   = bonusRows.filter((r) => r.active !== false && !excluded.bonuses.includes(r.id));
 
     // Apply period-specific rules: rows with quincenaRule "second-half" are excluded in Q1.
     // Extra deduction overrides per employee are never period-filtered.
@@ -140,14 +144,14 @@ function computeEmployee(
         (r) => !(r.quincenaRule === "second-half" && quincena === 1) && !excluded.deductions.includes(r.id),
     );
 
-    const hourlyRate = salarioVES / 30 / 8;
+    const hourlyRate = emp.modalidadPago === "hora" ? tarifaHoraVES : salarioVES / 30 / 8;
 
     const mapEarning = (r: EarningRow, kind: LineKind): ComputedLine => {
         const qty    = parseFloat(r.quantity)   || 0;
         const mult   = parseFloat(r.multiplier) || 1;
         const amount = r.useDaily ? qty * daily * mult : qty;
         return {
-            label:      r.label || "—",
+            label:      r.label || "â€”",
             formula:    r.useDaily ? `${qty}d x ${daily.toFixed(2)}${mult !== 1 ? ` x ${mult}` : ""}` : `${qty} VES`,
             amount,
             sourceId:   r.id,
@@ -169,7 +173,8 @@ function computeEmployee(
     };
 
     const earningLines: ComputedLine[] = [
-        ...filteredEarningRows.map((r) => mapEarning(r, "earning")),
+        ...(emp.modalidadPago === "hora" ? [{ label: "Horas trabajadas", formula: `${periodHours}h x ${hourlyRate.toFixed(2)}/h`, amount: hourlyPeriodBase, sourceId: "work-hours", sourceKind: "earning" as LineKind }] : []),
+        ...filteredEarningRows.filter(() => emp.modalidadPago !== "hora").map((r) => mapEarning(r, "earning")),
         ...overrides.extraEarnings.map((r) => mapEarning(r, "extra-earning")),
         ...horasExtrasGlobal
             .filter((r) => r.active && parseFloat(r.hours) > 0 && !excluded.horasExtras.includes(r.id))
@@ -183,7 +188,7 @@ function computeEmployee(
         const raw = parseFloat(r.amount) || 0;
         const isVes = r.currency === "VES";
         return {
-            label:      r.label || "—",
+            label:      r.label || "â€”",
             formula:    isVes ? `${raw} Bs` : `${raw} ${r.currency} x ${bcvRate}`,
             amount:     isVes ? raw : raw * bcvRate,
             sourceId:   r.id,
@@ -196,13 +201,13 @@ function computeEmployee(
         ...overrides.extraBonuses.map((r) => mapBonus(r, "extra-bonus")),
     ];
 
-    // SSO cap: base máxima = 10 salarios mínimos (IVSS)
+    // SSO cap: base mÃ¡xima = 10 salarios mÃ­nimos (IVSS)
     const cappedWeekly = salarioMinimo > 0 ? Math.min(weeklyBase, 10 * salarioMinimo) : weeklyBase;
 
     const mapDeduction = (r: DeductionRow, kind: LineKind): ComputedLine => {
         if (r.mode === "fixed") {
             const amount = parseFloat(r.rate) || 0;
-            return { label: r.label || "—", formula: `${amount.toFixed(2)} Bs fijo`, amount, sourceId: r.id, sourceKind: kind };
+            return { label: r.label || "â€”", formula: `${amount.toFixed(2)} Bs fijo`, amount, sourceId: r.id, sourceKind: kind };
         }
         const rate = parseFloat(r.rate) || 0;
         const isCapped = r.base === "weekly-capped";
@@ -217,7 +222,7 @@ function computeEmployee(
                 : r.base === "integral"
                     ? `${salarioIntegral.toFixed(2)} integral x ${rate}%`
                     : `${salarioBase.toFixed(2)} x ${rate}%`;
-        return { label: r.label || "—", formula, amount: base * (rate / 100), sourceId: r.id, sourceKind: kind };
+        return { label: r.label || "â€”", formula, amount: base * (rate / 100), sourceId: r.id, sourceKind: kind };
     };
 
     const deductionLines: ComputedLine[] = [
@@ -247,6 +252,7 @@ function computeEmployee(
             excluded.horasExtras.length       > 0,
         alicuotaUtil, alicuotaBono, salarioIntegral,
         salarioVES,
+        horasTrabajadas: periodHours,
     };
 }
 
@@ -260,7 +266,7 @@ const uid = (p: string) => `${p}_${++_seq}_${Date.now()}`;
 // Derive the stable key for an employee override map entry.
 const getEmployeeKey = (emp: Employee) => emp.cedula;
 
-// Empty override — overtime rows are now global, not per-employee seeded.
+// Empty override â€” overtime rows are now global, not per-employee seeded.
 function buildDefaultOverride(): EmployeeOverride {
     return {
         extraEarnings: [], extraDeductions: [], extraBonuses: [], extraHorasExtras: [],
@@ -309,9 +315,9 @@ const SectionLabel = ({ children }: { children: React.ReactNode }) => (
 );
 
 // Wrapper para los editores inline en las audit columns: borde de acento +
-// botón "Listo" para cerrar el modo edición. Los cambios se persisten en
-// tiempo real al state via `onChange` del editor, por lo que el botón sólo
-// colapsa la línea de vuelta a su forma estándar de audit row.
+// botÃ³n "Listo" para cerrar el modo ediciÃ³n. Los cambios se persisten en
+// tiempo real al state via `onChange` del editor, por lo que el botÃ³n sÃ³lo
+// colapsa la lÃ­nea de vuelta a su forma estÃ¡ndar de audit row.
 const EditorShell = ({ children, onDone }: { children: React.ReactNode; onDone: () => void }) => (
     <div className="rounded-md border border-primary-500/30 bg-primary-500/[0.04] p-2 space-y-2">
         {children}
@@ -334,8 +340,8 @@ const ExcludedChip = ({ label, onRestore }: { label: string; onRestore: () => vo
         <button
             type="button"
             onClick={onRestore}
-            title="Restaurar línea para este empleado"
-            aria-label="Restaurar línea"
+            title="Restaurar lÃ­nea para este empleado"
+            aria-label="Restaurar lÃ­nea"
             className="w-4 h-4 flex items-center justify-center rounded text-amber-500 hover:bg-amber-500/15 transition-colors"
         >
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -357,7 +363,7 @@ const TablePlaceholder = ({ loading }: { loading: boolean }) => (
                 <span className="font-mono text-[13px] uppercase tracking-widest">Cargando empleados...</span>
             </div>
         ) : (
-            <span className="font-mono text-[13px] text-neutral-300 uppercase tracking-widest">Sin empleados. Agrega empleados en la sección de Empleados.</span>
+            <span className="font-mono text-[13px] text-neutral-300 uppercase tracking-widest">Sin empleados. Agrega empleados en la secciÃ³n de Empleados.</span>
         )}
     </div>
 );
@@ -391,10 +397,10 @@ const ExpandedPanel = ({
     result, override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
     earningRows, bonusRows, deductionRows, horasExtrasGlobal, onChange,
 }: ExpandedPanelProps) => {
-    // Edit-in-place: cuál audit line está en modo edición (id del row extra).
+    // Edit-in-place: cuÃ¡l audit line estÃ¡ en modo ediciÃ³n (id del row extra).
     const [editing, setEditing] = useState<{ kind: LineKind; id: string } | null>(null);
 
-    // Usar salarioVES para que las tasas de los extras sean consistentes con el cálculo principal
+    // Usar salarioVES para que las tasas de los extras sean consistentes con el cÃ¡lculo principal
     const empDailyRate      = result.salarioVES / 30;
     const empHourlyRate     = empDailyRate / 8;
     const empWeeklyRate     = (result.salarioVES * 12) / 52;
@@ -402,9 +408,9 @@ const ExpandedPanel = ({
     const empCappedWeekly   = salarioMinimo > 0 ? Math.min(empWeeklyBase, 10 * salarioMinimo) : empWeeklyBase;
     const empIntegralBase   = result.salarioIntegral;
 
-    // Al eliminar un extra que fue promovido desde un global, también restauramos
+    // Al eliminar un extra que fue promovido desde un global, tambiÃ©n restauramos
     // el global (lo sacamos de excludedGlobalIds) y limpiamos el mapeo de
-    // promociones, para que la línea vuelva a su forma global original.
+    // promociones, para que la lÃ­nea vuelva a su forma global original.
     const removePromoted = (
         group: keyof EmployeeOverride["excludedGlobalIds"],
         extraId: string,
@@ -438,7 +444,7 @@ const ExpandedPanel = ({
     const removeXB = (id: string)                  => onChange({ ...override, extraBonuses:    override.extraBonuses.filter((r)    => r.id !== id), ...removePromoted("bonuses", id) });
 
     const addXD    = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "", rate: "0", base: "monthly" as const, mode: "rate" as const }] });
-    const addLoan  = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "Préstamo / Anticipo", rate: "0", base: "monthly" as const, mode: "fixed" as const }] });
+    const addLoan  = () => onChange({ ...override, extraDeductions: [...override.extraDeductions, { id: uid("xd"), label: "PrÃ©stamo / Anticipo", rate: "0", base: "monthly" as const, mode: "fixed" as const }] });
     const updateXD = (id: string, u: DeductionRow) => onChange({ ...override, extraDeductions: override.extraDeductions.map((r) => r.id === id ? u : r) });
     const removeXD = (id: string)                  => onChange({ ...override, extraDeductions: override.extraDeductions.filter((r) => r.id !== id), ...removePromoted("deductions", id) });
 
@@ -446,10 +452,10 @@ const ExpandedPanel = ({
     const updateXH = (id: string, u: HorasExtrasRow) => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.map((r) => r.id === id ? u : r) });
     const removeXH = (id: string)                    => onChange({ ...override, extraHorasExtras: override.extraHorasExtras.filter((r) => r.id !== id), ...removePromoted("horasExtras", id) });
 
-    // Inicia edición sobre una línea. Si es global, la "promueve" a extra:
+    // Inicia ediciÃ³n sobre una lÃ­nea. Si es global, la "promueve" a extra:
     // clona el row, lo agrega al array extras correspondiente, excluye el
     // global para este empleado, y deja el editor abierto sobre el nuevo extra.
-    // Si ya es extra, sólo activa el modo edición sin mutar estado.
+    // Si ya es extra, sÃ³lo activa el modo ediciÃ³n sin mutar estado.
     const startEdit = (kind: LineKind, sourceId: string) => {
         if (kind === "extra-earning" || kind === "extra-bonus" || kind === "extra-deduction" || kind === "extra-horas-extras") {
             setEditing({ kind, id: sourceId });
@@ -542,7 +548,7 @@ const ExpandedPanel = ({
 
     const closeEdit = () => setEditing(null);
 
-    // Exclude a global row (sólo para este empleado).
+    // Exclude a global row (sÃ³lo para este empleado).
     const excludeGlobal = (group: keyof EmployeeOverride["excludedGlobalIds"], id: string) =>
         onChange({
             ...override,
@@ -579,8 +585,8 @@ const ExpandedPanel = ({
     };
 
     const excluded = override.excludedGlobalIds;
-    // Las exclusiones provenientes de una edición (promoción) NO se muestran
-    // como "líneas excluidas" — desde la óptica del usuario están editadas, no
+    // Las exclusiones provenientes de una ediciÃ³n (promociÃ³n) NO se muestran
+    // como "lÃ­neas excluidas" â€” desde la Ã³ptica del usuario estÃ¡n editadas, no
     // eliminadas. Filtramos los globalIds que aparecen como valores en el
     // mapeo de promociones.
     const promotedGlobalSet = (group: keyof EmployeeOverride["promotedGlobalIds"]) =>
@@ -603,7 +609,7 @@ const ExpandedPanel = ({
 
     return (
         <div className="bg-surface-2 border-t border-border-light px-6 py-5">
-            {/* Alícuotas chip */}
+            {/* AlÃ­cuotas chip */}
             <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border border-border-light bg-surface-1 flex-wrap">
                 <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--text-tertiary)] shrink-0">Sal. Integral</span>
                 <span className="font-mono text-[12px] tabular-nums text-foreground font-medium">Bs. {fmt(result.salarioIntegral)}</span>
@@ -614,9 +620,9 @@ const ExpandedPanel = ({
                         : `Bs. ${fmt(result.salarioVES)}`}
                 </span>
                 <span className="font-mono text-[11px] text-[var(--text-disabled)]">+</span>
-                <span className="font-mono text-[11px] text-amber-500" title={`Alíc. Utilidades (${diasUtilidades}d)`}>util {fmt(result.alicuotaUtil)}</span>
+                <span className="font-mono text-[11px] text-amber-500" title={`AlÃ­c. Utilidades (${diasUtilidades}d)`}>util {fmt(result.alicuotaUtil)}</span>
                 <span className="font-mono text-[11px] text-[var(--text-disabled)]">+</span>
-                <span className="font-mono text-[11px] text-amber-500" title={`Alíc. Bono Vacacional (${diasBonoVacacional}d)`}>bono vac {fmt(result.alicuotaBono)}</span>
+                <span className="font-mono text-[11px] text-amber-500" title={`AlÃ­c. Bono Vacacional (${diasBonoVacacional}d)`}>bono vac {fmt(result.alicuotaBono)}</span>
             </div>
             {/* Audit columns */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -731,7 +737,7 @@ const ExpandedPanel = ({
                         <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-amber-500">
                             <path d="M6 1v6M6 9.5v.5" /><circle cx="6" cy="6" r="5" />
                         </svg>
-                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-500">Líneas excluidas para {firstName}</span>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-500">LÃ­neas excluidas para {firstName}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                         {excludedEarnings.map((x) => (
@@ -752,7 +758,7 @@ const ExpandedPanel = ({
 
             <div className="flex items-center gap-3 mt-6 mb-1">
                 <div className="flex-1 border-t border-dashed border-border-light" />
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-300">Extras exclusivos — {firstName}</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-300">Extras exclusivos â€” {firstName}</span>
                 <div className="flex-1 border-t border-dashed border-border-light" />
             </div>
 
@@ -799,7 +805,7 @@ const ExpandedPanel = ({
                     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                         <path d="M5.5 1v9M1 5.5h9" />
                     </svg>
-                    Préstamo / Anticipo
+                    PrÃ©stamo / Anticipo
                 </button>
             </div>
         </div>
@@ -807,7 +813,7 @@ const ExpandedPanel = ({
 };
 
 // ============================================================================
-// MOBILE EMPLOYEE CARD  — replaces BaseTable on viewports < lg
+// MOBILE EMPLOYEE CARD  â€” replaces BaseTable on viewports < lg
 // ============================================================================
 
 interface EmployeeMobileCardProps {
@@ -825,13 +831,15 @@ interface EmployeeMobileCardProps {
     deductionRows:      DeductionRow[];
     horasExtrasGlobal:  HorasExtrasRow[];
     onOverrideChange:   (updated: EmployeeOverride) => void;
+    periodHours:        string;
+    onHoursChange:      (value: string) => void;
 }
 
 const EmployeeMobileCard = ({
     result, expanded, onToggleExpand,
     override, mondaysInMonth, bcvRate, diasUtilidades, diasBonoVacacional, salarioMinimo,
     earningRows, bonusRows, deductionRows, horasExtrasGlobal,
-    onOverrideChange,
+    onOverrideChange, periodHours, onHoursChange,
 }: EmployeeMobileCardProps) => (
     <div
         className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden cursor-pointer"
@@ -854,7 +862,7 @@ const EmployeeMobileCard = ({
                         {result.nombre}
                     </p>
                     <p className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest mt-0.5">
-                        {result.cedula}{result.cargo ? ` · ${result.cargo}` : ""}
+                        {result.cedula}{result.cargo ? ` Â· ${result.cargo}` : ""}
                     </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -878,6 +886,13 @@ const EmployeeMobileCard = ({
                 </div>
             </div>
 
+            {result.modalidadPago === "hora" && (
+                <div className="flex items-center justify-between gap-3 font-mono text-[12px]" onClick={(e) => e.stopPropagation()}> 
+                    <label htmlFor={"mobile-hours-" + result.cedula} className="text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Horas trabajadas</label>
+                    <input id={"mobile-hours-" + result.cedula} aria-label={"Horas trabajadas de " + result.nombre} type="number" min={0} step={0.25} value={periodHours} onChange={(e) => onHoursChange(e.target.value)} className="w-28 h-8 px-2 rounded border border-border-light bg-surface-1 text-right tabular-nums" placeholder="0" />
+                </div>
+            )}
+
             <div className="border-t border-border-light/70" />
 
             {/* Numeric breakdown */}
@@ -888,7 +903,7 @@ const EmployeeMobileCard = ({
                 </div>
                 <div className="flex items-center justify-between">
                     <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.16em]">Deducciones</dt>
-                    <dd className="text-error/80">−Bs. {fmt(result.totalDeductions)}</dd>
+                    <dd className="text-error/80">âˆ’Bs. {fmt(result.totalDeductions)}</dd>
                 </div>
                 <div className="flex items-center justify-between pt-1.5 border-t border-border-light/40">
                     <dt className="text-[var(--text-link)] uppercase tracking-[0.16em] font-bold">Neto VES</dt>
@@ -994,7 +1009,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                 <div className="flex items-center gap-3">
                     <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">Aportes Patronales</span>
                     <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
-                        IVSS 9% · BANAVIH 2% · {applyInces ? "INCES 2%" : "INCES en última quincena"}
+                        IVSS 9% Â· BANAVIH 2% Â· {applyInces ? "INCES 2%" : "INCES en Ãºltima quincena"}
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -1110,7 +1125,7 @@ const AportesPatronalesPanel = ({ results, mondaysInMonth, salarioMinimo, period
                     {/* Info + CSV */}
                     <div className="flex items-start justify-between gap-2 pt-1 flex-wrap">
                         <p className="font-mono text-[11px] text-[var(--text-tertiary)] leading-relaxed flex-1 min-w-[200px]">
-                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} · BANAVIH: salario mensual · INCES: {applyInces ? "salario mensual" : "se aporta solo en la última quincena (sobre salario mensual)"}
+                            SSO: base semanal{salarioMinimo > 0 ? ` con tope ${(10 * salarioMinimo).toLocaleString("es-VE", { maximumFractionDigits: 0 })} Bs` : ""} Â· BANAVIH: salario mensual Â· INCES: {applyInces ? "salario mensual" : "se aporta solo en la Ãºltima quincena (sobre salario mensual)"}
                         </p>
                         <button
                             onClick={handleCsv}
@@ -1218,8 +1233,10 @@ export const PayrollEmployeeTable = ({
     const [pdfMenuOpen,      setPdfMenuOpen]      = useState(false);
     const pdfBtnRef = useRef<HTMLDivElement>(null);
 
-    // Diálogo único de confirmación para los 3 disparadores (PDF, reporte, confirmar nómina).
+    // DiÃ¡logo Ãºnico de confirmaciÃ³n para los 3 disparadores (PDF, reporte, confirmar nÃ³mina).
     const dialog = useConfirmAction();
+
+    const [periodHours, setPeriodHours] = useState<Record<string, string>>({});
 
     const [overrides, setOverrides] = useState<Map<string, EmployeeOverride>>(new Map());
     const getOverride = useCallback(
@@ -1230,7 +1247,7 @@ export const PayrollEmployeeTable = ({
         setOverrides((prev) => { const next = new Map(prev); next.set(id, updated); return next; });
     }, []);
 
-    // Inactivos excluidos siempre; vacaciones según toggle
+    // Inactivos excluidos siempre; vacaciones segÃºn toggle
     const activeEmployees = useMemo(
         () => employees.filter((e) => e.estado !== "inactivo" && (includeVacaciones || e.estado !== "vacacion")),
         [employees, includeVacaciones],
@@ -1243,8 +1260,9 @@ export const PayrollEmployeeTable = ({
             diasUtilidades, diasBonoVacacional,
             horasExtrasGlobal, salarioMinimo,
             salaryMode, quincena,
+            parseFloat(periodHours[getEmployeeKey(emp)] ?? "0") || 0,
         )),
-        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, exchangeCurrencyCode, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, getOverride]
+        [activeEmployees, earningRows, deductionRows, bonusRows, mondaysInMonth, bcvRate, exchangeCurrencyCode, diasUtilidades, diasBonoVacacional, horasExtrasGlobal, salarioMinimo, salaryMode, quincena, periodHours, getOverride]
     );
 
     const zeroSalaryCount = useMemo(() => results.filter((r) => r.salarioMensual <= 0).length, [results]);
@@ -1267,12 +1285,12 @@ export const PayrollEmployeeTable = ({
         );
 
         // Auto-guardar como borrador para que el usuario tenga respaldo en BD.
-        // Si el período ya está confirmado no se reescribe nada (es inmutable).
+        // Si el perÃ­odo ya estÃ¡ confirmado no se reescribe nada (es inmutable).
         if (!onSaveDraft || periodAlreadyConfirmed) return;
         const { runId } = await onSaveDraft(results);
         if (runId) {
             setDraftSavedAt(new Date());
-            toast.success("Recibo exportado y nómina guardada como borrador");
+            toast.success("Recibo exportado y nÃ³mina guardada como borrador");
         }
     }, [results, companyName, companyId, companyLogoUrl, showLogoInPdf, payrollDate, periodStart, periodLabel, bcvRate, mondaysInMonth, salaryMode, pdfVisibility, onSaveDraft, periodAlreadyConfirmed]);
 
@@ -1326,6 +1344,12 @@ export const PayrollEmployeeTable = ({
         },
         { key: "cargo", label: "Cargo", sortable: true, searchable: true, render: (v) => <span className="font-mono text-[12px] uppercase tracking-[0.1em] text-neutral-500">{String(v)}</span> },
         {
+            key: "_hours", label: "Horas trabajadas", align: "end",
+            render: (_, r) => r.modalidadPago === "hora" ? (
+                <input aria-label={"Horas trabajadas de " + r.nombre} type="number" min={0} step={0.25} value={periodHours[r.cedula] ?? "0"} onClick={(e) => e.stopPropagation()} onChange={(e) => setPeriodHours((prev) => ({ ...prev, [r.cedula]: e.target.value }))} className="w-28 h-8 px-2 rounded border border-border-light bg-surface-1 font-mono text-[12px] text-right tabular-nums" placeholder="0" />
+            ) : <span className="font-mono text-[12px] text-[var(--text-disabled)]">?</span>,
+        },
+        {
             key: "salarioMensual", label: "Salario", sortable: true, align: "end",
             render: (_, r) => (
                 <div className="flex flex-col items-end gap-0.5">
@@ -1335,7 +1359,7 @@ export const PayrollEmployeeTable = ({
                                 <span className="font-mono text-[11px] px-1.5 py-0.5 rounded border border-primary-500/30 bg-primary-500/[0.08] text-primary-400 uppercase tracking-widest">USD</span>
                                 <span className="font-mono text-[12px] tabular-nums">${fmt(r.salarioMensual)}</span>
                             </div>
-                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">≈ Bs. {fmt(r.salarioVES)}</span>
+                            <span className="font-mono text-[11px] tabular-nums text-[var(--text-tertiary)]">â‰ˆ Bs. {fmt(r.salarioVES)}</span>
                         </>
                     ) : (
                         <span className="font-mono text-[12px] tabular-nums">Bs. {fmt(r.salarioMensual)}</span>
@@ -1365,7 +1389,7 @@ export const PayrollEmployeeTable = ({
     }, [results, search]);
 
     const showTable = !empLoading && employees.length > 0;
-    // ── Confirm modal totals ───────────────────────────────────────────────
+    // â”€â”€ Confirm modal totals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const activeResults = results.filter((r) => r.estado === "activo");
     const modalTotals   = activeResults.reduce(
         (s, r) => ({ gross: s.gross + r.gross, ded: s.ded + r.totalDeductions, net: s.net + r.net, usd: s.usd + r.netUSD }),
@@ -1378,13 +1402,13 @@ export const PayrollEmployeeTable = ({
             {/* Toolbar */}
             <div className="flex items-end justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
-                    <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-neutral-400">Nómina / Empleados</p>
+                    <p className="font-mono text-[12px] uppercase tracking-[0.18em] text-neutral-400">NÃ³mina / Empleados</p>
                     <h2 className="font-mono text-[15px] font-bold uppercase tracking-tighter text-foreground">
                         Resumen por Empleado
                         <span className="ml-2 font-normal text-[12px] text-[var(--text-tertiary)] tracking-normal normal-case">
-                            {results.length} en cálculo
+                            {results.length} en cÃ¡lculo
                             {employees.filter(e => e.estado === "inactivo").length > 0 && (
-                                <span className="ml-1 text-[var(--text-disabled)] hidden sm:inline">· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
+                                <span className="ml-1 text-[var(--text-disabled)] hidden sm:inline">Â· {employees.filter(e => e.estado === "inactivo").length} inactivo{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""} excluido{employees.filter(e => e.estado === "inactivo").length > 1 ? "s" : ""}</span>
                             )}
                         </span>
                     </h2>
@@ -1436,17 +1460,17 @@ export const PayrollEmployeeTable = ({
                                     setPdfMenuOpen(false);
                                     dialog.request({
                                         title: "Generar recibos PDF",
-                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
+                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el perÃ­odo ${periodLabel}.` : undefined,
                                         summary: (
                                             <>
-                                                {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                                {periodLabel && <SummaryRow label="PerÃ­odo" value={periodLabel} />}
                                                 <SummaryRow label="Empleados activos" value={activeResults.length} />
                                                 <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / ${exchangeCurrencyCode}`} />
-                                                <SummaryRow label="Modalidad" value="Cortable · Oficio" />
+                                                <SummaryRow label="Modalidad" value="Cortable Â· Oficio" />
                                             </>
                                         ),
                                         warning: !periodAlreadyConfirmed
-                                            ? "También se guardará un borrador en la base de datos para que tengas respaldo."
+                                            ? "TambiÃ©n se guardarÃ¡ un borrador en la base de datos para que tengas respaldo."
                                             : undefined,
                                         confirmLabel: "Generar PDF",
                                         confirmIcon: <FileDown size={14} strokeWidth={2} />,
@@ -1459,7 +1483,7 @@ export const PayrollEmployeeTable = ({
                                 <div className="min-w-0">
                                     <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo cortable</div>
                                     <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
-                                        Oficio · 2 copias por hoja (Original + Copia) con línea de corte
+                                        Oficio Â· 2 copias por hoja (Original + Copia) con lÃ­nea de corte
                                     </div>
                                 </div>
                             </button>
@@ -1469,17 +1493,17 @@ export const PayrollEmployeeTable = ({
                                     setPdfMenuOpen(false);
                                     dialog.request({
                                         title: "Generar recibos PDF",
-                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el período ${periodLabel}.` : undefined,
+                                        subtitle: periodLabel ? `${activeResults.length} recibo(s) para el perÃ­odo ${periodLabel}.` : undefined,
                                         summary: (
                                             <>
-                                                {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                                {periodLabel && <SummaryRow label="PerÃ­odo" value={periodLabel} />}
                                                 <SummaryRow label="Empleados activos" value={activeResults.length} />
                                                 <SummaryRow label="Tasa BCV" value={`Bs. ${fmt(bcvRate)} / ${exchangeCurrencyCode}`} />
-                                                <SummaryRow label="Modalidad" value="Simple · A4" />
+                                                <SummaryRow label="Modalidad" value="Simple Â· A4" />
                                             </>
                                         ),
                                         warning: !periodAlreadyConfirmed
-                                            ? "También se guardará un borrador en la base de datos para que tengas respaldo."
+                                            ? "TambiÃ©n se guardarÃ¡ un borrador en la base de datos para que tengas respaldo."
                                             : undefined,
                                         confirmLabel: "Generar PDF",
                                         confirmIcon: <FileDown size={14} strokeWidth={2} />,
@@ -1492,7 +1516,7 @@ export const PayrollEmployeeTable = ({
                                 <div className="min-w-0">
                                     <div className="font-mono text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Recibo simple</div>
                                     <div className="font-sans text-[11px] text-[var(--text-tertiary)] mt-0.5 leading-snug">
-                                        A4 · 1 recibo por hoja, sin copia para pagador
+                                        A4 Â· 1 recibo por hoja, sin copia para pagador
                                     </div>
                                 </div>
                             </button>
@@ -1501,10 +1525,10 @@ export const PayrollEmployeeTable = ({
                     <button
                         onClick={() => dialog.request({
                             title: "Generar reporte general",
-                            subtitle: periodLabel ? `Resumen de ${activeResults.length} empleado(s) para el período ${periodLabel}.` : undefined,
+                            subtitle: periodLabel ? `Resumen de ${activeResults.length} empleado(s) para el perÃ­odo ${periodLabel}.` : undefined,
                             summary: (
                                 <>
-                                    {periodLabel && <SummaryRow label="Período" value={periodLabel} />}
+                                    {periodLabel && <SummaryRow label="PerÃ­odo" value={periodLabel} />}
                                     <SummaryRow label="Empleados activos" value={activeResults.length} />
                                     <SummaryRow label="Total neto VES" value={`Bs. ${fmt(modalTotals.net)}`} emphasis />
                                     <SummaryRow label={`Equivalente ${exchangeCurrencyCode}`} value={`${exchangeCurrencyCode} ${fmt(modalTotals.usd)}`} />
@@ -1527,13 +1551,13 @@ export const PayrollEmployeeTable = ({
                         <span
                             className="h-8 px-2 inline-flex items-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-tertiary)] font-mono text-[11px] uppercase tracking-[0.16em]"
                         >
-                            <span className="hidden sm:inline">Borrador guardado · </span>{draftSavedAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
+                            <span className="hidden sm:inline">Borrador guardado Â· </span>{draftSavedAt.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                     ) : null}
                     {onConfirm && (
                         <button
                             onClick={() => dialog.request({
-                                title: "Confirmar nómina",
+                                title: "Confirmar nÃ³mina",
                                 subtitle: periodLabel ?? undefined,
                                 summary: (
                                     <>
@@ -1546,14 +1570,14 @@ export const PayrollEmployeeTable = ({
                                     </>
                                 ),
                                 warning: zeroSalaryCount > 0
-                                    ? `${zeroSalaryCount} empleado${zeroSalaryCount > 1 ? "s" : ""} con salario en cero. Verifica antes de confirmar. Esta acción guarda la nómina permanentemente y no se puede deshacer desde la aplicación.`
-                                    : "Esta acción guarda la nómina permanentemente. No se puede deshacer desde la aplicación.",
+                                    ? `${zeroSalaryCount} empleado${zeroSalaryCount > 1 ? "s" : ""} con salario en cero. Verifica antes de confirmar. Esta acciÃ³n guarda la nÃ³mina permanentemente y no se puede deshacer desde la aplicaciÃ³n.`
+                                    : "Esta acciÃ³n guarda la nÃ³mina permanentemente. No se puede deshacer desde la aplicaciÃ³n.",
                                 confirmLabel: "Confirmar y guardar",
                                 confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
                                 run: handleConfirmExecute,
                             })}
                             disabled={results.length === 0 || confirmOk || !!periodAlreadyConfirmed || !!confirmBlockedReason}
-                            title={confirmBlockedReason ?? (periodAlreadyConfirmed ? "Período ya confirmado" : undefined)}
+                            title={confirmBlockedReason ?? (periodAlreadyConfirmed ? "PerÃ­odo ya confirmado" : undefined)}
                             className={[
                                 "h-8 px-3 rounded-lg flex items-center gap-1.5 border",
                                 "font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
@@ -1568,7 +1592,7 @@ export const PayrollEmployeeTable = ({
                                     <path d="M2 6l3 3 5-5" />
                                 </svg>
                             )}
-                            <span className="hidden sm:inline">{confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Ya confirmada" : "Confirmar nómina"}</span>
+                            <span className="hidden sm:inline">{confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Ya confirmada" : "Confirmar nÃ³mina"}</span>
                             <span className="sm:hidden">{confirmOk ? "Confirmada" : periodAlreadyConfirmed ? "Confirmada" : "Confirmar"}</span>
                         </button>
                     )}
@@ -1579,7 +1603,7 @@ export const PayrollEmployeeTable = ({
             {showTable && (
                 <BaseInput.Field
                     type="text"
-                    placeholder="Buscar por nombre, cédula o cargo…"
+                    placeholder="Buscar por nombre, cÃ©dula o cargoâ€¦"
                     value={search}
                     onValueChange={setSearch}
                     startContent={
@@ -1590,10 +1614,16 @@ export const PayrollEmployeeTable = ({
                 />
             )}
 
+            {employees.some((employee) => employee.modalidadPago === "hora") && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                    <strong>Empleados por hora:</strong> carga las horas trabajadas de cada empleado en la columna correspondiente. El total se recalcula autom?ticamente.
+                </div>
+            )}
+
             {/* Table (desktop) / Cards (mobile + tablet) */}
             {showTable ? (
                 <>
-                    {/* Desktop table — lg+ */}
+                    {/* Desktop table â€” lg+ */}
                     <div className="hidden lg:block">
                         <BaseTable.Render
                             columns={columns} data={filteredResults} keyExtractor={(r) => r.cedula}
@@ -1621,11 +1651,11 @@ export const PayrollEmployeeTable = ({
                         />
                     </div>
 
-                    {/* Mobile + tablet cards — < lg */}
+                    {/* Mobile + tablet cards â€” < lg */}
                     <div className="lg:hidden space-y-3">
                         {filteredResults.length === 0 ? (
                             <p className="font-mono text-[13px] text-[var(--text-tertiary)] text-center py-6 border border-dashed border-border-light rounded-xl">
-                                Ningún empleado coincide con la búsqueda.
+                                NingÃºn empleado coincide con la bÃºsqueda.
                             </p>
                         ) : (
                             filteredResults.map((result) => (
@@ -1645,6 +1675,8 @@ export const PayrollEmployeeTable = ({
                                     deductionRows={deductionRows}
                                     horasExtrasGlobal={horasExtrasGlobal}
                                     onOverrideChange={(updated) => setOverride(getEmployeeKey(result), updated)}
+                                    periodHours={periodHours[result.cedula] ?? "0"}
+                                    onHoursChange={(value) => setPeriodHours((prev) => ({ ...prev, [result.cedula]: value }))}
                                 />
                             ))
                         )}
@@ -1664,7 +1696,7 @@ export const PayrollEmployeeTable = ({
                 <TablePlaceholder loading={empLoading} />
             )}
 
-            {/* Diálogo único de confirmación (PDF / Reporte / Confirmar nómina) */}
+            {/* DiÃ¡logo Ãºnico de confirmaciÃ³n (PDF / Reporte / Confirmar nÃ³mina) */}
             <ConfirmCompanyDialog
                 isOpen={!!dialog.pending}
                 onClose={dialog.clear}
@@ -1681,3 +1713,4 @@ export const PayrollEmployeeTable = ({
         </div>
     );
 };
+

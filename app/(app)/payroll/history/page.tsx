@@ -21,6 +21,7 @@ import { BonificacionesHistoryView } from "@/src/modules/payroll/frontend/compon
 import { IslrXmlModal } from "@/src/modules/payroll/frontend/components/islr-xml-modal";
 import { IslrRetencionesModal } from "@/src/modules/payroll/frontend/components/islr-retenciones-modal";
 import { formatBcvRate } from "@/src/modules/payroll/frontend/components/calculator/formatters";
+import { usePayrollSettings } from "@/src/modules/payroll/frontend/hooks/use-payroll-settings";
 
 type HistoryTab = "payroll" | "cesta" | "bono" | "bonificaciones";
 
@@ -300,6 +301,7 @@ export default function PayrollHistoryPage() {
     const { companyId, company } = useCompany();
     const { runs, loading, getReceipts, confirm, unconfirm } = usePayrollHistory(companyId);
     const { employees } = useEmployee(companyId);
+    const { settings } = usePayrollSettings(companyId);
 
     const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
 
@@ -541,7 +543,7 @@ export default function PayrollHistoryPage() {
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
                 <div className="max-w-[1100px] mx-auto space-y-5">
-                    <HistoryTabs active={activeTab} onChange={setActiveTab} />
+                    <HistoryTabs active={activeTab} onChange={setActiveTab} cestaTicketEnabled={settings.cestaTicketEnabled} bonoGuerraEnabled={settings.bonoGuerraEnabled} />
 
                     {activeTab === "payroll" ? (
                         loading ? (
@@ -673,9 +675,11 @@ export default function PayrollHistoryPage() {
     );
 }
 
-function HistoryTabs({ active, onChange }: {
+function HistoryTabs({ active, onChange, cestaTicketEnabled, bonoGuerraEnabled }: {
     active: HistoryTab;
     onChange: (t: HistoryTab) => void;
+    cestaTicketEnabled: boolean;
+    bonoGuerraEnabled: boolean;
 }) {
     const tabs: { id: HistoryTab; label: string }[] = [
         { id: "payroll",        label: "Nóminas" },

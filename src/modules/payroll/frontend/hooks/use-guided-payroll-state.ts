@@ -159,8 +159,8 @@ export function useGuidedPayrollState() {
     const [includeBonoSocioEconomicoOverride, setIncludeBonoSocioEconomicoOverride] =
         useState<boolean | null>(null);
 
-    const showCestaTicket        = includeCestaTicketOverride        ?? defaultBenefitsInPeriod;
-    const showBonoSocioEconomico = includeBonoSocioEconomicoOverride ?? defaultBenefitsInPeriod;
+    const showCestaTicket        = (includeCestaTicketOverride        ?? defaultBenefitsInPeriod) && savedSettings.cestaTicketEnabled;
+    const showBonoSocioEconomico = (includeBonoSocioEconomicoOverride ?? defaultBenefitsInPeriod) && savedSettings.bonoGuerraEnabled;
 
     // Per-employee opt-out for cesta ticket and bono socio económico. Empty set
     // = todos los activos reciben (comportamiento histórico). El usuario destilda
@@ -393,6 +393,9 @@ export function useGuidedPayrollState() {
                 Math.max(0, parseFloat(salarioMinimoInput) || 0),
                 horasExtrasGlobal,
                 pdfVisibility,
+                savedSettings.enabledPaymentModes,
+                savedSettings.cestaTicketEnabled,
+                savedSettings.bonoGuerraEnabled,
             ),
         );
         setSaveLoading(false);
@@ -413,6 +416,9 @@ export function useGuidedPayrollState() {
         salarioMinimoInput,
         horasExtrasGlobal,
         pdfVisibility,
+        savedSettings.enabledPaymentModes,
+        savedSettings.cestaTicketEnabled,
+        savedSettings.bonoGuerraEnabled,
         saveSettings,
     ]);
 
@@ -650,6 +656,7 @@ export function useGuidedPayrollState() {
                         alicuotaUtil: r.alicuotaUtil,
                         alicuotaBono: r.alicuotaBono,
                         salarioIntegral: r.salarioIntegral,
+                        horasTrabajadas: r.horasTrabajadas,
                         earningLines:   r.earningLines,
                         bonusLines:     r.bonusLines,
                         deductionLines: r.deductionLines,

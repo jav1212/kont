@@ -28,6 +28,7 @@ export interface BonusRow {
     label:    string;
     amount:   string;            // monto en la moneda elegida (string para input controlado)
     currency: PayrollInputCurrency; // divisa BCV seleccionada se convierte a VES; VES se usa tal cual
+    active?: boolean;
 }
 
 // ── Horas extras (Art. 118 LOTTT) ─────────────────────────────────────────
