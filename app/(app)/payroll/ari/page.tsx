@@ -53,11 +53,11 @@ const formatUT = (n: number): string => `${formatNumber(n)} U.T.`;
 function getZeroReasonMessageLegacy(result: ReturnType<typeof computeAri>): string | null {
     switch (result.motivoPorcentajeCero) {
         case "no_sujeto_umbral":
-            return "RemuneraciÃ³n trimestral <= 250 U.T. â€” el trabajador no estÃ¡ sujeto a retenciÃ³n en este trimestre.";
+            return "Remuneración trimestral <= 250 U.T. — el trabajador no está sujeto a retención en este trimestre.";
         case "sin_enriquecimiento_gravable":
-            return "Los desgravÃ¡menes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
+            return "Los desgravámenes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
         case "rebajas_agotan_impuesto":
-            return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retenciÃ³n.";
+            return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retención.";
         default:
             return null;
     }
