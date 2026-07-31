@@ -35,6 +35,9 @@ interface DashboardKpiCardProps {
     trend?:     TrendValue;
     /** Explanatory hint rendered as sans-serif footer ("Actualizado hace 3 h"). */
     hint?:      string;
+    /** Promotes the card to the "hero" metric: colour-tinted fill + inset ring so
+     *  it reads as the headline number of the strip. Use on at most one card. */
+    emphasis?:  boolean;
     /** Extra classes merged onto the root (e.g. `h-full` when wrapped in a Link inside a grid). */
     className?: string;
 }
@@ -45,32 +48,37 @@ interface DashboardKpiCardProps {
 
 const COLOR_CONFIG: Record<
     NonNullable<DashboardKpiCardProps["color"]>,
-    { text: string; bg: string; border: string }
+    { text: string; bg: string; border: string; ring: string }
 > = {
     primary: {
         text:   "text-primary-500",
         bg:     "bg-primary-500/10",
         border: "border-primary-500/20",
+        ring:   "ring-primary-500/30",
     },
     success: {
         text:   "text-text-success",
         bg:     "bg-text-success/10",
         border: "border-text-success/20",
+        ring:   "ring-text-success/30",
     },
     danger: {
         text:   "text-danger-500",
         bg:     "bg-danger-500/10",
         border: "border-danger-500/20",
+        ring:   "ring-danger-500/30",
     },
     warning: {
         text:   "text-[var(--text-warning)]",
         bg:     "bg-[var(--text-warning)]/10",
         border: "border-[var(--text-warning)]/20",
+        ring:   "ring-[var(--text-warning)]/30",
     },
     default: {
         text:   "text-foreground",
         bg:     "bg-surface-2",
         border: "border-border-light",
+        ring:   "ring-border-medium",
     },
 };
 
@@ -93,6 +101,7 @@ export function DashboardKpiCard({
     sublabel,
     trend,
     hint,
+    emphasis = false,
     className,
 }: DashboardKpiCardProps) {
     const config = COLOR_CONFIG[color];
@@ -100,8 +109,11 @@ export function DashboardKpiCard({
     return (
         <div
             className={[
-                "@container rounded-2xl border bg-surface-1 p-5 shadow-sm",
+                "@container rounded-2xl border p-5 shadow-sm",
                 config.border,
+                emphasis
+                    ? `${config.bg} ring-1 ring-inset ${config.ring}`
+                    : "bg-surface-1",
                 className ?? "",
             ].join(" ")}
             aria-label={label}
