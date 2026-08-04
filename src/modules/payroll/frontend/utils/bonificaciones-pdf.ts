@@ -78,7 +78,7 @@ export interface BonificacionesOptions {
     pdfMode?:       ReportMode;
 }
 
-const fmtUSD = (n: number) => "$ " + formatN(n);
+const fmtUSD = (n: number) => formatN(n);
 const fmtOriginal = (line: BonificacionesBonusLine) =>
     line.currency === "VES" ? formatPayrollAmount(line.amount) : fmtUSD(line.amount);
 

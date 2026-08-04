@@ -76,7 +76,7 @@ export interface CestaTicketOptions {
     pdfMode?:       ReportMode;
 }
 
-const fmtUSD = (n: number) => "$ " + formatN(n);
+const fmtUSD = (n: number) => formatN(n);
 
 type Doc = jsPDF;
 

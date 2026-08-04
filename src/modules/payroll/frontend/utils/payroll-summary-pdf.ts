@@ -133,7 +133,7 @@ export async function generatePayrollSummaryPdf(
         { key: "totalBonuses",    title: "Bonos",      width: 22, align: "right",  mono: true,            format: "ves"    },
         { key: "totalDeductions", title: "Deducc.",    width: 22, align: "right",  mono: true,            format: "ves"    },
         { key: "net",             title: "Neto Bs.",   width: 28, align: "right",  mono: true, bold: true, format: "ves"    },
-        { key: "netUSD",          title: "Neto $",     width: 17, align: "right",  mono: true,            format: "usd"    },
+        { key: "netUSD",          title: "Neto",     width: 17, align: "right",  mono: true,            format: "usd"    },
     ];
 
     // Build x positions
