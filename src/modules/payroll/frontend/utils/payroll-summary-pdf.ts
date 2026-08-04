@@ -107,7 +107,6 @@ export async function generatePayrollSummaryPdf(
     rect(doc, ML, y, W, kpiH, COLORS.border, 0.2);
 
     const kpis: [string, string][] = [
-        ["BCV",          `${formatN(opts.bcvRate, 4)} / USD`],
         ["Empleados",    String(rows.length)],
         ["Total Neto",   formatPayrollAmount(totals.net)],
         ["Total Neto ref.", formatN(totals.netUSD)],
@@ -133,7 +132,6 @@ export async function generatePayrollSummaryPdf(
         { key: "totalBonuses",    title: "Bonos",      width: 22, align: "right",  mono: true,            format: "ves"    },
         { key: "totalDeductions", title: "Deducc.",    width: 22, align: "right",  mono: true,            format: "ves"    },
         { key: "net",             title: "Neto Bs.",   width: 28, align: "right",  mono: true, bold: true, format: "ves"    },
-        { key: "netUSD",          title: "Neto",     width: 17, align: "right",  mono: true,            format: "usd"    },
     ];
 
     // Build x positions

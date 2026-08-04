@@ -270,13 +270,6 @@ export async function generateVacComplletasPdf(data: VacCompletasPdfData): Promi
     y = drawConceptTable(doc, ML, W, y, completasRows, "Total a recibir",
         data.diasDisfrute + data.diasDescanso + data.diasBono, data.total);
 
-    // ── USD equivalent + BCV rate (only when a rate is available) ──
-    if (data.bcvRate && data.bcvRate > 0) {
-        renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
-        renderMono(doc, formatPayrollAmount(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
-        y += 6;
-    }
-
     y = drawSignatures(doc, ML, W, y);
 
     drawLegal(doc, ML, W, y,
@@ -364,13 +357,6 @@ export async function generateVacFraccionadasPdf(data: VacFraccionadasPdfData): 
     });
     y = drawConceptTable(doc, ML, W, y, fraccRows, "Total Fraccionado",
         data.fraccionDisfrute + data.diasDescanso + data.fraccionBono, data.total);
-
-    // ── USD equivalent + BCV rate (only when a rate is available) ──
-    if (data.bcvRate && data.bcvRate > 0) {
-        renderMono(doc, `Tasa BCV: ${formatN(data.bcvRate, 4)}`, ML + 3, y, 8, false, COLORS.muted, "left");
-        renderMono(doc, formatPayrollAmount(data.total / data.bcvRate), ML + W - 3, y, 10, true, COLORS.inkMed, "right");
-        y += 6;
-    }
 
     // Salary recap
     fill(doc, ML, y, W, 12, COLORS.rowAlt);

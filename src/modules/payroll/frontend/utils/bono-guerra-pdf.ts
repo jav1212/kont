@@ -118,21 +118,10 @@ function drawParamsCard(
     renderLabel(doc, label1, cx1, y + 5, "left", COLORS.muted, 7);
     renderMono(doc, fmtUSD(montoUSD), cx1, y + 11, 10, true, COLORS.ink, "left");
 
-    renderLabel(doc, "Tasa BCV", cx2, y + 5, "left", COLORS.muted, 7);
-    renderMono(doc, `Bs. ${formatN(bcvRate, 4)} / USD`, cx2, y + 11, 10, true, COLORS.inkMed, "left");
-
     renderLabel(doc, "Equiv. por empleado", cx3, y + 5, "right", COLORS.muted, 7);
     renderMono(doc, formatPayrollAmount(montoVES), cx3, y + 11, 10, true, COLORS.ink, "right");
 
     let nextY = y + H + 5;
-    if (heterogeneous) {
-        renderLabel(
-            doc,
-            `Montos personalizados: ${customCount} · rango ${fmtUSD(minUsd)} – ${fmtUSD(maxUsd)}`,
-            x, nextY - 1, "left", COLORS.muted, 7.2,
-        );
-        nextY += 3.5;
-    }
     return nextY;
 }
 
@@ -181,8 +170,8 @@ async function generateGeneralPdf(
             { x: ML,                                        w: colN,    text: "N°",         align: "center" },
             { x: ML + colN,                                 w: colName, text: "Nombre",     align: "left"   },
             { x: ML + colN + colName,                       w: colCed,  text: "Cédula",     align: "left"   },
-            { x: ML + colN + colName + colCed,              w: colUSD,  text: "Monto USD",  align: "right"  },
-            { x: ML + colN + colName + colCed + colUSD,     w: colVES,  text: "Equiv. VES", align: "right"  },
+            { x: ML + colN + colName + colCed,              w: colUSD,  text: "Monto a pagar", align: "right"  },
+            { x: ML + colN + colName + colCed + colUSD,     w: colVES,  text: "Monto a pagar", align: "right"  },
         ]);
         return yy + 6;
     };
@@ -202,8 +191,8 @@ async function generateGeneralPdf(
             { x: ML,                                       w: colN,    text: String(i + 1),       align: "center", size: 8.5, mono: true,            color: COLORS.muted },
             { x: ML + colN,                                w: colName, text: emp.nombre,          align: "left",   size: 8.5,                       color: COLORS.ink },
             { x: ML + colN + colName,                      w: colCed,  text: emp.cedula,          align: "left",   size: 8.5, mono: true,            color: COLORS.muted },
-            { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(empMonto),    align: "right",  size: 9,   mono: true, bold: true, color: COLORS.ink },
-            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatPayrollAmount(empMontoVes), align: "right", size: 9,  mono: true, bold: true, color: COLORS.ink },
+            { x: ML + colN + colName + colCed,             w: colUSD,  text: fmtUSD(empMonto), align: "right", size: 9, mono: true, bold: true, color: COLORS.ink },
+            { x: ML + colN + colName + colCed + colUSD,    w: colVES,  text: formatPayrollAmount(empMontoVes), align: "right", size: 9, mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += ROW_H;
     });
@@ -214,7 +203,6 @@ async function generateGeneralPdf(
         doc.addPage();
         y = repaintPageHeader(doc, pageHeader);
     }
-
     const totalUSD = montosUsd.reduce((s, n) => s + n, 0);
     const totalVES = montosVes.reduce((s, n) => s + n, 0);
 
@@ -223,7 +211,7 @@ async function generateGeneralPdf(
     fill(doc, ML, y, W, 12, COLORS.bandHead);
     rect(doc, ML, y, W, 12, COLORS.border, 0.2);
     renderLabel(doc, `Total · ${active.length} empleado${active.length !== 1 ? "s" : ""}`, ML + 3, y + 7.8, "left", COLORS.inkMed, 9);
-    renderMono(doc, fmtUSD(totalUSD),  ML + colN + colName + colCed + colUSD - 1, y + 7.8, 10, true, COLORS.ink, "right");
+    renderMono(doc, fmtUSD(totalUSD), ML + colN + colName + colCed + colUSD - 1, y + 7.8, 10, true, COLORS.ink, "right");
     renderMono(doc, formatPayrollAmount(totalVES), ML + W - 3, y + 8.2, 10.5, true, COLORS.ink, "right");
     y += 12 + 8;
 
@@ -257,8 +245,6 @@ async function generateGeneralPdf(
 
         const empMonto    = montosUsd[i];
         const empMontoVes = montosVes[i];
-
-        renderMono(doc, fmtUSD(empMonto), sx + SIG_W - PD, y + 6, 8.5, true, COLORS.ink, "right");
         renderText(doc, emp.nombre, sx + PD, y + 10.5, 9, true, COLORS.ink, "left", SIG_W - PD * 2, "helvetica");
         renderMono(doc, emp.cedula, sx + PD, y + 14.5, 7.8, false, COLORS.muted, "left");
         renderMono(doc, formatPayrollAmount(empMontoVes), sx + PD, y + 18.5, 7.8, false, COLORS.muted, "left");
@@ -412,9 +398,6 @@ function drawReceiptInRegion(
 
         renderLabel(doc, "Cédula", colCed, y + 3, "left", COLORS.muted, 6);
         renderMono(doc, emp.cedula, colCed, y + 7, 9, true, COLORS.ink, "left");
-
-        renderLabel(doc, "Tasa BCV", colBcv, y + 3, "right", COLORS.muted, 6);
-        renderMono(doc, `Bs. ${formatN(opts.bcvRate, 4)} / USD`, colBcv, y + 7, 8.5, true, COLORS.inkMed, "right");
     } else {
         renderLabel(doc, "Trabajador", colId, y + 4, "left", COLORS.muted, 7);
         renderText(doc, emp.nombre.toUpperCase(), colId, y + 9, 10.5, true, COLORS.ink, "left", contentW * 0.42);
@@ -422,9 +405,6 @@ function drawReceiptInRegion(
 
         renderLabel(doc, "Cédula", colCed, y + 4, "left", COLORS.muted, 7);
         renderMono(doc, emp.cedula, colCed, y + 9, 10.5, true, COLORS.ink, "left");
-
-        renderLabel(doc, "Tasa BCV", colBcv, y + 4, "right", COLORS.muted, 7);
-        renderMono(doc, `Bs. ${formatN(opts.bcvRate, 4)} / USD`, colBcv, y + 9, 10, true, COLORS.inkMed, "right");
     }
 
     y += idH + (isCompact ? 2 : 6);
@@ -439,10 +419,7 @@ function drawReceiptInRegion(
         renderLabel(doc, "Concepto", xL + 3, y + 4, "left", COLORS.muted, 6.5);
         renderText(doc, "Bono Socio Económico de Ayuda Alimenticia", xL + 3, y + 8.5, 9.5, true, COLORS.ink, "left", contentW * 0.55);
 
-        renderLabel(doc, "Monto USD", xR - 3, y + 4, "right", COLORS.muted, 6.5);
-        renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 9.5, 12.5, true, COLORS.ink, "right");
-
-        renderLabel(doc, "Equivalente VES", xL + 3, y + 14, "left", COLORS.muted, 6.5);
+        renderLabel(doc, "Monto a pagar", xL + 3, y + 14, "left", COLORS.muted, 6.5);
         renderMono(doc, formatPayrollAmount(empMontoVes), xR - 3, y + 18, 11, true, COLORS.ink, "right");
 
         rect(doc, xL + 3, y + conceptH - 4.5, 2, 2, COLORS.borderStr, 0.3);
@@ -451,10 +428,7 @@ function drawReceiptInRegion(
         renderLabel(doc, "Concepto", xL + 3, y + 5, "left", COLORS.muted, 7);
         renderText(doc, "Bono Socio Económico de Ayuda Alimenticia", xL + 3, y + 10, 11, true, COLORS.ink, "left", contentW * 0.55);
 
-        renderLabel(doc, "Monto USD", xR - 3, y + 5, "right", COLORS.muted, 7);
-        renderMono(doc, fmtUSD(empMontoUsd), xR - 3, y + 11, 14, true, COLORS.ink, "right");
-
-        renderLabel(doc, "Equivalente VES", xL + 3, y + 17, "left", COLORS.muted, 7);
+        renderLabel(doc, "Monto a pagar", xL + 3, y + 17, "left", COLORS.muted, 7);
         renderMono(doc, formatPayrollAmount(empMontoVes), xR - 3, y + 22, 13, true, COLORS.ink, "right");
     }
 
