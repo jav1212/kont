@@ -3,9 +3,14 @@
 // Consumed directly by API routes under app/api/compras/*.
 import { ServerSupabaseSource }              from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcSupplierRepository }             from './repository/rpc-supplier.repository';
+import { SharedSupplierRepository }          from './repository/shared-supplier.repository';
 import { RpcPurchaseInvoiceRepository }      from './repository/rpc-purchase-invoice.repository';
+import { SharedPurchaseInvoiceRepository }   from './repository/shared-purchase-invoice.repository';
 import { RpcIvaRetentionExportRepository }   from './repository/rpc-iva-retention-export.repository';
 import { RpcIslrRetentionsExportRepository } from './repository/rpc-islr-retentions-export.repository';
+import { SharedIvaRetentionExportRepository } from './repository/shared-iva-retention-export.repository';
+import { SharedIslrRetentionsExportRepository } from './repository/shared-islr-retentions-export.repository';
+import { isSharedSchemaPilotEnabled }       from '@/src/shared/backend/config/shared-schema-pilot';
 
 import { ListSuppliersUseCase }            from '../app/list-suppliers.use-case';
 import { SaveSupplierUseCase }             from '../app/save-supplier.use-case';
@@ -23,10 +28,19 @@ import { GetIslrRetentionsExportUseCase }  from '../app/get-islr-retentions-expo
 
 export function getPurchasesActions(userId: string) {
     const source                  = new ServerSupabaseSource();
-    const supplierRepo            = new RpcSupplierRepository(source, userId);
-    const invoiceRepo             = new RpcPurchaseInvoiceRepository(source, userId);
-    const ivaRetentionExportRepo  = new RpcIvaRetentionExportRepository(source, userId);
-    const islrRetentionsExportRepo = new RpcIslrRetentionsExportRepository(source, userId);
+    const sharedPurchases = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_PURCHASES_ENABLED, userId);
+    const supplierRepo = sharedPurchases
+        ? new SharedSupplierRepository(source, userId)
+        : new RpcSupplierRepository(source, userId);
+    const invoiceRepo = sharedPurchases
+        ? new SharedPurchaseInvoiceRepository(source, userId)
+        : new RpcPurchaseInvoiceRepository(source, userId);
+    const ivaRetentionExportRepo = sharedPurchases
+        ? new SharedIvaRetentionExportRepository(source, userId)
+        : new RpcIvaRetentionExportRepository(source, userId);
+    const islrRetentionsExportRepo = sharedPurchases
+        ? new SharedIslrRetentionsExportRepository(source, userId)
+        : new RpcIslrRetentionsExportRepository(source, userId);
 
     return {
         // Suppliers

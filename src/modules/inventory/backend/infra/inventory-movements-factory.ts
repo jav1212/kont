@@ -3,8 +3,11 @@
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.
 import { ServerSupabaseSource }            from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcMovementRepository }           from './repository/rpc-movement.repository';
+import { SharedMovementRepository }        from './repository/shared-movement.repository';
 import { RpcMovementDraftRepository }      from './repository/rpc-movement-draft.repository';
 import { RpcProductRepository }            from './repository/rpc-product.repository';
+import { SharedProductRepository }         from './repository/shared-product.repository';
+import { isSharedSchemaPilotEnabled }     from '@/src/shared/backend/config/shared-schema-pilot';
 import { ListMovementsUseCase }            from '../app/list-movements.use-case';
 import { SaveMovementUseCase }             from '../app/save-movement.use-case';
 import { DeleteMovementUseCase }           from '../app/delete-movement.use-case';
@@ -18,9 +21,14 @@ import { DiscardMovementDraftUseCase }     from '../app/discard-movement-draft.u
 
 export function getInventoryMovementsActions(userId: string) {
     const source             = new ServerSupabaseSource();
-    const movementRepo       = new RpcMovementRepository(source, userId);
+    const sharedInventory = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_INVENTORY_ENABLED, userId);
+    const movementRepo = sharedInventory
+        ? new SharedMovementRepository(source, userId)
+        : new RpcMovementRepository(source, userId);
     const movementDraftRepo  = new RpcMovementDraftRepository(source, userId);
-    const productRepo        = new RpcProductRepository(source, userId);
+    const productRepo        = sharedInventory
+        ? new SharedProductRepository(source, userId)
+        : new RpcProductRepository(source, userId);
 
     return {
         listMovements:       new ListMovementsUseCase(movementRepo),

@@ -1,0 +1,22 @@
+import { SupabaseClient } from '@supabase/supabase-js';
+import { IBonificacionesRunRepository, SaveBonificacionesRunInput, UnconfirmedRun } from '../../domain/repository/bonificaciones-run.repository';
+import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
+import { Result } from '@/src/core/domain/result';
+import { BonificacionesRun } from '../../domain/bonificaciones-run';
+import { BonificacionesReceipt, BonificacionesBonusLineSnapshot } from '../../domain/bonificaciones-receipt';
+import { normalizePayrollInputCurrency } from '../../../shared/reference-currency';
+
+interface RawRun { id:string; company_id:string; period_start:string; period_end:string; exchange_rate:number; total_ves:number; employee_count:number; line_count:number; status:string; confirmed_at:string; created_at:string; }
+interface RawReceipt { id:string; run_id:string; company_id:string; employee_id:string; employee_cedula:string; employee_nombre:string; employee_cargo:string; total_ves:number; bonus_lines:unknown; created_at:string; }
+
+function normalizeBonusLines(raw:unknown):BonificacionesBonusLineSnapshot[]{if(!Array.isArray(raw))return[];return raw.map(line=>{const o=line as Record<string,unknown>;return{label:String(o.label??''),currency:normalizePayrollInputCurrency(String(o.currency??'USD').toUpperCase()),amount:Number(o.amount??0),amountVes:Number(o.amountVes??o.amount_ves??0)};});}
+
+export class SharedBonificacionesRunRepository implements IBonificacionesRunRepository {
+    constructor(private readonly source:ISource<SupabaseClient>,private readonly tenantId:string){}
+    async save(input:SaveBonificacionesRunInput):Promise<Result<string>>{try{const{data,error}=await this.source.instance.rpc('shared_payroll_bonifications_run_save',{p_tenant_id:this.tenantId,p_run:{company_id:input.run.companyId,period_start:input.run.periodStart,period_end:input.run.periodEnd,exchange_rate:input.run.exchangeRate,total_ves:input.run.totalVes,employee_count:input.run.employeeCount,line_count:input.run.lineCount},p_receipts:input.receipts.map(r=>({employee_id:r.employeeId,employee_cedula:r.employeeCedula,employee_nombre:r.employeeNombre,employee_cargo:r.employeeCargo,total_ves:r.totalVes,bonus_lines:r.bonusLines})),p_status:input.run.status??'confirmed'});if(error)return Result.fail(error.message);return Result.success(data as string);}catch(err){return Result.fail(err instanceof Error?err.message:'Error al guardar bonificaciones');}}
+    async findByCompany(companyId:string):Promise<Result<BonificacionesRun[]>>{try{const{data,error}=await this.source.instance.rpc('shared_payroll_bonifications_runs_by_company',{p_tenant_id:this.tenantId,p_company_id:companyId});if(error)return Result.fail(error.message);return Result.success(((data as RawRun[])??[]).map(r=>this.mapRun(r)));}catch(err){return Result.fail(err instanceof Error?err.message:'Error al cargar historial de bonificaciones');}}
+    async findReceiptsByRun(runId:string):Promise<Result<BonificacionesReceipt[]>>{try{const{data,error}=await this.source.instance.rpc('shared_payroll_bonifications_receipts_by_run',{p_tenant_id:this.tenantId,p_run_id:runId});if(error)return Result.fail(error.message);return Result.success(((data as RawReceipt[])??[]).map(r=>this.mapReceipt(r)));}catch(err){return Result.fail(err instanceof Error?err.message:'Error al cargar recibos de bonificaciones');}}
+    async unconfirm(runId:string):Promise<Result<UnconfirmedRun>>{try{const{data,error}=await this.source.instance.rpc('shared_payroll_bonifications_run_unconfirm',{p_tenant_id:this.tenantId,p_run_id:runId});if(error)return Result.fail(error.message);const r=data as{id:string;company_id:string};return Result.success({id:r.id,companyId:r.company_id});}catch(err){return Result.fail(err instanceof Error?err.message:'Error al revertir bonificaciones');}}
+    private mapRun(r:RawRun):BonificacionesRun{return{id:r.id,companyId:r.company_id,periodStart:r.period_start,periodEnd:r.period_end,exchangeRate:Number(r.exchange_rate),totalVes:Number(r.total_ves),employeeCount:Number(r.employee_count),lineCount:Number(r.line_count),status:r.status,confirmedAt:r.confirmed_at,createdAt:r.created_at};}
+    private mapReceipt(r:RawReceipt):BonificacionesReceipt{return{id:r.id,runId:r.run_id,companyId:r.company_id,employeeId:r.employee_id,employeeCedula:r.employee_cedula,employeeNombre:r.employee_nombre,employeeCargo:r.employee_cargo,totalVes:Number(r.total_ves),bonusLines:normalizeBonusLines(r.bonus_lines),createdAt:r.created_at};}
+}

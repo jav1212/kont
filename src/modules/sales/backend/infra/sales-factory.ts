@@ -3,8 +3,12 @@
 // Consumed directly by API routes under app/api/sales/*.
 import { ServerSupabaseSource }       from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcCustomerRepository }      from './repository/rpc-customer.repository';
+import { SharedCustomerRepository }   from './repository/shared-customer.repository';
 import { RpcSalesInvoiceRepository }  from './repository/rpc-sales-invoice.repository';
+import { SharedSalesInvoiceRepository } from './repository/shared-sales-invoice.repository';
 import { RpcIgtfFortnightlyRepository }  from './repository/rpc-igtf-fortnightly.repository';
+import { SharedIgtfFortnightlyRepository } from './repository/shared-igtf-fortnightly.repository';
+import { isSharedSchemaPilotEnabled } from '@/src/shared/backend/config/shared-schema-pilot';
 
 import { ListCustomersUseCase }       from '../app/list-customers.use-case';
 import { SaveCustomerUseCase }        from '../app/save-customer.use-case';
@@ -19,9 +23,16 @@ import { GetIgtfFortnightlyReportUseCase } from '../app/get-igtf-fortnightly-rep
 
 export function getSalesActions(userId: string) {
     const source            = new ServerSupabaseSource();
-    const customerRepo      = new RpcCustomerRepository(source, userId);
-    const invoiceRepo       = new RpcSalesInvoiceRepository(source, userId);
-    const igtfFortnightlyRepo  = new RpcIgtfFortnightlyRepository(source, userId);
+    const sharedSalesCustomers = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_CUSTOMERS_ENABLED, userId);
+    const customerRepo = sharedSalesCustomers
+        ? new SharedCustomerRepository(source, userId)
+        : new RpcCustomerRepository(source, userId);
+    const invoiceRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_ENABLED, userId)
+        ? new SharedSalesInvoiceRepository(source, userId)
+        : new RpcSalesInvoiceRepository(source, userId);
+    const igtfFortnightlyRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_ENABLED, userId)
+        ? new SharedIgtfFortnightlyRepository(source, userId)
+        : new RpcIgtfFortnightlyRepository(source, userId);
 
     return {
         listCustomers:           new ListCustomersUseCase(customerRepo),
