@@ -199,7 +199,7 @@ function drawSection(
     lines.forEach((line, i) => {
         drawRow(doc, y, d.rowH, [
             { x: x,                           w: colConcept, text: line.label,             align: "left",  size: d.fontConcept, color: COLORS.inkMed },
-            { x: x + colConcept,              w: colFormula, text: line.formula,           align: "left",  size: d.fontFormula, mono: true, color: COLORS.muted },
+            { x: x + colConcept,              w: colFormula, text: line.formula.replace(/\bUSD\b/g, "").replace(/\s{2,}/g, " ").trim(), align: "left",  size: d.fontFormula, mono: true, color: COLORS.muted },
             { x: x + colConcept + colFormula, w: colAmount,  text: formatPayrollAmount(line.amount), align: "right", size: d.fontAmount,  mono: true, bold: true, color: COLORS.ink },
         ], { zebra: i % 2 === 1 });
         y += d.rowH;
