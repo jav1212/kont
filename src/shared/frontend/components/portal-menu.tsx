@@ -13,7 +13,7 @@
 // fixed coords before paint. The menu closes on outside click, scroll, resize
 // or Escape to avoid a stale position.
 
-import { useCallback, useEffect, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 interface PortalMenuProps {
@@ -25,6 +25,8 @@ interface PortalMenuProps {
     align?: "left" | "right";
     /** Gap in px between the trigger and the panel. Default 6. */
     gap?: number;
+    /** Vertical side where the panel opens. Default "bottom". */
+    side?: "top" | "bottom";
     children: ReactNode;
     /** Extra classes for the panel container. */
     className?: string;
@@ -36,16 +38,26 @@ export function PortalMenu({
     anchorRef,
     align = "right",
     gap = 6,
+    side = "bottom",
     children,
     className = "",
 }: PortalMenuProps) {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+
     // Position the panel relative to the trigger the moment it mounts.
     const positionPanel = useCallback((node: HTMLDivElement | null) => {
+        panelRef.current = node;
         if (!node) return;
         const el = anchorRef.current;
         if (!el) return;
         const r = el.getBoundingClientRect();
-        node.style.top = `${r.bottom + gap}px`;
+        if (side === "top") {
+            node.style.bottom = `${window.innerHeight - r.top + gap}px`;
+            node.style.top = "auto";
+        } else {
+            node.style.top = `${r.bottom + gap}px`;
+            node.style.bottom = "auto";
+        }
         if (align === "right") {
             node.style.right = `${window.innerWidth - r.right}px`;
             node.style.left = "auto";
@@ -53,18 +65,23 @@ export function PortalMenu({
             node.style.left = `${r.left}px`;
             node.style.right = "auto";
         }
-    }, [anchorRef, align, gap]);
+    }, [anchorRef, align, gap, side]);
 
     // Close on scroll / resize / Escape — keeps the panel from drifting.
     useEffect(() => {
         if (!open) return;
+        const closeOnExternalScroll = (event: Event) => {
+            const target = event.target;
+            if (target instanceof Node && panelRef.current?.contains(target)) return;
+            onClose();
+        };
         const close = () => onClose();
         const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-        window.addEventListener("scroll", close, true);
+        window.addEventListener("scroll", closeOnExternalScroll, true);
         window.addEventListener("resize", close);
         window.addEventListener("keydown", onKey);
         return () => {
-            window.removeEventListener("scroll", close, true);
+            window.removeEventListener("scroll", closeOnExternalScroll, true);
             window.removeEventListener("resize", close);
             window.removeEventListener("keydown", onKey);
         };

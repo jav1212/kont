@@ -6,9 +6,9 @@
 // Avatar uses a primary-tinted tile (primary-500/10 bg + primary-500/20 border)
 // with the module's glyph inside. Click → floating listbox menu.
 
-import { useEffect, useRef, useState } from "react";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useRef, useState } from "react";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
+import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
 // ── Module icons ───────────────────────────────────────────────────────────────
 // Rendered at two sizes: 13px inside the dropdown rows, 16px inside the avatar tile.
@@ -99,7 +99,7 @@ function renderModuleIcon(id: string, size: number) {
 }
 
 const CheckIcon = () => (
-    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 10 10"
+    <svg className="ml-auto shrink-0" width="14" height="14" viewBox="0 0 10 10"
         fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M2 5.5l2.5 2.5 4-5" />
     </svg>
@@ -112,7 +112,6 @@ export type SelectableModule = { id: string; label: string; href: string };
 interface SidebarModuleSelectorProps {
     modules: SelectableModule[];
     activeModuleId: string | null;
-    isCollapsed: boolean;
     onSelect: (id: string, href: string) => void;
     /** Optional meta line rendered under the module name (e.g. "Quincena 2 · Abril 2026"). */
     subtitle?: string | null;
@@ -123,99 +122,29 @@ interface SidebarModuleSelectorProps {
 export function SidebarModuleSelector({
     modules,
     activeModuleId,
-    isCollapsed,
     onSelect,
     subtitle,
 }: SidebarModuleSelectorProps) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
     const ref = useRef<HTMLDivElement>(null);
 
     const activeModule = modules.find((m) => m.id === activeModuleId) ?? null;
 
-    // Outside click
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        }
-        document.addEventListener("mousedown", handle);
-        return () => document.removeEventListener("mousedown", handle);
-    }, [open]);
-
-    // Escape
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: KeyboardEvent) {
-            if (e.key === "Escape") setOpen(false);
-        }
-        document.addEventListener("keydown", handle);
-        return () => document.removeEventListener("keydown", handle);
-    }, [open]);
-
     function handleSelect(id: string, href: string) {
         onSelect(id, href);
         setOpen(false);
+        setSearch("");
     }
 
-    const dropdownClass = isCollapsed
-        ? "absolute left-full top-0 ml-2 w-60 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
-        : "absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden";
-
-    // ── Collapsed: icon-only trigger ──────────────────────────────────────────
-
-    if (isCollapsed) {
-        const ICON_BTN      = "flex items-center justify-center w-9 h-9 rounded-md border border-primary-500/20 bg-primary-500/10 text-primary-500 transition-colors duration-150 hover:bg-primary-500/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-        const ICON_BTN_OPEN = "bg-primary-500/20";
-
-        return (
-            <div className="relative" ref={ref}>
-                <button
-                    onClick={() => setOpen((v) => !v)}
-                    aria-expanded={open}
-                    aria-haspopup="listbox"
-                    aria-label={`Módulo: ${activeModule?.label ?? "Ninguno"}. Cambiar módulo`}
-                    className={[ICON_BTN, open ? ICON_BTN_OPEN : ""].join(" ")}
-                >
-                    {activeModuleId && renderModuleIcon(activeModuleId, 16)}
-                </button>
-
-                {open && (
-                    <ul role="listbox" aria-label="Módulos disponibles" className={dropdownClass}>
-                        <li className="px-3 py-2 border-b border-sidebar-border">
-                            <p className={`font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                                Módulo
-                            </p>
-                        </li>
-                        {modules.map((mod) => {
-                            const isSelected = mod.id === activeModuleId;
-                            return (
-                                <li key={mod.id} role="option" aria-selected={isSelected}>
-                                    <button
-                                        onClick={() => handleSelect(mod.id, mod.href)}
-                                        className={[
-                                            `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                            isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                        ].join(" ")}
-                                    >
-                                        <span className={[
-                                            "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
-                                            isSelected ? "bg-primary-500/15 text-primary-500" : "bg-sidebar-bg-hover text-sidebar-fg",
-                                        ].join(" ")}>
-                                            {renderModuleIcon(mod.id, 13)}
-                                        </span>
-                                        <span className="truncate flex-1">{mod.label}</span>
-                                        {isSelected && <CheckIcon />}
-                                    </button>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                )}
-            </div>
-        );
+    function closeMenu() {
+        setOpen(false);
+        setSearch("");
     }
 
-    // ── Expanded: card trigger ────────────────────────────────────────────────
+    const filteredModules = modules.filter((mod) =>
+        mod.label.toLowerCase().includes(search.trim().toLowerCase()),
+    );
 
     return (
         <div className="relative" ref={ref}>
@@ -242,7 +171,7 @@ export function SidebarModuleSelector({
 
                 {/* Name + subtitle */}
                 <span className="flex-1 min-w-0 flex flex-col">
-                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate leading-tight">
+                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate leading-tight">
                         {activeModule?.label ?? "Seleccionar módulo"}
                     </span>
                     {subtitle && (
@@ -255,33 +184,57 @@ export function SidebarModuleSelector({
                 <ChevronIcon open={open} />
             </button>
 
-            {open && (
-                <ul role="listbox" aria-label="Módulos disponibles" className={dropdownClass}>
-                    {modules.map((mod) => {
-                        const isSelected = mod.id === activeModuleId;
-                        return (
-                            <li key={mod.id} role="option" aria-selected={isSelected}>
-                                <button
-                                    onClick={() => handleSelect(mod.id, mod.href)}
-                                    className={[
-                                        `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                        isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                    ].join(" ")}
-                                >
-                                    <span className={[
-                                        "flex items-center justify-center w-6 h-6 rounded-md shrink-0",
-                                        isSelected ? "bg-primary-500/15 text-primary-500" : "bg-sidebar-bg-hover text-sidebar-fg",
-                                    ].join(" ")}>
-                                        {renderModuleIcon(mod.id, 13)}
-                                    </span>
-                                    <span className="truncate flex-1">{mod.label}</span>
-                                    {isSelected && <CheckIcon />}
-                                </button>
+            <PortalMenu
+                open={open}
+                onClose={closeMenu}
+                anchorRef={ref}
+                align="left"
+                className="!p-0 w-[min(388px,calc(100vw-16px))] overflow-hidden !border-sidebar-border !bg-sidebar-bg"
+            >
+                    <div className="h-12 px-3 flex items-center gap-2 border-b border-sidebar-border">
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Buscar módulo…"
+                            autoFocus
+                            className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-[14px] text-sidebar-fg-hover placeholder:text-sidebar-label outline-none ring-0 focus:outline-none focus:ring-0"
+                        />
+                        <kbd className="shrink-0 rounded-md border border-sidebar-border bg-sidebar-bg-hover/50 px-1.5 py-0.5 font-sans text-[11px] text-sidebar-label">
+                            Esc
+                        </kbd>
+                    </div>
+                    <ul role="listbox" aria-label="Módulos disponibles" className="max-h-80 overflow-y-auto p-1.5">
+                        {filteredModules.map((mod) => {
+                            const isSelected = mod.id === activeModuleId;
+                            return (
+                                <li key={mod.id} role="option" aria-selected={isSelected}>
+                                    <button
+                                        onClick={() => handleSelect(mod.id, mod.href)}
+                                        className={[
+                                            "w-full flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors duration-100 font-sans text-[14px] font-semibold text-left",
+                                            isSelected ? "text-sidebar-fg-hover bg-sidebar-bg-hover" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
+                                        ].join(" ")}
+                                    >
+                                        <span className={[
+                                            "flex items-center justify-center w-5 h-5 shrink-0",
+                                            isSelected ? "text-primary-500" : "text-sidebar-label",
+                                        ].join(" ")}>
+                                            {renderModuleIcon(mod.id, 16)}
+                                        </span>
+                                        <span className="truncate flex-1">{mod.label}</span>
+                                        {isSelected && <CheckIcon />}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                        {filteredModules.length === 0 && (
+                            <li className="px-3 py-8 text-center font-sans text-[14px] text-sidebar-label">
+                                No se encontraron módulos
                             </li>
-                        );
-                    })}
-                </ul>
-            )}
+                        )}
+                    </ul>
+            </PortalMenu>
         </div>
     );
 }

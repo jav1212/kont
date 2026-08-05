@@ -8,10 +8,11 @@
 // floating listbox menu with search.
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
-import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
 // ── Local sub-components ──────────────────────────────────────────────────────
 
@@ -90,8 +91,8 @@ interface SidebarCompanySelectorProps {
     companies: CompanyEntry[];
     selectedId: string | null;
     loading: boolean;
-    isCollapsed: boolean;
     onSelect: (id: string) => void;
+    companiesHref: string;
 }
 
 // ── Subtitle helper ───────────────────────────────────────────────────────────
@@ -112,38 +113,16 @@ export function SidebarCompanySelector({
     companies,
     selectedId,
     loading,
-    isCollapsed,
     onSelect,
+    companiesHref,
 }: SidebarCompanySelectorProps) {
     const [open,   setOpen]   = useState(false);
     const [search, setSearch] = useState("");
     const ref = useRef<HTMLDivElement>(null);
+    const router = useRouter();
 
     const selected = companies.find((c) => c.id === selectedId) ?? companies[0] ?? null;
     const subtitle = buildCompanySubtitle(selected);
-
-    // Outside click
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-                setSearch("");
-            }
-        }
-        document.addEventListener("mousedown", handle);
-        return () => document.removeEventListener("mousedown", handle);
-    }, [open]);
-
-    // Escape
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: KeyboardEvent) {
-            if (e.key === "Escape") { setOpen(false); setSearch(""); }
-        }
-        document.addEventListener("keydown", handle);
-        return () => document.removeEventListener("keydown", handle);
-    }, [open]);
 
     function handleSelect(id: string) {
         onSelect(id);
@@ -151,84 +130,22 @@ export function SidebarCompanySelector({
         setSearch("");
     }
 
-    const dropdownClass = isCollapsed
-        ? "absolute left-full top-0 ml-2 w-60 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden"
-        : "absolute left-0 right-0 top-full mt-1 rounded-lg z-50 shadow-lg bg-sidebar-bg border border-sidebar-border overflow-hidden";
-
-    const filtered = companies.filter((c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()),
-    );
-
-    // ── Collapsed: avatar-only trigger ────────────────────────────────────────
-
-    if (isCollapsed) {
-        const ICON_BTN      = "flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-150 hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border";
-        const ICON_BTN_OPEN = "bg-sidebar-bg-hover";
-
-        return (
-            <div className="relative" ref={ref}>
-                <button
-                    onClick={() => setOpen((v) => !v)}
-                    aria-expanded={open}
-                    aria-haspopup="listbox"
-                    aria-label={`Empresa: ${selected?.name ?? "Ninguna"}. Cambiar empresa`}
-                    className={[ICON_BTN, open ? ICON_BTN_OPEN : ""].join(" ")}
-                >
-                    <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
-                </button>
-
-                {open && (
-                    <div className={dropdownClass}>
-                        <div className="px-3 py-2 border-b border-sidebar-border">
-                            <p className={`font-mono ${APP_SIZES.nav.sectionLabel} uppercase text-sidebar-label`}>
-                                Empresa
-                            </p>
-                        </div>
-                        <div className="p-2 border-b border-sidebar-border">
-                            <BaseInput.Field
-                                type="search"
-                                value={search}
-                                onValueChange={setSearch}
-                                placeholder="Buscar empresa…"
-                                autoFocus
-                                className="w-full"
-                            />
-                        </div>
-                        <ul role="listbox" aria-label="Empresas disponibles" className="max-h-56 overflow-y-auto">
-                            {filtered.map((c) => {
-                                const isSelected = c.id === selectedId;
-                                const rowSub = buildCompanySubtitle(c);
-                                return (
-                                    <li key={c.id} role="option" aria-selected={isSelected}>
-                                        <button
-                                            onClick={() => handleSelect(c.id)}
-                                            className={[
-                                                `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                                isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
-                                            ].join(" ")}
-                                        >
-                                            <CompanyRowAvatar name={c.name} logoUrl={c.logoUrl} />
-                                            <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                                                <span className="truncate">{c.name}</span>
-                                                {rowSub && (
-                                                    <span className="text-[10px] text-sidebar-label truncate mt-0.5">
-                                                        {rowSub}
-                                                    </span>
-                                                )}
-                                            </span>
-                                            {isSelected && <CheckIcon />}
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                )}
-            </div>
-        );
+    function closeMenu() {
+        setOpen(false);
+        setSearch("");
     }
 
-    // ── Expanded: card trigger ────────────────────────────────────────────────
+    function goToCompanies() {
+        closeMenu();
+        router.push(companiesHref);
+    }
+
+    const normalizedSearch = search.trim().toLowerCase();
+    const filtered = companies.filter((c) =>
+        c.name.toLowerCase().includes(normalizedSearch)
+        || c.id.toLowerCase().includes(normalizedSearch)
+        || c.rif?.toLowerCase().includes(normalizedSearch),
+    );
 
     if (loading) {
         return (
@@ -244,39 +161,10 @@ export function SidebarCompanySelector({
         );
     }
 
-    if (companies.length === 0) {
-        return (
-            <div className="p-2 rounded-lg border border-sidebar-border bg-sidebar-bg-hover/60">
-                <p className={`font-mono ${APP_SIZES.nav.companyName} text-sidebar-label`}>
-                    Sin empresas
-                </p>
-            </div>
-        );
-    }
-
     const triggerCommon = [
         "w-full flex items-center gap-2.5 p-2 rounded-lg border transition-colors duration-150 text-left",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border",
     ].join(" ");
-
-    // Single-company variant: same card shape, non-interactive.
-    if (companies.length === 1) {
-        return (
-            <div className={[triggerCommon, "bg-sidebar-bg-hover/60 border-sidebar-border cursor-default"].join(" ")}>
-                <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
-                <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate">
-                        {selected?.name}
-                    </span>
-                    {subtitle && (
-                        <span className="font-mono text-[10px] tracking-[0.02em] text-sidebar-label truncate mt-0.5">
-                            {subtitle}
-                        </span>
-                    )}
-                </span>
-            </div>
-        );
-    }
 
     return (
         <div className="relative" ref={ref}>
@@ -294,7 +182,7 @@ export function SidebarCompanySelector({
             >
                 <CompanyCardAvatar name={selected?.name} logoUrl={selected?.logoUrl} />
                 <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-mono text-[13px] font-semibold text-sidebar-fg-hover truncate">
+                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
                         {selected?.name ?? "Seleccionar empresa"}
                     </span>
                     {subtitle && (
@@ -306,19 +194,27 @@ export function SidebarCompanySelector({
                 <ChevronIcon open={open} />
             </button>
 
-            {open && (
-                <div className={dropdownClass}>
-                    <div className="p-2 border-b border-sidebar-border">
-                        <BaseInput.Field
+            <PortalMenu
+                open={open}
+                onClose={closeMenu}
+                anchorRef={ref}
+                align="left"
+                className="!p-0 w-[min(388px,calc(100vw-16px))] overflow-hidden !border-sidebar-border !bg-sidebar-bg"
+            >
+                    <div className="h-12 px-3 flex items-center gap-2 border-b border-sidebar-border">
+                        <input
                             type="search"
                             value={search}
-                            onValueChange={setSearch}
+                            onChange={(event) => setSearch(event.target.value)}
                             placeholder="Buscar empresa…"
                             autoFocus
-                            className="w-full"
+                            className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-[14px] text-sidebar-fg-hover placeholder:text-sidebar-label outline-none ring-0 focus:outline-none focus:ring-0"
                         />
+                        <kbd className="shrink-0 rounded-md border border-sidebar-border bg-sidebar-bg-hover/50 px-1.5 py-0.5 font-sans text-[11px] text-sidebar-label">
+                            Esc
+                        </kbd>
                     </div>
-                    <ul role="listbox" aria-label="Empresas disponibles" className="max-h-56 overflow-y-auto">
+                    <ul role="listbox" aria-label="Empresas disponibles" className="max-h-80 overflow-y-auto p-1.5">
                         {filtered.map((c) => {
                             const isSelected = c.id === selectedId;
                             const rowSub = buildCompanySubtitle(c);
@@ -327,8 +223,8 @@ export function SidebarCompanySelector({
                                     <button
                                         onClick={() => handleSelect(c.id)}
                                         className={[
-                                            `w-full flex items-center gap-2.5 px-3 py-2 transition-colors duration-100 font-mono ${APP_SIZES.nav.companyName} text-left`,
-                                            isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
+                                            "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-100 font-sans text-[15px] font-semibold text-left",
+                                            isSelected ? "text-sidebar-fg-hover bg-sidebar-bg-hover" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                         ].join(" ")}
                                     >
                                         <CompanyRowAvatar name={c.name} logoUrl={c.logoUrl} />
@@ -345,9 +241,30 @@ export function SidebarCompanySelector({
                                 </li>
                             );
                         })}
+                        {filtered.length === 0 && (
+                            <li className="px-3 py-8 text-center font-sans text-[14px] text-sidebar-label">
+                                No se encontraron empresas
+                            </li>
+                        )}
                     </ul>
-                </div>
-            )}
+                    <div className="p-1.5 border-t border-sidebar-border">
+                        <button
+                            type="button"
+                            onClick={goToCompanies}
+                            className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-lg text-left text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                        >
+                            <span className="w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-bg">
+                                <Plus size={17} strokeWidth={1.8} />
+                            </span>
+                            <span className="min-w-0 flex flex-col font-sans leading-tight">
+                                <span className="text-[14px] font-bold">Crear empresa</span>
+                                <span className="mt-0.5 text-[12px] font-medium text-sidebar-label">
+                                    Administra o registra una nueva empresa
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+            </PortalMenu>
         </div>
     );
 }

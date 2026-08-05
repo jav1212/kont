@@ -1,54 +1,48 @@
 "use client";
 
-// AppSidebar — main navigation shell for desktop (inline) and mobile (drawer).
-// Layout, per the Konta sidebar rules:
-//
-//   ┌─ konta. wordmark ───────── [⌕ search] ─┐
-//   │ MÓDULO                                  │
-//   │ [card ▸ avatar ▸ name+meta ▸ chevron]   │
-//   │ EMPRESA                                 │
-//   │ [card ▸ avatar·dot ▸ name+meta ▸ chev]  │
-//   │ WORKSPACE · {MODULE}                    │
-//   │   …subnav…                              │
-//   ├─────────────────────────────────────────┤
-//   │ ⚙ Configuración  ? Ayuda   (utility)    │
-//   │ [account card ▸ avatar·dot ▸ email ▸ ⇵] │
-//   └─────────────────────────────────────────┘
-//
-// Business UI is delegated to sub-components; this file owns structure + state.
+// AppSidebar — single-column navigation shell.
+// Desktop stays compact and labelled; mobile reuses the same hierarchy as a drawer.
 
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+    Activity,
+    Check,
+    CircleHelp,
+    CreditCard,
+    LifeBuoy,
+    LogOut,
+    Moon,
+    Settings,
+    Sun,
+    UserRound,
+    X,
+} from "lucide-react";
 import { APP_MODULES, MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess, usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
-import { APP_SIZES } from "@/src/shared/frontend/sizes";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
 import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
-import { LogoFull, LogoMark } from "@/src/shared/frontend/components/logo";
+import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
 import { SidebarModuleSelector } from "@/src/shared/frontend/components/sidebar-module-selector";
 import { SidebarSubnav } from "@/src/shared/frontend/components/sidebar-subnav";
 import { SidebarUpdateBanner } from "@/src/shared/frontend/components/sidebar-update-banner";
+import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { useUrlContext } from "@/src/shared/frontend/hooks/use-url-context";
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
-const STORAGE_WIDTH     = "sidebar-width";
 const STORAGE_MODULE    = "sidebar-module";
-const STORAGE_COLLAPSED = "sidebar-collapsed";
 
 // ── Size constants ────────────────────────────────────────────────────────────
 
-const MIN_WIDTH       = 240;
-const MAX_WIDTH       = 400;
-const DEFAULT_WIDTH   = 280;
-const COLLAPSED_WIDTH = 56;
+const SIDEBAR_WIDTH = 280;
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
@@ -78,6 +72,11 @@ function buildModuleSubtitle(moduleId: string | null, planName?: string | null):
     }
 }
 
+function sentenceCase(value: string): string {
+    const normalized = value.trim().toLocaleLowerCase("es");
+    return normalized ? normalized[0].toLocaleUpperCase("es") + normalized.slice(1) : value;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -102,10 +101,6 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
     const isDesktop = useIsDesktop();
-
-    // ── Collapsed rail (desktop only) ─────────────────────────────────────────
-    const [collapsed, setCollapsed] = useState<boolean>(false);
-    const isCollapsed = collapsed && isDesktop;
 
     // ── Module selection ──────────────────────────────────────────────────────
     const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
@@ -144,66 +139,15 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [hasPayroll, hasInventory, hasAccounting, isDesktop]);
 
-    const activeModuleLabel = useMemo(() => {
-        return selectableModules.find((m) => m.id === resolvedModuleId)?.label ?? "Workspace";
-    }, [selectableModules, resolvedModuleId]);
-
     function handleSelectModule(id: string, href: string) {
         setStoredModuleId(id);
         localStorage.setItem(STORAGE_MODULE, id);
         router.push(buildContextHref(href));
     }
 
-    // ── Resizable sidebar (desktop only, disabled when collapsed) ─────────────
-    const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_WIDTH);
-    const isResizing = useRef(false);
-    const startX = useRef(0);
-    const startWidth = useRef(DEFAULT_WIDTH);
-    const widthRef = useRef(DEFAULT_WIDTH);
-
-    useEffect(() => { widthRef.current = sidebarWidth; }, [sidebarWidth]);
-
-    const handleResizeStart = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        isResizing.current = true;
-        startX.current = e.clientX;
-        startWidth.current = widthRef.current;
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-    }, []);
-
     useEffect(() => {
-        const savedCollapsed = localStorage.getItem(STORAGE_COLLAPSED);
-        if (savedCollapsed !== null) setCollapsed(savedCollapsed === "true");
-
         const savedModule = localStorage.getItem(STORAGE_MODULE);
         if (savedModule !== null) setStoredModuleId(savedModule);
-
-        const savedWidth = localStorage.getItem(STORAGE_WIDTH);
-        if (savedWidth !== null) {
-            const w = parseInt(savedWidth, 10);
-            if (!isNaN(w)) setSidebarWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, w)));
-        }
-    }, []);
-
-    useEffect(() => {
-        function onMouseMove(e: MouseEvent) {
-            if (!isResizing.current) return;
-            setSidebarWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth.current + (e.clientX - startX.current))));
-        }
-        function onMouseUp() {
-            if (!isResizing.current) return;
-            isResizing.current = false;
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
-            localStorage.setItem(STORAGE_WIDTH, String(widthRef.current));
-        }
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
-        return () => {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-        };
     }, []);
 
     // ── Drawer auto-close on route change (mobile) ────────────────────────────
@@ -223,169 +167,85 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     return (
         <aside
             aria-label="Navegación principal"
-            style={isDesktop ? { width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth } : undefined}
+            style={isDesktop ? { width: SIDEBAR_WIDTH } : undefined}
             className={[
-                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-hidden",
-                "fixed inset-y-0 left-0 z-50 w-72 transition-transform duration-300 ease-in-out",
+                "flex-shrink-0 flex flex-col bg-sidebar-bg border-r border-sidebar-border overflow-visible",
+                "fixed inset-y-0 left-0 z-50 w-[min(320px,calc(100vw-24px))] transition-transform duration-300 ease-in-out",
                 open ? "translate-x-0" : "-translate-x-full",
-                "xl:relative xl:inset-auto xl:z-auto xl:translate-x-0 xl:transition-[width] xl:duration-200",
+                "xl:relative xl:inset-auto xl:z-auto xl:translate-x-0",
             ].join(" ")}
         >
-            {/* ── Brand row: konta. wordmark + search affordance ───────── */}
-            <div
-                style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top))" }}
-                className={[
-                    "flex items-center",
-                    isCollapsed ? "justify-center pb-4 px-2" : "justify-between pb-4 px-5",
-                ].join(" ")}
+            <header
+                style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+                className="px-4 xl:px-5 pb-4 flex items-center justify-between border-b border-sidebar-border"
             >
-                {isCollapsed ? (
-                    <LogoMark size={28} className="text-sidebar-fg-hover" />
-                ) : (
-                    <>
-                        <LogoFull size={26} className="text-sidebar-fg-hover" />
-                        <SearchButton />
-                    </>
-                )}
-            </div>
+                <LogoFull size={25} className="text-sidebar-fg-hover" />
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Cerrar navegación"
+                    className="xl:hidden w-9 h-9 inline-flex items-center justify-center rounded-lg text-sidebar-label hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                >
+                    <X size={19} />
+                </button>
+            </header>
 
-            {/* ── Top block: Módulo + Empresa (paired cards, no labels) ─
-                The avatars already telegraph role: orange-tinted icon = module,
-                dark tile + sync dot = empresa. Mini labels above each card were
-                visual grout (REQ-013-style noise). */}
-            <div className={[
-                "border-t border-sidebar-border",
-                isCollapsed ? "px-2 pt-3 pb-2 flex flex-col items-center gap-2" : "px-4 pt-4 pb-2 flex flex-col gap-2",
-            ].join(" ")}>
+            <div className="px-3 py-3 border-b border-sidebar-border flex flex-col gap-2">
                 <SidebarModuleSelector
                     modules={selectableModules}
                     activeModuleId={resolvedModuleId}
-                    isCollapsed={isCollapsed}
                     onSelect={handleSelectModule}
                     subtitle={moduleSubtitle}
                 />
-
                 <SidebarCompanySelector
                     companies={companies}
                     selectedId={companyId}
                     loading={companyLoading}
-                    isCollapsed={isCollapsed}
                     onSelect={selectCompany}
+                    companiesHref={buildContextHref("/companies")}
                 />
             </div>
 
-            {/* ── Sub-navigation (workspace) ────────────────────────── */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-visible">
-                {!isCollapsed && (
-                    <nav
-                        className="flex-1 px-4 pt-3 pb-4 overflow-y-auto"
-                        style={{ scrollbarGutter: "stable" }}
-                        aria-label="Secciones del módulo"
-                    >
-                        {/* "SECCIÓN · NÓMINA" — the only chrome label in this region.
-                            Spanish-only (CONTENT FUNDAMENTALS); "Workspace" was the lone
-                            English word in the sidebar. */}
-                        <div className="flex items-center gap-2 px-1 pb-2">
-                            <span className={`font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
-                                Sección
-                            </span>
-                            <span aria-hidden="true" className="text-sidebar-label/60 text-[10px]">·</span>
-                            <span className={`font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-fg-hover`}>
-                                {activeModuleLabel}
-                            </span>
-                        </div>
-
-                        <SidebarSubnav subnav={subnav ?? []} pathname={pathname} />
-                    </nav>
-                )}
-
-                {isCollapsed && <div className="flex-1" />}
-            </div>
-
-            {/* ── Utility shortcuts (Config / Help) ─────────────────── */}
-            {!isCollapsed && (
-                <div className="px-4 pt-2 pb-1 border-t border-sidebar-border flex flex-col gap-2">
-                    {/* Banner sólo visible cuando el SW detecta una versión nueva */}
-                    <SidebarUpdateBanner />
-                    <div className="flex flex-col gap-0.5">
-                        <UtilityShortcut
-                            href={buildContextHref("/settings/members")}
-                            active={pathname.startsWith("/settings")}
-                            label="Configuración"
-                            icon={<GearIcon />}
-                        />
-                        <UtilityShortcut
-                            href={buildContextHref("/help")}
-                            active={pathname.startsWith("/help")}
-                            label="Ayuda"
-                            icon={<HelpIcon />}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {/* ── Bottom: account card ───────────────────────────────── */}
-            <div
-                style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
-                className={[
-                    "pt-2",
-                    isCollapsed ? "px-2 flex flex-col items-center gap-2" : "px-4",
-                ].join(" ")}
+            <nav
+                className="flex-1 min-h-0 px-3 pt-3 pb-5 overflow-y-auto"
+                style={{ scrollbarGutter: "stable" }}
+                aria-label="Secciones del módulo"
             >
-                {isCollapsed && <SidebarUpdateBanner collapsed />}
+                <SidebarSubnav subnav={subnav ?? []} pathname={pathname} />
+            </nav>
+
+            <div
+                style={{ paddingBottom: "calc(0.875rem + env(safe-area-inset-bottom))" }}
+                className="px-3 pt-3 border-t border-sidebar-border flex flex-col gap-2"
+            >
+                <SidebarUpdateBanner />
+                <div className="flex flex-col gap-0.5">
+                    <UtilityShortcut
+                        href={buildContextHref("/settings/members")}
+                        active={pathname.startsWith("/settings")}
+                        label="Configuración"
+                        icon={<Settings size={17} strokeWidth={1.8} />}
+                    />
+                    <UtilityShortcut
+                        href={buildContextHref("/help")}
+                        active={pathname.startsWith("/help")}
+                        label="Ayuda"
+                        icon={<CircleHelp size={17} strokeWidth={1.8} />}
+                    />
+                </div>
                 <AccountCard
                     email={userEmail}
                     name={profile?.name}
                     avatarUrl={profile?.avatarUrl}
                     planName={planName}
-                    isCollapsed={isCollapsed}
                     onSignOut={handleSignOut}
                     profileHref={buildContextHref("/profile")}
+                    helpHref={buildContextHref("/help")}
+                    statusHref={buildContextHref("/tools/status")}
+                    billingHref={buildContextHref("/settings/billing")}
                 />
             </div>
-
-            {/* ── Resize handle (desktop, hidden when collapsed) ─────────── */}
-            {isDesktop && !isCollapsed && (
-                <div
-                    aria-hidden="true"
-                    onMouseDown={handleResizeStart}
-                    className="absolute inset-y-0 right-0 w-2 cursor-col-resize group z-10"
-                >
-                    <div className="absolute inset-y-0 right-0 w-px bg-sidebar-border transition-colors duration-150 group-hover:bg-primary-500/50 group-active:bg-primary-500" />
-                </div>
-            )}
         </aside>
-    );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// SearchButton — square icon button paired with the wordmark in the brand row
-// ────────────────────────────────────────────────────────────────────────────
-
-/**
- * Search affordance — placeholder until the command palette ships.
- * Currently disabled (no handler) and rendered with reduced prominence so the
- * brand row still balances visually but the user is not invited to click a
- * dead button. Replace the button with an active onClick once the palette is
- * wired up; the visual treatment stays the same.
- */
-function SearchButton() {
-    return (
-        <button
-            type="button"
-            aria-disabled="true"
-            aria-label="Buscar (próximamente)"
-            title="Buscar — próximamente"
-            tabIndex={-1}
-            className="flex items-center gap-1.5 h-9 pl-2 pr-2 rounded-md text-sidebar-label/70 cursor-not-allowed select-none"
-        >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="7" cy="7" r="4.5" />
-                <path d="M10.3 10.3L13.5 13.5" />
-            </svg>
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em]">⌘K</span>
-        </button>
     );
 }
 
@@ -399,8 +259,8 @@ function UtilityShortcut({ href, active, label, icon }: { href: string; active: 
             href={href}
             aria-current={active ? "page" : undefined}
             className={[
-                "group flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors duration-150",
-                "font-mono text-[13px] uppercase tracking-[0.14em]",
+                "group flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150",
+                "font-sans text-[15px] font-semibold",
                 active
                     ? "text-sidebar-active-fg bg-sidebar-active-bg/60"
                     : "text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover",
@@ -414,27 +274,6 @@ function UtilityShortcut({ href, active, label, icon }: { href: string; active: 
     );
 }
 
-function GearIcon() {
-    return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-            strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="8" cy="8" r="2.2" />
-            <path d="M8 1.5v1.5M8 13v1.5M14.5 8H13M3 8H1.5M12.6 3.4l-1.06 1.06M4.46 11.54L3.4 12.6M12.6 12.6l-1.06-1.06M4.46 4.46L3.4 3.4" />
-        </svg>
-    );
-}
-
-function HelpIcon() {
-    return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-            strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="8" cy="8" r="6.2" />
-            <path d="M6 6.2a2 2 0 1 1 2.6 1.9c-.6.2-.8.6-.8 1.2v.3" />
-            <circle cx="8" cy="11.5" r="0.5" fill="currentColor" />
-        </svg>
-    );
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // AccountCard — bottom card: avatar + status dot + email + double chevrons
 // ────────────────────────────────────────────────────────────────────────────
@@ -444,68 +283,22 @@ interface AccountCardProps {
     name?:        string | null;
     avatarUrl?:   string | null;
     planName?:    string | null;
-    isCollapsed:  boolean;
     onSignOut:    () => void | Promise<void>;
     profileHref:  string;
+    helpHref:     string;
+    statusHref:   string;
+    billingHref:  string;
 }
 
-function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut, profileHref }: AccountCardProps) {
+function AccountCard({ email, name, avatarUrl, planName, onSignOut, profileHref, helpHref, statusHref, billingHref }: AccountCardProps) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     const { allTenants, activeTenantId, switchTenant } = useActiveTenantContext();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: MouseEvent) {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        }
-        document.addEventListener("mousedown", handle);
-        return () => document.removeEventListener("mousedown", handle);
-    }, [open]);
-
-    useEffect(() => {
-        if (!open) return;
-        function handle(e: KeyboardEvent) {
-            if (e.key === "Escape") setOpen(false);
-        }
-        document.addEventListener("keydown", handle);
-        return () => document.removeEventListener("keydown", handle);
-    }, [open]);
-
     const initial = (name?.[0] ?? email?.[0] ?? "?").toUpperCase();
     const displayName = name ?? email?.split("@")[0] ?? "Usuario";
-
-    if (isCollapsed) {
-        return (
-            <div className="relative" ref={ref}>
-                <button
-                    onClick={() => setOpen((v) => !v)}
-                    aria-label={`Cuenta: ${displayName}. Abrir menú`}
-                    aria-expanded={open}
-                    aria-haspopup="menu"
-                    className="relative flex items-center justify-center w-9 h-9 rounded-md bg-sidebar-bg-hover/60 border border-transparent hover:border-sidebar-border hover:bg-sidebar-bg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
-                >
-                    <Avatar avatarUrl={avatarUrl} initial={initial} size={28} />
-                </button>
-
-                {open && (
-                    <AccountMenu
-                        className="absolute left-full bottom-0 ml-2 w-60"
-                        email={email}
-                        displayName={displayName}
-                        planName={planName}
-                        allTenants={allTenants}
-                        activeTenantId={activeTenantId}
-                        onSwitchTenant={(id) => { switchTenant(id); setOpen(false); router.refresh(); }}
-                        onProfileClick={() => { setOpen(false); router.push(profileHref); }}
-                        onSignOut={async () => { setOpen(false); await onSignOut(); }}
-                    />
-                )}
-            </div>
-        );
-    }
 
     return (
         <div className="relative" ref={ref}>
@@ -527,7 +320,7 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                 </span>
 
                 <span className="flex-1 min-w-0 flex flex-col leading-tight">
-                    <span className="font-mono text-[13px] font-medium text-sidebar-fg-hover truncate">
+                    <span className="font-sans text-[15px] font-bold text-sidebar-fg-hover truncate">
                         {displayName}
                     </span>
                     {email && email !== displayName && (
@@ -540,9 +333,16 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                 <UpChevron />
             </button>
 
-            {open && (
+            <PortalMenu
+                open={open}
+                onClose={() => setOpen(false)}
+                anchorRef={ref}
+                align="left"
+                side="top"
+                className="!p-0 w-[min(388px,calc(100vw-16px))] max-h-[calc(100dvh-24px)] overflow-y-auto !border-sidebar-border !bg-sidebar-bg"
+            >
                 <AccountMenu
-                    className="absolute left-0 right-0 bottom-full mb-2"
+                    className="w-full"
                     email={email}
                     displayName={displayName}
                     planName={planName}
@@ -550,9 +350,12 @@ function AccountCard({ email, name, avatarUrl, planName, isCollapsed, onSignOut,
                     activeTenantId={activeTenantId}
                     onSwitchTenant={(id) => { switchTenant(id); setOpen(false); router.refresh(); }}
                     onProfileClick={() => { setOpen(false); router.push(profileHref); }}
+                    onHelpClick={() => { setOpen(false); router.push(helpHref); }}
+                    onStatusClick={() => { setOpen(false); router.push(statusHref); }}
+                    onBillingClick={() => { setOpen(false); router.push(billingHref); }}
                     onSignOut={async () => { setOpen(false); await onSignOut(); }}
                 />
-            )}
+            </PortalMenu>
         </div>
     );
 }
@@ -602,38 +405,50 @@ interface AccountMenuProps {
     activeTenantId: string | null;
     onSwitchTenant: (id: string) => void;
     onProfileClick: () => void;
+    onHelpClick:    () => void;
+    onStatusClick:  () => void;
+    onBillingClick: () => void;
     onSignOut:      () => void;
 }
 
-function AccountMenu({ className, email, displayName, planName, allTenants, activeTenantId, onSwitchTenant, onProfileClick, onSignOut }: AccountMenuProps) {
+function AccountMenu({ className, email, displayName, planName, allTenants, activeTenantId, onSwitchTenant, onProfileClick, onHelpClick, onStatusClick, onBillingClick, onSignOut }: AccountMenuProps) {
     const hasMultipleTenants = allTenants.length > 1;
+    const { theme, setTheme } = useTheme();
 
     return (
         <div
-            role="menu"
             className={[
-                "rounded-lg overflow-hidden z-50 shadow-lg bg-sidebar-bg border border-sidebar-border",
+                "overflow-hidden bg-sidebar-bg",
                 className,
             ].join(" ")}
-            style={{ boxShadow: "var(--shadow-lg)" }}
         >
-            {/* Header with name, email, plan */}
-            <div className="px-3 py-2.5 border-b border-sidebar-border">
-                <p className="font-mono text-[14px] font-semibold text-sidebar-fg-hover truncate">{displayName}</p>
-                {email && (
-                    <p className="font-mono text-[12px] text-sidebar-label truncate mt-0.5">{email}</p>
-                )}
-                {planName && (
-                    <span className="inline-flex items-center mt-1.5 px-1.5 py-px rounded-sm font-mono text-[11px] uppercase tracking-[0.12em] bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
-                        {planName}
-                    </span>
-                )}
+            <div className="px-3 py-3 border-b border-sidebar-border flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                    <p className="font-sans text-[16px] font-bold text-sidebar-fg-hover truncate">{displayName}</p>
+                    {email && (
+                        <p className="font-mono text-[12px] text-sidebar-label truncate mt-0.5">{email}</p>
+                    )}
+                    {planName && (
+                        <span className="inline-flex items-center mt-1.5 px-2 py-0.5 rounded-md font-sans text-[11px] font-semibold bg-sidebar-bg-hover text-sidebar-label border border-sidebar-border">
+                            {sentenceCase(planName)}
+                        </span>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onProfileClick}
+                    aria-label="Abrir perfil"
+                    className="w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg text-sidebar-label hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                >
+                    <Settings size={16} strokeWidth={1.8} />
+                </button>
             </div>
 
             {/* Tenant switcher (only when multiple tenants) */}
             {hasMultipleTenants && (
-                <div className="py-1 border-b border-sidebar-border">
-                    <p className={`px-3 pt-1.5 pb-1 font-mono ${APP_SIZES.nav.sectionLabel} text-sidebar-label`}>
+                <div className="p-1.5 border-b border-sidebar-border">
+                    <p className="px-2 pt-1 pb-1.5 font-sans text-[12px] font-semibold text-sidebar-label">
                         Cambiar cuenta
                     </p>
                     <ul>
@@ -646,9 +461,8 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                                         aria-checked={isSelected}
                                         onClick={() => onSwitchTenant(t.tenantId)}
                                         className={[
-                                            "w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors duration-100",
-                                            `font-mono ${APP_SIZES.nav.companyName}`,
-                                            isSelected ? "text-sidebar-active-fg bg-sidebar-active-bg" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
+                                            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold",
+                                            isSelected ? "text-sidebar-fg-hover bg-sidebar-bg-hover" : "text-sidebar-fg hover:bg-sidebar-bg-hover",
                                         ].join(" ")}
                                     >
                                         <span className="w-5 h-5 rounded-md bg-primary-500/10 border border-primary-500/20 flex items-center justify-center overflow-hidden shrink-0">
@@ -662,10 +476,11 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                                         </span>
                                         <span className="truncate flex-1">{t.isOwn ? "Mi cuenta" : t.tenantEmail}</span>
                                         {!t.isOwn && (
-                                            <span className={`font-mono ${APP_SIZES.nav.sectionLabel} px-1.5 py-0.5 rounded bg-primary-500/10 text-primary-400 uppercase shrink-0`}>
-                                                {t.role}
+                                            <span className="px-2 py-0.5 rounded-md bg-sidebar-bg-hover text-sidebar-label text-[11px] font-semibold shrink-0">
+                                                {sentenceCase(t.role)}
                                             </span>
                                         )}
+                                        {isSelected && <Check size={15} className="ml-auto shrink-0" strokeWidth={2} />}
                                     </button>
                                 </li>
                             );
@@ -674,34 +489,82 @@ function AccountMenu({ className, email, displayName, planName, allTenants, acti
                 </div>
             )}
 
-            {/* Actions */}
-            <div className="py-1">
+            <div className="p-1.5 border-b border-sidebar-border">
+                <div className="h-10 px-2 flex items-center justify-between gap-3 font-sans text-[14px] font-semibold text-sidebar-fg">
+                    <span>Tema</span>
+                    <span className="inline-flex items-center rounded-lg border border-sidebar-border bg-sidebar-bg-hover/60 p-0.5">
+                        <button
+                            type="button"
+                            onClick={() => setTheme("light")}
+                            aria-label="Usar tema claro"
+                            aria-pressed={theme === "light"}
+                            className={[
+                                "w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors",
+                                theme === "light" ? "bg-sidebar-bg text-sidebar-fg-hover shadow-sm" : "text-sidebar-label hover:text-sidebar-fg-hover",
+                            ].join(" ")}
+                        >
+                            <Sun size={15} strokeWidth={1.8} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTheme("dark")}
+                            aria-label="Usar tema oscuro"
+                            aria-pressed={theme === "dark"}
+                            className={[
+                                "w-7 h-7 inline-flex items-center justify-center rounded-md transition-colors",
+                                theme === "dark" ? "bg-sidebar-bg text-sidebar-fg-hover shadow-sm" : "text-sidebar-label hover:text-sidebar-fg-hover",
+                            ].join(" ")}
+                        >
+                            <Moon size={15} strokeWidth={1.8} />
+                        </button>
+                    </span>
+                </div>
                 <button
                     role="menuitem"
                     onClick={onProfileClick}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[14px] text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
                 >
-                    <span className="w-4 h-4 flex items-center justify-center text-sidebar-label">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <circle cx="8" cy="5.5" r="2.5" />
-                            <path d="M2.5 13.5c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4" />
-                        </svg>
-                    </span>
+                    <UserRound size={16} className="text-sidebar-label" strokeWidth={1.8} />
                     Mi perfil
                 </button>
                 <button
                     role="menuitem"
-                    onClick={onSignOut}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors duration-100 font-mono text-[14px] text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
+                    onClick={onHelpClick}
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover"
                 >
-                    <span className="w-4 h-4 flex items-center justify-center">
-                        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H7" />
-                        </svg>
-                    </span>
+                    <LifeBuoy size={16} className="text-sidebar-label" strokeWidth={1.8} />
+                    Ayuda
+                </button>
+                <button
+                    role="menuitem"
+                    onClick={onSignOut}
+                    className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors duration-100 font-sans text-[14px] font-semibold text-sidebar-fg hover:text-red-500 hover:bg-red-500/5"
+                >
+                    <LogOut size={16} strokeWidth={1.8} />
                     Cerrar sesión
                 </button>
             </div>
+
+            <div className="p-2 border-b border-sidebar-border">
+                <button
+                    type="button"
+                    onClick={onBillingClick}
+                    className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-lg bg-sidebar-fg-hover text-sidebar-bg font-sans text-[14px] font-bold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+                >
+                    <CreditCard size={15} strokeWidth={1.8} />
+                    Facturación y plan
+                </button>
+            </div>
+
+            <button
+                type="button"
+                onClick={onStatusClick}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left font-sans text-[13px] font-semibold text-sidebar-fg hover:text-sidebar-fg-hover hover:bg-sidebar-bg-hover transition-colors"
+            >
+                <Activity size={15} className="text-sidebar-label" strokeWidth={1.8} />
+                <span className="flex-1">Estado de portales</span>
+                <span aria-hidden="true" className="w-2 h-2 rounded-full bg-sky-500" />
+            </button>
         </div>
     );
 }
