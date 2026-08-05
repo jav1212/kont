@@ -8,7 +8,7 @@
 // Uses ServerSupabaseSource + RPC functions in the public schema (same pattern
 // as inventory), since PostgREST does not expose tenant schemas directly.
 import { ServerSupabaseSource }             from '@/src/shared/backend/source/infra/server-supabase';
-import { isSharedSchemaPilotEnabled }       from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }            from '@/src/shared/backend/config/shared-schema-pilot';
 import { LocalEventBus }                    from '@/src/shared/backend/infra/local-event-bus';
 import { SupabaseDocumentFolderRepository } from './repository/supabase-document-folder.repository';
 import { SharedDocumentFolderRepository }   from './repository/shared-document-folder.repository';
@@ -32,7 +32,7 @@ export function getDocumentsActions(ownerId: string) {
     const source   = new ServerSupabaseSource();
     const eventBus = new LocalEventBus();
 
-    const sharedDocuments = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_DOCUMENTS_ENABLED, ownerId);
+    const sharedDocuments = isSharedSchemaEnabled(ownerId);
     const folderRepo   = sharedDocuments ? new SharedDocumentFolderRepository(source, ownerId) : new SupabaseDocumentFolderRepository(source, ownerId);
     const documentRepo = sharedDocuments ? new SharedDocumentRepository(source, ownerId) : new SupabaseDocumentRepository(source, ownerId);
     const storageRepo  = new SupabaseDocumentStorageRepository(source);

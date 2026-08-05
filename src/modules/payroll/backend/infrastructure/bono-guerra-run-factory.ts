@@ -3,7 +3,7 @@ import { ServerSupabaseSource }            from '@/src/shared/backend/source/inf
 import { LocalEventBus }                   from '@/src/shared/backend/infra/local-event-bus';
 import { RpcBonoGuerraRunRepository }      from './repository/rpc-bono-guerra-run.repository';
 import { SharedBonoGuerraRunRepository }   from './repository/shared-bono-guerra-run.repository';
-import { isSharedSchemaPilotEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }           from '@/src/shared/backend/config/shared-schema-pilot';
 import { ConfirmBonoGuerraRunUseCase }     from '../application/commands/confirm-bono-guerra-run.use-case';
 import { UnconfirmBonoGuerraRunUseCase }   from '../application/commands/unconfirm-bono-guerra-run.use-case';
 import { SaveDraftBonoGuerraRunUseCase }   from '../application/commands/save-draft-bono-guerra-run.use-case';
@@ -12,7 +12,7 @@ import { GetBonoGuerraReceiptsUseCase }    from '../application/queries/get-bono
 
 export function getBonoGuerraRunActions(userId: string) {
     const source     = new ServerSupabaseSource();
-    const repository = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_BONO_GUERRA_ENABLED, userId)
+    const repository = isSharedSchemaEnabled(userId)
         ? new SharedBonoGuerraRunRepository(source, userId)
         : new RpcBonoGuerraRunRepository(source, userId);
     const eventBus   = new LocalEventBus();

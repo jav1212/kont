@@ -8,7 +8,7 @@ import { RpcSalesInvoiceRepository }  from './repository/rpc-sales-invoice.repos
 import { SharedSalesInvoiceRepository } from './repository/shared-sales-invoice.repository';
 import { RpcIgtfFortnightlyRepository }  from './repository/rpc-igtf-fortnightly.repository';
 import { SharedIgtfFortnightlyRepository } from './repository/shared-igtf-fortnightly.repository';
-import { isSharedSchemaPilotEnabled } from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 import { ListCustomersUseCase }       from '../app/list-customers.use-case';
 import { SaveCustomerUseCase }        from '../app/save-customer.use-case';
@@ -23,14 +23,14 @@ import { GetIgtfFortnightlyReportUseCase } from '../app/get-igtf-fortnightly-rep
 
 export function getSalesActions(userId: string) {
     const source            = new ServerSupabaseSource();
-    const sharedSalesCustomers = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_CUSTOMERS_ENABLED, userId);
+    const sharedSalesCustomers = isSharedSchemaEnabled(userId);
     const customerRepo = sharedSalesCustomers
         ? new SharedCustomerRepository(source, userId)
         : new RpcCustomerRepository(source, userId);
-    const invoiceRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_ENABLED, userId)
+    const invoiceRepo = isSharedSchemaEnabled(userId)
         ? new SharedSalesInvoiceRepository(source, userId)
         : new RpcSalesInvoiceRepository(source, userId);
-    const igtfFortnightlyRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_SALES_ENABLED, userId)
+    const igtfFortnightlyRepo = isSharedSchemaEnabled(userId)
         ? new SharedIgtfFortnightlyRepository(source, userId)
         : new RpcIgtfFortnightlyRepository(source, userId);
 

@@ -7,31 +7,34 @@ import { ServerSupabaseSource }            from '@/src/shared/backend/source/inf
 import { RpcPeriodReportRepository }       from './repository/rpc-period-report.repository';
 import { SharedPeriodReportRepository }    from './repository/shared-period-report.repository';
 import { RpcPurchaseLedgerRepository }     from './repository/rpc-purchase-ledger.repository';
+import { SharedPurchaseLedgerRepository }  from './repository/shared-purchase-ledger.repository';
 import { RpcIslrReportRepository }         from './repository/rpc-islr-report.repository';
+import { SharedIslrReportRepository }      from './repository/shared-islr-report.repository';
 import { RpcSalesLedgerRepository }        from './repository/rpc-sales-ledger.repository';
+import { SharedSalesLedgerRepository }     from './repository/shared-sales-ledger.repository';
 import { RpcInventoryLedgerRepository }    from './repository/rpc-inventory-ledger.repository';
+import { SharedInventoryLedgerRepository } from './repository/shared-inventory-ledger.repository';
 import { RpcBalanceReportRepository }      from './repository/rpc-balance-report.repository';
+import { SharedBalanceReportRepository }   from './repository/shared-balance-report.repository';
 import { GetPeriodReportUseCase }          from '../app/get-period-report.use-case';
 import { GetPurchaseLedgerUseCase }        from '../app/get-purchase-ledger.use-case';
 import { GetIslrReportUseCase }            from '../app/get-islr-report.use-case';
 import { GetSalesLedgerUseCase }           from '../app/get-sales-ledger.use-case';
 import { GetInventoryLedgerUseCase }       from '../app/get-inventory-ledger.use-case';
 import { GetBalanceReportUseCase }         from '../app/get-balance-report.use-case';
-import { isSharedSchemaPilotEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }           from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getInventoryReportsActions(userId: string) {
     const source              = new ServerSupabaseSource();
-    const periodReportRepo = isSharedSchemaPilotEnabled(
-        process.env.SHARED_SCHEMA_PERIOD_REPORT_ENABLED,
-        userId,
-    )
+    const sharedReports = isSharedSchemaEnabled(userId);
+    const periodReportRepo = sharedReports
         ? new SharedPeriodReportRepository(source, userId)
         : new RpcPeriodReportRepository(source, userId);
-    const purchaseLedgerRepo  = new RpcPurchaseLedgerRepository(source, userId);
-    const islrReportRepo      = new RpcIslrReportRepository(source, userId);
-    const salesLedgerRepo     = new RpcSalesLedgerRepository(source, userId);
-    const inventoryLedgerRepo = new RpcInventoryLedgerRepository(source, userId);
-    const balanceReportRepo   = new RpcBalanceReportRepository(source, userId);
+    const purchaseLedgerRepo  = sharedReports ? new SharedPurchaseLedgerRepository(source, userId) : new RpcPurchaseLedgerRepository(source, userId);
+    const islrReportRepo      = sharedReports ? new SharedIslrReportRepository(source, userId) : new RpcIslrReportRepository(source, userId);
+    const salesLedgerRepo     = sharedReports ? new SharedSalesLedgerRepository(source, userId) : new RpcSalesLedgerRepository(source, userId);
+    const inventoryLedgerRepo = sharedReports ? new SharedInventoryLedgerRepository(source, userId) : new RpcInventoryLedgerRepository(source, userId);
+    const balanceReportRepo   = sharedReports ? new SharedBalanceReportRepository(source, userId) : new RpcBalanceReportRepository(source, userId);
 
     return {
         getPeriodReport:    new GetPeriodReportUseCase(periodReportRepo),

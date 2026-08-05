@@ -13,14 +13,14 @@ import { DeleteCompanyUseCase }          from '../application/commands/delete-co
 import { ApplySectorTemplateUseCase }    from '../application/commands/apply-sector-template.use-case';
 import { GetCompanyByIdUseCase }         from '../application/queries/get-company-by-id.use-case';
 import { GetUserCompaniesUseCase }       from '../application/queries/get-users-companies.use-case';
-import { isSharedSchemaPilotEnabled }    from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }         from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getCompanyActions(userId: string) {
     const source          = new ServerSupabaseSource();
-    const repository = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_COMPANIES_ENABLED, userId)
+    const repository = isSharedSchemaEnabled(userId)
         ? new SharedCompanyRepository(source, userId)
         : new RpcCompanyRepository(source, userId);
-    const departmentRepo  = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_DEPARTMENTS_ENABLED, userId)
+    const departmentRepo  = isSharedSchemaEnabled(userId)
         ? new SharedDepartmentRepository(source, userId)
         : new RpcDepartmentRepository(source, userId);
     const eventBus        = new LocalEventBus();

@@ -9,11 +9,11 @@ import { UpsertEmployeesUseCase }       from '../application/commands/upsert-emp
 import { DeleteEmployeesUseCase }       from '../application/commands/delete-employees.use-case';
 import { RenameEmployeeCedulaUseCase }  from '../application/commands/rename-employee-cedula.use-case';
 import { GetEmployeesByCompanyUseCase } from '../application/queries/get-employees-by-company.use-case';
-import { isSharedSchemaPilotEnabled }    from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }         from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getEmployeeActions(userId: string) {
     const source     = new ServerSupabaseSource();
-    const repository = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_EMPLOYEES_ENABLED, userId)
+    const repository = isSharedSchemaEnabled(userId)
         ? new SharedEmployeeRepository(source, userId)
         : new RpcEmployeeRepository(source, userId);
     const eventBus   = new LocalEventBus();

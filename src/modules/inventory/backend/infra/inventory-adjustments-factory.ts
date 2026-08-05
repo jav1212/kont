@@ -11,13 +11,13 @@ import { RpcProductRepository }            from './repository/rpc-product.reposi
 import { RpcBalanceReportRepository }      from './repository/rpc-balance-report.repository';
 import { SharedProductRepository }         from './repository/shared-product.repository';
 import { SharedBalanceReportRepository }   from './repository/shared-balance-report.repository';
-import { isSharedSchemaPilotEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }           from '@/src/shared/backend/config/shared-schema-pilot';
 import { GenerateStockAdjustmentUseCase }  from '../app/generate-stock-adjustment.use-case';
 import { SaveStockAdjustmentUseCase }      from '../app/save-stock-adjustment.use-case';
 
 export function getInventoryAdjustmentsActions(userId: string) {
     const source            = new ServerSupabaseSource();
-    const sharedInventory   = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_INVENTORY_ENABLED, userId);
+    const sharedInventory   = isSharedSchemaEnabled(userId);
     const productRepo       = sharedInventory
         ? new SharedProductRepository(source, userId)
         : new RpcProductRepository(source, userId);

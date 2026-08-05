@@ -3,14 +3,14 @@
 // PostgreSQL RPC parameter names (p_empresa_id, p_periodo, etc.) are kept as-is.
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
-import { isSharedSchemaPilotEnabled } from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled } from '@/src/shared/backend/config/shared-schema-pilot';
 
 export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const companyId = new URL(req.url).searchParams.get('companyId');
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
 
     const source = new ServerSupabaseSource();
-    if (isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_CLOSURES_ENABLED, tenantId)) {
+    if (isSharedSchemaEnabled(tenantId)) {
         const { data, error } = await source.instance
             .from('shared_inventory_closures')
             .select('*')
@@ -40,7 +40,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId,
     }
 
     const source = new ServerSupabaseSource();
-    if (isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_CLOSURES_ENABLED, tenantId)) {
+    if (isSharedSchemaEnabled(tenantId)) {
         const { data: existing, error: existingError } = await source.instance
             .from('shared_inventory_closures')
             .select('id')

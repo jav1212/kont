@@ -1,7 +1,7 @@
 // Infrastructure layer — assembles the full accounting dependency graph.
 // All use cases are wired with their RPC repositories and shared source adapters.
 import { ServerSupabaseSource }                              from '@/src/shared/backend/source/infra/server-supabase';
-import { isSharedSchemaPilotEnabled }                        from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }                             from '@/src/shared/backend/config/shared-schema-pilot';
 import { RpcAccountRepository }                              from './repository/rpc-account.repository';
 import { SharedAccountRepository }                          from './repository/shared-account.repository';
 import { RpcChartRepository }                                from './repository/rpc-chart.repository';
@@ -40,7 +40,7 @@ import { GetIntegrationLogUseCase }                          from '../applicatio
 
 export function getAccountingActions(userId: string) {
     const source        = new ServerSupabaseSource();
-    const accountingShared = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_ACCOUNTING_ENABLED, userId);
+    const accountingShared = isSharedSchemaEnabled(userId);
     const accountRepo   = accountingShared ? new SharedAccountRepository(source, userId) : new RpcAccountRepository(source, userId);
     const chartRepo     = accountingShared ? new SharedChartRepository(source, userId) : new RpcChartRepository(source, userId);
     const periodRepo    = accountingShared ? new SharedPeriodRepository(source, userId) : new RpcPeriodRepository(source, userId);

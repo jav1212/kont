@@ -3,7 +3,7 @@ import { ServerSupabaseSource }              from '@/src/shared/backend/source/i
 import { LocalEventBus }                     from '@/src/shared/backend/infra/local-event-bus';
 import { RpcCestaTicketRunRepository }       from './repository/rpc-cesta-ticket-run.repository';
 import { SharedCestaTicketRunRepository }    from './repository/shared-cesta-ticket-run.repository';
-import { isSharedSchemaPilotEnabled }       from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }            from '@/src/shared/backend/config/shared-schema-pilot';
 import { ConfirmCestaTicketRunUseCase }      from '../application/commands/confirm-cesta-ticket-run.use-case';
 import { UnconfirmCestaTicketRunUseCase }    from '../application/commands/unconfirm-cesta-ticket-run.use-case';
 import { SaveDraftCestaTicketRunUseCase }    from '../application/commands/save-draft-cesta-ticket-run.use-case';
@@ -12,7 +12,7 @@ import { GetCestaTicketReceiptsUseCase }     from '../application/queries/get-ce
 
 export function getCestaTicketRunActions(userId: string) {
     const source     = new ServerSupabaseSource();
-    const repository = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_CESTA_TICKET_ENABLED, userId)
+    const repository = isSharedSchemaEnabled(userId)
         ? new SharedCestaTicketRunRepository(source, userId)
         : new RpcCestaTicketRunRepository(source, userId);
     const eventBus   = new LocalEventBus();

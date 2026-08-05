@@ -8,7 +8,7 @@ import { RpcMovementDraftRepository }      from './repository/rpc-movement-draft
 import { SharedMovementDraftRepository }   from './repository/shared-movement-draft.repository';
 import { RpcProductRepository }            from './repository/rpc-product.repository';
 import { SharedProductRepository }         from './repository/shared-product.repository';
-import { isSharedSchemaPilotEnabled }     from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }          from '@/src/shared/backend/config/shared-schema-pilot';
 import { ListMovementsUseCase }            from '../app/list-movements.use-case';
 import { SaveMovementUseCase }             from '../app/save-movement.use-case';
 import { DeleteMovementUseCase }           from '../app/delete-movement.use-case';
@@ -22,7 +22,7 @@ import { DiscardMovementDraftUseCase }     from '../app/discard-movement-draft.u
 
 export function getInventoryMovementsActions(userId: string) {
     const source             = new ServerSupabaseSource();
-    const sharedInventory = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_INVENTORY_ENABLED, userId);
+    const sharedInventory = isSharedSchemaEnabled(userId);
     const movementRepo = sharedInventory
         ? new SharedMovementRepository(source, userId)
         : new RpcMovementRepository(source, userId);

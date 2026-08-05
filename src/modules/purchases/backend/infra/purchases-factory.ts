@@ -10,7 +10,7 @@ import { RpcIvaRetentionExportRepository }   from './repository/rpc-iva-retentio
 import { RpcIslrRetentionsExportRepository } from './repository/rpc-islr-retentions-export.repository';
 import { SharedIvaRetentionExportRepository } from './repository/shared-iva-retention-export.repository';
 import { SharedIslrRetentionsExportRepository } from './repository/shared-islr-retentions-export.repository';
-import { isSharedSchemaPilotEnabled }       from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }            from '@/src/shared/backend/config/shared-schema-pilot';
 
 import { ListSuppliersUseCase }            from '../app/list-suppliers.use-case';
 import { SaveSupplierUseCase }             from '../app/save-supplier.use-case';
@@ -28,7 +28,7 @@ import { GetIslrRetentionsExportUseCase }  from '../app/get-islr-retentions-expo
 
 export function getPurchasesActions(userId: string) {
     const source                  = new ServerSupabaseSource();
-    const sharedPurchases = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_PURCHASES_ENABLED, userId);
+    const sharedPurchases = isSharedSchemaEnabled(userId);
     const supplierRepo = sharedPurchases
         ? new SharedSupplierRepository(source, userId)
         : new RpcSupplierRepository(source, userId);

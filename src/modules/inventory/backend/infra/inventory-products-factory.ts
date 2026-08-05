@@ -12,14 +12,14 @@ import { DeleteProductUseCase }       from '../app/delete-product.use-case';
 import { ListDepartmentsUseCase }     from '../app/list-departments.use-case';
 import { SaveDepartmentUseCase }      from '../app/save-department.use-case';
 import { DeleteDepartmentUseCase }    from '../app/delete-department.use-case';
-import { isSharedSchemaPilotEnabled } from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getInventoryProductsActions(userId: string) {
     const source         = new ServerSupabaseSource();
-    const productRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_INVENTORY_ENABLED, userId)
+    const productRepo = isSharedSchemaEnabled(userId)
         ? new SharedProductRepository(source, userId)
         : new RpcProductRepository(source, userId);
-    const departmentRepo = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_DEPARTMENTS_ENABLED, userId)
+    const departmentRepo = isSharedSchemaEnabled(userId)
         ? new SharedDepartmentRepository(source, userId)
         : new RpcDepartmentRepository(source, userId);
 

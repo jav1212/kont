@@ -10,11 +10,11 @@ import { UnconfirmPayrollRunUseCase }  from '../application/commands/unconfirm-p
 import { SaveDraftPayrollRunUseCase }  from '../application/commands/save-draft-payroll-run.use-case';
 import { GetPayrollRunsUseCase }       from '../application/queries/get-payroll-runs.use-case';
 import { GetPayrollReceiptsUseCase }   from '../application/queries/get-payroll-receipts.use-case';
-import { isSharedSchemaPilotEnabled }  from '@/src/shared/backend/config/shared-schema-pilot';
+import { isSharedSchemaEnabled }       from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getPayrollRunActions(userId: string) {
     const source     = new ServerSupabaseSource();
-    const repository = isSharedSchemaPilotEnabled(process.env.SHARED_SCHEMA_PAYROLL_ENABLED, userId)
+    const repository = isSharedSchemaEnabled(userId)
         ? new SharedPayrollRunRepository(source, userId)
         : new RpcPayrollRunRepository(source, userId);
     const eventBus   = new LocalEventBus();
