@@ -1,8 +1,7 @@
 /** Resolves shared-schema rollout flags without widening the rollout implicitly. */
-const DEFAULT_PILOT_TENANT_ID = '624a5ef3-6e23-43ba-b3de-30686fa944e5';
-
 function pilotTenantIds(): Set<string> {
-    const configured = process.env.SHARED_SCHEMA_PILOT_TENANTS ?? DEFAULT_PILOT_TENANT_ID;
+    // Fail closed: a missing allowlist must never activate shared-schema data.
+    const configured = process.env.SHARED_SCHEMA_PILOT_TENANTS ?? '';
     return new Set(configured.split(',').map((value) => value.trim()).filter(Boolean));
 }
 
