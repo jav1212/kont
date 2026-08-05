@@ -72,11 +72,6 @@ interface RawPaymentRequestRow {
     reviewed_at:    string | null;
 }
 
-interface RawPlanLimitsRow {
-    max_companies:              number | null;
-    max_employees_per_company:  number | null;
-}
-
 function normalizePlan(raw: RawPlanRow): Plan {
     return {
         id:                     raw.id,
@@ -219,32 +214,30 @@ export class SupabaseBillingRepository implements IBillingRepository {
     }
 
     async getCapacity(userId: string): Promise<Result<TenantCapacity>> {
-        const [limitsRes, companiesRes] = await Promise.all([
-            this.source.instance.rpc("tenant_get_plan_limits", { p_user_id: userId }),
-            this.source.instance.rpc("tenant_companies_get_all",  { p_user_id: userId }),
+        const tenantResult = await this.getTenant(userId);
+        if (tenantResult.isFailure) return Result.fail(tenantResult.getError());
+        const plan = tenantResult.getValue().plan;
+        const [{ data: companies, error: companiesError }, { data: employees, error: employeesError }] = await Promise.all([
+            this.source.instance.from('shared_companies').select('id').eq('tenant_id', userId),
+            this.source.instance.from('shared_employees').select('company_id').eq('tenant_id', userId),
         ]);
+        if (companiesError) return Result.fail(companiesError.message);
+        if (employeesError) return Result.fail(employeesError.message);
 
-        if (limitsRes.error)    return Result.fail(limitsRes.error.message);
-        if (companiesRes.error) return Result.fail(companiesRes.error.message);
-
-        const limits    = ((limitsRes.data as RawPlanLimitsRow[] | null)?.[0]) ?? { max_companies: null, max_employees_per_company: null };
-        const companies = (companiesRes.data as { id: string }[] | null) ?? [];
-
+        const companyRows = (companies ?? []) as { id: string }[];
         const employeesByCompany: Record<string, number> = {};
-        for (const co of companies) {
-            const { data: empData } = await this.source.instance
-                .rpc("tenant_employees_get_by_company", { p_user_id: userId, p_company_id: co.id });
-            employeesByCompany[co.id] = (empData as unknown[] | null)?.length ?? 0;
+        for (const employee of (employees ?? []) as { company_id: string }[]) {
+            employeesByCompany[employee.company_id] = (employeesByCompany[employee.company_id] ?? 0) + 1;
         }
 
         return Result.success({
             companies: {
-                used:      companies.length,
-                max:       limits.max_companies,
-                remaining: limits.max_companies === null ? null : Math.max(0, limits.max_companies - companies.length),
+                used:      companyRows.length,
+                max:       plan.maxCompanies,
+                remaining: plan.maxCompanies === null ? null : Math.max(0, plan.maxCompanies - companyRows.length),
             },
             employeesPerCompany: {
-                max:       limits.max_employees_per_company,
+                max:       plan.maxEmployeesPerCompany,
                 byCompany: employeesByCompany,
             },
         });
