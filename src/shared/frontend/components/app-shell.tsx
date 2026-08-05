@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <div className="flex h-dvh bg-surface-2 overflow-hidden">
+        <div className="flex h-dvh bg-background overflow-hidden">
 
             {/* Drawer overlay — mobile/tablet only */}
             <div

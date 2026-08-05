@@ -559,7 +559,7 @@ export default function VacacionesPage() {
 
     // ── Render ──────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+        <div className="min-h-full bg-background flex flex-col overflow-hidden">
             <PageHeader
                 title="Vacaciones"
                 subtitle="Cálculo de disfrute y bono vacacional (Art. 190 LOTTT)"

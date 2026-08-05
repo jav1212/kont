@@ -123,7 +123,7 @@ export default function DocumentsDashboard() {
     );
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 font-mono">
+        <div className="flex flex-col min-h-full bg-background font-mono">
             <PageHeader title="Documentos" subtitle={`Tablero — ${periodLabel}`}>
                 <Link
                     href="/documents/files"
@@ -174,7 +174,7 @@ export default function DocumentsDashboard() {
 
                 {/* Breakdown por tipo */}
                 {!loading && totals.documents > 0 && (
-                    <div className="rounded-2xl border border-border-light bg-surface-1 p-5">
+                    <div className="rounded-lg border border-border-light bg-surface-1 p-5">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)] flex items-center gap-2">
                                 <span className="w-1 h-3 rounded-full bg-primary-500/50" />
@@ -228,7 +228,7 @@ export default function DocumentsDashboard() {
 
                 {/* Recent documents */}
                 {!loading && recent.length > 0 && (
-                    <div className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden">
+                    <div className="rounded-lg border border-border-light bg-surface-1 overflow-hidden">
                         <div className="px-5 py-3 border-b border-border-light flex items-center justify-between bg-surface-2/30">
                             <h2 className="text-[12px] uppercase tracking-[0.14em] font-bold text-[var(--text-tertiary)] flex items-center gap-2">
                                 <span className="w-1 h-3 rounded-full bg-primary-500/50" />

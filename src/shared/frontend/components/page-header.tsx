@@ -152,10 +152,6 @@ export function PageHeader({
     );
     const hasSecondary = Children.count(resolvedSecondary) > 0;
     const hasOverflow = hasSecondary;
-    const visibleSubtitle = typeof subtitle === "string" && /^Tablero\s*[·—-]/i.test(subtitle.trim())
-        ? null
-        : subtitle;
-
     return (
         <>
             <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-border-light bg-surface-1">
@@ -219,11 +215,6 @@ export function PageHeader({
                 </div>
             </header>
 
-            {visibleSubtitle && (
-                <div className="shrink-0 border-b border-border-light/70 bg-surface-2 px-4 py-2 font-sans text-[12px] text-[var(--text-tertiary)] sm:px-6 md:px-8">
-                    {visibleSubtitle}
-                </div>
-            )}
         </>
     );
 }

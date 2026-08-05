@@ -35,12 +35,12 @@ export function GuidedStepShell({
     nextDisabled = false,
     hideNav = false,
     centerHeader = false,
-    contentMaxWidthClass = "max-w-4xl",
+    contentMaxWidthClass = "max-w-6xl",
 }: GuidedStepShellProps) {
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-                <div className={`${contentMaxWidthClass} mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8`}>
+                <div className={`${contentMaxWidthClass} mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-8`}>
                     <header className={["mb-5 md:mb-6", centerHeader ? "text-center" : ""].join(" ")}>
                         <h2 className="font-mono text-[20px] md:text-[22px] font-black tracking-tight text-foreground leading-tight">
                             {title}
@@ -61,7 +61,7 @@ export function GuidedStepShell({
             </div>
 
             {!hideNav && (
-                <div className="border-t border-border-light bg-surface-1 px-4 sm:px-6 md:px-8 py-3 md:py-4">
+                <div className="border-t border-border-light bg-surface-1 px-3 sm:px-4 md:px-6 py-3 md:py-4">
                     <div className={`${contentMaxWidthClass} mx-auto flex items-center justify-between gap-3`}>
                         <div>
                             {onBack && (

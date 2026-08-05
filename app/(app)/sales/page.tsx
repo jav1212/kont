@@ -130,7 +130,7 @@ export default function SalesDashboardPage() {
     }
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-background font-mono">
             <PageHeader title="Ventas" subtitle={`Tablero · ${periodLabel(period)}`}>
                 <BaseButton.Root as={Link} href="/sales/customers" variant="ghost" size="sm" leftIcon={<Users size={14} strokeWidth={2} />}>
                     Clientes

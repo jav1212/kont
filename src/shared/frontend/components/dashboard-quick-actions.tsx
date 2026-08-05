@@ -36,12 +36,11 @@ export function DashboardQuickActions({
             : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
 
     return (
-        <div className="flex flex-col gap-4">
-            <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2">
-                <span className="w-1 h-3 rounded-full bg-primary-500/50" />
+        <section className="flex flex-col gap-3">
+            <h2 className="font-sans text-[13px] font-semibold text-foreground">
                 {title}
             </h2>
-            <div className={`grid ${gridCols} gap-4`}>
+            <div className={`grid ${gridCols} gap-2`}>
                 {actions.map((action, index) => {
                     const Icon = action.icon;
                     return (
@@ -53,20 +52,20 @@ export function DashboardQuickActions({
                         >
                             <Link
                                 href={action.href}
-                                className="flex items-center gap-4 rounded-2xl border border-border-light bg-surface-1 p-4 hover:bg-surface-2 hover:border-primary-500/30 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                className="group flex min-h-14 items-center gap-3 rounded-lg border border-border-light bg-surface-1 px-3 py-2.5 transition-colors hover:border-border-medium hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
                             >
                                 {Icon && (
-                                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-surface-2 text-[var(--text-tertiary)] group-hover:bg-primary-500/10 group-hover:text-primary-500 transition-colors border border-border-light group-hover:border-primary-500/20">
-                                        <Icon size={22} strokeWidth={2} />
+                                    <div className="flex size-8 flex-shrink-0 items-center justify-center rounded-md bg-surface-2 text-[var(--text-secondary)] transition-colors group-hover:bg-primary-500/10 group-hover:text-primary-500">
+                                        <Icon size={16} strokeWidth={1.9} />
                                     </div>
                                 )}
                                 <div className="flex flex-col min-w-0">
-                                    <span className="flex items-center gap-1.5 text-[14px] font-semibold text-foreground group-hover:text-primary-500 transition-colors">
+                                    <span className="flex items-center gap-1.5 font-sans text-[13px] font-medium text-foreground transition-colors group-hover:text-primary-500">
                                         <span className="truncate">{action.label}</span>
                                         {action.beta && <BetaBadge />}
                                     </span>
                                     {action.desc && (
-                                        <span className="text-[12px] text-[var(--text-tertiary)] line-clamp-1">
+                                        <span className="line-clamp-1 font-sans text-[11px] text-[var(--text-tertiary)]">
                                             {action.desc}
                                         </span>
                                     )}
@@ -76,6 +75,6 @@ export function DashboardQuickActions({
                     );
                 })}
             </div>
-        </div>
+        </section>
     );
 }

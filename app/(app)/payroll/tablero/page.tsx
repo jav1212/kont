@@ -239,7 +239,7 @@ export default function PayrollDashboard() {
 
     // ────────────────────────────────────────────────────────────────────────
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30 font-mono">
+        <div className="flex flex-col min-h-full bg-background selection:bg-primary-500/30 font-mono">
             <PageHeader
                 title="Nómina"
             >
@@ -254,8 +254,7 @@ export default function PayrollDashboard() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="flex flex-col gap-8 px-8 py-8 max-w-[1400px] mx-auto w-full">
-
+            <div className="flex flex-col gap-6 px-8 py-8 max-w-[1500px] mx-auto w-full">
                 {/* ── Warning: no active employees ───────────────────────── */}
                 {!empLoading && activeCount === 0 && totalCount === 0 && (
                     <motion.div
@@ -293,7 +292,7 @@ export default function PayrollDashboard() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, ease: "easeOut" }}
-                    className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm"
+                    className="rounded-xl border border-border-light bg-surface-1 overflow-hidden"
                 >
                     <div className="px-6 py-4 border-b border-border-light flex items-center justify-between bg-surface-1">
                         <div className="flex items-center gap-3">
@@ -379,7 +378,7 @@ export default function PayrollDashboard() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="lg:col-span-2 rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm"
+                        className="lg:col-span-2 rounded-lg border border-border-light bg-surface-1 overflow-hidden shadow-sm"
                     >
                         <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -479,7 +478,7 @@ export default function PayrollDashboard() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 }}
-                        className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm flex flex-col"
+                        className="rounded-lg border border-border-light bg-surface-1 overflow-hidden shadow-sm flex flex-col"
                     >
                         <div className="px-5 py-4 border-b border-border-light flex items-center gap-2">
                             <span className="w-1 h-3 rounded-full bg-primary-500/50" />

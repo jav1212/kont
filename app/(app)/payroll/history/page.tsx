@@ -425,7 +425,7 @@ export default function PayrollHistoryPage() {
                 : (company ? `Bonificaciones · ${company.name}` : "Bonificaciones");
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col">
+        <div className="min-h-full bg-background flex flex-col">
             <PageHeader title="Historial de Nómina" subtitle={subtitle}>
                 {activeTab === "payroll" && (
                     <div className="flex items-center gap-2">

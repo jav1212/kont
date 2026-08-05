@@ -342,9 +342,9 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                                 );
                                 if (!current) return null;
                                 return (
-                                    <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                                         <Flag code={current.countryCode} size={16} />
-                                        <span className="font-mono text-[14px] font-medium text-foreground truncate">
+                                        <span className="min-w-0 flex-1 truncate font-mono text-[14px] font-medium text-foreground">
                                             {current.code} · {current.label}
                                         </span>
                                     </div>
@@ -352,13 +352,13 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                             }}
                             classNames={{
                                 trigger: [
-                                    "w-full min-w-0 h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1",
+                                    "w-full min-w-0 h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1 overflow-hidden",
                                     "transition-colors duration-150",
                                     "data-[hover=true]:border-border-medium",
                                     "data-[open=true]:border-primary-500/60",
                                 ].join(" "),
                                 value: "flex min-w-0 items-center w-full",
-                                selectorIcon: "text-[var(--text-tertiary)]",
+                                selectorIcon: "shrink-0 text-[var(--text-tertiary)]",
                                 popoverContent: "bg-surface-1 border border-border-light rounded-xl overflow-hidden",
                                 listbox: "p-1",
                             }}

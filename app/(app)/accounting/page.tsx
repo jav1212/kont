@@ -180,7 +180,7 @@ export default function AccountingDashboard() {
 
     return (
         <AccountingAccessGuard>
-            <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30 font-mono">
+            <div className="flex flex-col min-h-full bg-background selection:bg-primary-500/30 font-mono">
                 <PageHeader title="Contabilidad" subtitle={`Tablero — ${periodo}`}>
                     <BaseButton.Root
                         as={Link}
@@ -202,8 +202,7 @@ export default function AccountingDashboard() {
                     </BaseButton.Root>
                 </PageHeader>
 
-                <div className="flex flex-col gap-8 px-8 py-8 max-w-[1400px] mx-auto w-full">
-
+                <div className="flex flex-col gap-6 px-8 py-8 max-w-[1500px] mx-auto w-full">
                     {/* Setup banners */}
                     {hasNoPeriods && (
                         <SetupBanner
@@ -360,7 +359,7 @@ function FinancialSnapshotCard({ statements, loading }: FinancialSnapshotCardPro
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm lg:col-span-2"
+            className="rounded-lg border border-border-light bg-surface-1 overflow-hidden shadow-sm lg:col-span-2"
         >
             <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
                 <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
@@ -464,7 +463,7 @@ function RecentEntriesCard({ entries, loading, periodName }: RecentEntriesCardPr
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm lg:col-span-3"
+            className="rounded-lg border border-border-light bg-surface-1 overflow-hidden shadow-sm lg:col-span-3"
         >
             <div className="px-6 py-4 border-b border-border-light flex items-center justify-between gap-3">
                 <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)] truncate">

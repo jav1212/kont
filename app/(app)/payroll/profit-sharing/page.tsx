@@ -408,7 +408,7 @@ export default function UtilidadesPage() {
     const validResultsCount = calculationResults.filter(r => r.calc).length;
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+        <div className="min-h-full bg-background flex flex-col overflow-hidden">
             <PageHeader
                 title="Utilidades"
                 subtitle="Cálculo de utilidades anuales y fraccionadas (Arts. 131 · 174 LOTTT)"

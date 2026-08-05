@@ -922,7 +922,7 @@ export default function LiquidacionesPage() {
     }, [validResults, terminationDate, reason, profitSharingDays, vacationBonusDays, bcvRate, company]);
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+        <div className="min-h-full bg-background flex flex-col overflow-hidden">
             <PageHeader
                 title="Liquidaciones"
                 subtitle="Cálculo de finiquito y prestaciones al egreso (Art. 142 LOTTT)"

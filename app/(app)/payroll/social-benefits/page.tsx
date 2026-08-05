@@ -373,7 +373,7 @@ export default function PrestacionesPage() {
     const validResultsCount = benefitResults.filter(r => r.calculation).length;
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+        <div className="min-h-full bg-background flex flex-col overflow-hidden">
             <PageHeader
                 title="Prestaciones Sociales"
                 subtitle="Cálculo de garantía y acumulados (Art. 142 LOTTT)"

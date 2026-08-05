@@ -1166,7 +1166,7 @@ export default function EmployeesPage() {
     // ── Render ──────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-background font-mono">
             <PageHeader
                 title="Empleados"
                 subtitle={

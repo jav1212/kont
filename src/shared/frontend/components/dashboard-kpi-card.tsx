@@ -109,8 +109,7 @@ export function DashboardKpiCard({
     return (
         <div
             className={[
-                "@container rounded-2xl border p-5 shadow-sm",
-                config.border,
+                "@container min-h-[136px] rounded-lg border border-border-light p-4",
                 emphasis
                     ? `${config.bg} ring-1 ring-inset ${config.ring}`
                     : "bg-surface-1",
@@ -120,15 +119,15 @@ export function DashboardKpiCard({
             aria-busy={loading}
         >
             <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex min-w-0 flex-col gap-1.5">
                     {/* ── label — mono 12 px uppercase 0.14em (canon) ───── */}
-                    <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                    <p className="font-sans text-[13px] font-medium leading-tight text-[var(--text-secondary)]">
                         {label}
                     </p>
 
                     {/* ── value — kpi token: mono, tabular, tight; scales with card width via container queries ── */}
                     <p
-                        className={`font-mono text-[18px] @[220px]:text-[20px] @[260px]:text-[22px] @[300px]:text-[24px] @[340px]:text-[26px] @[380px]:text-[28px] font-bold tabular-nums tracking-[-0.02em] leading-[1] break-words ${config.text}`}
+                        className={`font-sans text-[24px] @[260px]:text-[26px] font-semibold tabular-nums tracking-[-0.03em] leading-[1.1] break-words ${config.text}`}
                         aria-live="polite"
                     >
                         {loading ? (
@@ -141,7 +140,7 @@ export function DashboardKpiCard({
 
                     {/* ── sublabel — sans, muted (prose-style) ─────────── */}
                     {sublabel && !loading && (
-                        <p className="font-sans text-[11px] @[260px]:text-[12px] text-[var(--text-tertiary)] leading-snug break-words">
+                        <p className="font-sans text-[12px] text-[var(--text-tertiary)] leading-snug break-words">
                             {sublabel}
                         </p>
                     )}
@@ -151,13 +150,13 @@ export function DashboardKpiCard({
                     {Icon && (
                         <div
                             className={[
-                                "flex h-10 w-10 items-center justify-center rounded-xl border",
-                                config.bg, config.text, config.border,
+                                "flex size-9 items-center justify-center rounded-lg",
+                                config.bg, config.text,
                             ].join(" ")}
                             aria-hidden="true"
                         >
                             {/* canon: strokeWidth 2.0 for icons > 16 px */}
-                            <Icon size={20} strokeWidth={2} />
+                        <Icon size={18} strokeWidth={1.9} />
                         </div>
                     )}
 
@@ -182,7 +181,7 @@ export function DashboardKpiCard({
 
             {/* ── hint — footer line, prose, 1 sentence max ───────────── */}
             {hint && !loading && (
-                <p className="mt-3 pt-3 border-t border-border-light font-sans text-[11px] text-[var(--text-tertiary)] leading-snug">
+                <p className="mt-3 border-t border-border-light pt-2.5 font-sans text-[11px] text-[var(--text-tertiary)] leading-snug">
                     {hint}
                 </p>
             )}

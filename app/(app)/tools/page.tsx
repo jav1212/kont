@@ -45,7 +45,7 @@ export default function ToolsDashboard() {
     const usd = rates.find((r) => r.code === "USD") ?? null;
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2">
+        <div className="flex flex-col min-h-full bg-background">
             <PageHeader
                 title="Herramientas"
                 subtitle="Selecciona una utilidad para comenzar"
@@ -62,7 +62,7 @@ export default function ToolsDashboard() {
                 </button>
             </PageHeader>
 
-            <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-8 flex flex-col gap-8">
+            <div className="max-w-[1500px] mx-auto w-full px-4 sm:px-8 py-6 sm:py-8 flex flex-col gap-6">
                 {/* Bloque destacado ────────────────────────────────────── */}
                 <motion.section
                     {...section(0)}

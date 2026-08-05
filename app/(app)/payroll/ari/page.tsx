@@ -218,7 +218,7 @@ export default function AriPage() {
     const empName = (cedula: string) => employees.find((e) => e.cedula === cedula)?.nombre ?? cedula;
 
     return (
-        <div className="min-h-full bg-surface-2 flex flex-col overflow-hidden">
+        <div className="min-h-full bg-background flex flex-col overflow-hidden">
             <PageHeader
                 title="AR-I · Retención ISLR"
                 subtitle="Determinación trimestral del porcentaje de retención sobre sueldos y salarios"

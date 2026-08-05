@@ -123,7 +123,7 @@ export default function InventoryDashboard() {
     const hasStockAlerts = stockAlerts.length > 0;
 
     return (
-        <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30 font-mono">
+        <div className="flex flex-col min-h-full bg-background selection:bg-primary-500/30 font-mono">
             <PageHeader title="Inventario" subtitle={`Tablero — ${periodo}`}>
                 <BaseButton.Root
                     as={Link}
@@ -145,8 +145,7 @@ export default function InventoryDashboard() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="flex flex-col gap-6 sm:gap-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-[1400px] mx-auto w-full">
-
+            <div className="flex flex-col gap-6 px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-[1500px] mx-auto w-full">
                 {/* Operational warning: empty catalog */}
                 {!loadingProducts && metrics.total === 0 && (
                     <motion.div
@@ -228,7 +227,7 @@ export default function InventoryDashboard() {
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="rounded-2xl border border-border-light bg-surface-1 overflow-hidden shadow-sm"
+                            className="rounded-xl border border-border-light bg-surface-1 overflow-hidden"
                         >
                             <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
                                 <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
