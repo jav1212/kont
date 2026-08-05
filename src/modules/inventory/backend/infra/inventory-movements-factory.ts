@@ -5,6 +5,7 @@ import { ServerSupabaseSource }            from '@/src/shared/backend/source/inf
 import { RpcMovementRepository }           from './repository/rpc-movement.repository';
 import { SharedMovementRepository }        from './repository/shared-movement.repository';
 import { RpcMovementDraftRepository }      from './repository/rpc-movement-draft.repository';
+import { SharedMovementDraftRepository }   from './repository/shared-movement-draft.repository';
 import { RpcProductRepository }            from './repository/rpc-product.repository';
 import { SharedProductRepository }         from './repository/shared-product.repository';
 import { isSharedSchemaPilotEnabled }     from '@/src/shared/backend/config/shared-schema-pilot';
@@ -25,7 +26,9 @@ export function getInventoryMovementsActions(userId: string) {
     const movementRepo = sharedInventory
         ? new SharedMovementRepository(source, userId)
         : new RpcMovementRepository(source, userId);
-    const movementDraftRepo  = new RpcMovementDraftRepository(source, userId);
+    const movementDraftRepo  = sharedInventory
+        ? new SharedMovementDraftRepository(source, userId)
+        : new RpcMovementDraftRepository(source, userId);
     const productRepo        = sharedInventory
         ? new SharedProductRepository(source, userId)
         : new RpcProductRepository(source, userId);
