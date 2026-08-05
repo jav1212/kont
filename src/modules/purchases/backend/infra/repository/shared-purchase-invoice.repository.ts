@@ -161,9 +161,31 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             const rows = (data as RawSharedInvoice[]) ?? [];
             const supplierNames = await this.loadSupplierNames(rows.map((row) => row.supplier_id));
             if (supplierNames.isFailure) return Result.fail(supplierNames.getError());
-            const invoices = await Promise.all(rows.map((row) => this.load(row, supplierNames.getValue().get(row.supplier_id))));
-            const failed = invoices.find((result) => result.isFailure);
-            return failed ? Result.fail(failed.getError()) : Result.success(invoices.map((result) => result.getValue()));
+            if (rows.length === 0) return Result.success([]);
+
+            // Load all line items in one request. Calling load() once per
+            // invoice created an N+1 pattern that became very slow for
+            // companies with many purchase invoices.
+            const { data: itemData, error: itemError } = await this.source.instance
+                .from('shared_inventory_purchase_invoice_items')
+                .select('*')
+                .eq('tenant_id', this.tenantId)
+                .in('invoice_id', rows.map((row) => row.id))
+                .order('created_at', { ascending: true });
+            if (itemError) return Result.fail(itemError.message);
+
+            const itemsByInvoice = new Map<string, RawSharedItem[]>();
+            for (const item of (itemData as RawSharedItem[] ?? [])) {
+                const items = itemsByInvoice.get(item.invoice_id) ?? [];
+                items.push(item);
+                itemsByInvoice.set(item.invoice_id, items);
+            }
+
+            return Result.success(rows.map((row) => this.mapToDomain(
+                row,
+                itemsByInvoice.get(row.id) ?? [],
+                supplierNames.getValue().get(row.supplier_id),
+            )));
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared purchase invoices');
         }
