@@ -5,6 +5,7 @@
 // see src/modules/purchases/backend/infra/purchases-factory.ts.
 import { ServerSupabaseSource }            from '@/src/shared/backend/source/infra/server-supabase';
 import { RpcPeriodReportRepository }       from './repository/rpc-period-report.repository';
+import { SharedPeriodReportRepository }    from './repository/shared-period-report.repository';
 import { RpcPurchaseLedgerRepository }     from './repository/rpc-purchase-ledger.repository';
 import { RpcIslrReportRepository }         from './repository/rpc-islr-report.repository';
 import { RpcSalesLedgerRepository }        from './repository/rpc-sales-ledger.repository';
@@ -16,10 +17,16 @@ import { GetIslrReportUseCase }            from '../app/get-islr-report.use-case
 import { GetSalesLedgerUseCase }           from '../app/get-sales-ledger.use-case';
 import { GetInventoryLedgerUseCase }       from '../app/get-inventory-ledger.use-case';
 import { GetBalanceReportUseCase }         from '../app/get-balance-report.use-case';
+import { isSharedSchemaPilotEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getInventoryReportsActions(userId: string) {
     const source              = new ServerSupabaseSource();
-    const periodReportRepo    = new RpcPeriodReportRepository(source, userId);
+    const periodReportRepo = isSharedSchemaPilotEnabled(
+        process.env.SHARED_SCHEMA_PERIOD_REPORT_ENABLED,
+        userId,
+    )
+        ? new SharedPeriodReportRepository(source, userId)
+        : new RpcPeriodReportRepository(source, userId);
     const purchaseLedgerRepo  = new RpcPurchaseLedgerRepository(source, userId);
     const islrReportRepo      = new RpcIslrReportRepository(source, userId);
     const salesLedgerRepo     = new RpcSalesLedgerRepository(source, userId);
