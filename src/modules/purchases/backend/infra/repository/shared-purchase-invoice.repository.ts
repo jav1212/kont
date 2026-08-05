@@ -78,6 +78,11 @@ type RawSharedItem = {
     vat_included: boolean | null;
 };
 
+type RawSharedSupplier = {
+    id: string;
+    name: string;
+};
+
 const num = (value: number | string | null | undefined, fallback = 0): number =>
     value == null || value === '' ? fallback : Number(value);
 
@@ -153,7 +158,10 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 .eq('company_id', companyId)
                 .order('invoice_date', { ascending: false });
             if (error) return Result.fail(error.message);
-            const invoices = await Promise.all(((data as RawSharedInvoice[]) ?? []).map((row) => this.load(row)));
+            const rows = (data as RawSharedInvoice[]) ?? [];
+            const supplierNames = await this.loadSupplierNames(rows.map((row) => row.supplier_id));
+            if (supplierNames.isFailure) return Result.fail(supplierNames.getError());
+            const invoices = await Promise.all(rows.map((row) => this.load(row, supplierNames.getValue().get(row.supplier_id))));
             const failed = invoices.find((result) => result.isFailure);
             return failed ? Result.fail(failed.getError()) : Result.success(invoices.map((result) => result.getValue()));
         } catch (error) {
@@ -251,23 +259,45 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         }
     }
 
-    private async load(row: RawSharedInvoice): Promise<Result<PurchaseInvoice>> {
-        const { data, error } = await this.source.instance
+    private async load(row: RawSharedInvoice, supplierName?: string): Promise<Result<PurchaseInvoice>> {
+        const itemsRequest = this.source.instance
             .from('shared_inventory_purchase_invoice_items')
             .select('*')
             .eq('tenant_id', this.tenantId)
             .eq('invoice_id', row.id)
             .order('created_at', { ascending: true });
+        const supplierNameRequest = supplierName === undefined
+            ? this.loadSupplierNames([row.supplier_id])
+            : Promise.resolve(Result.success(new Map([[row.supplier_id, supplierName]])));
+        const [{ data, error }, supplierNames] = await Promise.all([itemsRequest, supplierNameRequest]);
         if (error) return Result.fail(error.message);
-        return Result.success(this.mapToDomain(row, (data as RawSharedItem[]) ?? []));
+        if (supplierNames.isFailure) return Result.fail(supplierNames.getError());
+        return Result.success(this.mapToDomain(row, (data as RawSharedItem[]) ?? [], supplierNames.getValue().get(row.supplier_id)));
     }
 
-    private mapToDomain(row: RawSharedInvoice, rawItems: RawSharedItem[]): PurchaseInvoice {
+    private async loadSupplierNames(supplierIds: string[]): Promise<Result<Map<string, string>>> {
+        const uniqueIds = [...new Set(supplierIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return Result.success(new Map());
+        try {
+            const { data, error } = await this.source.instance
+                .from('shared_inventory_suppliers')
+                .select('id,name')
+                .eq('tenant_id', this.tenantId)
+                .in('id', uniqueIds);
+            if (error) return Result.fail(error.message);
+            return Result.success(new Map(((data as RawSharedSupplier[]) ?? []).map((supplier) => [supplier.id, supplier.name])));
+        } catch (error) {
+            return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared suppliers');
+        }
+    }
+
+    private mapToDomain(row: RawSharedInvoice, rawItems: RawSharedItem[], supplierName?: string): PurchaseInvoice {
         const taxes = Array.isArray(row.taxes) ? row.taxes : [];
         return {
             id: row.id,
             companyId: row.company_id,
             supplierId: row.supplier_id,
+            supplierName,
             invoiceNumber: row.invoice_number,
             controlNumber: row.control_number ?? '',
             date: row.invoice_date,
