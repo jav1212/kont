@@ -128,7 +128,7 @@ export function BenefitActionCluster({
             {/* Section label */}
             <div className="flex items-center gap-1.5 pl-2.5 pr-3 border-r border-border-light bg-surface-2">
                 <span className="text-[var(--text-tertiary)] flex-shrink-0">{icon}</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--text-secondary)] whitespace-nowrap">
+                <span className="font-sans text-[12px] font-medium normal-case tracking-normal text-[var(--text-secondary)] whitespace-nowrap">
                     {label}
                 </span>
             </div>

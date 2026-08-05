@@ -66,10 +66,8 @@ export default function ToolsDashboard() {
                 {/* Bloque destacado ────────────────────────────────────── */}
                 <motion.section
                     {...section(0)}
-                    aria-labelledby="highlight-heading"
                     className="flex flex-col gap-3"
                 >
-                    <SectionHeading id="highlight-heading" label="Bloque destacado" />
                     <ToolHighlight
                         icon={<DollarSign size={20} strokeWidth={2.25} />}
                         label="Divisas BCV"
@@ -130,7 +128,7 @@ function SectionHeading({ id, label }: { id: string; label: string }) {
     return (
         <h2
             id={id}
-            className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-foreground/55"
+            className="font-sans text-[14px] font-medium text-foreground"
         >
             {label}
         </h2>

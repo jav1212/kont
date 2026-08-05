@@ -40,7 +40,7 @@ export function GuidedStepShell({
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-                <div className={`${contentMaxWidthClass} mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-8`}>
+                <div className={`${contentMaxWidthClass} mx-auto px-3 sm:px-4 md:px-6 py-5 md:py-7`}>
                     <header className={["mb-5 md:mb-6", centerHeader ? "text-center" : ""].join(" ")}>
                         <h2 className="font-mono text-[20px] md:text-[22px] font-black tracking-tight text-foreground leading-tight">
                             {title}
@@ -107,7 +107,7 @@ export function StepSection({
     children: ReactNode;
 }) {
     return (
-        <section className="rounded-xl border border-border-light bg-surface-1 px-4 sm:px-5 md:px-6 py-4 md:py-5">
+        <section className="rounded-lg border border-border-light bg-surface-1 px-4 sm:px-5 md:px-6 py-4 md:py-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
             <h3 className="font-mono text-[12px] font-bold uppercase tracking-[0.18em] text-[var(--text-secondary)] mb-1">
                 {title}
             </h3>

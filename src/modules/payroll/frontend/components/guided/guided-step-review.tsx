@@ -1,6 +1,7 @@
 "use client";
 
 import { Save } from "lucide-react";
+import type { ReactNode } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PayrollEmployeeTable } from "../payroll-employee-table";
 import type { GuidedPayrollState } from "../../hooks/use-guided-payroll-state";
@@ -10,9 +11,10 @@ import { GuidedStepShell, AdvancedDisclosure } from "./guided-step-shell";
 interface Props {
     state: GuidedPayrollState;
     onBack: () => void;
+    actions?: ReactNode;
 }
 
-export function GuidedStepReview({ state, onBack }: Props) {
+export function GuidedStepReview({ state, onBack, actions }: Props) {
     const {
         employees, employeesExcludedByDate, empLoading,
         company, companyId,
@@ -50,6 +52,11 @@ export function GuidedStepReview({ state, onBack }: Props) {
             hideNav={false}
             contentMaxWidthClass=""
         >
+            {actions && (
+                <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border-light pb-3">
+                    {actions}
+                </div>
+            )}
             {employeesExcludedByDate.length > 0 && (
                 <div className="mb-3 px-3 py-2 rounded-md border border-amber-500/30 bg-amber-500/[0.06]">
                     <p className="font-mono text-[11px] text-amber-600">

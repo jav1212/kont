@@ -62,7 +62,7 @@ export function GuidedStepperHeader({ steps, currentStep, onStepClick }: GuidedS
             </div>
 
             {/* Desktop full stepper */}
-            <div className="hidden md:block px-8 py-5">
+            <div className="hidden md:block px-8 py-4">
                 <div className="flex items-center max-w-4xl mx-auto">
                     {steps.map((step, idx) => {
                         const isCurrent = step.id === currentStep;

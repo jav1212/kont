@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -30,9 +31,11 @@ import {
     AlertCircle,
     Star,
     CircleDot,
+    Eye,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CompanyEditModal } from "@/src/modules/companies/frontend/components/company-edit-modal";
+import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
 
 // ============================================================================
 // CONSTANTS
@@ -168,6 +171,7 @@ function FilterPill({
 // ============================================================================
 
 export default function CompaniesPage() {
+    const router = useRouter();
     const { companies, loading, save, update, remove, applySector, companyId, selectCompany } = useCompany();
     const { capacity, canAddCompany } = useCapacity();
     const { user } = useAuth();
@@ -485,14 +489,14 @@ export default function CompaniesPage() {
                             </div>
                         )}
 
-                        <div className="border border-border-light rounded-2xl overflow-hidden bg-surface-1 shadow-sm">
+                        <div className="border border-border-light rounded-lg overflow-hidden bg-surface-1">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left">
+                                <table className="w-full text-left [&_th:nth-child(3)]:hidden [&_td:nth-child(3)]:hidden [&_th:nth-child(4)]:hidden [&_td:nth-child(4)]:hidden">
                                     <thead>
-                                        <tr className="bg-surface-2/60 border-b border-border-light">
+                                        <tr className="bg-surface-1 border-b border-border-light">
                                             {["RIF", "Nombre", "Teléfono", "Dirección", "Sector", "Tipo", "Creada", ""].map((h) => (
                                                 <th key={h} className={[
-                                                    "px-5 py-3 font-mono font-medium text-[var(--text-tertiary)] uppercase tracking-[0.14em] text-[11px]",
+                                                    "px-5 py-3 font-sans font-medium text-[var(--text-secondary)] normal-case tracking-normal text-[12px]",
                                                     (h === "Creada" || h === "Teléfono" || h === "Dirección" || h === "Sector" || h === "Tipo") ? "hidden sm:table-cell" : "",
                                                 ].join(" ")}>
                                                     {h}
@@ -565,7 +569,7 @@ export default function CompaniesPage() {
                                                         ].join(" ")}
                                                     >
                                                         {/* RIF */}
-                                                        <td className="pl-5 pr-5 py-4 w-40 relative">
+                                                        <td className="pl-5 pr-5 py-3.5 w-40 relative">
                                                             {isActive && (
                                                                 <span
                                                                     aria-hidden
@@ -585,7 +589,7 @@ export default function CompaniesPage() {
                                                         </td>
 
                                                         {/* Nombre */}
-                                                        <td className="px-5 py-4">
+                                                        <td className="px-5 py-3.5">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => !isActive && selectCompany(company.id)}
@@ -622,12 +626,12 @@ export default function CompaniesPage() {
                                                         </td>
 
                                                         {/* Teléfono */}
-                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                        <td className="px-5 py-3.5 hidden sm:table-cell">
                                                             <span className="text-[13px] text-[var(--text-secondary)] tabular-nums">{company.phone ?? "—"}</span>
                                                         </td>
 
                                                         {/* Dirección + correo del cliente */}
-                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                        <td className="px-5 py-3.5 hidden sm:table-cell">
                                                             <div className="flex flex-col leading-tight">
                                                                 <span className="text-[13px] text-[var(--text-secondary)] truncate max-w-[180px] inline-block">{company.address ?? "—"}</span>
                                                                 {company.contactEmail && (
@@ -637,7 +641,7 @@ export default function CompaniesPage() {
                                                         </td>
 
                                                         {/* Sector */}
-                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                        <td className="px-5 py-3.5 hidden sm:table-cell">
                                                             {company.sector ? (
                                                                 <span className={[
                                                                     "inline-flex items-center px-2 py-0.5 rounded-sm",
@@ -652,19 +656,19 @@ export default function CompaniesPage() {
                                                         </td>
 
                                                         {/* Tipo (Contribuyente) */}
-                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                        <td className="px-5 py-3.5 hidden sm:table-cell">
                                                             <TaxpayerTypeBadge type={company.taxpayerType ?? "ordinario"} />
                                                         </td>
 
                                                         {/* Creada */}
-                                                        <td className="px-5 py-4 hidden sm:table-cell">
+                                                        <td className="px-5 py-3.5 hidden sm:table-cell">
                                                             <span className="text-[12px] text-[var(--text-tertiary)] whitespace-nowrap tabular-nums font-mono">
                                                                 {formatDate(company.createdAt)}
                                                             </span>
                                                         </td>
 
                                                         {/* Actions */}
-                                                        <td className="px-5 py-4 text-right">
+                                                        <td className="px-5 py-3.5 text-right">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 {isConfirm ? (
                                                                     <div className="flex items-center gap-1 px-1.5 py-1 rounded-lg border border-[var(--badge-error-border)] bg-[var(--badge-error-bg)]">
@@ -679,31 +683,15 @@ export default function CompaniesPage() {
                                                                         </BaseButton.Root>
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-data-[active=true]:opacity-100 transition-opacity">
-                                                                        {!isActive && (
-                                                                            <BaseButton.Icon
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => selectCompany(company.id)}
-                                                                                title="Activar empresa"
-                                                                                className="text-[var(--text-tertiary)] hover:text-primary-500"
-                                                                            >
-                                                                                <Star size={14} />
-                                                                            </BaseButton.Icon>
-                                                                        )}
-                                                                        <BaseButton.Icon variant="ghost" size="sm" onClick={() => setEditingCompany(company)} title="Editar">
-                                                                            <IconEdit />
-                                                                        </BaseButton.Icon>
-                                                                        <BaseButton.Icon
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            onClick={() => setConfirmId(company.id)}
-                                                                            title="Eliminar"
-                                                                            className="hover:text-[var(--text-error)] hover:bg-[var(--badge-error-bg)]"
-                                                                        >
-                                                                            <IconTrash />
-                                                                        </BaseButton.Icon>
-                                                                    </div>
+                                                                    <OverflowMenu
+                                                                        triggerClassName="opacity-0 group-hover:opacity-100 group-data-[active=true]:opacity-100"
+                                                                        items={[
+                                                                            { label: "Ver empresa", onClick: () => router.push(`/companies/${encodeURIComponent(company.id)}`), icon: Eye },
+                                                                            ...(!isActive ? [{ label: "Activar empresa", onClick: () => selectCompany(company.id), icon: Star }] : []),
+                                                                            { label: "Editar empresa", onClick: () => setEditingCompany(company), icon: IconEdit },
+                                                                            { label: "Eliminar empresa", onClick: () => setConfirmId(company.id), icon: IconTrash, danger: true },
+                                                                        ]}
+                                                                    />
                                                                 )}
                                                             </div>
                                                         </td>

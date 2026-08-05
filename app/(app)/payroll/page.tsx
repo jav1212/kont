@@ -669,59 +669,7 @@ export default function PayrollCalculatorPage() {
 
     return (
             <div className="flex flex-1 flex-col bg-background font-mono overflow-hidden">
-                <PageHeader
-                    title="Nómina"
-                    hideOverflow
-                >
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                        <BenefitActionCluster
-                            label="Bonificaciones"
-                            icon={<Coins size={12} />}
-                            confirmed={bonificacionesAlreadyConfirmed}
-                            saving={savingBfDraft}
-                            confirming={confirmingBf}
-                            disabled={!activos}
-                            onSaveDraft={askSaveBonificacionesDraft}
-                            onConfirm={askConfirmBonificaciones}
-                            onPdf={askBonificacionesPdf}
-                            pdfMenuPlacement="left"
-                        />
-
-                        {showCestaTicket && (
-                            <BenefitActionCluster
-                                label="Cesta Ticket"
-                                icon={<Receipt size={12} />}
-                                confirmed={cestaTicketAlreadyConfirmed}
-                                saving={savingCtDraft}
-                                confirming={confirmingCt}
-                                disabled={!activos}
-                                onSaveDraft={askSaveCestaTicketDraft}
-                                onConfirm={askConfirmCestaTicket}
-                                onPdf={askCestaTicketPdf}
-                            />
-                        )}
-
-                        {showBonoSocioEconomico && (
-                            <BenefitActionCluster
-                                label="Bono Socio EconÃ³mico"
-                                icon={<Shield size={12} />}
-                                confirmed={bonoGuerraAlreadyConfirmed}
-                                saving={savingBgDraft}
-                                confirming={confirmingBg}
-                                disabled={!activos}
-                                onSaveDraft={askSaveBonoGuerraDraft}
-                                onConfirm={askConfirmBonoGuerra}
-                                onPdf={askBonoGuerraPdf}
-                            />
-                        )}
-
-                        {company && (
-                            <span className="hidden md:inline font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em] truncate max-w-[180px]">
-                                {company.name}
-                            </span>
-                        )}
-                    </div>
-                </PageHeader>
+                <PageHeader title="Nómina" />
 
                 <GuidedStepperHeader
                     steps={STEPS}
@@ -740,7 +688,53 @@ export default function PayrollCalculatorPage() {
                     {currentStep === 4 && (
                         <GuidedStepBonuses state={state} onBack={goBack} onNext={goNext} />
                     )}
-                    {currentStep === 5 && <GuidedStepReview state={state} onBack={goBack} />}
+                    {currentStep === 5 && (
+                        <GuidedStepReview
+                            state={state}
+                            onBack={goBack}
+                            actions={
+                                <>
+                                    <BenefitActionCluster
+                                        label="Bonificaciones"
+                                        icon={<Coins size={12} />}
+                                        confirmed={bonificacionesAlreadyConfirmed}
+                                        saving={savingBfDraft}
+                                        confirming={confirmingBf}
+                                        disabled={!activos}
+                                        onSaveDraft={askSaveBonificacionesDraft}
+                                        onConfirm={askConfirmBonificaciones}
+                                        onPdf={askBonificacionesPdf}
+                                    />
+                                    {showCestaTicket && (
+                                        <BenefitActionCluster
+                                            label="Cesta Ticket"
+                                            icon={<Receipt size={12} />}
+                                            confirmed={cestaTicketAlreadyConfirmed}
+                                            saving={savingCtDraft}
+                                            confirming={confirmingCt}
+                                            disabled={!activos}
+                                            onSaveDraft={askSaveCestaTicketDraft}
+                                            onConfirm={askConfirmCestaTicket}
+                                            onPdf={askCestaTicketPdf}
+                                        />
+                                    )}
+                                    {showBonoSocioEconomico && (
+                                        <BenefitActionCluster
+                                            label="Bono Socio Económico"
+                                            icon={<Shield size={12} />}
+                                            confirmed={bonoGuerraAlreadyConfirmed}
+                                            saving={savingBgDraft}
+                                            confirming={confirmingBg}
+                                            disabled={!activos}
+                                            onSaveDraft={askSaveBonoGuerraDraft}
+                                            onConfirm={askConfirmBonoGuerra}
+                                            onPdf={askBonoGuerraPdf}
+                                        />
+                                    )}
+                                </>
+                            }
+                        />
+                    )}
                 </div>
 
                 {/* DiÃ¡logo Ãºnico para los 9 disparadores de beneficios (PDF / borrador / confirmar) */}

@@ -107,17 +107,14 @@ function ActionOverflow({ children }: { children: ReactNode }) {
                         transition={{ duration: 0.12 }}
                         onClick={close}
                         className={[
-                            "absolute right-0 top-full z-[var(--z-dropdown,30)] mt-2 flex min-w-[240px] origin-top-right flex-col",
-                            "rounded-xl border border-border-light bg-surface-1 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.14)]",
+                            "absolute right-0 top-full z-[var(--z-dropdown,30)] mt-2 flex min-w-[280px] origin-top-right flex-col gap-1",
+                            "rounded-xl border border-border-light bg-surface-1 p-2 shadow-[0_12px_32px_rgba(15,23,42,0.14)]",
                             "[&>a]:!h-9 [&>a]:!w-full [&>a]:!justify-start [&>a]:!rounded-md [&>a]:!border-transparent",
                             "[&>a]:!bg-transparent [&>a]:!px-3 [&>a]:!shadow-none [&>a]:!font-sans [&>a]:!text-[13px] [&>a]:!text-foreground",
                             "[&>a]:!font-normal [&>a]:!normal-case [&>a]:!tracking-normal [&>a:hover]:!bg-surface-2 [&>a:focus-visible]:!bg-surface-2",
                             "[&>button]:!h-9 [&>button]:!w-full [&>button]:!justify-start [&>button]:!rounded-md [&>button]:!border-transparent",
                             "[&>button]:!bg-transparent [&>button]:!px-3 [&>button]:!shadow-none [&>button]:!font-sans [&>button]:!text-[13px] [&>button]:!text-foreground",
                             "[&>button]:!font-normal [&>button]:!normal-case [&>button]:!tracking-normal [&>button:hover]:!bg-surface-2 [&>button:focus-visible]:!bg-surface-2",
-                            // Complex toolbar clusters have their own dropdowns and should not
-                            // be nested inside the compact overflow menu.
-                            "[&>div.relative]:hidden",
                             "[&>div]:w-full [&_svg]:shrink-0",
                         ].join(" ")}
                     >
