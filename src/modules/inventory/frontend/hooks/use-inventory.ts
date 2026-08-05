@@ -64,6 +64,40 @@ function reportError(fallback: string, e: unknown): void {
     notify.error(e instanceof Error ? e.message : fallback);
 }
 
+// Pages under /inventory mount independent useInventory() instances. Keep a
+// short browser cache so navigating between those pages does not download the
+// same catalog and period data repeatedly. The tenant is part of every key;
+// when it cannot be resolved we deliberately skip caching.
+const INVENTORY_CACHE_TTL_MS = 30_000;
+type CacheEntry<T> = { data: T; expiresAt: number };
+
+const inventoryCache = {
+    products: new Map<string, CacheEntry<Product[]>>(),
+    movements: new Map<string, CacheEntry<Movement[]>>(),
+    closes: new Map<string, CacheEntry<PeriodClose[]>>(),
+    departments: new Map<string, CacheEntry<Department[]>>(),
+};
+
+function inventoryCacheKey(companyId: string, suffix = ''): string | null {
+    if (typeof window === 'undefined') return null;
+    const tenantId = localStorage.getItem('kont-active-tenant-id');
+    return tenantId ? `${tenantId}:${companyId}:${suffix}` : null;
+}
+
+function invalidateInventoryCache(companyId: string): void {
+    const prefix = inventoryCacheKey(companyId);
+    if (!prefix) return;
+    for (const cache of Object.values(inventoryCache)) {
+        for (const key of cache.keys()) {
+            if (key.startsWith(prefix)) cache.delete(key);
+        }
+    }
+}
+
+function invalidateAllInventoryCache(): void {
+    for (const cache of Object.values(inventoryCache)) cache.clear();
+}
+
 export function useInventory() {
     const [products, setProducts]               = useState<Product[]>([]);
     const [movements, setMovements]             = useState<Movement[]>([]);
@@ -90,12 +124,20 @@ export function useInventory() {
     // ── Products ───────────────────────────────────────────────────────────────
 
     const loadProducts = useCallback(async (companyId: string) => {
+        const key = inventoryCacheKey(companyId, 'products');
+        const cached = key ? inventoryCache.products.get(key) : undefined;
+        if (cached && cached.expiresAt > Date.now()) {
+            setProducts(cached.data);
+            return;
+        }
         setLoadingProducts(true);
         try {
             const res = await apiFetch(`/api/inventory/products?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar productos'); return; }
-            setProducts(json.data ?? []);
+            const data = (json.data ?? []) as Product[];
+            setProducts(data);
+            if (key) inventoryCache.products.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
         } catch (e) {
             reportError('Error de red', e);
         } finally {
@@ -119,6 +161,7 @@ export function useInventory() {
                     ? prev.map((p) => (p.id === saved.id ? saved : p))
                     : [...prev, saved];
             });
+            invalidateInventoryCache(product.companyId);
             return saved;
         } catch (e) {
             reportError('Error de red', e);
@@ -139,6 +182,7 @@ export function useInventory() {
             } else {
                 setProducts((prev) => prev.filter((p) => p.id !== id));
             }
+            invalidateAllInventoryCache();
             return { ok: true, softDeleted };
         } catch (e) {
             reportError('Error de red', e);
@@ -149,6 +193,12 @@ export function useInventory() {
     // ── Movements ──────────────────────────────────────────────────────────────
 
     const loadMovements = useCallback(async (companyId: string, period?: string) => {
+        const key = inventoryCacheKey(companyId, `movements:${period ?? 'all'}`);
+        const cached = key ? inventoryCache.movements.get(key) : undefined;
+        if (cached && cached.expiresAt > Date.now()) {
+            setMovements(cached.data);
+            return;
+        }
         setLoadingMovements(true);
         try {
             const params = new URLSearchParams({ companyId });
@@ -156,7 +206,9 @@ export function useInventory() {
             const res = await apiFetch(`/api/inventory/movements?${params}`);
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar movimientos'); return; }
-            setMovements(json.data ?? []);
+            const data = (json.data ?? []) as Movement[];
+            setMovements(data);
+            if (key) inventoryCache.movements.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
         } catch (e) {
             reportError('Error de red', e);
         } finally {
@@ -170,6 +222,7 @@ export function useInventory() {
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al eliminar movimiento'); return false; }
             setMovements((prev) => prev.filter((m) => m.id !== id));
+            invalidateAllInventoryCache();
             return true;
         } catch (e) {
             reportError('Error de red', e);
@@ -190,6 +243,7 @@ export function useInventory() {
             if (!res.ok) { notify.error(json.error ?? 'Error al actualizar movimiento'); return null; }
             const updated: Movement = json.data;
             setMovements((prev) => prev.map((m) => m.id === updated.id ? updated : m));
+            invalidateInventoryCache(updated.companyId);
             return updated;
         } catch (e) {
             reportError('Error de red', e);
@@ -215,6 +269,7 @@ export function useInventory() {
                         : p
                 )
             );
+            invalidateInventoryCache(saved.companyId);
             return saved;
         } catch (e) {
             reportError('Error de red', e);
@@ -225,12 +280,20 @@ export function useInventory() {
     // ── Period Closes ──────────────────────────────────────────────────────────
 
     const loadPeriodCloses = useCallback(async (companyId: string) => {
+        const key = inventoryCacheKey(companyId, 'closes');
+        const cached = key ? inventoryCache.closes.get(key) : undefined;
+        if (cached && cached.expiresAt > Date.now()) {
+            setPeriodCloses(cached.data);
+            return;
+        }
         setLoadingPeriodCloses(true);
         try {
             const res = await apiFetch(`/api/inventory/closings?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar cierres'); return; }
-            setPeriodCloses(json.data ?? []);
+            const data = (json.data ?? []) as PeriodClose[];
+            setPeriodCloses(data);
+            if (key) inventoryCache.closes.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
         } catch (e) {
             reportError('Error de red', e);
         } finally {
@@ -257,7 +320,10 @@ export function useInventory() {
             });
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al cerrar período'); return false; }
-            if (json.data) setPeriodCloses((prev) => [json.data, ...prev]);
+            if (json.data) {
+                setPeriodCloses((prev) => [json.data, ...prev]);
+                invalidateInventoryCache(companyId);
+            }
             return true;
         } catch (e) {
             reportError('Error de red', e);
@@ -268,12 +334,20 @@ export function useInventory() {
     // ── Departments ────────────────────────────────────────────────────────────
 
     const loadDepartments = useCallback(async (companyId: string) => {
+        const key = inventoryCacheKey(companyId, 'departments');
+        const cached = key ? inventoryCache.departments.get(key) : undefined;
+        if (cached && cached.expiresAt > Date.now()) {
+            setDepartments(cached.data);
+            return;
+        }
         setLoadingDepartments(true);
         try {
             const res = await apiFetch(`/api/inventory/departments?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al cargar departamentos'); return; }
-            setDepartments(json.data ?? []);
+            const data = (json.data ?? []) as Department[];
+            setDepartments(data);
+            if (key) inventoryCache.departments.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
         } catch (e) {
             reportError('Error de red', e);
         } finally {
