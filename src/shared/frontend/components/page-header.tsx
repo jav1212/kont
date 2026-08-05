@@ -33,6 +33,8 @@ interface PageHeaderProps {
     utilityAction?: ReactNode;
     /** Preserved for call-site compatibility; BETA remains visible in navigation. */
     beta?: boolean;
+    /** Hide the compact overflow trigger when a page has no header actions. */
+    hideOverflow?: boolean;
 }
 
 function isScreenReaderOnly(node: ReactNode): boolean {
@@ -113,6 +115,9 @@ function ActionOverflow({ children }: { children: ReactNode }) {
                             "[&>button]:!h-9 [&>button]:!w-full [&>button]:!justify-start [&>button]:!rounded-md [&>button]:!border-transparent",
                             "[&>button]:!bg-transparent [&>button]:!px-3 [&>button]:!shadow-none [&>button]:!font-sans [&>button]:!text-[13px] [&>button]:!text-foreground",
                             "[&>button]:!font-normal [&>button]:!normal-case [&>button]:!tracking-normal [&>button:hover]:!bg-surface-2 [&>button:focus-visible]:!bg-surface-2",
+                            // Complex toolbar clusters have their own dropdowns and should not
+                            // be nested inside the compact overflow menu.
+                            "[&>div.relative]:hidden",
                             "[&>div]:w-full [&_svg]:shrink-0",
                         ].join(" ")}
                     >
@@ -132,6 +137,7 @@ export function PageHeader({
     secondaryActions,
     utilityAction,
     beta: _beta = false,
+    hideOverflow = false,
 }: PageHeaderProps) {
     const currentBcv = useBcvRate();
     const legacyNodes = unwrapLegacyActionGroup(Children.toArray(children));
@@ -208,7 +214,7 @@ export function PageHeader({
                                 {resolvedSecondary}
                             </div>
                         )}
-                        {hasOverflow && <ActionOverflow>{resolvedSecondary}</ActionOverflow>}
+                        {hasOverflow && !hideOverflow && <ActionOverflow>{resolvedSecondary}</ActionOverflow>}
                         {resolvedPrimary && <div className="shrink-0">{resolvedPrimary}</div>}
                         {passiveNodes}
                     </div>

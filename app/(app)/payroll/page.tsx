@@ -671,6 +671,7 @@ export default function PayrollCalculatorPage() {
             <div className="flex flex-1 flex-col bg-background font-mono overflow-hidden">
                 <PageHeader
                     title="Nómina"
+                    hideOverflow
                 >
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                         <BenefitActionCluster
@@ -713,13 +714,6 @@ export default function PayrollCalculatorPage() {
                                 onPdf={askBonoGuerraPdf}
                             />
                         )}
-
-                        <div className="flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border-light bg-surface-2 shadow-sm">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--text-tertiary)]">BCV</span>
-                            <span className="font-mono text-[11px] font-semibold tabular-nums text-foreground">
-                                {formatBcvRate(bcvRate)}
-                            </span>
-                        </div>
 
                         {company && (
                             <span className="hidden md:inline font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.14em] truncate max-w-[180px]">
