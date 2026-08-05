@@ -4,7 +4,7 @@ import { getBonificacionesRunActions } from "@/src/modules/payroll/backend/infra
 import { withTenant }                   from "@/src/shared/backend/utils/require-tenant";
 import { handleResult }                 from "@/src/shared/backend/utils/handle-result";
 
-export const POST = withTenant(async (req, { effectiveOwnerId }) => {
+export const POST = withTenant(async (req, { effectiveOwnerId, tenantId}) => {
     let body: { runId?: string };
     try {
         body = await req.json();
@@ -15,6 +15,6 @@ export const POST = withTenant(async (req, { effectiveOwnerId }) => {
         return Response.json({ error: "runId es requerido." }, { status: 422 });
     }
 
-    const result = await getBonificacionesRunActions(effectiveOwnerId).unconfirm.execute({ runId: body.runId });
+    const result = await getBonificacionesRunActions(tenantId).unconfirm.execute({ runId: body.runId });
     return handleResult(result);
 });

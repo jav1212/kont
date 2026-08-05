@@ -1,4 +1,4 @@
-import { withTenant } from "@/src/shared/backend/utils/require-tenant";
+import { requireTenantRole, withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { getMembershipsActions } from "@/src/modules/memberships/backend/memberships-factory";
 import { MemberRole } from "@/src/modules/memberships/backend/domain/membership";
 
@@ -7,9 +7,10 @@ import { MemberRole } from "@/src/modules/memberships/backend/domain/membership"
  * Body: { email: string, role: 'admin' | 'contable' }
  * Creates an invitation and sends the invite email to the recipient.
  */
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
-    const tenantOwnerId = effectiveOwnerId;
-    const callerRole    = actingAs?.role    ?? "owner";
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId, role}) => {
+    requireTenantRole({ role }, 'owner', 'admin');
+    const tenantOwnerId = tenantId;
+    const callerRole    = role;
 
     const body = await req.json() as { email?: string; role?: MemberRole };
 

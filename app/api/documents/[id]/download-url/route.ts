@@ -2,9 +2,9 @@ import { withTenant } from '@/src/shared/backend/utils/require-tenant';
 import { handleResult } from '@/src/shared/backend/utils/handle-result';
 import { getDocumentsActions } from '@/src/modules/documents/backend/infrastructure/documents-factory';
 
-export const GET = withTenant(async (_req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (_req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const ownerId = effectiveOwnerId;
-    const { getDownloadUrl } = getDocumentsActions(ownerId);
+    const { getDownloadUrl } = getDocumentsActions(tenantId);
 
     const url      = new URL(_req.url);
     const segments = url.pathname.split('/');

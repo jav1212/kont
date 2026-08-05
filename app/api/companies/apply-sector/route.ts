@@ -4,14 +4,14 @@ import { getCompanyActions } from '@/src/modules/companies/backend/infrastructur
 import { handleResult }      from '@/src/shared/backend/utils/handle-result';
 import { withTenant }        from '@/src/shared/backend/utils/require-tenant';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { companyId, sector } = await req.json();
         if (!companyId || !sector) {
             return Response.json({ error: 'companyId and sector are required' }, { status: 400 });
         }
         const ownerId = effectiveOwnerId;
-        const result = await getCompanyActions(ownerId).applySectorTemplate.execute({ companyId, sector });
+        const result = await getCompanyActions(tenantId).applySectorTemplate.execute({ companyId, sector });
         return handleResult(result);
     } catch {
         return Response.json({ error: 'Formato JSON inválido' }, { status: 400 });

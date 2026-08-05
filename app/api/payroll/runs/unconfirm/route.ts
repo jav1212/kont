@@ -8,7 +8,7 @@ import { getAccountingActions } from "@/src/modules/accounting/backend/infrastru
 import { withTenant }           from "@/src/shared/backend/utils/require-tenant";
 import { handleResult }         from "@/src/shared/backend/utils/handle-result";
 
-export const POST = withTenant(async (req, { effectiveOwnerId }) => {
+export const POST = withTenant(async (req, { effectiveOwnerId, tenantId}) => {
     let body: { runId?: string };
     try {
         body = await req.json();
@@ -20,12 +20,12 @@ export const POST = withTenant(async (req, { effectiveOwnerId }) => {
     }
 
     const ownerId = effectiveOwnerId;
-    const result  = await getPayrollRunActions(ownerId).unconfirm.execute({ runId: body.runId });
+    const result  = await getPayrollRunActions(tenantId).unconfirm.execute({ runId: body.runId });
 
     // Non-blocking: reverse the accounting integration that ran on confirmation.
     if (result.isSuccess) {
         const { companyId, id } = result.getValue();
-        await getAccountingActions(ownerId).reversePayrollIntegration.execute({
+        await getAccountingActions(tenantId).reversePayrollIntegration.execute({
             companyId,
             payrollRunId: id,
         });

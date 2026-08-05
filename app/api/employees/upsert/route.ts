@@ -2,7 +2,7 @@ import { getEmployeeActions } from "@/src/modules/payroll/backend/infrastructure
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { Employee } from "@/src/modules/payroll/backend/domain/employee";
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { companyId, employees } = await req.json();
         if (!companyId) return Response.json({ error: "companyId es requerido" }, { status: 400 });
@@ -11,7 +11,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
 
         const withCompany = (employees as Omit<Employee, 'companyId'>[]).map((e) => ({ ...e, companyId }));
         const ownerId = effectiveOwnerId;
-        const result = await getEmployeeActions(ownerId).upsertEmployees.execute({ employees: withCompany });
+        const result = await getEmployeeActions(tenantId).upsertEmployees.execute({ employees: withCompany });
         if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
         return Response.json({ data: null }, { status: 200 });
     } catch {

@@ -4,10 +4,10 @@ import { withTenant }           from '@/src/shared/backend/utils/require-tenant'
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const ownerId = effectiveOwnerId;
     // URL: /api/accounting/entries/{id}/post  → second-to-last segment is the id
     const id      = req.url.split('/').at(-2)!;
-    const result  = await getAccountingActions(ownerId).postEntry.execute(id);
+    const result  = await getAccountingActions(tenantId).postEntry.execute(id);
     return handleResult(result);
 });

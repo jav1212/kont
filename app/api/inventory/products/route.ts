@@ -4,17 +4,17 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const companyId = new URL(req.url).searchParams.get('companyId');
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     const ownerId = effectiveOwnerId;
-    const result = await getInventoryActions(ownerId).listProducts.execute({ companyId });
+    const result = await getInventoryActions(tenantId).listProducts.execute({ companyId });
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json();
     const ownerId = effectiveOwnerId;
-    const result = await getInventoryActions(ownerId).saveProduct.execute(body);
+    const result = await getInventoryActions(tenantId).saveProduct.execute(body);
     return handleResult(result);
 });

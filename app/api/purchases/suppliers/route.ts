@@ -4,17 +4,17 @@ import { getPurchasesActions } from '@/src/modules/purchases/backend/infra/purch
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const companyId = new URL(req.url).searchParams.get('companyId');
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     const ownerId = effectiveOwnerId;
-    const result = await getPurchasesActions(ownerId).listSuppliers.execute({ companyId });
+    const result = await getPurchasesActions(tenantId).listSuppliers.execute({ companyId });
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json();
     const ownerId = effectiveOwnerId;
-    const result = await getPurchasesActions(ownerId).saveSupplier.execute(body);
+    const result = await getPurchasesActions(tenantId).saveSupplier.execute(body);
     return handleResult(result);
 });

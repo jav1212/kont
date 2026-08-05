@@ -9,7 +9,7 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json().catch(() => null) as
         | { invoiceIds?: unknown; targetCompanyId?: unknown; targetPeriod?: unknown }
         | null;
@@ -32,12 +32,12 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const ownerId = effectiveOwnerId;
-    const result  = await getPurchasesActions(ownerId)
+    const result  = await getPurchasesActions(tenantId)
         .migratePurchaseInvoices.execute({ invoiceIds, targetCompanyId, targetPeriod });
 
     if (result.isSuccess) {
         const value = result.getValue();
-        const accounting = getAccountingActions(ownerId);
+        const accounting = getAccountingActions(tenantId);
 
         // Para cada factura que estaba confirmada al momento de migrar:
         //   1. revertir asientos en empresa origen

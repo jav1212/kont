@@ -3,9 +3,9 @@ import { withTenant }           from '@/src/shared/backend/utils/require-tenant'
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 import { getAccountingActions } from '@/src/modules/accounting/backend/infrastructure/accounting-factory';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const ownerId = effectiveOwnerId;
     const id      = req.url.split('/').at(-1)!;
-    const result  = await getAccountingActions(ownerId).getEntryWithLines.execute(id);
+    const result  = await getAccountingActions(tenantId).getEntryWithLines.execute(id);
     return handleResult(result);
 });

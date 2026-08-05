@@ -7,9 +7,9 @@ function extractId(url: string): string {
     return segments[segments.length - 1]; // /api/documents/[id]
 }
 
-export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const ownerId = effectiveOwnerId;
-    const actions = getDocumentsActions(ownerId);
+    const actions = getDocumentsActions(tenantId);
 
     const id = extractId(req.url);
 
@@ -31,9 +31,9 @@ export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerI
     return handleResult(result);
 });
 
-export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const ownerId = effectiveOwnerId;
-    const actions = getDocumentsActions(ownerId);
+    const actions = getDocumentsActions(tenantId);
 
     const id   = extractId(req.url);
     const body = await req.json().catch(() => ({}));

@@ -2,7 +2,7 @@ import { getEmployeeActions } from "@/src/modules/payroll/backend/infrastructure
 import { withTenant } from "@/src/shared/backend/utils/require-tenant";
 
 // GET /api/employees/salary-history?companyId=X&cedula=Y
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get("companyId");
     const cedula    = searchParams.get("cedula");
@@ -11,7 +11,7 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
     if (!cedula)    return Response.json({ error: "cedula es requerida" },    { status: 400 });
 
     const ownerId = effectiveOwnerId;
-    const result = await getEmployeeActions(ownerId).repository.getSalaryHistory(companyId, cedula);
+    const result = await getEmployeeActions(tenantId).repository.getSalaryHistory(companyId, cedula);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
     return Response.json({ data: result.getValue() });
 });

@@ -4,7 +4,7 @@ import { getCompanyActions } from '@/src/modules/companies/backend/infrastructur
 import { handleResult }      from '@/src/shared/backend/utils/handle-result';
 import { withTenant }        from '@/src/shared/backend/utils/require-tenant';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { searchParams } = new URL(req.url);
         const companyId = searchParams.get('companyId');
@@ -12,21 +12,21 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
             return Response.json({ error: 'companyId is required' }, { status: 400 });
         }
         const ownerId = effectiveOwnerId;
-        const result = await getCompanyActions(ownerId).repository.getInventoryConfig(companyId);
+        const result = await getCompanyActions(tenantId).repository.getInventoryConfig(companyId);
         return handleResult(result);
     } catch {
         return Response.json({ error: 'Error reading inventory config' }, { status: 500 });
     }
 });
 
-export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const PATCH = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     try {
         const { companyId, config } = await req.json();
         if (!companyId || !config) {
             return Response.json({ error: 'companyId and config are required' }, { status: 400 });
         }
         const ownerId = effectiveOwnerId;
-        const result = await getCompanyActions(ownerId).repository.saveInventoryConfig(companyId, config);
+        const result = await getCompanyActions(tenantId).repository.saveInventoryConfig(companyId, config);
         return handleResult(result);
     } catch {
         return Response.json({ error: 'Formato JSON inválido' }, { status: 400 });

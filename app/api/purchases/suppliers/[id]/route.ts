@@ -4,9 +4,9 @@ import { getPurchasesActions } from '@/src/modules/purchases/backend/infra/purch
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const id = req.url.split('/').pop()!;
     const ownerId = effectiveOwnerId;
-    const result = await getPurchasesActions(ownerId).deleteSupplier.execute({ id });
+    const result = await getPurchasesActions(tenantId).deleteSupplier.execute({ id });
     return handleResult(result);
 });

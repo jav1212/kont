@@ -9,8 +9,11 @@ export type ActingAs = { ownerId: string; role: 'owner' | 'admin' | 'contable' }
 
 export type TenantContext = {
     userId:     string;
+    /** Tenant selected and authorized for this request. */
+    tenantId:   string;
     schemaName: string;
     actingAs:   ActingAs | null;
+    role:       ActingAs['role'];
     /**
      * UUID del tenant cuyo schema se va a tocar. Es lo que las RPCs `tenant_*`
      * deben recibir como `p_user_id`. Equivale a `actingAs?.ownerId ?? userId`,
@@ -32,6 +35,12 @@ export class TenantForbiddenError extends Error {
 }
 
 // ── Core function ─────────────────────────────────────────────────────────────
+
+export function requireTenantRole(context: Pick<TenantContext, 'role'>, ...allowed: ActingAs['role'][]): void {
+    if (!allowed.includes(context.role)) {
+        throw new TenantForbiddenError();
+    }
+}
 
 /**
  * Devuelve TenantContext del usuario autenticado en una API route.
@@ -76,8 +85,10 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
         if (ownTenant) {
             return {
                 userId,
+                tenantId:         userId,
                 schemaName:       tenantSchemaName(userId),
                 actingAs:         null,
+                role:             'owner',
                 effectiveOwnerId: userId,
             };
         }
@@ -101,8 +112,10 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
         const mb = firstMembership as { tenant_id: string; role: string };
         return {
             userId,
+            tenantId:         mb.tenant_id,
             schemaName:       tenantSchemaName(mb.tenant_id),
             actingAs:         { ownerId: mb.tenant_id, role: mb.role as ActingAs['role'] },
+            role:             mb.role as ActingAs['role'],
             effectiveOwnerId: mb.tenant_id,
         };
     }
@@ -123,8 +136,10 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
 
     return {
         userId,
+        tenantId:         targetId,
         schemaName:       tenantSchemaName(targetId),
         actingAs:         { ownerId: targetId, role: membership.role as ActingAs['role'] },
+        role:             membership.role as ActingAs['role'],
         effectiveOwnerId: targetId,
     };
 }

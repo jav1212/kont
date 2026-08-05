@@ -6,7 +6,7 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     // URL pattern: /api/purchases/[id]/impute-items
     const segments  = new URL(req.url).pathname.split('/');
     const invoiceId = segments[segments.length - 2];
@@ -17,7 +17,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const ownerId = effectiveOwnerId;
-    const result  = await getPurchasesActions(ownerId).imputePurchaseInvoiceItems.execute({
+    const result  = await getPurchasesActions(tenantId).imputePurchaseInvoiceItems.execute({
         invoiceId,
         items,
     });
@@ -28,7 +28,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
         // con el total declarado. Tras imputar items, el header se recalcula
         // desde los items y los montos pueden cambiar — revertimos el asiento
         // anterior y creamos uno nuevo con los totales actualizados.
-        const accounting = getAccountingActions(ownerId);
+        const accounting = getAccountingActions(tenantId);
         await accounting.reverseInventoryPurchaseIntegration.execute({
             companyId: invoice.companyId,
             invoiceId: invoice.id ?? invoiceId,

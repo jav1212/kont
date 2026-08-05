@@ -15,7 +15,7 @@ const VALID_BASES: AdjustmentBaseSource[] = ['entradas', 'ventas'];
 const VALID_MODES: AdjustmentMode[]       = ['porcentaje', 'monto'];
 const VALID_TYPES: ProductType[]          = ['mercancia'];
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json() as Partial<GenerateStockAdjustmentInput>;
     const {
         companyId,
@@ -43,7 +43,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const ownerId = effectiveOwnerId;
-    const actions = getInventoryActions(ownerId);
+    const actions = getInventoryActions(tenantId);
 
     const result = await actions.generateStockAdjustment.execute({
         companyId,

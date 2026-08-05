@@ -50,7 +50,7 @@ const ConfirmSchema = z.object({
     receipts: z.array(ReceiptSchema).min(1, "Se requiere al menos un empleado"),
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     let body: unknown;
     try {
         body = await req.json();
@@ -65,7 +65,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const ownerId = effectiveOwnerId;
-    const result = await getPayrollRunActions(ownerId).confirm.execute(parsed.data);
+    const result = await getPayrollRunActions(tenantId).confirm.execute(parsed.data);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
 
     const runId = result.getValue();
@@ -77,7 +77,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     const totalDeductions = receipts.reduce((s, r) => s + r.totalDeductions, 0);
     const netPay          = receipts.reduce((s, r) => s + r.netPay,          0);
 
-    await getAccountingActions(ownerId).processPayrollIntegration.execute({
+    await getAccountingActions(tenantId).processPayrollIntegration.execute({
         companyId:       run.companyId,
         payrollRunId:    runId,
         periodEnd:       run.periodEnd,

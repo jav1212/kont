@@ -10,16 +10,16 @@ import { getAccountingActions } from '@/src/modules/accounting/backend/infrastru
 import { withTenant }           from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }         from '@/src/shared/backend/utils/handle-result';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const segments  = new URL(req.url).pathname.split('/');
     const invoiceId = segments[segments.length - 2];
     const ownerId   = effectiveOwnerId;
-    const result    = await getPurchasesActions(ownerId).unconfirmPurchaseInvoice.execute({ invoiceId });
+    const result    = await getPurchasesActions(tenantId).unconfirmPurchaseInvoice.execute({ invoiceId });
 
     // Non-blocking: reverse the accounting integration that ran on confirmation.
     if (result.isSuccess) {
         const invoice = result.getValue();
-        await getAccountingActions(ownerId).reverseInventoryPurchaseIntegration.execute({
+        await getAccountingActions(tenantId).reverseInventoryPurchaseIntegration.execute({
             companyId: invoice.companyId,
             invoiceId: invoice.id ?? invoiceId,
         });

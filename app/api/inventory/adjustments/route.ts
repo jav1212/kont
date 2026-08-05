@@ -5,7 +5,7 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import type { SaveStockAdjustmentInput } from '@/src/modules/inventory/backend/app/save-stock-adjustment.use-case';
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json() as Partial<SaveStockAdjustmentInput>;
     const { companyId, items } = body;
 
@@ -23,7 +23,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}
     }
 
     const ownerId = effectiveOwnerId;
-    const actions = getInventoryActions(ownerId);
+    const actions = getInventoryActions(tenantId);
 
     const result = await actions.saveStockAdjustment.execute({ companyId, items });
 

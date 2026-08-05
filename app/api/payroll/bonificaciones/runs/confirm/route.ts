@@ -33,7 +33,7 @@ const ConfirmSchema = z.object({
     receipts: z.array(ReceiptSchema).min(1, "Se requiere al menos un empleado"),
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId }) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     let body: unknown;
     try {
         body = await req.json();
@@ -48,7 +48,7 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId 
     }
 
     const ownerId = effectiveOwnerId;
-    const result = await getBonificacionesRunActions(ownerId).confirm.execute(parsed.data);
+    const result = await getBonificacionesRunActions(tenantId).confirm.execute(parsed.data);
     if (result.isFailure) return Response.json({ error: result.getError() }, { status: 400 });
 
     return Response.json({ data: { runId: result.getValue() } }, { status: 201 });

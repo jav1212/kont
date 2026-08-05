@@ -10,7 +10,7 @@ import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 import type { MovementDraftKind } from '@/src/modules/inventory/backend/domain/movement-draft';
 
-export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const url            = new URL(req.url);
     const companyId      = url.searchParams.get('companyId');
     const kind           = url.searchParams.get('kind') as MovementDraftKind | null;
@@ -20,7 +20,7 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
         return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     }
     const ownerId = effectiveOwnerId;
-    const actions = getInventoryActions(ownerId);
+    const actions = getInventoryActions(tenantId);
 
     if (draftGroupId) {
         const result = await actions.getMovementDraft.execute({ companyId, draftGroupId });
@@ -33,14 +33,14 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId})
     return handleResult(result);
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const body = await req.json();
     const ownerId = effectiveOwnerId;
-    const result = await getInventoryActions(ownerId).saveMovementDraft.execute(body);
+    const result = await getInventoryActions(tenantId).saveMovementDraft.execute(body);
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const url            = new URL(req.url);
     const companyId      = url.searchParams.get('companyId');
     const draftGroupId   = url.searchParams.get('draftGroupId');
@@ -48,7 +48,7 @@ export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerI
         return Response.json({ error: 'companyId y draftGroupId son requeridos' }, { status: 400 });
     }
     const ownerId = effectiveOwnerId;
-    const result = await getInventoryActions(ownerId)
+    const result = await getInventoryActions(tenantId)
         .discardMovementDraft.execute({ companyId, draftGroupId });
     return handleResult(result);
 });

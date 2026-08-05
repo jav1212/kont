@@ -4,9 +4,9 @@ import { getInventoryActions } from '@/src/modules/inventory/backend/infra/inven
 import { withTenant }          from '@/src/shared/backend/utils/require-tenant';
 import { handleResult }        from '@/src/shared/backend/utils/handle-result';
 
-export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId}) => {
+export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
     const id = req.url.split('/').pop()!;
     const ownerId = effectiveOwnerId;
-    const result = await getInventoryActions(ownerId).deleteProduct.execute({ id });
+    const result = await getInventoryActions(tenantId).deleteProduct.execute({ id });
     return handleResult(result);
 });

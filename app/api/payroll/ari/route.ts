@@ -40,17 +40,17 @@ const DeleteBodySchema = z.object({ id: z.string().min(1) });
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
-export const GET = withTenant(async (req, { effectiveOwnerId }) => {
+export const GET = withTenant(async (req, { effectiveOwnerId, tenantId}) => {
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get('companyId');
     if (!companyId) {
         return Response.json({ error: 'companyId requerido' }, { status: 400 });
     }
-    const result = await getAriActions(effectiveOwnerId).getByCompany.execute(companyId);
+    const result = await getAriActions(tenantId).getByCompany.execute(companyId);
     return handleResult(result);
 });
 
-export const PUT = withTenant(async (req, { effectiveOwnerId }) => {
+export const PUT = withTenant(async (req, { effectiveOwnerId, tenantId}) => {
     let rawBody: unknown;
     try {
         rawBody = await req.json();
@@ -71,11 +71,11 @@ export const PUT = withTenant(async (req, { effectiveOwnerId }) => {
         companyId,
         porcentajeRetencion: declaration.porcentajeRetencion ?? 0,
     };
-    const result = await getAriActions(effectiveOwnerId).save.execute(toSave);
+    const result = await getAriActions(tenantId).save.execute(toSave);
     return handleResult(result);
 });
 
-export const DELETE = withTenant(async (req, { effectiveOwnerId }) => {
+export const DELETE = withTenant(async (req, { effectiveOwnerId, tenantId}) => {
     let rawBody: unknown;
     try {
         rawBody = await req.json();
@@ -88,6 +88,6 @@ export const DELETE = withTenant(async (req, { effectiveOwnerId }) => {
         return Response.json({ error: 'id requerido' }, { status: 400 });
     }
 
-    const result = await getAriActions(effectiveOwnerId).remove.execute(parsed.data.id);
+    const result = await getAriActions(tenantId).remove.execute(parsed.data.id);
     return handleResult(result);
 });

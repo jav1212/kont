@@ -15,6 +15,13 @@ import { useEffect, useReducer, useCallback } from "react";
 import type { Auth } from "@/src/modules/auth/backend/domain/auth";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 
+const TENANT_STORAGE_KEYS = ["kont-active-tenant-id", "kont-company-id", "kont-session-user-id"] as const;
+
+function clearTenantSelection(): void {
+    if (typeof window === "undefined") return;
+    TENANT_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 type Status = "loading" | "authenticated" | "unauthenticated";
@@ -81,6 +88,7 @@ function bootstrap() {
         if (session?.user) {
             dispatch({ type: "SET_USER", user: { id: session.user.id, email: session.user.email! } });
         } else {
+            clearTenantSelection();
             dispatch({ type: "CLEAR_USER" });
         }
     });
@@ -93,6 +101,7 @@ function bootstrap() {
                 void attachPendingReferralCode();
             }
         } else {
+            clearTenantSelection();
             dispatch({ type: "CLEAR_USER" });
         }
     });
@@ -155,6 +164,7 @@ async function signUp(email: string, password: string, name?: string, phone?: st
 }
 
 async function signOut(): Promise<void> {
+    clearTenantSelection();
     await apiFetch("/api/auth/sign-out", {});
     // onAuthStateChange lo limpia automáticamente
 }

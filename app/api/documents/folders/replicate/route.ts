@@ -3,7 +3,7 @@ import { handleResult }      from '@/src/shared/backend/utils/handle-result';
 import { getDocumentsActions } from '@/src/modules/documents/backend/infrastructure/documents-factory';
 import { ServerSupabaseSource } from '@/src/shared/backend/source/infra/server-supabase';
 
-export const POST = withTenant(async (req, { userId, actingAs }) => {
+export const POST = withTenant(async (req, { userId, actingAs, tenantId}) => {
     if (actingAs) {
         return Response.json({ error: 'Solo puedes replicar tu propia plantilla' }, { status: 403 });
     }
@@ -35,7 +35,7 @@ export const POST = withTenant(async (req, { userId, actingAs }) => {
         return Response.json({ data: { results: [] } });
     }
 
-    const { replicateFolders } = getDocumentsActions(userId);
+    const { replicateFolders } = getDocumentsActions(tenantId);
     const result = await replicateFolders.execute({
         clientTenantIds,
         createdBy:       userId,
