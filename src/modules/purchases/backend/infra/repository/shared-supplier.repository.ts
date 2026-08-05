@@ -47,7 +47,7 @@ export class SharedSupplierRepository implements ISupplierRepository {
                 .from('shared_inventory_suppliers')
                 .upsert({
                     tenant_id: this.tenantId,
-                    id: supplier.id ?? undefined,
+                    id: supplier.id ?? crypto.randomUUID(),
                     company_id: supplier.companyId,
                     rif: supplier.rif,
                     name: supplier.name,
