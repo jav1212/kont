@@ -25,24 +25,50 @@ export interface BcvPillData {
     dateIso: string;  // "2026-04-24"
 }
 
+let cachedRate: { day: string; data: BcvPillData } | null = null;
+let pendingRate: { day: string; request: Promise<BcvPillData | null> } | null = null;
+
+function loadCurrentBcvRate(day: string): Promise<BcvPillData | null> {
+    if (cachedRate?.day === day) return Promise.resolve(cachedRate.data);
+    if (pendingRate?.day === day) return pendingRate.request;
+
+    const request = fetch(`/api/bcv/rate?date=${day}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then((response: { rate?: number; date?: string } | null) => {
+            if (!response?.rate || !response?.date) return null;
+            const value = Number(response.rate).toLocaleString("es-VE", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+            const [, month, date] = response.date.split("-");
+            const data = {
+                value,
+                date: `${Number(date)} ${MONTHS_ES[Number(month) - 1]}`,
+                rate: response.rate,
+                dateIso: response.date,
+            } satisfies BcvPillData;
+            cachedRate = { day, data };
+            return data;
+        })
+        .catch(() => null)
+        .finally(() => {
+            if (pendingRate?.day === day) pendingRate = null;
+        });
+
+    pendingRate = { day, request };
+    return request;
+}
+
 export function useBcvRate(): BcvPillData | null {
     const [rate, setRate] = useState<BcvPillData | null>(null);
     useEffect(() => {
         const today = new Date().toISOString().slice(0, 10);
         let cancelled = false;
-        fetch(`/api/bcv/rate?date=${today}`)
-            .then(r => (r.ok ? r.json() : null))
-            .then((r: { rate?: number; date?: string } | null) => {
-                if (cancelled || !r?.rate || !r?.date) return;
-                const value = Number(r.rate).toLocaleString("es-VE", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                });
-                const [, m, d] = r.date.split("-");
-                const label = `${Number(d)} ${MONTHS_ES[Number(m) - 1]}`;
-                setRate({ value, date: label, rate: r.rate, dateIso: r.date });
+        loadCurrentBcvRate(today)
+            .then((data) => {
+                if (!cancelled && data) setRate(data);
             })
-            .catch(() => { /* silent — pill stays hidden */ });
+            .catch(() => { /* silent — the fallback remains visible */ });
         return () => { cancelled = true; };
     }, []);
     return rate;

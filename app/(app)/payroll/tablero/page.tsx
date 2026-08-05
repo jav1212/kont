@@ -205,7 +205,6 @@ export default function PayrollDashboard() {
     const now           = useMemo(() => new Date(), []);
     const year          = now.getFullYear();
     const month         = now.getMonth() + 1;
-    const periodLabel   = `${MONTH_FULL[month - 1]} ${year}`;
     const totalRuns     = runs.length;
     const lastRunIso    = runs[0]?.confirmedAt ?? runs[0]?.createdAt ?? null;
 
@@ -243,26 +242,7 @@ export default function PayrollDashboard() {
         <div className="flex flex-col min-h-full bg-surface-2 selection:bg-primary-500/30 font-mono">
             <PageHeader
                 title="Nómina"
-                subtitle={
-                    <div className="flex items-center gap-2">
-                        <span>Tablero · {periodLabel}</span>
-                        <span className="text-border-light/60">·</span>
-                        <span>{confirmedThisMonth}/2 confirmadas</span>
-                    </div>
-                }
             >
-                {bcv && (
-                    <Link
-                        href="/tools/divisas"
-                        aria-label={`Tasa BCV ${bcv.value} bolívares, publicada el ${bcv.date}`}
-                        className="hidden md:inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border-light bg-surface-1 hover:border-border-medium transition-colors shadow-sm"
-                    >
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500" aria-hidden />
-                        <span className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--text-secondary)]">BCV</span>
-                        <span className="font-mono text-[12px] tabular-nums font-bold text-foreground">{bcv.value}</span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{bcv.date}</span>
-                    </Link>
-                )}
                 <BaseButton.Root
                     as={Link}
                     href="/payroll"

@@ -176,8 +176,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             ].join(" ")}
         >
             <header
-                style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
-                className="px-4 xl:px-5 pb-4 flex items-center justify-between border-b border-sidebar-border"
+                style={{ paddingTop: "env(safe-area-inset-top)" }}
+                className="h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 px-4 xl:px-5 flex items-center justify-between border-b border-sidebar-border"
             >
                 <LogoFull size={25} className="text-sidebar-fg-hover" />
                 <button
