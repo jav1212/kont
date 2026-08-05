@@ -1,0 +1,10 @@
+create index if not exists shared_acc_accounts_chart_idx on public.shared_accounting_accounts (tenant_id, chart_id);
+create index if not exists shared_acc_charts_company_fk_idx on public.shared_accounting_charts (tenant_id, company_id);
+create index if not exists shared_acc_entries_period_idx on public.shared_accounting_entries (tenant_id, period_id);
+create index if not exists shared_acc_integration_log_entry_idx on public.shared_accounting_integration_log (tenant_id, entry_id);
+create index if not exists shared_acc_integration_rules_credit_idx on public.shared_accounting_integration_rules (tenant_id, credit_account_id);
+create index if not exists shared_acc_integration_rules_debit_idx on public.shared_accounting_integration_rules (tenant_id, debit_account_id);
+create index if not exists shared_inventory_products_department_idx on public.shared_inventory_products (tenant_id, department_id);
+create index if not exists shared_bonif_receipts_company_idx on public.shared_payroll_bonifications_receipts (tenant_id, company_id);
+create index if not exists shared_bono_receipts_company_idx on public.shared_payroll_bono_guerra_receipts (tenant_id, company_id);
+create index if not exists shared_cesta_receipts_company_idx on public.shared_payroll_cesta_ticket_receipts (tenant_id, company_id);
