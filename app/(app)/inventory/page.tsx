@@ -145,7 +145,7 @@ export default function InventoryDashboard() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="flex flex-col gap-6 px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-[1500px] mx-auto w-full">
+            <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
                 {/* Operational warning: empty catalog */}
                 {!loadingProducts && metrics.total === 0 && (
                     <motion.div
@@ -177,7 +177,7 @@ export default function InventoryDashboard() {
                 )}
 
                 {/* KPIs */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
                     <DashboardKpiCard
                         label="Productos activos"
                         value={metrics.active}
@@ -197,6 +197,7 @@ export default function InventoryDashboard() {
                         color="default"
                         loading={loadingProducts}
                         icon={Wallet}
+                        emphasis
                     />
                     <DashboardKpiCard
                         label="Movimientos del mes"
@@ -213,28 +214,32 @@ export default function InventoryDashboard() {
                         color={metrics.critical > 0 ? "warning" : "default"}
                         loading={loadingProducts}
                         icon={AlertTriangle}
+                        emphasis={metrics.critical > 0}
                     />
                 </div>
 
                 {/* Stock alerts panel */}
                 {hasInventory && (
-                    <div className="flex flex-col gap-4">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] flex items-center gap-2">
-                            <span className="w-1 h-3 rounded-full bg-primary-500/50" />
-                            Alertas de stock
-                        </h2>
-
+                    <div>
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="rounded-xl border border-border-light bg-surface-1 overflow-hidden"
+                            className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-[0_8px_24px_rgba(15,23,42,0.04)]"
                         >
-                            <div className="px-6 py-4 border-b border-border-light flex items-center justify-between">
-                                <p className="text-[12px] font-bold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
-                                    {hasStockAlerts
-                                        ? `Productos por debajo de ${LOW_STOCK_THRESHOLD} unidades`
-                                        : "Todos los productos con stock saludable"}
-                                </p>
+                            <div className="flex items-center justify-between gap-4 border-b border-border-light px-4 py-4 sm:px-5">
+                                <div>
+                                    <h2 className="font-sans text-[15px] font-semibold tracking-tight text-foreground">
+                                        Alertas de stock
+                                    </h2>
+                                    <p className="mt-0.5 font-sans text-[12px] text-[var(--text-tertiary)]">
+                                        {hasStockAlerts
+                                            ? `Existencias por debajo de ${LOW_STOCK_THRESHOLD} unidades`
+                                            : "Todos los productos tienen stock saludable"}
+                                    </p>
+                                </div>
+                                <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
+                                    {stockAlerts.length} {stockAlerts.length === 1 ? "producto" : "productos"}
+                                </span>
                                 <BaseButton.Root
                                     as={Link}
                                     href="/inventory/products"
@@ -317,8 +322,9 @@ export default function InventoryDashboard() {
                                 {/* Desktop: dense table */}
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full text-[13px]" aria-label="Productos con stock bajo">
+                                        <caption className="sr-only">Productos con stock crítico ordenados por existencia</caption>
                                         <thead>
-                                            <tr className="bg-surface-2/30 border-b border-border-light">
+                                            <tr className="border-b border-border-light bg-surface-2/45">
                                                 {[
                                                     { label: "Código",      align: "text-left"   },
                                                     { label: "Nombre",      align: "text-left"   },
@@ -330,7 +336,7 @@ export default function InventoryDashboard() {
                                                     <th
                                                         key={h.label}
                                                         scope="col"
-                                                        className={`px-6 py-3.5 ${h.align} text-[11px] font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]`}
+                                                        className={`px-5 py-3.5 ${h.align} text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]`}
                                                     >
                                                         {h.label}
                                                     </th>
@@ -347,22 +353,24 @@ export default function InventoryDashboard() {
                                                     <tr
                                                         key={p.id}
                                                         className={[
-                                                            "group transition-colors",
+                                                            "group border-l-2 transition-colors",
                                                             isOut
-                                                                ? "bg-danger-500/5 hover:bg-danger-500/10"
-                                                                : "hover:bg-surface-2/60",
+                                                                ? "border-l-[var(--text-error)] bg-badge-error-bg/35 hover:bg-badge-error-bg/60"
+                                                                : "border-l-[var(--text-warning)] hover:bg-surface-2/70",
                                                         ].join(" ")}
                                                     >
-                                                        <td className="px-6 py-3.5 text-[var(--text-secondary)]">
+                                                        <td className="px-5 py-3.5 text-[var(--text-secondary)]">
                                                             {p.code || "—"}
                                                         </td>
-                                                        <td className="px-6 py-3.5 text-foreground font-medium">
-                                                            {p.name}
+                                                        <td className="max-w-[420px] px-5 py-3.5 text-foreground">
+                                                            <span className="block truncate font-sans text-[13px] font-medium" title={p.name}>
+                                                                {p.name}
+                                                            </span>
                                                         </td>
-                                                        <td className="px-6 py-3.5">
+                                                        <td className="px-5 py-3.5">
                                                             <TipoBadge tipo={p.type} />
                                                         </td>
-                                                        <td className="px-6 py-3.5 text-right tabular-nums">
+                                                        <td className="px-5 py-3.5 text-right tabular-nums">
                                                             <span className={isOut ? "text-text-error font-bold" : "text-foreground"}>
                                                                 {fmtQty(stock)}
                                                             </span>
@@ -370,10 +378,10 @@ export default function InventoryDashboard() {
                                                                 {p.measureUnit}
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-3.5 text-right tabular-nums text-[var(--text-secondary)]">
+                                                        <td className="px-5 py-3.5 text-right tabular-nums text-[var(--text-secondary)]">
                                                             {fmtBs(valorBs)}
                                                         </td>
-                                                        <td className="px-6 py-3.5 text-center">
+                                                        <td className="px-5 py-3.5 text-center">
                                                             {isOut ? (
                                                                 <span className="inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase tracking-[0.08em] font-medium badge-error border">
                                                                     Agotado
@@ -398,7 +406,7 @@ export default function InventoryDashboard() {
 
                 {/* Quick actions */}
                 <DashboardQuickActions actions={QUICK_ACTIONS} />
-            </div>
+            </main>
         </div>
     );
 }

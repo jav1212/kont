@@ -4,6 +4,7 @@
 // Uses English domain types (Department) and English useInventory() API.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
@@ -100,11 +101,13 @@ function FilterChip({
     onClick,
     children,
     count,
+    segmented = false,
 }: {
     active: boolean;
     onClick: () => void;
     children: React.ReactNode;
     count?: number;
+    segmented?: boolean;
 }) {
     return (
         <button
@@ -112,13 +115,19 @@ function FilterChip({
             onClick={onClick}
             aria-pressed={active}
             className={[
-                "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border whitespace-nowrap",
+                segmented
+                    ? "inline-flex items-center gap-1.5 h-9 px-3 border-0 border-l border-border-light first:border-l-0 whitespace-nowrap"
+                    : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border whitespace-nowrap",
                 "font-mono text-[11px] uppercase tracking-[0.12em] font-medium",
                 "transition-colors duration-150",
                 "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1 outline-none",
-                active
-                    ? "border-primary-500 bg-primary-500/10 text-primary-500"
-                    : "border-border-light bg-surface-1 text-[var(--text-secondary)] hover:border-border-default hover:bg-surface-2",
+                    active
+                        ? segmented
+                            ? "bg-primary-500/10 text-primary-500"
+                            : "border-primary-500 bg-primary-500/10 text-primary-500"
+                        : segmented
+                            ? "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2"
+                            : "border-border-light bg-surface-1 text-[var(--text-secondary)] hover:border-border-default hover:bg-surface-2",
             ].join(" ")}
         >
             <span>{children}</span>
@@ -170,6 +179,7 @@ function FormSection({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function DepartamentosPage() {
+    const router = useRouter();
     const { companyId } = useCompany();
     const {
         departments, loadingDepartments,
@@ -346,7 +356,7 @@ export default function DepartamentosPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
+            <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
 
                 {/* KPI strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -357,27 +367,29 @@ export default function DepartamentosPage() {
                 </div>
 
                 {/* Toolbar */}
-                <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm">
-                    <div className="px-4 py-3 flex flex-wrap items-center gap-3">
-                        <div className="relative w-full sm:w-72">
+                <div className="rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)]">
+                    <div className="flex w-full flex-wrap items-center gap-3">
+                        <div className="relative order-3 min-w-[220px] flex-1 lg:max-w-[520px]">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
                             <input
                                 type="text"
                                 placeholder="Buscar por nombre o descripción…"
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-default bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500 hover:border-border-medium transition-colors"
+                                className="h-9 w-full rounded-lg border border-border-light bg-surface-1 pl-9 pr-3 font-mono text-[13px] text-foreground outline-none placeholder:text-[var(--text-tertiary)] transition-colors hover:border-border-medium focus:border-primary-500/60"
                             />
                         </div>
 
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mr-1 hidden md:inline">Estado</span>
-                            <FilterChip active={estadoFilter === "todos"}    onClick={() => setEstadoFilter("todos")}    count={stats.total}>Todos</FilterChip>
-                            <FilterChip active={estadoFilter === "activo"}   onClick={() => setEstadoFilter("activo")}   count={stats.active}>Activos</FilterChip>
-                            <FilterChip active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")} count={stats.inactive}>Inactivos</FilterChip>
+                        <div className="order-1 flex items-center gap-2">
+                            <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">Estado</span>
+                            <div className="inline-flex overflow-hidden rounded-lg border border-border-light bg-surface-1">
+                                <FilterChip segmented active={estadoFilter === "todos"} onClick={() => setEstadoFilter("todos")} count={stats.total}>Todos</FilterChip>
+                                <FilterChip segmented active={estadoFilter === "activo"} onClick={() => setEstadoFilter("activo")} count={stats.active}>Activos</FilterChip>
+                                <FilterChip segmented active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")} count={stats.inactive}>Inactivos</FilterChip>
+                            </div>
                         </div>
 
-                        <div className="ml-auto flex items-center gap-3">
+                        <div className="order-2 ml-auto flex items-center gap-3 lg:order-1">
                             {hasFilters && (
                                 <button
                                     type="button"
@@ -586,7 +598,15 @@ export default function DepartamentosPage() {
                 </ResponsiveDrawer>
 
                 {/* Table */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-[var(--shadow-sm)]">
+                    <div className="flex items-center justify-between gap-4 border-b border-border-light px-5 py-4">
+                        <h2 className="font-sans text-[15px] font-semibold tracking-tight text-foreground">
+                            Departamentos
+                        </h2>
+                        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
+                            {filtered.length} / {departments.length}
+                        </span>
+                    </div>
                     {loadingDepartments ? (
                         <div className="px-6 py-16 text-center font-sans text-[13px] text-[var(--text-tertiary)]">
                             Cargando departamentos…
@@ -628,7 +648,7 @@ export default function DepartamentosPage() {
                                 return (
                                     <BaseListCard
                                         key={d.id}
-                                        onClick={() => openEdit(d)}
+                                        onClick={() => d.id ? router.push(`/inventory/departments/${d.id}`) : openEdit(d)}
                                         title={d.name}
                                         subtitle={d.description || undefined}
                                         rows={[
@@ -659,9 +679,9 @@ export default function DepartamentosPage() {
 
                         {/* Desktop: dense table */}
                         <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-[13px]">
+                            <table className="w-full min-w-[920px] font-sans text-[13px]">
                                 <thead>
-                                    <tr className="bg-surface-2/40 border-b border-border-light">
+                                    <tr className="border-b border-border-light bg-surface-2/60">
                                         <th className="px-4 h-10 w-10">
                                             <input
                                                 type="checkbox"
@@ -683,20 +703,20 @@ export default function DepartamentosPage() {
                                         ].map((h) => (
                                             <th
                                                 key={h.label}
-                                                className={`px-4 h-10 ${h.align} text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium whitespace-nowrap`}
+                                                className={`whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] ${h.align}`}
                                             >
                                                 {h.label}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="font-sans">
                                     {filtered.map((d) => {
                                         const productCount = d.id ? (productCountByDept.get(d.id) ?? 0) : 0;
                                         return (
                                             <tr key={d.id} className={[
-                                                "border-b border-border-light/60 transition-colors",
-                                                selected.has(d.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2/60",
+                                                "border-b border-border-light/70 align-middle transition-colors even:bg-surface-2/25",
+                                                selected.has(d.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2",
                                             ].join(" ")}>
                                                 <td className="px-4 py-3 w-10">
                                                     <input
@@ -712,7 +732,7 @@ export default function DepartamentosPage() {
                                                         aria-label={`Seleccionar ${d.name}`}
                                                     />
                                                 </td>
-                                                <td className="px-4 py-3 text-foreground font-medium">
+                                                <td className="px-4 py-3 font-sans font-semibold text-foreground">
                                                     <span className="inline-flex items-center gap-2">
                                                         <FolderOpen size={14} className="text-[var(--text-tertiary)] flex-shrink-0" />
                                                         {d.name}
@@ -721,7 +741,7 @@ export default function DepartamentosPage() {
                                                 <td className="px-4 py-3 text-[var(--text-secondary)] font-sans">
                                                     {d.description || <span className="text-[var(--text-tertiary)] font-mono">—</span>}
                                                 </td>
-                                                <td className="px-4 py-3 text-right tabular-nums">
+                                                <td className="px-4 py-3 text-right font-mono tabular-nums">
                                                     {productCount > 0 ? (
                                                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-border-light bg-surface-2 text-foreground text-[12px] font-medium">
                                                             <Package size={11} className="text-[var(--text-tertiary)]" />
@@ -733,12 +753,12 @@ export default function DepartamentosPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     {d.active ? (
-                                                        <span className="inline-flex items-center gap-1.5 text-text-success text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-text-success">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
                                                             Activo
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1.5 text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                        <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
                                                             Inactivo
                                                         </span>
@@ -767,7 +787,7 @@ export default function DepartamentosPage() {
                                                         ) : (
                                                             <>
                                                                 <button
-                                                                    onClick={() => openEdit(d)}
+                                                                     onClick={() => d.id ? router.push(`/inventory/departments/${d.id}`) : openEdit(d)}
                                                                     className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                                                                     aria-label={`Editar ${d.name}`}
                                                                     title="Editar"
@@ -796,7 +816,7 @@ export default function DepartamentosPage() {
                         </>
                     )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

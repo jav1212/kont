@@ -13,6 +13,7 @@ interface FilterChipProps {
     onClick:   () => void;
     children:  ReactNode;
     count?:    number;
+    segmented?: boolean;
     /** Extra classes merged onto the root. */
     className?: string;
 }
@@ -22,6 +23,7 @@ export function FilterChip({
     onClick,
     children,
     count,
+    segmented = false,
     className,
 }: FilterChipProps) {
     return (
@@ -30,13 +32,19 @@ export function FilterChip({
             onClick={onClick}
             aria-pressed={active}
             className={[
-                "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border whitespace-nowrap",
+                segmented
+                    ? "inline-flex items-center gap-1.5 h-9 px-3 border-0 border-l border-border-light first:border-l-0 whitespace-nowrap"
+                    : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border whitespace-nowrap",
                 "font-mono text-[11px] uppercase tracking-[0.12em] font-medium",
                 "transition-colors duration-150",
                 "focus-visible:ring-2 focus-visible:ring-primary-500/30 focus-visible:ring-offset-1 outline-none",
-                active
-                    ? "border-primary-500 bg-primary-500/10 text-primary-500"
-                    : "border-border-light bg-surface-1 text-[var(--text-secondary)] hover:border-border-default hover:bg-surface-2",
+                    active
+                        ? segmented
+                            ? "bg-primary-500/10 text-primary-500"
+                            : "border-primary-500 bg-primary-500/10 text-primary-500"
+                        : segmented
+                            ? "bg-surface-1 text-[var(--text-secondary)] hover:bg-surface-2"
+                            : "border-border-light bg-surface-1 text-[var(--text-secondary)] hover:border-border-default hover:bg-surface-2",
                 className ?? "",
             ].join(" ")}
         >

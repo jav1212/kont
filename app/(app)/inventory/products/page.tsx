@@ -14,10 +14,10 @@ import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
+import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
 import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-drawer";
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
-import { OverflowMenu } from "@/src/shared/frontend/components/overflow-menu";
 import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
@@ -332,7 +332,7 @@ export default function ProductosPage() {
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader title="Productos" subtitle="Catálogo · existencias · IVA">
                 {/* Desktop (md+): all secondary actions inline */}
-                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                <>
                     <BaseButton.Root
                         variant="secondary" size="sm"
                         onClick={handleExport}
@@ -360,10 +360,10 @@ export default function ProductosPage() {
                     <BaseButton.Root as={Link} href="/inventory/import" variant="secondary" size="sm" leftIcon={<FileSpreadsheet size={14} />}>
                         Importar Excel
                     </BaseButton.Root>
-                </div>
+                </>
 
                 {/* Mobile (< md): secondary actions collapsed into overflow menu */}
-                <div className="md:hidden">
+                <div className="hidden">
                     <OverflowMenu
                         items={[
                             {
@@ -402,7 +402,7 @@ export default function ProductosPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5">
+            <main className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
 
                 {/* KPI strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -413,27 +413,29 @@ export default function ProductosPage() {
                 </div>
 
                 {/* Toolbar */}
-                <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm">
-                    <div className="px-4 py-3 flex flex-wrap items-center gap-3">
-                        <div className="relative w-full sm:w-72">
+                <div className="rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)]">
+                    <div className="flex w-full flex-wrap items-center gap-3">
+                        <div className="relative order-3 min-w-[220px] flex-1 lg:max-w-[520px]">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
                             <input
                                 type="text"
                                 placeholder="Buscar por código, nombre, departamento…"
                                 value={search}
                                 onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                                className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-default bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500 hover:border-border-medium transition-colors"
+                                className="h-9 w-full rounded-lg border border-border-light bg-surface-1 pl-9 pr-3 font-mono text-[13px] text-foreground outline-none placeholder:text-[var(--text-tertiary)] transition-colors hover:border-border-medium focus:border-primary-500/60"
                             />
                         </div>
 
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] mr-1 hidden md:inline">Estado</span>
-                            <FilterChip active={estadoFilter === "todos"}    onClick={() => setEstadoFilter("todos")}>Todos</FilterChip>
-                            <FilterChip active={estadoFilter === "activo"}   onClick={() => setEstadoFilter("activo")}>Activos</FilterChip>
-                            <FilterChip active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")}>Inactivos</FilterChip>
+                        <div className="order-1 flex items-center gap-2">
+                            <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)] md:inline">Estado</span>
+                            <div className="inline-flex overflow-hidden rounded-lg border border-border-light bg-surface-1">
+                                <FilterChip segmented active={estadoFilter === "todos"} onClick={() => setEstadoFilter("todos")} count={stats.total}>Todos</FilterChip>
+                                <FilterChip segmented active={estadoFilter === "activo"} onClick={() => setEstadoFilter("activo")} count={stats.active}>Activos</FilterChip>
+                                <FilterChip segmented active={estadoFilter === "inactivo"} onClick={() => setEstadoFilter("inactivo")} count={stats.inactive}>Inactivos</FilterChip>
+                            </div>
                         </div>
 
-                        <div className="ml-auto flex items-center gap-3">
+                        <div className="order-2 ml-auto flex items-center gap-3 lg:order-1">
                             {hasFilters && (
                                 <button
                                     type="button"
@@ -752,7 +754,15 @@ export default function ProductosPage() {
                 </ResponsiveDrawer>
 
                 {/* Table */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-[var(--shadow-sm)]">
+                    <div className="flex items-center justify-between gap-4 border-b border-border-light px-5 py-4">
+                        <h2 className="font-sans text-[15px] font-semibold tracking-tight text-foreground">
+                            Catálogo de productos
+                        </h2>
+                        <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
+                            {filtered.length} / {products.length}
+                        </span>
+                    </div>
                     {loadingProducts ? (
                         <div className="px-6 py-16 text-center font-sans text-[13px] text-[var(--text-tertiary)]">
                             Cargando productos…
@@ -792,7 +802,7 @@ export default function ProductosPage() {
                             {filtered.map((p) => (
                                 <BaseListCard
                                     key={p.id}
-                                    onClick={() => openEdit(p)}
+                                    onClick={() => p.id ? router.push(`/inventory/products/${p.id}`) : openEdit(p)}
                                     title={p.code || p.name}
                                     subtitle={p.code ? p.name : undefined}
                                     badge={<TipoBadge tipo={p.type} />}
@@ -838,9 +848,9 @@ export default function ProductosPage() {
 
                         {/* Desktop: dense table */}
                         <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-[13px]">
+                            <table className="w-full min-w-[860px] font-sans text-[13px]">
                                 <thead>
-                                    <tr className="bg-surface-2/40 border-b border-border-light">
+                                    <tr className="border-b border-border-light bg-surface-2/60">
                                         <th className="px-4 h-10 w-10">
                                             <input
                                                 type="checkbox"
@@ -857,28 +867,25 @@ export default function ProductosPage() {
                                             { label: "Código",       align: "text-left"  },
                                             { label: "Nombre",       align: "text-left"  },
                                             { label: "Departamento", align: "text-left"  },
-                                            { label: "IVA",          align: "text-center"},
-                                            { label: "Tipo",         align: "text-left"  },
-                                            { label: "Unidad",       align: "text-left"  },
-                                            { label: "Existencia",   align: "text-right" },
+                                             { label: "Existencia",   align: "text-right" },
                                             { label: "Estado",       align: "text-left"  },
                                             ...customFields.map((cf) => ({ label: cf.label, align: "text-left" })),
                                             { label: "",             align: "text-right" },
                                         ].map((h, idx) => (
                                             <th
                                                 key={idx}
-                                                className={`px-4 h-10 ${h.align} text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium whitespace-nowrap`}
+                                                className={`whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] ${h.align}`}
                                             >
                                                 {h.label}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="font-sans">
                                     {filtered.map((p) => (
                                         <tr key={p.id} className={[
-                                            "border-b border-border-light/60 transition-colors",
-                                            selected.has(p.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2/60",
+                                            "border-b border-border-light/70 align-middle transition-colors even:bg-surface-2/25",
+                                            selected.has(p.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2",
                                         ].join(" ")}>
                                             <td className="px-4 py-3 w-10">
                                                 <input
@@ -894,8 +901,8 @@ export default function ProductosPage() {
                                                     aria-label={`Seleccionar ${p.name}`}
                                                 />
                                             </td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)] tabular-nums">{p.code || "—"}</td>
-                                            <td className="px-4 py-3 text-foreground font-medium">
+                                            <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.code || "—"}</td>
+                                            <td className="px-4 py-3 font-sans font-semibold text-foreground">
                                                 <div className="flex flex-col">
                                                     <span>{p.name}</span>
                                                     {p.description && (
@@ -906,24 +913,17 @@ export default function ProductosPage() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-[var(--text-secondary)]">{p.departmentName || "—"}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-[11px] uppercase tracking-[0.10em] font-medium ${p.vatType === "exento" ? "border badge-info" : "border badge-warning"}`}>
-                                                    {p.vatType === "exento" ? "E" : "G 16%"}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3"><TipoBadge tipo={p.type} /></td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)]">{p.measureUnit}</td>
-                                            <td className="px-4 py-3 text-right tabular-nums font-medium text-foreground">
+                                            <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-foreground">
                                                 {fmtN(p.currentStock)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {p.active ? (
-                                                    <span className="inline-flex items-center gap-1.5 text-text-success text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-text-success">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-text-success" />
                                                         Activo
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1.5 text-[var(--text-tertiary)] text-[11px] uppercase tracking-[0.12em] font-medium">
+                                                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-tertiary)]" />
                                                         Inactivo
                                                     </span>
@@ -955,7 +955,7 @@ export default function ProductosPage() {
                                                     ) : (
                                                         <>
                                                             <button
-                                                                onClick={() => openEdit(p)}
+                                                                onClick={() => p.id ? router.push(`/inventory/products/${p.id}`) : openEdit(p)}
                                                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                                                                 aria-label={`Editar ${p.name}`}
                                                                 title="Editar"
@@ -982,7 +982,7 @@ export default function ProductosPage() {
                         </>
                     )}
                 </div>
-            </div>
+            </main>
         </div>
     );
 }
