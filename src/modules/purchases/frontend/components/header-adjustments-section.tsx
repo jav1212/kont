@@ -5,11 +5,12 @@
 // Reutilizable entre la página de creación y la de edición de factura.
 
 import { useEffect, useState } from "react";
-import type { AdjustmentKind, HeaderAdjustments } from "@/src/modules/inventory/shared/totals";
+import type { AdjustmentCurrency, AdjustmentKind, HeaderAdjustments } from "@/src/modules/inventory/shared/totals";
 
 interface Props {
     value: HeaderAdjustments;
     onChange: (value: HeaderAdjustments) => void;
+    dollarRate?: number | null;
     readOnly?: boolean;
 }
 
@@ -27,12 +28,15 @@ interface RowProps {
     accent:   "negative" | "warning";
     tipo:     AdjustmentKind | null;
     valor:    number;
+    moneda:   AdjustmentCurrency;
+    onMonedaChange: (moneda: AdjustmentCurrency) => void;
     onTipoChange:  (tipo: AdjustmentKind | null) => void;
+    onAdjustmentChange?: (tipo: AdjustmentKind | null, moneda: AdjustmentCurrency) => void;
     onValorChange: (valor: number) => void;
     readOnly?: boolean;
 }
 
-function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly }: RowProps) {
+function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, readOnly }: RowProps) {
     const accentCls =
         accent === "negative" ? "text-error/80" : "text-amber-600";
 
@@ -62,7 +66,7 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
                     {hasValue
                         ? tipo === "porcentaje"
                             ? `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} %`
-                            : `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs`
+                            : `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${moneda === "D" ? "divisa" : "Bs"}`
                         : "—"}
                 </span>
             </div>
@@ -73,13 +77,20 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
         <div className="flex items-center gap-2">
             <span className={`${labelCls} ${accentCls}`}>{label}</span>
             <select
-                value={tipo ?? ""}
-                onChange={(e) => onTipoChange((e.target.value || null) as AdjustmentKind | null)}
+                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : moneda === "D" ? "divisa" : "monto"}
+                onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) onTipoChange(null);
+                    else if (v === "porcentaje") onTipoChange("porcentaje");
+                    else if (onAdjustmentChange) onAdjustmentChange("monto", v === "divisa" ? "D" : "B");
+                    else { onTipoChange("monto"); onMonedaChange(v === "divisa" ? "D" : "B"); }
+                }}
                 className={selCls}
             >
                 <option value="">—</option>
                 <option value="porcentaje">%</option>
                 <option value="monto">Bs</option>
+                <option value="divisa">USD</option>
             </select>
             <input
                 type="text"
@@ -93,7 +104,7 @@ function Row({ label, accent, tipo, valor, onTipoChange, onValorChange, readOnly
                     const parsed = parseFloat(raw.replace(",", "."));
                     onValorChange(Number.isFinite(parsed) ? parsed : 0);
                 }}
-                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? "0,00 Bs" : ""}
+                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? (moneda === "D" ? "0,00 USD" : "0,00 Bs") : ""}
                 className={inputCls}
             />
         </div>
@@ -112,6 +123,9 @@ export function HeaderAdjustmentsSection({ value, onChange, readOnly }: Props) {
                 accent="negative"
                 tipo={value.descuentoTipo}
                 valor={value.descuentoValor}
+                moneda={value.descuentoMoneda ?? "B"}
+                onMonedaChange={(v) => update("descuentoMoneda", v)}
+                onAdjustmentChange={(tipo, moneda) => onChange({ ...value, descuentoTipo: tipo, descuentoMoneda: moneda })}
                 onTipoChange={(v) => update("descuentoTipo", v)}
                 onValorChange={(v) => update("descuentoValor", v)}
                 readOnly={readOnly}
@@ -121,6 +135,9 @@ export function HeaderAdjustmentsSection({ value, onChange, readOnly }: Props) {
                 accent="warning"
                 tipo={value.recargoTipo}
                 valor={value.recargoValor}
+                moneda={value.recargoMoneda ?? "B"}
+                onMonedaChange={(v) => update("recargoMoneda", v)}
+                onAdjustmentChange={(tipo, moneda) => onChange({ ...value, recargoTipo: tipo, recargoMoneda: moneda })}
                 onTipoChange={(v) => update("recargoTipo", v)}
                 onValorChange={(v) => update("recargoValor", v)}
                 readOnly={readOnly}

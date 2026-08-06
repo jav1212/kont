@@ -6,6 +6,8 @@ import {
     AdjustmentKind,
     ItemCurrency,
     InvoiceStatus,
+    PurchaseDocumentType,
+    PurchaseInventoryEffect,
     PurchaseInvoice,
     PurchaseInvoiceItem,
     VatRate,
@@ -22,6 +24,12 @@ type RawSharedInvoice = {
     period: string;
     manual_period: boolean | null;
     status: string;
+    document_type: string | null;
+    affected_invoice_id: string | null;
+    affected_invoice_number: string | null;
+    affected_control_number: string | null;
+    note_reason: string | null;
+    inventory_effect: string | null;
     subtotal: number | string | null;
     vat_percentage: number | string | null;
     vat_amount: number | string | null;
@@ -31,9 +39,11 @@ type RawSharedInvoice = {
     dollar_rate: number | string | null;
     rate_decimals: number | null;
     discount_type: string | null;
+    discount_currency: string | null;
     discount_value: number | string | null;
     discount_amount: number | string | null;
     surcharge_type: string | null;
+    surcharge_currency: string | null;
     surcharge_value: number | string | null;
     surcharge_amount: number | string | null;
     vat_retention_percentage: number | string | null;
@@ -69,9 +79,11 @@ type RawSharedItem = {
     currency_cost: number | string | null;
     dollar_rate: number | string | null;
     discount_type: string | null;
+    discount_currency: string | null;
     discount_value: number | string | null;
     discount_amount: number | string | null;
     surcharge_type: string | null;
+    surcharge_currency: string | null;
     surcharge_value: number | string | null;
     surcharge_amount: number | string | null;
     vat_base: number | string | null;
@@ -107,12 +119,20 @@ const invoicePayload = (invoice: PurchaseInvoice): Record<string, unknown> => ({
     iva_monto: invoice.vatAmount,
     total: invoice.total,
     notas: invoice.notes,
+    tipo_documento: invoice.documentType ?? 'factura',
+    factura_afectada_id: invoice.affectedInvoiceId ?? null,
+    factura_afectada_numero: invoice.affectedInvoiceNumber ?? null,
+    factura_afectada_control: invoice.affectedControlNumber ?? null,
+    motivo_nota: invoice.noteReason ?? null,
+    efecto_inventario: invoice.inventoryEffect ?? 'none',
     tasa_dolar: invoice.dollarRate ?? null,
     tasa_decimales: invoice.rateDecimals ?? null,
     descuento_tipo: invoice.descuentoTipo ?? null,
+    descuento_moneda: invoice.descuentoMoneda ?? "B",
     descuento_valor: invoice.descuentoValor ?? null,
     descuento_monto: invoice.descuentoMonto ?? null,
     recargo_tipo: invoice.recargoTipo ?? null,
+    recargo_moneda: invoice.recargoMoneda ?? "B",
     recargo_valor: invoice.recargoValor ?? null,
     recargo_monto: invoice.recargoMonto ?? null,
     retencion_iva_pct: invoice.retencionIvaPct ?? 0,
@@ -139,9 +159,11 @@ const itemPayload = (item: PurchaseInvoiceItem): Record<string, unknown> => ({
     costo_moneda: item.currencyCost ?? null,
     tasa_dolar: item.dollarRate ?? null,
     descuento_tipo: item.descuentoTipo ?? null,
+    descuento_moneda: item.descuentoMoneda ?? "B",
     descuento_valor: item.descuentoValor ?? null,
     descuento_monto: item.descuentoMonto ?? null,
     recargo_tipo: item.recargoTipo ?? null,
+    recargo_moneda: item.recargoMoneda ?? "B",
     recargo_valor: item.recargoValor ?? null,
     recargo_monto: item.recargoMonto ?? null,
     base_iva: item.baseIVA ?? null,
@@ -218,8 +240,43 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
     }
 
     async save(invoice: PurchaseInvoice, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>> {
-        return this.callInvoiceFunction<RawSharedInvoice>('shared_inventory_purchase_invoice_save', [invoicePayload(invoice), items.map(itemPayload)])
-            .then((result) => result.isFailure ? Result.fail(result.getError()) : this.load(result.getValue()));
+        const result = await this.callInvoiceFunction<RawSharedInvoice>('shared_inventory_purchase_invoice_save', [invoicePayload(invoice), items.map(itemPayload)]);
+        if (result.isFailure) return Result.fail(result.getError());
+        const metadata = await this.source.instance
+            .from('shared_inventory_purchase_invoices')
+            .update({
+                document_type: invoice.documentType ?? 'factura',
+                affected_invoice_id: invoice.affectedInvoiceId ?? null,
+                affected_invoice_number: invoice.affectedInvoiceNumber ?? null,
+                affected_control_number: invoice.affectedControlNumber ?? null,
+                note_reason: invoice.noteReason ?? null,
+                inventory_effect: invoice.inventoryEffect ?? (invoice.documentType === 'factura' ? 'additional_purchase' : 'none'),
+                discount_currency: invoice.descuentoMoneda ?? 'B',
+                surcharge_currency: invoice.recargoMoneda ?? 'B',
+            })
+            .eq('tenant_id', this.tenantId)
+            .eq('id', result.getValue().id)
+            .select('*')
+            .single();
+        if (metadata.error) return Result.fail(metadata.error.message);
+
+        const { data: savedItems, error: savedItemsError } = await this.source.instance
+            .from('shared_inventory_purchase_invoice_items')
+            .select('id')
+            .eq('tenant_id', this.tenantId)
+            .eq('invoice_id', result.getValue().id)
+            .order('created_at', { ascending: true });
+        if (savedItemsError) return Result.fail(savedItemsError.message);
+        for (let index = 0; index < items.length; index += 1) {
+            const itemId = (savedItems as Array<{ id: string }> | null)?.[index]?.id;
+            if (!itemId) continue;
+            const { error } = await this.source.instance
+                .from('shared_inventory_purchase_invoice_items')
+                .update({ discount_currency: items[index].descuentoMoneda ?? 'B', surcharge_currency: items[index].recargoMoneda ?? 'B' })
+                .eq('tenant_id', this.tenantId).eq('id', itemId).eq('invoice_id', result.getValue().id);
+            if (error) return Result.fail(error.message);
+        }
+        return this.load(metadata.data as RawSharedInvoice);
     }
 
     async confirm(invoiceId: string): Promise<Result<PurchaseInvoice>> {
@@ -365,6 +422,14 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             period: row.period,
             periodoManual: row.manual_period === true,
             status: row.status as InvoiceStatus,
+            documentType: row.document_type === 'nota_credito' || row.document_type === 'nota_debito'
+                ? row.document_type as PurchaseDocumentType : 'factura',
+            affectedInvoiceId: row.affected_invoice_id,
+            affectedInvoiceNumber: row.affected_invoice_number,
+            affectedControlNumber: row.affected_control_number,
+            noteReason: row.note_reason,
+            inventoryEffect: row.inventory_effect === 'return_to_supplier' || row.inventory_effect === 'additional_purchase'
+                ? row.inventory_effect as PurchaseInventoryEffect : 'none',
             subtotal: num(row.subtotal),
             vatPercentage: num(row.vat_percentage, 16),
             vatAmount: num(row.vat_amount),
@@ -373,9 +438,11 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             dollarRate: row.dollar_rate == null ? null : num(row.dollar_rate),
             rateDecimals: row.rate_decimals,
             descuentoTipo: adjustment(row.discount_type),
+            descuentoMoneda: row.discount_currency === "D" ? "D" : "B",
             descuentoValor: num(row.discount_value),
             descuentoMonto: num(row.discount_amount),
             recargoTipo: adjustment(row.surcharge_type),
+            recargoMoneda: row.surcharge_currency === "D" ? "D" : "B",
             recargoValor: num(row.surcharge_value),
             recargoMonto: num(row.surcharge_amount),
             retencionIvaPct: num(row.vat_retention_percentage),
@@ -399,6 +466,7 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                     nombre: String(value.nombre ?? ''),
                     tipo: value.tipo === 'monto' ? 'monto' : 'porcentaje',
                     valor: num(value.valor as number | string | null),
+                    moneda: value.moneda === 'D' ? 'D' : 'B',
                     base: value.base === 'post_iva' ? 'post_iva' as TaxBase : 'pre_iva' as TaxBase,
                     monto: num(value.monto as number | string | null),
                 };
@@ -417,9 +485,11 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 currencyCost: item.currency_cost == null ? null : num(item.currency_cost),
                 dollarRate: item.dollar_rate == null ? null : num(item.dollar_rate),
                 descuentoTipo: adjustment(item.discount_type),
+                descuentoMoneda: item.discount_currency === "D" ? "D" : "B",
                 descuentoValor: num(item.discount_value),
                 descuentoMonto: num(item.discount_amount),
                 recargoTipo: adjustment(item.surcharge_type),
+                recargoMoneda: item.surcharge_currency === "D" ? "D" : "B",
                 recargoValor: num(item.surcharge_value),
                 recargoMonto: num(item.surcharge_amount),
                 baseIVA: num(item.vat_base, num(item.total_cost)),

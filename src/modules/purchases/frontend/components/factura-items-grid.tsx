@@ -12,15 +12,18 @@ import type {
     VatRate,
     ItemCurrency,
     AdjustmentKind,
+
 } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import {
     vatRatePct,
+    computeLineTotals,
     netFromGross,
     grossFromNet,
     emptyLineAdjustments,
     roundN,
     round4 as round4Shared,
+    type AdjustmentCurrency,
 } from "@/src/modules/inventory/shared/totals";
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -277,13 +280,16 @@ interface AjusteRowProps {
     label:    string;
     tipo:     AdjustmentKind | null;
     valor:    number;
+    moneda:   AdjustmentCurrency;
+    onMonedaChange: (moneda: AdjustmentCurrency) => void;
     onTipoChange:  (tipo: AdjustmentKind | null) => void;
+    onAdjustmentChange?: (tipo: AdjustmentKind | null, moneda: AdjustmentCurrency) => void;
     onValorChange: (valor: number) => void;
     extraInput?: { value: string; onChange: (v: string) => void; placeholder: string };
     accent?:  "neutral" | "negative" | "positive" | "warning";
 }
 
-function AjusteRow({ label, tipo, valor, onTipoChange, onValorChange, extraInput, accent = "neutral" }: AjusteRowProps) {
+function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, extraInput, accent = "neutral" }: AjusteRowProps) {
     const accentCls =
         accent === "negative" ? "text-error/80"
         : accent === "positive" ? "text-[var(--text-success)]"
@@ -296,13 +302,14 @@ function AjusteRow({ label, tipo, valor, onTipoChange, onValorChange, extraInput
                 {label}
             </span>
             <select
-                value={tipo ?? ""}
-                onChange={(e) => onTipoChange((e.target.value || null) as AdjustmentKind | null)}
+                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : moneda === "D" ? "divisa" : "monto"}
+                onChange={(e) => { const v = e.target.value; if (!v) onTipoChange(null); else if (v === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", v === "divisa" ? "D" : "B"); else { onTipoChange("monto"); onMonedaChange(v === "divisa" ? "D" : "B"); } }}
                 className="h-7 px-1.5 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground focus:border-primary-500/60 transition-colors"
             >
-                <option value="">—</option>
+                <option value="">â€”</option>
                 <option value="porcentaje">%</option>
                 <option value="monto">Bs</option>
+                <option value="divisa">USD</option>
             </select>
             <input
                 type="text"
@@ -313,7 +320,7 @@ function AjusteRow({ label, tipo, valor, onTipoChange, onValorChange, extraInput
                     const parsed = parseFloat(e.target.value.replace(",", "."));
                     onValorChange(isNaN(parsed) ? 0 : parsed);
                 }}
-                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? "0,00 Bs" : ""}
+                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? (moneda === "D" ? "0,00 USD" : "0,00 Bs") : ""}
                 className="w-24 h-7 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed focus:border-primary-500/60 transition-colors"
             />
             {extraInput && (
@@ -335,6 +342,8 @@ function AjusteRow({ label, tipo, valor, onTipoChange, onValorChange, extraInput
 export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, decimals = 2, onRequestCreateProduct }: Props) {
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
+    const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(false);
+    const [bulkCurrency, setBulkCurrency] = useState<ItemCurrency>(() => items[0]?.currency ?? "B");
 
     const fmtN = makeFmt(decimals);
     const round = (n: number) => roundN(n, decimals);
@@ -367,6 +376,25 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     // 'unitCostDisplay' is a virtual field — handles the IVA-incluido toggle: the
     //                   user-entered value is interpreted as gross and converted
     //                   to net before persisting.
+    function itemWithCurrency(item: PurchaseInvoiceItem, currency: ItemCurrency): PurchaseInvoiceItem {
+        const next = { ...item, currency };
+        if (currency === "D") {
+            const rate = dollarRate ?? item.dollarRate ?? 1;
+            next.dollarRate = rate;
+            if (next.currencyCost == null || next.currencyCost === 0) next.currencyCost = rate > 0 ? round4(next.unitCost / rate) : 0;
+            next.unitCost = round4((next.currencyCost ?? 0) * rate);
+        } else {
+            next.currencyCost = null; next.dollarRate = null;
+        }
+        next.totalCost = round(Number(next.quantity) * Number(next.unitCost));
+        return next;
+    }
+
+    function applyCurrencyToAllItems(currency: ItemCurrency) {
+        setBulkCurrency(currency);
+        onChange(items.map((item) => itemWithCurrency(item, currency)));
+    }
+
     function updateItem(
         idx: number,
         field: keyof PurchaseInvoiceItem | 'currencyCostInput' | 'unitCostDisplay',
@@ -391,22 +419,15 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 : round4(typed);
             item.totalCost = round(item.quantity * item.unitCost);
             if (item.currency !== 'D') item.currencyCost = null;
-        } else if (field === 'currency') {
-            item.currency = val as ItemCurrency;
-            if (val === 'D') {
-                const rate = dollarRate ?? 1;
-                item.dollarRate = rate;
-                if (!item.currencyCost) {
-                    item.currencyCost = rate > 0 ? round4(item.unitCost / rate) : 0;
-                }
-                item.unitCost  = round4((item.currencyCost ?? 0) * rate);
-                item.totalCost = round(item.quantity * item.unitCost);
-            } else {
-                item.currencyCost = null;
-                item.dollarRate   = null;
-                item.totalCost = round(item.quantity * item.unitCost);
+        } else if (field === "currency") {
+            const currency = val as ItemCurrency;
+            if (applyCurrencyToAll) {
+                setBulkCurrency(currency);
+                onChange(items.map((row) => itemWithCurrency(row, currency)));
+                return;
             }
-        } else if (field === 'ivaIncluido') {
+            Object.assign(item, itemWithCurrency(item, currency));
+        } else if (field === "ivaIncluido") {
             item.ivaIncluido = !!val;
             // unitCost stays as net; the cell will redisplay using the new mode.
         } else {
@@ -420,8 +441,10 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             else if (field === 'dollarRate') item.dollarRate = val != null ? Number(val) : null;
             else if (field === 'descuentoTipo') item.descuentoTipo = val as AdjustmentKind | null;
             else if (field === 'descuentoValor') item.descuentoValor = Number(val) || 0;
+            else if (field === 'descuentoMoneda') item.descuentoMoneda = val as AdjustmentCurrency;
             else if (field === 'recargoTipo') item.recargoTipo = val as AdjustmentKind | null;
             else if (field === 'recargoValor') item.recargoValor = Number(val) || 0;
+            else if (field === 'recargoMoneda') item.recargoMoneda = val as AdjustmentCurrency;
 
             if (field === 'quantity' || field === 'unitCost') {
                 item.totalCost = round(Number(item.quantity) * Number(item.unitCost));
@@ -440,6 +463,24 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             }
         }
 
+        if (field === 'descuentoTipo' || field === 'descuentoValor' || field === 'descuentoMoneda' || field === 'recargoTipo' || field === 'recargoValor' || field === 'recargoMoneda') {
+            const line = computeLineTotals({
+                quantity: Number(item.quantity) || 0,
+                unitCost: Number(item.unitCost) || 0,
+                vatRate: item.vatRate ?? 'general_16',
+                adjustments: {
+                    descuentoTipo: item.descuentoTipo ?? null,
+                    descuentoValor: item.descuentoValor ?? 0,
+                    descuentoMoneda: item.descuentoMoneda ?? 'B',
+                    recargoTipo: item.recargoTipo ?? null,
+                    recargoValor: item.recargoValor ?? 0,
+                    recargoMoneda: item.recargoMoneda ?? 'B',
+                },
+            }, decimals, dollarRate ?? item.dollarRate ?? 0);
+            item.descuentoMonto = line.descuentoMonto;
+            item.recargoMonto = line.recargoMonto;
+            item.baseIVA = line.baseIVA;
+        }
         next[idx] = item;
         onChange(next);
     }
@@ -506,6 +547,21 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 </div>
             )}
 
+            {!readOnly && (
+                <div className="mb-3 flex flex-wrap items-center justify-end gap-2 text-[11px]">
+                    <span className="text-[var(--text-secondary)]">Moneda de todos:</span>
+                    <button type="button" onClick={() => { setBulkCurrency("B"); applyCurrencyToAllItems("B"); }} className="h-7 rounded border border-border-light bg-surface-1 px-2 font-mono text-[11px] text-foreground hover:border-primary-500/60">
+                        Convertir todo a Bs
+                    </button>
+                    <button type="button" disabled={!hasDollarRate} onClick={() => { setBulkCurrency("D"); applyCurrencyToAllItems("D"); }} className="h-7 rounded border border-border-light bg-surface-1 px-2 font-mono text-[11px] text-foreground hover:border-primary-500/60 disabled:cursor-not-allowed disabled:opacity-50">
+                        Convertir todo a USD
+                    </button>
+                    <label className="inline-flex items-center gap-1.5 text-[var(--text-secondary)] cursor-pointer select-none">
+                        <input type="checkbox" checked={applyCurrencyToAll} onChange={(e) => { const checked = e.target.checked; setApplyCurrencyToAll(checked); if (checked) applyCurrencyToAllItems(bulkCurrency); }} className="accent-primary-500" />
+                        Aplicar cambios de moneda a todos
+                    </label>
+                </div>
+            )}
             <table className="w-full min-w-[920px] text-[13px] border-collapse">
                 <thead>
                     <tr className="border-b border-border-light bg-surface-2/40">
@@ -530,7 +586,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                             IVA
                         </th>
                         <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-32">
-                            Total Bs
+                            Total (moneda)
                         </th>
                         {!readOnly && <th className="w-16" />}
                     </tr>
@@ -690,9 +746,12 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                         )}
                                     </td>
 
-                                    {/* Total Bs (always read-only) */}
-                                    <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-primary)]">
-                                        {item.totalCost > 0 ? fmtN(item.totalCost) : "—"}
+                                    {/* Total in row currency */}
+                                    <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-primary)]">                                        {item.totalCost > 0
+                                            ? isUsd
+                                                ? (dollarRate && dollarRate > 0 ? "$" + fmtN(item.totalCost / dollarRate) : "N/A")
+                                                : "Bs. " + fmtN(item.totalCost)
+                                            : "N/A"}
                                     </td>
 
                                     {/* Action buttons (ajustes + remove) */}
@@ -740,6 +799,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     accent="negative"
                                                     tipo={item.descuentoTipo ?? null}
                                                     valor={item.descuentoValor ?? 0}
+                                                    moneda={item.descuentoMoneda ?? "B"}
+                                                    onMonedaChange={(moneda) => updateItem(idx, "descuentoMoneda", moneda)}
+                                                    onAdjustmentChange={(tipo, moneda) => { const next = [...items]; next[idx] = { ...next[idx], descuentoTipo: tipo, descuentoMoneda: moneda }; onChange(next); }}
                                                     onTipoChange={(v) => updateItem(idx, "descuentoTipo", v)}
                                                     onValorChange={(v) => updateItem(idx, "descuentoValor", v)}
                                                 />
@@ -748,6 +810,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     accent="warning"
                                                     tipo={item.recargoTipo ?? null}
                                                     valor={item.recargoValor ?? 0}
+                                                    moneda={item.recargoMoneda ?? "B"}
+                                                    onMonedaChange={(moneda) => updateItem(idx, "recargoMoneda", moneda)}
+                                                    onAdjustmentChange={(tipo, moneda) => { const next = [...items]; next[idx] = { ...next[idx], recargoTipo: tipo, recargoMoneda: moneda }; onChange(next); }}
                                                     onTipoChange={(v) => updateItem(idx, "recargoTipo", v)}
                                                     onValorChange={(v) => updateItem(idx, "recargoValor", v)}
                                                 />

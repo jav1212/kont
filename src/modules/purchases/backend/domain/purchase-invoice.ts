@@ -1,7 +1,7 @@
 // Domain entity: PurchaseInvoice
 // Represents a supplier purchase invoice with line items.
 // VatRate, ItemCurrency, InvoiceStatus string literal values are DB contracts — do not change.
-import type { InvoiceTax } from '@/src/modules/inventory/shared/totals';
+import type { AdjustmentCurrency, InvoiceTax } from '@/src/modules/inventory/shared/totals';
 
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
 export type ItemCurrency = 'B' | 'D';
@@ -24,9 +24,11 @@ export interface PurchaseInvoiceItem {
   // Cada uno por monto Bs o porcentaje.
   descuentoTipo?:  AdjustmentKind | null;
   descuentoValor?: number;
+  descuentoMoneda?: AdjustmentCurrency;
   descuentoMonto?: number;     // resuelto en Bs (sólo línea, sin spread del header)
   recargoTipo?:    AdjustmentKind | null;
   recargoValor?:   number;
+  recargoMoneda?: AdjustmentCurrency;
   recargoMonto?:   number;     // resuelto en Bs
 
   // Base IVA final (incluye ajustes de línea + spread proporcional del header)
@@ -39,6 +41,8 @@ export interface PurchaseInvoiceItem {
 }
 
 export type InvoiceStatus = 'borrador' | 'confirmada';
+export type PurchaseDocumentType = 'factura' | 'nota_credito' | 'nota_debito';
+export type PurchaseInventoryEffect = 'none' | 'return_to_supplier' | 'additional_purchase';
 
 export interface PurchaseInvoice {
   id?: string;
@@ -50,6 +54,14 @@ export interface PurchaseInvoice {
   date: string;       // YYYY-MM-DD — drives BCV lookup
   period: string;     // YYYY-MM — período contable (puede diferir del mes de fecha)
   status: InvoiceStatus;
+  /** Fiscal document kind. Defaults to factura for legacy records. */
+  documentType?: PurchaseDocumentType;
+  /** Optional relation to the supplier invoice affected by a credit/debit note. */
+  affectedInvoiceId?: string | null;
+  affectedInvoiceNumber?: string | null;
+  affectedControlNumber?: string | null;
+  noteReason?: string | null;
+  inventoryEffect?: PurchaseInventoryEffect;
   subtotal: number;
   vatPercentage: number;
   vatAmount: number;
@@ -76,9 +88,11 @@ export interface PurchaseInvoice {
   // ── Ajustes a nivel encabezado (mig 070) — se prorratean proporcional pre-IVA
   descuentoTipo?:  AdjustmentKind | null;
   descuentoValor?: number;
+  descuentoMoneda?: AdjustmentCurrency;
   descuentoMonto?: number;     // resuelto en Bs
   recargoTipo?:    AdjustmentKind | null;
   recargoValor?:   number;
+  recargoMoneda?: AdjustmentCurrency;
   recargoMonto?:   number;
 
   // ── Retención IVA (mig 080) — descuento POST-IVA. No toca base ni IVA débito;

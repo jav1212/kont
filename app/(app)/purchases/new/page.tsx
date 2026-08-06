@@ -22,7 +22,7 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
-import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import type { PurchaseInvoice, PurchaseInvoiceItem, PurchaseDocumentType, PurchaseInventoryEffect } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
@@ -131,8 +131,13 @@ export default function NuevaFacturaPage() {
 
     // Form state
     const [supplierId, setSupplierId] = useState("");
+    const [documentType, setDocumentType] = useState<PurchaseDocumentType>("factura");
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
+    const [affectedInvoiceNumber, setAffectedInvoiceNumber] = useState("");
+    const [affectedControlNumber, setAffectedControlNumber] = useState("");
+    const [noteReason, setNoteReason] = useState("");
+    const [inventoryEffect, setInventoryEffect] = useState<PurchaseInventoryEffect>("none");
     const [date, setDate] = useState(todayStr());
     const [notes, setNotes] = useState("");
     const {
@@ -217,8 +222,13 @@ export default function NuevaFacturaPage() {
         if (!inv || inv.id !== draftIdParam) return;
 
         setSupplierId(inv.supplierId ?? "");
+        setDocumentType(inv.documentType ?? "factura");
         setInvoiceNumber(inv.invoiceNumber ?? "");
         setControlNumber(inv.controlNumber ?? "");
+        setAffectedInvoiceNumber(inv.affectedInvoiceNumber ?? "");
+        setAffectedControlNumber(inv.affectedControlNumber ?? "");
+        setNoteReason(inv.noteReason ?? "");
+        setInventoryEffect(inv.inventoryEffect ?? "none");
         setDate(inv.date ?? todayStr());
         setPeriodo(inv.period ?? (inv.date ?? todayStr()).slice(0, 7));
         setPeriodoManual(!!inv.periodoManual);
@@ -228,8 +238,10 @@ export default function NuevaFacturaPage() {
         setHeaderAdj({
             descuentoTipo:  inv.descuentoTipo  ?? null,
             descuentoValor: inv.descuentoValor ?? 0,
+            descuentoMoneda: inv.descuentoMoneda ?? 'B',
             recargoTipo:    inv.recargoTipo    ?? null,
             recargoValor:   inv.recargoValor   ?? 0,
+            recargoMoneda: inv.recargoMoneda ?? 'B',
         });
         setRetencionIvaPct(inv.retencionIvaPct ?? 0);
         setImpuestos(inv.impuestos ?? []);
@@ -288,19 +300,27 @@ export default function NuevaFacturaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date]);
 
+    const effectiveDollarRate = (() => {
+        const r = parseRateStr(dollarRate);
+        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+    })();
     // Derived totals — computed by shared math (computeInvoiceTotals)
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
         unitCost: i.unitCost ?? 0,
+        currency: i.currency ?? "B",
+        currencyCost: i.currencyCost ?? null,
         vatRate:  i.vatRate ?? "general_16",
         adjustments: {
             descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
             descuentoValor: i.descuentoValor ?? 0,
+            descuentoMoneda: i.descuentoMoneda ?? 'B',
             recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
             recargoValor:   i.recargoValor ?? 0,
+            recargoMoneda: i.recargoMoneda ?? 'B',
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0);
     const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
@@ -325,40 +345,43 @@ export default function NuevaFacturaPage() {
         retencionIvaPct > 0 ||
         impuestos.length > 0;
 
-    const effectiveDollarRate = (() => {
-        const r = parseRateStr(dollarRate);
-        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
-    })();
-
     const supplierName = suppliers.find((s) => s.id === supplierId)?.name ?? null;
     const itemCount = items.filter((i) => i.productId).length;
 
+    const documentSign = documentType === "nota_credito" ? -1 : 1;
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         companyId:     companyId!,
         supplierId,
+        documentType,
         invoiceNumber,
         controlNumber,
+        affectedInvoiceNumber: documentType === "factura" ? null : affectedInvoiceNumber || null,
+        affectedControlNumber: documentType === "factura" ? null : affectedControlNumber || null,
+        noteReason: documentType === "factura" ? null : noteReason || null,
+        inventoryEffect: documentType === "factura" ? "additional_purchase" : inventoryEffect,
         date,
         period:        periodoManual && periodo ? periodo : date.slice(0, 7),
         periodoManual,
         status:        "borrador",
-        subtotal,
+        subtotal:      subtotal * documentSign,
         vatPercentage: 0,
-        vatAmount,
-        total,
+        vatAmount:     vatAmount * documentSign,
+        total:         total * documentSign,
         notes,
         dollarRate:    effectiveDollarRate,
         rateDecimals,
         descuentoTipo:  headerAdj.descuentoTipo,
         descuentoValor: headerAdj.descuentoValor,
+        descuentoMoneda: headerAdj.descuentoMoneda,
         descuentoMonto: descuentoHeader,
         recargoTipo:    headerAdj.recargoTipo,
         recargoValor:   headerAdj.recargoValor,
+        recargoMoneda: headerAdj.recargoMoneda,
         recargoMonto:   recargoHeader,
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
         impuestos: resolvedImpuestos,
-    }), [companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos]);
+    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -371,7 +394,9 @@ export default function NuevaFacturaPage() {
                 ...it,
                 descuentoMonto: t.descuentoMonto,
                 recargoMonto:   t.recargoMonto,
-                baseIVA:        t.baseIVAFinal,
+                baseIVA: t.baseIVAFinal,
+                unitCost: t.base / Math.max(1, it.quantity),
+                totalCost: t.base,
             };
         })
         .filter((it) => it.productId && it.quantity > 0),
@@ -381,22 +406,22 @@ export default function NuevaFacturaPage() {
     // Snapshots only the user-editable shape so the watcher fires on real
     // edits, not on every render. Keys are flattened to avoid deep diffs.
     const autosavePayload = useMemo(() => ({
-        supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, notes,
+        supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
         rate: effectiveDollarRate, rateDecimals, retencionIvaPct,
         headerAdj: {
-            d: headerAdj.descuentoTipo, dv: headerAdj.descuentoValor,
-            r: headerAdj.recargoTipo,   rv: headerAdj.recargoValor,
+            d: headerAdj.descuentoTipo, dv: headerAdj.descuentoValor, dm: headerAdj.descuentoMoneda,
+            r: headerAdj.recargoTipo,   rv: headerAdj.recargoValor, rm: headerAdj.recargoMoneda,
         },
         impuestos: impuestos.map((t) => ({
-            n: t.nombre, t: t.tipo, v: t.valor, b: t.base,
+            n: t.nombre, t: t.tipo, v: t.valor, m: t.moneda, b: t.base,
         })),
         items: items.map((it) => ({
             p: it.productId, q: it.quantity, c: it.unitCost, cc: it.currencyCost ?? null,
             cur: it.currency, v: it.vatRate,
-            dt: it.descuentoTipo ?? null, dv: it.descuentoValor ?? 0,
-            rt: it.recargoTipo   ?? null, rv: it.recargoValor   ?? 0,
+            dt: it.descuentoTipo ?? null, dv: it.descuentoValor ?? 0, dm: it.descuentoMoneda ?? 'B',
+            rt: it.recargoTipo   ?? null, rv: it.recargoValor   ?? 0, rm: it.recargoMoneda ?? 'B',
         })),
-    }), [supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, notes,
+    }), [supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
         effectiveDollarRate, rateDecimals, retencionIvaPct, headerAdj, impuestos, items]);
 
     const autosaveSave = useCallback(async () => {
@@ -410,14 +435,17 @@ export default function NuevaFacturaPage() {
     const autosave = useDebouncedAutoSave({
         payload: autosavePayload,
         save: autosaveSave,
-        isValid: () => Boolean(supplierId && companyId && items.some((it) => it.productId && it.quantity > 0)),
+        isValid: () => Boolean(supplierId && companyId && (documentType !== "factura" || items.some((it) => it.productId && it.quantity > 0))),
         enabled: !confirmed,
         delayMs: 2000,
     });
 
     function validate(): boolean {
         if (!supplierId) { notify.error("Selecciona un proveedor"); return false; }
-        if (itemsForSave().length === 0) {
+        if (documentType !== "factura" && !affectedInvoiceNumber.trim()) {
+            notify.error("Indica la factura afectada por la nota"); return false;
+        }
+        if (documentType === "factura" && itemsForSave().length === 0) {
             notify.error("Agrega al menos un producto con cantidad mayor a 0");
             return false;
         }
@@ -704,6 +732,12 @@ export default function NuevaFacturaPage() {
                                 {/* Proveedor (span 2) + Nº Factura */}
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="col-span-2">
+                                        <label className={labelCls}>Tipo de documento <span className="text-error/80">*</span></label>
+                                        <select className={`${fieldCls} mb-4`} value={documentType} onChange={(e) => setDocumentType(e.target.value as PurchaseDocumentType)}>
+                                            <option value="factura">Factura de compra</option>
+                                            <option value="nota_credito">Nota de crédito</option>
+                                            <option value="nota_debito">Nota de débito</option>
+                                        </select>
                                         <label className={labelCls}>
                                             Proveedor <span className="text-error/80">*</span>
                                         </label>
@@ -738,6 +772,28 @@ export default function NuevaFacturaPage() {
                                 </div>
 
                                 {/* Nº Control — single column, half-width on its own row */}
+                                {documentType !== "factura" && (
+                                    <div className="mt-4 rounded-lg border border-border-light bg-surface-2/40 p-4">
+                                        <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Documento afectado</div>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <BaseInput.Field label="Nº factura afectada" isRequired value={affectedInvoiceNumber} onValueChange={setAffectedInvoiceNumber} />
+                                            <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} placeholder="Opcional" />
+                                            <div>
+                                                <label className={labelCls}>Efecto en inventario</label>
+                                                <select className={fieldCls} value={inventoryEffect} onChange={(e) => setInventoryEffect(e.target.value as PurchaseInventoryEffect)}>
+                                                    <option value="none">Solo ajuste fiscal/financiero</option>
+                                                    {documentType === "nota_credito"
+                                                        ? <option value="return_to_supplier">Devolución al proveedor</option>
+                                                        : <option value="additional_purchase">Entrada adicional</option>}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3">
+                                            <BaseInput.Field label="Motivo de la nota" value={noteReason} onValueChange={setNoteReason} placeholder="Ej. devolución de mercancía" />
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="mt-4 grid grid-cols-3 gap-4">
                                     <BaseInput.Field
                                         label="Nº Control"
@@ -851,11 +907,12 @@ export default function NuevaFacturaPage() {
                                             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
                                                 Se prorratean por línea según base IVA
                                             </p>
-                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} />
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} dollarRate={effectiveDollarRate} />
                                         </div>
                                         <div className="pt-3 border-t border-border-light/60">
                                             <InvoiceTaxesSection
                                                 value={impuestos}
+                                                dollarRate={effectiveDollarRate}
                                                 onChange={setImpuestos}
                                                 baseIVA={baseIVA}
                                                 total={total}

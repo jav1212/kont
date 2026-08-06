@@ -195,8 +195,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setHeaderAdj({
             descuentoTipo:  (currentPurchaseInvoice.descuentoTipo ?? null) as AdjustmentKind | null,
             descuentoValor: currentPurchaseInvoice.descuentoValor ?? 0,
+            descuentoMoneda: currentPurchaseInvoice.descuentoMoneda ?? 'B',
             recargoTipo:    (currentPurchaseInvoice.recargoTipo ?? null) as AdjustmentKind | null,
             recargoValor:   currentPurchaseInvoice.recargoValor ?? 0,
+            recargoMoneda: currentPurchaseInvoice.recargoMoneda ?? 'B',
         });
         setRetencionIvaPct(currentPurchaseInvoice.retencionIvaPct ?? 0);
         setImpuestos(currentPurchaseInvoice.impuestos ?? []);
@@ -232,6 +234,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         }
     }
 
+    const effectiveDollarRate = (() => {
+        const r = parseRateStr(dollarRateStr);
+        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+    })();
     // Derived totals — uses shared math
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
@@ -240,8 +246,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         adjustments: {
             descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
             descuentoValor: i.descuentoValor ?? 0,
+            descuentoMoneda: i.descuentoMoneda ?? 'B',
             recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
             recargoValor:   i.recargoValor ?? 0,
+            recargoMoneda: i.recargoMoneda ?? 'B',
         },
     }));
     // Decimals binding: while editing, the form's rateDecimals drives precision.
@@ -250,7 +258,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -266,11 +274,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         impuestos.length > 0 ||
         islr.concepto != null ||
         igtf.aplica;
-
-    const effectiveDollarRate = (() => {
-        const r = parseRateStr(dollarRateStr);
-        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
-    })();
 
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         id,
@@ -291,9 +294,11 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         rateDecimals,
         descuentoTipo:  headerAdj.descuentoTipo,
         descuentoValor: headerAdj.descuentoValor,
+        descuentoMoneda: headerAdj.descuentoMoneda,
         descuentoMonto: totals.descuentoHeader,
         recargoTipo:    headerAdj.recargoTipo,
         recargoValor:   headerAdj.recargoValor,
+        recargoMoneda: headerAdj.recargoMoneda,
         recargoMonto:   totals.recargoHeader,
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
@@ -318,7 +323,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             ...it,
             descuentoMonto: t.descuentoMonto,
             recargoMonto:   t.recargoMonto,
-            baseIVA:        t.baseIVAFinal,
+            baseIVA: t.baseIVAFinal,
+                unitCost: t.base / Math.max(1, it.quantity),
+                totalCost: t.base,
         };
     });
 
@@ -906,7 +913,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
                                                 Se prorratean por línea según base IVA
                                             </p>
-                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} />
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} dollarRate={effectiveDollarRate} />
                                         </div>
                                         <div className="pt-3 border-t border-border-light/60">
                                             <InvoiceTaxesSection
@@ -973,23 +980,29 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 const displayHeader: HeaderAdjustments = isDraft ? headerAdj : {
                                     descuentoTipo:  (invoice.descuentoTipo ?? null) as AdjustmentKind | null,
                                     descuentoValor: invoice.descuentoValor ?? 0,
+                                    descuentoMoneda: invoice.descuentoMoneda ?? 'B',
                                     recargoTipo:    (invoice.recargoTipo ?? null) as AdjustmentKind | null,
                                     recargoValor:   invoice.recargoValor ?? 0,
+                                    recargoMoneda: invoice.recargoMoneda ?? 'B',
                                 };
                                 const dInputs: LineInput[] = displayItems.map((i) => ({
                                     quantity: i.quantity ?? 0,
                                     unitCost: i.unitCost ?? 0,
+                                    currency: i.currency ?? "B",
+                                    currencyCost: i.currencyCost ?? null,
                                     vatRate:  i.vatRate ?? "general_16",
                                     adjustments: {
                                         descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
                                         descuentoValor: i.descuentoValor ?? 0,
+                                        descuentoMoneda: i.descuentoMoneda ?? 'B',
                                         recargoTipo:    (i.recargoTipo ?? null) as AdjustmentKind | null,
                                         recargoValor:   i.recargoValor ?? 0,
+                                        recargoMoneda: i.recargoMoneda ?? 'B',
                                     },
                                 }));
                                 const dRetencionPct = isDraft ? retencionIvaPct : (invoice.retencionIvaPct ?? 0);
                                 const dImpuestos = isDraft ? impuestos : (invoice.impuestos ?? []);
-                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos);
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos, isDraft ? (effectiveDollarRate ?? 0) : (invoice.dollarRate ?? 0));
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
@@ -1334,12 +1347,15 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
                                 {(() => {
-                                    const summaryRate = invoice.dollarRate ?? effectiveDollarRate;
+                                    const summaryRate = (isDraft ? effectiveDollarRate : invoice.dollarRate) ?? effectiveDollarRate;
+                                    const summarySubtotal = isDraft ? subtotal : invoice.subtotal;
+                                    const summaryVatAmount = isDraft ? vatAmount : invoice.vatAmount;
+                                    const summaryTotal = isDraft ? heroTotal : invoice.total;
                                     const usd = (n: number) =>
                                         summaryRate && summaryRate > 0 ? `$ ${fmtN(n / summaryRate)}` : null;
                                     // Skip "Base IVA" + "IVA" rows when there's no IVA — they
                                     // would just echo the Total. Show only the Total in that case.
-                                    const summaryHasIva = invoice.vatAmount > 0;
+                                    const summaryHasIva = summaryVatAmount > 0;
                                     const summaryRetencionMonto = invoice.retencionIvaMonto ?? 0;
                                     const summaryRetencionPct   = invoice.retencionIvaPct ?? 0;
                                     const summaryHasRetencion   = summaryRetencionMonto > 0;
@@ -1354,23 +1370,29 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     const summaryImpuestos      = (invoice.impuestos ?? []).filter((t) => (t.monto ?? 0) > 0);
                                     return (
                                         <>
+                                            {isDraft && totals.descuentoHeader > 0 && (
+                                                <div className="flex justify-between items-baseline">
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Descuento</span>
+                                                    <div className="text-right"><div className="tabular-nums text-error/80">−Bs. {fmtN(totals.descuentoHeader)}</div>{usd(totals.descuentoHeader) && <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">−{usd(totals.descuentoHeader)}</div>}</div>
+                                                </div>
+                                            )}
                                             {summaryHasIva && (
                                                 <>
                                                     <div className="flex justify-between items-baseline">
                                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
                                                         <div className="text-right">
-                                                            <div className="tabular-nums text-[var(--text-primary)]">Bs. {fmtN(invoice.subtotal)}</div>
-                                                            {usd(invoice.subtotal) && (
-                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(invoice.subtotal)}</div>
+                                                            <div className="tabular-nums text-[var(--text-primary)]">Bs. {fmtN(summarySubtotal)}</div>
+                                                            {usd(summarySubtotal) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summarySubtotal)}</div>
                                                             )}
                                                         </div>
                                                     </div>
                                                     <div className="flex justify-between items-baseline">
                                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
                                                         <div className="text-right">
-                                                            <div className="tabular-nums text-[var(--text-secondary)]">Bs. {fmtN(invoice.vatAmount)}</div>
-                                                            {usd(invoice.vatAmount) && (
-                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(invoice.vatAmount)}</div>
+                                                            <div className="tabular-nums text-[var(--text-secondary)]">Bs. {fmtN(summaryVatAmount)}</div>
+                                                            {usd(summaryVatAmount) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summaryVatAmount)}</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1455,9 +1477,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             <div className="flex justify-between items-baseline font-bold pt-1">
                                                 <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
                                                 <div className="text-right">
-                                                    <div className="tabular-nums text-foreground text-[14px]">Bs. {fmtN(invoice.total)}</div>
-                                                    {usd(invoice.total) && (
-                                                        <div className="tabular-nums text-[11px] font-semibold text-[var(--text-secondary)]">≈ {usd(invoice.total)}</div>
+                                                    <div className="tabular-nums text-foreground text-[14px]">Bs. {fmtN(summaryTotal)}</div>
+                                                    {usd(summaryTotal) && (
+                                                        <div className="tabular-nums text-[11px] font-semibold text-[var(--text-secondary)]">≈ {usd(summaryTotal)}</div>
                                                     )}
                                                 </div>
                                             </div>

@@ -17,6 +17,7 @@
 // abajo trabaja siempre con `unitCost` neto.
 
 export type AdjustmentKind = 'monto' | 'porcentaje';
+export type AdjustmentCurrency = 'B' | 'D';
 
 export type TaxBase = 'pre_iva' | 'post_iva';
 
@@ -24,26 +25,31 @@ export interface InvoiceTax {
     nombre: string;
     tipo:   AdjustmentKind;
     valor:  number;
+    moneda: AdjustmentCurrency;
     base:   TaxBase;
     monto:  number;
 }
 
 export function emptyInvoiceTax(): InvoiceTax {
-    return { nombre: '', tipo: 'porcentaje', valor: 0, base: 'pre_iva', monto: 0 };
+    return { nombre: '', tipo: 'porcentaje', valor: 0, moneda: 'B', base: 'pre_iva', monto: 0 };
 }
 
 export interface LineAdjustments {
     descuentoTipo:  AdjustmentKind | null;
     descuentoValor: number;
+    descuentoMoneda: AdjustmentCurrency;
     recargoTipo:    AdjustmentKind | null;
     recargoValor:   number;
+    recargoMoneda: AdjustmentCurrency;
 }
 
 export interface HeaderAdjustments {
     descuentoTipo:  AdjustmentKind | null;
     descuentoValor: number;
+    descuentoMoneda: AdjustmentCurrency;
     recargoTipo:    AdjustmentKind | null;
     recargoValor:   number;
+    recargoMoneda: AdjustmentCurrency;
 }
 
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
@@ -57,14 +63,18 @@ export function vatRatePct(rate: VatRate): number {
 export function emptyLineAdjustments(): LineAdjustments {
     return {
         descuentoTipo: null, descuentoValor: 0,
+        descuentoMoneda: 'B',
         recargoTipo:   null, recargoValor:   0,
+        recargoMoneda: 'B',
     };
 }
 
 export function emptyHeaderAdjustments(): HeaderAdjustments {
     return {
         descuentoTipo: null, descuentoValor: 0,
+        descuentoMoneda: 'B',
         recargoTipo:   null, recargoValor:   0,
+        recargoMoneda: 'B',
     };
 }
 
@@ -81,10 +91,13 @@ function resolveAmount(
     valor: number,
     baseFor: number,
     decimals = 2,
+    moneda: AdjustmentCurrency = 'B',
+    dollarRate = 0,
 ): number {
     if (!tipo || !Number.isFinite(valor) || valor <= 0) return 0;
     if (tipo === 'porcentaje') return roundN((baseFor * valor) / 100, decimals);
-    return roundN(valor, decimals);
+    const amount = moneda === 'D' ? valor * (dollarRate > 0 ? dollarRate : 0) : valor;
+    return roundN(amount, decimals);
 }
 
 // netFromGross: convierte costo bruto (con IVA incluido) a costo neto.
@@ -109,6 +122,8 @@ export function grossFromNet(netUnit: number, vatRate: VatRate): number {
 export interface LineInput {
     quantity:    number;
     unitCost:    number;     // siempre neto (Bs)
+    currency?:   "B" | "D";
+    currencyCost?: number | null; // costo unitario original cuando la moneda es USD
     vatRate:     VatRate;
     adjustments: LineAdjustments;
 }
@@ -122,8 +137,9 @@ export interface LineTotals {
     total:          number;  // baseIVA + ivaMonto (sin header spread)
 }
 
-export function computeLineTotals(input: LineInput, decimals = 2): LineTotals {
-    const r = (n: number) => roundN(n, decimals);
+export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0): LineTotals {
+    const calculationDecimals = Math.max(4, decimals);
+    const r = (n: number) => roundN(n, calculationDecimals);
 
     const base = r(input.quantity * input.unitCost);
 
@@ -132,12 +148,16 @@ export function computeLineTotals(input: LineInput, decimals = 2): LineTotals {
         input.adjustments.descuentoValor,
         base,
         decimals,
+        input.adjustments.descuentoMoneda,
+        dollarRate,
     );
     const recargoMonto = resolveAmount(
         input.adjustments.recargoTipo,
         input.adjustments.recargoValor,
         base,
         decimals,
+        input.adjustments.recargoMoneda,
+        dollarRate,
     );
 
     const baseIVA  = r(base - descuentoMonto + recargoMonto);
@@ -186,19 +206,50 @@ export function computeInvoiceTotals(
     decimals = 2,
     retencionIvaPct = 0,
     impuestos: InvoiceTax[] = [],
+    dollarRate = 0,
 ): InvoiceTotals {
-    const r = (n: number) => roundN(n, decimals);
+    const calculationDecimals = Math.max(4, decimals);
+    const r = (n: number) => roundN(n, calculationDecimals);
+
+    // Convertimos una sola vez el agregado USD, y distribuimos su equivalente
+    // en Bs entre las l�neas USD. As� subtotal/total y persistencia no dependen
+    // del redondeo de cada conversi�n individual.
+    const usdLines = lines.map((line, index) => ({ line, index }))
+        .filter(({ line }) => line.currency === "D");
+    const normalizedLines = lines.map((line, index) => {
+        if (line.currency !== "D" || usdLines.length === 0 || dollarRate <= 0) return line;
+        const rate = dollarRate > 0 ? dollarRate : 0;
+        const sourceUnit = Number.isFinite(line.currencyCost ?? NaN)
+            ? Number(line.currencyCost)
+            : (rate > 0 ? line.unitCost / rate : 0);
+        const sourceTotal = Math.max(0, line.quantity) * Math.max(0, sourceUnit);
+        const sourceGrandTotal = usdLines.reduce((sum, entry) => {
+            const entryRate = dollarRate > 0 ? dollarRate : 0;
+            const entryUnit = Number.isFinite(entry.line.currencyCost ?? NaN)
+                ? Number(entry.line.currencyCost)
+                : (entryRate > 0 ? entry.line.unitCost / entryRate : 0);
+            return sum + Math.max(0, entry.line.quantity) * Math.max(0, entryUnit);
+        }, 0);
+        const convertedGrandTotal = sourceGrandTotal * rate;
+        const allocatedTotal = sourceGrandTotal > 0 ? convertedGrandTotal * sourceTotal / sourceGrandTotal : 0;
+        return { ...line, unitCost: line.quantity > 0 ? allocatedTotal / line.quantity : 0 };
+    });
 
     // Step 1: per-line totals sin header
-    const computed: LineTotals[] = lines.map((l) => computeLineTotals(l, decimals));
+    const computed: LineTotals[] = normalizedLines.map((l) => computeLineTotals(l, calculationDecimals, dollarRate));
 
     const sumBaseIVA = computed.reduce((acc, c) => acc + c.baseIVA, 0);
 
     // Step 2: header adjustments resueltos sobre la sumBaseIVA
-    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA, decimals);
-    const recargoHeader   = resolveAmount(header.recargoTipo,   header.recargoValor,   sumBaseIVA, decimals);
+    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA, calculationDecimals, header.descuentoMoneda, dollarRate);
+    const recargoHeader   = resolveAmount(header.recargoTipo, header.recargoValor, sumBaseIVA, calculationDecimals, header.recargoMoneda, dollarRate);
 
     // Step 3: prorratear header sobre cada línea por peso de baseIVA
+    const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => line.currency === "D") && dollarRate > 0;
+    const ivaFromBase = (baseBs: number, pct: number) => allUsd
+        ? r((baseBs / dollarRate) * pct / 100 * dollarRate)
+        : r(baseBs * pct / 100);
+
     const items: InvoiceLineComputed[] = computed.map((c, idx) => {
         const weight = sumBaseIVA > 0 ? c.baseIVA / sumBaseIVA : 0;
 
@@ -220,7 +271,7 @@ export function computeInvoiceTotals(
         const headerRecargoShare   = sharePart(recargoHeader);
 
         const baseIVAFinal  = r(c.baseIVA - headerDescuentoShare + headerRecargoShare);
-        const ivaMontoFinal = r((baseIVAFinal * vatRatePct(lines[idx].vatRate)) / 100);
+        const ivaMontoFinal = ivaFromBase(baseIVAFinal, vatRatePct(normalizedLines[idx].vatRate));
         const totalFinal    = r(baseIVAFinal + ivaMontoFinal);
 
         return {
@@ -242,7 +293,7 @@ export function computeInvoiceTotals(
 
     const ivaPorAlicuota = { exenta: 0, reducida_8: 0, general_16: 0 };
     items.forEach((c, idx) => {
-        ivaPorAlicuota[lines[idx].vatRate] = r(ivaPorAlicuota[lines[idx].vatRate] + c.ivaMontoFinal);
+        ivaPorAlicuota[normalizedLines[idx].vatRate] = r(ivaPorAlicuota[normalizedLines[idx].vatRate] + c.ivaMontoFinal);
     });
 
     const total        = r(baseIVA + ivaMonto);
@@ -250,7 +301,7 @@ export function computeInvoiceTotals(
     const resolvedImpuestos: InvoiceTax[] = impuestos.map((tax) => {
         let monto = 0;
         if (tax.tipo === 'monto') {
-            monto = r(Math.max(0, tax.valor));
+            monto = r(Math.max(0, tax.valor) * (tax.moneda === 'D' ? (dollarRate > 0 ? dollarRate : 0) : 1));
         } else if (tax.tipo === 'porcentaje' && tax.valor > 0) {
             const taxBase = tax.base === 'post_iva' ? total : baseIVA;
             monto = r(taxBase * tax.valor / 100);

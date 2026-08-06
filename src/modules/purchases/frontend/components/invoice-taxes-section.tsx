@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
-import type { AdjustmentKind, InvoiceTax, TaxBase } from "@/src/modules/inventory/shared/totals";
+import type { InvoiceTax, TaxBase } from "@/src/modules/inventory/shared/totals";
 import { emptyInvoiceTax, roundN } from "@/src/modules/inventory/shared/totals";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
     baseIVA:  number;
     total:    number;
     decimals?: number;
+    dollarRate?: number | null;
     readOnly?: boolean;
 }
 
@@ -32,12 +33,13 @@ interface TaxRowProps {
     baseIVA: number;
     total: number;
     decimals: number;
+    dollarRate: number | null;
     onChange: (index: number, tax: InvoiceTax) => void;
     onRemove: (index: number) => void;
     readOnly?: boolean;
 }
 
-function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, readOnly }: TaxRowProps) {
+function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, onRemove, readOnly }: TaxRowProps) {
     const [text, setText] = useState<string>(() =>
         tax.valor === 0 ? "" : String(tax.valor).replace(".", ","),
     );
@@ -52,7 +54,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, read
     }, [tax.valor]);
 
     const computedMonto = (() => {
-        if (tax.tipo === "monto") return roundN(Math.max(0, tax.valor), decimals);
+        if (tax.tipo === "monto") return roundN(Math.max(0, tax.valor) * (tax.moneda === "D" ? (dollarRate && dollarRate > 0 ? dollarRate : 0) : 1), decimals);
         if (tax.tipo === "porcentaje" && tax.valor > 0) {
             const base = tax.base === "post_iva" ? total : baseIVA;
             return roundN(base * tax.valor / 100, decimals);
@@ -74,7 +76,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, read
                 <span className="font-mono text-[12px] text-[var(--text-secondary)] tabular-nums">
                     {tax.tipo === "porcentaje"
                         ? `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} % ${tax.base === "post_iva" ? "post-IVA" : "pre-IVA"}`
-                        : `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} Bs`}
+                        : `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${tax.moneda === "D" ? "divisa" : "Bs"}`}
                 </span>
                 <span className="font-mono text-[11px] text-amber-600 tabular-nums ml-auto">
                     = Bs. {computedMonto.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
@@ -93,12 +95,13 @@ function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, read
                 className={`${nameInputCls} w-32 flex-shrink-0`}
             />
             <select
-                value={tax.tipo}
-                onChange={(e) => update({ tipo: e.target.value as AdjustmentKind })}
+                value={tax.tipo === "porcentaje" ? "porcentaje" : tax.moneda === "D" ? "divisa" : "monto"}
+                onChange={(e) => { const v = e.target.value; update(v === "porcentaje" ? { tipo: "porcentaje" } : { tipo: "monto", moneda: v === "divisa" ? "D" : "B" }); }}
                 className={`${selCls} flex-shrink-0`}
             >
                 <option value="porcentaje">%</option>
                 <option value="monto">Bs</option>
+                <option value="divisa">USD</option>
             </select>
             <input
                 type="text"
@@ -111,7 +114,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, read
                     const parsed = parseFloat(raw.replace(",", "."));
                     update({ valor: Number.isFinite(parsed) ? parsed : 0 });
                 }}
-                placeholder="0,00"
+                placeholder={tax.tipo === "monto" ? (tax.moneda === "D" ? "0,00 USD" : "0,00 Bs") : "0,00"}
                 className={`${inputCls} w-24 flex-shrink-0`}
             />
             <select
@@ -140,7 +143,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, onChange, onRemove, read
     );
 }
 
-export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals = 2, readOnly }: Props) {
+export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals = 2, dollarRate = null, readOnly }: Props) {
     const handleChange = (index: number, tax: InvoiceTax) => {
         const next = [...value];
         next[index] = tax;
@@ -185,6 +188,7 @@ export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals 
                     decimals={decimals}
                     onChange={handleChange}
                     onRemove={handleRemove}
+                    dollarRate={dollarRate ?? null}
                     readOnly={readOnly}
                 />
             ))}
