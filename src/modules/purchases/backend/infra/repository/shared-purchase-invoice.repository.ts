@@ -83,6 +83,11 @@ type RawSharedSupplier = {
     name: string;
 };
 
+type RawSharedProduct = {
+    id: string;
+    name: string;
+};
+
 const num = (value: number | string | null | undefined, fallback = 0): number =>
     value == null || value === '' ? fallback : Number(value);
 
@@ -175,7 +180,11 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             if (itemError) return Result.fail(itemError.message);
 
             const itemsByInvoice = new Map<string, RawSharedItem[]>();
-            for (const item of (itemData as RawSharedItem[] ?? [])) {
+            const rawItems = (itemData as RawSharedItem[] ?? []);
+            const productNames = await this.loadProductNames(rawItems.map((item) => item.product_id));
+            if (productNames.isFailure) return Result.fail(productNames.getError());
+
+            for (const item of rawItems) {
                 const items = itemsByInvoice.get(item.invoice_id) ?? [];
                 items.push(item);
                 itemsByInvoice.set(item.invoice_id, items);
@@ -185,6 +194,7 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 row,
                 itemsByInvoice.get(row.id) ?? [],
                 supplierNames.getValue().get(row.supplier_id),
+                productNames.getValue(),
             )));
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared purchase invoices');
@@ -294,7 +304,15 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         const [{ data, error }, supplierNames] = await Promise.all([itemsRequest, supplierNameRequest]);
         if (error) return Result.fail(error.message);
         if (supplierNames.isFailure) return Result.fail(supplierNames.getError());
-        return Result.success(this.mapToDomain(row, (data as RawSharedItem[]) ?? [], supplierNames.getValue().get(row.supplier_id)));
+        const rawItems = (data as RawSharedItem[]) ?? [];
+        const productNames = await this.loadProductNames(rawItems.map((item) => item.product_id));
+        if (productNames.isFailure) return Result.fail(productNames.getError());
+        return Result.success(this.mapToDomain(
+            row,
+            rawItems,
+            supplierNames.getValue().get(row.supplier_id),
+            productNames.getValue(),
+        ));
     }
 
     private async loadSupplierNames(supplierIds: string[]): Promise<Result<Map<string, string>>> {
@@ -313,7 +331,28 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         }
     }
 
-    private mapToDomain(row: RawSharedInvoice, rawItems: RawSharedItem[], supplierName?: string): PurchaseInvoice {
+    private async loadProductNames(productIds: string[]): Promise<Result<Map<string, string>>> {
+        const uniqueIds = [...new Set(productIds.filter(Boolean))];
+        if (uniqueIds.length === 0) return Result.success(new Map());
+        try {
+            const { data, error } = await this.source.instance
+                .from('shared_inventory_products')
+                .select('id,name')
+                .eq('tenant_id', this.tenantId)
+                .in('id', uniqueIds);
+            if (error) return Result.fail(error.message);
+            return Result.success(new Map(((data as RawSharedProduct[]) ?? []).map((product) => [product.id, product.name])));
+        } catch (error) {
+            return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared products');
+        }
+    }
+
+    private mapToDomain(
+        row: RawSharedInvoice,
+        rawItems: RawSharedItem[],
+        supplierName?: string,
+        productNames: Map<string, string> = new Map(),
+    ): PurchaseInvoice {
         const taxes = Array.isArray(row.taxes) ? row.taxes : [];
         return {
             id: row.id,
@@ -369,6 +408,7 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 id: item.id,
                 invoiceId: item.invoice_id,
                 productId: item.product_id,
+                productName: productNames.get(item.product_id),
                 quantity: num(item.quantity),
                 unitCost: num(item.unit_cost),
                 totalCost: num(item.total_cost),
