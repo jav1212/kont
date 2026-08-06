@@ -9,9 +9,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     Search,
-    ChevronLeft,
-    ChevronRight,
-    Calendar,
     FileText,
     Plus,
     BookOpen,
@@ -39,6 +36,7 @@ import {
     defaultPurchaseIslrXmlFilename,
     downloadXmlFile,
 } from "@/src/modules/purchases/frontend/utils/xml-retenciones-islr";
+import { PurchasePeriodPicker, currentPurchasePeriod, purchasePeriodLabel } from "@/src/modules/purchases/frontend/components/purchase-period-picker";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,27 +49,6 @@ const fmtDate = (d: string) => {
     return `${day}/${m}/${y}`;
 };
 
-const MONTHS_LONG = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-] as const;
-
-function currentPeriodKey(): string {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function periodLabel(key: string): string {
-    const [y, m] = key.split("-");
-    const month = MONTHS_LONG[(Number(m) - 1) | 0] ?? "";
-    return `${month} ${y}`;
-}
-
-function shiftPeriod(key: string, delta: number): string {
-    const [y, m] = key.split("-").map(Number);
-    const date = new Date(y, m - 1 + delta, 1);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -137,53 +114,6 @@ function StatusFilterChips({
 
 // ── Period picker ─────────────────────────────────────────────────────────────
 
-function PeriodPicker({
-    period,
-    onChange,
-}: {
-    period: string;
-    onChange: (next: string) => void;
-}) {
-    const today = currentPeriodKey();
-    const isCurrent = period === today;
-
-    return (
-        <div className="inline-flex items-center gap-1 rounded-lg border border-border-light bg-surface-1 px-1 h-9">
-            <button
-                type="button"
-                onClick={() => onChange(shiftPeriod(period, -1))}
-                className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
-                aria-label="Mes anterior"
-            >
-                <ChevronLeft size={14} strokeWidth={2} />
-            </button>
-            <div className="px-2 flex items-center gap-1.5 min-w-[140px] justify-center">
-                <Calendar size={12} strokeWidth={2} className="text-[var(--text-tertiary)]" />
-                <span className="text-[12px] uppercase tracking-[0.12em] text-foreground tabular-nums">
-                    {periodLabel(period)}
-                </span>
-            </div>
-            <button
-                type="button"
-                onClick={() => onChange(shiftPeriod(period, 1))}
-                className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-foreground hover:bg-surface-2 transition-colors"
-                aria-label="Mes siguiente"
-            >
-                <ChevronRight size={14} strokeWidth={2} />
-            </button>
-            {!isCurrent && (
-                <button
-                    type="button"
-                    onClick={() => onChange(today)}
-                    className="ml-1 px-2 h-7 rounded text-[10px] uppercase tracking-[0.14em] text-primary-500 hover:bg-primary-500/10 transition-colors"
-                >
-                    Hoy
-                </button>
-            )}
-        </div>
-    );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EntradasPage() {
@@ -195,7 +125,7 @@ export default function EntradasPage() {
         fetchIslrRetentionsExport,
     } = usePurchases();
 
-    const [period, setPeriod] = useState<string>(currentPeriodKey());
+    const [period, setPeriod] = useState<string>(currentPurchasePeriod());
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -277,7 +207,7 @@ export default function EntradasPage() {
             const filename = defaultIvaRetentionTxtFilename(payload.agentRif, payload.periodYyyymm);
             downloadIvaRetentionTxt(txt, filename);
             if (payload.rows.length === 0) {
-                notify.success(`TXT en cero generado para ${periodLabel(period)} (sin retenciones).`);
+                notify.success(`TXT en cero generado para ${purchasePeriodLabel(period)} (sin retenciones).`);
             } else {
                 notify.success(`TXT con ${payload.rows.length} ${payload.rows.length === 1 ? "fila" : "filas"} generado.`);
             }
@@ -295,7 +225,7 @@ export default function EntradasPage() {
             const payload = await fetchIslrRetentionsExport(companyId, period);
             if (!payload) return;
             if (payload.rows.length === 0) {
-                notify.warning(`No hay retenciones ISLR sobre compras en ${periodLabel(period)}.`);
+                notify.warning(`No hay retenciones ISLR sobre compras en ${purchasePeriodLabel(period)}.`);
                 return;
             }
             const xml = buildPurchaseIslrXml({ payload });
@@ -312,10 +242,10 @@ export default function EntradasPage() {
     // ── render ─────────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-background">
             <PageHeader
                 title="Entradas de Inventario"
-                subtitle={`Tablero · ${periodLabel(period)}`}
+                subtitle={`Tablero · ${purchasePeriodLabel(period)}`}
             >
                 <BaseButton.Root
                     as={Link}
@@ -362,6 +292,30 @@ export default function EntradasPage() {
                 >
                     Nueva factura
                 </BaseButton.Root>
+                {isEspecial && (
+                    <>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={<Receipt size={13} strokeWidth={2} />}
+                            onClick={handleExportTxt}
+                            disabled={exportingTxt || loadingPurchaseInvoices}
+                            title={`Genera el archivo TXT de retenciones IVA para subir al portal SENIAT (período ${purchasePeriodLabel(period)})`}
+                        >
+                            {exportingTxt ? "…" : "TXT IVA"}
+                        </BaseButton.Root>
+                        <BaseButton.Root
+                            variant="secondary"
+                            size="sm"
+                            leftIcon={<FileCode size={13} strokeWidth={2} />}
+                            onClick={handleExportIslrXml}
+                            disabled={exportingXml || loadingPurchaseInvoices}
+                            title={`Genera el archivo XML de retenciones ISLR sobre compras (período ${purchasePeriodLabel(period)}). Si tu empresa también retiene ISLR de nómina, consolida con el XML de nómina antes de subir.`}
+                        >
+                            {exportingXml ? "…" : "XML ISLR"}
+                        </BaseButton.Root>
+                    </>
+                )}
             </PageHeader>
 
             {/* Confirm-delete dialog (borrador) */}
@@ -419,7 +373,7 @@ export default function EntradasPage() {
                 </div>
             )}
 
-            <div className="px-8 py-6 space-y-6">
+            <div className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <DashboardKpiCard
@@ -428,7 +382,7 @@ export default function EntradasPage() {
                         color="success"
                         icon={FileText}
                         loading={loadingPurchaseInvoices}
-                        sublabel={`del período ${periodLabel(period)}`}
+                        sublabel={`del período ${purchasePeriodLabel(period)}`}
                     />
                     <DashboardKpiCard
                         label="Borradores"
@@ -442,8 +396,9 @@ export default function EntradasPage() {
                         label="Total facturado"
                         value={`Bs ${fmtN(kpi.totalBs)}`}
                         color="primary"
+                        emphasis
                         loading={loadingPurchaseInvoices}
-                        sublabel="suma de facturas confirmadas"
+                        sublabel="suma de facturas confirmadas (incluye IVA e IGTF)"
                     />
                     <DashboardKpiCard
                         label="IVA del período"
@@ -455,10 +410,10 @@ export default function EntradasPage() {
                 </div>
 
                 {/* ── Toolbar: period picker + filters + search + SENIAT exports ─ */}
-                <div className="flex flex-wrap items-center gap-3">
-                    <PeriodPicker period={period} onChange={setPeriod} />
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)] lg:flex-nowrap">
+                    <PurchasePeriodPicker period={period} onChange={setPeriod} />
                     <StatusFilterChips value={statusFilter} onChange={setStatusFilter} counts={counts} />
-                    <div className="relative flex-1 min-w-[220px] max-w-md">
+                    <div className="relative min-w-[220px] flex-1 lg:max-w-[520px]">
                         <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                         <input
                             type="text"
@@ -468,40 +423,13 @@ export default function EntradasPage() {
                             className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
                         />
                     </div>
-                    {isEspecial && (
-                        <div className="flex items-center gap-2 pl-3 border-l border-border-light">
-                            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] hidden lg:inline">
-                                Exportar SENIAT
-                            </span>
-                            <BaseButton.Root
-                                variant="secondary"
-                                size="sm"
-                                leftIcon={<Receipt size={13} strokeWidth={2} />}
-                                onClick={handleExportTxt}
-                                disabled={exportingTxt || loadingPurchaseInvoices}
-                                title={`Genera el archivo TXT de retenciones IVA para subir al portal SENIAT (período ${periodLabel(period)})`}
-                            >
-                                {exportingTxt ? "…" : "TXT IVA"}
-                            </BaseButton.Root>
-                            <BaseButton.Root
-                                variant="secondary"
-                                size="sm"
-                                leftIcon={<FileCode size={13} strokeWidth={2} />}
-                                onClick={handleExportIslrXml}
-                                disabled={exportingXml || loadingPurchaseInvoices}
-                                title={`Genera el archivo XML de retenciones ISLR sobre compras (período ${periodLabel(period)}). Si tu empresa también retiene ISLR de nómina, consolida con el XML de nómina antes de subir.`}
-                            >
-                                {exportingXml ? "…" : "XML ISLR"}
-                            </BaseButton.Root>
-                        </div>
-                    )}
                 </div>
 
 
                 {/* ── Entradas table ────────────────────────────────────────── */}
-                <div className="rounded-xl border border-border-light bg-surface-1 overflow-hidden">
-                    <div className="px-5 py-3 border-b border-border-light flex items-center justify-between">
-                        <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">
+                <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-[var(--shadow-sm)]">
+                    <div className="flex items-center justify-between border-b border-border-light px-5 py-4">
+                        <h2 className="font-sans text-[15px] font-semibold tracking-tight text-foreground">
                             Entradas del período
                         </h2>
                         <span className="text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
@@ -519,7 +447,7 @@ export default function EntradasPage() {
                                 <FileText size={20} strokeWidth={1.8} />
                             </div>
                             <p className="text-[12px] uppercase tracking-[0.12em] text-foreground">
-                                Sin entradas en {periodLabel(period)}
+                                Sin entradas en {purchasePeriodLabel(period)}
                             </p>
                             <p className="font-sans text-[13px] text-[var(--text-tertiary)] max-w-md">
                                 Registra una factura de compra para reflejar entradas con datos de proveedor e IVA, o usa una entrada manual cuando no exista factura formal.
@@ -565,12 +493,12 @@ export default function EntradasPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[1024px] text-[13px]">
                                 <thead>
-                                    <tr className="border-b border-border-light bg-surface-2/50">
+                                    <tr className="border-b border-border-light bg-surface-2/60">
                                         {["Fecha", "Proveedor", "Nº Factura", "Tasa", "Subtotal", "IVA", "Total", "Estado", "", ""].map((h, i) => (
                                             <th
                                                 key={i}
                                                 className={[
-                                                    "px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap",
+                                                    "whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]",
                                                     ["Subtotal", "IVA", "Total", "Tasa"].includes(h) ? "text-right" : "text-left",
                                                 ].join(" ")}
                                             >
@@ -581,10 +509,10 @@ export default function EntradasPage() {
                                 </thead>
                                 <tbody>
                                     {filtered.map((f) => (
-                                        <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
-                                            <td className="px-4 py-2.5 text-foreground font-medium">{f.supplierName ?? "—"}</td>
-                                            <td className="px-4 py-2.5 text-[var(--text-secondary)] whitespace-nowrap">{f.invoiceNumber || "—"}</td>
+                                        <tr key={f.id} className="border-b border-border-light/70 align-middle transition-colors hover:bg-surface-2">
+                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{fmtDate(f.date)}</td>
+                                            <td className="px-4 py-3 font-sans font-semibold text-foreground">{f.supplierName ?? "—"}</td>
+                                            <td className="whitespace-nowrap px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)]">{f.invoiceNumber || "—"}</td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums text-right whitespace-nowrap">
                                                 {f.dollarRate != null
                                                     ? f.dollarRate.toLocaleString("es-VE", {
@@ -625,18 +553,9 @@ export default function EntradasPage() {
                 </div>
 
                 {/* ── Footer hint linking to ledger ─────────────────────────── */}
-                <div className="flex items-center justify-between pt-2 pb-4 font-sans text-[12px] text-[var(--text-tertiary)]">
-                    <span>
-                        Las entradas manuales se registran como movimientos sin factura asociada y no aparecen aquí. Consulta el{" "}
-                        <Link href="/inventory/purchase-ledger" className="text-primary-500 hover:text-primary-600">libro de entradas</Link>
-                        {" "}para verlas todas.
-                    </span>
-                    <Link
-                        href="/purchases/archive"
-                        className="font-mono uppercase tracking-[0.12em] text-[11px] text-[var(--text-tertiary)] hover:text-foreground transition-colors"
-                    >
-                        Ver todas las facturas →
-                    </Link>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-light pt-4 pb-4 font-sans text-[14px] text-[var(--text-secondary)]">
+                    <span>¿Buscas entradas manuales? <Link href="/inventory/purchase-ledger" className="font-semibold text-primary-500 hover:text-primary-600">Ver libro de entradas</Link></span>
+                    <Link href="/purchases/archive" className="inline-flex items-center rounded-md border border-border-light bg-surface-1 px-3 py-2 font-sans text-[13px] font-semibold text-[var(--text-secondary)] transition-colors hover:border-border-medium hover:bg-surface-2 hover:text-foreground">Abrir archivo de facturas</Link>
                 </div>
             </div>
         </div>

@@ -15,6 +15,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import type { InvoiceStatus } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { MigrateInvoicesDialog } from "./migrate-dialog";
+import { PurchasePeriodPicker } from "@/src/modules/purchases/frontend/components/purchase-period-picker";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,7 @@ export default function PurchaseInvoicesPage() {
     const [confirmDeleteConfirmada, setConfirmDeleteConfirmada] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [search, setSearch] = useState("");
+    const [periodFilter, setPeriodFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [migrateOpen, setMigrateOpen] = useState(false);
@@ -84,15 +86,21 @@ export default function PurchaseInvoicesPage() {
         if (companyId) loadPurchaseInvoices(companyId);
     }, [companyId, loadPurchaseInvoices]);
 
+    const periodInvoices = useMemo(
+        () => periodFilter === "all" ? purchaseInvoices : purchaseInvoices.filter((f) => f.period === periodFilter),
+        [purchaseInvoices, periodFilter],
+    );
+
     const counts = useMemo<Record<StatusFilter, number>>(() => ({
-        all:        purchaseInvoices.length,
-        borrador:   purchaseInvoices.filter((f) => f.status === "borrador").length,
-        confirmada: purchaseInvoices.filter((f) => f.status === "confirmada").length,
-    }), [purchaseInvoices]);
+        all:        periodInvoices.length,
+        borrador:   periodInvoices.filter((f) => f.status === "borrador").length,
+        confirmada: periodInvoices.filter((f) => f.status === "confirmada").length,
+    }), [periodInvoices]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return purchaseInvoices
+            .filter((f) => periodFilter === "all" || f.period === periodFilter)
             .filter((f) => statusFilter === "all" || f.status === statusFilter)
             .filter((f) => {
                 if (!q) return true;
@@ -105,7 +113,7 @@ export default function PurchaseInvoicesPage() {
                 return haystack.includes(q);
             })
             .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-    }, [purchaseInvoices, statusFilter, search]);
+    }, [purchaseInvoices, periodFilter, statusFilter, search]);
 
     // Sólo los IDs visibles son seleccionables. La selección persiste a través
     // de cambios de filtro (el usuario puede combinarlos), pero la barra de
@@ -120,6 +128,7 @@ export default function PurchaseInvoicesPage() {
     );
     const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
     const someVisibleSelected = visibleIds.some((id) => selected.has(id)) && !allVisibleSelected;
+    const hasFilters = search.trim() !== "" || statusFilter !== "all" || periodFilter !== "all";
 
     function toggleRow(id: string) {
         setSelected((prev) => {
@@ -175,7 +184,7 @@ export default function PurchaseInvoicesPage() {
     }
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-background">
             <PageHeader title="Archivo de Facturas" subtitle="Histórico completo · todos los períodos">
                 <BaseButton.Root
                     as={Link}
@@ -237,9 +246,9 @@ export default function PurchaseInvoicesPage() {
                 </div>
             )}
 
-            <div className="px-8 py-6 space-y-5">
+            <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
                 {/* Toolbar: status chips + search */}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)]">
                     <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden">
                         {STATUS_OPTIONS.map((opt, i) => {
                             const active = statusFilter === opt.value;
@@ -268,6 +277,8 @@ export default function PurchaseInvoicesPage() {
                         })}
                     </div>
 
+                    <PurchasePeriodPicker period={periodFilter} onChange={setPeriodFilter} allowAll onAll={() => setPeriodFilter("all")} />
+
                     <div className="relative flex-1 min-w-[240px] max-w-md">
                         <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
                         <input
@@ -292,6 +303,7 @@ export default function PurchaseInvoicesPage() {
                     <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
                         {filtered.length} {filtered.length === 1 ? "factura" : "facturas"}
                     </span>
+                    {hasFilters && <button type="button" onClick={() => { setSearch(""); setStatusFilter("all"); setPeriodFilter("all"); }} className="inline-flex items-center gap-1 font-sans text-[12px] text-[var(--text-tertiary)] transition-colors hover:text-foreground"><X size={13} />Limpiar filtros</button>}
                 </div>
 
 
@@ -313,7 +325,7 @@ export default function PurchaseInvoicesPage() {
                             </p>
                             <button
                                 type="button"
-                                onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                                onClick={() => { setSearch(""); setStatusFilter("all"); setPeriodFilter("all"); }}
                                 className="mt-2 text-[11px] uppercase tracking-[0.14em] text-primary-500 hover:text-primary-600 transition-colors"
                             >
                                 Limpiar filtros
@@ -323,7 +335,7 @@ export default function PurchaseInvoicesPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[1140px] text-[13px]">
                                 <thead>
-                                    <tr className="border-b border-border-light bg-surface-2/50">
+                                    <tr className="border-b border-border-light bg-surface-2/60">
                                         <th className="w-10 px-3 py-2.5">
                                             <input
                                                 type="checkbox"
@@ -347,7 +359,7 @@ export default function PurchaseInvoicesPage() {
                                             { h: "", align: "left" },
                                             { h: "", align: "left" },
                                         ].map((c, i) => (
-                                            <th key={i} className={`px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap text-${c.align}`}>
+                                            <th key={i} className={`whitespace-nowrap px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)] text-${c.align}`}>
                                                 {c.h}
                                             </th>
                                         ))}

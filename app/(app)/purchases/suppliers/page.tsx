@@ -4,6 +4,7 @@
 // Uses English domain types (Supplier) and the Purchases module hook.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
@@ -179,6 +180,7 @@ function FormSection({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function ProveedoresPage() {
+    const router = useRouter();
     const { companyId } = useCompany();
     const {
         suppliers, loadingSuppliers,
@@ -207,10 +209,6 @@ export default function ProveedoresPage() {
     function openNew() {
         if (!companyId) return;
         setForm(emptySupplier(companyId));
-    }
-
-    function openEdit(s: Supplier) {
-        setForm({ ...s });
     }
 
     function closeForm() { setForm(null); }
@@ -311,7 +309,7 @@ export default function ProveedoresPage() {
     }
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-background">
             <PageHeader title="Proveedores" subtitle="Directorio · contactos · RIF">
                 <BaseButton.Root
                     variant="secondary" size="sm"
@@ -341,7 +339,7 @@ export default function ProveedoresPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6 space-y-5">
+            <div className="mx-auto max-w-[1440px] space-y-5 px-4 py-6 sm:px-6 lg:px-8">
 
                 {/* KPI strip */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -664,8 +662,8 @@ export default function ProveedoresPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-[13px]">
                                 <thead>
-                                    <tr className="bg-surface-2/40 border-b border-border-light">
-                                        <th className="px-4 h-10 w-10">
+                                    <tr className="border-b border-border-light bg-surface-2/60">
+                                        <th className="h-11 w-10 px-4">
                                             <input
                                                 type="checkbox"
                                                 className="w-4 h-4 rounded"
@@ -688,7 +686,7 @@ export default function ProveedoresPage() {
                                         ].map((h) => (
                                             <th
                                                 key={h.label}
-                                                className={`px-4 h-10 ${h.align} text-[12px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-medium whitespace-nowrap`}
+                                                className={`h-11 whitespace-nowrap px-4 ${h.align} font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]`}
                                             >
                                                 {h.label}
                                             </th>
@@ -697,8 +695,8 @@ export default function ProveedoresPage() {
                                 </thead>
                                 <tbody>
                                     {filtered.map((s) => (
-                                        <tr key={s.id} className={[
-                                            "border-b border-border-light/60 transition-colors",
+                                        <tr key={s.id} onClick={() => router.push(`/purchases/suppliers/${encodeURIComponent(s.id!)}`)} className={[
+                                            "cursor-pointer border-b border-border-light/70 align-middle transition-colors",
                                             selected.has(s.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2/60",
                                         ].join(" ")}>
                                             <td className="px-4 py-3 w-10">
@@ -713,12 +711,13 @@ export default function ProveedoresPage() {
                                                         setSelected(next);
                                                     }}
                                                     aria-label={`Seleccionar ${s.name}`}
+                                                    onClick={(event) => event.stopPropagation()}
                                                 />
                                             </td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)] tabular-nums">{s.rif || "—"}</td>
-                                            <td className="px-4 py-3 text-foreground font-medium">
+                                            <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{s.rif || "—"}</td>
+                                            <td className="px-4 py-3 font-sans text-foreground">
                                                 <div className="flex flex-col">
-                                                    <span>{s.name}</span>
+                                                    <span className="font-semibold">{s.name}</span>
                                                     {s.address && (
                                                         <span className="font-sans text-[11px] text-[var(--text-tertiary)] truncate max-w-[280px]">
                                                             {s.address}
@@ -726,8 +725,8 @@ export default function ProveedoresPage() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)]">{s.contact || "—"}</td>
-                                            <td className="px-4 py-3 text-[var(--text-secondary)]">
+                                            <td className="px-4 py-3 font-sans text-[var(--text-secondary)]">{s.contact || "—"}</td>
+                                            <td className="px-4 py-3 font-sans text-[var(--text-secondary)]">
                                                 {s.phone ? (
                                                     <span className="inline-flex items-center gap-1.5">
                                                         <Phone size={11} className="text-[var(--text-tertiary)]" />
@@ -785,7 +784,7 @@ export default function ProveedoresPage() {
                                                     ) : (
                                                         <>
                                                             <button
-                                                                onClick={() => openEdit(s)}
+                                                                onClick={(event) => { event.stopPropagation(); router.push(`/purchases/suppliers/${encodeURIComponent(s.id!)}`); }}
                                                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-primary-500 hover:bg-primary-500/10 transition-colors"
                                                                 aria-label={`Editar ${s.name}`}
                                                                 title="Editar"
@@ -793,7 +792,7 @@ export default function ProveedoresPage() {
                                                                 <Pencil size={14} />
                                                             </button>
                                                             <button
-                                                                onClick={() => setConfirmDelete(s.id!)}
+                                                                onClick={(event) => { event.stopPropagation(); setConfirmDelete(s.id!); }}
                                                                 disabled={!!deletingId}
                                                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--text-tertiary)] hover:text-text-error hover:bg-error/10 transition-colors disabled:opacity-50"
                                                                 aria-label={`Eliminar ${s.name}`}
