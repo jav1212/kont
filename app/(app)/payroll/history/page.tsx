@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
-import { FileText, Download, FileBarChart, FileCode, CheckCircle2, ChevronDown, Scissors, RotateCcw } from "lucide-react";
+import { FileText, Download, FileBarChart, FileCode, CheckCircle2, ChevronDown, Scissors, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePayrollHistory } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
 import type { PayrollRun, PayrollReceipt, ConfirmReceiptPayload } from "@/src/modules/payroll/frontend/hooks/use-payroll-history";
@@ -130,28 +130,28 @@ function RunRow({ run, isSelected, onSelect }: {
         <button
             onClick={() => onSelect(run.id)}
             className={[
-                "w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 px-4 sm:px-5 py-4",
+                "group w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 px-4 sm:px-6 py-4",
                 "border-b border-border-light last:border-0 text-left",
                 "transition-colors duration-150",
-                isSelected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]",
+                isSelected ? "bg-primary-50/70 dark:bg-primary-500/[0.08]" : "hover:bg-surface-2",
             ].join(" ")}
         >
             <div className="flex flex-col gap-1 min-w-0 flex-1">
-                <span className="font-mono text-[12px] font-semibold text-foreground">
+                <span className="font-sans text-[14px] font-semibold text-foreground">
                     {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
                 </span>
-                <span className="font-mono text-[11px] sm:text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest truncate">
+                <span className="font-sans text-[12px] text-[var(--text-tertiary)] truncate">
                     {run.status === "draft" ? "Guardado" : "Confirmada"}: {formatDateTime(run.confirmedAt)}
                 </span>
             </div>
             <div className="flex items-center gap-3 sm:gap-6 tabular-nums shrink-0">
                 <div className="flex flex-col items-end gap-0.5">
-                    <span className="font-mono text-[10px] sm:text-[11px] uppercase text-[var(--text-tertiary)] tracking-widest">Tasa BCV</span>
-                    <span className="font-mono text-[12px] sm:text-[13px] text-[var(--text-secondary)]">{formatBcvRate(run.exchangeRate)}</span>
+                    <span className="font-sans text-[11px] uppercase text-[var(--text-tertiary)] tracking-wide">Tasa BCV</span>
+                    <span className="font-mono text-[13px] font-medium text-[var(--text-secondary)]">{formatBcvRate(run.exchangeRate)}</span>
                 </div>
                 <span
                     className={[
-                        "font-mono text-[10px] sm:text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                        "font-sans text-[11px] font-medium uppercase tracking-wide px-2.5 py-1 rounded-md border",
                         run.status === "draft"
                             ? "border-border-medium bg-foreground/[0.05] text-[var(--text-secondary)]"
                             : "badge-success",
@@ -162,7 +162,7 @@ function RunRow({ run, isSelected, onSelect }: {
                 <svg
                     width="12" height="12" viewBox="0 0 12 12" fill="none"
                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                    className={["transition-transform duration-150 text-[var(--text-tertiary)] hidden sm:block", isSelected ? "rotate-90" : ""].join(" ")}
+                    className={["transition-transform duration-150 text-[var(--text-tertiary)] hidden sm:block group-hover:text-foreground", isSelected ? "rotate-90" : ""].join(" ")}
                 >
                     <path d="M4 2l4 4-4 4" />
                 </svg>
@@ -197,8 +197,8 @@ function ReceiptsPanel({ receipts, loading }: {
                 <table className="w-full">
                     <thead>
                         <tr className="border-b border-border-light bg-surface-2">
-                            {["Empleado", "Cargo", "Salario Bs.", "Asignaciones", "Bonos", "Deducciones", "Bruto VES", "Neto VES", "Neto $"].map((h) => (
-                                <th key={h} className="px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                            {["Empleado", "Cargo", "Salario Bs.", "Asignaciones", "Bonos", "Deducciones", "Bruto VES", "Neto VES", "Neto $"].map((h, index) => (
+                                <th key={h} className={["whitespace-nowrap border-b border-border-light px-4 py-3 font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]", index > 1 ? "text-right" : "text-left"].join(" ")}>
                                     {h}
                                 </th>
                             ))}
@@ -206,21 +206,21 @@ function ReceiptsPanel({ receipts, loading }: {
                     </thead>
                     <tbody>
                         {receipts.map((r) => (
-                            <tr key={r.id} className="border-b border-border-light/60 last:border-0 hover:bg-foreground/[0.02] transition-colors">
+                            <tr key={r.id} className="border-b border-border-light/70 last:border-0 align-middle transition-colors hover:bg-surface-2">
                                 <td className="px-4 py-3">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="font-mono text-[13px] font-medium text-foreground">{r.employeeNombre}</span>
-                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)] uppercase tracking-widest">{r.employeeCedula}</span>
+                                        <span className="font-sans text-[14px] font-semibold leading-tight text-foreground">{r.employeeNombre}</span>
+                                        <span className="font-mono text-[11px] text-[var(--text-tertiary)]">{r.employeeCedula}</span>
                                     </div>
                                 </td>
-                                <td className="px-4 py-3 font-mono text-[12px] text-[var(--text-secondary)] uppercase tracking-[0.08em]">{r.employeeCargo}</td>
-                                <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">Bs. {fmt(r.monthlySalary)}</td>
-                                <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalEarnings)}</td>
-                                <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalBonuses)}</td>
-                                <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-red-500 dark:text-red-400">-{fmt(r.totalDeductions)}</td>
-                                <td className="px-4 py-3 font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.calculationData?.gross ?? 0)}</td>
-                                <td className="px-4 py-3 font-mono text-[14px] font-semibold tabular-nums text-primary-500">{fmt(r.netPay)}</td>
-                                <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-tertiary)]">${fmt(r.calculationData?.netUsd ?? 0)}</td>
+                                <td className="px-4 py-3 font-sans text-[12px] text-[var(--text-secondary)]">{r.employeeCargo}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">Bs. {fmt(r.monthlySalary)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalEarnings)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.totalBonuses)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[13px] tabular-nums text-text-error">-{fmt(r.totalDeductions)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[13px] tabular-nums text-[var(--text-secondary)]">{fmt(r.calculationData?.gross ?? 0)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[14px] font-bold tabular-nums text-primary-500">{fmt(r.netPay)}</td>
+                                <td className="px-4 py-3 text-right font-mono text-[12px] tabular-nums text-[var(--text-tertiary)]">${fmt(r.calculationData?.netUsd ?? 0)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -304,6 +304,8 @@ export default function PayrollHistoryPage() {
     const { settings } = usePayrollSettings(companyId);
 
     const [activeTab, setActiveTab] = useState<HistoryTab>("payroll");
+    const [historyQuery, setHistoryQuery] = useState("");
+    const [historyStatus, setHistoryStatus] = useState<"all" | "confirmed" | "draft">("all");
 
     const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
     const [receipts, setReceipts] = useState<PayrollReceipt[]>([]);
@@ -326,7 +328,17 @@ export default function PayrollHistoryPage() {
         setReceipts(data ?? []);
     }, [selectedRunId, getReceipts]);
 
-    const selectedRun = runs.find((r) => r.id === selectedRunId) ?? null;
+    const filteredRuns = useMemo(() => runs.filter((run) => {
+        const query = historyQuery.trim().toLowerCase();
+        const matchesQuery = !query || [
+            formatDateShort(run.periodStart),
+            formatDateShort(run.periodEnd),
+            run.status === "draft" ? "borrador guardado" : "confirmada",
+        ].join(" ").toLowerCase().includes(query);
+        const matchesStatus = historyStatus === "all" || run.status === historyStatus;
+        return matchesQuery && matchesStatus;
+    }), [runs, historyQuery, historyStatus]);
+    const selectedRun = useMemo(() => filteredRuns.find((r) => r.id === selectedRunId) ?? null, [filteredRuns, selectedRunId]);
 
     const handleDownloadPdf = useCallback(async (pdfMode: "simple" | "duplicado") => {
         if (!selectedRun || !receipts.length) return;
@@ -542,7 +554,7 @@ export default function PayrollHistoryPage() {
             </PageHeader>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-                <div className="max-w-[1100px] mx-auto space-y-5">
+                <div className="max-w-[1440px] mx-auto space-y-5">
                     <HistoryTabs active={activeTab} onChange={setActiveTab} cestaTicketEnabled={settings.cestaTicketEnabled} bonoGuerraEnabled={settings.bonoGuerraEnabled} />
 
                     {activeTab === "payroll" ? (
@@ -560,8 +572,43 @@ export default function PayrollHistoryPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                <div className="border border-border-light rounded-xl overflow-hidden bg-surface-1">
-                                    {runs.map((run) => (
+                                <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-surface-1 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="relative min-w-0 flex-1 sm:max-w-md">
+                                        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)]" />
+                                        <input
+                                            value={historyQuery}
+                                            onChange={(event) => setHistoryQuery(event.target.value)}
+                                            placeholder="Buscar por período…"
+                                            aria-label="Buscar nóminas por período"
+                                            className="h-9 w-full rounded-lg border border-border-light bg-surface-2 pl-9 pr-9 text-[13px] text-foreground outline-none transition-colors placeholder:text-[var(--text-tertiary)] focus:border-border-strong focus:bg-surface-1 focus:ring-2 focus:ring-primary-500/10"
+                                        />
+                                        {historyQuery && (
+                                            <button type="button" aria-label="Limpiar búsqueda" onClick={() => setHistoryQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--text-tertiary)] hover:bg-surface-1 hover:text-foreground">
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <SlidersHorizontal size={15} className="text-[var(--text-tertiary)]" aria-hidden />
+                                        <label htmlFor="history-status" className="sr-only">Filtrar por estado</label>
+                                        <select
+                                            id="history-status"
+                                            value={historyStatus}
+                                            onChange={(event) => setHistoryStatus(event.target.value as typeof historyStatus)}
+                                            className="h-9 rounded-lg border border-border-light bg-surface-2 px-3 text-[13px] text-foreground outline-none focus:border-border-strong focus:ring-2 focus:ring-primary-500/10"
+                                        >
+                                            <option value="all">Todos los estados</option>
+                                            <option value="confirmed">Confirmadas</option>
+                                            <option value="draft">Borradores</option>
+                                        </select>
+                                        <span className="hidden whitespace-nowrap text-[12px] text-[var(--text-tertiary)] sm:inline">
+                                            {filteredRuns.length} de {runs.length}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1">
+                                    {filteredRuns.map((run) => (
                                         <RunRow
                                             key={run.id}
                                             run={run}
@@ -569,9 +616,16 @@ export default function PayrollHistoryPage() {
                                             onSelect={handleSelectRun}
                                         />
                                     ))}
+                                    {filteredRuns.length === 0 && (
+                                        <div className="flex min-h-32 flex-col items-center justify-center gap-2 px-4 text-center">
+                                            <Search size={20} className="text-[var(--text-tertiary)]" />
+                                            <p className="text-[13px] text-[var(--text-secondary)]">No encontramos nóminas con esos criterios.</p>
+                                            <button type="button" onClick={() => { setHistoryQuery(""); setHistoryStatus("all"); }} className="text-[12px] font-medium text-text-link hover:text-text-link-hover">Limpiar filtros</button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {selectedRunId && (
+                                {selectedRunId && selectedRun && (
                                     <ReceiptsPanel
                                         receipts={receipts}
                                         loading={receiptsLoading}
@@ -675,7 +729,7 @@ export default function PayrollHistoryPage() {
     );
 }
 
-function HistoryTabs({ active, onChange, cestaTicketEnabled, bonoGuerraEnabled }: {
+function HistoryTabs({ active, onChange, cestaTicketEnabled: _cestaTicketEnabled, bonoGuerraEnabled: _bonoGuerraEnabled }: {
     active: HistoryTab;
     onChange: (t: HistoryTab) => void;
     cestaTicketEnabled: boolean;
@@ -688,7 +742,7 @@ function HistoryTabs({ active, onChange, cestaTicketEnabled, bonoGuerraEnabled }
         { id: "bonificaciones", label: "Bonificaciones" },
     ];
     return (
-        <div className="flex items-end border-b border-border-light gap-6">
+        <div className="flex items-end gap-1 overflow-x-auto border-b border-border-light">
             {tabs.map((t) => {
                 const isActive = active === t.id;
                 return (
@@ -696,10 +750,10 @@ function HistoryTabs({ active, onChange, cestaTicketEnabled, bonoGuerraEnabled }
                         key={t.id}
                         onClick={() => onChange(t.id)}
                         className={[
-                            "relative pb-2.5 -mb-px font-mono text-[12px] uppercase tracking-[0.18em] transition-colors duration-150",
+                            "relative whitespace-nowrap rounded-t-md px-3 pb-3 pt-2 font-sans text-[13px] font-medium transition-colors duration-150",
                             isActive
-                                ? "text-foreground border-b-2 border-primary-500"
-                                : "text-[var(--text-tertiary)] border-b-2 border-transparent hover:text-foreground",
+                                ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary-500"
+                                : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground",
                         ].join(" ")}
                     >
                         {t.label}

@@ -59,17 +59,17 @@ function CtRunRow({
         <button
             onClick={() => onSelect(run.id)}
             className={[
-                "w-full flex items-center justify-between px-5 py-4",
+                "group w-full flex items-center justify-between gap-4 px-4 sm:px-6 py-4",
                 "border-b border-border-light last:border-0 text-left",
                 "transition-colors duration-150",
-                isSelected ? "bg-primary-500/[0.04]" : "hover:bg-foreground/[0.02]",
+                isSelected ? "bg-primary-50/70 dark:bg-primary-500/[0.08]" : "hover:bg-surface-2",
             ].join(" ")}
         >
             <div className="flex flex-col gap-1">
-                <span className="font-mono text-[12px] font-semibold text-foreground">
+                <span className="font-sans text-[14px] font-semibold text-foreground">
                     {formatDateShort(run.periodStart)} — {formatDateShort(run.periodEnd)}
                 </span>
-                <span className="font-mono text-[12px] text-[var(--text-tertiary)] uppercase tracking-widest">
+                <span className="font-sans text-[12px] text-[var(--text-tertiary)]">
                     {run.status === "draft" ? "Guardado" : "Confirmada"}: {formatDateTime(run.confirmedAt)}
                 </span>
             </div>
@@ -97,7 +97,7 @@ function CtRunRow({
                 )}
                 <span
                     className={[
-                        "font-mono text-[11px] uppercase tracking-widest px-2 py-0.5 rounded border",
+                        "font-sans text-[11px] font-medium uppercase tracking-wide px-2.5 py-1 rounded-md border",
                         run.status === "draft"
                             ? "border-border-medium bg-foreground/[0.05] text-[var(--text-secondary)]"
                             : "badge-success",
@@ -108,7 +108,7 @@ function CtRunRow({
                 <svg
                     width="12" height="12" viewBox="0 0 12 12" fill="none"
                     stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-                    className={["transition-transform duration-150 text-[var(--text-tertiary)]", isSelected ? "rotate-90" : ""].join(" ")}
+                    className={["transition-transform duration-150 text-[var(--text-tertiary)] group-hover:text-foreground", isSelected ? "rotate-90" : ""].join(" ")}
                 >
                     <path d="M4 2l4 4-4 4" />
                 </svg>
@@ -142,7 +142,7 @@ function CtReceiptsPanel({ receipts, loading }: {
                     <thead>
                         <tr className="border-b border-border-light bg-surface-2">
                             {["Empleado", "Cargo", "Monto USD", "Monto VES"].map((h) => (
-                                <th key={h} className="px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)] whitespace-nowrap">
+                                <th key={h} className="whitespace-nowrap px-4 py-3 text-left font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                                     {h}
                                 </th>
                             ))}
@@ -150,7 +150,7 @@ function CtReceiptsPanel({ receipts, loading }: {
                     </thead>
                     <tbody>
                         {receipts.map((r) => (
-                            <tr key={r.id} className="border-b border-border-light/60 last:border-0 hover:bg-foreground/[0.02] transition-colors">
+                            <tr key={r.id} className="border-b border-border-light/70 last:border-0 align-middle transition-colors hover:bg-surface-2">
                                 <td className="px-4 py-3">
                                     <div className="flex flex-col gap-0.5">
                                         <span className="font-mono text-[13px] font-medium text-foreground">{r.employeeNombre}</span>
@@ -287,7 +287,7 @@ export function CestaTicketHistoryView({
     return (
         <div className="space-y-4">
             {selectedRun && receipts.length > 0 && (
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-border-light bg-surface-1 p-3">
                     {selectedRun.status === "confirmed" && (
                         <BaseButton.Root
                             variant="secondary"
