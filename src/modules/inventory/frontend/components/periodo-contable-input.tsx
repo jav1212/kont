@@ -7,7 +7,7 @@
 // La fecha sigue manejando la consulta BCV; este input define en qué mes
 // contable entran las entradas de inventario al confirmar la factura.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Props {
     /** YYYY-MM-DD — fecha de la factura. */
@@ -30,6 +30,13 @@ function defaultPeriodFromDate(fecha: string): string {
     return fecha?.length >= 7 ? fecha.slice(0, 7) : "";
 }
 
+const MONTH_NAMES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+function formatPeriodEs(period: string): string {
+    const [year, month] = period.split("-").map(Number);
+    return year && month >= 1 && month <= 12 ? `${MONTH_NAMES_ES[month - 1]} ${year}` : period || "—";
+}
+
 export function PeriodoContableInput({ fecha, periodo, periodoManual, onChange, readOnly }: Props) {
     const dateMonth = defaultPeriodFromDate(fecha);
     const effectivePeriod = periodo || dateMonth;
@@ -45,6 +52,15 @@ export function PeriodoContableInput({ fecha, periodo, periodoManual, onChange, 
     }, [dateMonth, periodoManual]);
 
     const isOverridden = periodoManual && effectivePeriod !== dateMonth;
+    const periodOptions = useMemo(() => {
+        const [year, month] = effectivePeriod.split("-").map(Number);
+        const center = new Date((year || new Date().getFullYear()), (month || 1) - 1, 1);
+        return Array.from({ length: 61 }, (_, index) => {
+            const option = new Date(center.getFullYear(), center.getMonth() + index - 30, 1);
+            const value = `${option.getFullYear()}-${String(option.getMonth() + 1).padStart(2, "0")}`;
+            return { value, label: formatPeriodEs(value) };
+        });
+    }, [effectivePeriod]);
 
     if (readOnly) {
         return (
@@ -82,16 +98,20 @@ export function PeriodoContableInput({ fecha, periodo, periodoManual, onChange, 
                 </button>
             </label>
             <div className="relative">
-                <input
-                    type="month"
+                <select
                     className={fieldCls}
                     value={effectivePeriod}
                     onChange={(e) => {
                         const v = e.target.value;
-                        const manual = v !== dateMonth;
-                        onChange(v, manual);
+                        onChange(v, v !== dateMonth);
                     }}
-                />
+                >
+                    {periodOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </select>
                 {isOverridden && (
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 font-mono text-[9px] uppercase tracking-[0.12em] font-bold pointer-events-none">
                         Manual

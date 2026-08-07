@@ -121,6 +121,7 @@ interface Props {
     error?: string | null;
     label?: string;
     placeholder?: string;
+    showDecimals?: boolean;
 }
 
 export function BcvRateInput({
@@ -133,6 +134,7 @@ export function BcvRateInput({
     error,
     label = "Tasa BCV (Bs/USD)",
     placeholder,
+    showDecimals = true,
 }: Props) {
     function handleDecimalsChange(v: string) {
         const parsed = Math.round(Number(v));
@@ -158,6 +160,7 @@ export function BcvRateInput({
                         isDisabled={loading}
                     />
                 </div>
+                {showDecimals && (
                 <div className="w-20">
                     <label className={subLabelCls}>Decimales</label>
                     <BaseInput.Field
@@ -170,6 +173,7 @@ export function BcvRateInput({
                         inputClassName="text-center"
                     />
                 </div>
+                )}
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
                 {loading && (

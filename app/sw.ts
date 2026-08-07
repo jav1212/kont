@@ -11,7 +11,7 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 // ── Cache names ───────────────────────────────────────────────────────────────
-const STATIC_CACHE  = "kont-static-v1";
+const STATIC_CACHE  = "kont-static-v2";
 const IMAGES_CACHE  = "kont-images-v1";
 const FONTS_CACHE   = "kont-fonts-v1";
 

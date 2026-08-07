@@ -366,6 +366,7 @@ export class RpcPurchaseInvoiceRepository implements IPurchaseInvoiceRepository 
                     nombre: String(t.nombre ?? ''),
                     tipo:   (t.tipo === 'monto' || t.tipo === 'porcentaje' ? t.tipo : 'porcentaje') as AdjKind,
                     valor:  num(t.valor as number | string | null),
+                    moneda: t.moneda === 'D' ? 'D' : 'B',
                     base:   (t.base === 'post_iva' ? 'post_iva' : 'pre_iva') as TaxBase,
                     monto:  num(t.monto as number | string | null),
                 }))

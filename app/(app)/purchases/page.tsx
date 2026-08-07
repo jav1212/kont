@@ -171,15 +171,29 @@ export default function EntradasPage() {
 
     const kpi = useMemo(() => {
         const confirmed = inPeriod.filter((f) => f.status === "confirmada");
-        const drafts    = inPeriod.filter((f) => f.status === "borrador");
-        const totalBs   = confirmed.reduce((acc, f) => acc + (f.total ?? 0), 0);
-        const ivaBs     = confirmed.reduce((acc, f) => acc + (f.vatAmount ?? 0), 0);
-        return {
-            confirmedCount: confirmed.length,
-            draftCount:     drafts.length,
-            totalBs,
-            ivaBs,
-        };
+        const signed = (f: (typeof confirmed)[number]) => f.documentType === "nota_credito" ? -1 : 1;
+        // Shared headers already persist the fiscal sign; do not apply it twice.
+        const totalFor = (predicate: (f: (typeof confirmed)[number]) => boolean) => confirmed.reduce((acc, f) => acc + (predicate(f) ? (f.total ?? 0) : 0), 0);
+        const firstHalfBs = totalFor((f) => Number(f.date.slice(8, 10)) <= 15);
+        const secondHalfBs = totalFor((f) => Number(f.date.slice(8, 10)) >= 16);
+        const totalBs = totalFor(() => true);
+        const ivaBs = confirmed.reduce((acc, f) => acc + (f.vatAmount ?? 0), 0);
+        const fiscalBase = confirmed.reduce((acc, f) => {
+            const items = f.items ?? [];
+            if (items.length === 0) {
+                if (f.vatAmount === 0) acc.exenta += signed(f) * (f.subtotal ?? 0);
+                else acc.imponible += signed(f) * (f.subtotal ?? 0);
+                return acc;
+            }
+            return items.reduce((lineAcc, item) => {
+                const base = signed(f) * (item.baseIVA ?? item.totalCost ?? 0);
+                if (item.vatRate === "exenta") lineAcc.exenta += base;
+                else lineAcc.imponible += base;
+                return lineAcc;
+            }, acc);
+        }, { exenta: 0, imponible: 0 });
+        const retencionBs = confirmed.reduce((acc, f) => acc + (f.retencionIvaMonto ?? 0), 0);
+        return { firstHalfBs, secondHalfBs, totalBs, ivaBs, exentasBs: fiscalBase.exenta, imponibleBs: fiscalBase.imponible, aliquota: fiscalBase.imponible !== 0 ? (ivaBs / fiscalBase.imponible) * 100 : 0, retencionBs };
     }, [inPeriod]);
 
     // ── handlers ───────────────────────────────────────────────────────────────
@@ -375,41 +389,17 @@ export default function EntradasPage() {
 
             <div className="mx-auto max-w-[1440px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
                 {/* ── KPI strip ─────────────────────────────────────────────── */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <DashboardKpiCard
-                        label="Facturas confirmadas"
-                        value={kpi.confirmedCount}
-                        color="success"
-                        icon={FileText}
-                        loading={loadingPurchaseInvoices}
-                        sublabel={`del período ${purchasePeriodLabel(period)}`}
-                    />
-                    <DashboardKpiCard
-                        label="Borradores"
-                        value={kpi.draftCount}
-                        color={kpi.draftCount > 0 ? "warning" : "default"}
-                        icon={Archive}
-                        loading={loadingPurchaseInvoices}
-                        sublabel={kpi.draftCount === 0 ? "todo confirmado" : "pendientes por confirmar"}
-                    />
-                    <DashboardKpiCard
-                        label="Total facturado"
-                        value={`Bs ${fmtN(kpi.totalBs)}`}
-                        color="primary"
-                        emphasis
-                        loading={loadingPurchaseInvoices}
-                        sublabel="suma de facturas confirmadas (incluye IVA e IGTF)"
-                    />
-                    <DashboardKpiCard
-                        label="IVA del período"
-                        value={`Bs ${fmtN(kpi.ivaBs)}`}
-                        color="default"
-                        loading={loadingPurchaseInvoices}
-                        sublabel="crédito fiscal acumulado"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <DashboardKpiCard label="Primera quincena" value={"Bs " + fmtN(kpi.firstHalfBs)} color="default" loading={loadingPurchaseInvoices} sublabel={purchasePeriodLabel(period)} />
+                    <DashboardKpiCard label="Segunda quincena" value={"Bs " + fmtN(kpi.secondHalfBs)} color="default" loading={loadingPurchaseInvoices} sublabel={purchasePeriodLabel(period)} />
+                    <DashboardKpiCard label={"Total " + purchasePeriodLabel(period)} value={"Bs " + fmtN(kpi.totalBs)} color="primary" emphasis loading={loadingPurchaseInvoices} sublabel="compras confirmadas" />
+                    <DashboardKpiCard label="Compras exentas" value={"Bs " + fmtN(kpi.exentasBs)} color="default" loading={loadingPurchaseInvoices} sublabel="alicuota 0%" />
+                    <DashboardKpiCard label="Compras imponibles" value={"Bs " + fmtN(kpi.imponibleBs)} color="default" loading={loadingPurchaseInvoices} sublabel="base gravada" />
+                    <DashboardKpiCard label="IVA compras" value={"Bs " + fmtN(kpi.ivaBs)} color="default" loading={loadingPurchaseInvoices} sublabel="credito fiscal acumulado" />
+                    <DashboardKpiCard label="Retencion vendedor" value={"Bs " + fmtN(kpi.retencionBs)} color="default" loading={loadingPurchaseInvoices} sublabel="IVA retenido al proveedor" />
+                    <DashboardKpiCard label="Alicuota" value={fmtN(kpi.aliquota) + "%"} color="default" loading={loadingPurchaseInvoices} sublabel="IVA / compras imponibles" />
                 </div>
-
-                {/* ── Toolbar: period picker + filters + search + SENIAT exports ─ */}
+                                {/* ── Toolbar: period picker + filters + search + SENIAT exports ─ */}
                 <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)] lg:flex-nowrap">
                     <PurchasePeriodPicker period={period} onChange={setPeriod} />
                     <StatusFilterChips value={statusFilter} onChange={setStatusFilter} counts={counts} />

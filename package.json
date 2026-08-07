@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint && node scripts/audit-routes.mjs",
     "audit:routes": "node scripts/audit-routes.mjs",
+    "audit:shared": "node scripts/audit-shared-schema.mjs",
+    "db:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backup-supabase.ps1",
     "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
   },
   "dependencies": {

@@ -118,6 +118,8 @@ Variables esperadas en distintas partes del codigo:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- SUPABASE_DB_URL — conexión PostgreSQL del runtime, preferiblemente al Transaction Pooler
+- SUPABASE_ADMIN_DB_URL — conexión PostgreSQL privilegiada para migraciones y seeds
 
 Segun la funcionalidad que vayas a usar, pueden existir otras variables adicionales.
 
@@ -125,6 +127,7 @@ Segun la funcionalidad que vayas a usar, pueden existir otras variables adiciona
 
 ```bash
 pnpm dev
+pnpm db:backup
 ```
 
 La app quedara disponible normalmente en:
@@ -137,6 +140,7 @@ http://localhost:3000
 
 ```bash
 pnpm dev
+pnpm db:backup
 pnpm build
 pnpm start
 pnpm lint
@@ -201,3 +205,6 @@ Si estas entrando al proyecto, conviene seguir este orden:
 
 - El `README` original de `create-next-app` fue reemplazado porque ya no representaba la complejidad real del sistema.
 - La documentacion debe seguir creciendo junto con los modulos y migraciones.
+
+- SHARED_SCHEMA_PILOT_TENANTS=624a5ef3-6e23-43ba-b3de-30686fa944e5 — activa el shared-schema completo para `oficinakm11`.
+- SHARED_SCHEMA_PILOT_TENANTS=* — activa el shared-schema completo para todos los tenants cuando termine la validación del piloto.

@@ -222,8 +222,10 @@ export function useOperationForm(config: OperationConfig) {
                     adjustments: {
                         descuentoTipo:  row.descuentoTipo  ?? null,
                         descuentoValor: row.descuentoValor ?? 0,
+                        descuentoMoneda: 'B',
                         recargoTipo:    row.recargoTipo    ?? null,
                         recargoValor:   row.recargoValor   ?? 0,
+                        recargoMoneda: 'B',
                     },
                 };
             });

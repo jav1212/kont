@@ -37,9 +37,9 @@ import { formatBcvRate } from "@/src/modules/payroll/frontend/components/calcula
 import type { PayrollInputCurrency } from "@/src/modules/payroll/shared/reference-currency";
 
 const MODE_LABEL: Record<ReportMode, string> = {
-    general:    "General Â· consolidado",
-    individual: "Hoja por empleado Â· A4",
-    duplicado:  "Cortable Â· oficio Original + Copia",
+    general:    "General · consolidado",
+    individual: "Hoja por empleado · A4",
+    duplicado:  "Cortable · oficio Original + Copia",
 };
 
 const STEPS: StepDef[] = [
@@ -51,9 +51,9 @@ const STEPS: StepDef[] = [
 ];
 
 // Deriva (montoUsd, montoVes) a partir del valor del input y la moneda activa.
-// Si el usuario captura en bolÃ­vares, USD = Bs / tasa. Redondeo a 2 decimales
+// Si el usuario captura en bolívares, USD = Bs / tasa. Redondeo a 2 decimales
 // para alinear con `numeric(14,2)` del schema y mantener
-// `montoUsd Ã— exchangeRate â‰ˆ montoVes` en cÃ©ntimos.
+// `montoUsd × exchangeRate ≈ montoVes` en céntimos.
 function deriveMontos(
     raw: number,
     currency: PayrollInputCurrency,
@@ -103,7 +103,7 @@ export default function PayrollCalculatorPage() {
     } = state;
     const activos = employees.filter((e) => e.estado === "activo").length;
 
-    // DiÃ¡logo Ãºnico de confirmaciÃ³n para los 9 disparadores de beneficios.
+    // Diálogo único de confirmación para los 9 disparadores de beneficios.
     const dialog = useConfirmAction();
     const fmtNum = (n: number) =>
         n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -266,7 +266,7 @@ export default function PayrollCalculatorPage() {
         if (ok) notify.success("Cesta ticket confirmada");
     };
 
-    // â”€â”€ Bono Socio EconÃ³mico de Ayuda Alimenticia â€” mismo flujo que cesta ticket â”€
+    // ── Bono Socio Económico de Ayuda Alimenticia — mismo flujo que cesta ticket ─
 
     const buildBgPayload = useCallback((): BonoGuerraPayload | null => {
         if (!companyId) return null;
@@ -313,7 +313,7 @@ export default function PayrollCalculatorPage() {
             (e) => e.estado === "activo" && !bonoGuerraExcluded.has(e.cedula),
         );
         if (!active.length) {
-            notify.error("No hay empleados seleccionados para bono socio econÃ³mico");
+            notify.error("No hay empleados seleccionados para bono socio económico");
             return;
         }
         const globalRaw = parseFloat(bonoGuerraUSD) || 0;
@@ -347,23 +347,23 @@ export default function PayrollCalculatorPage() {
 
     const handleSaveBonoGuerraDraft = async () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados seleccionados para bono socio econÃ³mico"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         setSavingBgDraft(true);
         const { runId } = await saveBgDraft(payload);
         setSavingBgDraft(false);
-        if (runId) notify.success("Borrador de bono socio econÃ³mico guardado");
+        if (runId) notify.success("Borrador de bono socio económico guardado");
     };
 
     const handleConfirmBonoGuerra = async () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados seleccionados para bono socio econÃ³mico"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         setConfirmingBg(true);
         const ok = await confirmBg(payload);
         setConfirmingBg(false);
-        if (ok) notify.success("Bono socio econÃ³mico confirmado");
+        if (ok) notify.success("Bono socio económico confirmado");
     };
 
-    // â”€â”€ Bonificaciones â€” borrador + confirmaciÃ³n + PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Bonificaciones — borrador + confirmación + PDF ───────────────────────
 
     type BonusLineComputed = {
         label:     string;
@@ -377,7 +377,7 @@ export default function PayrollCalculatorPage() {
             .map((r) => {
                 const raw = parseFloat(r.amount) || 0;
                 return {
-                    label:     r.label || "â€”",
+                    label:     r.label || "—",
                     currency:  r.currency,
                     amount:    raw,
                     amountVes: r.currency === "VES" ? raw : raw * bcvRate,
@@ -421,7 +421,7 @@ export default function PayrollCalculatorPage() {
         if (!active.length) { notify.error("No hay empleados activos"); return; }
         const lines = computedBonusLines();
         if (!lines.length) {
-            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nÃ³mina.");
+            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nómina.");
             return;
         }
         generateBonificacionesPdf(
@@ -469,10 +469,10 @@ export default function PayrollCalculatorPage() {
         if (ok) notify.success("Bonificaciones confirmadas");
     };
 
-    // â”€â”€ Wrappers que abren el diÃ¡logo de confirmaciÃ³n antes de ejecutar â”€â”€â”€â”€â”€
-    // Cada wrapper construye un payload sÃ³lo para derivar el summary visible
+    // ── Wrappers que abren el diálogo de confirmación antes de ejecutar ──────
+    // Cada wrapper construye un payload sólo para derivar el resumen visible
     // (cantidad de empleados / montos). Si no se puede armar payload se
-    // dispara el toast de error y NO se abre el diÃ¡logo.
+    // dispara el toast de error y NO se abre el diálogo.
 
     const askSaveCestaTicketDraft = () => {
         const payload = buildCtPayload();
@@ -480,7 +480,7 @@ export default function PayrollCalculatorPage() {
         const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
         dialog.request({
             title: "Guardar borrador de Cesta Ticket",
-            subtitle: "Sobrescribe el borrador anterior del mismo perÃ­odo si existe.",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
             summary: (
                 <>
                     <SummaryRow label="Período" value={activePeriodInfo.label} />
@@ -510,7 +510,7 @@ export default function PayrollCalculatorPage() {
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
                 </>
             ),
-            warning: "Esta acciÃ³n guarda la cesta ticket permanentemente y bloquea el perÃ­odo. No se puede deshacer desde la aplicaciÃ³n.",
+            warning: "Esta acción guarda la cesta ticket permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
             confirmLabel: "Confirmar y guardar",
             confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
             run: handleConfirmCestaTicket,
@@ -538,11 +538,11 @@ export default function PayrollCalculatorPage() {
 
     const askSaveBonoGuerraDraft = () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados seleccionados para bono socio econÃ³mico"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
         dialog.request({
-            title: "Guardar borrador de Bono Socio EconÃ³mico",
-            subtitle: "Sobrescribe el borrador anterior del mismo perÃ­odo si existe.",
+            title: "Guardar borrador de Bono Socio Económico",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
             summary: (
                 <>
                     <SummaryRow label="Período" value={activePeriodInfo.label} />
@@ -559,10 +559,10 @@ export default function PayrollCalculatorPage() {
 
     const askConfirmBonoGuerra = () => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados seleccionados para bono socio econÃ³mico"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         const totalVes = payload.receipts.reduce((s, r) => s + r.montoVes, 0);
         dialog.request({
-            title: "Confirmar Bono Socio EconÃ³mico",
+            title: "Confirmar Bono Socio Económico",
             subtitle: activePeriodInfo.label,
             summary: (
                 <>
@@ -572,7 +572,7 @@ export default function PayrollCalculatorPage() {
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
                 </>
             ),
-            warning: "Esta acciÃ³n guarda el bono socio econÃ³mico permanentemente y bloquea el perÃ­odo. No se puede deshacer desde la aplicaciÃ³n.",
+            warning: "Esta acción guarda el bono socio económico permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
             confirmLabel: "Confirmar y guardar",
             confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
             run: handleConfirmBonoGuerra,
@@ -581,9 +581,9 @@ export default function PayrollCalculatorPage() {
 
     const askBonoGuerraPdf = (pdfMode: ReportMode) => {
         const payload = buildBgPayload();
-        if (!payload) { notify.error("No hay empleados seleccionados para bono socio econÃ³mico"); return; }
+        if (!payload) { notify.error("No hay empleados seleccionados para bono socio económico"); return; }
         dialog.request({
-            title: "Descargar PDF de Bono Socio EconÃ³mico",
+            title: "Descargar PDF de Bono Socio Económico",
             subtitle: activePeriodInfo.label,
             summary: (
                 <>
@@ -603,12 +603,12 @@ export default function PayrollCalculatorPage() {
         if (!payload) { notify.error("No hay empleados activos o bonos configurados para guardar"); return; }
         dialog.request({
             title: "Guardar borrador de Bonificaciones",
-            subtitle: "Sobrescribe el borrador anterior del mismo perÃ­odo si existe.",
+            subtitle: "Sobrescribe el borrador anterior del mismo período si existe.",
             summary: (
                 <>
                     <SummaryRow label="Período" value={activePeriodInfo.label} />
                     <SummaryRow label="Empleados" value={payload.run.employeeCount} />
-                    <SummaryRow label="LÃ­neas de bono" value={payload.run.lineCount} />
+                    <SummaryRow label="Líneas de bono" value={payload.run.lineCount} />
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(payload.run.totalVes)}`} emphasis />
                 </>
             ),
@@ -627,12 +627,12 @@ export default function PayrollCalculatorPage() {
             summary: (
                 <>
                     <SummaryRow label="Empleados" value={payload.run.employeeCount} />
-                    <SummaryRow label="LÃ­neas de bono" value={payload.run.lineCount} />
+                    <SummaryRow label="Líneas de bono" value={payload.run.lineCount} />
                     <SummaryRow label="Tasa BCV" value={`Bs. ${formatBcvRate(bcvRate)} / USD`} />
                     <SummaryRow label="Total VES" value={`Bs. ${fmtNum(payload.run.totalVes)}`} emphasis />
                 </>
             ),
-            warning: "Esta acciÃ³n guarda las bonificaciones permanentemente y bloquea el perÃ­odo. No se puede deshacer desde la aplicaciÃ³n.",
+            warning: "Esta acción guarda las bonificaciones permanentemente y bloquea el período. No se puede deshacer desde la aplicación.",
             confirmLabel: "Confirmar y guardar",
             confirmIcon: <CheckCircle2 size={14} strokeWidth={2} />,
             run: handleConfirmBonificaciones,
@@ -641,12 +641,12 @@ export default function PayrollCalculatorPage() {
 
     const askBonificacionesPdf = (pdfMode: ReportMode) => {
         // El PDF no requiere payload completo (no persiste); valida lo mismo
-        // que el handler original antes de abrir el diÃ¡logo.
+        // que el handler original antes de abrir el diálogo.
         const active = employees.filter((e) => e.estado === "activo");
         if (!active.length) { notify.error("No hay empleados activos"); return; }
         const lines = computedBonusLines();
         if (!lines.length) {
-            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nÃ³mina.");
+            notify.error("No hay bonos con monto configurado. Agrega bonos en el paso 4 de la nómina.");
             return;
         }
         const totalVes = lines.reduce((s, l) => s + l.amountVes, 0);
@@ -656,7 +656,7 @@ export default function PayrollCalculatorPage() {
             summary: (
                 <>
                     <SummaryRow label="Empleados" value={active.length} />
-                    <SummaryRow label="LÃ­neas de bono" value={lines.length} />
+                    <SummaryRow label="Líneas de bono" value={lines.length} />
                     <SummaryRow label="Total por empleado" value={`Bs. ${fmtNum(totalVes)}`} emphasis />
                     <SummaryRow label="Modalidad" value={MODE_LABEL[pdfMode]} />
                 </>
@@ -737,7 +737,7 @@ export default function PayrollCalculatorPage() {
                     )}
                 </div>
 
-                {/* DiÃ¡logo Ãºnico para los 9 disparadores de beneficios (PDF / borrador / confirmar) */}
+                {/* Diálogo único para los 9 disparadores de beneficios (PDF / borrador / confirmar) */}
                 <ConfirmCompanyDialog
                     isOpen={!!dialog.pending}
                     onClose={dialog.clear}

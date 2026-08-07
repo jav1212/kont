@@ -26,7 +26,7 @@ import {
     type AdjustmentCurrency,
 } from "@/src/modules/inventory/shared/totals";
 
-// ── types ─────────────────────────────────────────────────────────────────────
+// -- types ---------------------------------------------------------------------
 
 type ColIdx = 0 | 1 | 2; // 0=product, 1=quantity, 2=cost
 type NavDir = "tab" | "shift-tab" | "enter" | "down" | "up";
@@ -36,14 +36,14 @@ interface Props {
     products: Product[];
     onChange: (items: PurchaseInvoiceItem[]) => void;
     readOnly?: boolean;
-    dollarRate?: number | null; // BCV rate for the period — used for USD→Bs conversion
+    dollarRate?: number | null; // BCV rate for the period, used for USD-to-Bs conversion
     /** Calculation precision: how many decimals all derived totals are rounded to.
      *  Drives both the on-screen formatter and the rounding of `totalCost`. */
     decimals?: number;
     onRequestCreateProduct?: (search: string) => void;
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// -- helpers -------------------------------------------------------------------
 
 export function emptyItem(): PurchaseInvoiceItem {
     const adj = emptyLineAdjustments();
@@ -62,7 +62,7 @@ const makeFmt = (decimals: number) => (n: number) =>
 
 const round4 = round4Shared;
 
-// hasAdjustments: si la fila tiene algún ajuste activo, mostramos el badge.
+// hasAdjustments: si la fila tiene algun ajuste activo, mostramos el badge.
 function hasAdjustments(it: PurchaseInvoiceItem): boolean {
     return (
         (it.descuentoTipo != null && (it.descuentoValor ?? 0) > 0) ||
@@ -70,7 +70,7 @@ function hasAdjustments(it: PurchaseInvoiceItem): boolean {
     );
 }
 
-// ── ProductComboCell ──────────────────────────────────────────────────────────
+// -- ProductComboCell ----------------------------------------------------------
 
 interface ProductCellProps {
     productId: string;
@@ -87,7 +87,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
     const [hiIdx, setHiIdx] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
-    // Portal anchor — recomputed from the input's bounding rect so the dropdown
+    // Portal anchor - recomputed from the input's bounding rect so the dropdown
     // can render via createPortal and escape the table wrapper's `overflow-x-auto`,
     // which CSS would otherwise force to clip vertically.
     const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
@@ -154,7 +154,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
     const displayValue = open
         ? search
         : selected
-          ? [selected.code, selected.name].filter(Boolean).join(" · ")
+          ? [selected.code, selected.name].filter(Boolean).join(" - ")
           : "";
 
     return (
@@ -163,7 +163,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
                 ref={registerRef}
                 className="w-full h-8 px-2 outline-none bg-transparent font-mono text-[12px] text-foreground focus:bg-primary-500/[0.06] rounded transition-colors"
                 value={displayValue}
-                placeholder={open ? "Buscar producto…" : "Seleccionar…"}
+                placeholder={open ? "Buscar producto..." : "Seleccionar..."}
                 onChange={(e) => { setSearch(e.target.value); setHiIdx(0); }}
                 onFocus={openDropdown}
                 onKeyDown={handleKeyDown}
@@ -223,7 +223,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
     );
 }
 
-// ── NumberCell ────────────────────────────────────────────────────────────────
+// -- NumberCell ----------------------------------------------------------------
 
 interface NumberCellProps {
     value: number;
@@ -273,7 +273,7 @@ function NumberCell({ value, onChange, onNavigate, registerRef, format, placehol
     );
 }
 
-// ── AjusteRow ─────────────────────────────────────────────────────────────────
+// -- AjusteRow -----------------------------------------------------------------
 // Mini control: tipo (% o Bs) + numeric value. Reusable for descuento/recargo.
 
 interface AjusteRowProps {
@@ -306,7 +306,7 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
                 onChange={(e) => { const v = e.target.value; if (!v) onTipoChange(null); else if (v === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", v === "divisa" ? "D" : "B"); else { onTipoChange("monto"); onMonedaChange(v === "divisa" ? "D" : "B"); } }}
                 className="h-7 px-1.5 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground focus:border-primary-500/60 transition-colors"
             >
-                <option value="">â€”</option>
+                <option value="">—</option>
                 <option value="porcentaje">%</option>
                 <option value="monto">Bs</option>
                 <option value="divisa">USD</option>
@@ -337,7 +337,7 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
     );
 }
 
-// ── FacturaItemsGrid ──────────────────────────────────────────────────────────
+// -- FacturaItemsGrid ----------------------------------------------------------
 
 export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, decimals = 2, onRequestCreateProduct }: Props) {
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -372,8 +372,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     }
 
     // updateItem: handles each field explicitly to avoid unsafe casts.
-    // 'currencyCostInput' is a virtual field — triggers USD cost recomputation.
-    // 'unitCostDisplay' is a virtual field — handles the IVA-incluido toggle: the
+    // 'currencyCostInput' is a virtual field - triggers USD cost recomputation.
+    // 'unitCostDisplay' is a virtual field - handles the IVA-incluido toggle: the
     //                   user-entered value is interpreted as gross and converted
     //                   to net before persisting.
     function itemWithCurrency(item: PurchaseInvoiceItem, currency: ItemCurrency): PurchaseInvoiceItem {
@@ -412,7 +412,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             item.totalCost    = round(item.quantity * item.unitCost);
         } else if (field === 'unitCostDisplay') {
             // User edited the cost cell. If iva_incluido, the typed value is the
-            // gross — convert to net for storage. Otherwise it's the net directly.
+            // gross - convert to net for storage. Otherwise it's the net directly.
             const typed = Number(val) || 0;
             item.unitCost = item.ivaIncluido
                 ? netFromGross(typed, item.vatRate ?? 'general_16')
@@ -542,7 +542,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                             {dollarRate!.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs/USD
                         </span>
                     ) : (
-                        <span className="text-red-500 font-medium">No definida — configura la tasa en Cierres</span>
+                        <span className="text-red-500 font-medium">No definida - configura la tasa en Cierres</span>
                     )}
                 </div>
             )}
@@ -695,8 +695,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                     {anyUsd && (
                                         <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-secondary)] text-[13px]">
                                             {isUsd
-                                                ? (item.unitCost > 0 ? fmtN(item.unitCost) : "—")
-                                                : <span className="text-[var(--text-tertiary)]">—</span>}
+                                                ? (item.unitCost > 0 ? fmtN(item.unitCost) : "-")
+                                                : <span className="text-[var(--text-tertiary)]">-</span>}
                                         </td>
                                     )}
 
@@ -712,7 +712,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                       : "bg-primary-500/10 text-primary-500",
                                             ].join(" ")}>
                                                 {item.vatRate === "exenta" ? "Exenta" : item.vatRate === "reducida_8" ? "8%" : "16%"}
-                                                {item.ivaIncluido && <span className="ml-1 opacity-70">·Inc</span>}
+                                                {item.ivaIncluido && <span className="ml-1 opacity-70">(Inc)</span>}
                                             </span>
                                         ) : (
                                             <div className="flex items-center gap-1">
@@ -771,7 +771,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     title={hasAdj ? "Editar ajustes" : "Agregar descuento o recargo"}
                                                     aria-label="Ajustes"
                                                 >
-                                                    {isExpanded ? "−" : hasAdj ? "●" : "+"}
+                                                    {isExpanded ? "-" : hasAdj ? "?" : "+"}
                                                 </button>
                                                 <button
                                                     tabIndex={-1}
@@ -781,7 +781,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     className="opacity-0 group-hover:opacity-100 text-[var(--text-tertiary)] hover:text-red-500 disabled:opacity-0 text-[15px] leading-none transition-all"
                                                     title="Eliminar fila"
                                                 >
-                                                    ×
+                                                    -
                                                 </button>
                                             </div>
                                         </td>
@@ -792,7 +792,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                         <td colSpan={anyUsd ? 8 : 7} className="px-4 py-3">
                                             <div className="space-y-2">
                                                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-1">
-                                                    Ajustes de línea — afectan la base IVA
+                                                    Ajustes de linea - afectan la base IVA
                                                 </div>
                                                 <AjusteRow
                                                     label="Descuento"
@@ -823,7 +823,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                         </span>
                                                         {(item.descuentoMonto ?? 0) > 0 && (
                                                             <span>
-                                                                − Desc: <span className="text-error/80 tabular-nums">{fmtN(item.descuentoMonto ?? 0)}</span>
+                                                                - Desc: <span className="text-error/80 tabular-nums">{fmtN(item.descuentoMonto ?? 0)}</span>
                                                             </span>
                                                         )}
                                                         {(item.recargoMonto ?? 0) > 0 && (
@@ -850,13 +850,13 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     className="mt-2 ml-1 text-[12px] text-[var(--text-tertiary)] hover:text-foreground uppercase tracking-[0.12em] transition-colors"
                 >
                     + agregar fila{" "}
-                    <span className="normal-case opacity-40 ml-1 tracking-normal">(Tab desde la última celda)</span>
+                    <span className="normal-case opacity-40 ml-1 tracking-normal">(Tab desde la ultima celda)</span>
                 </button>
             )}
 
             {!readOnly && (
                 <p className="mt-3 ml-1 text-[11px] text-[var(--text-tertiary)] opacity-60 tracking-wide">
-                    Tab · Shift+Tab — moverse entre celdas &nbsp;|&nbsp; Enter — bajar en la misma columna &nbsp;|&nbsp; ↑↓ — cambiar fila &nbsp;|&nbsp; + — agregar ajustes (descuento, recargo)
+                    Tab / Shift+Tab - moverse entre celdas &nbsp;|&nbsp; Enter - bajar en la misma columna &nbsp;|&nbsp; Up/Down - cambiar fila &nbsp;|&nbsp; + - agregar ajustes (descuento, recargo)
                 </p>
             )}
         </div>
@@ -865,3 +865,5 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
 
 // Re-export shared math-related utilities for convenience to consuming pages.
 export { vatRatePct };
+
+

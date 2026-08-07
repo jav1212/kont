@@ -71,3 +71,30 @@ type: project
 - **Base legal:** Ley de IGTF, Art. 3.
 - **Estado:** FUNCIONALIDAD FALTANTE
 - **Detectado:** 2026-03-21
+
+### EC-004: Sumidero de ajuste de existencia ignora measureUnit (unidades discretas quedan fraccionadas)
+- **Modulo:** Inventario / Generador de ajuste de existencia
+- **Archivos:** src/modules/inventory/backend/app/generate-stock-adjustment.use-case.ts (lineas 189-207), src/modules/inventory/backend/app/save-stock-adjustment.use-case.ts (linea 48)
+- **Problema:** El producto sumidero que absorbe el residuo de redondeo recibe un deltaQty fraccionario sin filtrar por measureUnit. Product.measureUnit ya distingue discretas (unidad, caja, rollo, paquete) de continuas (kg, g, m, m2, m3, litro), pero el bloque sumidero no lo consulta. Una existencia final tipo 143,2857 "unidades" o "cajas" no sobrevive un conteo fisico.
+- **Base legal:** Codigo de Comercio Art. 32/34 (Libro de Inventario debe reflejar la realidad fisica de las existencias).
+- **Estado:** PENDIENTE DE CORRECCION — filtrar candidatos a sumidero solo entre measureUnit continuas; si no hay ninguno elegible, reportar el residuo en residualBs en vez de fraccionar una unidad discreta.
+- **Detectado:** 2026-07-16
+- **Prioridad:** Alta
+
+### OB-007: Linea sumidero del generador de salidas sin tope de margen (riesgo venta bajo costo / sobre 30% Precios Justos)
+- **Modulo:** Inventario / Generador de salidas aleatorias
+- **Archivos:** src/modules/inventory/backend/app/generate-random-sales.use-case.ts (lineas 326-358)
+- **Problema:** El ajuste de precio de la linea sumidero solo valida newTotal > 0, no valida que el precio resultante quede >= costo (evita venta a perdida) ni <= costo x 1,30 (tope Ley Precios Justos Art. 32 si la empresa esta regulada). El IVA si se recalcula correctamente sobre el total ajustado.
+- **Base legal:** Ley Organica de Precios Justos Art. 32 (margen maximo 30%).
+- **Estado:** PENDIENTE — agregar clamp [costo, costo x 1,30] al precio de la linea sumidero; si el residuo no cabe, repartir entre 2-3 lineas.
+- **Detectado:** 2026-07-16
+- **Prioridad:** Media
+
+### OB-008: Doble redondeo ROUND4→ROUND2 en linea sumidero podria no reconciliar precio x cantidad con el subtotal de factura
+- **Modulo:** Inventario / Generador de salidas aleatorias
+- **Archivos:** src/modules/inventory/backend/app/generate-random-sales.use-case.ts (lineas 343-346)
+- **Problema:** precioVentaUnitario se redondea a 4 decimales y luego totalSinIVA se recalcula con ROUND2(precio x qty); en casos borde el precio impreso x cantidad podria no calzar exacto con el subtotal mostrado.
+- **Base legal:** Providencia SNAT/2011/00071 Art. 14 (coherencia aritmetica de la factura).
+- **Estado:** PENDIENTE — verificar en casos borde, corregir si aplica.
+- **Detectado:** 2026-07-16
+- **Prioridad:** Baja

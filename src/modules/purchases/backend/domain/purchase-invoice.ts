@@ -54,6 +54,8 @@ export interface PurchaseInvoice {
   date: string;       // YYYY-MM-DD — drives BCV lookup
   period: string;     // YYYY-MM — período contable (puede diferir del mes de fecha)
   status: InvoiceStatus;
+  /** Currency of the invoice. All lines must use the same currency. */
+  currency?: ItemCurrency;
   /** Fiscal document kind. Defaults to factura for legacy records. */
   documentType?: PurchaseDocumentType;
   /** Optional relation to the supplier invoice affected by a credit/debit note. */
