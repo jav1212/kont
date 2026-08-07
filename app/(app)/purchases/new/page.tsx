@@ -135,6 +135,7 @@ export default function NuevaFacturaPage() {
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
     const [affectedInvoiceNumber, setAffectedInvoiceNumber] = useState("");
+    const [affectedInvoiceId, setAffectedInvoiceId] = useState<string | null>(null);
     const [affectedControlNumber, setAffectedControlNumber] = useState("");
     const [noteReason, setNoteReason] = useState("");
     const [inventoryEffect, setInventoryEffect] = useState<PurchaseInventoryEffect>("none");
@@ -226,12 +227,13 @@ export default function NuevaFacturaPage() {
         setInvoiceNumber(inv.invoiceNumber ?? "");
         setControlNumber(inv.controlNumber ?? "");
         setAffectedInvoiceNumber(inv.affectedInvoiceNumber ?? "");
+        setAffectedInvoiceId(inv.affectedInvoiceId ?? null);
         setAffectedControlNumber(inv.affectedControlNumber ?? "");
         setNoteReason(inv.noteReason ?? "");
         setInventoryEffect(inv.inventoryEffect ?? "none");
         setDate(inv.date ?? todayStr());
         setPeriodo(inv.period ?? (inv.date ?? todayStr()).slice(0, 7));
-        setPeriodoManual(!!inv.periodoManual);
+        setPeriodoManual(Boolean(inv.periodoManual || (inv.period && inv.date && inv.period !== inv.date.slice(0, 7))));
         setNotes(inv.notes ?? "");
         const loadedItems = (inv.items && inv.items.length > 0) ? inv.items : [emptyItem()];
         setItems(loadedItems);
@@ -300,10 +302,18 @@ export default function NuevaFacturaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [date]);
 
+    const preciseLineDollarRate = items
+        .map((item) => item.currency === "D" && item.dollarRate != null && item.dollarRate > 0 ? item.dollarRate : null)
+        .find((rate): rate is number => rate != null);
     const effectiveDollarRate = (() => {
-        const r = parseRateStr(dollarRate);
-        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+        const typedRate = parseRateStr(dollarRate);
+        const lineRateMatchesDisplay = preciseLineDollarRate != null && (
+            typedRate == null || roundRateValue(preciseLineDollarRate, rateDecimals) === roundRateValue(typedRate, rateDecimals)
+        );
+        const calculationRate = lineRateMatchesDisplay ? preciseLineDollarRate : typedRate;
+        return isFinite(calculationRate ?? NaN) ? roundRateValue(calculationRate as number, 4) : null;
     })();
+    const invoiceCurrency = items.length > 0 && items.every((item) => item.currency === 'D') ? 'D' : 'B';
     // Derived totals — computed by shared math (computeInvoiceTotals)
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
@@ -320,7 +330,7 @@ export default function NuevaFacturaPage() {
             recargoMoneda: i.recargoMoneda ?? 'B',
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0, invoiceCurrency);
     const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
@@ -348,6 +358,18 @@ export default function NuevaFacturaPage() {
     const supplierName = suppliers.find((s) => s.id === supplierId)?.name ?? null;
     const itemCount = items.filter((i) => i.productId).length;
 
+    const affectedInvoiceCandidates = useMemo(() => purchaseInvoices
+        .filter((invoice) => invoice.id !== savedId && invoice.status === "confirmada" && invoice.documentType !== "nota_credito" && (!supplierId || invoice.supplierId === supplierId))
+        .slice(0, 200), [purchaseInvoices, savedId, supplierId]);
+
+    const handleAffectedInvoiceNumberChange = useCallback((value: string) => {
+        setAffectedInvoiceNumber(value);
+        const normalized = value.trim().toLowerCase();
+        const match = affectedInvoiceCandidates.find((invoice) => invoice.invoiceNumber.trim().toLowerCase() === normalized);
+        setAffectedInvoiceId(match?.id ?? null);
+        if (match?.controlNumber) setAffectedControlNumber(match.controlNumber);
+    }, [affectedInvoiceCandidates]);
+
     const documentSign = documentType === "nota_credito" ? -1 : 1;
     const buildInvoice = useCallback((): PurchaseInvoice => ({
         companyId:     companyId!,
@@ -355,6 +377,7 @@ export default function NuevaFacturaPage() {
         documentType,
         invoiceNumber,
         controlNumber,
+        affectedInvoiceId: documentType === "factura" ? null : affectedInvoiceId,
         affectedInvoiceNumber: documentType === "factura" ? null : affectedInvoiceNumber || null,
         affectedControlNumber: documentType === "factura" ? null : affectedControlNumber || null,
         noteReason: documentType === "factura" ? null : noteReason || null,
@@ -362,6 +385,7 @@ export default function NuevaFacturaPage() {
         date,
         period:        periodoManual && periodo ? periodo : date.slice(0, 7),
         periodoManual,
+        currency: invoiceCurrency,
         status:        "borrador",
         subtotal:      subtotal * documentSign,
         vatPercentage: 0,
@@ -381,7 +405,7 @@ export default function NuevaFacturaPage() {
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
         impuestos: resolvedImpuestos,
-    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
+    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -406,7 +430,7 @@ export default function NuevaFacturaPage() {
     // Snapshots only the user-editable shape so the watcher fires on real
     // edits, not on every render. Keys are flattened to avoid deep diffs.
     const autosavePayload = useMemo(() => ({
-        supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
+        supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
         rate: effectiveDollarRate, rateDecimals, retencionIvaPct,
         headerAdj: {
             d: headerAdj.descuentoTipo, dv: headerAdj.descuentoValor, dm: headerAdj.descuentoMoneda,
@@ -421,7 +445,7 @@ export default function NuevaFacturaPage() {
             dt: it.descuentoTipo ?? null, dv: it.descuentoValor ?? 0, dm: it.descuentoMoneda ?? 'B',
             rt: it.recargoTipo   ?? null, rv: it.recargoValor   ?? 0, rm: it.recargoMoneda ?? 'B',
         })),
-    }), [supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
+    }), [supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, notes,
         effectiveDollarRate, rateDecimals, retencionIvaPct, headerAdj, impuestos, items]);
 
     const autosaveSave = useCallback(async () => {
@@ -595,7 +619,7 @@ export default function NuevaFacturaPage() {
                         {/* Meta */}
                         <dl className="px-6 py-4 space-y-2.5 text-[13px]">
                             <div className="flex justify-between gap-3">
-                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Nº Factura</dt>
+                                <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">{documentType === "factura" ? "Nº Factura" : documentType === "nota_credito" ? "Nº Nota de crédito" : "Nº Nota de débito"}</dt>
                                 <dd className="text-foreground font-medium tabular-nums">{invoiceNumber || "—"}</dd>
                             </div>
                             {controlNumber && (
@@ -763,7 +787,7 @@ export default function NuevaFacturaPage() {
                                         </div>
                                     </div>
                                     <BaseInput.Field
-                                        label="Nº Factura"
+                                        label={documentType === "factura" ? "Nº Factura" : documentType === "nota_credito" ? "Nº Nota de crédito" : "Nº Nota de débito"}
                                         isRequired
                                         value={invoiceNumber}
                                         onValueChange={setInvoiceNumber}
@@ -776,7 +800,21 @@ export default function NuevaFacturaPage() {
                                     <div className="mt-4 rounded-lg border border-border-light bg-surface-2/40 p-4">
                                         <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Documento afectado</div>
                                         <div className="grid grid-cols-3 gap-4">
-                                            <BaseInput.Field label="Nº factura afectada" isRequired value={affectedInvoiceNumber} onValueChange={setAffectedInvoiceNumber} />
+                                            <BaseInput.Field
+                                                label="Nº factura afectada"
+                                                isRequired
+                                                value={affectedInvoiceNumber}
+                                                onValueChange={handleAffectedInvoiceNumberChange}
+                                                list="affected-invoice-options"
+                                                helperText={affectedInvoiceId ? "Factura vinculada correctamente" : "Escribe el número y selecciónalo de las facturas existentes"}
+                                            />
+                                            <datalist id="affected-invoice-options">
+                                                {affectedInvoiceCandidates.map((invoice) => (
+                                                    <option key={invoice.id} value={invoice.invoiceNumber}>
+                                                        {invoice.controlNumber ? `Control ${invoice.controlNumber}` : ""}
+                                                    </option>
+                                                ))}
+                                            </datalist>
                                             <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} placeholder="Opcional" />
                                             <div>
                                                 <label className={labelCls}>Efecto en inventario</label>
@@ -832,6 +870,7 @@ export default function NuevaFacturaPage() {
                                         loading={rateLoading}
                                         bcvDate={rateDateBcv}
                                         error={rateError}
+                                        showDecimals={false}
                                     />
                                 </div>
 
@@ -955,7 +994,7 @@ export default function NuevaFacturaPage() {
                                         </dd>
                                     </div>
                                     <div className="flex justify-between gap-3">
-                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">Nº Factura</dt>
+                                        <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">{documentType === "factura" ? "Nº Factura" : documentType === "nota_credito" ? "Nº Nota de crédito" : "Nº Nota de débito"}</dt>
                                         <dd className="text-foreground tabular-nums truncate text-right max-w-[60%]">
                                             {invoiceNumber || "—"}
                                         </dd>
@@ -1439,7 +1478,7 @@ export default function NuevaFacturaPage() {
                 }
                 summary={
                     <>
-                        <SummaryRow label="Nº Factura" value={invoiceNumber || "—"} />
+                        <SummaryRow label={documentType === "factura" ? "Nº Factura" : documentType === "nota_credito" ? "Nº Nota de crédito" : "Nº Nota de débito"} value={invoiceNumber || "—"} />
                         {controlNumber && <SummaryRow label="Nº Control" value={controlNumber} />}
                         <SummaryRow label="Proveedor" value={supplierName ?? "—"} />
                         <SummaryRow label="Período" value={(periodoManual && periodo) || date.slice(0, 7) || "—"} />

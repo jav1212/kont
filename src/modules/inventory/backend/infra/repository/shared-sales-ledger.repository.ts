@@ -3,6 +3,7 @@ import { Result } from '@/src/core/domain/result';
 import { ISource } from '@/src/shared/backend/source/domain/repository/source.repository';
 import { ISalesLedgerRepository } from '../../domain/repository/sales-ledger.repository';
 import { SalesLedgerRow } from '../../domain/sales-ledger';
+import { computeLineTotals, emptyLineAdjustments, type VatRate } from '@/src/modules/inventory/shared/totals';
 
 type Invoice = { id: string | null; invoice_date: string | null; invoice_number: string | null; customer_id: string | null; total: number | string | null };
 type Customer = { id: string | null; rif: string | null; name: string | null };
@@ -41,15 +42,25 @@ export class SharedSalesLedgerRepository implements ISalesLedgerRepository {
       const customers = new Map((customerData as Customer[] ?? []).map((customer) => [customer.id ?? '', customer]));
       const sales = invoices.map((invoice): SalesLedgerRow => {
         const items = itemsByInvoice.get(invoice.id ?? '') ?? [];
-        const amount = (rate: string) => items.filter((item) => (item.vat_rate ?? 'general_16') === rate)
-          .reduce((sum, item) => sum + n(item.vat_base ?? item.line_total ?? (n(item.quantity) * n(item.unit_price))), 0);
-        const baseExenta = amount('exenta'), base8 = amount('reducida_8'), base16 = amount('general_16');
+        const totalsByRate = (rate: VatRate) => items
+          .filter((item) => (item.vat_rate ?? 'general_16') === rate)
+          .reduce((sum, item) => {
+            const line = computeLineTotals({
+              quantity: 1,
+              unitCost: n(item.vat_base ?? item.line_total ?? (n(item.quantity) * n(item.unit_price))),
+              vatRate: rate,
+              adjustments: emptyLineAdjustments(),
+            });
+            return { base: sum.base + line.baseIVA, iva: sum.iva + line.ivaMonto };
+          }, { base: 0, iva: 0 });
+        const exenta = totalsByRate('exenta'), reduced = totalsByRate('reducida_8'), general = totalsByRate('general_16');
+        const baseExenta = exenta.base, base8 = reduced.base, base16 = general.base;
         const customer = customers.get(invoice.customer_id ?? '');
         return {
           id: invoice.id ?? '', date: invoice.invoice_date ?? '', invoiceNumber: invoice.invoice_number ?? '',
           clientRif: customer?.rif ?? '', clientName: customer?.name ?? '', exemptBase: baseExenta,
-          taxableBase8: base8, iva8: Math.round(base8 * 0.08 * 100) / 100, taxableBase16: base16,
-          iva16: Math.round(base16 * 0.16 * 100) / 100, selfConsumption: 0, selfConsumptionVat: 0,
+          taxableBase8: base8, iva8: reduced.iva, taxableBase16: base16,
+          iva16: general.iva, selfConsumption: 0, selfConsumptionVat: 0,
           total: n(invoice.total), tipo: 'venta',
         };
       });

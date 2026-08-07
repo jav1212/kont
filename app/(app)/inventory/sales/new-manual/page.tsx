@@ -16,11 +16,11 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
+import { computeInvoiceTotals, emptyHeaderAdjustments, emptyLineAdjustments, netFromGross } from "@/src/modules/inventory/shared/totals";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const todayStr = () => getTodayIsoDate();
-const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtN = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const labelCls = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
@@ -43,42 +43,42 @@ function emptyOutboundItem(): OutboundItem {
 }
 
 function computePrices(item: OutboundItem, dollarRate: number | null, ivaMode: IvaMode) {
-    const enteredPriceVes = item.currency === "D"
-        ? (dollarRate ? round2(item.currencyPrice * dollarRate) : 0)
-        : item.currencyPrice;
-
-    let basePriceVes: number;
-    let vatUnitVes: number;
-
-    if (item.vatRate === 0) {
-        basePriceVes = enteredPriceVes;
-        vatUnitVes = 0;
-    } else if (ivaMode === "agregado") {
-        basePriceVes = enteredPriceVes;
-        vatUnitVes = round2(enteredPriceVes * item.vatRate);
-    } else {
-        // incluido: entered price already contains VAT — extract base
-        basePriceVes = round2(enteredPriceVes / (1 + item.vatRate));
-        vatUnitVes = round2(enteredPriceVes - basePriceVes);
-    }
-
-    // For USD: currencyPrice stored = base price in USD (excl. VAT)
-    const basePriceCurrency = item.currency === "D"
-        ? (ivaMode === "incluido" && item.vatRate > 0
-            ? round2(item.currencyPrice / (1 + item.vatRate))
-            : item.currencyPrice)
-        : null;
-
+    const vatRate = item.vatRate > 0 ? "general_16" : "exenta";
+    const enteredSource = item.currencyPrice;
+    const baseSource = item.vatRate > 0 && ivaMode === "incluido"
+        ? netFromGross(enteredSource, vatRate)
+        : enteredSource;
+    const unitCostBs = item.currency === "D"
+        ? (dollarRate ? baseSource * dollarRate : 0)
+        : baseSource;
+    const totals = computeInvoiceTotals(
+        [{
+            quantity: item.quantity,
+            unitCost: unitCostBs,
+            currency: item.currency,
+            currencyCost: item.currency === "D" ? baseSource : null,
+            vatRate,
+            adjustments: emptyLineAdjustments(),
+        }],
+        emptyHeaderAdjustments(),
+        2,
+        0,
+        [],
+        dollarRate ?? 0,
+        item.currency,
+    );
+    const line = totals.items[0];
+    const unitPrice = item.quantity > 0 ? line.baseIVAFinal / item.quantity : 0;
     return {
-        unitPrice: basePriceVes,                                              // base excl. VAT — persisted
-        totalPrice: round2(basePriceVes * item.quantity),                     // base total — persisted
-        vatTotalAmount: round2(vatUnitVes * item.quantity),                   // display
-        totalWithVat: round2((basePriceVes + vatUnitVes) * item.quantity),    // display
-        basePriceCurrency,
+        unitPrice,
+        totalPrice: line.baseIVAFinal,
+        vatTotalAmount: line.ivaMontoFinal,
+        totalWithVat: line.totalFinal,
+        basePriceCurrency: item.currency === "D" ? baseSource : null,
     };
 }
 
-// ── ProductCombo ──────────────────────────────────────────────────────────────
+// ProductCombo ──────────────────────────────────────────────────────────────
 
 function ProductCombo({
     value,

@@ -19,7 +19,8 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
-import type { PurchaseInvoice } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import type { PurchaseInvoice, PurchaseDocumentType } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { computeFlatInvoiceTotals } from "@/src/modules/inventory/shared/totals";
 import { SupplierCombobox } from "@/src/modules/purchases/frontend/components/supplier-combobox";
 
 const fmt = (n: number) =>
@@ -39,8 +40,12 @@ export default function NuevaFacturaQuickPage() {
     const { suppliers, loadSuppliers, savePurchaseInvoice, confirmPurchaseInvoice, saveSupplier } = usePurchases();
 
     const [supplierId, setSupplierId] = useState("");
+    const [documentType, setDocumentType] = useState<PurchaseDocumentType>("factura");
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
+    const [affectedInvoiceNumber, setAffectedInvoiceNumber] = useState("");
+    const [affectedControlNumber, setAffectedControlNumber] = useState("");
+    const [noteReason, setNoteReason] = useState("");
     const [date, setDate] = useState(getTodayIsoDate());
     const [subtotalStr, setSubtotalStr] = useState("");
     const [ivaPctStr, setIvaPctStr] = useState("16");
@@ -86,9 +91,11 @@ export default function NuevaFacturaQuickPage() {
     const subtotal = parseFloat(subtotalStr) || 0;
     const ivaPct   = parseFloat(ivaPctStr) || 0;
     const retIvaPct = Math.min(100, Math.max(0, parseFloat(retencionIvaPctStr) || 0));
-    const ivaMonto = Math.round(subtotal * ivaPct) / 100;
-    const retIvaMonto = Math.round(ivaMonto * retIvaPct) / 100;
-    const total = subtotal + ivaMonto - retIvaMonto;
+    const flatTotals = computeFlatInvoiceTotals(subtotal, ivaPct, retIvaPct);
+    const ivaMonto = flatTotals.ivaMonto;
+    const retIvaMonto = flatTotals.retencionIva;
+    const total = flatTotals.total;
+    const documentSign = documentType === "nota_credito" ? -1 : 1;
 
     const supplierName = useMemo(
         () => suppliers.find((s) => s.id === supplierId)?.name ?? "",
@@ -100,6 +107,7 @@ export default function NuevaFacturaQuickPage() {
         if (!supplierId) { notify.error("Selecciona un proveedor"); return false; }
         if (!invoiceNumber.trim()) { notify.error("Ingresa el número de factura"); return false; }
         if (!date) { notify.error("Ingresa la fecha"); return false; }
+        if (documentType !== "factura" && !affectedInvoiceNumber.trim()) { notify.error("Indica la factura afectada"); return false; }
         if (subtotal <= 0) { notify.error("El subtotal debe ser mayor a 0"); return false; }
         return true;
     }
@@ -111,15 +119,20 @@ export default function NuevaFacturaQuickPage() {
         const invoice: PurchaseInvoice = {
             companyId: companyId!,
             supplierId,
+            documentType,
             invoiceNumber: invoiceNumber.trim(),
             controlNumber: controlNumber.trim(),
+            affectedInvoiceNumber: documentType === "factura" ? null : affectedInvoiceNumber.trim(),
+            affectedControlNumber: documentType === "factura" ? null : affectedControlNumber.trim(),
+            noteReason: documentType === "factura" ? null : noteReason.trim(),
+            inventoryEffect: documentType === "factura" ? "additional_purchase" : "none",
             date,
             period: date.slice(0, 7),
             status: "borrador",
-            subtotal,
+            subtotal: subtotal * documentSign,
             vatPercentage: ivaPct,
-            vatAmount: ivaMonto,
-            total,
+            vatAmount: ivaMonto * documentSign,
+            total: total * documentSign,
             notes: notes.trim(),
             retencionIvaPct: retIvaPct,
             retencionIvaMonto: retIvaMonto,
@@ -251,6 +264,12 @@ export default function NuevaFacturaQuickPage() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
+                            <label className={labelCls}>Tipo de documento</label>
+                            <select className={`${fieldCls} mb-4`} value={documentType} onChange={(e) => setDocumentType(e.target.value as PurchaseDocumentType)}>
+                                <option value="factura">Factura de compra</option>
+                                <option value="nota_credito">Nota de crédito</option>
+                                <option value="nota_debito">Nota de débito</option>
+                            </select>
                             <label className={labelCls}>Proveedor</label>
                             <div className="flex gap-2">
                                 <SupplierCombobox
@@ -293,6 +312,13 @@ export default function NuevaFacturaQuickPage() {
                             onValueChange={setControlNumber}
                             placeholder="(opcional)"
                         />
+                        {documentType !== "factura" && (
+                            <>
+                                <BaseInput.Field label="Nº factura afectada" isRequired value={affectedInvoiceNumber} onValueChange={setAffectedInvoiceNumber} />
+                                <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} placeholder="(opcional)" />
+                                <BaseInput.Field label="Motivo de la nota" value={noteReason} onValueChange={setNoteReason} placeholder="(opcional)" />
+                            </>
+                        )}
                         <BaseInput.Field
                             label="Fecha"
                             type="date"

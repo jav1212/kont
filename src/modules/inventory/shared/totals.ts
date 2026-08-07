@@ -18,6 +18,7 @@
 
 export type AdjustmentKind = 'monto' | 'porcentaje';
 export type AdjustmentCurrency = 'B' | 'D';
+export type InvoiceCurrency = 'B' | 'D';
 
 export type TaxBase = 'pre_iva' | 'post_iva';
 
@@ -84,6 +85,14 @@ export const roundN = (n: number, decimals: number) => {
     if (!isFinite(n)) return n;
     const factor = Math.pow(10, decimals);
     return Math.round(n * factor) / factor;
+};
+
+// Fiscal amounts in the purchase book are truncated at the final 2-decimal step.
+// Intermediate calculations keep the configured precision (normally 4 decimals).
+export const truncateN = (n: number, decimals: number) => {
+    if (!isFinite(n)) return n;
+    const factor = Math.pow(10, decimals);
+    return Math.trunc(n * factor) / factor;
 };
 
 function resolveAmount(
@@ -161,8 +170,8 @@ export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0
     );
 
     const baseIVA  = r(base - descuentoMonto + recargoMonto);
-    const ivaMonto = r((baseIVA * vatRatePct(input.vatRate)) / 100);
-    const total    = r(baseIVA + ivaMonto);
+    const ivaMonto = r((roundN(baseIVA, 2) * vatRatePct(input.vatRate)) / 100);
+    const total    = r(roundN(baseIVA, 2) + ivaMonto);
 
     return { base, descuentoMonto, recargoMonto, baseIVA, ivaMonto, total };
 }
@@ -198,7 +207,23 @@ export interface InvoiceTotals {
     retencionIvaPct: number;  // 0 | 75 | 100
     retencionIva:    number;  // ivaMonto × pct/100 (post-IVA, no afecta base ni IVA débito)
     totalAPagar:     number;  // total − retencionIva (lo que efectivamente se gira al proveedor)
+    currency: InvoiceCurrency;
+    subtotalDivisa: number;
+    descuentoLineaDivisa: number;
+    recargoLineaDivisa: number;
+    descuentoHeaderDivisa: number;
+    recargoHeaderDivisa: number;
+    baseIVADivisa: number;
+    ivaPorAlicuotaDivisa: { exenta: number; reducida_8: number; general_16: number };
+    ivaDivisa: number;
+    impuestosDivisa: InvoiceTax[];
+    totalImpuestosDivisa: number;
+    retencionIvaDivisa: number;
+    totalDivisa: number;
+    totalAPagarDivisa: number;
 }
+
+const scaleCurrency = (value: number, rate: number) => roundN(value * rate, 4);
 
 export function computeInvoiceTotals(
     lines: Array<LineInput>,
@@ -207,7 +232,88 @@ export function computeInvoiceTotals(
     retencionIvaPct = 0,
     impuestos: InvoiceTax[] = [],
     dollarRate = 0,
+    invoiceCurrency: InvoiceCurrency = 'B',
 ): InvoiceTotals {
+    // For USD invoices, calculate every component in USD first. The complete
+    // result is converted once at the end, using the BCV rate with 4 decimals.
+    if (invoiceCurrency === 'D') {
+        const rate = Number.isFinite(dollarRate) ? roundN(dollarRate, 4) : 0;
+        const sourceLines = lines.map((line) => ({
+            ...line,
+            currency: 'D' as const,
+            unitCost: Number.isFinite(line.currencyCost ?? NaN)
+                ? Number(line.currencyCost)
+                : (rate > 0 ? line.unitCost / rate : 0),
+            currencyCost: Number.isFinite(line.currencyCost ?? NaN)
+                ? Number(line.currencyCost)
+                : (rate > 0 ? line.unitCost / rate : 0),
+            adjustments: {
+                ...line.adjustments,
+                descuentoMoneda: 'D' as const,
+                recargoMoneda: 'D' as const,
+            },
+        }));
+        const sourceHeader: HeaderAdjustments = {
+            ...header,
+            descuentoMoneda: 'D',
+            recargoMoneda: 'D',
+        };
+        const sourceTaxes = impuestos.map((tax) => ({ ...tax, moneda: 'D' as const }));
+        const sourceDecimals = Math.max(decimals, 8);
+        const source = computeInvoiceTotals(sourceLines, sourceHeader, sourceDecimals, retencionIvaPct, sourceTaxes, 1, 'B');
+        const bs = (value: number) => scaleCurrency(value, rate);
+        const bsFiscal = (value: number) => roundN(value * rate, 2);
+        const items = source.items.map((item) => ({
+            ...item,
+            base: bs(item.base),
+            descuentoMonto: bs(item.descuentoMonto),
+            recargoMonto: bs(item.recargoMonto),
+            baseIVA: bs(item.baseIVA),
+            ivaMonto: bs(item.ivaMonto),
+            total: bs(item.total),
+            headerDescuentoShare: bs(item.headerDescuentoShare),
+            headerRecargoShare: bs(item.headerRecargoShare),
+            baseIVAFinal: bs(item.baseIVAFinal),
+            ivaMontoFinal: bs(item.ivaMontoFinal),
+            totalFinal: bs(item.totalFinal),
+        }));
+        const ivaPorAlicuota = {
+            exenta: bs(source.ivaPorAlicuota.exenta),
+            reducida_8: bs(source.ivaPorAlicuota.reducida_8),
+            general_16: bs(source.ivaPorAlicuota.general_16),
+        };
+        return {
+            ...source,
+            items,
+            currency: 'D',
+            subtotalBruto: bsFiscal(source.subtotalBruto),
+            descuentoLinea: bsFiscal(source.descuentoLinea),
+            recargoLinea: bsFiscal(source.recargoLinea),
+            descuentoHeader: bsFiscal(source.descuentoHeader),
+            recargoHeader: bsFiscal(source.recargoHeader),
+            baseIVA: bsFiscal(source.baseIVA),
+            ivaPorAlicuota,
+            ivaMonto: bsFiscal(source.ivaMonto),
+            impuestos: source.impuestos.map((tax) => ({ ...tax, monto: bsFiscal(tax.monto) })),
+            totalImpuestos: bsFiscal(source.totalImpuestos),
+            retencionIva: bsFiscal(source.retencionIva),
+            total: bsFiscal(source.total),
+            totalAPagar: bsFiscal(source.totalAPagar),
+            subtotalDivisa: source.subtotalBruto,
+            descuentoLineaDivisa: source.descuentoLinea,
+            recargoLineaDivisa: source.recargoLinea,
+            descuentoHeaderDivisa: source.descuentoHeader,
+            recargoHeaderDivisa: source.recargoHeader,
+            baseIVADivisa: source.baseIVA,
+            ivaPorAlicuotaDivisa: source.ivaPorAlicuota,
+            ivaDivisa: source.ivaMonto,
+            impuestosDivisa: source.impuestos,
+            totalImpuestosDivisa: source.totalImpuestos,
+            retencionIvaDivisa: source.retencionIva,
+            totalDivisa: source.total,
+            totalAPagarDivisa: source.totalAPagar,
+        };
+    }
     const calculationDecimals = Math.max(4, decimals);
     const r = (n: number) => roundN(n, calculationDecimals);
 
@@ -246,9 +352,15 @@ export function computeInvoiceTotals(
 
     // Step 3: prorratear header sobre cada línea por peso de baseIVA
     const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => line.currency === "D") && dollarRate > 0;
-    const ivaFromBase = (baseBs: number, pct: number) => allUsd
-        ? r((baseBs / dollarRate) * pct / 100 * dollarRate)
-        : r(baseBs * pct / 100);
+    const ivaFromBase = (baseBs: number, pct: number) => {
+        if (allUsd) {
+            // For USD invoices, apply IVA to the fiscal USD base first, then convert it to bol�vares.
+            const fiscalUsdBase = roundN(baseBs / dollarRate, 2);
+            return r((fiscalUsdBase * pct / 100) * dollarRate);
+        }
+        const fiscalBase = roundN(baseBs, 2);
+        return r(fiscalBase * pct / 100);
+    };
 
     const items: InvoiceLineComputed[] = computed.map((c, idx) => {
         const weight = sumBaseIVA > 0 ? c.baseIVA / sumBaseIVA : 0;
@@ -272,7 +384,7 @@ export function computeInvoiceTotals(
 
         const baseIVAFinal  = r(c.baseIVA - headerDescuentoShare + headerRecargoShare);
         const ivaMontoFinal = ivaFromBase(baseIVAFinal, vatRatePct(normalizedLines[idx].vatRate));
-        const totalFinal    = r(baseIVAFinal + ivaMontoFinal);
+        const totalFinal    = r(roundN(baseIVAFinal, 2) + ivaMontoFinal);
 
         return {
             ...c,
@@ -288,22 +400,38 @@ export function computeInvoiceTotals(
     const descuentoLinea = r(computed.reduce((a, c) => a + c.descuentoMonto, 0));
     const recargoLinea   = r(computed.reduce((a, c) => a + c.recargoMonto, 0));
 
-    const baseIVA  = r(items.reduce((a, c) => a + c.baseIVAFinal, 0));
-    const ivaMonto = r(items.reduce((a, c) => a + c.ivaMontoFinal, 0));
+    const baseIVARaw = r(items.reduce((a, c) => a + c.baseIVAFinal, 0));
 
-    const ivaPorAlicuota = { exenta: 0, reducida_8: 0, general_16: 0 };
+    // Keep 4-decimal intermediates and truncate only the fiscal outputs.
+    const baseIVA = roundN(baseIVARaw, 2);
+    let ivaMonto = 0;
+
+    // Apply IVA once per aliquot to the accumulated fiscal base. Summing IVA
+    // per line can lose a cent on multi-line invoices.
+    const baseByRate = { exenta: 0, reducida_8: 0, general_16: 0 };
     items.forEach((c, idx) => {
-        ivaPorAlicuota[normalizedLines[idx].vatRate] = r(ivaPorAlicuota[normalizedLines[idx].vatRate] + c.ivaMontoFinal);
+        const rate = normalizedLines[idx].vatRate;
+        baseByRate[rate] += c.baseIVAFinal;
     });
-
-    const total        = r(baseIVA + ivaMonto);
+    const ivaByRateRaw = (Object.keys(baseByRate) as VatRate[]).reduce(
+        (sum, rate) => sum + ivaFromBase(baseByRate[rate], vatRatePct(rate)),
+        0,
+    );
+    const ivaMontoRawFiscal = r(ivaByRateRaw);
+    const ivaPorAlicuotaFiscal = {
+        exenta: 0,
+        reducida_8: roundN(ivaFromBase(baseByRate.reducida_8, 8), 2),
+        general_16: roundN(ivaFromBase(baseByRate.general_16, 16), 2),
+    };
+    ivaMonto = roundN(ivaMontoRawFiscal, decimals);
+    const total = roundN(baseIVA + ivaMonto, decimals);
 
     const resolvedImpuestos: InvoiceTax[] = impuestos.map((tax) => {
         let monto = 0;
         if (tax.tipo === 'monto') {
             monto = r(Math.max(0, tax.valor) * (tax.moneda === 'D' ? (dollarRate > 0 ? dollarRate : 0) : 1));
         } else if (tax.tipo === 'porcentaje' && tax.valor > 0) {
-            const taxBase = tax.base === 'post_iva' ? total : baseIVA;
+            const taxBase = tax.base === 'post_iva' ? (baseIVA + ivaMonto) : baseIVA;
             monto = r(taxBase * tax.valor / 100);
         }
         return { ...tax, monto };
@@ -322,7 +450,7 @@ export function computeInvoiceTotals(
         descuentoHeader,
         recargoHeader,
         baseIVA,
-        ivaPorAlicuota,
+        ivaPorAlicuota: ivaPorAlicuotaFiscal,
         ivaMonto,
         total,
         impuestos: resolvedImpuestos,
@@ -330,5 +458,38 @@ export function computeInvoiceTotals(
         retencionIvaPct: safePct,
         retencionIva,
         totalAPagar,
+        currency: 'B',
+        subtotalDivisa: subtotalBruto,
+        descuentoLineaDivisa: descuentoLinea,
+        recargoLineaDivisa: recargoLinea,
+        descuentoHeaderDivisa: descuentoHeader,
+        recargoHeaderDivisa: recargoHeader,
+        baseIVADivisa: baseIVA,
+        ivaPorAlicuotaDivisa: ivaPorAlicuotaFiscal,
+        ivaDivisa: ivaMonto,
+        impuestosDivisa: resolvedImpuestos,
+        totalImpuestosDivisa: totalImpuestos,
+        retencionIvaDivisa: retencionIva,
+        totalDivisa: total,
+        totalAPagarDivisa: totalAPagar,
+    };
+}
+export interface FlatInvoiceTotals {
+    subtotal: number;
+    ivaMonto: number;
+    retencionIva: number;
+    total: number;
+}
+
+/** Shared calculator for invoices entered as a declared subtotal. */
+export function computeFlatInvoiceTotals(subtotal: number, vatPercentage: number, retencionPercentage = 0): FlatInvoiceTotals {
+    const base = roundN(Math.max(0, subtotal), 4);
+    const ivaMonto = roundN(base * Math.max(0, vatPercentage) / 100, 2);
+    const retencionIva = roundN(ivaMonto * Math.max(0, Math.min(100, retencionPercentage)) / 100, 2);
+    return {
+        subtotal: roundN(base, 2),
+        ivaMonto,
+        retencionIva,
+        total: roundN(base + ivaMonto - retencionIva, 2),
     };
 }

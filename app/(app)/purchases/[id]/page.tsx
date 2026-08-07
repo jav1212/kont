@@ -16,7 +16,7 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
-import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import type { PurchaseInvoice, PurchaseInvoiceItem, PurchaseDocumentType } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { Inbox } from "lucide-react";
 import { generateComprobanteIvaPdf } from "@/src/modules/purchases/frontend/utils/comprobante-iva-pdf";
@@ -90,12 +90,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     } = useInventory();
     const {
         suppliers, loadSuppliers,
-        currentPurchaseInvoice, loadingPurchaseInvoice, loadPurchaseInvoice,
+        currentPurchaseInvoice, purchaseInvoices, loadingPurchaseInvoice, loadPurchaseInvoice, loadPurchaseInvoices,
         savePurchaseInvoice, confirmPurchaseInvoice, unconfirmPurchaseInvoice,
     } = usePurchases();
 
     // Editable form state (only used when draft)
     const [supplierId, setSupplierId] = useState("");
+    const [documentType, setDocumentType] = useState<PurchaseDocumentType>("factura");
+    const [affectedInvoiceNumber, setAffectedInvoiceNumber] = useState("");
+    const [affectedControlNumber, setAffectedControlNumber] = useState("");
+    const [noteReason, setNoteReason] = useState("");
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate] = useState("");
@@ -111,6 +115,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
     const {
         rate: dollarRateStr,
+        rawRate,
         decimals: rateDecimals,
         setRateFromApi,
         setRateTyped,
@@ -138,8 +143,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         if (companyId) {
             loadProducts(companyId);
             loadSuppliers(companyId);
+            loadPurchaseInvoices(companyId);
         }
-    }, [companyId, loadProducts, loadSuppliers]);
+    }, [companyId, loadProducts, loadSuppliers, loadPurchaseInvoices]);
 
     useEffect(() => {
         if (id) loadPurchaseInvoice(id);
@@ -151,7 +157,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     // freeze the rate until the user desconfirma; refetching there would be a
     // surprise side-effect.
     useEffect(() => {
-        if (!isDraft || !date) return;
+        // Existing invoices keep their stored BCV rate while editing.
+        // Refetching here would silently replace it with a more precise
+        // current API value and change historical fiscal totals.
+        if (!isDraft || !date || currentPurchaseInvoice?.id === id) return;
         let cancelled = false;
         setRateLoading(true);
         setRateError(null);
@@ -172,7 +181,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         return () => { cancelled = true; };
     // Auto-fetch on date change only; rateDecimals shouldn't retrigger the call.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, isDraft]);
+    }, [date, isDraft, currentPurchaseInvoice?.id, id]);
 
     // Populate form when invoice loads — render-phase state update to avoid
     // setState-in-effect cascading renders. React batches all these setters
@@ -181,6 +190,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     if (currentPurchaseInvoice?.id === id && formSourceId !== id) {
         setFormSourceId(id ?? null);
         setSupplierId(currentPurchaseInvoice.supplierId);
+        setDocumentType(currentPurchaseInvoice.documentType ?? "factura");
+        setAffectedInvoiceNumber(currentPurchaseInvoice.affectedInvoiceNumber ?? "");
+        setAffectedControlNumber(currentPurchaseInvoice.affectedControlNumber ?? "");
+        setNoteReason(currentPurchaseInvoice.noteReason ?? "");
         setInvoiceNumber(currentPurchaseInvoice.invoiceNumber);
         setControlNumber(currentPurchaseInvoice.controlNumber ?? '');
         setDate(fmtDate(currentPurchaseInvoice.date));
@@ -191,7 +204,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 : [emptyItem()]
         );
         setPeriodo(currentPurchaseInvoice.period ?? "");
-        setPeriodoManual(currentPurchaseInvoice.periodoManual ?? false);
+        setPeriodoManual(Boolean(currentPurchaseInvoice.periodoManual || (currentPurchaseInvoice.period && currentPurchaseInvoice.date && currentPurchaseInvoice.period !== currentPurchaseInvoice.date.slice(0, 7))));
         setHeaderAdj({
             descuentoTipo:  (currentPurchaseInvoice.descuentoTipo ?? null) as AdjustmentKind | null,
             descuentoValor: currentPurchaseInvoice.descuentoValor ?? 0,
@@ -235,13 +248,21 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     }
 
     const effectiveDollarRate = (() => {
-        const r = parseRateStr(dollarRateStr);
-        return isFinite(r) ? roundRateValue(r, rateDecimals) : null;
+        const parsedRate = parseRateStr(dollarRateStr);
+        const sourceRate = rawRate != null ? rawRate : parsedRate;
+        return isFinite(sourceRate) ? roundRateValue(sourceRate, 4) : null;
     })();
     // Derived totals — uses shared math
+    const invoiceCurrency = currentPurchaseInvoice?.currency === 'D'
+        ? 'D'
+        : (items.length > 0 && items.every((item) => item.currency === 'D') ? 'D' : 'B');
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
-        unitCost: i.unitCost ?? 0,
+        unitCost: i.currency === "D" && i.currencyCost != null && effectiveDollarRate != null
+            ? i.currencyCost * effectiveDollarRate
+            : (i.unitCost ?? 0),
+        currency: i.currency ?? "B",
+        currencyCost: i.currencyCost ?? null,
         vatRate:  i.vatRate ?? "general_16",
         adjustments: {
             descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
@@ -258,7 +279,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0, invoiceCurrency);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -279,16 +300,22 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         id,
         companyId:      currentPurchaseInvoice?.companyId ?? companyId!,
         supplierId,
+        documentType,
+        affectedInvoiceNumber: documentType === "factura" ? null : affectedInvoiceNumber || null,
+        affectedControlNumber: documentType === "factura" ? null : affectedControlNumber || null,
+        noteReason: documentType === "factura" ? null : noteReason || null,
+        inventoryEffect: documentType === "factura" ? "additional_purchase" : "none",
         invoiceNumber,
         controlNumber,
         date,
         period:         periodoManual && periodo ? periodo : date.slice(0, 7),
         periodoManual,
+        currency: invoiceCurrency,
         status:         "borrador",
-        subtotal,
+        subtotal: subtotal * (documentType === "nota_credito" ? -1 : 1),
         vatPercentage:  0,
-        vatAmount,
-        total,
+        vatAmount: vatAmount * (documentType === "nota_credito" ? -1 : 1),
+        total: total * (documentType === "nota_credito" ? -1 : 1),
         notes,
         dollarRate:     effectiveDollarRate,
         rateDecimals,
@@ -314,7 +341,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         igtfBaseBs:     igtf.baseBs,
         igtfMonto:      igtf.monto,
         impuestos:      totals.impuestos,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
+    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -560,11 +587,20 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const invoice = currentPurchaseInvoice!;
     const displayStatus = justConfirmed ? "confirmada" : invoice.status;
     const isConfirmed = displayStatus === "confirmada";
+    const affectedInvoiceCandidates = purchaseInvoices.filter((candidate) => candidate.id !== id && candidate.status === "confirmada" && candidate.documentType === "factura" && candidate.supplierId === supplierId);
+    const handleAffectedInvoiceNumberChange = (value: string) => {
+        setAffectedInvoiceNumber(value);
+        const candidate = affectedInvoiceCandidates.find((invoice) => invoice.invoiceNumber === value);
+        if (candidate) setAffectedControlNumber(candidate.controlNumber ?? "");
+    };
+    const activeDocumentType = isDraft ? documentType : (invoice.documentType ?? "factura");
+    const documentTypeLabel = activeDocumentType === "nota_credito" ? "Nota de crédito" : activeDocumentType === "nota_debito" ? "Nota de débito" : "Factura";
+    const documentNumberLabel = activeDocumentType === "nota_credito" ? "Nº Nota de crédito" : activeDocumentType === "nota_debito" ? "Nº Nota de débito" : "Nº Factura";
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader
-                title="Factura de Compra"
+                title={`${documentTypeLabel} de Compra`}
                 subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
             >
                 {isConfirmed ? (
@@ -614,7 +650,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 subtitle="Al confirmar, las existencias y el costo promedio se actualizan inmediatamente y la factura entra en el período contable seleccionado."
                 summary={
                     <>
-                        <SummaryRow label="Nº Factura" value={invoiceNumber || "—"} />
+                        <SummaryRow label={documentNumberLabel} value={invoiceNumber || "—"} />
                         {controlNumber && <SummaryRow label="Nº Control" value={controlNumber} />}
                         <SummaryRow label="Proveedor" value={suppliers.find((s) => s.id === supplierId)?.name ?? "—"} />
                         <SummaryRow label="Período" value={(periodoManual && periodo) || date.slice(0, 7) || "—"} />
@@ -784,8 +820,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                         {/* Invoice data */}
                         <div className="rounded-xl border border-border-light bg-surface-1 p-6">
                             <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
-                                Datos de la factura
+                                Datos de la {documentTypeLabel.toLowerCase()}
                             </h2>
+
+                            {isDraft && (
+                                <div className="mb-4">
+                                    <label className={labelCls}>Tipo de documento</label>
+                                    <select className={fieldCls} value={documentType} onChange={(e) => setDocumentType(e.target.value as PurchaseDocumentType)}>
+                                        <option value="factura">Factura</option>
+                                        <option value="nota_credito">Nota de crédito</option>
+                                        <option value="nota_debito">Nota de débito</option>
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
@@ -805,10 +852,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </div>
                                 <div>
                                     {isDraft ? (
-                                        <BaseInput.Field label="Nº Factura" value={invoiceNumber} onValueChange={setInvoiceNumber} />
+                                        <BaseInput.Field label={documentNumberLabel} value={invoiceNumber} onValueChange={setInvoiceNumber} />
                                     ) : (
                                         <>
-                                            <label className={labelCls}>Nº Factura</label>
+                                            <label className={labelCls}>{documentNumberLabel}</label>
                                             <div className={readonlyCls + " flex items-center"}>
                                                 {invoice.invoiceNumber || "—"}
                                             </div>
@@ -859,6 +906,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             loading={rateLoading}
                                             bcvDate={rateDateBcv}
                                             error={rateError}
+                                            showDecimals={false}
+                                            
                                         />
                                     ) : (
                                         <>
@@ -875,6 +924,24 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     )}
                                 </div>
                             </div>
+
+                            {activeDocumentType !== "factura" && (
+                                <div className="rounded-lg border border-border-light bg-surface-2 p-4 mb-4">
+                                    <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-3">Documento afectado</h3>
+                                    <div className="grid grid-cols-3 gap-4 text-[12px]">
+                                        <div>{isDraft ? <><select className={fieldCls} value={affectedInvoiceNumber} onChange={(e) => handleAffectedInvoiceNumberChange(e.target.value)}>
+                                                <option value="">Seleccionar factura existente...</option>
+                                                {affectedInvoiceCandidates.map((candidate) => <option key={candidate.id} value={candidate.invoiceNumber}>{candidate.invoiceNumber}{candidate.controlNumber ? ` · Control ${candidate.controlNumber}` : ""}</option>)}
+                                            </select>
+                                            <BaseInput.Field label="Nº Factura afectada" value={affectedInvoiceNumber} onValueChange={handleAffectedInvoiceNumberChange} list="detail-affected-invoice-options" helperText="Busca una factura confirmada del proveedor" />
+                                            <datalist id="detail-affected-invoice-options">
+                                                {affectedInvoiceCandidates.map((candidate) => <option key={candidate.id} value={candidate.invoiceNumber}>{candidate.controlNumber ? `Control ${candidate.controlNumber}` : ""}</option>)}
+                                            </datalist></> : <><span className={labelCls}>Nº Factura afectada</span><span className="text-foreground tabular-nums">{invoice.affectedInvoiceNumber || "—"}</span></>}</div>
+                                        <div>{isDraft ? <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} /> : <><span className={labelCls}>Control afectado</span><span className="text-foreground tabular-nums">{invoice.affectedControlNumber || "—"}</span></>}</div>
+                                        <div>{isDraft ? <BaseInput.Field label="Motivo" value={noteReason} onValueChange={setNoteReason} /> : <><span className={labelCls}>Motivo</span><span className="text-foreground">{invoice.noteReason || "—"}</span></>}</div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="mb-4">
                                 <label className={labelCls}>Notas</label>
@@ -987,7 +1054,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 };
                                 const dInputs: LineInput[] = displayItems.map((i) => ({
                                     quantity: i.quantity ?? 0,
-                                    unitCost: i.unitCost ?? 0,
+                                    unitCost: i.currency === "D" && i.currencyCost != null && effectiveDollarRate != null
+            ? i.currencyCost * effectiveDollarRate
+            : (i.unitCost ?? 0),
                                     currency: i.currency ?? "B",
                                     currencyCost: i.currencyCost ?? null,
                                     vatRate:  i.vatRate ?? "general_16",
@@ -1002,7 +1071,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 }));
                                 const dRetencionPct = isDraft ? retencionIvaPct : (invoice.retencionIvaPct ?? 0);
                                 const dImpuestos = isDraft ? impuestos : (invoice.impuestos ?? []);
-                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos, isDraft ? (effectiveDollarRate ?? 0) : (invoice.dollarRate ?? 0));
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos, isDraft ? (effectiveDollarRate ?? 0) : (invoice.dollarRate ?? 0), invoiceCurrency);
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);
@@ -1348,11 +1417,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
                                 {(() => {
                                     const summaryRate = (isDraft ? effectiveDollarRate : invoice.dollarRate) ?? effectiveDollarRate;
-                                    const summarySubtotal = isDraft ? subtotal : invoice.subtotal;
-                                    const summaryVatAmount = isDraft ? vatAmount : invoice.vatAmount;
-                                    const summaryTotal = isDraft ? heroTotal : invoice.total;
-                                    const usd = (n: number) =>
-                                        summaryRate && summaryRate > 0 ? `$ ${fmtN(n / summaryRate)}` : null;
+                                    // The summary reflects persisted invoice amounts. This prevents a second
+                                    // local recalculation from changing a loaded USD invoice while its rate hydrates.
+                                    const summarySubtotal = invoice.subtotal;
+                                    const summaryVatAmount = invoice.vatAmount;
+                                    const summaryTotal = invoice.total;
+                                    const sourceSubtotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summarySubtotal / summaryRate : null;
+                                    const sourceVatAmount = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryVatAmount / summaryRate : null;
+                                    const sourceTotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryTotal / summaryRate : null;
+                                    const usd = (n: number, source?: number | null) =>
+                                        source != null ? `$ ${fmtN(source)}` : (summaryRate && summaryRate > 0 ? `$ ${fmtN(n / summaryRate)}` : null);
                                     // Skip "Base IVA" + "IVA" rows when there's no IVA — they
                                     // would just echo the Total. Show only the Total in that case.
                                     const summaryHasIva = summaryVatAmount > 0;
@@ -1382,8 +1456,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Base IVA</span>
                                                         <div className="text-right">
                                                             <div className="tabular-nums text-[var(--text-primary)]">Bs. {fmtN(summarySubtotal)}</div>
-                                                            {usd(summarySubtotal) && (
-                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summarySubtotal)}</div>
+                                                            {usd(summarySubtotal, sourceSubtotal) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summarySubtotal, sourceSubtotal)}</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1391,8 +1465,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                         <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">IVA</span>
                                                         <div className="text-right">
                                                             <div className="tabular-nums text-[var(--text-secondary)]">Bs. {fmtN(summaryVatAmount)}</div>
-                                                            {usd(summaryVatAmount) && (
-                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summaryVatAmount)}</div>
+                                                            {usd(summaryVatAmount, sourceVatAmount) && (
+                                                                <div className="tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ {usd(summaryVatAmount, sourceVatAmount)}</div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1478,8 +1552,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                                 <span className="text-foreground uppercase tracking-[0.12em] text-[11px]">Total</span>
                                                 <div className="text-right">
                                                     <div className="tabular-nums text-foreground text-[14px]">Bs. {fmtN(summaryTotal)}</div>
-                                                    {usd(summaryTotal) && (
-                                                        <div className="tabular-nums text-[11px] font-semibold text-[var(--text-secondary)]">≈ {usd(summaryTotal)}</div>
+                                                    {usd(summaryTotal, sourceTotal) && (
+                                                        <div className="tabular-nums text-[11px] font-semibold text-[var(--text-secondary)]">≈ {usd(summaryTotal, sourceTotal)}</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -1502,3 +1576,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         </div>
     );
 }
+
+
+

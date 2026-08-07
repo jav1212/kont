@@ -17,6 +17,7 @@ import {
     type IgtfPerceptionFormValue,
 } from "./igtf-perception-section";
 import type { VatRate, PaymentTerms, IgtfConcept } from "../../backend/domain/sales-invoice";
+import { computeInvoiceTotals, emptyHeaderAdjustments, type LineInput } from "@/src/modules/inventory/shared/totals";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { generateSalesInvoicePdf } from "../utils/sales-invoice-pdf";
 
@@ -151,33 +152,51 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     function addItem() { setItems((prev) => [...prev, emptyItem()]); }
     function removeItem(idx: number) { setItems((prev) => prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)); }
 
-    // Totals
+    // Totals are calculated by the shared invoice engine.
+    const salesCurrency = items.length > 0 && items.every((item) => item.currency === "D") ? "D" : "B";
+    const salesLineInputs: LineInput[] = items.map((item) => ({
+        quantity: item.quantity ?? 0,
+        unitCost: item.unitPrice ?? 0,
+        currency: item.currency ?? "B",
+        currencyCost: item.currencyPrice ?? null,
+        vatRate: item.vatRate,
+        adjustments: {
+            descuentoTipo: item.descuentoTipo ?? null,
+            descuentoValor: item.descuentoValor ?? 0,
+            descuentoMoneda: "B",
+            recargoTipo: item.recargoTipo ?? null,
+            recargoValor: item.recargoValor ?? 0,
+            recargoMoneda: "B",
+        },
+    }));
+
     const totals = useMemo(() => {
-        let baseExempt = 0, baseTaxed8 = 0, baseTaxed16 = 0;
-        let iva8 = 0, iva16 = 0;
-        for (const it of items) {
-            const base = it.totalLine ?? 0;
-            const pct  = vatRatePct(it.vatRate);
-            if (it.vatRate === "exenta")     baseExempt  += base;
-            if (it.vatRate === "reducida_8") { baseTaxed8  += base; iva8  += base * 0.08; }
-            if (it.vatRate === "general_16") { baseTaxed16 += base; iva16 += base * 0.16; }
-        }
-        const subtotal = round2(baseExempt + baseTaxed8 + baseTaxed16);
-        const ivaTotal = round2(iva8 + iva16);
+        const calculated = computeInvoiceTotals(
+            salesLineInputs,
+            emptyHeaderAdjustments(),
+            2,
+            0,
+            [],
+            items.find((item) => item.dollarRate && item.dollarRate > 0)?.dollarRate ?? 0,
+            salesCurrency,
+        );
+        const baseByRate = { exenta: 0, reducida_8: 0, general_16: 0 };
+        calculated.items.forEach((line, index) => {
+            baseByRate[salesLineInputs[index].vatRate] += line.baseIVAFinal;
+        });
         const igtfMonto = igtf.applies ? round2(igtf.amount) : 0;
-        const total    = round2(subtotal + ivaTotal + igtfMonto);
         return {
-            baseExempt:  round2(baseExempt),
-            baseTaxed8:  round2(baseTaxed8),
-            baseTaxed16: round2(baseTaxed16),
-            iva8:        round2(iva8),
-            iva16:       round2(iva16),
-            ivaTotal,
-            subtotal,
+            baseExempt: baseByRate.exenta,
+            baseTaxed8: baseByRate.reducida_8,
+            baseTaxed16: baseByRate.general_16,
+            iva8: calculated.ivaPorAlicuota.reducida_8,
+            iva16: calculated.ivaPorAlicuota.general_16,
+            ivaTotal: calculated.ivaMonto,
+            subtotal: calculated.baseIVA,
             igtfMonto,
-            total,
+            total: round2(calculated.total + igtfMonto),
         };
-    }, [items, igtf]);
+    }, [salesLineInputs, salesCurrency, items, igtf]);
 
     const customerObj = customers.find((c) => c.id === customerId);
 

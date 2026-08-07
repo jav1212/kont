@@ -27,17 +27,18 @@ import type { Movement } from "@/src/modules/inventory/backend/domain/movement";
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import type { MovementDraftRow, MovementDraftSaveInput } from "@/src/modules/inventory/backend/domain/movement-draft";
 import {
-    computeLineTotals,
+    computeInvoiceTotals,
+    emptyHeaderAdjustments,
     emptyLineAdjustments,
     type LineAdjustments,
     type VatRate as VatRateStr,
+    netFromGross,
 } from "@/src/modules/inventory/shared/totals";
 import { LineAdjustmentsPanel } from "@/src/modules/inventory/frontend/components/line-adjustments-panel";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 const todayStr = () => getTodayIsoDate();
-const round2 = (n: number) => Math.round(n * 100) / 100;
 const fmtN = (n: number) => n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Subtle uppercase chip used as in-card group label. Reads as chrome — never
@@ -86,47 +87,45 @@ function hasAdjustments(adj: LineAdjustments): boolean {
 }
 
 function computeCosts(item: ManualItem, dollarRate: number | null, ivaMode: IvaMode) {
-    const enteredPriceBs = item.currency === "D"
-        ? (dollarRate ? round2(item.currencyCost * dollarRate) : 0)
+    const vatRate = vatRateToString(item.vatRate);
+    const baseSource = item.vatRate > 0 && ivaMode === "incluido"
+        ? netFromGross(item.currencyCost, vatRate)
         : item.currencyCost;
-
-    // 1. Convert gross→net if "incluido"
-    const baseUnitBs = (item.vatRate > 0 && ivaMode === "incluido")
-        ? round2(enteredPriceBs / (1 + item.vatRate))
-        : enteredPriceBs;
-
-    // 2. Apply line adjustments via shared math
-    const t = computeLineTotals({
-        quantity:    item.quantity,
-        unitCost:    baseUnitBs,
-        vatRate:     vatRateToString(item.vatRate),
-        adjustments: item.adjustments,
-    });
-
-    // 3. Stored cost on the movement reflects the adjusted unit cost
-    const adjustedUnitCost = item.quantity > 0 ? round2(t.baseIVA / item.quantity) : baseUnitBs;
-    const adjustedTotalCost = t.baseIVA;
-
-    const baseCurrencyCost = item.currency === "D"
-        ? (ivaMode === "incluido" && item.vatRate > 0
-            ? round2(item.currencyCost / (1 + item.vatRate))
-            : item.currencyCost)
-        : null;
-
+    const unitCostBs = item.currency === "D"
+        ? (dollarRate ? baseSource * dollarRate : 0)
+        : baseSource;
+    const totals = computeInvoiceTotals(
+        [{
+            quantity: item.quantity,
+            unitCost: unitCostBs,
+            currency: item.currency,
+            currencyCost: item.currency === "D" ? baseSource : null,
+            vatRate,
+            adjustments: item.adjustments,
+        }],
+        emptyHeaderAdjustments(),
+        2,
+        0,
+        [],
+        dollarRate ?? 0,
+        item.currency,
+    );
+    const line = totals.items[0];
+    const adjustedUnitCost = item.quantity > 0 ? line.baseIVAFinal / item.quantity : baseSource;
     return {
         unitCost: adjustedUnitCost,
-        totalCost: adjustedTotalCost,
-        baseCostBs: baseUnitBs,            // raw base for display preview
-        vatTotalAmount: t.ivaMonto,
-        totalWithVat: t.total,
-        baseCurrencyCost,
-        descuentoMonto: t.descuentoMonto,
-        recargoMonto:   t.recargoMonto,
-        baseIVA:        t.baseIVA,
+        totalCost: line.baseIVAFinal,
+        baseCostBs: unitCostBs,
+        vatTotalAmount: line.ivaMontoFinal,
+        totalWithVat: line.totalFinal,
+        baseCurrencyCost: item.currency === "D" ? baseSource : null,
+        descuentoMonto: line.descuentoMonto,
+        recargoMonto: line.recargoMonto,
+        baseIVA: line.baseIVAFinal,
     };
 }
 
-// ── ProductCombo ──────────────────────────────────────────────────────────────
+// ProductCombo ──────────────────────────────────────────────────────────────
 
 function ProductCombo({
     value,
@@ -373,8 +372,10 @@ export default function NuevaEntradaManualPage() {
                     adjustments: {
                         descuentoTipo:  row.descuentoTipo  ?? null,
                         descuentoValor: row.descuentoValor ?? 0,
+                        descuentoMoneda: 'B',
                         recargoTipo:    row.recargoTipo    ?? null,
                         recargoValor:   row.recargoValor   ?? 0,
+                        recargoMoneda: 'B',
                     },
                 };
             });
@@ -678,6 +679,8 @@ export default function NuevaEntradaManualPage() {
                                         loading={rateLoading}
                                         bcvDate={rateDateBcv}
                                         error={rateError}
+                                            showDecimals={false}
+                                            
                                     />
                                 </div>
 

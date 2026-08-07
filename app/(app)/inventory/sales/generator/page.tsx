@@ -15,6 +15,7 @@ import {
     type RandomSalesPreviewLine,
 } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { notify } from "@/src/shared/frontend/notify";
+import { computeLineTotals, emptyLineAdjustments } from "@/src/modules/inventory/shared/totals";
 
 import {
     GuidedStepperHeader,
@@ -180,15 +181,21 @@ export default function SalesGeneratorPage() {
             prev.map((l, i) => {
                 if (i !== idx) return l;
                 const safeQty = Math.max(0, qty);
-                const totalSinIVA = Math.round(l.precioVentaUnitario * safeQty * 100) / 100;
-                const ivaPct = l.vatType === "general" ? 0.16 : 0;
-                const iva = Math.round(totalSinIVA * ivaPct * 100) / 100;
+                const lineTotals = computeLineTotals({
+                    quantity: safeQty,
+                    unitCost: l.precioVentaUnitario,
+                    currency: "B",
+                    vatRate: l.vatType === "general" ? "general_16" : "exenta",
+                    adjustments: emptyLineAdjustments(),
+                });
+                const totalSinIVA = lineTotals.baseIVA;
+                const iva = lineTotals.ivaMonto;
                 return {
                     ...l,
                     quantity: safeQty,
                     totalSinIVA,
                     iva,
-                    totalConIVA: Math.round((totalSinIVA + iva) * 100) / 100,
+                    totalConIVA: lineTotals.total,
                 };
             }),
         );

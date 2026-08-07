@@ -7,9 +7,10 @@
 // `Movement.currencyCost` audit trail.
 
 import {
-    computeLineTotals,
+    computeInvoiceTotals,
+    emptyHeaderAdjustments,
     emptyLineAdjustments,
-    round2,
+    netFromGross,
     type LineAdjustments,
     type VatRate as VatRateStr,
 } from "@/src/modules/inventory/shared/totals";
@@ -51,40 +52,41 @@ export function computeOperationRowCosts({
     ivaMode,
     enableLineAdjustments,
 }: ComputeArgs): OperationRowCosts {
-    const enteredPriceBs = item.currency === "D"
-        ? (dollarRate ? round2(item.currencyCost * dollarRate) : 0)
+    const vatRate = vatRateToString(item.vatRate);
+    const baseSource = item.vatRate > 0 && ivaMode === "incluido"
+        ? netFromGross(item.currencyCost, vatRate)
         : item.currencyCost;
-
-    const baseUnitBs = (item.vatRate > 0 && ivaMode === "incluido")
-        ? round2(enteredPriceBs / (1 + item.vatRate))
-        : enteredPriceBs;
-
+    const unitCostBs = item.currency === "D"
+        ? (dollarRate ? baseSource * dollarRate : 0)
+        : baseSource;
     const adjustments: LineAdjustments = enableLineAdjustments ? item.adjustments : emptyLineAdjustments();
-
-    const t = computeLineTotals({
-        quantity: item.quantity,
-        unitCost: baseUnitBs,
-        vatRate: vatRateToString(item.vatRate),
-        adjustments,
-    });
-
-    const adjustedUnitCost = item.quantity > 0 ? round2(t.baseIVA / item.quantity) : baseUnitBs;
-
-    const baseCurrencyCost: number | null = item.currency === "D"
-        ? (ivaMode === "incluido" && item.vatRate > 0
-            ? round2(item.currencyCost / (1 + item.vatRate))
-            : item.currencyCost)
-        : null;
-
+    const totals = computeInvoiceTotals(
+        [{
+            quantity: item.quantity,
+            unitCost: unitCostBs,
+            currency: item.currency,
+            currencyCost: item.currency === "D" ? baseSource : null,
+            vatRate,
+            adjustments,
+        }],
+        emptyHeaderAdjustments(),
+        2,
+        0,
+        [],
+        dollarRate ?? 0,
+        item.currency,
+    );
+    const line = totals.items[0];
+    const adjustedUnitCost = item.quantity > 0 ? line.baseIVAFinal / item.quantity : baseSource;
     return {
         unitCost: adjustedUnitCost,
-        totalCost: t.baseIVA,
-        vatAmountTotal: t.ivaMonto,
-        totalWithVat: t.total,
-        baseCurrencyCost,
-        descuentoMonto: t.descuentoMonto,
-        recargoMonto: t.recargoMonto,
-        baseIVA: t.baseIVA,
+        totalCost: line.baseIVAFinal,
+        vatAmountTotal: line.ivaMontoFinal,
+        totalWithVat: line.totalFinal,
+        baseCurrencyCost: item.currency === "D" ? baseSource : null,
+        descuentoMonto: line.descuentoMonto,
+        recargoMonto: line.recargoMonto,
+        baseIVA: line.baseIVAFinal,
     };
 }
 
