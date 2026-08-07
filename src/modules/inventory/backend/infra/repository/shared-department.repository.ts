@@ -36,7 +36,7 @@ export class SharedDepartmentRepository implements IDepartmentRepository {
         try {
             const row = {
                 tenant_id: this.tenantId,
-                id: department.id ?? undefined,
+                id: department.id ?? crypto.randomUUID(),
                 company_id: department.companyId,
                 name: department.name,
                 description: department.description ?? '',
