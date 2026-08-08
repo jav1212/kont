@@ -1,6 +1,5 @@
 "use client";
 
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 
 // Period close management page.
 // Allows closing accounting periods and lists all closed periods.
@@ -27,9 +26,7 @@ function fmtDate(iso: string) {
 
 export default function CierresPage() {
     return (
-        <DesktopOnlyGuard>
-            <CierresContent />
-        </DesktopOnlyGuard>
+        <CierresContent />
     );
 }
 

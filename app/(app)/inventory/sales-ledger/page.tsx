@@ -1,6 +1,5 @@
 "use client";
 
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 
 // Page: Libro de Salidas (inventory exit ledger for a given period).
 // Architectural role: route-level page component; composes domain types and
@@ -362,9 +361,7 @@ function DeleteConfirm({
 
 export default function LibroSalidasPage() {
     return (
-        <DesktopOnlyGuard>
-            <LibroSalidasContent />
-        </DesktopOnlyGuard>
+        <LibroSalidasContent />
     );
 }
 

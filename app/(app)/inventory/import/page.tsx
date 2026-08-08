@@ -3,13 +3,11 @@
 "use client";
 
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 import { ExcelImportWizard } from "@/src/modules/inventory/frontend/components/excel-import-wizard";
 
 export default function InventoryImportPage() {
   return (
-    <DesktopOnlyGuard>
-      <div className="min-h-full bg-surface-2 font-mono">
+    <div className="min-h-full bg-surface-2 font-mono">
         <PageHeader
           title="Importar Inventario"
           subtitle="Migra tu inventario desde un archivo Excel (.xls, .xlsx)"
@@ -18,6 +16,5 @@ export default function InventoryImportPage() {
           <ExcelImportWizard />
         </div>
       </div>
-    </DesktopOnlyGuard>
   );
 }

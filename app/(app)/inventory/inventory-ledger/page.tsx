@@ -1,6 +1,5 @@
 "use client";
 
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 
 // Annual inventory ledger page (Libro de Inventarios).
 // Displays annual inventory movements per product and computes ISLR Art. 177 cost of sales.
@@ -189,9 +188,7 @@ function TypeFilterChips({
 
 export default function LibroInventariosPage() {
     return (
-        <DesktopOnlyGuard>
-            <LibroInventariosContent />
-        </DesktopOnlyGuard>
+        <LibroInventariosContent />
     );
 }
 

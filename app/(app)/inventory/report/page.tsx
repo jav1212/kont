@@ -1,6 +1,5 @@
 "use client";
 
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 
 // Inventory period report page.
 // Displays a monthly inventory report grouped by department with cost and VAT breakdown.
@@ -183,9 +182,7 @@ function SubtotalRow({ label, rows }: { label: string; rows: PeriodReportRow[] }
 
 export default function PeriodReportPage() {
     return (
-        <DesktopOnlyGuard>
-            <PeriodReportContent />
-        </DesktopOnlyGuard>
+        <PeriodReportContent />
     );
 }
 

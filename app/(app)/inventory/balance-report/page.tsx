@@ -1,6 +1,5 @@
 "use client";
 
-import { DesktopOnlyGuard } from "@/src/shared/frontend/components/desktop-only-guard";
 
 // Balance report page (Reporte Saldo).
 // Shows a monthly inventory summary grouped by department.
@@ -167,9 +166,7 @@ function PeriodPicker({
 
 export default function BalanceReportPage() {
     return (
-        <DesktopOnlyGuard>
-            <BalanceReportContent />
-        </DesktopOnlyGuard>
+        <BalanceReportContent />
     );
 }
 

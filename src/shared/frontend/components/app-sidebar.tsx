@@ -21,12 +21,12 @@ import {
     X,
 } from "lucide-react";
 import { APP_MODULES, MODULE_SUBNAV } from "@/src/shared/frontend/navigation";
+import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { useTheme } from "@/src/shared/frontend/components/theme-provider";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useModuleAccess, usePlanName } from "@/src/modules/billing/frontend/hooks/use-module-access";
 import { useActiveTenantContext } from "@/src/modules/memberships/frontend/context/active-tenant-context";
-import { useIsDesktop } from "@/src/shared/frontend/hooks/use-is-desktop";
 import { LogoFull } from "@/src/shared/frontend/components/logo";
 import { useProfile } from "@/src/shared/frontend/hooks/use-profile";
 import { SidebarCompanySelector } from "@/src/shared/frontend/components/sidebar-company-selector";
@@ -89,6 +89,7 @@ interface AppSidebarProps {
 export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const isDesktop = useIsDesktop();
 
     const { signOut } = useAuth();
     useTheme();
@@ -100,8 +101,6 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { buildContextHref } = useUrlContext();
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
-    const isDesktop = useIsDesktop();
-
     // ── Module selection ──────────────────────────────────────────────────────
     const [storedModuleId, setStoredModuleId] = useState<string | null>(null);
 
@@ -132,12 +131,11 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
-                if (mod.desktopOnly && !isDesktop) return false;
                 return true;
             })
             .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [hasPayroll, hasInventory, hasAccounting, isDesktop]);
+        [hasPayroll, hasInventory, hasAccounting]);
 
     function handleSelectModule(id: string, href: string) {
         setStoredModuleId(id);
