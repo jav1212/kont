@@ -17,6 +17,7 @@ import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchas
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoiceItem } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { getPurchaseBookImportMeta, isPurchaseBookImported } from "@/src/modules/purchases/backend/domain/purchase-book-import";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
 
 const fmt = (n: number) =>
@@ -32,7 +33,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
     const {
         currentPurchaseInvoice, loadingPurchaseInvoice, loadPurchaseInvoice,
         suppliers, loadSuppliers,
-        imputePurchaseInvoiceItems,
+        imputePurchaseInvoiceItems, savePurchaseInvoice, confirmPurchaseInvoice,
     } = usePurchases();
 
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
@@ -56,20 +57,26 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
         [items],
     );
 
-    const headerTotal = currentPurchaseInvoice?.subtotal ?? 0; // pre-IVA, lo declarado
-    const diff = itemsTotal - headerTotal;
-    const cuadra = Math.abs(diff) < 0.01;
+    const imported = Boolean(currentPurchaseInvoice && isPurchaseBookImported(currentPurchaseInvoice));
+    const importMeta = getPurchaseBookImportMeta(currentPurchaseInvoice?.notes);
+    const headerTotal = imported ? (importMeta?.exempt ?? 0) + (importMeta?.taxableBase ?? 0) : (currentPurchaseInvoice?.subtotal ?? 0);
+    const expectedVat = imported ? (importMeta?.vatAmount ?? 0) : 0;
+    const itemsVat = useMemo(() => items.reduce((acc, item) => { const base = Number(item.baseIVA ?? item.totalCost) || 0; return acc + (item.vatRate === "general_16" ? base * 0.16 : item.vatRate === "reducida_8" ? base * 0.08 : 0); }, 0), [items]);
+    const diff = imported ? (itemsTotal - headerTotal) + (itemsVat - expectedVat) : itemsTotal - headerTotal;
+    const cuadra = !imported || (Math.abs(itemsTotal - headerTotal) < 0.02 && Math.abs(itemsVat - expectedVat) < 0.02);
 
     const validItems = items.filter((it) => it.productId && (it.quantity ?? 0) > 0);
-    const canSubmit = validItems.length > 0 && !submitting;
+    const canSubmit = validItems.length > 0 && (!imported || cuadra) && !submitting;
 
     async function handleSubmit() {
         if (!canSubmit || !currentPurchaseInvoice?.id) return;
         setSubmitting(true);
-        const result = await imputePurchaseInvoiceItems(currentPurchaseInvoice.id, validItems);
+        const result = imported
+            ? await (async () => { const draft = await savePurchaseInvoice(currentPurchaseInvoice, validItems); return draft?.id ? confirmPurchaseInvoice(draft.id) : null; })()
+            : await imputePurchaseInvoiceItems(currentPurchaseInvoice.id, validItems);
         setSubmitting(false);
         if (result) {
-            notify.success("Items imputados; stock y asiento contable actualizados.");
+            notify.success(imported ? "Factura conciliada y confirmada." : "Items imputados; stock y asiento contable actualizados.");
             router.push("/inventory/compras-pendientes");
         }
     }
@@ -82,7 +89,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
         );
     }
 
-    if (!isPendingImputation(currentPurchaseInvoice)) {
+    if (!isPendingImputation(currentPurchaseInvoice) && !(currentPurchaseInvoice.status === "borrador" && imported)) {
         return (
             <div className="min-h-full bg-surface-2 font-mono">
                 <PageHeader title="Imputar inventario" subtitle="Factura no apta">
@@ -141,7 +148,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                         </p>
                     </div>
                     <div>
-                        <p className={labelCls}>Total declarado</p>
+                        <p className={labelCls}>{imported ? "Total del libro" : "Total declarado"}</p>
                         <p className="text-[14px] text-foreground font-bold tabular-nums mt-1">
                             Bs. {fmt(currentPurchaseInvoice.total)}
                         </p>
@@ -178,6 +185,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                             Bs. {fmt(itemsTotal)}
                         </p>
                     </div>
+                    {imported && <div><p className={labelCls}>IVA del libro / items</p><p className="text-[13px] text-foreground tabular-nums mt-1 font-bold">Bs. {fmt(expectedVat)} / {fmt(itemsVat)}</p></div>}
                     <div className="col-span-2 sm:col-span-1">
                         <p className={labelCls}>Diferencia</p>
                         <p className={[

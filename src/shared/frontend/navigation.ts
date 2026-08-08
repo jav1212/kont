@@ -38,6 +38,7 @@ export const MODULE_SUBNAV: Record<string, SubNavItem[]> = {
     purchases: [
         { href: "/purchases",                 label: "Tablero",             group: null          },
         { href: "/purchases/suppliers",       label: "Proveedores",         group: "Catálogos"   },
+        { href: "/purchases/import-book",     label: "Importar libro",       group: "Operaciones" },
         { href: "/purchases/archive",         label: "Archivo de facturas", group: "Operaciones" },
     ],
     sales: [

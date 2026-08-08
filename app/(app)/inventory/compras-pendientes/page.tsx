@@ -5,8 +5,8 @@
 // (proveedor + total) y todavía no tienen items detallados. El asistente de
 // inventario abre cada una para imputar productos y mover stock.
 
-import { useEffect, useMemo } from "react";
-import { ChevronLeft, Inbox } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, Inbox, Trash2 } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -14,6 +14,7 @@ import { BaseListCard } from "@/src/shared/frontend/components/base-list-card";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import { isPurchaseBookImported } from "@/src/modules/purchases/backend/domain/purchase-book-import";
 
 const fmtMoney = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,7 +24,7 @@ const fmtDate = (d: string) => (d ? d.split("T")[0] : "—");
 export default function ComprasPendientesPage() {
     const router = useRouter();
     const { companyId } = useCompany();
-    const { purchaseInvoices, loadingPurchaseInvoices, loadPurchaseInvoices, suppliers, loadSuppliers } = usePurchases();
+    const { purchaseInvoices, loadingPurchaseInvoices, loadPurchaseInvoices, suppliers, loadSuppliers, deletePurchaseInvoice } = usePurchases();
 
     useEffect(() => {
         if (companyId) {
@@ -33,17 +34,38 @@ export default function ComprasPendientesPage() {
     }, [companyId, loadPurchaseInvoices, loadSuppliers]);
 
     const supplierName = (id: string) => suppliers.find((s) => s.id === id)?.name ?? "—";
+    const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+    const [deletingBatch, setDeletingBatch] = useState(false);
 
     const pendientes = useMemo(
-        () => purchaseInvoices.filter(isPendingImputation),
+        () => purchaseInvoices.filter((invoice) => isPendingImputation(invoice) || (invoice.status === "borrador" && isPurchaseBookImported(invoice))),
         [purchaseInvoices],
     );
+
+
+    const importedDrafts = useMemo(
+        () => purchaseInvoices.filter((invoice) => invoice.status === "borrador" && invoice.period === period && isPurchaseBookImported(invoice)),
+        [purchaseInvoices, period],
+    );
+
+    async function handleDeleteBatch() {
+        if (importedDrafts.length === 0 || deletingBatch) return;
+        const confirmed = window.confirm(
+            "Se eliminaran " + importedDrafts.length + " facturas importadas en borrador del periodo " + period + ". Las facturas confirmadas no seran afectadas. Continuar?"
+        );
+        if (!confirmed) return;
+        setDeletingBatch(true);
+        for (const invoice of importedDrafts) {
+            if (invoice.id) await deletePurchaseInvoice(invoice.id);
+        }
+        setDeletingBatch(false);
+    }
 
     return (
         <div className="min-h-full bg-surface-2 font-mono">
             <PageHeader
                 title="Compras pendientes de imputar"
-                subtitle="Facturas confirmadas sin detalle de productos"
+                subtitle="Facturas precargadas que esperan productos"
             >
                 <BaseButton.Root
                     variant="secondary"
@@ -61,8 +83,21 @@ export default function ComprasPendientesPage() {
                         {pendientes.length} pendiente{pendientes.length === 1 ? "" : "s"}
                     </p>
                     <p className="hidden sm:block font-sans text-[12px] text-[var(--text-tertiary)]">
-                        Imputar items mueve el stock y reescribe el asiento contable.
+                        Los productos se validan contra el libro antes de confirmar.
                     </p>
+                </div>
+
+                <div className="mb-4 rounded-xl border border-border-light bg-surface-1 px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <p className="text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Lote importado</p>
+                        <p className="text-[12px] text-[var(--text-secondary)] mt-1">Borra solo facturas precargadas sin confirmar.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="h-9 rounded-lg border border-border-default bg-surface-1 px-2 text-[12px] text-foreground" aria-label="Período del lote" />
+                        <BaseButton.Root variant="secondary" size="sm" leftIcon={<Trash2 size={13} />} disabled={importedDrafts.length === 0 || deletingBatch} onClick={handleDeleteBatch}>
+                            {deletingBatch ? "Eliminando…" : `Eliminar ${importedDrafts.length} borrador${importedDrafts.length === 1 ? "" : "es"}`}
+                        </BaseButton.Root>
+                    </div>
                 </div>
 
                 {loadingPurchaseInvoices ? (

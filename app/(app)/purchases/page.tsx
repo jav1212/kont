@@ -281,6 +281,15 @@ export default function EntradasPage() {
                 </BaseButton.Root>
                 <BaseButton.Root
                     as={Link}
+                    href="/purchases/import-book"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<FileText size={14} strokeWidth={2} />}
+                >
+                    Importar libro
+                </BaseButton.Root>
+                <BaseButton.Root
+                    as={Link}
                     href="/purchases/new-manual"
                     variant="secondary"
                     size="sm"

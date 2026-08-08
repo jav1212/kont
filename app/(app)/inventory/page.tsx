@@ -19,6 +19,7 @@ import {
     Wallet,
     Activity,
     PackageX,
+    FileText,
 } from "lucide-react";
 import { PageHeader }            from "@/src/shared/frontend/components/page-header";
 import { DashboardKpiCard }      from "@/src/shared/frontend/components/dashboard-kpi-card";
@@ -46,6 +47,7 @@ const EXIT_TYPES = new Set([
 const QUICK_ACTIONS = [
     { href: "/inventory/products",    label: "Productos",        desc: "Catálogo y fichas de producto",    icon: Package        },
     { href: "/purchases",   label: "Compras",          desc: "Facturas y entradas de mercancía", icon: ShoppingCart   },
+    { href: "/purchases/import-book", label: "Importar libro", desc: "Precarga fiscal de facturas", icon: FileText },
     { href: "/purchases/suppliers",   label: "Proveedores",      desc: "Directorio y retenciones",         icon: Truck          },
     { href: "/inventory/operations/new", label: "Operaciones",   desc: "Ajustes, devoluciones y autoconsumo", icon: ArrowRightLeft },
 ];
