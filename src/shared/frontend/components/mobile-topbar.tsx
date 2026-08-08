@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { RefreshCw } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { ChevronIcon } from "@/src/shared/frontend/components/icons/chevron-icon";
 
@@ -79,6 +80,16 @@ export function MobileTopBar({ onMenuClick }: MobileTopBarProps) {
                 </span>
                 <ChevronIcon open={false} />
             </button>
+            <button
+                type="button"
+                onClick={() => window.location.reload()}
+                aria-label="Recargar página"
+                title="Recargar página"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-fg hover:bg-sidebar-bg-hover transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-active-border"
+            >
+                <RefreshCw size={16} strokeWidth={1.9} />
+            </button>
         </header>
     );
 }
+

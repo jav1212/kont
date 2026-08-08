@@ -16,8 +16,9 @@ import {
 } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Activity, CircleHelp, MoreHorizontal } from "lucide-react";
+import { Activity, CircleHelp, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useBcvRate } from "@/src/shared/frontend/components/bcv-pill";
+import { AppBreadcrumb } from "@/src/shared/frontend/components/app-breadcrumb";
 
 interface PageHeaderProps {
     title: string;
@@ -158,10 +159,11 @@ export function PageHeader({
     return (
         <>
             <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-border-light bg-surface-1">
-                <div className="flex h-full items-center justify-end gap-2 px-3 sm:px-4 md:px-6 xl:px-8">
+                <div className="flex h-full min-w-0 items-center gap-2 px-3 sm:px-4 md:px-6 xl:px-8">
                     <h1 className="sr-only">{title}</h1>
+                    <AppBreadcrumb pageTitle={title} />
 
-                    <div className="flex min-w-0 items-center justify-end gap-2 [&_a]:normal-case [&_a]:tracking-normal [&_a]:font-sans [&_button]:normal-case [&_button]:tracking-normal [&_button]:font-sans">
+                    <div className="flex shrink-0 items-center justify-end gap-2 [&_a]:normal-case [&_a]:tracking-normal [&_a]:font-sans [&_button]:normal-case [&_button]:tracking-normal [&_button]:font-sans">
                         <div className="flex h-9 items-center overflow-hidden rounded-lg border border-border-light bg-surface-1 shadow-sm">
                             <Link
                                 href="/herramientas/divisas"
@@ -204,6 +206,16 @@ export function PageHeader({
                             </Link>
                         </div>
 
+
+                        <button
+                            type="button"
+                            onClick={() => window.location.reload()}
+                            aria-label="Recargar página"
+                            title="Recargar página"
+                            className="inline-flex size-9 items-center justify-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
+                        >
+                            <RefreshCw size={15} strokeWidth={1.9} />
+                        </button>
                         {utilityAction && <div className="min-w-0">{utilityAction}</div>}
 
                         {hasSecondary && (
@@ -221,3 +233,4 @@ export function PageHeader({
         </>
     );
 }
+
