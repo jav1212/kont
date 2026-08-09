@@ -25,11 +25,15 @@
 // without provider boilerplate.
 
 import { toast } from "sonner";
+import { createIncidentCode } from "@/src/core/errors/incident-code";
+import { reportClientError } from "@/src/shared/frontend/utils/report-client-error";
 
 export interface NotifyOpts {
     description?: string;
     duration?:    number;
     id?:          string | number;
+    /** Backend-generated incident code; absent means this is a client-side error. */
+    errorCode?:   string;
     /** Optional action button rendered next to the toast (e.g. "Deshacer"). */
     action?: {
         label:   string;
@@ -38,7 +42,33 @@ export interface NotifyOpts {
 }
 
 export const notify = {
-    error:   (message: string, opts?: NotifyOpts) => toast.error(message, opts),
+    error:   (message: string, opts?: NotifyOpts) => {
+        const code = opts?.errorCode ?? createIncidentCode();
+        if (!opts?.errorCode) {
+            const route = typeof window !== "undefined" ? window.location.pathname : undefined;
+            reportClientError({
+                code,
+                message,
+                technicalMessage: message,
+                source: "client",
+                route,
+                method: "CLIENT",
+                metadata: typeof navigator !== "undefined" ? { userAgent: navigator.userAgent } : undefined,
+            });
+        }
+        const { errorCode: _errorCode, action, description, ...toastOpts } = opts ?? {};
+        return toast.error(message, {
+            ...toastOpts,
+            description: description ?? `Código: ${code}`,
+            action: action ?? {
+                label: "Copiar código",
+                onClick: () => {
+                    void navigator.clipboard?.writeText(code);
+                    toast.success("Código copiado");
+                },
+            },
+        });
+    },
     success: (message: string, opts?: NotifyOpts) => toast.success(message, opts),
     warning: (message: string, opts?: NotifyOpts) => toast.warning(message, opts),
     info:    (message: string, opts?: NotifyOpts) => toast.info(message, opts),

@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { createIncidentCode } from "@/src/core/errors/incident-code";
+import { reportClientError } from "@/src/shared/frontend/utils/report-client-error";
 
 export default function GlobalError({
     error,
@@ -11,7 +13,18 @@ export default function GlobalError({
     reset: () => void;
 }) {
     useEffect(() => {
-        console.error("[global-error]", error);
+        const code = createIncidentCode();
+        console.error("[global-error]", error, code);
+        reportClientError({
+            code,
+            message: "Ocurrió un error inesperado.",
+            technicalMessage: error.message,
+            stack: error.stack,
+            source: "client",
+            route: window.location.pathname,
+            method: "CLIENT",
+            metadata: error.digest ? { digest: error.digest } : undefined,
+        });
     }, [error]);
 
     return (

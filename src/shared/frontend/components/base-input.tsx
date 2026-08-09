@@ -86,16 +86,6 @@ const INPUT_SIZES = {
 // ICONS — minimal, thin stroke (parity with BaseButton spinner language)
 // ============================================================================
 
-const ErrorIcon = () => (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"
-        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
-        className="text-error flex-shrink-0 mt-[1px]"
-    >
-        <circle cx="6.5" cy="6.5" r="5.5" />
-        <path d="M4.5 4.5l4 4M8.5 4.5l-4 4" />
-    </svg>
-);
-
 const InfoIcon = () => (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none"
         stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
@@ -135,7 +125,6 @@ const InputField = ({
 
     const isControlled = externalValue !== undefined;
     const value = isControlled ? externalValue : internalValue;
-    const isInvalid = !!error;
 
     const handleChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,9 +144,7 @@ const InputField = ({
     ) : null;
 
     const resolvedStart = prefixNode ?? startContent;
-    const resolvedEnd   = isInvalid && !endContent && !suffixNode
-        ? <ErrorIcon />
-        : (suffixNode ?? endContent);
+    const resolvedEnd = suffixNode ?? endContent;
 
     return (
         <div className={`flex flex-col gap-0 w-full ${className}`}>
@@ -169,9 +156,7 @@ const InputField = ({
                     className={[
                         `font-mono ${APP_SIZES.text.label} uppercase block ${APP_SIZES.spacing.labelBottom}`,
                         "transition-colors duration-150",
-                        isInvalid
-                            ? "text-error/80"
-                            : "text-neutral-500 dark:text-neutral-400",
+                        "text-neutral-500 dark:text-neutral-400",
                     ].join(" ")}
                 >
                     {label}
@@ -188,7 +173,6 @@ const InputField = ({
                 value={value}
                 onChange={handleChange}
                 placeholder={placeholder}
-                isInvalid={isInvalid}
                 isRequired={isRequired}
                 variant="bordered"
                 startContent={resolvedStart}

@@ -84,7 +84,7 @@ export const BaseSelect = <T extends SelectItemData>({
     color = "default",
     selectionMode = "multiple",
     size = "md",
-    error,
+    error: _error,
     isRequired = false,
 }: BaseSelectProps<T>) => {
 
@@ -183,7 +183,6 @@ export const BaseSelect = <T extends SelectItemData>({
                 variant={variant}
                 color={color}
                 isDisabled={isDisabled}
-                isInvalid={Boolean(error)}
                 isRequired={isRequired}
                 labelPlacement="outside"
                 isMultiline={selectionMode === "multiple"}

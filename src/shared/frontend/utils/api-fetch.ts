@@ -9,6 +9,7 @@ const ACTIVE_TENANT_KEY = 'kont-active-tenant-id';
 export interface ApiJsonResult {
     data?:  unknown;
     error?: string;
+    errorCode?: string;
 }
 
 /**
@@ -24,7 +25,7 @@ export async function fetchJson(
     const text = await res.text();
     let json: ApiJsonResult;
     try   { json = JSON.parse(text) as ApiJsonResult; }
-    catch { json = { error: `Error del servidor (${res.status})` }; }
+    catch { json = { error: `Error del servidor (${res.status})`, errorCode: undefined }; }
     return { ok: res.ok, json };
 }
 
@@ -61,7 +62,7 @@ export async function callApi<T>(
 ): Promise<T | null> {
     const { ok, json } = await fetchJson(path, options);
     if (!ok) {
-        notify.error(json.error ?? options?.fallbackError ?? 'Ocurrió un error inesperado.');
+        notify.error(json.error ?? options?.fallbackError ?? 'Ocurrió un error inesperado.', { errorCode: json.errorCode });
         return null;
     }
     return (json.data ?? null) as T | null;
