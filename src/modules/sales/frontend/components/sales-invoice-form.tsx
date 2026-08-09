@@ -6,11 +6,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { Plus, Trash2, FileText, CheckCircle2, Lock, Unlock, Save, Package, UserRound, CalendarDays, ChevronDown, Calculator } from "lucide-react";
+import { Trash2, FileText, CheckCircle2, Lock, Unlock, Save, UserRound, CalendarDays } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseSelect } from "@/src/shared/frontend/components/base-select";
 import { BaseTextarea } from "@/src/shared/frontend/components/base-textarea";
+import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
 import { notify } from "@/src/shared/frontend/notify";
 import { useSales, type SalesInvoice, type SalesInvoiceItem } from "@/src/modules/sales/frontend/hooks/use-sales";
 import {
@@ -366,20 +367,10 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                 </div>
             )}
 
-            <div className="flex flex-col items-stretch gap-6 xl:flex-row xl:items-start">
+            <div className="flex flex-col gap-4">
                 <div className="min-w-0 flex-1 space-y-4">
             {/* Datos de la factura */}
-            <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden space-y-0">
-                <header className="flex items-start gap-3 border-b border-border-light px-6 py-5">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
-                        <FileText size={15} strokeWidth={2} />
-                    </div>
-                    <div className="min-w-0">
-                        <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">Datos de la factura</h2>
-                        <p className="mt-1.5 font-sans text-[12px] leading-snug text-[var(--text-tertiary)]">Identifica al cliente y define las condiciones de cobro.</p>
-                    </div>
-                </header>
-                <div className="space-y-5 p-6">
+            <InvoiceSectionCard title="Datos de la factura" subtitle="Identifica al cliente y define las condiciones de cobro." bodyClassName="space-y-5 p-6">
                     <div className="grid gap-4 md:grid-cols-3">
                         {isReadOnly ? (
                             <BaseInput.Field label="Cliente" value={customerObj?.name ?? "—"} readOnly />
@@ -425,35 +416,25 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                         readOnly={isReadOnly}
                         rows={3}
                     />
-                </div>
-            </div>
+            </InvoiceSectionCard>
 
             {/* Items */}
-            <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between border-b border-border-light px-6 py-5">
-                    <div className="flex items-center gap-3">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
-                            <Package size={15} strokeWidth={2} />
-                        </div>
-                        <div>
-                            <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">Detalle de la factura</h2>
-                            <p className="mt-1 font-sans text-[12px] text-[var(--text-tertiary)]">Productos de inventario y servicios vendidos.</p>
-                        </div>
-                    </div>
-                    {!isReadOnly && (
-                        <BaseButton.Root variant="ghost" size="sm" leftIcon={<Plus size={14} strokeWidth={2} />} onClick={addItem}>
-                            Agregar línea
-                        </BaseButton.Root>
-                    )}
-                </div>
+            <InvoiceDetailCard
+                count={items.filter((item) => item.productId || item.description.trim()).length}
+                itemName="línea"
+                emptyLabel="Sin líneas"
+                subtitle="Productos de inventario y servicios vendidos."
+                readOnly={isReadOnly}
+                onAddLine={addItem}
+            >
 
-                <div className="overflow-x-auto px-6 py-3">
+                <div className="overflow-x-auto overscroll-x-contain">
                     <div className="min-w-[760px]">
-                        <div style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="grid gap-3 border-b border-border-light px-2 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                        <div style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="grid gap-3 border-b border-border-light px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
                             <span>Producto / descripción</span><span className="text-right">Cantidad</span><span className="text-right">Precio unit.</span><span className="text-center">IVA</span><span className="text-right">Total</span><span />
                         </div>
                         {items.map((it, idx) => (
-                            <div key={idx} style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="group grid items-start gap-3 border-b border-border-light/60 px-2 py-3 last:border-b-0">
+                            <div key={idx} style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="group grid items-start gap-3 border-b border-border-light/60 px-2 py-2 transition-colors hover:bg-surface-2/30 last:border-b-0">
                                 <SalesLineCombobox
                                     productId={it.productId}
                                     description={it.description}
@@ -474,13 +455,18 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                 ) : <span />}
                             </div>
                         ))}
-                        <div className="flex items-center justify-between px-2 pt-3 text-[10px] text-[var(--text-tertiary)]">
-                            <span>{items.length} {items.length === 1 ? "línea" : "líneas"}</span>
-                            <span>El inventario se descuenta al confirmar.</span>
-                        </div>
                     </div>
                 </div>
-            </div>
+                {!isReadOnly && (
+                    <button type="button" onClick={addItem} className="ml-1 mt-2 text-[12px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] transition-colors hover:text-foreground">
+                        + agregar fila <span className="ml-1 normal-case tracking-normal opacity-40">(también admite servicios)</span>
+                    </button>
+                )}
+                <div className="mt-3 flex items-center justify-between gap-4 border-t border-border-light pt-3 text-[11px] text-[var(--text-tertiary)] opacity-70">
+                    <span>Busca por nombre o código · escribe libremente para registrar un servicio</span>
+                    <span className="shrink-0">El inventario se descuenta al confirmar.</span>
+                </div>
+            </InvoiceDetailCard>
 
             {/* IGTF percepción */}
             <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-sm">
@@ -492,7 +478,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                         </div>
                         <p className="mt-1 font-sans text-[11px] text-[var(--text-tertiary)]">Configura únicamente cuando el cobro incluya divisas.</p>
                     </div>
-                    <ChevronDown size={16} className={`shrink-0 text-[var(--text-tertiary)] transition-transform ${showIgtf || (isReadOnly && igtf.applies) ? "rotate-180" : ""}`} />
+                    <span aria-hidden="true" className={`shrink-0 text-[16px] leading-none text-[var(--text-tertiary)] transition-transform ${showIgtf || (isReadOnly && igtf.applies) ? "rotate-180" : ""}`}>⌄</span>
                 </button>
                 {(showIgtf || (isReadOnly && igtf.applies)) && (
                     <div className="border-t border-border-light p-6">
@@ -502,17 +488,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             </div>
                 </div>
 
-                <aside className="w-full shrink-0 space-y-4 xl:sticky xl:top-20 xl:w-80">
-                    <div className="rounded-xl border border-border-light bg-surface-1 p-5 shadow-sm">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5">
-                            <div className="flex size-8 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
-                                <Calculator size={15} strokeWidth={2} />
-                            </div>
-                            <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Resumen</h3>
-                            </div>
-                            <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${isConfirmed ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>{isConfirmed ? "Confirmada" : "Borrador"}</span>
-                        </div>
+                <aside className="flex w-full flex-col gap-4">
+                    <InvoiceSummaryCard status={isConfirmed ? "confirmed" : "draft"}>
                         <div className="space-y-3 text-[13px]">
                             <div className="flex items-start justify-between gap-3">
                                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]"><UserRound size={12} /> Cliente</span>
@@ -553,11 +530,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
                             </>}
                         </div>
-                    </div>
-                    <div className="rounded-xl border border-border-light bg-surface-1 p-4 text-[11px] leading-snug text-[var(--text-tertiary)] shadow-sm">
-                        <div className="mb-1 font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Inventario</div>
-                        Las líneas vinculadas a productos descuentan existencias al confirmar la factura.
-                    </div>
+                    </InvoiceSummaryCard>
                 </aside>
             </div>
         </div>

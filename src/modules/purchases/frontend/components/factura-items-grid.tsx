@@ -90,7 +90,8 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
     // Portal anchor - recomputed from the input's bounding rect so the dropdown
     // can render via createPortal and escape the table wrapper's `overflow-x-auto`,
     // which CSS would otherwise force to clip vertically.
-    const [anchor, setAnchor] = useState<{ left: number; top: number; width: number } | null>(null);
+    const [anchor, setAnchor] = useState<{ left: number; top: number; width: number; listHeight: number } | null>(null);
+    const hasCreateAction = Boolean(onRequestCreate);
 
     const selected = products.find((p) => p.id === productId);
 
@@ -99,7 +100,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
             p.active &&
             (p.name.toLowerCase().includes(search.toLowerCase()) ||
                 p.code.toLowerCase().includes(search.toLowerCase())),
-    );
+    ).slice(0, 14);
 
     useEffect(() => {
         if (!listRef.current) return;
@@ -113,7 +114,20 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
             const el = wrapRef.current;
             if (!el) return;
             const r = el.getBoundingClientRect();
-            setAnchor({ left: r.left, top: r.bottom + 2, width: Math.max(r.width, 320) });
+            const panelChrome = hasCreateAction ? 45 : 8;
+            const preferredListHeight = 224;
+            const gap = 5;
+            const spaceBelow = window.innerHeight - r.bottom - gap - 8;
+            const spaceAbove = r.top - gap - 8;
+            const openAbove = spaceBelow < 220 && spaceAbove > spaceBelow;
+            const listHeight = Math.min(preferredListHeight, Math.max(120, (openAbove ? spaceAbove : spaceBelow) - panelChrome));
+            const width = Math.min(Math.max(r.width, 380), window.innerWidth - 16);
+            setAnchor({
+                left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
+                top: openAbove ? Math.max(8, r.top - panelChrome - listHeight - gap) : r.bottom + gap,
+                width,
+                listHeight,
+            });
         };
         update();
         window.addEventListener("scroll", update, true);
@@ -122,7 +136,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
             window.removeEventListener("scroll", update, true);
             window.removeEventListener("resize", update);
         };
-    }, [open]);
+    }, [open, hasCreateAction]);
 
     function openDropdown() { setSearch(""); setHiIdx(0); setOpen(true); }
     function closeDropdown() { setOpen(false); setSearch(""); }
@@ -180,18 +194,18 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
                         width: anchor.width,
                         zIndex: 100,
                     }}
-                    className="rounded-lg border border-border-medium bg-surface-1 shadow-xl overflow-hidden"
+                    className="overflow-hidden rounded-lg border border-[var(--control-border)] bg-surface-1 shadow-[0_12px_28px_rgba(0,0,0,.12),0_2px_6px_rgba(0,0,0,.06)]"
                 >
                     {filtered.length === 0 ? (
                         <div className="px-3 py-2.5 text-[12px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">Sin resultados</div>
                     ) : (
-                        <ul ref={listRef} className="max-h-52 overflow-y-auto">
+                        <ul ref={listRef} style={{ maxHeight: anchor.listHeight }} className="overflow-y-auto overscroll-contain p-1.5">
                             {filtered.map((p, i) => (
                                 <li
                                     key={p.id}
                                     className={[
-                                        "px-3 py-2 cursor-pointer flex items-center gap-2 text-[13px]",
-                                        i === hiIdx ? "bg-primary-500/10 text-foreground" : "text-[var(--text-secondary)] hover:bg-surface-2",
+                                        "cursor-pointer rounded-lg px-3 py-2 flex items-center gap-2 text-[13px]",
+                                        i === hiIdx ? "bg-surface-2 text-foreground" : "text-[var(--text-secondary)] hover:bg-surface-2",
                                     ].join(" ")}
                                     onMouseDown={(e) => { e.preventDefault(); selectItem(p.id!); onNavigate("tab"); }}
                                     onMouseEnter={() => setHiIdx(i)}
@@ -532,7 +546,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     const anyUsd = items.some((i) => i.currency === 'D');
 
     return (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overscroll-x-contain">
             {/* Dollar rate hint shown when any item uses USD */}
             {anyUsd && (
                 <div className="mb-3 flex items-center gap-2 text-[12px]">
@@ -548,23 +562,30 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             )}
 
             {!readOnly && (
-                <div className="mb-3 flex flex-wrap items-center justify-end gap-2 text-[11px]">
-                    <span className="text-[var(--text-secondary)]">Moneda de todos:</span>
-                    <button type="button" onClick={() => { setBulkCurrency("B"); applyCurrencyToAllItems("B"); }} className="h-7 rounded border border-border-light bg-surface-1 px-2 font-mono text-[11px] text-foreground hover:border-primary-500/60">
-                        Convertir todo a Bs
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-light bg-surface-2/40 px-3.5 py-2.5 text-[11px]">
+                    <div>
+                        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">Moneda de las líneas</div>
+                        <div className="mt-0.5 font-sans text-[10px] text-[var(--text-tertiary)]">Aplica una moneda común a los productos registrados.</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="inline-flex rounded-lg border border-border-default bg-surface-1 p-0.5 shadow-sm">
+                    <button type="button" onClick={() => { setBulkCurrency("B"); applyCurrencyToAllItems("B"); }} className={`h-7 rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-colors ${bulkCurrency === "B" ? "bg-primary-500/10 text-primary-500" : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"}`}>
+                        Bolívares · Bs
                     </button>
-                    <button type="button" disabled={!hasDollarRate} onClick={() => { setBulkCurrency("D"); applyCurrencyToAllItems("D"); }} className="h-7 rounded border border-border-light bg-surface-1 px-2 font-mono text-[11px] text-foreground hover:border-primary-500/60 disabled:cursor-not-allowed disabled:opacity-50">
-                        Convertir todo a USD
+                    <button type="button" disabled={!hasDollarRate} onClick={() => { setBulkCurrency("D"); applyCurrencyToAllItems("D"); }} className={`h-7 rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${bulkCurrency === "D" ? "bg-amber-500/10 text-amber-600" : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"}`}>
+                        Dólares · USD
                     </button>
-                    <label className="inline-flex items-center gap-1.5 text-[var(--text-secondary)] cursor-pointer select-none">
+                    </div>
+                    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[var(--text-secondary)]">
                         <input type="checkbox" checked={applyCurrencyToAll} onChange={(e) => { const checked = e.target.checked; setApplyCurrencyToAll(checked); if (checked) applyCurrencyToAllItems(bulkCurrency); }} className="accent-primary-500" />
-                        Aplicar cambios de moneda a todos
+                        Mantener sincronizadas
                     </label>
+                    </div>
                 </div>
             )}
-            <table className="w-full min-w-[920px] text-[13px] border-collapse">
+            <table className="w-full min-w-[880px] border-collapse text-[13px]">
                 <thead>
-                    <tr className="border-b border-border-light bg-surface-2/40">
+                    <tr className="border-b border-border-light">
                         <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal min-w-[220px]">
                             Producto
                         </th>
@@ -602,7 +623,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                         return (
                             <Fragment key={`item-${idx}`}>
                                 <tr
-                                    className="border-b border-border-light/30 hover:bg-surface-2/40 group"
+                                    className="group border-b border-border-light/60 transition-colors hover:bg-surface-2/30"
                                 >
                                     {/* Product */}
                                     <td className="px-1 py-0.5">

@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, FileText, Boxes, Calculator, ChevronDown, Info } from "lucide-react";
+import { ChevronLeft, Plus, X, CheckCircle2, ArrowRight, Save, ChevronDown, Info } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { CompanyContextPill } from "@/src/shared/frontend/components/company-context-pill";
@@ -17,6 +17,7 @@ import { ResumeDraftBanner } from "@/src/shared/frontend/components/resume-draft
 import { useDebouncedAutoSave } from "@/src/shared/frontend/hooks/use-debounced-autosave";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -405,7 +406,7 @@ export default function NuevaFacturaPage() {
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
         impuestos: resolvedImpuestos,
-    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
+    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, invoiceCurrency, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -710,7 +711,7 @@ export default function NuevaFacturaPage() {
                 </BaseButton.Root>
             </PageHeader>
 
-            <div className="px-8 py-6">
+            <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 xl:px-8">
 
                 {pendingDraft && (
                     <div className="mb-4">
@@ -725,26 +726,11 @@ export default function NuevaFacturaPage() {
                     </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="flex flex-col gap-4">
                     {/* Row 1 — Datos de la factura + Resumen */}
-                    <div className="flex gap-6 items-start">
+                    <div className="contents">
                         {/* Datos de la factura */}
-                        <section className="flex-1 min-w-0 rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
-
-                            {/* ── Card header ────────────────────────────────────── */}
-                            <header className="px-6 pt-5 pb-4 border-b border-border-light flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500 flex-shrink-0">
-                                    <FileText size={14} strokeWidth={2} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground leading-none">
-                                        Datos de la factura
-                                    </h2>
-                                    <p className="mt-1.5 text-[12px] font-sans text-[var(--text-tertiary)] leading-snug">
-                                        Identifica el comprobante y define cómo entra al período contable.
-                                    </p>
-                                </div>
-                            </header>
+                        <InvoiceSectionCard className="order-1" title="Datos de la factura" subtitle="Identifica el comprobante y define cómo entra al período contable." bodyClassName="">
 
                             {/* ── Group 1 · Identificación ───────────────────────── */}
                             <div className="px-6 pt-5 pb-5">
@@ -967,23 +953,11 @@ export default function NuevaFacturaPage() {
                                     </div>
                                 )}
                             </div>
-                        </section>
+                        </InvoiceSectionCard>
 
                         {/* Resumen — same row as Datos */}
-                        <aside className="w-80 flex-shrink-0">
-                            <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
-                                {/* Header */}
-                                <div className="px-5 py-3 border-b border-border-light bg-surface-2/50 flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <Calculator size={13} strokeWidth={2} className="text-primary-500" />
-                                        <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                            Resumen
-                                        </h3>
-                                    </div>
-                                    <StatusChip tone={savedId ? "warning" : "neutral"}>
-                                        {savedId ? "Guardado" : "Nuevo"}
-                                    </StatusChip>
-                                </div>
+                        <aside className="order-3 w-full">
+                            <InvoiceSummaryCard status="draft" contentClassName="p-0">
 
                                 {/* Meta */}
                                 <dl className="px-5 py-3.5 space-y-2 text-[12px]">
@@ -1207,36 +1181,25 @@ export default function NuevaFacturaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </div>
+                                <div className="grid gap-2 border-t border-border-light p-4">
+                                    <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleOpenConfirm} disabled={saving || confirming}>
+                                        {confirming ? "Confirmando…" : "Confirmar factura"}
+                                    </BaseButton.Root>
+                                    <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} loading={saving} disabled={confirming}>
+                                        {saving ? "Guardando…" : "Guardar borrador"}
+                                    </BaseButton.Root>
+                                </div>
+                            </InvoiceSummaryCard>
                         </aside>
                     </div>
 
                     {/* Row 2 — Productos (full width) */}
-                    <section className="rounded-xl border border-border-light bg-surface-1 p-6 shadow-sm">
-                        <div className="mb-5 flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center text-primary-500">
-                                    <Boxes size={13} strokeWidth={2} />
-                                </div>
-                                <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">
-                                    Productos
-                                </h2>
-                                <span
-                                    className="ml-2 inline-flex items-center justify-center h-6 px-2 rounded-md border border-border-light bg-surface-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)] tabular-nums"
-                                    title="Ítems con producto seleccionado"
-                                >
-                                    {itemCount} {itemCount === 1 ? "ítem" : "ítems"}
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => { setQcMode('product'); }}
-                                className="h-8 px-3 text-[11px] uppercase tracking-[0.12em] rounded-lg border border-border-default bg-surface-1 hover:bg-surface-2 hover:border-border-medium text-[var(--text-tertiary)] hover:text-foreground transition-colors flex items-center gap-1.5 shadow-sm"
-                            >
-                                <Plus size={12} strokeWidth={2} />
-                                Nuevo producto
-                            </button>
-                        </div>
+                    <InvoiceDetailCard
+                        className="order-2"
+                        count={itemCount}
+                        onAddLine={() => setItems((current) => [...current, emptyItem()])}
+                        secondaryAction={<BaseButton.Root variant="secondary" size="sm" leftIcon={<Plus size={13} strokeWidth={2} />} onClick={() => setQcMode('product')}>Nuevo producto</BaseButton.Root>}
+                    >
 
                         <FacturaItemsGrid
                             items={items}
@@ -1249,69 +1212,7 @@ export default function NuevaFacturaPage() {
                                 setQcMode('product');
                             }}
                         />
-
-                        {/* Inline totals — full breakdown lives in the resumen above.
-                            Only surface "Base IVA" + "IVA" when IVA actually applies; in
-                            an exempt-only case those rows would just echo the Total. */}
-                        <div className="mt-5 pt-4 border-t border-border-light flex items-baseline justify-end gap-6 flex-wrap">
-                            {vatAmount > 0 && (
-                                <>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                            Base IVA
-                                        </span>
-                                        <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
-                                            {fmtN(subtotal)}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                            IVA
-                                        </span>
-                                        <span className="font-mono tabular-nums text-[var(--text-secondary)] text-[13px]">
-                                            {fmtN(vatAmount)}
-                                        </span>
-                                    </div>
-                                </>
-                            )}
-                            <div className="flex items-baseline gap-2 pl-5 border-l border-border-light">
-                                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground font-bold">
-                                    Total
-                                </span>
-                                <span className="font-mono tabular-nums font-bold text-foreground text-[18px]">
-                                    Bs. {fmtN(total)}
-                                </span>
-                                {effectiveDollarRate && total > 0 && (
-                                    <span className="font-mono tabular-nums text-[var(--text-tertiary)] text-[12px]">
-                                        · ${fmtN(total / effectiveDollarRate)}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Row 3 — Actions footer */}
-                    <div className="flex items-center gap-3 rounded-xl border border-border-light bg-surface-1 px-4 py-3 shadow-sm flex-wrap">
-                        <BaseButton.Root
-                            variant="secondary"
-                            size="md"
-                            leftIcon={<Save size={14} strokeWidth={2} />}
-                            onClick={handleSaveDraft}
-                            loading={saving}
-                            disabled={confirming}
-                        >
-                            {saving ? "Guardando…" : "Guardar ahora"}
-                        </BaseButton.Root>
-                        <BaseButton.Root
-                            variant="primary"
-                            size="md"
-                            leftIcon={<CheckCircle2 size={14} strokeWidth={2} />}
-                            onClick={handleOpenConfirm}
-                            disabled={saving || confirming}
-                        >
-                            Confirmar factura
-                        </BaseButton.Root>
-                    </div>
+                    </InvoiceDetailCard>
                 </div>
             </div>
 

@@ -12,6 +12,7 @@ import { ContextLink as Link } from "@/src/shared/frontend/components/context-li
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
@@ -341,7 +342,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         igtfBaseBs:     igtf.baseBs,
         igtfMonto:      igtf.monto,
         impuestos:      totals.impuestos,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
+    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, invoiceCurrency, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
@@ -783,7 +784,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                 </div>
             )}
 
-            <div className="px-8 py-6">
+            <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 xl:px-8">
 
                 {justConfirmed && (
                     <div className="mb-4 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px] font-sans flex items-center gap-2">
@@ -801,27 +802,15 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 Para corregirla, desconfirma primero — los movimientos y asientos generados se revertirán.
                             </span>
                         </div>
-                        <BaseButton.Root
-                            variant="secondary"
-                            size="sm"
-                            leftIcon={<Unlock size={14} strokeWidth={2} />}
-                            onClick={handleUnconfirm}
-                            disabled={unconfirming}
-                        >
-                            {unconfirming ? "Desconfirmando…" : "Desconfirmar"}
-                        </BaseButton.Root>
                     </div>
                 )}
 
-                <div className="flex gap-6 items-start">
+                <div className="flex flex-col gap-4">
                     {/* Left panel */}
-                    <div className="flex-1 min-w-0 space-y-4">
+                    <div className="contents">
 
                         {/* Invoice data */}
-                        <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                            <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground mb-5">
-                                Datos de la {documentTypeLabel.toLowerCase()}
-                            </h2>
+                        <InvoiceSectionCard title={`Datos de la ${documentTypeLabel.toLowerCase()}`} subtitle="Identifica el comprobante y define su período contable.">
 
                             {isDraft && (
                                 <div className="mb-4">
@@ -1021,16 +1010,15 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </InvoiceSectionCard>
 
                         {/* Items */}
-                        <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                            <div className="mb-5">
-                                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
-                                    Productos
-                                </h2>
-                            </div>
-
+                        <InvoiceDetailCard
+                            count={items.filter((item) => item.productId).length}
+                            subtitle="Productos que ingresan al inventario al confirmar."
+                            readOnly={!isDraft}
+                            onAddLine={() => setItems((current) => [...current, emptyItem()])}
+                        >
                             <FacturaItemsGrid
                                 items={items}
                                 products={products}
@@ -1169,7 +1157,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     : "gravada 16%";
 
                                 return (
-                                    <div className="mt-4 pt-4 border-t border-border-light">
+                                    <div className="hidden">
                                         <div className="flex justify-end">
                                             <div className="grid grid-cols-[minmax(200px,1fr)_auto_auto] gap-x-6 gap-y-1.5 items-baseline text-[13px]">
                                                 {/* Column headers */}
@@ -1299,78 +1287,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     </div>
                                 );
                             })()}
-                        </div>
-
-                        {/* Actions */}
-                        {isDraft && (
-                            <div className="flex items-center gap-3">
-                                <BaseButton.Root
-                                    variant="secondary"
-                                    size="md"
-                                    leftIcon={<Save size={14} strokeWidth={2} />}
-                                    onClick={handleSaveDraft}
-                                    disabled={saving || confirming}
-                                >
-                                    {saving ? "Guardando…" : "Guardar borrador"}
-                                </BaseButton.Root>
-                                <BaseButton.Root
-                                    variant="primary"
-                                    size="md"
-                                    leftIcon={<CheckCircle2 size={14} strokeWidth={2} />}
-                                    onClick={handleConfirm}
-                                    disabled={saving || confirming}
-                                >
-                                    {confirming ? "Confirmando…" : "Confirmar factura"}
-                                </BaseButton.Root>
-                            </div>
-                        )}
-
-                        {isConfirmed && (
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <BaseButton.Root
-                                    as={Link}
-                                    href={`/inventory/movements?periodo=${invoice.period}`}
-                                    variant="secondary"
-                                    size="md"
-                                    rightIcon={<ArrowRight size={14} strokeWidth={2} />}
-                                >
-                                    Ver movimientos
-                                </BaseButton.Root>
-                                {invoice.comprobanteRetencionIvaNumero && (
-                                    <BaseButton.Root
-                                        variant="primary"
-                                        size="md"
-                                        leftIcon={<Receipt size={14} strokeWidth={2} />}
-                                        onClick={handleDownloadComprobante}
-                                        title={`Descargar comprobante Nº ${invoice.comprobanteRetencionIvaNumero} para entregar al proveedor`}
-                                    >
-                                        Comprobante Ret. IVA
-                                    </BaseButton.Root>
-                                )}
-                                {invoice.comprobanteIslrNumero && (
-                                    <BaseButton.Root
-                                        variant="primary"
-                                        size="md"
-                                        leftIcon={<Receipt size={14} strokeWidth={2} />}
-                                        onClick={handleDownloadComprobanteIslr}
-                                        title={`Descargar comprobante ISLR Nº ${invoice.comprobanteIslrNumero} para entregar al proveedor`}
-                                    >
-                                        Comprobante Ret. ISLR
-                                    </BaseButton.Root>
-                                )}
-                                <BaseButton.Root
-                                    variant="dangerOutline"
-                                    size="md"
-                                    leftIcon={<RotateCcw size={14} strokeWidth={2} />}
-                                    onClick={openReturnModal}
-                                >
-                                    Registrar devolución
-                                </BaseButton.Root>
-                            </div>
-                        )}
-
+                        </InvoiceDetailCard>
                         {returnSuccess && (
-                            <div className="px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px] font-sans flex items-center gap-2">
+                            <div className="order-3 flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/[0.05] px-4 py-3 font-sans text-[13px] text-green-600">
                                 <CheckCircle2 size={14} strokeWidth={2} />
                                 Devolución registrada — movimientos de devolución de compra creados.
                             </div>
@@ -1378,31 +1297,29 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                     </div>
 
                     {/* Right panel — summary */}
-                    <div className="w-64 flex-shrink-0 sticky top-6">
-                        <div className="rounded-xl border border-border-light bg-surface-1 p-5 space-y-4">
-                            <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
-                                Resumen
-                            </h3>
+                    <aside className="order-1 w-full">
+                        <InvoiceSummaryCard status={isConfirmed ? "confirmed" : "draft"}>
+                            <div className="space-y-4">
                             <div className="space-y-3 text-[13px]">
                                 <div className="flex justify-between gap-3">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px] flex-shrink-0">Proveedor</span>
                                     <span className="text-foreground font-medium truncate text-right">
-                                        {invoice.supplierName ?? "—"}
+                                        {(isDraft ? suppliers.find((supplier) => supplier.id === supplierId)?.name : invoice.supplierName) ?? "—"}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Nº Control</span>
-                                    <span className="text-foreground tabular-nums">{invoice.controlNumber || "—"}</span>
+                                    <span className="text-foreground tabular-nums">{(isDraft ? controlNumber : invoice.controlNumber) || "—"}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Fecha</span>
-                                    <span className="text-foreground tabular-nums">{fmtDate(invoice.date)}</span>
+                                    <span className="text-foreground tabular-nums">{fmtDate(isDraft ? date : invoice.date)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Período</span>
                                     <span className="flex items-center gap-1.5">
-                                        <span className="text-foreground tabular-nums">{invoice.period}</span>
-                                        {invoice.periodoManual && (
+                                        <span className="text-foreground tabular-nums">{isDraft ? ((periodoManual && periodo) || date.slice(0, 7)) : invoice.period}</span>
+                                        {(isDraft ? periodoManual : invoice.periodoManual) && (
                                             <span className="px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-600 font-mono text-[8px] uppercase tracking-[0.12em] font-bold">
                                                 Manual
                                             </span>
@@ -1411,7 +1328,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Ítems</span>
-                                    <span className="text-foreground tabular-nums">{(invoice.items ?? items).length}</span>
+                                    <span className="text-foreground tabular-nums">{(isDraft ? items : (invoice.items ?? [])).filter((item) => item.productId).length}</span>
                                 </div>
                             </div>
                             <div className="pt-3 border-t border-border-light space-y-2 text-[13px]">
@@ -1419,9 +1336,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     const summaryRate = (isDraft ? effectiveDollarRate : invoice.dollarRate) ?? effectiveDollarRate;
                                     // The summary reflects persisted invoice amounts. This prevents a second
                                     // local recalculation from changing a loaded USD invoice while its rate hydrates.
-                                    const summarySubtotal = invoice.subtotal;
-                                    const summaryVatAmount = invoice.vatAmount;
-                                    const summaryTotal = invoice.total;
+                                    const summarySubtotal = isDraft ? totals.baseIVA : invoice.subtotal;
+                                    const summaryVatAmount = isDraft ? totals.ivaMonto : invoice.vatAmount;
+                                    const summaryTotal = isDraft ? total + totals.totalImpuestos : invoice.total;
                                     const sourceSubtotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summarySubtotal / summaryRate : null;
                                     const sourceVatAmount = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryVatAmount / summaryRate : null;
                                     const sourceTotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryTotal / summaryRate : null;
@@ -1569,8 +1486,30 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                     </span>
                                 </div>
                             )}
-                        </div>
-                    </div>
+                            <div className="grid gap-2 border-t border-border-light pt-4">
+                                {isDraft && <>
+                                    <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>
+                                        {confirming ? "Confirmando…" : "Confirmar factura"}
+                                    </BaseButton.Root>
+                                    <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>
+                                        {saving ? "Guardando…" : "Guardar borrador"}
+                                    </BaseButton.Root>
+                                </>}
+                                {isConfirmed && <>
+                                    {invoice.comprobanteRetencionIvaNumero && (
+                                        <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<Receipt size={14} strokeWidth={2} />} onClick={handleDownloadComprobante}>Comprobante Ret. IVA</BaseButton.Root>
+                                    )}
+                                    {invoice.comprobanteIslrNumero && (
+                                        <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<Receipt size={14} strokeWidth={2} />} onClick={handleDownloadComprobanteIslr}>Comprobante Ret. ISLR</BaseButton.Root>
+                                    )}
+                                    <BaseButton.Root as={Link} href={`/inventory/movements?periodo=${invoice.period}`} className="w-full" variant="secondary" size="md" rightIcon={<ArrowRight size={14} strokeWidth={2} />}>Ver movimientos</BaseButton.Root>
+                                    <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
+                                    <BaseButton.Root className="w-full" variant="dangerOutline" size="md" leftIcon={<RotateCcw size={14} strokeWidth={2} />} onClick={openReturnModal}>Registrar devolución</BaseButton.Root>
+                                </>}
+                            </div>
+                            </div>
+                        </InvoiceSummaryCard>
+                    </aside>
                 </div>
             </div>
         </div>
