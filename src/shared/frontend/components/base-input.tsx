@@ -29,6 +29,7 @@ interface BaseInputFields extends Omit<InputProps, "onValueChange"> {
      * codes. Avoid using this to override colors/borders — the wrapper owns that.
      */
     inputClassName?: string;
+    size?: "sm" | "md" | "lg";
 }
 
 // ============================================================================
@@ -41,25 +42,27 @@ const INPUT_STYLES = {
         // HeroUI's `bordered` variant ships `border-medium` (2px). Force 1px
         // with `!important` so our width wins — a 2px border antialiased over
         // rounded-lg reads as a double stroke on high-DPI displays.
-        "!border !border-solid !border-border-default",
+        "!border !border-solid !border-[var(--control-border)]",
         "rounded-lg",
-        "!shadow-none",
-        "transition-colors duration-150",
-        "hover:!border-border-medium",
-        // Focus indicator = color shift on the 1px border. No ring, no outline.
-        "group-data-[focus=true]:!border-primary-500",
-        "group-data-[focus=true]:data-[hover=true]:!border-primary-500",
+        "!shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+        "transition-[border-color,box-shadow,background-color] duration-150",
+        "hover:!border-[var(--control-border-hover)]",
+        "group-data-[focus=true]:!border-[var(--control-border-focus)]",
+        "group-data-[focus=true]:!shadow-[var(--control-focus-shadow)]",
+        "group-data-[focus=true]:data-[hover=true]:!border-[var(--control-border-focus)]",
         "group-data-[focus-visible=true]:!outline-none",
         "group-data-[invalid=true]:!border-error/70",
+        "group-data-[invalid=true]:!shadow-[0_0_0_3px_rgba(220,38,38,0.10)]",
         "group-data-[invalid=true]:data-[hover=true]:!border-error/70",
-        "group-data-[disabled=true]:opacity-50 group-data-[disabled=true]:cursor-not-allowed",
+        "group-data-[disabled=true]:!bg-[var(--control-disabled-bg)] group-data-[disabled=true]:opacity-100 group-data-[disabled=true]:cursor-not-allowed",
+        "group-data-[readonly=true]:!bg-[var(--control-readonly-bg)]",
     ].join(" "),
 
     input: [
         "w-full outline-none bg-transparent",
-        `font-mono ${APP_SIZES.text.input} text-foreground`,
-        "placeholder:text-neutral-400 dark:placeholder:text-neutral-600",
-        `placeholder:font-mono placeholder:${APP_SIZES.text.placeholder}`,
+        "font-sans text-[14px] leading-5 text-foreground",
+        "placeholder:text-[var(--control-placeholder)]",
+        "placeholder:font-sans placeholder:text-[14px]",
         "transition-colors duration-150",
         "tabular-nums",
     ].join(" "),
@@ -71,6 +74,12 @@ const INPUT_STYLES = {
         "text-[var(--text-tertiary)]",
         "select-none",
     ].join(" "),
+} as const;
+
+const INPUT_SIZES = {
+    sm: { wrapper: "!h-9 !min-h-9", input: "!text-[13px]" },
+    md: { wrapper: "!h-10 !min-h-10", input: "!text-[14px]" },
+    lg: { wrapper: "!h-12 !min-h-12", input: "!text-[15px]" },
 } as const;
 
 // ============================================================================
@@ -118,6 +127,7 @@ const InputField = ({
     prefix,
     suffix,
     isRequired,
+    size = "md",
     ...props
 }: BaseInputFields) => {
     const id = useId();
@@ -185,13 +195,16 @@ const InputField = ({
                 endContent={resolvedEnd}
                 classNames={{
                     inputWrapper: INPUT_STYLES.inputWrapper,
-                    input:        inputClassName
-                        ? `${INPUT_STYLES.input} ${inputClassName}`
-                        : INPUT_STYLES.input,
+                    input:        [
+                        INPUT_STYLES.input,
+                        INPUT_SIZES[size].input,
+                        inputClassName,
+                    ].filter(Boolean).join(" "),
                     label:        "hidden",
                     innerWrapper: "gap-2",
                 }}
-                className="group min-h-[40px]"
+                size={size}
+                className={`group ${INPUT_SIZES[size].wrapper}`}
                 {...props}
             />
 

@@ -3,9 +3,8 @@
 // for BaseInput.Field (e.g. native <select> with custom chevron).
 
 export const FIELD_CLS = [
-    "w-full h-9 px-3 rounded-lg border border-border-light bg-surface-1 outline-none",
-    "font-mono text-[13px] text-foreground tabular-nums appearance-none",
-    "focus:border-primary-500/60 hover:border-border-medium transition-colors duration-150",
+    "control-select control-select-sm appearance-none",
+    "w-full text-foreground tabular-nums",
 ].join(" ");
 
 export const LABEL_CLS =

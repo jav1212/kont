@@ -2,8 +2,8 @@
 // Renders the appropriate input based on CustomFieldDefinition.type.
 "use client";
 
-import { Select, SelectItem } from "@heroui/react";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseSelect } from "@/src/shared/frontend/components/base-select";
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
 
 interface CustomFieldInputProps {
@@ -58,21 +58,16 @@ export function CustomFieldInput({ field, value, onChange, isReadOnly }: CustomF
 
     case "select":
       return (
-        <Select
+        <BaseSelect
           label={field.label}
-          selectedKeys={strValue ? new Set([strValue]) : new Set<string>()}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0] as string | undefined;
-            onChange(field.key, selected ?? null);
-          }}
+          items={(field.options ?? []).map((option) => ({ id: option, name: option }))}
+          value={strValue}
+          onValueChange={(selected) => onChange(field.key, selected || null)}
+          selectionMode="single"
           isRequired={field.required}
           isDisabled={isReadOnly}
           size="sm"
-        >
-          {(field.options ?? []).map((opt) => (
-            <SelectItem key={opt}>{opt}</SelectItem>
-          ))}
-        </Select>
+        />
       );
 
     default:

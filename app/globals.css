@@ -151,6 +151,19 @@
   --focus-ring-width:  2px;
   --focus-ring-offset: 2px;
 
+  /* Shared form controls — Vercel-inspired geometry, KONT colors. */
+  --control-radius: 0.5rem;
+  --control-height-sm: 2.25rem;
+  --control-height-md: 2.5rem;
+  --control-height-lg: 3rem;
+  --control-border: #E5E7EB;
+  --control-border-hover: #D1D5DB;
+  --control-border-focus: #111827;
+  --control-placeholder: #9CA3AF;
+  --control-disabled-bg: #F9FAFB;
+  --control-readonly-bg: #F9FAFB;
+  --control-focus-shadow: 0 0 0 3px rgb(17 24 39 / 0.08);
+
   /* ── Z-index scale ─────────────────────────────────────────────────── */
   --z-base:      0;
   --z-dropdown: 30;
@@ -260,6 +273,14 @@
   --border-default: #6F7581;    /* was #3A4047 (1.47:1) */
   --border-medium: #4E5562;
   --border-strong: #636E7A;
+
+  --control-border: #3F444D;
+  --control-border-hover: #596170;
+  --control-border-focus: #F3F4F6;
+  --control-placeholder: #8B929E;
+  --control-disabled-bg: #292D32;
+  --control-readonly-bg: #292D32;
+  --control-focus-shadow: 0 0 0 3px rgb(255 255 255 / 0.12);
 
   /* Shadows — dark mode
      Tinted toward slate-blue instead of pure black to avoid flat "painted" look
@@ -791,4 +812,154 @@ select:focus-visible {
   --badge-success-bg: #D1FAE5;
   --badge-success-border: #6EE7B7;
   color-scheme: light;
+}
+
+/* ============================================================================
+   GLOBAL NATIVE FORM CONTROL NORMALIZATION
+   ============================================================================
+   The application contains legacy native controls in modules that do not yet
+   consume BaseInput/BaseSelect. Keep one visual contract for those controls as
+   well. HeroUI's internal input slot is excluded because BaseInput owns its
+   wrapper, focus state and sizing.
+
+   Technical controls (file, hidden, checkbox, radio, range, color and button
+   inputs) intentionally remain native and are not part of this contract.
+   ============================================================================ */
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea,
+  .control-field,
+  .control-select,
+  .control-textarea
+):not([data-slot]) {
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background-color: var(--surface-1);
+  color: var(--text-primary);
+  font-family: var(--font-darker-grotesque, sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
+  transition: border-color var(--motion-base) var(--easing-out),
+    box-shadow var(--motion-base) var(--easing-out),
+    background-color var(--motion-base) var(--easing-out);
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  .control-field,
+  .control-select
+):not([data-slot]) {
+  width: 100%;
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
+  padding-inline: 0.75rem;
+}
+
+:is(textarea, .control-textarea):not([data-slot]) {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.625rem 0.75rem;
+  resize: vertical;
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea
+):not([data-slot])::placeholder {
+  color: var(--control-placeholder);
+  opacity: 1;
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea
+):not([data-slot]):hover {
+  border-color: var(--control-border-hover);
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea
+):not([data-slot]):focus {
+  border-color: var(--control-border-focus);
+  box-shadow: var(--control-focus-shadow);
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea
+):not([data-slot])[aria-invalid="true"] {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 10%, transparent);
+}
+
+:is(
+  input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]),
+  select,
+  textarea
+):not([data-slot]):disabled {
+  cursor: not-allowed;
+  background-color: var(--control-disabled-bg);
+  color: var(--text-disabled);
+  opacity: 1;
+}
+
+:is(input, textarea):not([data-slot])[readonly] {
+  background-color: var(--control-readonly-bg);
+  color: var(--text-secondary);
+}
+
+select:not([data-slot]),
+.control-select:not([data-slot]) {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+select:not([data-slot]):disabled,
+.control-select:not([data-slot]):disabled {
+  cursor: not-allowed;
+}
+
+:is(input, select, textarea)[data-control-size="sm"]:not([data-slot]),
+.control-field-sm,
+.control-select-sm {
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding-inline: 0.625rem;
+  font-size: 0.8125rem;
+}
+
+select[data-control-size="sm"]:not([data-slot]),
+.control-select-sm {
+  padding-right: 2rem;
+  background-position: right 0.625rem center;
+}
+
+:is(input, select, textarea)[data-control-size="lg"]:not([data-slot]),
+.control-field-lg,
+.control-select-lg {
+  height: var(--control-height-lg);
+  min-height: var(--control-height-lg);
+  padding-inline: 0.875rem;
+  font-size: 0.9375rem;
+}
+
+select[data-control-size="lg"]:not([data-slot]),
+.control-select-lg {
+  padding-right: 2.5rem;
+  background-position: right 0.875rem center;
 }

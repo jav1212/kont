@@ -19,8 +19,8 @@ export interface InlineSelectProps<T extends string = string> {
     options: InlineSelectOption<T>[];
     /** Shown when value is undefined/empty */
     placeholder?: string;
-    /** "sm" = h-8 (32px) for dense table rows · "md" = h-9 (36px) default */
-    size?: "sm" | "md";
+    /** "sm" = dense rows · "md" = standard · "lg" = toolbar/filter */
+    size?: "sm" | "md" | "lg";
     ariaLabel?: string;
     disabled?: boolean;
     className?: string;
@@ -33,9 +33,10 @@ export interface InlineSelectProps<T extends string = string> {
 // STYLE CONSTANTS
 // ============================================================================
 
-const SIZE: Record<"sm" | "md", { trigger: string; text: string }> = {
-    sm: { trigger: "h-8 px-2.5 text-[12px]", text: "text-[12px]" },
-    md: { trigger: "h-9 px-3 text-[13px]", text: "text-[13px]" },
+const SIZE: Record<"sm" | "md" | "lg", { trigger: string; text: string }> = {
+    sm: { trigger: "h-9 px-2.5", text: "text-[13px]" },
+    md: { trigger: "h-10 px-3", text: "text-[14px]" },
+    lg: { trigger: "h-12 px-3.5 text-[15px]", text: "text-[15px]" },
 };
 
 // ============================================================================
@@ -105,14 +106,14 @@ export function InlineSelect<T extends string = string>({
                 className={[
                     "w-full flex items-center justify-between gap-1.5",
                     "bg-surface-1 border rounded-lg",
-                    "font-mono tabular-nums",
-                    "transition-all duration-150",
-                    "shadow-[inset_0_1px_2px_rgba(0,0,0,.03)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,.15)]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/20",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    "font-sans tabular-nums",
+                    "transition-[border-color,box-shadow,background-color] duration-150",
+                    "shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+                    "focus-visible:outline-none focus-visible:border-[var(--control-border-focus)] focus-visible:shadow-[var(--control-focus-shadow)]",
+                    "disabled:bg-[var(--control-disabled-bg)] disabled:text-[var(--text-disabled)] disabled:cursor-not-allowed",
                     open
-                        ? "border-primary-400 ring-2 ring-primary-500/10"
-                        : "border-border-light hover:border-border-medium",
+                        ? "border-[var(--control-border-focus)] shadow-[var(--control-focus-shadow)]"
+                        : "border-[var(--control-border)] hover:border-[var(--control-border-hover)]",
                     sizeStyle.trigger,
                 ].join(" ")}
             >
@@ -120,13 +121,13 @@ export function InlineSelect<T extends string = string>({
                     className={[
                         "truncate text-left flex-1",
                         sizeStyle.text,
-                        selected ? "text-foreground" : "text-[var(--text-disabled)]",
+                        selected ? "text-foreground" : "text-[var(--control-placeholder)]",
                     ].join(" ")}
                 >
                     {displayLabel}
                 </span>
                 <ChevronDown
-                    size={12}
+                    size={16}
                     strokeWidth={1.75}
                     aria-hidden
                     className={[
@@ -148,9 +149,9 @@ export function InlineSelect<T extends string = string>({
                         className={[
                             "absolute left-0 top-full mt-1 z-[9999]",
                             "min-w-full w-max max-w-[280px]",
-                            "rounded-xl border border-border-light bg-surface-1",
-                            "shadow-[0_4px_12px_rgba(0,0,0,.08),0_1px_3px_rgba(0,0,0,.05)]",
-                            "dark:shadow-[0_4px_12px_rgba(0,0,0,.4),0_1px_3px_rgba(0,0,0,.3)]",
+                            "rounded-lg border border-[var(--control-border)] bg-surface-1",
+                            "shadow-[0_12px_28px_rgba(0,0,0,.12),0_2px_6px_rgba(0,0,0,.06)]",
+                            "dark:shadow-[0_12px_28px_rgba(0,0,0,.45),0_2px_6px_rgba(0,0,0,.28)]",
                             "overflow-hidden",
                         ].join(" ")}
                     >
@@ -170,7 +171,7 @@ export function InlineSelect<T extends string = string>({
                                             "w-full flex items-center justify-between gap-2",
                                             "px-2.5 py-1.5 rounded-md text-left",
                                             "transition-colors duration-100",
-                                            "font-mono text-[12px]",
+                                            "font-sans text-[13px]",
                                             !value
                                                 ? "bg-surface-2 text-foreground"
                                                 : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground",
@@ -201,7 +202,7 @@ export function InlineSelect<T extends string = string>({
                                                 "w-full flex items-center justify-between gap-2",
                                                 "px-2.5 py-1.5 rounded-md text-left",
                                                 "transition-colors duration-100",
-                                                "font-mono text-[12px]",
+                                                "font-sans text-[13px]",
                                                 isSelected
                                                     ? "bg-surface-2 text-foreground"
                                                     : "hover:bg-surface-2 text-foreground",

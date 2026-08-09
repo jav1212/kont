@@ -352,14 +352,14 @@ export function GuidedStepPeriod({ state, onNext }: Props) {
                             }}
                             classNames={{
                                 trigger: [
-                                    "w-full min-w-0 h-11 min-h-[44px] px-3 rounded-lg border border-border-light bg-surface-1 overflow-hidden",
-                                    "transition-colors duration-150",
-                                    "data-[hover=true]:border-border-medium",
-                                    "data-[open=true]:border-primary-500/60",
+                                    "w-full min-w-0 !h-10 !min-h-10 px-3 rounded-lg !border !border-solid !border-[var(--control-border)] bg-surface-1 overflow-hidden",
+                                    "!shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-[border-color,box-shadow,background-color] duration-150",
+                                    "data-[hover=true]:!border-[var(--control-border-hover)]",
+                                    "data-[open=true]:!border-[var(--control-border-focus)] data-[open=true]:!shadow-[var(--control-focus-shadow)]",
                                 ].join(" "),
                                 value: "flex min-w-0 items-center w-full",
                                 selectorIcon: "shrink-0 text-[var(--text-tertiary)]",
-                                popoverContent: "bg-surface-1 border border-border-light rounded-xl overflow-hidden",
+                                popoverContent: "bg-surface-1 border border-[var(--control-border)] rounded-lg overflow-hidden shadow-[0_12px_28px_rgba(0,0,0,.12)]",
                                 listbox: "p-1",
                             }}
                             className="w-full min-w-0"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Select, SelectItem, Chip, SelectedItems } from "@heroui/react";
 import { APP_SIZES } from "@/src/shared/frontend/sizes";
 
@@ -18,8 +18,10 @@ export interface SelectItemData {
 
 export interface BaseSelectProps<T extends SelectItemData> {
     items: T[];
-    selectedKeys: Set<string | number> | "all";
-    onSelectionChange: (keys: Set<string | number>) => void;
+    selectedKeys?: Set<string | number> | "all";
+    onSelectionChange?: (keys: Set<string | number>) => void;
+    value?: string | number;
+    onValueChange?: (value: string) => void;
     label?: string;
     placeholder?: string;
     className?: string;
@@ -29,6 +31,9 @@ export interface BaseSelectProps<T extends SelectItemData> {
     variant?: "flat" | "bordered" | "faded" | "underlined";
     color?: "default" | "primary" | "secondary" | "success" | "warning" | "danger";
     selectionMode?: "single" | "multiple";
+    size?: "sm" | "md" | "lg";
+    error?: string;
+    isRequired?: boolean;
 }
 
 // ============================================================================
@@ -67,26 +72,36 @@ export const BaseSelect = <T extends SelectItemData>({
     items,
     selectedKeys,
     onSelectionChange,
+    value,
+    onValueChange,
     label,
     placeholder = "Seleccionar...",
     className = "",
     isDisabled = false,
-    showAvatar = true,
+    showAvatar = false,
     maxChips = 2,
     variant = "bordered",
-    color = "primary",
+    color = "default",
     selectionMode = "multiple",
+    size = "md",
+    error,
+    isRequired = false,
 }: BaseSelectProps<T>) => {
+
+    const resolvedKeys = useMemo(
+        () => selectedKeys ?? (value !== undefined ? new Set([String(value)]) : new Set<string>()),
+        [selectedKeys, value]
+    );
 
     const handleChipClose = useCallback(
         (keyToRemove: string | number) => {
-            if (selectedKeys === "all") return;
-            const next = new Set(selectedKeys);
+            if (resolvedKeys === "all") return;
+            const next = new Set(resolvedKeys);
             next.delete(String(keyToRemove));
             next.delete(Number(keyToRemove));
-            onSelectionChange(next);
+            onSelectionChange?.(next);
         },
-        [selectedKeys, onSelectionChange]
+        [resolvedKeys, onSelectionChange]
     );
 
     const renderValue = useCallback(
@@ -146,8 +161,8 @@ export const BaseSelect = <T extends SelectItemData>({
     );
 
     const activeKeys =
-        selectedKeys !== "all"
-            ? new Set(Array.from(selectedKeys).map(String))
+        resolvedKeys !== "all"
+            ? new Set(Array.from(resolvedKeys).map(String))
             : null;
 
     return (
@@ -157,15 +172,21 @@ export const BaseSelect = <T extends SelectItemData>({
                 label={label}
                 placeholder={placeholder}
                 selectionMode={selectionMode}
-                selectedKeys={selectedKeys}
-                onSelectionChange={(keys) =>
-                    onSelectionChange(keys as Set<string | number>)
-                }
+                selectedKeys={resolvedKeys}
+                onSelectionChange={(keys) => {
+                    const next = keys as Set<string | number>;
+                    onSelectionChange?.(next);
+                    if (selectionMode === "single") {
+                        onValueChange?.(String(Array.from(next)[0] ?? ""));
+                    }
+                }}
                 variant={variant}
                 color={color}
                 isDisabled={isDisabled}
+                isInvalid={Boolean(error)}
+                isRequired={isRequired}
                 labelPlacement="outside"
-                isMultiline
+                isMultiline={selectionMode === "multiple"}
                 disableAnimation={false}
                 scrollShadowProps={{ isEnabled: false }}
                 selectorIcon={<ChevronIcon />}
@@ -179,38 +200,39 @@ export const BaseSelect = <T extends SelectItemData>({
                     ].join(" "),
 
                     trigger: [
-                        "min-h-[38px] h-auto py-1.5 px-3",
+                        size === "sm" ? "!min-h-9 py-1 px-2.5" : size === "lg" ? "!min-h-12 py-2 px-3.5" : "!min-h-10 py-1.5 px-3",
                         "bg-surface-1",
-                        "border border-border-light",
+                        "!border !border-solid !border-[var(--control-border)]",
                         "rounded-lg",
-                        "shadow-[inset_0_1px_2px_rgba(0,0,0,.03)]",
-                        "dark:shadow-[inset_0_1px_2px_rgba(0,0,0,.15)]",
-                        "transition-all duration-150",
-                        "data-[hover=true]:border-border-medium",
-                        "data-[open=true]:border-primary-400",
-                        "data-[open=true]:ring-2 data-[open=true]:ring-primary-500/10",
-                        "data-[disabled=true]:opacity-50 data-[disabled=true]:cursor-not-allowed",
+                        "!shadow-[0_1px_2px_rgba(0,0,0,0.02)]",
+                        "transition-[border-color,box-shadow,background-color] duration-150",
+                        "data-[hover=true]:!border-[var(--control-border-hover)]",
+                        "data-[open=true]:!border-[var(--control-border-focus)]",
+                        "data-[open=true]:!shadow-[var(--control-focus-shadow)]",
+                        "data-[invalid=true]:!border-error data-[invalid=true]:!shadow-[0_0_0_3px_rgba(220,38,38,0.10)]",
+                        "data-[disabled=true]:!bg-[var(--control-disabled-bg)] data-[disabled=true]:opacity-100 data-[disabled=true]:cursor-not-allowed",
                     ].join(" "),
 
-                    value: "flex flex-wrap gap-1 w-full items-center",
+                    value: "flex flex-wrap gap-1 w-full items-center font-sans text-[14px] text-foreground data-[placeholder=true]:text-[var(--control-placeholder)]",
 
                     selectorIcon: [
-                        "absolute right-2.5 top-1/2 -translate-y-1/2",
-                        "text-neutral-400 dark:text-neutral-500",
+                        "absolute right-3 top-1/2 -translate-y-1/2",
+                        "size-4 text-[var(--text-tertiary)]",
                         "pointer-events-none",
                     ].join(" "),
 
                     popoverContent: [
                         "bg-surface-1",
-                        "border border-border-light",
-                        "shadow-[0_4px_12px_rgba(0,0,0,.08),0_1px_3px_rgba(0,0,0,.05)]",
-                        "dark:shadow-[0_4px_12px_rgba(0,0,0,.4),0_1px_3px_rgba(0,0,0,.3)]",
-                        "rounded-xl overflow-hidden",
+                        "border border-[var(--control-border)]",
+                        "shadow-[0_12px_28px_rgba(0,0,0,.12),0_2px_6px_rgba(0,0,0,.06)]",
+                        "dark:shadow-[0_12px_28px_rgba(0,0,0,.45),0_2px_6px_rgba(0,0,0,.28)]",
+                        "rounded-lg overflow-hidden",
                         "z-[9999]",
                     ].join(" "),
 
                     listbox: "p-1.5 gap-0",
                 }}
+                size={size}
                 renderValue={renderValue}
             >
                 {(item) => {
@@ -249,7 +271,7 @@ export const BaseSelect = <T extends SelectItemData>({
 
                                     <div className="min-w-0">
                                         <p className={[
-                                            `font-mono ${APP_SIZES.text.selectItem} font-medium truncate`,
+                                            `font-sans ${APP_SIZES.text.selectItem} font-medium truncate`,
                                             isSelected
                                                 ? "text-primary-700 dark:text-primary-300"
                                                 : "text-foreground",
@@ -257,7 +279,7 @@ export const BaseSelect = <T extends SelectItemData>({
                                             {item.name}
                                         </p>
                                         {item.subtitle && (
-                                            <p className={`font-mono ${APP_SIZES.text.selectSubtitle} text-neutral-400 dark:text-neutral-500 mt-0.5 truncate`}>
+                                            <p className={`font-sans ${APP_SIZES.text.selectSubtitle} text-neutral-400 dark:text-neutral-500 mt-0.5 truncate`}>
                                                 {item.subtitle}
                                             </p>
                                         )}
