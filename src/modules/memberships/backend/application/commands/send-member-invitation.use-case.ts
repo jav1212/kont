@@ -40,16 +40,16 @@ export class SendMemberInvitationUseCase extends UseCase<Input, SentInvitation> 
             return Result.fail("email and role are required");
         }
 
-        if (!["admin", "contable"].includes(role)) {
-            return Result.fail("role must be admin or contable");
+        if (!["admin", "contador", "contable", "vendedor", "cajero"].includes(role)) {
+            return Result.fail("role must be admin, contador, vendedor or cajero");
         }
 
         if (callerRole === "contable") {
             return Result.fail("Insufficient permissions to invite");
         }
 
-        if (callerRole === "admin" && role !== "contable") {
-            return Result.fail("Admins can only invite contable members");
+        if (callerRole === "admin" && role === "admin") {
+            return Result.fail("Admins cannot invite administrators");
         }
 
         const normalizedEmail = email.toLowerCase().trim();
@@ -76,7 +76,7 @@ export class SendMemberInvitationUseCase extends UseCase<Input, SentInvitation> 
         try {
             await sendInviteEmail({
                 to:           normalizedEmail,
-                role:         role as "admin" | "contable",
+                role:         role as "admin" | "contador" | "contable" | "vendedor" | "cajero",
                 tenantName:   ctx.tenantName,
                 inviterEmail: ctx.inviterEmail,
                 acceptUrl,

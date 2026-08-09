@@ -17,7 +17,7 @@ interface Member {
     id:         string;
     memberId:   string | null;
     email:      string;
-    role:       "owner" | "admin" | "contable";
+    role:       "owner" | "admin" | "contador" | "contable" | "vendedor" | "cajero";
     acceptedAt: string | null;
     createdAt:  string;
     pending:    boolean;
@@ -51,7 +51,7 @@ function PendingBadge() {
 
 export default function MembersPage() {
     const router = useRouter();
-    const { activeTenantRole, isActingOnBehalf, loading: tenantLoading } = useActiveTenantContext();
+    const { activeTenantRole, isActingOnBehalf, loading: tenantLoading, can } = useActiveTenantContext();
 
     const [members,    setMembers]    = useState<Member[]>([]);
     const [loading,    setLoading]    = useState(true);
@@ -62,8 +62,8 @@ export default function MembersPage() {
     // Redirect contables away
     useEffect(() => {
         if (tenantLoading) return;
-        if (activeTenantRole === "contable") router.replace("/");
-    }, [activeTenantRole, tenantLoading, router]);
+        if (!can("members.read")) router.replace("/");
+    }, [activeTenantRole, tenantLoading, router, can]);
 
     const fetchMembers = useCallback(async () => {
         setLoading(true);
@@ -97,9 +97,9 @@ export default function MembersPage() {
         fetchMembers();
     }
 
-    const canInvite = activeTenantRole === "owner" || activeTenantRole === "admin";
+    const canInvite = can("members.invite");
 
-    if (tenantLoading || activeTenantRole === "contable") return null;
+    if (tenantLoading || !can("members.read")) return null;
 
     const accepted = members.filter((m) => !m.pending);
     const pending  = members.filter((m) => m.pending);
@@ -345,7 +345,7 @@ function InviteModal({
     onSuccess:      () => void;
 }) {
     const [email,     setEmail]     = useState("");
-    const [role,      setRole]      = useState("contable");
+    const [role,      setRole]      = useState("contador");
     const [loading,   setLoading]   = useState(false);
     const [acceptUrl,      setAcceptUrl]      = useState<string | null>(null);
     const [copied,         setCopied]         = useState(false);
@@ -431,7 +431,9 @@ function InviteModal({
                                 className="w-full px-3 py-2.5 rounded-lg bg-surface-2 border border-border-light font-mono text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary-500/40"
                             >
                                 {canInviteAdmin && <option value="admin">Admin</option>}
-                                <option value="contable">Contable</option>
+                                <option value="contador">Contador</option>
+                                <option value="vendedor">Vendedor</option>
+                                <option value="cajero">Cajero</option>
                             </select>
                         </div>
                         <div className="flex gap-2 pt-1">

@@ -1,4 +1,4 @@
-import { requireTenantRole, withTenant } from "@/src/shared/backend/utils/require-tenant";
+import { requirePermission, withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { getMembershipsActions } from "@/src/modules/memberships/backend/memberships-factory";
 
 /**
@@ -7,7 +7,7 @@ import { getMembershipsActions } from "@/src/modules/memberships/backend/members
  * Owners can revoke anyone; admins can only revoke non-owners.
  */
 export const DELETE = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId, role}) => {
-    requireTenantRole({ role }, 'owner', 'admin');
+    await requirePermission({ userId, actingAs, effectiveOwnerId, tenantId, schemaName: "", role }, "members.revoke", { req, auditAllow: true });
     const tenantOwnerId = tenantId;
     const callerRole    = role;
     const memberId      = req.url.split("/").at(-1)!;

@@ -23,7 +23,7 @@ export class RevokeMembershipUseCase extends UseCase<Input, void> {
     }
 
     async execute({ tenantOwnerId, memberId, callerRole }: Input): Promise<Result<void>> {
-        if (callerRole === "contable") {
+        if (callerRole === "contable" || callerRole === "contador") {
             return Result.fail("Insufficient permissions");
         }
 

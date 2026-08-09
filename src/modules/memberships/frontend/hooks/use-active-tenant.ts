@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/src/modules/auth/frontend/hooks/use-auth";
 import { invalidateModuleAccessCache } from "@/src/modules/billing/frontend/hooks/use-module-access";
+import type { MemberRole } from "../../backend/domain/membership";
 
 const STORAGE_KEY = "kont-active-tenant-id";
 const COMPANY_STORAGE_KEY = "kont-company-id";
@@ -11,16 +12,19 @@ const TENANT_EVENT = "kont-active-tenant-changed";
 
 export interface TenantEntry {
     tenantId:        string;
-    role:            "owner" | "admin" | "contable";
+    role:            MemberRole;
     tenantEmail:     string;
     tenantAvatarUrl: string | null;
     isOwn:           boolean;
+    permissions:     string[];
 }
 
 export interface UseActiveTenantResult {
     allTenants:        TenantEntry[];
     activeTenantId:    string | null;
-    activeTenantRole:  "owner" | "admin" | "contable" | null;
+    activeTenantRole:  MemberRole | null;
+    activePermissions: string[];
+    can:               (permission: string) => boolean;
     isActingOnBehalf:  boolean;
     loading:           boolean;
     switchTenant:      (tenantId: string) => void;
@@ -150,11 +154,15 @@ export function useActiveTenant(urlTenantId?: string | null): UseActiveTenantRes
 
     const activeTenant    = allTenants.find((t) => t.tenantId === activeTenantId) ?? null;
     const isActingOnBehalf = !!activeTenantId && activeTenantId !== user?.id;
+    const activePermissions = activeTenant?.permissions ?? [];
+    const can = useCallback((permission: string) => activePermissions.includes('*') || activePermissions.includes(permission), [activePermissions]);
 
     return {
         allTenants,
         activeTenantId,
         activeTenantRole: activeTenant?.role ?? null,
+        activePermissions,
+        can,
         isActingOnBehalf,
         loading,
         switchTenant,

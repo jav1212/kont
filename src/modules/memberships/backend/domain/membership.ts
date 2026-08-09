@@ -2,7 +2,7 @@
 // Role: domain — represents a confirmed or pending membership of a user within a tenant.
 // Invariant: pending === true means the user has been invited but has not yet accepted.
 
-export type MemberRole = 'owner' | 'admin' | 'contable';
+export type MemberRole = 'owner' | 'admin' | 'contador' | 'contable' | 'vendedor' | 'cajero';
 
 export interface Membership {
     id:         string;
@@ -21,4 +21,5 @@ export interface UserMembership {
     tenantEmail:     string;
     tenantAvatarUrl: string | null;
     isOwn:           boolean;
+    permissions:     string[];
 }

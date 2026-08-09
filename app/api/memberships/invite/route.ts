@@ -1,14 +1,14 @@
-import { requireTenantRole, withTenant } from "@/src/shared/backend/utils/require-tenant";
+import { requirePermission, withTenant } from "@/src/shared/backend/utils/require-tenant";
 import { getMembershipsActions } from "@/src/modules/memberships/backend/memberships-factory";
 import { MemberRole } from "@/src/modules/memberships/backend/domain/membership";
 
 /**
  * POST /api/memberships/invite
- * Body: { email: string, role: 'admin' | 'contable' }
+ * Body: { email: string, role: 'admin' | 'contador' | 'vendedor' | 'cajero' }
  * Creates an invitation and sends the invite email to the recipient.
  */
 export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId, role}) => {
-    requireTenantRole({ role }, 'owner', 'admin');
+    await requirePermission({ userId, actingAs, effectiveOwnerId, tenantId, schemaName: "", role }, "members.invite", { req });
     const tenantOwnerId = tenantId;
     const callerRole    = role;
 
@@ -22,14 +22,14 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId,
         tenantOwnerId,
         invitedBy:  userId,
         email:      body.email ?? "",
-        role:       body.role  ?? "contable",
+        role:       body.role  ?? "contador",
         callerRole,
         origin,
     });
 
     if (result.isFailure) {
         const err = result.getError();
-        const status = err === "Insufficient permissions to invite" || err === "Admins can only invite contable members" ? 403 : 400;
+        const status = err === "Insufficient permissions to invite" || err === "Admins cannot invite administrators" ? 403 : 400;
         return Response.json({ error: err }, { status });
     }
 

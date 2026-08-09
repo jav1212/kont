@@ -5,7 +5,9 @@ import { ServerSupabaseSource } from '../source/infra/server-supabase';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type ActingAs = { ownerId: string; role: 'owner' | 'admin' | 'contable' };
+export type TenantRole = 'owner' | 'admin' | 'contador' | 'contable' | 'vendedor' | 'cajero';
+export type PermissionCode = `${string}.${string}`;
+export type ActingAs = { ownerId: string; role: TenantRole };
 
 export type TenantContext = {
     userId:     string;
@@ -32,6 +34,15 @@ export class TenantAuthError extends Error {
 export class TenantForbiddenError extends Error {
     readonly status = 403;
     constructor() { super('Sin acceso a este tenant'); }
+}
+
+export class PermissionDeniedError extends TenantForbiddenError {
+    readonly permission: PermissionCode;
+    constructor(permission: PermissionCode) {
+        super();
+        this.message = `Permiso requerido: ${permission}`;
+        this.permission = permission;
+    }
 }
 
 // ── Core function ─────────────────────────────────────────────────────────────
@@ -144,6 +155,67 @@ export async function requireTenant(req?: Request): Promise<TenantContext> {
     };
 }
 
+export async function requirePermission(
+    context: TenantContext,
+    permission: PermissionCode,
+    options?: { req?: Request; resourceType?: string; resourceId?: string; auditAllow?: boolean },
+): Promise<void> {
+    const normalizedRole = context.role === 'contable' ? 'contador' : context.role;
+    let allowed = normalizedRole === 'owner';
+
+    if (!allowed) {
+        const server = new ServerSupabaseSource();
+        const { data, error } = await server.instance
+            .from('shared_authorization_role_permissions')
+            .select('permission_code')
+            .eq('role', normalizedRole)
+            .eq('permission_code', permission)
+            .maybeSingle();
+        allowed = !error && !!data;
+    }
+
+    if (!allowed) {
+        await writeAuthorizationAudit(context, permission, 'deny', options);
+        throw new PermissionDeniedError(permission);
+    }
+
+    if (options?.auditAllow) await writeAuthorizationAudit(context, permission, 'allow', options);
+}
+
+async function writeAuthorizationAudit(
+    context: TenantContext,
+    permission: PermissionCode,
+    decision: 'allow' | 'deny',
+    options?: { req?: Request; resourceType?: string; resourceId?: string },
+): Promise<void> {
+    try {
+        const server = new ServerSupabaseSource();
+        await server.instance.from('shared_authorization_audit').insert({
+            user_id: context.userId,
+            tenant_id: context.tenantId,
+            permission_code: permission,
+            resource_type: options?.resourceType ?? null,
+            resource_id: options?.resourceId ?? null,
+            method: options?.req?.method ?? null,
+            path: options?.req ? new URL(options.req.url).pathname : null,
+            decision,
+            reason: decision === 'deny' ? 'missing_permission' : null,
+        });
+    } catch (error) {
+        console.error('[authorization] audit write failed', error);
+    }
+}
+
+export function withTenantPermission(
+    permission: PermissionCode,
+    handler: (req: Request, tenant: TenantContext) => Promise<Response>,
+) {
+    return withTenant(async (req, tenant) => {
+        await requirePermission(tenant, permission, { req });
+        return handler(req, tenant);
+    });
+}
+
 // ── withTenant wrapper ────────────────────────────────────────────────────────
 
 /** Envuelve una API route con auth automática e inyección de TenantContext */
@@ -153,6 +225,10 @@ export function withTenant(
     return async (req: Request): Promise<Response> => {
         try {
             const tenant = await requireTenant(req);
+            const inferredPermission = inferPermissionFromRequest(req);
+            if (inferredPermission) {
+                await requirePermission(tenant, inferredPermission, { req });
+            }
             return await handler(req, tenant);
         } catch (err) {
             if (err instanceof TenantAuthError) {
@@ -164,4 +240,37 @@ export function withTenant(
             throw err;
         }
     };
+}
+
+/**
+ * Safety net for routes that have not yet been converted to an explicit
+ * withTenantPermission declaration. Every tenant-aware API route is still
+ * deny-by-default at module/action level.
+ */
+function inferPermissionFromRequest(req: Request): PermissionCode | null {
+    const path = new URL(req.url).pathname.split('/').filter(Boolean);
+    const apiIndex = path.indexOf('api');
+    const moduleName = apiIndex >= 0 ? path[apiIndex + 1] : undefined;
+    const resources = new Set(['companies', 'employees', 'payroll', 'inventory', 'purchases', 'sales', 'accounting', 'billing', 'memberships', 'documents']);
+    if (!moduleName || !resources.has(moduleName)) return null;
+
+    const operation = path.slice(apiIndex + 2);
+    if (moduleName === 'memberships') {
+        if (operation.includes('invite')) return 'members.invite';
+        if (operation.includes('members')) return 'members.read';
+        return req.method === 'DELETE' ? 'members.revoke' : 'members.read';
+    }
+    if (moduleName === 'billing' && req.method !== 'GET') return 'billing.manage';
+    let action: string;
+    if (operation.includes('confirm')) action = 'confirm';
+    else if (operation.includes('unconfirm') || operation.includes('cancel')) action = moduleName === 'payroll' ? 'delete' : 'cancel';
+    else if (operation.includes('close')) action = 'close';
+    else if (operation.includes('post')) action = 'post';
+    else if (req.method === 'GET') action = 'read';
+    else if (req.method === 'POST') action = 'create';
+    else if (req.method === 'PATCH' || req.method === 'PUT') action = 'update';
+    else if (req.method === 'DELETE') action = 'delete';
+    else action = 'read';
+
+    return `${moduleName}.${action}` as PermissionCode;
 }

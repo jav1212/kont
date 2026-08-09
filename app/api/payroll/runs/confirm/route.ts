@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getPayrollRunActions }  from "@/src/modules/payroll/backend/infrastructure/payroll-run-factory";
 import { getAccountingActions }  from "@/src/modules/accounting/backend/infrastructure/accounting-factory";
-import { withTenant }            from "@/src/shared/backend/utils/require-tenant";
+import { withTenantPermission }  from "@/src/shared/backend/utils/require-tenant";
 import { PAYROLL_REFERENCE_CURRENCY_CODES } from "@/src/modules/payroll/shared/reference-currency";
 
 const ComputedLineSchema = z.object({
@@ -50,7 +50,7 @@ const ConfirmSchema = z.object({
     receipts: z.array(ReceiptSchema).min(1, "Se requiere al menos un empleado"),
 });
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const POST = withTenantPermission("payroll.confirm", async (req, { effectiveOwnerId, tenantId}) => {
     let body: unknown;
     try {
         body = await req.json();

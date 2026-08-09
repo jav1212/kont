@@ -3,7 +3,7 @@ import { renderEmailLayout } from "./email-layout";
 
 interface SendInviteEmailOptions {
     to:           string;
-    role:         "admin" | "contable";
+    role:         "admin" | "contador" | "contable" | "vendedor" | "cajero";
     tenantName:   string;
     inviterEmail: string;
     acceptUrl:    string;

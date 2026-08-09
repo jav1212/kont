@@ -1,8 +1,8 @@
 import { getCompanyActions } from "@/src/modules/companies/backend/infrastructure/company-factory";
 import { handleResult } from "@/src/shared/backend/utils/handle-result";
-import { withTenant } from "@/src/shared/backend/utils/require-tenant";
+import { withTenantPermission } from "@/src/shared/backend/utils/require-tenant";
 
-export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
+export const POST = withTenantPermission("companies.create", async (req, { effectiveOwnerId, tenantId}) => {
     try {
         const body = await req.json();
         const ownerId = effectiveOwnerId;

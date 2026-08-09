@@ -97,7 +97,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
     const { hasAccess: hasInventory  } = useModuleAccess("inventory");
     const { hasAccess: hasPayroll    } = useModuleAccess("payroll");
     const { hasAccess: hasAccounting } = useModuleAccess("accounting");
-    useActiveTenantContext();
+    const { can } = useActiveTenantContext();
     const { buildContextHref } = useUrlContext();
     const { profile, email: userEmail } = useProfile();
     const planName = usePlanName();
@@ -131,11 +131,14 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
             .filter((mod) => {
                 if ("parentId" in mod) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
+                const permissionResource = mod.id;
+                if (["payroll", "purchases", "sales", "inventory", "accounting", "companies"].includes(permissionResource)
+                    && !can(`${permissionResource}.read`)) return false;
                 return true;
             })
             .map((mod) => ({ id: mod.id, label: mod.label, href: mod.href })),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [hasPayroll, hasInventory, hasAccounting]);
+        [hasPayroll, hasInventory, hasAccounting, can]);
 
     function handleSelectModule(id: string, href: string) {
         setStoredModuleId(id);

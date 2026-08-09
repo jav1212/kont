@@ -69,12 +69,29 @@ export class SupabaseMembershipsRepository implements IMembershipsRepository {
             }
         }
 
+        const roleNames = Array.from(new Set(rows.map((row) => row.role === 'contable' ? 'contador' : row.role)));
+        const permissionMap: Record<string, string[]> = {};
+        if (roleNames.length > 0) {
+            const { data: permissions } = await this.source.instance
+                .from('shared_authorization_role_permissions')
+                .select('role, permission_code')
+                .in('role', roleNames);
+            for (const permission of ((permissions ?? []) as Array<{ role: string; permission_code: string }>)) {
+                const role = permission.role === 'contador' ? 'contable' : permission.role;
+                permissionMap[role] ??= [];
+                permissionMap[role].push(permission.permission_code);
+            }
+        }
+
         const result: UserMembership[] = rows.map((row) => ({
             tenantId:        row.tenant_id,
             role:            row.role as MemberRole,
             tenantEmail:     emailMap[row.tenant_id] ?? row.tenant_id,
             tenantAvatarUrl: avatarMap[row.tenant_id] ?? null,
             isOwn:           row.tenant_id === userId,
+            permissions:     row.role === 'owner'
+                ? ['*']
+                : permissionMap[row.role === 'contador' ? 'contable' : row.role] ?? [],
         }));
 
         result.sort((a, b) => {

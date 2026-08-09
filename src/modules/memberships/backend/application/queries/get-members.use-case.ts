@@ -18,7 +18,7 @@ export class GetMembersUseCase extends UseCase<Input, Membership[]> {
     }
 
     async execute({ tenantOwnerId, callerRole }: Input): Promise<Result<Membership[]>> {
-        if (callerRole === "contable") {
+        if (callerRole === "contable" || callerRole === "contador") {
             return Result.fail("Insufficient permissions");
         }
 
