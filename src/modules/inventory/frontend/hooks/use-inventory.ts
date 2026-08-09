@@ -123,10 +123,10 @@ export function useInventory() {
 
     // ── Products ───────────────────────────────────────────────────────────────
 
-    const loadProducts = useCallback(async (companyId: string) => {
+    const loadProducts = useCallback(async (companyId: string, force = false) => {
         const key = inventoryCacheKey(companyId, 'products');
         const cached = key ? inventoryCache.products.get(key) : undefined;
-        if (cached && cached.expiresAt > Date.now()) {
+        if (!force && cached && cached.expiresAt > Date.now()) {
             setProducts(cached.data);
             return;
         }

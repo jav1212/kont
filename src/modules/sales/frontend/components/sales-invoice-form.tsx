@@ -6,9 +6,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { Plus, Trash2, FileText, CheckCircle2, Lock, Unlock, Save } from "lucide-react";
+import { Plus, Trash2, FileText, CheckCircle2, Lock, Unlock, Save, Package, UserRound, CalendarDays, ChevronDown, Calculator } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
+import { BaseSelect } from "@/src/shared/frontend/components/base-select";
+import { BaseTextarea } from "@/src/shared/frontend/components/base-textarea";
 import { notify } from "@/src/shared/frontend/notify";
 import { useSales, type SalesInvoice, type SalesInvoiceItem } from "@/src/modules/sales/frontend/hooks/use-sales";
 import {
@@ -19,11 +21,9 @@ import {
 import type { VatRate, PaymentTerms, IgtfConcept } from "../../backend/domain/sales-invoice";
 import { computeInvoiceTotals, emptyHeaderAdjustments, type LineInput } from "@/src/modules/inventory/shared/totals";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
+import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
+import { SalesLineCombobox } from "./sales-line-combobox";
 import { generateSalesInvoicePdf } from "../utils/sales-invoice-pdf";
-
-const labelCls  = "font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-1.5 block";
-const fieldCls  = "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground tabular-nums focus:border-primary-500/60 hover:border-border-medium transition-colors";
-const readOnlyCls = "w-full h-10 px-3 rounded-lg border border-border-light bg-surface-2 outline-none font-mono text-[13px] text-[var(--text-secondary)] tabular-nums flex items-center";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -56,10 +56,6 @@ function emptyItem(): SalesInvoiceItem {
     };
 }
 
-function vatRatePct(r: VatRate): number {
-    return r === "reducida_8" ? 8 : r === "general_16" ? 16 : 0;
-}
-
 function todayStr(): string {
     return new Date().toISOString().split("T")[0];
 }
@@ -76,6 +72,7 @@ export interface SalesInvoiceFormProps {
 export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const router = useRouter();
     const { companyId, company } = useCompany();
+    const { products, loadProducts } = useInventory();
     const {
         customers, loadCustomers,
         currentSalesInvoice, loadingSalesInvoice, loadSalesInvoice,
@@ -92,6 +89,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [notes, setNotes]                 = useState("");
     const [items, setItems]                 = useState<SalesInvoiceItem[]>(() => [emptyItem()]);
     const [igtf, setIgtf]                   = useState<IgtfPerceptionFormValue>(() => emptyIgtfPerceptionValue());
+    const [showIgtf, setShowIgtf]           = useState(false);
 
     const [saving, setSaving]               = useState(false);
     const [confirming, setConfirming]       = useState(false);
@@ -101,6 +99,10 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     useEffect(() => {
         if (companyId) loadCustomers(companyId);
     }, [companyId, loadCustomers]);
+
+    useEffect(() => {
+        if (companyId) loadProducts(companyId);
+    }, [companyId, loadProducts]);
 
     useEffect(() => {
         if (invoiceId) loadSalesInvoice(invoiceId);
@@ -130,6 +132,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             localBase:  currentSalesInvoice.igtfPerceptionLocalBase ?? 0,
             amount:     currentSalesInvoice.igtfPerceptionAmount ?? 0,
         });
+        setShowIgtf(currentSalesInvoice.igtfPerceptionApplies ?? false);
     }
 
     const isExistingInvoice = invoiceId != null && invoiceId !== "";
@@ -151,6 +154,15 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
 
     function addItem() { setItems((prev) => [...prev, emptyItem()]); }
     function removeItem(idx: number) { setItems((prev) => prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)); }
+
+    function selectProduct(idx: number, productId: string) {
+        const product = products.find((candidate) => candidate.id === productId);
+        updateItem(idx, product ? {
+            productId: product.id,
+            description: product.name,
+            vatRate: product.vatType === "exento" ? "exenta" : "general_16",
+        } : { productId: null });
+    }
 
     // Totals are calculated by the shared invoice engine.
     const salesCurrency = items.length > 0 && items.every((item) => item.currency === "D") ? "D" : "B";
@@ -236,6 +248,19 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             if (!it.description.trim()) { notify.error("Cada línea necesita una descripción"); return false; }
             if ((it.quantity ?? 0) <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
         }
+        const requestedByProduct = new Map<string, number>();
+        for (const item of items) {
+            if (!item.productId) continue;
+            requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) ?? 0) + item.quantity);
+        }
+        for (const [productId, requested] of requestedByProduct) {
+            const product = products.find((candidate) => candidate.id === productId);
+            if (!product) { notify.error("Uno de los productos seleccionados ya no está disponible"); return false; }
+            if (requested > product.currentStock) {
+                notify.error(`Stock insuficiente para ${product.name}: disponible ${fmtN(product.currentStock)}`);
+                return false;
+            }
+        }
         return true;
     }
 
@@ -255,6 +280,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         const saved = await saveSalesInvoice(buildInvoice(), items);
         if (!saved) { setConfirming(false); return; }
         const confirmed = await confirmSalesInvoice(saved.id!);
+        if (confirmed && companyId) await loadProducts(companyId, true);
         setConfirming(false);
         if (confirmed && !isExistingInvoice) {
             router.replace(`/sales/${confirmed.id}`);
@@ -266,7 +292,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         const ok = window.confirm("Al desconfirmar la factura quedará en borrador y podrás editarla. ¿Continuar?");
         if (!ok) return;
         setUnconfirming(true);
-        await unconfirmSalesInvoice(currentSalesInvoice.id);
+        const result = await unconfirmSalesInvoice(currentSalesInvoice.id);
+        if (result && companyId) await loadProducts(companyId, true);
         setUnconfirming(false);
     }
 
@@ -329,98 +356,90 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     }
 
     return (
-        <div className="px-8 py-6 space-y-4">
+        <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 xl:px-8">
             {isConfirmed && (
-                <div className="px-4 py-3 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] text-[13px] font-sans flex items-center justify-between gap-3">
+                <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 font-sans text-[13px]">
                     <div className="flex items-center gap-2 text-amber-700">
                         <Lock size={14} strokeWidth={2} />
                         <span>Factura confirmada — solo lectura. Para editar, desconfirma primero.</span>
                     </div>
-                    <BaseButton.Root variant="secondary" size="sm" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>
-                        {unconfirming ? "Desconfirmando…" : "Desconfirmar"}
-                    </BaseButton.Root>
                 </div>
             )}
 
+            <div className="flex flex-col items-stretch gap-6 xl:flex-row xl:items-start">
+                <div className="min-w-0 flex-1 space-y-4">
             {/* Datos de la factura */}
-            <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
-                <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">Datos de la factura</h2>
+            <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden space-y-0">
+                <header className="flex items-start gap-3 border-b border-border-light px-6 py-5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
+                        <FileText size={15} strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">Datos de la factura</h2>
+                        <p className="mt-1.5 font-sans text-[12px] leading-snug text-[var(--text-tertiary)]">Identifica al cliente y define las condiciones de cobro.</p>
+                    </div>
+                </header>
+                <div className="space-y-5 p-6">
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {isReadOnly ? (
+                            <BaseInput.Field label="Cliente" value={customerObj?.name ?? "—"} readOnly />
+                        ) : (
+                            <div className="space-y-2">
+                                <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-secondary)]">Cliente</label>
+                                <BaseSelect
+                                items={customers.filter((customer) => customer.active).map((customer) => ({ id: customer.id!, name: customer.name, subtitle: customer.rif }))}
+                                value={customerId}
+                                onValueChange={setCustomerId}
+                                placeholder="Seleccionar cliente…"
+                                selectionMode="single"
+                                />
+                            </div>
+                        )}
+                        <BaseInput.Field label="Nº Factura" value={invoiceNumber} onValueChange={setInvoiceNumber} placeholder="Auto-asignado al guardar" readOnly={isReadOnly} />
+                        <BaseInput.Field label="Nº Control" value={controlNumber} onValueChange={setControlNumber} placeholder="00-12345678" readOnly={isReadOnly} />
+                    </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className={labelCls}>Cliente</label>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <BaseInput.Field label="Fecha" type="date" value={date} onValueChange={setDate} readOnly={isReadOnly} />
                         {isReadOnly ? (
-                            <div className={readOnlyCls}>{customerObj?.name ?? "—"}</div>
+                            <BaseInput.Field label="Condiciones de pago" value={PAYMENT_TERMS.find((term) => term.value === paymentTerms)?.label ?? paymentTerms} readOnly />
                         ) : (
-                            <select className={fieldCls} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                                <option value="">Seleccionar cliente…</option>
-                                {customers.filter((c) => c.active).map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name} — {c.rif}</option>
-                                ))}
-                            </select>
+                            <div className="space-y-2">
+                                <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-secondary)]">Condiciones de pago</label>
+                                <BaseSelect
+                                items={PAYMENT_TERMS.map((term) => ({ id: term.value, name: term.label }))}
+                                value={paymentTerms}
+                                onValueChange={(value) => setPaymentTerms(value as PaymentTerms)}
+                                selectionMode="single"
+                                />
+                            </div>
                         )}
+                        <BaseInput.Field label="Fecha de vencimiento" type="date" value={dueDate} onValueChange={setDueDate} readOnly={isReadOnly} isDisabled={!isReadOnly && paymentTerms === "contado"} />
                     </div>
-                    <div>
-                        <label className={labelCls}>Nº Factura</label>
-                        {isReadOnly ? (
-                            <div className={readOnlyCls}>{invoiceNumber || "—"}</div>
-                        ) : (
-                            <input className={fieldCls} value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Auto-asignado al guardar" />
-                        )}
-                    </div>
-                    <div>
-                        <label className={labelCls}>Nº Control</label>
-                        {isReadOnly ? (
-                            <div className={readOnlyCls}>{controlNumber || "—"}</div>
-                        ) : (
-                            <input className={fieldCls} value={controlNumber} onChange={(e) => setControlNumber(e.target.value)} placeholder="00-12345678" />
-                        )}
-                    </div>
-                </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className={labelCls}>Fecha</label>
-                        {isReadOnly ? (
-                            <div className={readOnlyCls}>{date}</div>
-                        ) : (
-                            <input className={fieldCls} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                        )}
-                    </div>
-                    <div>
-                        <label className={labelCls}>Condiciones de pago</label>
-                        {isReadOnly ? (
-                            <div className={readOnlyCls}>{PAYMENT_TERMS.find((p) => p.value === paymentTerms)?.label ?? paymentTerms}</div>
-                        ) : (
-                            <select className={fieldCls} value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value as PaymentTerms)}>
-                                {PAYMENT_TERMS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                            </select>
-                        )}
-                    </div>
-                    <div>
-                        <label className={labelCls}>Fecha vencimiento</label>
-                        {isReadOnly ? (
-                            <div className={readOnlyCls}>{dueDate || "—"}</div>
-                        ) : (
-                            <input className={fieldCls} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={paymentTerms === "contado"} />
-                        )}
-                    </div>
-                </div>
-
-                <div>
-                    <label className={labelCls}>Notas</label>
-                    {isReadOnly ? (
-                        <div className={`${readOnlyCls} h-auto py-2 min-h-[60px]`}>{notes || "—"}</div>
-                    ) : (
-                        <textarea className={`${fieldCls} h-auto py-2`} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-                    )}
+                    <BaseTextarea
+                        label="Notas"
+                        value={notes}
+                        onChange={(event) => setNotes(event.target.value)}
+                        placeholder="Observaciones, condiciones especiales o referencia interna…"
+                        readOnly={isReadOnly}
+                        rows={3}
+                    />
                 </div>
             </div>
 
             {/* Items */}
-            <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">Detalle de la factura</h2>
+            <div className="rounded-xl border border-border-light bg-surface-1 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border-light px-6 py-5">
+                    <div className="flex items-center gap-3">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
+                            <Package size={15} strokeWidth={2} />
+                        </div>
+                        <div>
+                            <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">Detalle de la factura</h2>
+                            <p className="mt-1 font-sans text-[12px] text-[var(--text-tertiary)]">Productos de inventario y servicios vendidos.</p>
+                        </div>
+                    </div>
                     {!isReadOnly && (
                         <BaseButton.Root variant="ghost" size="sm" leftIcon={<Plus size={14} strokeWidth={2} />} onClick={addItem}>
                             Agregar línea
@@ -428,112 +447,118 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     )}
                 </div>
 
-                <table className="w-full text-[13px]">
-                    <thead>
-                        <tr className="border-b border-border-light">
-                            <th className="px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal text-left">Descripción</th>
-                            <th className="px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-24 text-right">Cantidad</th>
-                            <th className="px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-32 text-right">Precio Unit.</th>
-                            <th className="px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-24 text-center">IVA</th>
-                            <th className="px-2 py-2 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-32 text-right">Total</th>
-                            {!isReadOnly && <th className="px-2 py-2 w-10"></th>}
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div className="overflow-x-auto px-6 py-3">
+                    <div className="min-w-[760px]">
+                        <div style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="grid gap-3 border-b border-border-light px-2 py-2 text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                            <span>Producto / descripción</span><span className="text-right">Cantidad</span><span className="text-right">Precio unit.</span><span className="text-center">IVA</span><span className="text-right">Total</span><span />
+                        </div>
                         {items.map((it, idx) => (
-                            <tr key={idx} className="border-b border-border-light/50">
-                                <td className="px-2 py-1.5">
-                                    {isReadOnly ? (
-                                        <div className="text-foreground">{it.description}</div>
-                                    ) : (
-                                        <input className="w-full h-9 px-2 rounded border border-border-light bg-surface-1 outline-none font-sans text-[13px] text-foreground focus:border-primary-500/60" value={it.description} onChange={(e) => updateItem(idx, { description: e.target.value })} placeholder="Servicio o producto" />
-                                    )}
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    {isReadOnly ? (
-                                        <div className="text-right tabular-nums">{fmtN(it.quantity)}</div>
-                                    ) : (
-                                        <input type="number" min="0" step="0.01" className="w-full h-9 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[13px] tabular-nums text-right focus:border-primary-500/60" value={it.quantity || ""} onChange={(e) => updateItem(idx, { quantity: parseFloat(e.target.value) || 0 })} />
-                                    )}
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    {isReadOnly ? (
-                                        <div className="text-right tabular-nums">{fmtN(it.unitPrice)}</div>
-                                    ) : (
-                                        <input type="number" min="0" step="0.01" className="w-full h-9 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[13px] tabular-nums text-right focus:border-primary-500/60" value={it.unitPrice || ""} onChange={(e) => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
-                                    )}
-                                </td>
-                                <td className="px-2 py-1.5">
-                                    {isReadOnly ? (
-                                        <div className="text-center text-[12px] text-[var(--text-secondary)]">{VAT_OPTIONS.find((v) => v.value === it.vatRate)?.label ?? "—"}</div>
-                                    ) : (
-                                        <select className="w-full h-9 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[12px] text-center focus:border-primary-500/60" value={it.vatRate} onChange={(e) => updateItem(idx, { vatRate: e.target.value as VatRate })}>
-                                            {VAT_OPTIONS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
-                                        </select>
-                                    )}
-                                </td>
-                                <td className="px-2 py-1.5 tabular-nums text-right font-medium">{fmtN(it.totalLine)}</td>
-                                {!isReadOnly && (
-                                    <td className="px-2 py-1.5">
-                                        {items.length > 1 && (
-                                            <button type="button" onClick={() => removeItem(idx)} className="w-7 h-7 flex items-center justify-center rounded text-[var(--text-tertiary)] hover:text-red-500 hover:bg-red-500/10 transition-colors">
-                                                <Trash2 size={14} strokeWidth={2} />
-                                            </button>
-                                        )}
-                                    </td>
-                                )}
-                            </tr>
+                            <div key={idx} style={{ gridTemplateColumns: "minmax(260px, 1fr) 80px 120px 100px 110px 32px" }} className="group grid items-start gap-3 border-b border-border-light/60 px-2 py-3 last:border-b-0">
+                                <SalesLineCombobox
+                                    productId={it.productId}
+                                    description={it.description}
+                                    products={products.filter((product) => product.active)}
+                                    readOnly={isReadOnly}
+                                    onFreeTextChange={(value) => updateItem(idx, { productId: null, description: value })}
+                                    onProductSelect={(product) => selectProduct(idx, product.id!)}
+                                    onClear={() => updateItem(idx, { productId: null, description: "" })}
+                                />
+                                <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
+                                <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={it.unitPrice ? String(it.unitPrice) : ""} onValueChange={(value) => updateItem(idx, { unitPrice: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
+                                <BaseSelect aria-label="Alícuota IVA" size="sm" items={VAT_OPTIONS.map((option) => ({ id: option.value, name: option.label }))} value={it.vatRate} onValueChange={(value) => updateItem(idx, { vatRate: value as VatRate })} selectionMode="single" isDisabled={isReadOnly} />
+                                <div className="pt-2 text-right text-[13px] font-semibold tabular-nums text-foreground">Bs. {fmtN(it.totalLine)}</div>
+                                {!isReadOnly && items.length > 1 ? (
+                                    <button type="button" aria-label="Eliminar línea" onClick={() => removeItem(idx)} className="mt-1 flex size-8 items-center justify-center rounded-lg text-[var(--text-tertiary)] opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100">
+                                        <Trash2 size={14} strokeWidth={2} />
+                                    </button>
+                                ) : <span />}
+                            </div>
                         ))}
-                    </tbody>
-                </table>
-
-                {/* Totals */}
-                <div className="flex justify-end pt-3 border-t border-border-light">
-                    <div className="space-y-1.5 text-[13px] min-w-[280px]">
-                        {totals.baseExempt > 0  && <div className="flex justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-[0.10em] text-[11px]">Base exenta</span><span className="tabular-nums">Bs. {fmtN(totals.baseExempt)}</span></div>}
-                        {totals.baseTaxed8 > 0  && <div className="flex justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-[0.10em] text-[11px]">Base 8%</span><span className="tabular-nums">Bs. {fmtN(totals.baseTaxed8)}</span></div>}
-                        {totals.iva8 > 0        && <div className="flex justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-[0.10em] text-[11px]">IVA 8%</span><span className="tabular-nums">Bs. {fmtN(totals.iva8)}</span></div>}
-                        {totals.baseTaxed16 > 0 && <div className="flex justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-[0.10em] text-[11px]">Base 16%</span><span className="tabular-nums">Bs. {fmtN(totals.baseTaxed16)}</span></div>}
-                        {totals.iva16 > 0       && <div className="flex justify-between"><span className="text-[var(--text-tertiary)] uppercase tracking-[0.10em] text-[11px]">IVA 16%</span><span className="tabular-nums">Bs. {fmtN(totals.iva16)}</span></div>}
-                        {totals.igtfMonto > 0   && <div className="flex justify-between"><span className="text-info uppercase tracking-[0.10em] text-[11px]">IGTF</span><span className="tabular-nums text-info">+ Bs. {fmtN(totals.igtfMonto)}</span></div>}
-                        <div className="flex justify-between pt-2 border-t border-border-light">
-                            <span className="font-bold uppercase tracking-[0.10em] text-[12px]">Total a cobrar</span>
-                            <span className="tabular-nums font-bold text-[14px]">Bs. {fmtN(totals.total)}</span>
+                        <div className="flex items-center justify-between px-2 pt-3 text-[10px] text-[var(--text-tertiary)]">
+                            <span>{items.length} {items.length === 1 ? "línea" : "líneas"}</span>
+                            <span>El inventario se descuenta al confirmar.</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* IGTF percepción */}
-            <div className="rounded-xl border border-border-light bg-surface-1 p-6">
-                <IgtfPerceptionSection
-                    value={igtf}
-                    onChange={setIgtf}
-                    dollarRate={null /* TODO: integrar tasa BCV de la fecha */ }
-                    readOnly={isReadOnly}
-                />
-                <div className="mt-3 px-3 py-2 rounded border border-border-light bg-surface-2 text-[10px] font-sans text-[var(--text-tertiary)] leading-snug">
-                    Tip: edita la tasa BCV manualmente — la integración automática con la cabecera llega en una iteración siguiente.
-                </div>
+            <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-sm">
+                <button type="button" className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left" onClick={() => !isReadOnly && setShowIgtf((open) => !open)}>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">IGTF · Percepción</h2>
+                            {igtf.applies && <span className="rounded-full bg-info/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-info">Aplica</span>}
+                        </div>
+                        <p className="mt-1 font-sans text-[11px] text-[var(--text-tertiary)]">Configura únicamente cuando el cobro incluya divisas.</p>
+                    </div>
+                    <ChevronDown size={16} className={`shrink-0 text-[var(--text-tertiary)] transition-transform ${showIgtf || (isReadOnly && igtf.applies) ? "rotate-180" : ""}`} />
+                </button>
+                {(showIgtf || (isReadOnly && igtf.applies)) && (
+                    <div className="border-t border-border-light p-6">
+                        <IgtfPerceptionSection value={igtf} onChange={setIgtf} dollarRate={null} readOnly={isReadOnly} />
+                    </div>
+                )}
             </div>
+                </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-3 flex-wrap">
-                {!isReadOnly && (
-                    <>
-                        <BaseButton.Root variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>
-                            {saving ? "Guardando…" : "Guardar borrador"}
-                        </BaseButton.Root>
-                        <BaseButton.Root variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>
-                            {confirming ? "Confirmando…" : "Confirmar factura"}
-                        </BaseButton.Root>
-                    </>
-                )}
-                {isConfirmed && (
-                    <BaseButton.Root variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>
-                        {generatingPdf ? "Generando…" : "Descargar PDF legal"}
-                    </BaseButton.Root>
-                )}
+                <aside className="w-full shrink-0 space-y-4 xl:sticky xl:top-20 xl:w-80">
+                    <div className="rounded-xl border border-border-light bg-surface-1 p-5 shadow-sm">
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                            <div className="flex size-8 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
+                                <Calculator size={15} strokeWidth={2} />
+                            </div>
+                            <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-foreground">Resumen</h3>
+                            </div>
+                            <span className={`rounded-full px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${isConfirmed ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"}`}>{isConfirmed ? "Confirmada" : "Borrador"}</span>
+                        </div>
+                        <div className="space-y-3 text-[13px]">
+                            <div className="flex items-start justify-between gap-3">
+                                <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]"><UserRound size={12} /> Cliente</span>
+                                <span className="max-w-[130px] truncate text-right font-medium text-foreground">{customerObj?.name ?? "—"}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Factura</span>
+                                <span className="text-right tabular-nums text-foreground">{invoiceNumber || "Auto"}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]"><CalendarDays size={12} /> Fecha</span>
+                                <span className="text-right tabular-nums text-foreground">{date || "—"}</span>
+                            </div>
+                            <div className="flex justify-between gap-3">
+                                <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Ítems</span>
+                                <span className="tabular-nums text-foreground">{items.length}</span>
+                            </div>
+                        </div>
+                        <div className="mt-5 space-y-2 border-t border-border-light pt-4 text-[13px]">
+                            {totals.baseExempt > 0 && <div className="flex justify-between"><span className="text-[var(--text-tertiary)]">Base exenta</span><span className="tabular-nums">Bs. {fmtN(totals.baseExempt)}</span></div>}
+                            {totals.baseTaxed8 > 0 && <div className="flex justify-between"><span className="text-[var(--text-tertiary)]">Base 8%</span><span className="tabular-nums">Bs. {fmtN(totals.baseTaxed8)}</span></div>}
+                            {totals.baseTaxed16 > 0 && <div className="flex justify-between"><span className="text-[var(--text-tertiary)]">Base 16%</span><span className="tabular-nums">Bs. {fmtN(totals.baseTaxed16)}</span></div>}
+                            <div className="flex justify-between"><span className="text-[var(--text-tertiary)]">Subtotal</span><span className="tabular-nums">Bs. {fmtN(totals.subtotal)}</span></div>
+                            <div className="flex justify-between"><span className="text-[var(--text-tertiary)]">IVA</span><span className="tabular-nums">Bs. {fmtN(totals.ivaTotal)}</span></div>
+                            {totals.igtfMonto > 0 && <div className="flex justify-between"><span className="text-info">IGTF</span><span className="tabular-nums text-info">+ Bs. {fmtN(totals.igtfMonto)}</span></div>}
+                            <div className="mt-3 flex items-end justify-between gap-3 border-t border-border-light pt-3">
+                                <span className="text-[11px] font-bold uppercase tracking-[0.12em]">Total</span>
+                                <span className="text-[17px] font-bold tabular-nums text-primary-500">Bs. {fmtN(totals.total)}</span>
+                            </div>
+                        </div>
+                        <div className="mt-5 grid gap-2 border-t border-border-light pt-4">
+                            {!isReadOnly && <>
+                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : "Confirmar factura"}</BaseButton.Root>
+                                <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>{saving ? "Guardando…" : "Guardar borrador"}</BaseButton.Root>
+                            </>}
+                            {isConfirmed && <>
+                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>{generatingPdf ? "Generando…" : "Descargar PDF legal"}</BaseButton.Root>
+                                <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
+                            </>}
+                        </div>
+                    </div>
+                    <div className="rounded-xl border border-border-light bg-surface-1 p-4 text-[11px] leading-snug text-[var(--text-tertiary)] shadow-sm">
+                        <div className="mb-1 font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">Inventario</div>
+                        Las líneas vinculadas a productos descuentan existencias al confirmar la factura.
+                    </div>
+                </aside>
             </div>
         </div>
     );
