@@ -3,7 +3,7 @@
 // CSV column headers are kept in Spanish for backward compatibility with user-facing data contracts.
 // All TypeScript identifiers use English domain types.
 
-import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType, SalePricing } from "@/src/modules/inventory/backend/domain/product";
 import type { Department } from "@/src/modules/inventory/backend/domain/department";
 import type { Supplier } from "@/src/modules/purchases/backend/domain/supplier";
 
@@ -177,7 +177,9 @@ const PROD_HEADERS = [
     "codigo", "nombre", "descripcion", "tipo", "unidad_medida",
     "metodo_valuacion",
     "iva_tipo", "activo", "departamento_nombre",
+    "precio_venta_modo", "precio_venta_valor", "precio_venta_moneda",
 ] as const;
+const LEGACY_PROD_HEADERS = PROD_HEADERS.slice(0, 9);
 
 const VALID_TYPES: ProductType[]          = ["mercancia"];
 const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
@@ -197,6 +199,9 @@ export function productsToCsv(products: Product[]): string {
             csvCell(p.vatType),
             csvCell(p.active),
             csvCell(p.departmentName ?? ""),
+            csvCell(p.salePricing?.mode === "fixed" ? "fijo" : p.salePricing?.mode === "markup" ? "porcentaje" : ""),
+            csvCell(p.salePricing ? (p.salePricing.mode === "fixed" ? p.salePricing.amount : p.salePricing.percentage) : ""),
+            csvCell(p.salePricing?.currency ?? ""),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
@@ -212,6 +217,7 @@ export interface ProductCsvRow {
     vatType:         VatType;
     active:          boolean;
     departmentId?:   string;
+    salePricing?:     SalePricing;
 }
 
 export interface ProductCsvResult {
@@ -226,8 +232,10 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
 
     if (lines.length < 2) return { products: [], errors: ["El CSV está vacío o no tiene datos."] };
 
-    const header = parseHeader(lines[0]).join(",");
-    if (header !== PROD_HEADERS.join(",")) {
+    const parsedHeaders = parseHeader(lines[0]);
+    const header = parsedHeaders.join(",");
+    const isLegacy = header === LEGACY_PROD_HEADERS.join(",");
+    if (!isLegacy && header !== PROD_HEADERS.join(",")) {
         return { products: [], errors: [`Encabezado inválido. Se esperaba: ${PROD_HEADERS.join(",")}`] };
     }
 
@@ -239,7 +247,7 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
         const [
             code, name, description, typeRaw, unitRaw,
             methodRaw,
-            vatRaw, activeRaw, deptName,
+            vatRaw, activeRaw, deptName, saleModeRaw, saleValueRaw, saleCurrencyRaw,
         ] = clean;
 
         if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
@@ -275,6 +283,22 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
             departmentId = found;
         }
 
+        let salePricing: SalePricing | undefined;
+        const saleMode = (saleModeRaw ?? "").toLowerCase();
+        if (saleMode) {
+            const value = Number(String(saleValueRaw ?? "").replace(",", "."));
+            const currency = (saleCurrencyRaw ?? "").toUpperCase();
+            if (!Number.isFinite(value) || value < 0 || (saleMode === "fijo" && value === 0)) {
+                errors.push(`Línea ${i + 1}: precio_venta_valor inválido.`); continue;
+            }
+            if (currency !== "B" && currency !== "D") {
+                errors.push(`Línea ${i + 1}: precio_venta_moneda debe ser B o D.`); continue;
+            }
+            if (saleMode === "fijo") salePricing = { mode: "fixed", amount: value, currency };
+            else if (saleMode === "porcentaje") salePricing = { mode: "markup", percentage: value, currency };
+            else { errors.push(`Línea ${i + 1}: precio_venta_modo debe ser fijo o porcentaje.`); continue; }
+        }
+
         products.push({
             code:            code ?? "",
             name,
@@ -285,6 +309,7 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
             vatType,
             active,
             departmentId,
+            salePricing,
         });
     }
 

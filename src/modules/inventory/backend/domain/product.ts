@@ -5,6 +5,10 @@ export type ProductType = 'mercancia';
 export type MeasureUnit = 'unidad' | 'kg' | 'g' | 'm' | 'm2' | 'm3' | 'litro' | 'caja' | 'rollo' | 'paquete';
 export type ValuationMethod = 'promedio_ponderado' | 'peps';
 export type VatType = 'exento' | 'general';
+export type SaleCurrency = 'B' | 'D';
+export type SalePricing =
+  | { mode: 'fixed'; amount: number; currency: SaleCurrency }
+  | { mode: 'markup'; percentage: number; currency: SaleCurrency };
 
 export interface Product {
   id?: string;
@@ -21,6 +25,7 @@ export interface Product {
   departmentId?: string;
   departmentName?: string;
   vatType: VatType;
+  salePricing?: SalePricing;
   customFields?: Record<string, unknown>;  // sector-specific and user-defined extra data
   createdAt?: string;
   updatedAt?: string;

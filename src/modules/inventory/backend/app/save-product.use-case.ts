@@ -11,6 +11,13 @@ export class SaveProductUseCase extends UseCase<Product, Product> {
     async execute(product: Product): Promise<Result<Product>> {
         if (!product.name?.trim()) return Result.fail('Product name is required');
         if (!product.companyId) return Result.fail('companyId is required');
+        if (product.salePricing) {
+            const value = product.salePricing.mode === 'fixed'
+                ? product.salePricing.amount
+                : product.salePricing.percentage;
+            if (!Number.isFinite(value) || value < 0) return Result.fail('Sale price must be a non-negative number');
+            if (product.salePricing.mode === 'fixed' && value === 0) return Result.fail('Fixed sale price must be greater than zero');
+        }
         return this.repo.upsert(product);
     }
 }

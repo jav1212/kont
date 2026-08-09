@@ -19,6 +19,7 @@ import { ResponsiveDrawer } from "@/src/shared/frontend/components/responsive-dr
 import { StatTile } from "@/src/shared/frontend/components/stat-tile";
 import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
+import { ProductSalePricingFields, formatProductSalePricing } from "@/src/modules/inventory/frontend/components/product-sale-pricing-fields";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     productsToCsv,
@@ -46,6 +47,7 @@ import {
     PackageCheck,
     PackageX,
     CheckCircle2,
+    BadgeDollarSign,
 } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -524,12 +526,12 @@ export default function ProductosPage() {
                             </button>
                         </div>
                         <pre className="text-[11px] text-[var(--text-secondary)] bg-surface-2 rounded-lg px-3 py-2 border border-border-light select-all overflow-x-auto leading-relaxed">
-{`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","moneda_defecto"
-"P001","Harina de Trigo","","mercancia","kg","promedio_ponderado","general","true","PANADERÍA","B"`}
+{`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","precio_venta_modo","precio_venta_valor","precio_venta_moneda"
+"P001","Harina de Trigo","","mercancia","kg","promedio_ponderado","general","true","PANADERÍA","porcentaje","30","B"`}
                         </pre>
                         <textarea
                             className="w-full h-40 px-3 py-2 rounded-lg border border-border-default bg-surface-2 outline-none font-mono text-[12px] text-foreground focus:border-primary-500 hover:border-border-medium transition-colors resize-none"
-                            placeholder={`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","moneda_defecto"`}
+                            placeholder={`"codigo","nombre","descripcion","tipo","unidad_medida","metodo_valuacion","iva_tipo","activo","departamento_nombre","precio_venta_modo","precio_venta_valor","precio_venta_moneda"`}
                             value={pasteText}
                             onChange={(e) => setPasteText(e.target.value)}
                         />
@@ -690,6 +692,10 @@ export default function ProductosPage() {
                                 </div>
                             </FormSection>
 
+                            <FormSection icon={BadgeDollarSign} title="Precio de venta" description="Monto fijo o recargo dinámico sobre el costo promedio.">
+                                <ProductSalePricingFields product={form} onChange={(salePricing) => setForm((current) => current ? { ...current, salePricing } : current)} />
+                            </FormSection>
+
                             {customFields.length > 0 && (
                                 <FormSection icon={SlidersHorizontal} title="Campos adicionales" description="Definidos por la plantilla del sector o por tu organización.">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -819,6 +825,11 @@ export default function ProductosPage() {
                                             numeric: true,
                                         },
                                         {
+                                            label: "Precio de venta",
+                                            value: formatProductSalePricing(p),
+                                            align: "right",
+                                        },
+                                        {
                                             label: "Departamento",
                                             value: p.departmentName || "—",
                                             align: "right",
@@ -867,7 +878,8 @@ export default function ProductosPage() {
                                             { label: "Código",       align: "text-left"  },
                                             { label: "Nombre",       align: "text-left"  },
                                             { label: "Departamento", align: "text-left"  },
-                                             { label: "Existencia",   align: "text-right" },
+                                            { label: "Existencia",   align: "text-right" },
+                                            { label: "Precio venta", align: "text-right" },
                                             { label: "Estado",       align: "text-left"  },
                                             ...customFields.map((cf) => ({ label: cf.label, align: "text-left" })),
                                             { label: "",             align: "text-right" },
@@ -915,6 +927,9 @@ export default function ProductosPage() {
                                             <td className="px-4 py-3 text-[var(--text-secondary)]">{p.departmentName || "—"}</td>
                                             <td className="px-4 py-3 text-right font-mono tabular-nums font-semibold text-foreground">
                                                 {fmtN(p.currentStock)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-mono text-[12px] text-[var(--text-secondary)]">
+                                                {formatProductSalePricing(p)}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {p.active ? (
