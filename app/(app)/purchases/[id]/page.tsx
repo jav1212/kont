@@ -107,6 +107,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate] = useState("");
     const [invoiceCurrencyCode, setInvoiceCurrencyCode] = useState<CurrencyCode>("VES");
+    const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(true);
     const { options: currencyOptions, appliedRates, setAppliedRates, getRate } = useInvoiceExchangeRates(date);
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
@@ -1028,7 +1029,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             count={items.filter((item) => item.productId).length}
                             subtitle="Productos que ingresan al inventario al confirmar."
                             readOnly={!isDraft}
-                            onAddLine={() => setItems((current) => [...current, emptyItem()])}
+                            onAddLine={() => setItems((current) => [...current, emptyItem(invoiceCurrencyCode)])}
                         >
                             <FacturaItemsGrid
                                 items={items}
@@ -1039,6 +1040,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 currencyOptions={currencyOptions}
                                 getExchangeRate={getRate}
                                 decimals={effectiveDecimals}
+                                selectedCurrency={invoiceCurrencyCode}
+                                applyCurrencyToAll={applyCurrencyToAll}
+                                onApplyCurrencyToAllChange={setApplyCurrencyToAll}
                             />
 
                             {/* Totals */}

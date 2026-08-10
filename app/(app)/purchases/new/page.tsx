@@ -145,6 +145,7 @@ export default function NuevaFacturaPage() {
     const [inventoryEffect, setInventoryEffect] = useState<PurchaseInventoryEffect>("none");
     const [date, setDate] = useState(todayStr());
     const [invoiceCurrencyCode, setInvoiceCurrencyCode] = useState<CurrencyCode>("VES");
+    const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(true);
     const { options: currencyOptions, appliedRates, setAppliedRates, getRate, setManualRate, publishedDate, loading: currenciesLoading } = useInvoiceExchangeRates(date);
     const [notes, setNotes] = useState("");
     const {
@@ -856,10 +857,8 @@ export default function NuevaFacturaPage() {
                                         onChange={(p, manual) => { setPeriodo(p); setPeriodoManual(manual); }}
                                     />
                                     <CurrencyCombobox label="Moneda principal" options={currencyOptions} value={invoiceCurrencyCode} onChange={(value) => {
-                                            const previous = invoiceCurrencyCode;
                                             const next = normalizeCurrencyCode(value);
                                             setInvoiceCurrencyCode(next);
-                                            setItems((current) => current.map((item) => normalizeCurrencyCode(item.currency) === normalizeCurrencyCode(previous) ? { ...item, currency: next } : item));
                                         }} disabled={currenciesLoading} />
                                     {!isLocalCurrency(invoiceCurrencyCode) && <BaseInput.Field label={`Tasa · Bs/${invoiceCurrencyCode}`} type="number" min="0" step="0.0001" value={getRate(invoiceCurrencyCode) ? String(getRate(invoiceCurrencyCode)) : ""} onValueChange={(value) => setManualRate(invoiceCurrencyCode, Number(String(value).replace(",", ".")) || 0)} description={publishedDate ? `BCV ${publishedDate}` : "Tasa manual"} />}
                                 </div>
@@ -1201,7 +1200,7 @@ export default function NuevaFacturaPage() {
                     <InvoiceDetailCard
                         className="order-2"
                         count={itemCount}
-                        onAddLine={() => setItems((current) => [...current, emptyItem()])}
+                        onAddLine={() => setItems((current) => [...current, emptyItem(invoiceCurrencyCode)])}
                         secondaryAction={<BaseButton.Root variant="secondary" size="sm" leftIcon={<Plus size={13} strokeWidth={2} />} onClick={() => setQcMode('product')}>Nuevo producto</BaseButton.Root>}
                     >
 
@@ -1213,6 +1212,9 @@ export default function NuevaFacturaPage() {
                             currencyOptions={currencyOptions}
                             getExchangeRate={getRate}
                             decimals={rateDecimals}
+                            selectedCurrency={invoiceCurrencyCode}
+                            applyCurrencyToAll={applyCurrencyToAll}
+                            onApplyCurrencyToAllChange={setApplyCurrencyToAll}
                             onRequestCreateProduct={(search) => {
                                 setQcProduct(p => ({ ...p, name: search }));
                                 setQcMode('product');

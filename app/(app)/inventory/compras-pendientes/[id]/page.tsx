@@ -37,6 +37,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
     } = usePurchases();
 
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
+    const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -162,6 +163,9 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                         products={products}
                         onChange={setItems}
                         dollarRate={currentPurchaseInvoice.dollarRate ?? null}
+                        selectedCurrency={currentPurchaseInvoice.currency ?? "VES"}
+                        applyCurrencyToAll={applyCurrencyToAll}
+                        onApplyCurrencyToAllChange={setApplyCurrencyToAll}
                         decimals={2}
                     />
                 </div>

@@ -27,6 +27,7 @@ import {
 } from "@/src/modules/inventory/shared/totals";
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
+import { notify } from "@/src/shared/frontend/notify";
 
 // -- types ---------------------------------------------------------------------
 
@@ -41,6 +42,9 @@ interface Props {
     dollarRate?: number | null; // BCV rate for the period, used for USD-to-Bs conversion
     currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
     getExchangeRate?: (currencyCode: CurrencyCode) => number | null;
+    selectedCurrency?: CurrencyCode;
+    applyCurrencyToAll?: boolean;
+    onApplyCurrencyToAllChange?: (checked: boolean) => void;
     /** Calculation precision: how many decimals all derived totals are rounded to.
      *  Drives both the on-screen formatter and the rounding of `totalCost`. */
     decimals?: number;
@@ -49,11 +53,11 @@ interface Props {
 
 // -- helpers -------------------------------------------------------------------
 
-export function emptyItem(): PurchaseInvoiceItem {
+export function emptyItem(currency: CurrencyCode = "VES"): PurchaseInvoiceItem {
     const adj = emptyLineAdjustments();
     return {
         productId: "", quantity: 1, unitCost: 0, totalCost: 0,
-        vatRate: "general_16", currency: "VES",
+        vatRate: "general_16", currency: normalizeCurrencyCode(currency),
         descuentoTipo: adj.descuentoTipo, descuentoValor: adj.descuentoValor, descuentoMonto: 0,
         recargoTipo: adj.recargoTipo, recargoValor: adj.recargoValor, recargoMonto: 0,
         baseIVA: 0,
@@ -357,11 +361,13 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
 
 // -- FacturaItemsGrid ----------------------------------------------------------
 
-export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, currencyOptions = [{ code: "VES", label: "Bolívares" }], getExchangeRate, decimals = 2, onRequestCreateProduct }: Props) {
+export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, currencyOptions = [{ code: "VES", label: "Bolívares" }], getExchangeRate, decimals = 2, onRequestCreateProduct, selectedCurrency, applyCurrencyToAll = true, onApplyCurrencyToAllChange }: Props) {
     const rateFor = (currency: CurrencyCode, fallback?: number | null) => isLocalCurrency(currency) ? 1 : (getExchangeRate?.(currency) ?? fallback ?? dollarRate ?? null);
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
-    const [bulkCurrency, setBulkCurrency] = useState<ItemCurrency>(() => normalizeCurrencyCode(items[0]?.currency));
+    const targetCurrency = normalizeCurrencyCode(selectedCurrency ?? items[0]?.currency ?? "VES");
+    const bulkCurrency = targetCurrency;
+    const targetRate = rateFor(targetCurrency);
 
     const fmtN = makeFmt(decimals);
     const round = (n: number) => roundN(n, decimals);
@@ -394,14 +400,15 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     // 'unitCostDisplay' is a virtual field - handles the IVA-incluido toggle: the
     //                   user-entered value is interpreted as gross and converted
     //                   to net before persisting.
-    function itemWithCurrency(item: PurchaseInvoiceItem, currency: ItemCurrency): PurchaseInvoiceItem {
+    function itemWithCurrency(item: PurchaseInvoiceItem, currency: ItemCurrency): PurchaseInvoiceItem | null {
         const next = { ...item, currency };
         if (!isLocalCurrency(currency)) {
-            const rate = rateFor(currency, item.exchangeRate ?? item.dollarRate) ?? 1;
+            const rate = rateFor(currency);
+            if (!rate) return null;
             next.dollarRate = rate;
             next.exchangeRate = rate;
-            if (next.currencyCost == null || next.currencyCost === 0) next.currencyCost = rate > 0 ? round4(next.unitCost / rate) : 0;
-            next.unitCost = round4((next.currencyCost ?? 0) * rate);
+            next.currencyCost = round4(Number(item.unitCost) / rate);
+            next.unitCost = round4(Number(item.unitCost));
         } else {
             next.currencyCost = null; next.dollarRate = null; next.exchangeRate = null;
         }
@@ -410,9 +417,19 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     }
 
     function applyCurrencyToAllItems(currency: ItemCurrency) {
-        setBulkCurrency(currency);
-        onChange(items.map((item) => itemWithCurrency(item, currency)));
+        const converted = items.map((item) => itemWithCurrency(item, currency));
+        if (converted.some((item) => item == null)) {
+            notify.error(`Falta la tasa para convertir a ${normalizeCurrencyCode(currency)}.`);
+            return;
+        }
+        onChange(converted as PurchaseInvoiceItem[]);
     }
+
+    useEffect(() => {
+        if (!readOnly && applyCurrencyToAll && selectedCurrency) applyCurrencyToAllItems(targetCurrency);
+        // This effect intentionally runs only when the global currency or mode changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [targetCurrency, targetRate, applyCurrencyToAll, readOnly]);
 
     function updateItem(
         idx: number,
@@ -441,7 +458,12 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
             if (isLocalCurrency(item.currency)) item.currencyCost = null;
         } else if (field === "currency") {
             const currency = val as ItemCurrency;
-            Object.assign(item, itemWithCurrency(item, currency));
+            const converted = itemWithCurrency(item, currency);
+            if (!converted) {
+                notify.error(`Falta la tasa para convertir a ${normalizeCurrencyCode(currency)}.`);
+                return;
+            }
+            Object.assign(item, converted);
         } else if (field === "ivaIncluido") {
             item.ivaIncluido = !!val;
             // unitCost stays as net; the cell will redisplay using the new mode.
@@ -471,9 +493,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     if (item.vatRate === 'general_16') {
                         item.vatRate = product.vatType === 'exento' ? 'exenta' : 'general_16';
                     }
-                    item.currency     = 'B';
-                    item.currencyCost = null;
-                    item.dollarRate   = null;
+                    const productCurrency = item.productId ? item.currency : targetCurrency;
+                    const converted = itemWithCurrency(item, productCurrency ?? targetCurrency);
+                    if (converted) Object.assign(item, converted);
                 }
             }
         }
@@ -501,7 +523,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     }
 
     function addRow(focusRow?: number) {
-        const next = [...items, emptyItem()];
+        const next = [...items, emptyItem(targetCurrency)];
         onChange(next);
         if (focusRow !== undefined) focusCell(focusRow, 0);
     }
@@ -546,37 +568,42 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     const foreignItems = items.filter((item) => !isLocalCurrency(item.currency));
     const hasForeignCurrency = foreignItems.length > 0;
     const hasExchangeRates = foreignItems.every((item) => Boolean(rateFor(item.currency, item.exchangeRate ?? item.dollarRate)));
+    const foreignCurrencies = Array.from(new Set(foreignItems.map((item) => normalizeCurrencyCode(item.currency))));
     const foreignCurrencyOptions = currencyOptions.filter((option) => !isLocalCurrency(option.code));
 
     return (
         <div className="overflow-x-auto overscroll-x-contain">
             {hasForeignCurrency && (
-                <div className="mb-3 flex items-center gap-2 text-[12px]">
+                <div className="hidden mb-3 flex items-center gap-2 text-[12px]">
                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Tasa BCV</span>
-                    {hasExchangeRates ? (
-                        <span className="font-mono tabular-nums text-amber-600 font-medium">
+                    {hasExchangeRates ? (<>
+                        <span className="hidden font-mono tabular-nums text-amber-600 font-medium">
                             {foreignItems.map((item) => `${normalizeCurrencyCode(item.currency)} ${rateFor(item.currency, item.exchangeRate ?? item.dollarRate)?.toLocaleString("es-VE", { maximumFractionDigits: 6 })}`).join(" · ")} Bs por unidad
                         </span>
-                    ) : (
+                        <span className="font-mono tabular-nums text-amber-600 font-medium">
+                            {foreignCurrencies.map((currency) => `${currency} ${rateFor(currency)?.toLocaleString("es-VE", { maximumFractionDigits: 6 })}`).join(" · ")} Bs por unidad
+                        </span>
+                    </>) : (
                         <span className="text-red-500 font-medium">Falta una tasa para alguna divisa seleccionada</span>
                     )}
                 </div>
             )}
 
             {!readOnly && (
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2/60 px-2.5 py-2 text-[11px]">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Moneda de los productos</span>
-                    <div className="inline-flex h-9 items-center rounded-lg border border-border-light bg-surface-1 p-0.5">
-                        <button type="button" onClick={() => applyCurrencyToAllItems("VES")} className={`h-8 rounded-md px-3 font-mono text-[11px] font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground/15 ${isLocalCurrency(bulkCurrency) ? "bg-foreground text-background shadow-sm" : "text-[var(--text-secondary)] hover:bg-surface-2 hover:text-foreground"}`}>
+                <div className="mb-3 flex items-center gap-2 rounded-lg bg-surface-2/60 px-2.5 py-2 text-[11px]">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Aplicar moneda seleccionada a todas las líneas</span>
+                    <div className="flex items-center gap-2">
+                        <input type="checkbox" checked={applyCurrencyToAll} onChange={(event) => { const checked = event.target.checked; onApplyCurrencyToAllChange?.(checked); if (checked) applyCurrencyToAllItems(targetCurrency); }} className="h-4 w-4 accent-[var(--primary-500)]" />
+                        <button type="button" className="hidden">
                             Bolívares
                         </button>
                         <CurrencyCombobox
-                            className="w-36"
+                            className="hidden"
                             label=""
-                            value={isLocalCurrency(bulkCurrency) ? "" : normalizeCurrencyCode(bulkCurrency)}
+                            value={targetCurrency}
                             displayValue={isLocalCurrency(bulkCurrency) ? "Divisa" : `Divisa · ${normalizeCurrencyCode(bulkCurrency)}`}
                             options={foreignCurrencyOptions}
-                            onChange={applyCurrencyToAllItems}
+                            onChange={(value) => { if (applyCurrencyToAll) applyCurrencyToAllItems(value as ItemCurrency); }}
                             menuAlign="right"
                             triggerClassName={`!h-8 !rounded-md !border-0 !px-3 !text-[11px] !font-bold !tracking-normal !shadow-none focus-visible:!ring-2 focus-visible:!ring-foreground/15 ${isLocalCurrency(bulkCurrency) ? "!bg-transparent !text-[var(--text-secondary)] hover:!bg-surface-2 hover:!text-foreground" : "!bg-foreground !text-background"}`}
                         />
