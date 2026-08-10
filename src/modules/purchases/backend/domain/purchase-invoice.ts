@@ -2,9 +2,10 @@
 // Represents a supplier purchase invoice with line items.
 // VatRate, ItemCurrency, InvoiceStatus string literal values are DB contracts — do not change.
 import type { AdjustmentCurrency, InvoiceTax } from '@/src/modules/inventory/shared/totals';
+import type { AppliedExchangeRate, CurrencyCode } from '@/src/modules/inventory/shared/currency';
 
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
-export type ItemCurrency = 'B' | 'D';
+export type ItemCurrency = CurrencyCode;
 export type AdjustmentKind = 'monto' | 'porcentaje';
 
 export interface PurchaseInvoiceItem {
@@ -17,8 +18,11 @@ export interface PurchaseInvoiceItem {
   totalCost: number;   // qty × unitCost, antes de ajustes
   vatRate: VatRate;
   currency: ItemCurrency;    // original currency of the supplier invoice
-  currencyCost?: number | null; // cost in original currency (USD if currency='D')
-  dollarRate?: number | null;   // BCV rate used for conversion
+  currencyCost?: number | null; // cost in original currency
+  dollarRate?: number | null;   // legacy alias for exchangeRate
+  exchangeRate?: number | null;
+  rateEffectiveDate?: string | null;
+  rateSource?: 'bcv' | 'manual' | 'legacy' | null;
 
   // ── Ajustes por línea (descuento, recargo)
   // Cada uno por monto Bs o porcentaje.
@@ -56,6 +60,10 @@ export interface PurchaseInvoice {
   status: InvoiceStatus;
   /** Currency of the invoice. All lines must use the same currency. */
   currency?: ItemCurrency;
+  exchangeRates?: AppliedExchangeRate[];
+  sourceSubtotal?: number | null;
+  sourceVatAmount?: number | null;
+  sourceTotal?: number | null;
   /** Fiscal document kind. Defaults to factura for legacy records. */
   documentType?: PurchaseDocumentType;
   /** Optional relation to the supplier invoice affected by a credit/debit note. */
@@ -152,6 +160,8 @@ export interface PurchaseInvoice {
   igtfBaseBs?:     number;
   /** Monto IGTF en Bs (server-resolved). */
   igtfMonto?:      number;
+  igtfCurrencyCode?: CurrencyCode | null;
+  igtfExchangeRate?: number | null;
 
   // ── Impuestos dinámicos (mig 111) — lista de impuestos adicionales
   // a nivel cabecera. Se suman al total de la factura.

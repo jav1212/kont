@@ -14,6 +14,7 @@ import {
 } from '../../domain/purchase-invoice';
 import { MigratePurchaseInvoicesResult } from '../../domain/migrate-purchase-invoices';
 import type { InvoiceTax, TaxBase } from '@/src/modules/inventory/shared/totals';
+import { normalizeCurrencyCode, type AppliedExchangeRate } from '@/src/modules/inventory/shared/currency';
 
 type RawSharedInvoice = {
     id: string;
@@ -37,6 +38,11 @@ type RawSharedInvoice = {
     notes: string | null;
     control_number: string | null;
     dollar_rate: number | string | null;
+    currency_code: string | null;
+    exchange_rates: unknown;
+    source_subtotal: number | string | null;
+    source_vat_amount: number | string | null;
+    source_total: number | string | null;
     rate_decimals: number | null;
     discount_type: string | null;
     discount_currency: string | null;
@@ -61,6 +67,8 @@ type RawSharedInvoice = {
     financial_tax_currency_base: number | string | null;
     financial_tax_bs_base: number | string | null;
     financial_tax_amount: number | string | null;
+    financial_tax_currency_code: string | null;
+    financial_tax_exchange_rate: number | string | null;
     taxes: unknown;
     confirmed_at: string | null;
     created_at: string | null;
@@ -125,7 +133,7 @@ const invoicePayload = (invoice: PurchaseInvoice): Record<string, unknown> => ({
     factura_afectada_control: invoice.affectedControlNumber ?? null,
     motivo_nota: invoice.noteReason ?? null,
     efecto_inventario: invoice.inventoryEffect ?? 'none',
-    tasa_dolar: invoice.dollarRate ?? null,
+    tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null,
     tasa_decimales: invoice.rateDecimals ?? null,
     descuento_tipo: invoice.descuentoTipo ?? null,
     descuento_moneda: invoice.descuentoMoneda ?? "B",
@@ -157,7 +165,7 @@ const itemPayload = (item: PurchaseInvoiceItem): Record<string, unknown> => ({
     iva_alicuota: item.vatRate,
     moneda: item.currency,
     costo_moneda: item.currencyCost ?? null,
-    tasa_dolar: item.dollarRate ?? null,
+    tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null,
     descuento_tipo: item.descuentoTipo ?? null,
     descuento_moneda: item.descuentoMoneda ?? "B",
     descuento_valor: item.descuentoValor ?? null,
@@ -253,6 +261,13 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 inventory_effect: invoice.inventoryEffect ?? (invoice.documentType === 'factura' ? 'additional_purchase' : 'none'),
                 discount_currency: invoice.descuentoMoneda ?? 'B',
                 surcharge_currency: invoice.recargoMoneda ?? 'B',
+                currency_code: normalizeCurrencyCode(invoice.currency),
+                exchange_rates: invoice.exchangeRates ?? [],
+                source_subtotal: invoice.sourceSubtotal ?? null,
+                source_vat_amount: invoice.sourceVatAmount ?? null,
+                source_total: invoice.sourceTotal ?? null,
+                financial_tax_currency_code: invoice.igtfCurrencyCode ?? null,
+                financial_tax_exchange_rate: invoice.igtfExchangeRate ?? null,
             })
             .eq('tenant_id', this.tenantId)
             .eq('id', result.getValue().id)
@@ -435,6 +450,11 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             vatAmount: num(row.vat_amount),
             total: num(row.total),
             notes: row.notes ?? '',
+            currency: normalizeCurrencyCode(row.currency_code),
+            exchangeRates: Array.isArray(row.exchange_rates) ? row.exchange_rates as AppliedExchangeRate[] : [],
+            sourceSubtotal: row.source_subtotal == null ? null : num(row.source_subtotal),
+            sourceVatAmount: row.source_vat_amount == null ? null : num(row.source_vat_amount),
+            sourceTotal: row.source_total == null ? null : num(row.source_total),
             dollarRate: row.dollar_rate == null ? null : num(row.dollar_rate),
             rateDecimals: row.rate_decimals,
             descuentoTipo: adjustment(row.discount_type),
@@ -460,6 +480,8 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             igtfBaseDivisa: num(row.financial_tax_currency_base),
             igtfBaseBs: num(row.financial_tax_bs_base),
             igtfMonto: num(row.financial_tax_amount),
+            igtfCurrencyCode: row.financial_tax_currency_code == null ? null : normalizeCurrencyCode(row.financial_tax_currency_code),
+            igtfExchangeRate: row.financial_tax_exchange_rate == null ? null : num(row.financial_tax_exchange_rate),
             impuestos: taxes.map((tax): InvoiceTax => {
                 const value = (tax ?? {}) as Record<string, unknown>;
                 return {
@@ -481,9 +503,10 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
                 unitCost: num(item.unit_cost),
                 totalCost: num(item.total_cost),
                 vatRate: (item.vat_rate ?? 'general_16') as VatRate,
-                currency: (item.currency === 'D' ? 'D' : 'B') as ItemCurrency,
+                currency: normalizeCurrencyCode(item.currency) as ItemCurrency,
                 currencyCost: item.currency_cost == null ? null : num(item.currency_cost),
                 dollarRate: item.dollar_rate == null ? null : num(item.dollar_rate),
+                exchangeRate: item.dollar_rate == null ? null : num(item.dollar_rate),
                 descuentoTipo: adjustment(item.discount_type),
                 descuentoMoneda: item.discount_currency === "D" ? "D" : "B",
                 descuentoValor: num(item.discount_value),

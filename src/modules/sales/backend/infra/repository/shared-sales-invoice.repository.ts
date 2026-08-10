@@ -11,6 +11,7 @@ import {
     SalesInvoiceStatus,
     VatRate,
 } from '../../domain/sales-invoice';
+import { normalizeCurrencyCode, type AppliedExchangeRate } from '@/src/modules/inventory/shared/currency';
 
 type RawInvoice = {
     id: string;
@@ -29,6 +30,8 @@ type RawInvoice = {
     total: number | string | null;
     notes: string | null;
     dollar_rate: number | string | null;
+    currency_code: string | null;
+    exchange_rates: unknown;
     rate_decimals: number | null;
     discount_type: string | null;
     discount_value: number | string | null;
@@ -42,6 +45,8 @@ type RawInvoice = {
     financial_tax_currency_base: number | string | null;
     financial_tax_bs_base: number | string | null;
     financial_tax_amount: number | string | null;
+    financial_tax_currency_code: string | null;
+    financial_tax_exchange_rate: number | string | null;
     confirmed_at: string | null;
     created_at: string | null;
     updated_at: string | null;
@@ -82,7 +87,7 @@ const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     fecha: invoice.date, periodo: invoice.period, periodo_manual: invoice.periodoManual ?? false,
     fecha_vencimiento: invoice.dueDate ?? null, condiciones_pago: invoice.paymentTerms ?? 'contado',
     subtotal: invoice.subtotal, iva_monto: invoice.vatAmount, total: invoice.total, notas: invoice.notes,
-    tasa_dolar: invoice.dollarRate ?? null, tasa_decimales: invoice.rateDecimals ?? null,
+    tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null, tasa_decimales: invoice.rateDecimals ?? null,
     descuento_tipo: invoice.descuentoTipo ?? null, descuento_valor: invoice.descuentoValor ?? null,
     descuento_monto: invoice.descuentoMonto ?? null, recargo_tipo: invoice.recargoTipo ?? null,
     recargo_valor: invoice.recargoValor ?? null, recargo_monto: invoice.recargoMonto ?? null,
@@ -97,7 +102,7 @@ const itemPayload = (item: SalesInvoiceItem): Record<string, unknown> => ({
     id: item.id ?? '', producto_id: item.productId ?? null, descripcion: item.description,
     cantidad: item.quantity, precio_unitario: item.unitPrice, total_linea: item.totalLine,
     iva_alicuota: item.vatRate, moneda: item.currency, precio_moneda: item.currencyPrice ?? null,
-    tasa_dolar: item.dollarRate ?? null, descuento_tipo: item.descuentoTipo ?? null,
+    tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null, descuento_tipo: item.descuentoTipo ?? null,
     descuento_valor: item.descuentoValor ?? null, descuento_monto: item.descuentoMonto ?? null,
     recargo_tipo: item.recargoTipo ?? null, recargo_valor: item.recargoValor ?? null,
     recargo_monto: item.recargoMonto ?? null, base_iva: item.baseIVA ?? null,
@@ -138,9 +143,18 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
     }
 
     async save(invoice: SalesInvoice, items: SalesInvoiceItem[]): Promise<Result<SalesInvoice>> {
-        return this.callFunction<RawInvoice>('shared_inventory_sales_invoice_save', {
+        const result = await this.callFunction<RawInvoice>('shared_inventory_sales_invoice_save', {
             p_tenant_id: this.tenantId, p_invoice: invoicePayload(invoice), p_items: items.map(itemPayload),
-        }).then((result) => result.isFailure ? Result.fail(result.getError()) : this.load(result.getValue()));
+        });
+        if (result.isFailure) return Result.fail(result.getError());
+        const saved = result.getValue();
+        const { error } = await this.source.instance.from('shared_inventory_sales_invoices').update({
+            currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [],
+            financial_tax_currency_code: invoice.igtfPerceptionCurrencyCode ?? null,
+            financial_tax_exchange_rate: invoice.igtfPerceptionExchangeRate ?? null,
+        }).eq('tenant_id', this.tenantId).eq('id', saved.id);
+        if (error) return Result.fail(error.message);
+        return this.findById(saved.id);
     }
 
     async confirm(id: string): Promise<Result<SalesInvoice>> {
@@ -190,6 +204,8 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             period: row.period, periodoManual: row.manual_period === true, dueDate: row.due_date,
             paymentTerms: row.payment_terms ?? 'contado', status: row.status as SalesInvoiceStatus,
             subtotal: num(row.subtotal), vatAmount: num(row.vat_amount), total: num(row.total), notes: row.notes ?? '',
+            currency: normalizeCurrencyCode(row.currency_code),
+            exchangeRates: Array.isArray(row.exchange_rates) ? row.exchange_rates as AppliedExchangeRate[] : [],
             dollarRate: row.dollar_rate == null ? null : num(row.dollar_rate), rateDecimals: row.rate_decimals,
             descuentoTipo: adjustment(row.discount_type), descuentoValor: num(row.discount_value), descuentoMonto: num(row.discount_amount),
             recargoTipo: adjustment(row.surcharge_type), recargoValor: num(row.surcharge_value), recargoMonto: num(row.surcharge_amount),
@@ -198,14 +214,17 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             igtfPerceptionPercentage: num(row.financial_tax_percentage),
             igtfPerceptionForeignBase: num(row.financial_tax_currency_base),
             igtfPerceptionLocalBase: num(row.financial_tax_bs_base), igtfPerceptionAmount: num(row.financial_tax_amount),
+            igtfPerceptionCurrencyCode: row.financial_tax_currency_code == null ? null : normalizeCurrencyCode(row.financial_tax_currency_code),
+            igtfPerceptionExchangeRate: row.financial_tax_exchange_rate == null ? null : num(row.financial_tax_exchange_rate),
             confirmedAt: row.confirmed_at,
             items: rawItems.map((item) => ({
                 id: item.id, invoiceId: item.invoice_id, productId: item.product_id,
                 description: item.description, quantity: num(item.quantity), unitPrice: num(item.unit_price),
                 totalLine: num(item.line_total), vatRate: (item.vat_rate ?? 'general_16') as VatRate,
-                currency: (item.currency === 'D' ? 'D' : 'B') as ItemCurrency,
+                currency: normalizeCurrencyCode(item.currency) as ItemCurrency,
                 currencyPrice: item.currency_price == null ? null : num(item.currency_price),
                 dollarRate: item.dollar_rate == null ? null : num(item.dollar_rate),
+                exchangeRate: item.dollar_rate == null ? null : num(item.dollar_rate),
                 descuentoTipo: adjustment(item.discount_type), descuentoValor: num(item.discount_value), descuentoMonto: num(item.discount_amount),
                 recargoTipo: adjustment(item.surcharge_type), recargoValor: num(item.surcharge_value), recargoMonto: num(item.surcharge_amount),
                 baseIVA: num(item.vat_base, num(item.line_total)), ivaIncluido: item.vat_included === true,

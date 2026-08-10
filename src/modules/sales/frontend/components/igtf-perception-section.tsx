@@ -11,6 +11,7 @@
 
 import { useEffect } from "react";
 import { IGTF_CONCEPTS, IGTF_CONCEPT_LABELS, type IgtfConcept } from "@/src/modules/sales/backend/domain/sales-invoice";
+import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
 
 export interface IgtfPerceptionFormValue {
     applies:    boolean;
@@ -19,6 +20,7 @@ export interface IgtfPerceptionFormValue {
     foreignBase: number;
     localBase:  number;
     amount:     number;
+    currencyCode: CurrencyCode;
 }
 
 export function emptyIgtfPerceptionValue(): IgtfPerceptionFormValue {
@@ -29,6 +31,7 @@ export function emptyIgtfPerceptionValue(): IgtfPerceptionFormValue {
         foreignBase: 0,
         localBase:  0,
         amount:     0,
+        currencyCode: "USD",
     };
 }
 
@@ -38,6 +41,7 @@ interface Props {
     /** Tasa BCV USD→Bs. Sin tasa, la sección queda en advertencia. */
     dollarRate:  number | null;
     readOnly?:   boolean;
+    currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
 }
 
 const fieldCls = [
@@ -52,7 +56,7 @@ const fmtN = (n: number) =>
 const fmtUsd = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
-export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly }: Props) {
+export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly, currencyOptions = [{ code: "USD", label: "USD" }] }: Props) {
     useEffect(() => {
         if (!value.applies) {
             if (value.localBase !== 0 || value.amount !== 0) {
@@ -134,6 +138,12 @@ export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly }:
 
             {value.applies && (
                 <>
+                    <div>
+                        <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1.5">Moneda del cobro</label>
+                        <select className={`${fieldCls} w-full`} value={value.currencyCode} onChange={(event) => onChange({ ...value, currencyCode: event.target.value })} disabled={readOnly}>
+                            {currencyOptions.filter((option) => option.code !== "VES").map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
+                        </select>
+                    </div>
                     {/* Concepto */}
                     <div>
                         <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1.5">
@@ -171,7 +181,7 @@ export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly }:
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1">
-                                Monto cobrado en divisa (USD)
+                                Monto cobrado en divisa ({value.currencyCode})
                             </label>
                             {readOnly ? (
                                 <div className={`${fieldCls} bg-surface-2 flex items-center justify-end`}>
@@ -226,7 +236,7 @@ export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly }:
                                         Tasa BCV aplicada
                                     </span>
                                     <span className="text-foreground tabular-nums">
-                                        Bs. {fmtN(dollarRate ?? 0)} / USD
+                                        Bs. {fmtN(dollarRate ?? 0)} / {value.currencyCode}
                                     </span>
                                 </div>
                                 <div className="flex justify-between font-mono text-[11px]">

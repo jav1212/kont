@@ -25,6 +25,8 @@ import {
     round4 as round4Shared,
     type AdjustmentCurrency,
 } from "@/src/modules/inventory/shared/totals";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 // -- types ---------------------------------------------------------------------
 
@@ -37,6 +39,8 @@ interface Props {
     onChange: (items: PurchaseInvoiceItem[]) => void;
     readOnly?: boolean;
     dollarRate?: number | null; // BCV rate for the period, used for USD-to-Bs conversion
+    currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
+    getExchangeRate?: (currencyCode: CurrencyCode) => number | null;
     /** Calculation precision: how many decimals all derived totals are rounded to.
      *  Drives both the on-screen formatter and the rounding of `totalCost`. */
     decimals?: number;
@@ -49,7 +53,7 @@ export function emptyItem(): PurchaseInvoiceItem {
     const adj = emptyLineAdjustments();
     return {
         productId: "", quantity: 1, unitCost: 0, totalCost: 0,
-        vatRate: "general_16", currency: "B",
+        vatRate: "general_16", currency: "VES",
         descuentoTipo: adj.descuentoTipo, descuentoValor: adj.descuentoValor, descuentoMonto: 0,
         recargoTipo: adj.recargoTipo, recargoValor: adj.recargoValor, recargoMonto: 0,
         baseIVA: 0,
@@ -353,11 +357,11 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
 
 // -- FacturaItemsGrid ----------------------------------------------------------
 
-export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, decimals = 2, onRequestCreateProduct }: Props) {
+export function FacturaItemsGrid({ items, products, onChange, readOnly = false, dollarRate, currencyOptions = [{ code: "VES", label: "Bolívares" }], getExchangeRate, decimals = 2, onRequestCreateProduct }: Props) {
+    const rateFor = (currency: CurrencyCode, fallback?: number | null) => isLocalCurrency(currency) ? 1 : (getExchangeRate?.(currency) ?? fallback ?? dollarRate ?? null);
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
-    const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(false);
-    const [bulkCurrency, setBulkCurrency] = useState<ItemCurrency>(() => items[0]?.currency ?? "B");
+    const [bulkCurrency, setBulkCurrency] = useState<ItemCurrency>(() => normalizeCurrencyCode(items[0]?.currency));
 
     const fmtN = makeFmt(decimals);
     const round = (n: number) => roundN(n, decimals);
@@ -392,13 +396,14 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     //                   to net before persisting.
     function itemWithCurrency(item: PurchaseInvoiceItem, currency: ItemCurrency): PurchaseInvoiceItem {
         const next = { ...item, currency };
-        if (currency === "D") {
-            const rate = dollarRate ?? item.dollarRate ?? 1;
+        if (!isLocalCurrency(currency)) {
+            const rate = rateFor(currency, item.exchangeRate ?? item.dollarRate) ?? 1;
             next.dollarRate = rate;
+            next.exchangeRate = rate;
             if (next.currencyCost == null || next.currencyCost === 0) next.currencyCost = rate > 0 ? round4(next.unitCost / rate) : 0;
             next.unitCost = round4((next.currencyCost ?? 0) * rate);
         } else {
-            next.currencyCost = null; next.dollarRate = null;
+            next.currencyCost = null; next.dollarRate = null; next.exchangeRate = null;
         }
         next.totalCost = round(Number(next.quantity) * Number(next.unitCost));
         return next;
@@ -419,9 +424,10 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
 
         if (field === 'currencyCostInput') {
             const currencyCostVal = Number(val) || 0;
-            const rate = dollarRate ?? item.dollarRate ?? 1;
+            const rate = rateFor(item.currency, item.exchangeRate ?? item.dollarRate) ?? 1;
             item.currencyCost = currencyCostVal;
             item.dollarRate   = rate;
+            item.exchangeRate = rate;
             item.unitCost     = round4(currencyCostVal * rate);
             item.totalCost    = round(item.quantity * item.unitCost);
         } else if (field === 'unitCostDisplay') {
@@ -432,14 +438,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 ? netFromGross(typed, item.vatRate ?? 'general_16')
                 : round4(typed);
             item.totalCost = round(item.quantity * item.unitCost);
-            if (item.currency !== 'D') item.currencyCost = null;
+            if (isLocalCurrency(item.currency)) item.currencyCost = null;
         } else if (field === "currency") {
             const currency = val as ItemCurrency;
-            if (applyCurrencyToAll) {
-                setBulkCurrency(currency);
-                onChange(items.map((row) => itemWithCurrency(row, currency)));
-                return;
-            }
             Object.assign(item, itemWithCurrency(item, currency));
         } else if (field === "ivaIncluido") {
             item.ivaIncluido = !!val;
@@ -490,7 +491,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     recargoValor: item.recargoValor ?? 0,
                     recargoMoneda: item.recargoMoneda ?? 'B',
                 },
-            }, decimals, dollarRate ?? item.dollarRate ?? 0);
+            }, decimals, rateFor(item.currency, item.exchangeRate ?? item.dollarRate) ?? 0);
             item.descuentoMonto = line.descuentoMonto;
             item.recargoMonto = line.recargoMonto;
             item.baseIVA = line.baseIVA;
@@ -542,44 +543,43 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
         }
     }
 
-    const hasDollarRate = !!dollarRate;
-    const anyUsd = items.some((i) => i.currency === 'D');
+    const foreignItems = items.filter((item) => !isLocalCurrency(item.currency));
+    const hasForeignCurrency = foreignItems.length > 0;
+    const hasExchangeRates = foreignItems.every((item) => Boolean(rateFor(item.currency, item.exchangeRate ?? item.dollarRate)));
+    const foreignCurrencyOptions = currencyOptions.filter((option) => !isLocalCurrency(option.code));
 
     return (
         <div className="overflow-x-auto overscroll-x-contain">
-            {/* Dollar rate hint shown when any item uses USD */}
-            {anyUsd && (
+            {hasForeignCurrency && (
                 <div className="mb-3 flex items-center gap-2 text-[12px]">
                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Tasa BCV</span>
-                    {hasDollarRate ? (
+                    {hasExchangeRates ? (
                         <span className="font-mono tabular-nums text-amber-600 font-medium">
-                            {dollarRate!.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Bs/USD
+                            {foreignItems.map((item) => `${normalizeCurrencyCode(item.currency)} ${rateFor(item.currency, item.exchangeRate ?? item.dollarRate)?.toLocaleString("es-VE", { maximumFractionDigits: 6 })}`).join(" · ")} Bs por unidad
                         </span>
                     ) : (
-                        <span className="text-red-500 font-medium">No definida - configura la tasa en Cierres</span>
+                        <span className="text-red-500 font-medium">Falta una tasa para alguna divisa seleccionada</span>
                     )}
                 </div>
             )}
 
             {!readOnly && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-light bg-surface-2/40 px-3.5 py-2.5 text-[11px]">
-                    <div>
-                        <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-foreground">Moneda de las líneas</div>
-                        <div className="mt-0.5 font-sans text-[10px] text-[var(--text-tertiary)]">Aplica una moneda común a los productos registrados.</div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                    <div className="inline-flex rounded-lg border border-border-default bg-surface-1 p-0.5 shadow-sm">
-                    <button type="button" onClick={() => { setBulkCurrency("B"); applyCurrencyToAllItems("B"); }} className={`h-7 rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-colors ${bulkCurrency === "B" ? "bg-primary-500/10 text-primary-500" : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"}`}>
-                        Bolívares · Bs
-                    </button>
-                    <button type="button" disabled={!hasDollarRate} onClick={() => { setBulkCurrency("D"); applyCurrencyToAllItems("D"); }} className={`h-7 rounded-md px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${bulkCurrency === "D" ? "bg-amber-500/10 text-amber-600" : "text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"}`}>
-                        Dólares · USD
-                    </button>
-                    </div>
-                    <label className="inline-flex cursor-pointer select-none items-center gap-2 text-[var(--text-secondary)]">
-                        <input type="checkbox" checked={applyCurrencyToAll} onChange={(e) => { const checked = e.target.checked; setApplyCurrencyToAll(checked); if (checked) applyCurrencyToAllItems(bulkCurrency); }} className="accent-primary-500" />
-                        Mantener sincronizadas
-                    </label>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-2/60 px-2.5 py-2 text-[11px]">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Moneda de los productos</span>
+                    <div className="inline-flex h-9 items-center rounded-lg border border-border-light bg-surface-1 p-0.5">
+                        <button type="button" onClick={() => applyCurrencyToAllItems("VES")} className={`h-8 rounded-md px-3 font-mono text-[11px] font-bold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground/15 ${isLocalCurrency(bulkCurrency) ? "bg-foreground text-background shadow-sm" : "text-[var(--text-secondary)] hover:bg-surface-2 hover:text-foreground"}`}>
+                            Bolívares
+                        </button>
+                        <CurrencyCombobox
+                            className="w-36"
+                            label=""
+                            value={isLocalCurrency(bulkCurrency) ? "" : normalizeCurrencyCode(bulkCurrency)}
+                            displayValue={isLocalCurrency(bulkCurrency) ? "Divisa" : `Divisa · ${normalizeCurrencyCode(bulkCurrency)}`}
+                            options={foreignCurrencyOptions}
+                            onChange={applyCurrencyToAllItems}
+                            menuAlign="right"
+                            triggerClassName={`!h-8 !rounded-md !border-0 !px-3 !text-[11px] !font-bold !tracking-normal !shadow-none focus-visible:!ring-2 focus-visible:!ring-foreground/15 ${isLocalCurrency(bulkCurrency) ? "!bg-transparent !text-[var(--text-secondary)] hover:!bg-surface-2 hover:!text-foreground" : "!bg-foreground !text-background"}`}
+                        />
                     </div>
                 </div>
             )}
@@ -596,9 +596,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                             Moneda
                         </th>
                         <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-36">
-                            {anyUsd ? "Costo (en moneda)" : "Costo Unit. Bs"}
+                            {hasForeignCurrency ? "Costo (en moneda)" : "Costo Unit. Bs"}
                         </th>
-                        {anyUsd && (
+                        {hasForeignCurrency && (
                             <th className="px-2 py-2 text-right text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal w-28">
                                 Costo Bs
                             </th>
@@ -614,7 +614,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 </thead>
                 <tbody>
                     {items.map((item, idx) => {
-                        const isUsd = item.currency === 'D';
+                        const isForeignCurrency = !isLocalCurrency(item.currency);
                         const isExpanded = expanded.has(idx);
                         const hasAdj = hasAdjustments(item);
                         const displayCost = item.ivaIncluido
@@ -662,24 +662,12 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                         {readOnly ? (
                                             <span className={[
                                                 "inline-flex px-1.5 py-0.5 rounded text-[11px] uppercase font-bold tracking-wider",
-                                                isUsd ? "bg-amber-500/10 text-amber-600" : "bg-surface-2 text-[var(--text-tertiary)]",
+                                                isForeignCurrency ? "bg-amber-500/10 text-amber-600" : "bg-surface-2 text-[var(--text-tertiary)]",
                                             ].join(" ")}>
-                                                {isUsd ? "USD" : "Bs"}
+                                                {isForeignCurrency ? normalizeCurrencyCode(item.currency) : "Bs"}
                                             </span>
                                         ) : (
-                                            <select
-                                                tabIndex={-1}
-                                                value={item.currency ?? "B"}
-                                                onChange={(e) => updateItem(idx, "currency", e.target.value as ItemCurrency)}
-                                                className={[
-                                                    "w-full h-8 px-1 outline-none bg-transparent text-[12px] font-mono font-bold",
-                                                    "focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer",
-                                                    isUsd ? "text-amber-600" : "text-[var(--text-tertiary)]",
-                                                ].join(" ")}
-                                            >
-                                                <option value="B">Bs</option>
-                                                <option value="D">USD</option>
-                                            </select>
+                                            <CurrencyCombobox label="" value={normalizeCurrencyCode(item.currency)} options={currencyOptions} onChange={(value) => updateItem(idx, "currency", value as ItemCurrency)} />
                                         )}
                                     </td>
 
@@ -687,11 +675,11 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                     <td className="px-1 py-0.5">
                                         {readOnly ? (
                                             <span className="px-2 tabular-nums text-right block text-[var(--text-primary)] text-[13px]">
-                                                {isUsd && item.currencyCost != null
-                                                    ? `$${fmtN(item.currencyCost)}`
+                                                {isForeignCurrency && item.currencyCost != null
+                                                    ? `${normalizeCurrencyCode(item.currency)} ${fmtN(item.currencyCost)}`
                                                     : fmtN(displayCost)}
                                             </span>
-                                        ) : isUsd ? (
+                                        ) : isForeignCurrency ? (
                                             <NumberCell
                                                 value={item.currencyCost ?? 0}
                                                 onChange={(v) => updateItem(idx, "currencyCostInput", v)}
@@ -713,9 +701,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                     </td>
 
                                     {/* Bs cost column (read-only, shown only when any item uses USD) */}
-                                    {anyUsd && (
+                                    {hasForeignCurrency && (
                                         <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-secondary)] text-[13px]">
-                                            {isUsd
+                                            {isForeignCurrency
                                                 ? (item.unitCost > 0 ? fmtN(item.unitCost) : "-")
                                                 : <span className="text-[var(--text-tertiary)]">-</span>}
                                         </td>
@@ -769,8 +757,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
 
                                     {/* Total in row currency */}
                                     <td className="px-3 py-0.5 tabular-nums text-right text-[var(--text-primary)]">                                        {item.totalCost > 0
-                                            ? isUsd
-                                                ? (dollarRate && dollarRate > 0 ? "$" + fmtN(item.totalCost / dollarRate) : "N/A")
+                                            ? isForeignCurrency
+                                                ? (rateFor(item.currency, item.exchangeRate ?? item.dollarRate) ? `${normalizeCurrencyCode(item.currency)} ${fmtN(item.totalCost / rateFor(item.currency, item.exchangeRate ?? item.dollarRate)!)}` : "N/A")
                                                 : "Bs. " + fmtN(item.totalCost)
                                             : "N/A"}
                                     </td>
@@ -810,7 +798,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                 </tr>
                                 {isExpanded && !readOnly && (
                                     <tr className="bg-surface-2/30 border-b border-border-light/30">
-                                        <td colSpan={anyUsd ? 8 : 7} className="px-4 py-3">
+                                        <td colSpan={hasForeignCurrency ? 8 : 7} className="px-4 py-3">
                                             <div className="space-y-2">
                                                 <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-1">
                                                     Ajustes de linea - afectan la base IVA

@@ -4,9 +4,10 @@
 // (IGTF percepción cuando se cobra en divisa/cripto sin mediación financiera).
 //
 // VatRate, ItemCurrency, InvoiceStatus values are DB contracts.
+import type { AppliedExchangeRate, CurrencyCode } from '@/src/modules/inventory/shared/currency';
 
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
-export type ItemCurrency = 'B' | 'D';
+export type ItemCurrency = CurrencyCode;
 export type AdjustmentKind = 'monto' | 'porcentaje';
 export type SalesInvoiceStatus = 'borrador' | 'confirmada' | 'anulada';
 export type PaymentTerms = 'contado' | 'credito_15' | 'credito_30' | 'credito_60' | 'credito_90' | 'otro';
@@ -63,6 +64,9 @@ export interface SalesInvoiceItem {
     currency:        ItemCurrency;
     currencyPrice?:  number | null;
     dollarRate?:     number | null;
+    exchangeRate?:   number | null;
+    rateEffectiveDate?: string | null;
+    rateSource?: 'bcv' | 'manual' | 'legacy' | null;
 
     descuentoTipo?:  AdjustmentKind | null;
     descuentoValor?: number;
@@ -99,6 +103,9 @@ export interface SalesInvoice {
 
     status:          SalesInvoiceStatus;
 
+    currency?:       CurrencyCode;
+    exchangeRates?:  AppliedExchangeRate[];
+
     subtotal:        number;
     vatAmount:       number;
     total:           number;
@@ -127,6 +134,8 @@ export interface SalesInvoice {
     igtfPerceptionLocalBase?:     number;
     /** Monto IGTF percibido en Bs (server-resolved). */
     igtfPerceptionAmount?:      number;
+    igtfPerceptionCurrencyCode?: CurrencyCode | null;
+    igtfPerceptionExchangeRate?: number | null;
 
     confirmedAt?:    string | null;
     items?:          SalesInvoiceItem[];

@@ -25,7 +25,7 @@ import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchas
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem, PurchaseDocumentType, PurchaseInventoryEffect } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
-import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
+import { parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     computeInvoiceTotals,
@@ -40,6 +40,9 @@ import { IvaRetencionToggle } from "@/src/modules/purchases/frontend/components/
 import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components/invoice-taxes-section";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 import { SupplierCombobox } from "@/src/modules/purchases/frontend/components/supplier-combobox";
+import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -141,17 +144,18 @@ export default function NuevaFacturaPage() {
     const [noteReason, setNoteReason] = useState("");
     const [inventoryEffect, setInventoryEffect] = useState<PurchaseInventoryEffect>("none");
     const [date, setDate] = useState(todayStr());
+    const [invoiceCurrencyCode, setInvoiceCurrencyCode] = useState<CurrencyCode>("VES");
+    const { options: currencyOptions, appliedRates, setAppliedRates, getRate, setManualRate, publishedDate, loading: currenciesLoading } = useInvoiceExchangeRates(date);
     const [notes, setNotes] = useState("");
     const {
         rate: dollarRate,
         decimals: rateDecimals,
         setRateFromApi,
-        setRateTyped,
         applyDecimals,
     } = useBcvRate();
-    const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
+    const [_rateDateBcv, setRateDateBcv] = useState<string | null>(null);
     const [rateLoading, setRateLoading] = useState(false);
-    const [rateError, setRateError] = useState<string | null>(null);
+    const [_rateError, setRateError] = useState<string | null>(null);
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
     const [periodo, setPeriodo] = useState<string>(() => date.slice(0, 7));
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
@@ -233,6 +237,8 @@ export default function NuevaFacturaPage() {
         setNoteReason(inv.noteReason ?? "");
         setInventoryEffect(inv.inventoryEffect ?? "none");
         setDate(inv.date ?? todayStr());
+        setInvoiceCurrencyCode(normalizeCurrencyCode(inv.currency));
+        setAppliedRates(inv.exchangeRates ?? []);
         setPeriodo(inv.period ?? (inv.date ?? todayStr()).slice(0, 7));
         setPeriodoManual(Boolean(inv.periodoManual || (inv.period && inv.date && inv.period !== inv.date.slice(0, 7))));
         setNotes(inv.notes ?? "");
@@ -304,7 +310,7 @@ export default function NuevaFacturaPage() {
     }, [date]);
 
     const preciseLineDollarRate = items
-        .map((item) => item.currency === "D" && item.dollarRate != null && item.dollarRate > 0 ? item.dollarRate : null)
+        .map((item) => !isLocalCurrency(item.currency) && item.dollarRate != null && item.dollarRate > 0 ? item.dollarRate : null)
         .find((rate): rate is number => rate != null);
     const effectiveDollarRate = (() => {
         const typedRate = parseRateStr(dollarRate);
@@ -312,15 +318,15 @@ export default function NuevaFacturaPage() {
             typedRate == null || roundRateValue(preciseLineDollarRate, rateDecimals) === roundRateValue(typedRate, rateDecimals)
         );
         const calculationRate = lineRateMatchesDisplay ? preciseLineDollarRate : typedRate;
-        return isFinite(calculationRate ?? NaN) ? roundRateValue(calculationRate as number, 4) : null;
+        return getRate(invoiceCurrencyCode) ?? (isFinite(calculationRate ?? NaN) ? roundRateValue(calculationRate as number, 4) : null);
     })();
-    const invoiceCurrency = items.length > 0 && items.every((item) => item.currency === 'D') ? 'D' : 'B';
+    const invoiceCurrency = invoiceCurrencyCode;
     // Derived totals — computed by shared math (computeInvoiceTotals)
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
         unitCost: i.unitCost ?? 0,
-        currency: i.currency ?? "B",
-        currencyCost: i.currencyCost ?? null,
+        currency: "VES",
+        currencyCost: null,
         vatRate:  i.vatRate ?? "general_16",
         adjustments: {
             descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
@@ -331,7 +337,7 @@ export default function NuevaFacturaPage() {
             recargoMoneda: i.recargoMoneda ?? 'B',
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0, invoiceCurrency);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, 1, "VES");
     const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
@@ -387,13 +393,14 @@ export default function NuevaFacturaPage() {
         period:        periodoManual && periodo ? periodo : date.slice(0, 7),
         periodoManual,
         currency: invoiceCurrency,
+        exchangeRates: appliedRates,
         status:        "borrador",
         subtotal:      subtotal * documentSign,
         vatPercentage: 0,
         vatAmount:     vatAmount * documentSign,
         total:         total * documentSign,
         notes,
-        dollarRate:    effectiveDollarRate,
+        dollarRate:    getRate(invoiceCurrency),
         rateDecimals,
         descuentoTipo:  headerAdj.descuentoTipo,
         descuentoValor: headerAdj.descuentoValor,
@@ -406,7 +413,7 @@ export default function NuevaFacturaPage() {
         retencionIvaPct,
         retencionIvaMonto: retencionIva,
         impuestos: resolvedImpuestos,
-    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, invoiceCurrency, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
+    }), [companyId, supplierId, documentType, invoiceNumber, controlNumber, affectedInvoiceId, affectedInvoiceNumber, affectedControlNumber, noteReason, inventoryEffect, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, descuentoHeader, recargoHeader, retencionIvaPct, retencionIva, resolvedImpuestos, documentSign]);
 
     // Items con montos resueltos para persistir (descuentoMonto, recargoMonto,
     // baseIVA reflejan el spread proporcional del header).
@@ -647,7 +654,7 @@ export default function NuevaFacturaPage() {
                                 <div className="flex justify-between gap-3">
                                     <dt className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[11px]">Tasa BCV</dt>
                                     <dd className="text-foreground tabular-nums">
-                                        {effectiveDollarRate.toLocaleString("es-VE", { minimumFractionDigits: rateDecimals, maximumFractionDigits: rateDecimals })} Bs/USD
+                                        {effectiveDollarRate.toLocaleString("es-VE", { minimumFractionDigits: rateDecimals, maximumFractionDigits: rateDecimals })} Bs/{invoiceCurrencyCode}
                                     </dd>
                                 </div>
                             )}
@@ -663,7 +670,7 @@ export default function NuevaFacturaPage() {
                             </div>
                             {effectiveDollarRate && total > 0 && (
                                 <div className="flex items-baseline justify-between mt-0.5">
-                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ USD</span>
+                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ {invoiceCurrencyCode}</span>
                                     <span className="tabular-nums text-[var(--text-tertiary)] text-[13px] font-semibold">
                                         ${fmtN(total / effectiveDollarRate)}
                                     </span>
@@ -848,16 +855,13 @@ export default function NuevaFacturaPage() {
                                         periodoManual={periodoManual}
                                         onChange={(p, manual) => { setPeriodo(p); setPeriodoManual(manual); }}
                                     />
-                                    <BcvRateInput
-                                        rate={dollarRate}
-                                        onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
-                                        decimals={rateDecimals}
-                                        onDecimalsChange={applyDecimals}
-                                        loading={rateLoading}
-                                        bcvDate={rateDateBcv}
-                                        error={rateError}
-                                        showDecimals={false}
-                                    />
+                                    <CurrencyCombobox label="Moneda principal" options={currencyOptions} value={invoiceCurrencyCode} onChange={(value) => {
+                                            const previous = invoiceCurrencyCode;
+                                            const next = normalizeCurrencyCode(value);
+                                            setInvoiceCurrencyCode(next);
+                                            setItems((current) => current.map((item) => normalizeCurrencyCode(item.currency) === normalizeCurrencyCode(previous) ? { ...item, currency: next } : item));
+                                        }} disabled={currenciesLoading} />
+                                    {!isLocalCurrency(invoiceCurrencyCode) && <BaseInput.Field label={`Tasa · Bs/${invoiceCurrencyCode}`} type="number" min="0" step="0.0001" value={getRate(invoiceCurrencyCode) ? String(getRate(invoiceCurrencyCode)) : ""} onValueChange={(value) => setManualRate(invoiceCurrencyCode, Number(String(value).replace(",", ".")) || 0)} description={publishedDate ? `BCV ${publishedDate}` : "Tasa manual"} />}
                                 </div>
 
                                 <div className="mt-3 flex items-start gap-1.5">
@@ -1146,14 +1150,14 @@ export default function NuevaFacturaPage() {
                                     </div>
                                     {effectiveDollarRate && heroTotal > 0 ? (
                                         <div className="flex items-baseline justify-between mt-0.5">
-                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ USD</span>
+                                            <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ {invoiceCurrencyCode}</span>
                                             <span className="tabular-nums text-[var(--text-tertiary)] text-[13px] font-semibold">
                                                 ${fmtN(heroTotal / effectiveDollarRate)}
                                             </span>
                                         </div>
                                     ) : !effectiveDollarRate && heroTotal > 0 ? (
                                         <p className="mt-1 text-[10px] font-sans text-[var(--text-tertiary)] leading-snug">
-                                            Define la tasa BCV para ver el equivalente en USD.
+                                            Define la tasa BCV para ver el equivalente en {invoiceCurrencyCode}.
                                         </p>
                                     ) : null}
 
@@ -1169,7 +1173,7 @@ export default function NuevaFacturaPage() {
                                             </div>
                                             {effectiveDollarRate && totalAPagar > 0 && (
                                                 <div className="flex items-baseline justify-between mt-0.5">
-                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ USD</span>
+                                                    <span className="text-[var(--text-tertiary)] uppercase tracking-[0.12em] text-[10px]">≈ {invoiceCurrencyCode}</span>
                                                     <span className="tabular-nums text-[var(--text-tertiary)] text-[12px] font-semibold">
                                                         ${fmtN(totalAPagar / effectiveDollarRate)}
                                                     </span>
@@ -1206,6 +1210,8 @@ export default function NuevaFacturaPage() {
                             products={products}
                             onChange={setItems}
                             dollarRate={effectiveDollarRate}
+                            currencyOptions={currencyOptions}
+                            getExchangeRate={getRate}
                             decimals={rateDecimals}
                             onRequestCreateProduct={(search) => {
                                 setQcProduct(p => ({ ...p, name: search }));
@@ -1398,7 +1404,7 @@ export default function NuevaFacturaPage() {
                             />
                             {effectiveDollarRate && heroTotal > 0 && (
                                 <SummaryRow
-                                    label="≈ USD"
+                                    label={`≈ ${invoiceCurrencyCode}`}
                                     value={`$ ${fmtN(heroTotal / effectiveDollarRate)}`}
                                 />
                             )}

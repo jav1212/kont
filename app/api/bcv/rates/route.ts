@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-    ALLOWED_CODES,
     fetchBcvCurrentAll,
     fetchBcvListFallback,
     normalizeEntry,
@@ -27,8 +26,9 @@ export async function GET(req: NextRequest) {
             // Use /exchange-rate — returns all currencies with percentageChange
             const all = await fetchBcvCurrentAll();
             const rates = all
-                .filter((e) => (ALLOWED_CODES as readonly string[]).includes(e.code))
-                .map(normalizeEntry);
+                .filter((e) => /^[A-Z]{3}$/.test(e.code))
+                .map(normalizeEntry)
+                .filter((e) => Number.isFinite(e.sell) && e.sell > 0);
 
             if (!rates.length) {
                 return NextResponse.json({ error: "No hay tasas disponibles." }, { status: 404 });
@@ -46,10 +46,11 @@ export async function GET(req: NextRequest) {
         // Group by date, pick the most recent date ≤ requested
         const byDate = new Map<string, NormalizedRate[]>();
         for (const entry of raw) {
-            if (!(ALLOWED_CODES as readonly string[]).includes(entry.code)) continue;
+            if (!/^[A-Z]{3}$/.test(entry.code)) continue;
             const iso = parseVeDate(entry.date);
             if (!byDate.has(iso)) byDate.set(iso, []);
-            byDate.get(iso)!.push(normalizeEntry(entry));
+            const normalized = normalizeEntry(entry);
+            if (Number.isFinite(normalized.sell) && normalized.sell > 0) byDate.get(iso)!.push(normalized);
         }
 
         const sortedDates = [...byDate.keys()].sort().reverse();

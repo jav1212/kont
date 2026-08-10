@@ -13,6 +13,7 @@
 // preview en vivo; el server recomputa autoritativamente al guardar (mig 093).
 
 import { useEffect } from "react";
+import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
 
 export interface IgtfFormValue {
     aplica:      boolean;
@@ -20,6 +21,7 @@ export interface IgtfFormValue {
     baseDivisa:  number;
     baseBs:      number;
     monto:       number;
+    currencyCode: CurrencyCode;
 }
 
 export function emptyIgtfValue(): IgtfFormValue {
@@ -29,6 +31,7 @@ export function emptyIgtfValue(): IgtfFormValue {
         baseDivisa: 0,
         baseBs:     0,
         monto:      0,
+        currencyCode: "USD",
     };
 }
 
@@ -38,6 +41,7 @@ interface Props {
     /** Tasa BCV para convertir divisa → Bs. Cuando es null, se deshabilita la sección. */
     dollarRate:   number | null;
     readOnly?:    boolean;
+    currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
 }
 
 const fieldCls = [
@@ -52,7 +56,7 @@ const fmtN = (n: number) =>
 const fmtUsd = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
-export function IgtfSection({ value, onChange, dollarRate, readOnly }: Props) {
+export function IgtfSection({ value, onChange, dollarRate, readOnly, currencyOptions = [{ code: "USD", label: "USD" }] }: Props) {
     // Recalcular base Bs y monto cuando cambian baseDivisa, %, o tasa.
     useEffect(() => {
         if (!value.aplica) {
@@ -126,10 +130,16 @@ export function IgtfSection({ value, onChange, dollarRate, readOnly }: Props) {
 
             {value.aplica && (
                 <>
+                    <div>
+                        <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1">Moneda del pago</label>
+                        <select className={`${fieldCls} w-full`} value={value.currencyCode} onChange={(event) => onChange({ ...value, currencyCode: event.target.value })} disabled={readOnly}>
+                            {currencyOptions.filter((option) => option.code !== "VES").map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
+                        </select>
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1">
-                                Monto pagado en divisa (USD)
+                                Monto pagado en divisa ({value.currencyCode})
                             </label>
                             {readOnly ? (
                                 <div className={`${fieldCls} bg-surface-2 flex items-center justify-end`}>
@@ -184,7 +194,7 @@ export function IgtfSection({ value, onChange, dollarRate, readOnly }: Props) {
                                         Tasa BCV aplicada
                                     </span>
                                     <span className="text-foreground tabular-nums">
-                                        Bs. {fmtN(dollarRate ?? 0)} / USD
+                                        Bs. {fmtN(dollarRate ?? 0)} / {value.currencyCode}
                                     </span>
                                 </div>
                                 <div className="flex justify-between font-mono text-[11px]">

@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return NextResponse.json({ error: "Fecha inválida. Usa formato YYYY-MM-DD." }, { status: 400 });
     }
+    if (!/^[A-Z]{3}$/.test(code)) {
+        return NextResponse.json({ error: "Código de moneda inválido." }, { status: 400 });
+    }
 
     try {
         // Si la fecha pedida es hoy en Caracas, preferimos el endpoint "vigente"

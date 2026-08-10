@@ -22,6 +22,9 @@ import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import type { PurchaseInvoice, PurchaseDocumentType } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { computeFlatInvoiceTotals } from "@/src/modules/inventory/shared/totals";
 import { SupplierCombobox } from "@/src/modules/purchases/frontend/components/supplier-combobox";
+import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -47,6 +50,8 @@ export default function NuevaFacturaQuickPage() {
     const [affectedControlNumber, setAffectedControlNumber] = useState("");
     const [noteReason, setNoteReason] = useState("");
     const [date, setDate] = useState(getTodayIsoDate());
+    const [currencyCode, setCurrencyCode] = useState<CurrencyCode>("VES");
+    const { options: currencyOptions, appliedRates, getRate, setManualRate, publishedDate } = useInvoiceExchangeRates(date);
     const [subtotalStr, setSubtotalStr] = useState("");
     const [ivaPctStr, setIvaPctStr] = useState("16");
     const [retencionIvaPctStr, setRetencionIvaPctStr] = useState("0");
@@ -88,7 +93,9 @@ export default function NuevaFacturaQuickPage() {
         if (companyId) loadSuppliers(companyId);
     }, [companyId, loadSuppliers]);
 
-    const subtotal = parseFloat(subtotalStr) || 0;
+    const sourceSubtotal = parseFloat(subtotalStr) || 0;
+    const exchangeRate = getRate(currencyCode) ?? 0;
+    const subtotal = sourceSubtotal * (isLocalCurrency(currencyCode) ? 1 : exchangeRate);
     const ivaPct   = parseFloat(ivaPctStr) || 0;
     const retIvaPct = Math.min(100, Math.max(0, parseFloat(retencionIvaPctStr) || 0));
     const flatTotals = computeFlatInvoiceTotals(subtotal, ivaPct, retIvaPct);
@@ -108,7 +115,8 @@ export default function NuevaFacturaQuickPage() {
         if (!invoiceNumber.trim()) { notify.error("Ingresa el número de factura"); return false; }
         if (!date) { notify.error("Ingresa la fecha"); return false; }
         if (documentType !== "factura" && !affectedInvoiceNumber.trim()) { notify.error("Indica la factura afectada"); return false; }
-        if (subtotal <= 0) { notify.error("El subtotal debe ser mayor a 0"); return false; }
+        if (sourceSubtotal <= 0) { notify.error("El subtotal debe ser mayor a 0"); return false; }
+        if (!isLocalCurrency(currencyCode) && exchangeRate <= 0) { notify.error(`Falta la tasa BCV de ${currencyCode}`); return false; }
         return true;
     }
 
@@ -128,12 +136,18 @@ export default function NuevaFacturaQuickPage() {
             inventoryEffect: documentType === "factura" ? "additional_purchase" : "none",
             date,
             period: date.slice(0, 7),
+            currency: normalizeCurrencyCode(currencyCode),
+            exchangeRates: appliedRates,
             status: "borrador",
             subtotal: subtotal * documentSign,
             vatPercentage: ivaPct,
             vatAmount: ivaMonto * documentSign,
             total: total * documentSign,
             notes: notes.trim(),
+            dollarRate: isLocalCurrency(currencyCode) ? null : exchangeRate,
+            sourceSubtotal: sourceSubtotal * documentSign,
+            sourceVatAmount: (sourceSubtotal * ivaPct / 100) * documentSign,
+            sourceTotal: (sourceSubtotal + sourceSubtotal * ivaPct / 100 - sourceSubtotal * ivaPct / 100 * retIvaPct / 100) * documentSign,
             retencionIvaPct: retIvaPct,
             retencionIvaMonto: retIvaMonto,
         };
@@ -335,7 +349,7 @@ export default function NuevaFacturaQuickPage() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <BaseInput.Field
-                            label="Subtotal (Bs)"
+                            label={`Subtotal (${isLocalCurrency(currencyCode) ? "Bs" : currencyCode})`}
                             type="number"
                             min={0}
                             step={0.01}
@@ -344,6 +358,8 @@ export default function NuevaFacturaQuickPage() {
                             placeholder="0.00"
                             inputClassName="text-right"
                         />
+                        <CurrencyCombobox options={currencyOptions} value={currencyCode} onChange={setCurrencyCode} />
+                        {!isLocalCurrency(currencyCode) && <BaseInput.Field label={`Tasa Bs/${currencyCode}`} type="number" min={0} step={0.0001} value={exchangeRate ? String(exchangeRate) : ""} onValueChange={(value) => setManualRate(currencyCode, Number(String(value).replace(",", ".")) || 0)} description={publishedDate ? `BCV ${publishedDate}` : "Tasa manual"} />}
                         <BaseInput.Field
                             label="IVA %"
                             type="number"

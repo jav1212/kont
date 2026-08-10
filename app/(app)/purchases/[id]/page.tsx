@@ -45,6 +45,8 @@ import {
     roundRateValue,
     useBcvRate,
 } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
+import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
+import { normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -104,6 +106,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate] = useState("");
+    const [invoiceCurrencyCode, setInvoiceCurrencyCode] = useState<CurrencyCode>("VES");
+    const { options: currencyOptions, appliedRates, setAppliedRates, getRate } = useInvoiceExchangeRates(date);
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
     const [periodo, setPeriodo] = useState<string>("");
@@ -198,6 +202,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setInvoiceNumber(currentPurchaseInvoice.invoiceNumber);
         setControlNumber(currentPurchaseInvoice.controlNumber ?? '');
         setDate(fmtDate(currentPurchaseInvoice.date));
+        setInvoiceCurrencyCode(normalizeCurrencyCode(currentPurchaseInvoice.currency));
+        setAppliedRates(currentPurchaseInvoice.exchangeRates ?? []);
         setNotes(currentPurchaseInvoice.notes);
         setItems(
             currentPurchaseInvoice.items && currentPurchaseInvoice.items.length > 0
@@ -230,6 +236,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             baseDivisa: currentPurchaseInvoice.igtfBaseDivisa ?? 0,
             baseBs:     currentPurchaseInvoice.igtfBaseBs ?? 0,
             monto:      currentPurchaseInvoice.igtfMonto ?? 0,
+            currencyCode: currentPurchaseInvoice.igtfCurrencyCode ?? "USD",
         });
         const hasAdj =
             (currentPurchaseInvoice.descuentoTipo != null && (currentPurchaseInvoice.descuentoValor ?? 0) > 0) ||
@@ -254,16 +261,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         return isFinite(sourceRate) ? roundRateValue(sourceRate, 4) : null;
     })();
     // Derived totals — uses shared math
-    const invoiceCurrency = currentPurchaseInvoice?.currency === 'D'
-        ? 'D'
-        : (items.length > 0 && items.every((item) => item.currency === 'D') ? 'D' : 'B');
+    const invoiceCurrency = invoiceCurrencyCode;
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
-        unitCost: i.currency === "D" && i.currencyCost != null && effectiveDollarRate != null
-            ? i.currencyCost * effectiveDollarRate
+        unitCost: i.currencyCost != null && normalizeCurrencyCode(i.currency) !== "VES" && getRate(i.currency)
+            ? i.currencyCost * getRate(i.currency)!
             : (i.unitCost ?? 0),
-        currency: i.currency ?? "B",
-        currencyCost: i.currencyCost ?? null,
+        currency: "VES",
+        currencyCost: null,
         vatRate:  i.vatRate ?? "general_16",
         adjustments: {
             descuentoTipo:  (i.descuentoTipo ?? null) as AdjustmentKind | null,
@@ -280,7 +285,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, effectiveDollarRate ?? 0, invoiceCurrency);
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, 1, "VES");
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -312,13 +317,14 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         period:         periodoManual && periodo ? periodo : date.slice(0, 7),
         periodoManual,
         currency: invoiceCurrency,
+        exchangeRates: appliedRates,
         status:         "borrador",
         subtotal: subtotal * (documentType === "nota_credito" ? -1 : 1),
         vatPercentage:  0,
         vatAmount: vatAmount * (documentType === "nota_credito" ? -1 : 1),
         total: total * (documentType === "nota_credito" ? -1 : 1),
         notes,
-        dollarRate:     effectiveDollarRate,
+        dollarRate:     getRate(invoiceCurrency),
         rateDecimals,
         descuentoTipo:  headerAdj.descuentoTipo,
         descuentoValor: headerAdj.descuentoValor,
@@ -341,14 +347,18 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         igtfBaseDivisa: igtf.baseDivisa,
         igtfBaseBs:     igtf.baseBs,
         igtfMonto:      igtf.monto,
+        igtfCurrencyCode: igtf.currencyCode,
+        igtfExchangeRate: getRate(igtf.currencyCode),
         impuestos:      totals.impuestos,
-    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, invoiceCurrency, subtotal, vatAmount, total, notes, effectiveDollarRate, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
+    }), [id, currentPurchaseInvoice, companyId, supplierId, documentType, affectedInvoiceNumber, affectedControlNumber, noteReason, invoiceNumber, controlNumber, date, periodo, periodoManual, invoiceCurrency, appliedRates, getRate, subtotal, vatAmount, total, notes, rateDecimals, headerAdj, totals.descuentoHeader, totals.recargoHeader, retencionIvaPct, retencionIva, islr, igtf, totals.impuestos]);
 
     // Items con montos resueltos para persistir
     const itemsForSave = (): PurchaseInvoiceItem[] => items.map((it, idx) => {
         const t = totals.items[idx];
         return {
             ...it,
+            exchangeRate: getRate(it.currency),
+            dollarRate: getRate(it.currency),
             descuentoMonto: t.descuentoMonto,
             recargoMonto:   t.recargoMonto,
             baseIVA: t.baseIVAFinal,
@@ -1003,7 +1013,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             <IgtfSection
                                                 value={igtf}
                                                 onChange={setIgtf}
-                                                dollarRate={effectiveDollarRate}
+                                                dollarRate={getRate(igtf.currencyCode)}
+                                                currencyOptions={currencyOptions}
                                                 readOnly={!isDraft}
                                             />
                                         </div>
@@ -1025,6 +1036,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 onChange={setItems}
                                 readOnly={!isDraft}
                                 dollarRate={effectiveDollarRate}
+                                currencyOptions={currencyOptions}
+                                getExchangeRate={getRate}
                                 decimals={effectiveDecimals}
                             />
 

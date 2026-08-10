@@ -56,6 +56,9 @@ export interface SalesInvoicePdfData {
         unitPrice:     number;
         totalLine:     number;
         vatRate:       'exenta' | 'reducida_8' | 'general_16';
+        currencyCode?: string;
+        sourceUnitAmount?: number | null;
+        exchangeRate?: number | null;
     }>;
     totals: {
         subtotal:        number;       // base imponible (incluye exento + gravado)
@@ -73,6 +76,7 @@ export interface SalesInvoicePdfData {
         foreignBase: number;
         localBase:   number;
         amount:      number;
+        currencyCode?: string;
     } | null;
 }
 
@@ -154,7 +158,9 @@ export async function generateSalesInvoicePdf(data: SalesInvoicePdfData): Promis
             doc.addPage();
             y = 20;
         }
-        const lines = doc.splitTextToSize(item.description, 105) as string[];
+        const currencyNote = item.currencyCode && item.currencyCode !== "VES" && item.sourceUnitAmount != null
+            ? `\n${item.currencyCode} ${formatN(item.sourceUnitAmount)} · BCV ${formatN(item.exchangeRate ?? 0, 4)}` : "";
+        const lines = doc.splitTextToSize(item.description + currencyNote, 105) as string[];
         const rowH  = Math.max(6, lines.length * 4 + 1);
         renderText(doc, lines.join('\n'), colDesc, y + 4, 8.5, false, COLORS.ink, "left");
         renderMono(doc, formatN(item.quantity), colQty,   y + 4, 8.5, false, COLORS.inkMed, "right");
@@ -193,7 +199,7 @@ export async function generateSalesInvoicePdf(data: SalesInvoicePdfData): Promis
         );
         renderText(
             doc,
-            `Base USD ${formatN(data.igtf.foreignBase)} · Base Bs. ${formatN(data.igtf.localBase)}`,
+            `Base ${data.igtf.currencyCode ?? "USD"} ${formatN(data.igtf.foreignBase)} · Base Bs. ${formatN(data.igtf.localBase)}`,
             totalsX + 2, y + 3, 7, false, COLORS.muted, "left",
         );
         y += 5;

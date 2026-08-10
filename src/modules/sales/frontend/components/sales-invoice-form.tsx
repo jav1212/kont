@@ -25,8 +25,10 @@ import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { SalesLineCombobox } from "./sales-line-combobox";
 import { generateSalesInvoicePdf } from "../utils/sales-invoice-pdf";
-import { BcvRateInput, parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import { resolveProductSalePrice } from "@/src/modules/inventory/frontend/utils/product-sale-price";
+import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -54,7 +56,7 @@ function emptyItem(): SalesInvoiceItem {
         unitPrice:    0,
         totalLine:    0,
         vatRate:      "general_16",
-        currency:     "B",
+        currency:     "VES",
         ivaIncluido:  false,
     };
 }
@@ -87,6 +89,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate]                   = useState(todayStr());
+    const [invoiceCurrency, setInvoiceCurrency] = useState<CurrencyCode>("VES");
     const [dueDate, setDueDate]             = useState<string>("");
     const [paymentTerms, setPaymentTerms]   = useState<PaymentTerms>("contado");
     const [notes, setNotes]                 = useState("");
@@ -94,20 +97,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [igtf, setIgtf]                   = useState<IgtfPerceptionFormValue>(() => emptyIgtfPerceptionValue());
     const [showIgtf, setShowIgtf]           = useState(false);
     const [suggestedLines, setSuggestedLines] = useState<Set<number>>(() => new Set());
-    const {
-        rate: dollarRateStr,
-        decimals: rateDecimals,
-        setRateFromApi,
-        setRateTyped,
-        applyDecimals,
-    } = useBcvRate();
-    const [bcvRateDate, setBcvRateDate] = useState<string | null>(null);
-    const [rateLoading, setRateLoading] = useState(false);
-    const [rateError, setRateError] = useState<string | null>(null);
-    const dollarRate = useMemo<number | null>(() => {
-        const parsed = parseRateStr(dollarRateStr);
-        return isFinite(parsed) && parsed > 0 ? roundRateValue(parsed, rateDecimals) : null;
-    }, [dollarRateStr, rateDecimals]);
+    const { options: currencyOptions, appliedRates, setAppliedRates, getRate, setManualRate, publishedDate, loading: rateLoading } = useInvoiceExchangeRates(date);
+    const invoiceRate = getRate(invoiceCurrency);
 
     const [saving, setSaving]               = useState(false);
     const [confirming, setConfirming]       = useState(false);
@@ -134,6 +125,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         setInvoiceNumber(currentSalesInvoice.invoiceNumber ?? "");
         setControlNumber(currentSalesInvoice.controlNumber ?? "");
         setDate(currentSalesInvoice.date.split("T")[0]);
+        setInvoiceCurrency(normalizeCurrencyCode(currentSalesInvoice.currency));
+        setAppliedRates(currentSalesInvoice.exchangeRates ?? []);
         setDueDate(currentSalesInvoice.dueDate ?? "");
         setPaymentTerms((currentSalesInvoice.paymentTerms as PaymentTerms) ?? "contado");
         setNotes(currentSalesInvoice.notes ?? "");
@@ -143,11 +136,6 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                 : [emptyItem()]
         );
         setSuggestedLines(new Set());
-        if (currentSalesInvoice.dollarRate) {
-            setRateTyped(String(currentSalesInvoice.dollarRate));
-            if (currentSalesInvoice.rateDecimals != null) applyDecimals(currentSalesInvoice.rateDecimals);
-            setBcvRateDate(currentSalesInvoice.date.split("T")[0]);
-        }
         setIgtf({
             applies:     currentSalesInvoice.igtfPerceptionApplies ?? false,
             concept:    currentSalesInvoice.igtfPerceptionConcept ?? null,
@@ -155,6 +143,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             foreignBase: currentSalesInvoice.igtfPerceptionForeignBase ?? 0,
             localBase:  currentSalesInvoice.igtfPerceptionLocalBase ?? 0,
             amount:     currentSalesInvoice.igtfPerceptionAmount ?? 0,
+            currencyCode: currentSalesInvoice.igtfPerceptionCurrencyCode ?? "USD",
         });
         setShowIgtf(currentSalesInvoice.igtfPerceptionApplies ?? false);
     }
@@ -162,30 +151,6 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const isExistingInvoice = invoiceId != null && invoiceId !== "";
     const isConfirmed       = isExistingInvoice && currentSalesInvoice?.status === "confirmada";
     const isReadOnly        = isConfirmed;
-
-    useEffect(() => {
-        if (!date || isReadOnly) return;
-        const loadedSnapshot = currentSalesInvoice?.id === invoiceId
-            && currentSalesInvoice.date.split("T")[0] === date
-            && currentSalesInvoice.dollarRate;
-        if (loadedSnapshot) return;
-        let cancelled = false;
-        setRateLoading(true);
-        setRateError(null);
-        setBcvRateDate(null);
-        fetch(`/api/bcv/rate?date=${date}&code=USD`)
-            .then((response) => response.json())
-            .then((json) => {
-                if (cancelled) return;
-                if (json.rate) {
-                    setRateFromApi(Number(json.rate), rateDecimals);
-                    setBcvRateDate(json.date ?? date);
-                } else setRateError(json.error ?? "Sin datos BCV para esta fecha");
-            })
-            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
-            .finally(() => { if (!cancelled) setRateLoading(false); });
-        return () => { cancelled = true; };
-    }, [date, invoiceId, currentSalesInvoice, isReadOnly, rateDecimals, setRateFromApi]);
 
     // Recompute item totals when qty/price/vat changes
     function updateItem(idx: number, patch: Partial<SalesInvoiceItem>) {
@@ -203,22 +168,26 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     function updatePriceManually(idx: number, value: number) {
         setSuggestedLines((current) => { const next = new Set(current); next.delete(idx); return next; });
         const item = items[idx];
-        if (item.currency === "D") {
+        const rate = getRate(item.currency);
+        if (!isLocalCurrency(item.currency)) {
             updateItem(idx, {
                 currencyPrice: value,
-                dollarRate,
-                unitPrice: dollarRate ? round2(value * dollarRate) : 0,
+                dollarRate: rate,
+                exchangeRate: rate,
+                unitPrice: rate ? round2(value * rate) : 0,
             });
         } else updateItem(idx, { unitPrice: value, currencyPrice: null, dollarRate: null });
     }
 
-    function changeItemCurrency(idx: number, currency: "B" | "D") {
+    function changeItemCurrency(idx: number, currency: CurrencyCode) {
         const item = items[idx];
+        const rate = getRate(currency);
         setSuggestedLines((current) => { const next = new Set(current); next.delete(idx); return next; });
-        updateItem(idx, currency === "D" ? {
+        updateItem(idx, !isLocalCurrency(currency) ? {
             currency,
-            currencyPrice: dollarRate ? round2(item.unitPrice / dollarRate) : 0,
-            dollarRate,
+            currencyPrice: rate ? round2(item.unitPrice / rate) : 0,
+            dollarRate: rate,
+            exchangeRate: rate,
         } : { currency, currencyPrice: null, dollarRate: null });
     }
 
@@ -231,10 +200,11 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     function selectProduct(idx: number, productId: string) {
         const product = products.find((candidate) => candidate.id === productId);
         if (!product) { updateItem(idx, { productId: null }); return; }
-        const resolved = resolveProductSalePrice(product, dollarRate);
+        const productRate = getRate(product.salePricing?.currency ?? "VES");
+        const resolved = resolveProductSalePrice(product, productRate);
         if (product.salePricing) {
             setSuggestedLines((current) => new Set(current).add(idx));
-            if (!resolved && product.salePricing.currency === "D") notify.error("Se necesita una tasa BCV para precargar este precio en USD");
+            if (!resolved && !isLocalCurrency(product.salePricing.currency)) notify.error(`Se necesita una tasa BCV para precargar este precio en ${normalizeCurrencyCode(product.salePricing.currency)}`);
         } else {
             setSuggestedLines((current) => { const next = new Set(current); next.delete(idx); return next; });
         }
@@ -242,10 +212,11 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             productId: product.id,
             description: product.name,
             vatRate: product.vatType === "exento" ? "exenta" : "general_16",
-            currency: resolved?.currency ?? product.salePricing?.currency ?? "B",
-            currencyPrice: resolved?.currency === "D" ? resolved.sourcePrice : null,
+            currency: resolved?.currency ?? product.salePricing?.currency ?? "VES",
+            currencyPrice: resolved && !isLocalCurrency(resolved.currency) ? resolved.sourcePrice : null,
             unitPrice: resolved?.unitPriceBs ?? 0,
-            dollarRate: resolved?.currency === "D" ? dollarRate : null,
+            dollarRate: resolved && !isLocalCurrency(resolved.currency) ? productRate : null,
+            exchangeRate: resolved && !isLocalCurrency(resolved.currency) ? productRate : null,
         });
     }
 
@@ -255,36 +226,38 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             if (!suggestedLines.has(index) || !item.productId) return item;
             const product = products.find((candidate) => candidate.id === item.productId);
             if (!product) return item;
-            const resolved = resolveProductSalePrice(product, dollarRate);
+            const productRate = getRate(product.salePricing?.currency ?? "VES");
+            const resolved = resolveProductSalePrice(product, productRate);
             if (!resolved) return item;
             const next = {
                 ...item,
                 currency: resolved.currency,
-                currencyPrice: resolved.currency === "D" ? resolved.sourcePrice : null,
+                currencyPrice: !isLocalCurrency(resolved.currency) ? resolved.sourcePrice : null,
                 unitPrice: resolved.unitPriceBs,
-                dollarRate: resolved.currency === "D" ? dollarRate : null,
+                dollarRate: !isLocalCurrency(resolved.currency) ? productRate : null,
+                exchangeRate: !isLocalCurrency(resolved.currency) ? productRate : null,
             };
             next.totalLine = round2(next.quantity * next.unitPrice);
             next.baseIVA = next.totalLine;
             return next;
         }));
-    }, [dollarRate, products, suggestedLines]);
+    }, [appliedRates, getRate, products, suggestedLines]);
 
     // Totals are calculated by the shared invoice engine.
-    const salesCurrency = items.length > 0 && items.every((item) => item.currency === "D") ? "D" : "B";
+    const salesCurrency = "VES";
     const salesLineInputs: LineInput[] = items.map((item) => ({
         quantity: item.quantity ?? 0,
         unitCost: item.unitPrice ?? 0,
-        currency: item.currency ?? "B",
-        currencyCost: item.currencyPrice ?? null,
+        currency: "VES",
+        currencyCost: null,
         vatRate: item.vatRate,
         adjustments: {
             descuentoTipo: item.descuentoTipo ?? null,
             descuentoValor: item.descuentoValor ?? 0,
-            descuentoMoneda: "B",
+            descuentoMoneda: "VES",
             recargoTipo: item.recargoTipo ?? null,
             recargoValor: item.recargoValor ?? 0,
-            recargoMoneda: "B",
+            recargoMoneda: "VES",
         },
     }));
 
@@ -295,7 +268,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             2,
             0,
             [],
-            items.find((item) => item.dollarRate && item.dollarRate > 0)?.dollarRate ?? 0,
+            1,
             salesCurrency,
         );
         const baseByRate = { exenta: 0, reducida_8: 0, general_16: 0 };
@@ -314,9 +287,24 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             igtfMonto,
             total: round2(calculated.total + igtfMonto),
         };
-    }, [salesLineInputs, salesCurrency, items, igtf]);
+    }, [salesLineInputs, salesCurrency, igtf]);
 
     const customerObj = customers.find((c) => c.id === customerId);
+    const usedCurrencies = [...new Set([invoiceCurrency, ...items.map((item) => normalizeCurrencyCode(item.currency))])];
+
+    function changeInvoiceCurrency(next: CurrencyCode) {
+        const previous = normalizeCurrencyCode(invoiceCurrency);
+        const code = normalizeCurrencyCode(next);
+        setInvoiceCurrency(code);
+        setItems((current) => current.map((item) => {
+            if (normalizeCurrencyCode(item.currency) !== previous) return item;
+            const rate = getRate(code);
+            return { ...item, currency: code,
+                currencyPrice: isLocalCurrency(code) ? null : (rate ? round2(item.unitPrice / rate) : 0),
+                dollarRate: isLocalCurrency(code) ? null : rate,
+                exchangeRate: isLocalCurrency(code) ? null : rate };
+        }));
+    }
 
     // Build invoice payload
     function buildInvoice(): SalesInvoice {
@@ -336,8 +324,10 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             vatAmount:       totals.ivaTotal,
             total:           totals.total,
             notes,
-            dollarRate,
-            rateDecimals,
+            currency: invoiceCurrency,
+            exchangeRates: appliedRates,
+            dollarRate: invoiceRate,
+            rateDecimals: appliedRates.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoiceCurrency))?.decimals ?? 4,
             descuentoTipo:   null, descuentoValor: 0,
             recargoTipo:     null, recargoValor: 0,
             igtfPerceptionApplies:     igtf.applies,
@@ -346,6 +336,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             igtfPerceptionForeignBase: igtf.foreignBase,
             igtfPerceptionLocalBase:     igtf.localBase,
             igtfPerceptionAmount:      igtf.amount,
+            igtfPerceptionCurrencyCode: igtf.currencyCode,
+            igtfPerceptionExchangeRate: getRate(igtf.currencyCode),
         };
     }
 
@@ -355,6 +347,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         for (const it of items) {
             if (!it.description.trim()) { notify.error("Cada línea necesita una descripción"); return false; }
             if ((it.quantity ?? 0) <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
+            if (!isLocalCurrency(it.currency) && !getRate(it.currency)) { notify.error(`Falta la tasa BCV de ${normalizeCurrencyCode(it.currency)}`); return false; }
         }
         const requestedByProduct = new Map<string, number>();
         for (const item of items) {
@@ -372,10 +365,20 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         return true;
     }
 
+    function itemsForSave(): SalesInvoiceItem[] {
+        return items.map((item) => {
+            const rate = getRate(item.currency);
+            if (isLocalCurrency(item.currency)) return { ...item, currency: "VES", currencyPrice: null, dollarRate: null, exchangeRate: null };
+            const source = item.currencyPrice ?? 0;
+            const unitPrice = rate ? round2(source * rate) : 0;
+            return { ...item, currency: normalizeCurrencyCode(item.currency), unitPrice, totalLine: round2(item.quantity * unitPrice), dollarRate: rate, exchangeRate: rate, rateEffectiveDate: publishedDate ?? date, rateSource: appliedRates.find((entry) => normalizeCurrencyCode(entry.currencyCode) === normalizeCurrencyCode(item.currency))?.source ?? "manual" };
+        });
+    }
+
     async function handleSaveDraft() {
         if (!validate()) return;
         setSaving(true);
-        const saved = await saveSalesInvoice(buildInvoice(), items);
+        const saved = await saveSalesInvoice(buildInvoice(), itemsForSave());
         setSaving(false);
         if (saved && !isExistingInvoice) {
             router.replace(`/sales/${saved.id}`);
@@ -385,7 +388,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     async function handleConfirm() {
         if (!validate()) return;
         setConfirming(true);
-        const saved = await saveSalesInvoice(buildInvoice(), items);
+        const saved = await saveSalesInvoice(buildInvoice(), itemsForSave());
         if (!saved) { setConfirming(false); return; }
         const confirmed = await confirmSalesInvoice(saved.id!);
         if (confirmed && companyId) await loadProducts(companyId, true);
@@ -428,6 +431,9 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     unitPrice:   i.unitPrice,
                     totalLine:   i.totalLine,
                     vatRate:     i.vatRate,
+                    currencyCode: normalizeCurrencyCode(i.currency),
+                    sourceUnitAmount: i.currencyPrice,
+                    exchangeRate: i.exchangeRate ?? i.dollarRate,
                 })),
                 totals: {
                     subtotal:    currentSalesInvoice.subtotal,
@@ -445,6 +451,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     foreignBase: currentSalesInvoice.igtfPerceptionForeignBase ?? 0,
                     localBase:  currentSalesInvoice.igtfPerceptionLocalBase ?? 0,
                     amount:     currentSalesInvoice.igtfPerceptionAmount ?? 0,
+                    currencyCode: currentSalesInvoice.igtfPerceptionCurrencyCode ?? "USD",
                 } : null,
             });
             notify.success("Factura PDF generada.");
@@ -525,17 +532,12 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     />
             </InvoiceSectionCard>
 
-            <InvoiceSectionCard title="Tasa de cambio" subtitle="Se usa para convertir precios configurados en USD a bolívares.">
-                <div className="max-w-md">
-                    <BcvRateInput
-                        rate={dollarRateStr}
-                        onRateChange={(value) => { setRateTyped(value); setBcvRateDate(null); }}
-                        decimals={rateDecimals}
-                        onDecimalsChange={applyDecimals}
-                        loading={rateLoading}
-                        bcvDate={bcvRateDate}
-                        error={rateError}
-                    />
+            <InvoiceSectionCard title="Moneda y tasas" subtitle="Convierte cada divisa seleccionada a bolívares con su tasa BCV histórica.">
+                <div className="grid max-w-3xl gap-4 md:grid-cols-2">
+                    <CurrencyCombobox label="Moneda principal" options={currencyOptions} value={invoiceCurrency} onChange={changeInvoiceCurrency} disabled={isReadOnly || rateLoading} />
+                    {usedCurrencies.filter((code) => !isLocalCurrency(code)).map((code) => (
+                        <BaseInput.Field key={code} label={`Tasa BCV · Bs/${code}`} type="number" min="0" step="0.0001" value={getRate(code) ? String(getRate(code)) : ""} onValueChange={(value) => setManualRate(code, Number(String(value).replace(",", ".")) || 0)} description={publishedDate ? `Publicación ${publishedDate}` : "Ingresa la tasa manualmente"} isReadOnly={isReadOnly} />
+                    ))}
                 </div>
             </InvoiceSectionCard>
 
@@ -566,8 +568,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                     onClear={() => updateItem(idx, { productId: null, description: "" })}
                                 />
                                 <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
-                                <BaseSelect aria-label="Moneda" size="sm" items={[{ id: "B", name: "Bs." }, { id: "D", name: "USD" }]} value={it.currency} onValueChange={(value) => changeItemCurrency(idx, value as "B" | "D")} selectionMode="single" isDisabled={isReadOnly} />
-                                <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={(it.currency === "D" ? it.currencyPrice : it.unitPrice) ? String(it.currency === "D" ? it.currencyPrice : it.unitPrice) : ""} onValueChange={(value) => updatePriceManually(idx, parseFloat(value) || 0)} isReadOnly={isReadOnly} />
+                                <CurrencyCombobox label="" options={currencyOptions} value={normalizeCurrencyCode(it.currency)} onChange={(value) => changeItemCurrency(idx, value)} disabled={isReadOnly} />
+                                <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) ? String(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) : ""} onValueChange={(value) => updatePriceManually(idx, parseFloat(value) || 0)} isReadOnly={isReadOnly} />
                                 <BaseSelect aria-label="Alícuota IVA" size="sm" items={VAT_OPTIONS.map((option) => ({ id: option.value, name: option.label }))} value={it.vatRate} onValueChange={(value) => updateItem(idx, { vatRate: value as VatRate })} selectionMode="single" isDisabled={isReadOnly} />
                                 <div className="pt-2 text-right text-[13px] font-semibold tabular-nums text-foreground">Bs. {fmtN(it.totalLine)}</div>
                                 {!isReadOnly && items.length > 1 ? (
@@ -604,7 +606,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                 </button>
                 {(showIgtf || (isReadOnly && igtf.applies)) && (
                     <div className="border-t border-border-light p-6">
-                        <IgtfPerceptionSection value={igtf} onChange={setIgtf} dollarRate={dollarRate} readOnly={isReadOnly} />
+                        <IgtfPerceptionSection value={igtf} onChange={setIgtf} dollarRate={getRate(igtf.currencyCode)} currencyOptions={currencyOptions} readOnly={isReadOnly} />
                     </div>
                 )}
             </div>

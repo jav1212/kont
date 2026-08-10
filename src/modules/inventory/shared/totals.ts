@@ -17,8 +17,10 @@
 // abajo trabaja siempre con `unitCost` neto.
 
 export type AdjustmentKind = 'monto' | 'porcentaje';
-export type AdjustmentCurrency = 'B' | 'D';
-export type InvoiceCurrency = 'B' | 'D';
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from './currency';
+
+export type AdjustmentCurrency = CurrencyCode;
+export type InvoiceCurrency = CurrencyCode;
 
 export type TaxBase = 'pre_iva' | 'post_iva';
 
@@ -105,7 +107,7 @@ function resolveAmount(
 ): number {
     if (!tipo || !Number.isFinite(valor) || valor <= 0) return 0;
     if (tipo === 'porcentaje') return roundN((baseFor * valor) / 100, decimals);
-    const amount = moneda === 'D' ? valor * (dollarRate > 0 ? dollarRate : 0) : valor;
+    const amount = !isLocalCurrency(moneda) ? valor * (dollarRate > 0 ? dollarRate : 0) : valor;
     return roundN(amount, decimals);
 }
 
@@ -131,8 +133,8 @@ export function grossFromNet(netUnit: number, vatRate: VatRate): number {
 export interface LineInput {
     quantity:    number;
     unitCost:    number;     // siempre neto (Bs)
-    currency?:   "B" | "D";
-    currencyCost?: number | null; // costo unitario original cuando la moneda es USD
+    currency?:   CurrencyCode;
+    currencyCost?: number | null; // costo unitario en la moneda original
     vatRate:     VatRate;
     adjustments: LineAdjustments;
 }
@@ -236,11 +238,11 @@ export function computeInvoiceTotals(
 ): InvoiceTotals {
     // For USD invoices, calculate every component in USD first. The complete
     // result is converted once at the end, using the BCV rate with 4 decimals.
-    if (invoiceCurrency === 'D') {
+    if (!isLocalCurrency(invoiceCurrency)) {
         const rate = Number.isFinite(dollarRate) ? roundN(dollarRate, 4) : 0;
         const sourceLines = lines.map((line) => ({
             ...line,
-            currency: 'D' as const,
+            currency: normalizeCurrencyCode(invoiceCurrency),
             unitCost: Number.isFinite(line.currencyCost ?? NaN)
                 ? Number(line.currencyCost)
                 : (rate > 0 ? line.unitCost / rate : 0),
@@ -249,16 +251,16 @@ export function computeInvoiceTotals(
                 : (rate > 0 ? line.unitCost / rate : 0),
             adjustments: {
                 ...line.adjustments,
-                descuentoMoneda: 'D' as const,
-                recargoMoneda: 'D' as const,
+                descuentoMoneda: normalizeCurrencyCode(invoiceCurrency),
+                recargoMoneda: normalizeCurrencyCode(invoiceCurrency),
             },
         }));
         const sourceHeader: HeaderAdjustments = {
             ...header,
-            descuentoMoneda: 'D',
-            recargoMoneda: 'D',
+            descuentoMoneda: normalizeCurrencyCode(invoiceCurrency),
+            recargoMoneda: normalizeCurrencyCode(invoiceCurrency),
         };
-        const sourceTaxes = impuestos.map((tax) => ({ ...tax, moneda: 'D' as const }));
+        const sourceTaxes = impuestos.map((tax) => ({ ...tax, moneda: normalizeCurrencyCode(invoiceCurrency) }));
         const sourceDecimals = Math.max(decimals, 8);
         const source = computeInvoiceTotals(sourceLines, sourceHeader, sourceDecimals, retencionIvaPct, sourceTaxes, 1, 'B');
         const bs = (value: number) => scaleCurrency(value, rate);
@@ -285,7 +287,7 @@ export function computeInvoiceTotals(
         return {
             ...source,
             items,
-            currency: 'D',
+            currency: normalizeCurrencyCode(invoiceCurrency),
             subtotalBruto: bsFiscal(source.subtotalBruto),
             descuentoLinea: bsFiscal(source.descuentoLinea),
             recargoLinea: bsFiscal(source.recargoLinea),
@@ -321,9 +323,9 @@ export function computeInvoiceTotals(
     // en Bs entre las l�neas USD. As� subtotal/total y persistencia no dependen
     // del redondeo de cada conversi�n individual.
     const usdLines = lines.map((line, index) => ({ line, index }))
-        .filter(({ line }) => line.currency === "D");
-    const normalizedLines = lines.map((line, index) => {
-        if (line.currency !== "D" || usdLines.length === 0 || dollarRate <= 0) return line;
+        .filter(({ line }) => !isLocalCurrency(line.currency));
+    const normalizedLines = lines.map((line) => {
+        if (isLocalCurrency(line.currency) || usdLines.length === 0 || dollarRate <= 0) return line;
         const rate = dollarRate > 0 ? dollarRate : 0;
         const sourceUnit = Number.isFinite(line.currencyCost ?? NaN)
             ? Number(line.currencyCost)
@@ -351,7 +353,7 @@ export function computeInvoiceTotals(
     const recargoHeader   = resolveAmount(header.recargoTipo, header.recargoValor, sumBaseIVA, calculationDecimals, header.recargoMoneda, dollarRate);
 
     // Step 3: prorratear header sobre cada línea por peso de baseIVA
-    const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => line.currency === "D") && dollarRate > 0;
+    const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => !isLocalCurrency(line.currency)) && dollarRate > 0;
     const ivaFromBase = (baseBs: number, pct: number) => {
         if (allUsd) {
             // For USD invoices, apply IVA to the fiscal USD base first, then convert it to bol�vares.
@@ -429,7 +431,7 @@ export function computeInvoiceTotals(
     const resolvedImpuestos: InvoiceTax[] = impuestos.map((tax) => {
         let monto = 0;
         if (tax.tipo === 'monto') {
-            monto = r(Math.max(0, tax.valor) * (tax.moneda === 'D' ? (dollarRate > 0 ? dollarRate : 0) : 1));
+            monto = r(Math.max(0, tax.valor) * (!isLocalCurrency(tax.moneda) ? (dollarRate > 0 ? dollarRate : 0) : 1));
         } else if (tax.tipo === 'porcentaje' && tax.valor > 0) {
             const taxBase = tax.base === 'post_iva' ? (baseIVA + ivaMonto) : baseIVA;
             monto = r(taxBase * tax.valor / 100);
@@ -458,7 +460,7 @@ export function computeInvoiceTotals(
         retencionIvaPct: safePct,
         retencionIva,
         totalAPagar,
-        currency: 'B',
+        currency: 'VES',
         subtotalDivisa: subtotalBruto,
         descuentoLineaDivisa: descuentoLinea,
         recargoLineaDivisa: recargoLinea,
