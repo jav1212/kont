@@ -205,10 +205,12 @@ export default function EntradasPage() {
 
     async function handleDelete(id: string) {
         setDeleting(true);
-        await deletePurchaseInvoice(id);
+        const deleted = await deletePurchaseInvoice(id);
         setDeleting(false);
-        setConfirmDelete(null);
-        setConfirmDeleteConfirmada(null);
+        if (deleted) {
+            setConfirmDelete(null);
+            setConfirmDeleteConfirmada(null);
+        }
     }
 
     async function handleExportTxt() {

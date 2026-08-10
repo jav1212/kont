@@ -390,13 +390,25 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
 
     async delete(invoiceId: string): Promise<Result<void>> {
         try {
-            const { error } = await this.source.instance
+            const existing = await this.findById(invoiceId);
+            if (existing.isFailure) return Result.fail(existing.getError());
+
+            if (existing.getValue().status === 'confirmada') {
+                const unconfirmed = await this.unconfirm(invoiceId);
+                if (unconfirmed.isFailure) return Result.fail(unconfirmed.getError());
+            }
+
+            const { data, error } = await this.source.instance
                 .from('shared_inventory_purchase_invoices')
                 .delete()
                 .eq('tenant_id', this.tenantId)
                 .eq('id', invoiceId)
-                .eq('status', 'borrador');
-            return error ? Result.fail(error.message) : Result.success();
+                .eq('status', 'borrador')
+                .select('id')
+                .maybeSingle();
+            if (error) return Result.fail(error.message);
+            if (!data) return Result.fail('La factura no fue eliminada');
+            return Result.success();
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Failed to delete shared purchase invoice');
         }
