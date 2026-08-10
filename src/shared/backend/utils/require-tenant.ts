@@ -234,6 +234,9 @@ export function withTenant(
             if (err instanceof TenantAuthError) {
                 return Response.json({ error: 'No autenticado' }, { status: 401 });
             }
+            if (err instanceof PermissionDeniedError) {
+                return Response.json({ error: err.message }, { status: 403 });
+            }
             if (err instanceof TenantForbiddenError) {
                 return Response.json({ error: 'Sin acceso a este tenant' }, { status: 403 });
             }

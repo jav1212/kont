@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logSystemError, type ClientErrorPayload } from "@/src/shared/backend/errors/system-error";
+import { requireTenant } from "@/src/shared/backend/utils/require-tenant";
 
 export async function POST(req: Request) {
     try {
@@ -7,6 +8,20 @@ export async function POST(req: Request) {
         if (!body.code || !/^KNT-[0-9]{8}-[A-Z0-9]{8}$/.test(body.code) || !body.message) {
             return NextResponse.json({ error: "Invalid error payload" }, { status: 400 });
         }
+
+        // The active tenant is stored in localStorage on the client and is
+        // sent as X-Tenant-Id. Resolve it through the normal authorization
+        // path before persisting it; never trust the client payload/header as
+        // an identity by itself.
+        let validatedTenantId: string | null = null;
+        try {
+            validatedTenantId = (await requireTenant(req)).tenantId;
+        } catch {
+            // Error reporting must remain best-effort. If the session or
+            // tenant is no longer valid, keep the incident but leave tenant
+            // attribution empty.
+        }
+
         const source = ["api", "client", "database", "auth", "network", "unknown"].includes(body.source ?? "")
             ? body.source
             : "client";
@@ -17,7 +32,7 @@ export async function POST(req: Request) {
                 route: body.route,
                 method: body.method,
                 statusCode: body.statusCode,
-                tenantId: body.tenantId,
+                tenantId: validatedTenantId,
                 userId: body.userId,
                 requestId: body.requestId,
                 metadata: body.metadata,
