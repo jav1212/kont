@@ -580,7 +580,7 @@ export default function PayrollHistoryPage() {
                                             onChange={(event) => setHistoryQuery(event.target.value)}
                                             placeholder="Buscar por período…"
                                             aria-label="Buscar nóminas por período"
-                                            className="!h-9 !min-h-0 w-full rounded-lg border border-border-light bg-surface-2 !pl-9 !pr-9 text-[13px] text-foreground outline-none transition-colors placeholder:text-[var(--text-tertiary)] focus:border-border-strong focus:bg-surface-1 focus:ring-2 focus:ring-primary-500/10"
+                                            className="h-9 w-full rounded-lg border border-border-light bg-surface-2 pl-9 pr-9 text-[13px] text-foreground outline-none transition-colors placeholder:text-[var(--text-tertiary)] focus:border-border-strong focus:bg-surface-1 focus:ring-2 focus:ring-primary-500/10"
                                         />
                                         {historyQuery && (
                                             <button type="button" aria-label="Limpiar búsqueda" onClick={() => setHistoryQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--text-tertiary)] hover:bg-surface-1 hover:text-foreground">
@@ -595,7 +595,7 @@ export default function PayrollHistoryPage() {
                                             id="history-status"
                                             value={historyStatus}
                                             onChange={(event) => setHistoryStatus(event.target.value as typeof historyStatus)}
-                                            className="!h-9 !min-h-0 !w-auto !min-w-[170px] rounded-lg border border-border-light bg-surface-2 !pl-3 !pr-9 text-[13px] text-foreground outline-none focus:border-border-strong focus:ring-2 focus:ring-primary-500/10"
+                                            className="h-9 rounded-lg border border-border-light bg-surface-2 px-3 text-[13px] text-foreground outline-none focus:border-border-strong focus:ring-2 focus:ring-primary-500/10"
                                         >
                                             <option value="all">Todos los estados</option>
                                             <option value="confirmed">Confirmadas</option>

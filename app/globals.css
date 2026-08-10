@@ -963,3 +963,10 @@ select[data-control-size="lg"]:not([data-slot]),
   padding-right: 2.5rem;
   background-position: right 0.875rem center;
 }
+
+/* Native controls with a leading icon need room for that icon. Keep the
+   global control contract intact and override only the left inset requested
+   by the component's `pl-9` utility. */
+:is(input, select)[class~="pl-9"]:not([data-slot]) {
+  padding-left: 2.25rem;
+}
