@@ -43,6 +43,7 @@ export function PortalMenu({
     className = "",
 }: PortalMenuProps) {
     const panelRef = useRef<HTMLDivElement | null>(null);
+    const openedAtRef = useRef(0);
 
     // Position the panel relative to the trigger the moment it mounts.
     const positionPanel = useCallback((node: HTMLDivElement | null) => {
@@ -70,7 +71,13 @@ export function PortalMenu({
     // Close on scroll / resize / Escape — keeps the panel from drifting.
     useEffect(() => {
         if (!open) return;
+        openedAtRef.current = performance.now();
         const closeOnExternalScroll = (event: Event) => {
+            // Mobile browsers can emit a scroll while opening a fixed menu
+            // (for example while bringing an autofocus target into view).
+            // Treat that initial layout scroll as part of opening, otherwise
+            // the menu disappears before the user can interact with it.
+            if (performance.now() - openedAtRef.current < 250) return;
             const target = event.target;
             if (target instanceof Node && panelRef.current?.contains(target)) return;
             onClose();

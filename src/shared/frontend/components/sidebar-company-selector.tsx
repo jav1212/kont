@@ -207,7 +207,6 @@ export function SidebarCompanySelector({
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             placeholder="Buscar empresa…"
-                            autoFocus
                             className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 font-sans text-[14px] text-sidebar-fg-hover placeholder:text-sidebar-label outline-none ring-0 focus:outline-none focus:ring-0"
                         />
                         <kbd className="shrink-0 rounded-md border border-sidebar-border bg-sidebar-bg-hover/50 px-1.5 py-0.5 font-sans text-[11px] text-sidebar-label">
