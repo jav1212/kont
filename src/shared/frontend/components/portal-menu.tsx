@@ -51,6 +51,11 @@ export function PortalMenu({
         const el = anchorRef.current;
         if (!el) return;
         const r = el.getBoundingClientRect();
+        const viewportPadding = 8;
+        const panelWidth = node.getBoundingClientRect().width;
+        const maxLeft = Math.max(viewportPadding, window.innerWidth - viewportPadding - panelWidth);
+        const anchoredLeft = align === "right" ? r.right - panelWidth : r.left;
+        const clampedLeft = Math.min(Math.max(viewportPadding, anchoredLeft), maxLeft);
         if (side === "top") {
             node.style.bottom = `${window.innerHeight - r.top + gap}px`;
             node.style.top = "auto";
@@ -58,13 +63,8 @@ export function PortalMenu({
             node.style.top = `${r.bottom + gap}px`;
             node.style.bottom = "auto";
         }
-        if (align === "right") {
-            node.style.right = `${window.innerWidth - r.right}px`;
-            node.style.left = "auto";
-        } else {
-            node.style.left = `${r.left}px`;
-            node.style.right = "auto";
-        }
+        node.style.left = `${clampedLeft}px`;
+        node.style.right = "auto";
     }, [anchorRef, align, gap, side]);
 
     // Close on scroll / resize / Escape — keeps the panel from drifting.

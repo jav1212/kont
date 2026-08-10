@@ -15,10 +15,11 @@ import {
     type ReactNode,
 } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Activity, CircleHelp, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useBcvRate } from "@/src/shared/frontend/components/bcv-pill";
 import { AppBreadcrumb } from "@/src/shared/frontend/components/app-breadcrumb";
+import { PortalMenu } from "@/src/shared/frontend/components/portal-menu";
 
 interface PageHeaderProps {
     title: string;
@@ -97,32 +98,42 @@ function ActionOverflow({ children }: { children: ReactNode }) {
             >
                 <MoreHorizontal size={16} strokeWidth={2} />
             </button>
-            <AnimatePresence initial={false}>
-                {open && (
+            <PortalMenu
+                open={open}
+                onClose={close}
+                anchorRef={rootRef}
+                align="right"
+                side="bottom"
+                className="!max-w-[calc(100vw-16px)] !border-border-light !bg-surface-1 !p-0"
+            >
                     <motion.div
                         role="dialog"
                         aria-label="Más acciones"
                         initial={{ opacity: 0, scale: 0.98, y: -4 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98, y: -4 }}
                         transition={{ duration: 0.12 }}
                         onClick={close}
                         className={[
-                            "absolute right-0 top-full z-[var(--z-dropdown,30)] mt-2 flex min-w-[280px] origin-top-right flex-col gap-1",
-                            "rounded-xl border border-border-light bg-surface-1 p-2 shadow-[0_12px_32px_rgba(15,23,42,0.14)]",
+                            "flex w-[min(280px,calc(100vw-16px))] min-w-0 origin-top-right flex-col gap-1 rounded-xl p-2",
+                            "[&>*]:!box-border [&>*]:!flex [&>*]:!min-w-0 [&>*]:!max-w-full [&>*]:!justify-start [&>*]:!overflow-hidden [&>*]:!px-3",
                             "[&>a]:!h-9 [&>a]:!w-full [&>a]:!justify-start [&>a]:!rounded-md [&>a]:!border-transparent",
                             "[&>a]:!bg-transparent [&>a]:!px-3 [&>a]:!shadow-none [&>a]:!font-sans [&>a]:!text-[13px] [&>a]:!text-foreground",
                             "[&>a]:!font-normal [&>a]:!normal-case [&>a]:!tracking-normal [&>a:hover]:!bg-surface-2 [&>a:focus-visible]:!bg-surface-2",
                             "[&>button]:!h-9 [&>button]:!w-full [&>button]:!justify-start [&>button]:!rounded-md [&>button]:!border-transparent",
                             "[&>button]:!bg-transparent [&>button]:!px-3 [&>button]:!shadow-none [&>button]:!font-sans [&>button]:!text-[13px] [&>button]:!text-foreground",
                             "[&>button]:!font-normal [&>button]:!normal-case [&>button]:!tracking-normal [&>button:hover]:!bg-surface-2 [&>button:focus-visible]:!bg-surface-2",
+                            "[&>div>a]:!h-9 [&>div>a]:!w-full [&>div>a]:!justify-start [&>div>a]:!rounded-md [&>div>a]:!border-transparent [&>div>a]:!bg-transparent [&>div>a]:!px-3 [&>div>a]:!shadow-none [&>div>a]:!font-sans [&>div>a]:!text-[13px] [&>div>a]:!text-foreground [&>div>a]:!font-normal [&>div>a]:!normal-case [&>div>a]:!tracking-normal",
+                            "[&>div>button]:!h-9 [&>div>button]:!w-full [&>div>button]:!justify-start [&>div>button]:!rounded-md [&>div>button]:!border-transparent [&>div>button]:!bg-transparent [&>div>button]:!px-3 [&>div>button]:!shadow-none [&>div>button]:!font-sans [&>div>button]:!text-[13px] [&>div>button]:!text-foreground [&>div>button]:!font-normal [&>div>button]:!normal-case [&>div>button]:!tracking-normal",
                             "[&>div]:w-full [&_svg]:shrink-0",
                         ].join(" ")}
                     >
-                        {children}
+                        {Children.map(children, (child) => (
+                            <div className="w-full min-w-0 px-3 [&>*]:!w-full">
+                                {child}
+                            </div>
+                        ))}
                     </motion.div>
-                )}
-            </AnimatePresence>
+            </PortalMenu>
         </div>
     );
 }
