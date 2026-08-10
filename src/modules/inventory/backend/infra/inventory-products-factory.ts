@@ -12,6 +12,8 @@ import { DeleteProductUseCase }       from '../app/delete-product.use-case';
 import { ListDepartmentsUseCase }     from '../app/list-departments.use-case';
 import { SaveDepartmentUseCase }      from '../app/save-department.use-case';
 import { DeleteDepartmentUseCase }    from '../app/delete-department.use-case';
+import { GetProductHistoryUseCase }   from '../app/get-product-history.use-case';
+import { SharedProductHistoryRepository } from './repository/shared-product-history.repository';
 import { isSharedSchemaEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getInventoryProductsActions(userId: string) {
@@ -22,6 +24,8 @@ export function getInventoryProductsActions(userId: string) {
     const departmentRepo = isSharedSchemaEnabled(userId)
         ? new SharedDepartmentRepository(source, userId)
         : new RpcDepartmentRepository(source, userId);
+    // Product history is intentionally available only in the shared schema.
+    const productHistoryRepo = new SharedProductHistoryRepository(source, userId);
 
     return {
         listProducts:      new ListProductsUseCase(productRepo),
@@ -30,5 +34,6 @@ export function getInventoryProductsActions(userId: string) {
         listDepartments:   new ListDepartmentsUseCase(departmentRepo),
         saveDepartment:    new SaveDepartmentUseCase(departmentRepo),
         deleteDepartment:  new DeleteDepartmentUseCase(departmentRepo),
+        getProductHistory:  new GetProductHistoryUseCase(productHistoryRepo),
     };
 }

@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Product } from '../../backend/domain/product';
+import type { ProductHistory } from '../../backend/domain/product-history';
 import type { Movement } from '../../backend/domain/movement';
 import type { PeriodClose } from '../../backend/domain/period-close';
 import type { Department } from '../../backend/domain/department';
@@ -109,6 +110,7 @@ export function useInventory() {
     const [salesLedger, setSalesLedger]         = useState<SalesLedgerRow[]>([]);
     const [inventoryLedger, setInventoryLedger] = useState<InventoryLedgerRow[]>([]);
     const [balanceReport, setBalanceReport]     = useState<BalanceReportRow[]>([]);
+    const [productHistory, setProductHistory] = useState<ProductHistory | null>(null);
 
     const [loadingProducts, setLoadingProducts]               = useState(false);
     const [loadingMovements, setLoadingMovements]             = useState(false);
@@ -120,6 +122,7 @@ export function useInventory() {
     const [loadingSalesLedger, setLoadingSalesLedger]         = useState(false);
     const [loadingInventoryLedger, setLoadingInventoryLedger] = useState(false);
     const [loadingBalanceReport, setLoadingBalanceReport]     = useState(false);
+    const [loadingProductHistory, setLoadingProductHistory] = useState(false);
 
     // ── Products ───────────────────────────────────────────────────────────────
 
@@ -166,6 +169,23 @@ export function useInventory() {
         } catch (e) {
             reportError('Error de red', e);
             return null;
+        }
+    }, []);
+
+    const loadProductHistory = useCallback(async (companyId: string, productId: string): Promise<ProductHistory | null> => {
+        setLoadingProductHistory(true);
+        try {
+            const res = await apiFetch(`/api/inventory/products/${encodeURIComponent(productId)}/history?companyId=${encodeURIComponent(companyId)}`);
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar historial del producto'); return null; }
+            const data = (json.data ?? null) as ProductHistory | null;
+            setProductHistory(data);
+            return data;
+        } catch (e) {
+            reportError('Error de red', e);
+            return null;
+        } finally {
+            setLoadingProductHistory(false);
         }
     }, []);
 
@@ -682,6 +702,7 @@ export function useInventory() {
         products, movements, periodCloses,
         departments, periodReport, purchaseLedger, islrReport, salesLedger,
         inventoryLedger, balanceReport,
+        productHistory,
         currentDollarRate,
         // loading
         loadingProducts, loadingMovements,
@@ -689,8 +710,9 @@ export function useInventory() {
         loadingDepartments, loadingPeriodReport, loadingPurchaseLedger,
         loadingIslrReport, loadingSalesLedger, loadingInventoryLedger,
         loadingBalanceReport,
+        loadingProductHistory,
         // actions
-        loadProducts, saveProduct, deleteProduct,
+        loadProducts, saveProduct, deleteProduct, loadProductHistory,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,
         loadPeriodCloses, savePeriodClose,
         loadDepartments, saveDepartment, deleteDepartment,
