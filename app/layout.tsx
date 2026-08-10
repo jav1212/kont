@@ -3,6 +3,7 @@ import { Darker_Grotesque, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./provider";
 import { Toaster } from "sonner";
+import { AnalyticsConsent } from "@/src/shared/frontend/components/analytics-consent";
 
 const darkerGrotesque = Darker_Grotesque({
   variable: "--font-darker-grotesque",
@@ -77,9 +78,11 @@ export const metadata: Metadata = {
     siteName:    "Kontave",
     type:        "website",
     locale:      "es_VE",
+    images:      [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Kontave — software contable para Venezuela" }],
   },
   twitter: {
     card:        "summary_large_image",
+    images:      ["/opengraph-image"],
     title:       "Kontave — Software contable para Venezuela",
     description: "Software contable todo-en-uno para Venezuela: contabilidad, nómina, inventario, calendario SENIAT y más.",
   },
@@ -182,6 +185,7 @@ export default function RootLayout({
       <body className={`${darkerGrotesque.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
+          <AnalyticsConsent />
           <Toaster
             position="bottom-right"
             toastOptions={{

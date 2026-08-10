@@ -1,4 +1,6 @@
 import { MarketingHeader, MarketingFooter } from "./_components/marketing-navigation";
+import { MobileCta } from "@/src/shared/frontend/components/mobile-cta";
+import { SeoBreadcrumbs } from "@/src/shared/frontend/components/seo-breadcrumbs";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -29,12 +31,14 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             />
 
             <MarketingHeader />
+            <SeoBreadcrumbs />
 
             <main className="relative z-10 flex-1 flex flex-col">
                 {children}
             </main>
 
             <MarketingFooter />
+            <MobileCta />
         </div>
     );
 }

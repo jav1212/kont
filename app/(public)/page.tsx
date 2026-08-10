@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { LiveToolsStrip } from "./_components/live-tools-strip";
 import { PwaInstallSection } from "./_components/pwa-install-section";
+import { trackEvent } from "@/src/shared/frontend/components/analytics-consent";
 
 interface Plan {
     id:                     string;
@@ -40,6 +41,14 @@ const FREE_MODULE_FEATURES_FALLBACK = ["Sin costo adicional"];
 const PANEL_ID = "pricing-panel";
 
 const PLAN_ORDER = ["Gratuito", "Estudiante", "Emprendedor", "Contable", "Empresarial"];
+
+const FAQS = [
+    { q: "¿Es fácil iniciar mi estructura salarial y contable?", a: "Sí. Puedes comenzar con una empresa y configurar progresivamente tus módulos, empleados y reglas de trabajo desde el navegador." },
+    { q: "¿KONTAVE funciona completamente en la nube?", a: "Sí. KONTAVE funciona desde el navegador y no requiere instalar servidores ni mantener infraestructura local." },
+    { q: "¿Cómo funcionan las tasas del BCV?", a: "Las herramientas y cálculos que usan divisas pueden consultar la tasa BCV disponible y conservar la referencia utilizada en cada operación." },
+    { q: "¿Puedo gestionar nómina e inventario en la misma cuenta?", a: "Sí. KONTAVE reúne módulos de nómina, inventario, documentos y herramientas fiscales según las capacidades de tu cuenta." },
+    { q: "¿Puedo comenzar sin pagar?", a: "Sí. Puedes crear una cuenta y revisar las opciones disponibles antes de elegir el plan que mejor se adapte a tu operación." },
+];
 
 function planOrderIndex(name: string): number {
     const idx = PLAN_ORDER.indexOf(name);
@@ -129,6 +138,20 @@ export default function LandingPage() {
 
     return (
         <div className="flex flex-col bg-background text-foreground selection:bg-primary-500/30 font-mono">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "FAQPage",
+                        mainEntity: FAQS.map((faq) => ({
+                            "@type": "Question",
+                            name: faq.q,
+                            acceptedAnswer: { "@type": "Answer", text: faq.a },
+                        })),
+                    }),
+                }}
+            />
             
             {/* System Message Overlay */}
             {systemMessage && (
@@ -191,6 +214,7 @@ export default function LandingPage() {
                         <BaseButton.Root
                             as={Link}
                             href="/sign-up"
+                            onClick={() => trackEvent("signup_cta_click", { location: "hero" })}
                             variant="primary"
                             className="h-12 px-7 rounded-full font-mono text-[13px] uppercase tracking-[0.14em] font-bold shadow-md shadow-primary-500/30"
                         >
@@ -206,7 +230,7 @@ export default function LandingPage() {
 
                     {/* Social proof — mono chrome, replaces the old sans bold blob */}
                     <div className="mt-10 sm:mt-12 flex items-center gap-4">
-                        <div className="flex -space-x-2.5">
+                        <div className="hidden">
                             {[
                                 "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80",
                                 "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=100&q=80",
@@ -219,7 +243,7 @@ export default function LandingPage() {
                         </div>
                         <div className="flex flex-col leading-tight">
                             <span className="font-mono text-[12px] tabular-nums font-bold text-foreground">
-                                +1.200 contadores
+                                Nómina, inventario y herramientas fiscales
                             </span>
                             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary mt-0.5">
                                 confían en Kontave
@@ -395,16 +419,16 @@ export default function LandingPage() {
 
                     <div className="flex-[1.5] w-full grid grid-cols-1 sm:grid-cols-3 gap-8 items-center border border-border-light rounded-[32px] p-8 sm:p-10 bg-surface-1/50 shadow-sm">
                         <div className="text-center sm:text-left">
-                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">25<span className="text-primary-500">+</span></span>
-                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Reportes Fiscales</span>
+                            <span className="text-[28px] font-black text-foreground block leading-none mb-3">Nómina</span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Cálculo quincenal</span>
                         </div>
                         <div className="text-center sm:text-left">
-                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">30<span className="text-primary-500">+</span></span>
-                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Sectores Activos</span>
+                            <span className="text-[28px] font-black text-foreground block leading-none mb-3">Kardex</span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Control de inventario</span>
                         </div>
                         <div className="text-center sm:text-left">
-                            <span className="text-[56px] font-black text-foreground block leading-none mb-3">2K<span className="text-primary-500">+</span></span>
-                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Cuentas creadas</span>
+                            <span className="text-[28px] font-black text-foreground block leading-none mb-3">BCV</span>
+                            <span className="text-[13px] text-text-secondary font-bold uppercase tracking-wide">Referencia oficial</span>
                         </div>
                     </div>
                 </div>
@@ -417,7 +441,7 @@ export default function LandingPage() {
                         
                         {/* Real Image Portrait Cutout Simulation */}
                         <div className="absolute -bottom-6 -right-6 w-64 h-64 rounded-full border-8 border-primary-500/30 shadow-2xl overflow-hidden hidden md:block group-hover:scale-105 transition-transform duration-500">
-                            <Image src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80" alt="Profesional Ejecutiva" fill sizes="256px" className="object-cover" />
+                            <div aria-hidden className="h-full w-full bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.3),transparent_32%),linear-gradient(145deg,#ff4a18,#8f1d0b)]" />
                         </div>
 
                         <div className="relative z-10 w-full md:w-full lg:w-2/3">
@@ -619,6 +643,7 @@ export default function LandingPage() {
                                 { q: "¿Ofrecemos soporte local e instalaciones físicas?", a: "Nuestro producto opera 100% en la nube protegiendo los datos bajo cifrado AES256. No es necesario realizar mantenimientos de servidor físico." },
                                 { q: "¿Cómo funcionan las equivalencias para la moneda contable?", a: "Se enlaza en directo con los índices BCV. Además, se guardan los históricos de transacciones con sus paridades funcionales del día del pago exacto de forma transparente." },
                                 { q: "¿Qué sucede al superar mi cuota de usuarios o espacio?", a: "No nos enfocamos en limitar el avance, simplemente se te sugiere subir al próximo nivel tarifario desde tu facturación, o liberar cuentas inactivas de tu tenencia." }
+                                ,{ q: "¿Puedo comenzar sin pagar?", a: "Sí. Puedes crear una cuenta y revisar las opciones disponibles antes de elegir el plan que mejor se adapte a tu operación." }
                             ].map((faq, idx) => {
                                 const isOpen   = openFaq === idx;
                                 const panelId  = `faq-panel-${idx}`;
@@ -660,13 +685,7 @@ export default function LandingPage() {
                     <div className="flex-1 w-full max-w-xl h-[500px] relative group">
                          {/* Real Support Agent Photograph */}
                          <div className="w-full h-full rounded-[40px] border border-border-light relative overflow-hidden flex flex-col items-center justify-end shadow-lg">
-                             <Image 
-                                src="https://images.unsplash.com/photo-1590650516494-0c8e4a4dd67e?auto=format&fit=crop&w=600&q=80" 
-                                alt="Soporte Kontave"
-                                fill
-                                sizes="(min-width: 1024px) 40vw, 100vw"
-                                className="object-cover absolute inset-0 transition-transform duration-[1500ms] group-hover:scale-105"
-                             />
+                            <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.28),transparent_35%),linear-gradient(145deg,#ff4a18,#a51f0c)]" />
                              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent pointer-events-none" />
                              
                              {/* Floating chat bubbles */}

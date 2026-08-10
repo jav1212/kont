@@ -21,6 +21,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { notify } from "@/src/shared/frontend/notify";
 import { getSupabaseBrowser } from "@/src/shared/frontend/utils/supabase-browser";
 import { AuthShell, AuthHeader, AuthVisual, PasswordField } from "../_components/auth-shell";
+import { trackEvent } from "@/src/shared/frontend/components/analytics-consent";
 
 const RESEND_UNLOCK_SECONDS   = 15;
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -163,6 +164,7 @@ function SignUpPageInner() {
 
         // Sesión activa: useAuth().onAuthStateChange recoge la sesión y
         // attachPendingReferralCode toma el ref en el primer login.
+        trackEvent("sign_up", { method: "email_otp" });
         router.replace(redirectTo);
     }
 

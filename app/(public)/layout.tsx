@@ -1,4 +1,5 @@
 import { PublicHeader, PublicFooter } from "./_components/public-navigation";
+import { MobileCta } from "@/src/shared/frontend/components/mobile-cta";
 
 // NOTA: este layout NO define metadata para no sobrescribir el del root
 // (app/layout.tsx). El home (/) usa la metadata raíz para máximo brand SEO
@@ -47,6 +48,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
             {/* ── Footer ───────────────────────────────────────────────── */}
             <PublicFooter />
+            <MobileCta />
         </div>
     );
 }
