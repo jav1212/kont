@@ -260,7 +260,18 @@ function inferPermissionFromRequest(req: Request): PermissionCode | null {
         if (operation.includes('members')) return 'members.read';
         return req.method === 'DELETE' ? 'members.revoke' : 'members.read';
     }
-    if (moduleName === 'billing' && req.method !== 'GET') return 'billing.manage';
+    if (moduleName === 'billing') {
+        // The shell needs read-only billing metadata to decide which paid
+        // modules to render. These endpoints do not expose billing actions or
+        // payment data, so any active tenant member may query them.
+        const isReadOnlyMetadataRequest =
+            req.method === 'GET' &&
+            (operation.includes('subscriptions') ||
+                operation.includes('tenant') ||
+                operation.includes('capacity'));
+        if (isReadOnlyMetadataRequest) return null;
+        if (req.method !== 'GET') return 'billing.manage';
+    }
     let action: string;
     if (operation.includes('confirm')) action = 'confirm';
     else if (operation.includes('unconfirm') || operation.includes('cancel')) action = moduleName === 'payroll' ? 'delete' : 'cancel';

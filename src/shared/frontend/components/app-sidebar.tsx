@@ -132,7 +132,7 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
                 if ("parentId" in mod) return false;
                 if (mod.paid && !paidAccess[mod.id]) return false;
                 const permissionResource = mod.id;
-                if (["payroll", "purchases", "sales", "inventory", "accounting", "companies"].includes(permissionResource)
+                if (["payroll", "purchases", "sales", "inventory", "accounting", "companies", "documents"].includes(permissionResource)
                     && !can(`${permissionResource}.read`)) return false;
                 return true;
             })
