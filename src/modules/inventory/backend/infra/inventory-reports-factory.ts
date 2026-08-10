@@ -10,7 +10,6 @@ import { RpcPurchaseLedgerRepository }     from './repository/rpc-purchase-ledge
 import { SharedPurchaseLedgerRepository }  from './repository/shared-purchase-ledger.repository';
 import { RpcIslrReportRepository }         from './repository/rpc-islr-report.repository';
 import { SharedIslrReportRepository }      from './repository/shared-islr-report.repository';
-import { RpcSalesLedgerRepository }        from './repository/rpc-sales-ledger.repository';
 import { SharedSalesLedgerRepository }     from './repository/shared-sales-ledger.repository';
 import { RpcInventoryLedgerRepository }    from './repository/rpc-inventory-ledger.repository';
 import { SharedInventoryLedgerRepository } from './repository/shared-inventory-ledger.repository';
@@ -32,7 +31,7 @@ export function getInventoryReportsActions(userId: string) {
         : new RpcPeriodReportRepository(source, userId);
     const purchaseLedgerRepo  = sharedReports ? new SharedPurchaseLedgerRepository(source, userId) : new RpcPurchaseLedgerRepository(source, userId);
     const islrReportRepo      = sharedReports ? new SharedIslrReportRepository(source, userId) : new RpcIslrReportRepository(source, userId);
-    const salesLedgerRepo     = sharedReports ? new SharedSalesLedgerRepository(source, userId) : new RpcSalesLedgerRepository(source, userId);
+    const salesLedgerRepo     = new SharedSalesLedgerRepository(source, userId);
     const inventoryLedgerRepo = sharedReports ? new SharedInventoryLedgerRepository(source, userId) : new RpcInventoryLedgerRepository(source, userId);
     const balanceReportRepo   = sharedReports ? new SharedBalanceReportRepository(source, userId) : new RpcBalanceReportRepository(source, userId);
 

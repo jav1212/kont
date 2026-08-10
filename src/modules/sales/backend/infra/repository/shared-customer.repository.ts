@@ -47,7 +47,7 @@ export class SharedCustomerRepository implements ICustomerRepository {
                 .from('shared_inventory_customers')
                 .upsert({
                     tenant_id: this.tenantId,
-                    id: customer.id ?? undefined,
+                    id: customer.id ?? crypto.randomUUID(),
                     company_id: customer.companyId,
                     rif: customer.rif,
                     name: customer.name,

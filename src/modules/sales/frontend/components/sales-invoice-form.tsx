@@ -6,25 +6,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
-import { Trash2, FileText, CheckCircle2, Lock, Unlock, Save, UserRound, CalendarDays } from "lucide-react";
+import { Trash2, FileText, CheckCircle2, Lock, Unlock, Save, UserRound, CalendarDays, Plus, X } from "lucide-react";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { BaseSelect } from "@/src/shared/frontend/components/base-select";
+import { CustomerCombobox } from "./customer-combobox";
 import { BaseTextarea } from "@/src/shared/frontend/components/base-textarea";
 import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
 import { notify } from "@/src/shared/frontend/notify";
-import { useSales, type SalesInvoice, type SalesInvoiceItem } from "@/src/modules/sales/frontend/hooks/use-sales";
+import { useSales, type Customer, type SalesInvoice, type SalesInvoiceItem } from "@/src/modules/sales/frontend/hooks/use-sales";
 import {
     IgtfPerceptionSection,
     emptyIgtfPerceptionValue,
     type IgtfPerceptionFormValue,
 } from "./igtf-perception-section";
-import type { VatRate, PaymentTerms, IgtfConcept } from "../../backend/domain/sales-invoice";
+import type { VatRate, PaymentTerms, IgtfConcept, SalesDocumentType } from "../../backend/domain/sales-invoice";
 import { computeInvoiceTotals, emptyHeaderAdjustments, type LineInput } from "@/src/modules/inventory/shared/totals";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { SalesLineCombobox } from "./sales-line-combobox";
 import { generateSalesInvoicePdf } from "../utils/sales-invoice-pdf";
+import { generateDeliveryNotePdf } from "../utils/delivery-note-pdf";
 import { resolveProductSalePrice } from "@/src/modules/inventory/frontend/utils/product-sale-price";
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
@@ -69,6 +71,10 @@ function round2(n: number): number {
     return Math.round(n * 100) / 100;
 }
 
+function emptyCustomer(companyId: string): Customer {
+    return { companyId, rif: "", name: "", contact: "", phone: "", email: "", address: "", notes: "", active: true };
+}
+
 export interface SalesInvoiceFormProps {
     /** Id de factura existente o null para crear una nueva. */
     invoiceId: string | null;
@@ -79,13 +85,14 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const { companyId, company } = useCompany();
     const { products, loadProducts } = useInventory();
     const {
-        customers, loadCustomers,
+        customers, loadCustomers, saveCustomer,
         currentSalesInvoice, loadingSalesInvoice, loadSalesInvoice,
         saveSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice,
     } = useSales();
 
     // Form state
     const [customerId, setCustomerId]       = useState("");
+    const [documentType, setDocumentType]   = useState<SalesDocumentType>("venta");
     const [invoiceNumber, setInvoiceNumber] = useState("");
     const [controlNumber, setControlNumber] = useState("");
     const [date, setDate]                   = useState(todayStr());
@@ -96,6 +103,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [items, setItems]                 = useState<SalesInvoiceItem[]>(() => [emptyItem()]);
     const [igtf, setIgtf]                   = useState<IgtfPerceptionFormValue>(() => emptyIgtfPerceptionValue());
     const [showIgtf, setShowIgtf]           = useState(false);
+    const [newCustomer, setNewCustomer]     = useState<Customer | null>(null);
+    const [savingCustomer, setSavingCustomer] = useState(false);
     const [suggestedLines, setSuggestedLines] = useState<Set<number>>(() => new Set());
     const { options: currencyOptions, appliedRates, setAppliedRates, getRate, setManualRate, publishedDate, loading: rateLoading } = useInvoiceExchangeRates(date);
     const invoiceRate = getRate(invoiceCurrency);
@@ -122,6 +131,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     if (invoiceId && currentSalesInvoice?.id === invoiceId && formSource !== invoiceId) {
         setFormSource(invoiceId);
         setCustomerId(currentSalesInvoice.customerId);
+        setDocumentType(currentSalesInvoice.documentType ?? "venta");
         setInvoiceNumber(currentSalesInvoice.invoiceNumber ?? "");
         setControlNumber(currentSalesInvoice.controlNumber ?? "");
         setDate(currentSalesInvoice.date.split("T")[0]);
@@ -151,6 +161,22 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const isExistingInvoice = invoiceId != null && invoiceId !== "";
     const isConfirmed       = isExistingInvoice && currentSalesInvoice?.status === "confirmada";
     const isReadOnly        = isConfirmed;
+    const isDeliveryNote    = documentType === "nota_entrega";
+
+    function changeDocumentType(nextType: SalesDocumentType) {
+        if (nextType === documentType) return;
+        setDocumentType(nextType);
+        // Each document class owns a different correlativo. Clearing the number
+        // lets the shared save function assign the correct Venta/NE sequence.
+        setInvoiceNumber("");
+        if (nextType === "nota_entrega") {
+            setControlNumber("");
+            setDueDate("");
+            setPaymentTerms("contado");
+            setShowIgtf(false);
+            setIgtf(emptyIgtfPerceptionValue());
+        }
+    }
 
     // Recompute item totals when qty/price/vat changes
     function updateItem(idx: number, patch: Partial<SalesInvoiceItem>) {
@@ -312,13 +338,14 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             id:              invoiceId ?? undefined,
             companyId:       companyId!,
             customerId,
+            documentType,
             invoiceNumber,
-            controlNumber,
+            controlNumber:   isDeliveryNote ? "" : controlNumber,
             date,
             period:          date.slice(0, 7),
             periodoManual:   false,
-            dueDate:         dueDate || null,
-            paymentTerms,
+            dueDate:         isDeliveryNote ? null : dueDate || null,
+            paymentTerms:    isDeliveryNote ? "contado" : paymentTerms,
             status:          "borrador",
             subtotal:        totals.subtotal,
             vatAmount:       totals.ivaTotal,
@@ -385,6 +412,17 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         }
     }
 
+    async function handleCreateCustomer() {
+        if (!newCustomer || !newCustomer.rif.trim() || !newCustomer.name.trim()) return;
+        setSavingCustomer(true);
+        const saved = await saveCustomer(newCustomer);
+        setSavingCustomer(false);
+        if (!saved) return;
+        setCustomerId(saved.id!);
+        setNewCustomer(null);
+        notify.success("Cliente creado y seleccionado.");
+    }
+
     async function handleConfirm() {
         if (!validate()) return;
         setConfirming(true);
@@ -411,10 +449,36 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     async function handleDownloadPdf() {
         if (!currentSalesInvoice || !company || !customerObj) return;
         if (!company.rif) { notify.error("La empresa no tiene RIF configurado."); return; }
-        if (!customerObj.rif) { notify.error("El cliente no tiene RIF — requerido por SENIAT."); return; }
+        if (!isDeliveryNote && !customerObj.rif) { notify.error("El cliente no tiene RIF — requerido por SENIAT."); return; }
         setGeneratingPdf(true);
         try {
-            await generateSalesInvoicePdf({
+            const commonItems = (currentSalesInvoice.items ?? []).map((i) => ({
+                description: i.description,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+                totalLine: i.totalLine,
+                vatRate: i.vatRate,
+                currencyCode: normalizeCurrencyCode(i.currency),
+                sourceUnitAmount: i.currencyPrice,
+                exchangeRate: i.exchangeRate ?? i.dollarRate,
+            }));
+            if (isDeliveryNote) {
+                await generateDeliveryNotePdf({
+                    issuer: { name: company.name, rif: company.rif, address: company.address, phone: company.phone, logoUrl: company.logoUrl, showLogoInPdf: company.showLogoInPdf },
+                    customer: { name: customerObj.name, rif: customerObj.rif, address: customerObj.address },
+                    document: {
+                        number: currentSalesInvoice.invoiceNumber,
+                        date: currentSalesInvoice.date.split("T")[0],
+                        notes: currentSalesInvoice.notes,
+                        referenceRate: currentSalesInvoice.exchangeRates?.find(
+                            (rate) => normalizeCurrencyCode(rate.currencyCode) === "USD",
+                        )?.vesPerUnit ?? (normalizeCurrencyCode(currentSalesInvoice.currency) === "USD" ? currentSalesInvoice.dollarRate : null),
+                        referenceCurrency: "USD",
+                    },
+                    items: commonItems,
+                    totals: { subtotal: currentSalesInvoice.subtotal, iva: currentSalesInvoice.vatAmount, igtf: currentSalesInvoice.igtfPerceptionAmount ?? 0, total: currentSalesInvoice.total },
+                });
+            } else await generateSalesInvoicePdf({
                 issuer: { name: company.name, rif: company.rif, address: company.address, phone: company.phone },
                 customer: { name: customerObj.name, rif: customerObj.rif, address: customerObj.address },
                 invoice: {
@@ -425,16 +489,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     paymentTerms:  currentSalesInvoice.paymentTerms,
                     notes:         currentSalesInvoice.notes,
                 },
-                items: (currentSalesInvoice.items ?? []).map((i) => ({
-                    description: i.description,
-                    quantity:    i.quantity,
-                    unitPrice:   i.unitPrice,
-                    totalLine:   i.totalLine,
-                    vatRate:     i.vatRate,
-                    currencyCode: normalizeCurrencyCode(i.currency),
-                    sourceUnitAmount: i.currencyPrice,
-                    exchangeRate: i.exchangeRate ?? i.dollarRate,
-                })),
+                items: commonItems,
                 totals: {
                     subtotal:    currentSalesInvoice.subtotal,
                     baseExempt:  totals.baseExempt,
@@ -454,7 +509,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     currencyCode: currentSalesInvoice.igtfPerceptionCurrencyCode ?? "USD",
                 } : null,
             });
-            notify.success("Factura PDF generada.");
+            notify.success(isDeliveryNote ? "Nota de entrega PDF generada." : "Factura PDF generada.");
         } catch (e) {
             notify.error(e instanceof Error ? e.message : "Error al generar PDF");
         } finally {
@@ -472,41 +527,85 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
 
     return (
         <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 xl:px-8">
+            {newCustomer && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="w-full max-w-lg rounded-xl border border-border-medium bg-surface-1 shadow-xl">
+                        <div className="flex items-center justify-between border-b border-border-light px-6 py-4">
+                            <h2 className="text-[13px] font-bold uppercase tracking-[0.14em] text-foreground">Nuevo cliente</h2>
+                            <button type="button" onClick={() => setNewCustomer(null)} className="flex size-8 items-center justify-center rounded-lg text-[var(--text-tertiary)] hover:bg-surface-2 hover:text-foreground"><X size={15} /></button>
+                        </div>
+                        <div className="space-y-4 px-6 py-5">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <BaseInput.Field label="RIF *" value={newCustomer.rif} onValueChange={(value) => setNewCustomer({ ...newCustomer, rif: value })} placeholder="J-12345678-9" />
+                                <BaseInput.Field label="Razón Social *" value={newCustomer.name} onValueChange={(value) => setNewCustomer({ ...newCustomer, name: value })} />
+                            </div>
+                            <BaseInput.Field label="Dirección" value={newCustomer.address} onValueChange={(value) => setNewCustomer({ ...newCustomer, address: value })} />
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <BaseInput.Field label="Contacto" value={newCustomer.contact} onValueChange={(value) => setNewCustomer({ ...newCustomer, contact: value })} />
+                                <BaseInput.Field label="Teléfono" value={newCustomer.phone} onValueChange={(value) => setNewCustomer({ ...newCustomer, phone: value })} />
+                            </div>
+                            <BaseInput.Field label="Email" type="email" value={newCustomer.email} onValueChange={(value) => setNewCustomer({ ...newCustomer, email: value })} />
+                        </div>
+                        <div className="flex justify-end gap-3 border-t border-border-light px-6 py-4">
+                            <BaseButton.Root variant="secondary" size="md" onClick={() => setNewCustomer(null)} disabled={savingCustomer}>Cancelar</BaseButton.Root>
+                            <BaseButton.Root variant="primary" size="md" onClick={handleCreateCustomer} disabled={savingCustomer || !newCustomer.rif.trim() || !newCustomer.name.trim()}>{savingCustomer ? "Guardando…" : "Crear y seleccionar"}</BaseButton.Root>
+                        </div>
+                    </div>
+                </div>
+            )}
             {isConfirmed && (
                 <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-4 py-3 font-sans text-[13px]">
                     <div className="flex items-center gap-2 text-amber-700">
                         <Lock size={14} strokeWidth={2} />
-                        <span>Factura confirmada — solo lectura. Para editar, desconfirma primero.</span>
+                        <span>{isDeliveryNote ? "Nota de entrega confirmada" : "Venta confirmada"} — solo lectura. Para editar, desconfirma primero.</span>
                     </div>
                 </div>
             )}
 
             <div className="flex flex-col gap-4">
                 <div className="min-w-0 flex-1 space-y-4">
-            {/* Datos de la factura */}
-            <InvoiceSectionCard title="Datos de la factura" subtitle="Identifica al cliente y define las condiciones de cobro." bodyClassName="space-y-5 p-6">
-                    <div className="grid gap-4 md:grid-cols-3">
+            {/* Datos del documento */}
+            <InvoiceSectionCard title={`Datos de la ${isDeliveryNote ? "nota de entrega" : "venta"}`} subtitle={isDeliveryNote ? "Identifica al destinatario y la fecha de la entrega." : "Identifica al cliente y define las condiciones de cobro."} bodyClassName="space-y-5 p-6">
+                    <div className="grid gap-4 md:grid-cols-4">
+                        {isReadOnly ? (
+                            <BaseInput.Field label="Tipo de documento" value={isDeliveryNote ? "Nota de Entrega" : "Factura de Venta"} readOnly />
+                        ) : (
+                            <div className="space-y-2">
+                                <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-secondary)]">Tipo de documento</label>
+                                <BaseSelect
+                                    items={[{ id: "venta", name: "Factura de Venta" }, { id: "nota_entrega", name: "Nota de Entrega" }]}
+                                    value={documentType}
+                                    onValueChange={(value) => changeDocumentType(value as SalesDocumentType)}
+                                    selectionMode="single"
+                                />
+                            </div>
+                        )}
                         {isReadOnly ? (
                             <BaseInput.Field label="Cliente" value={customerObj?.name ?? "—"} readOnly />
                         ) : (
                             <div className="space-y-2">
                                 <label className="block text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-secondary)]">Cliente</label>
-                                <BaseSelect
-                                items={customers.filter((customer) => customer.active).map((customer) => ({ id: customer.id!, name: customer.name, subtitle: customer.rif }))}
-                                value={customerId}
-                                onValueChange={setCustomerId}
-                                placeholder="Seleccionar cliente…"
-                                selectionMode="single"
-                                />
+                                <div className="flex gap-2">
+                                    <CustomerCombobox customerId={customerId} customers={customers} onChange={setCustomerId} />
+                                    <button
+                                        type="button"
+                                        onClick={() => companyId && setNewCustomer(emptyCustomer(companyId))}
+                                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border-default bg-surface-1 text-[var(--text-tertiary)] transition-colors hover:border-border-medium hover:bg-surface-2 hover:text-foreground"
+                                        title="Crear nuevo cliente"
+                                        aria-label="Crear nuevo cliente"
+                                    >
+                                        <Plus size={14} strokeWidth={2} />
+                                    </button>
+                                </div>
                             </div>
                         )}
-                        <BaseInput.Field label="Nº Factura" value={invoiceNumber} onValueChange={setInvoiceNumber} placeholder="Auto-asignado al guardar" readOnly={isReadOnly} />
-                        <BaseInput.Field label="Nº Control" value={controlNumber} onValueChange={setControlNumber} placeholder="00-12345678" readOnly={isReadOnly} />
+                        <BaseInput.Field label={isDeliveryNote ? "Nº Nota de Entrega" : "Nº Venta"} value={invoiceNumber} onValueChange={setInvoiceNumber} placeholder="Auto-asignado al guardar" readOnly={isReadOnly || isDeliveryNote} />
+                        {!isDeliveryNote && <BaseInput.Field label="Nº Control" value={controlNumber} onValueChange={setControlNumber} placeholder="00-12345678" readOnly={isReadOnly} />}
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3">
                         <BaseInput.Field label="Fecha" type="date" value={date} onValueChange={setDate} readOnly={isReadOnly} />
-                        {isReadOnly ? (
+                        {!isDeliveryNote && (isReadOnly ? (
                             <BaseInput.Field label="Condiciones de pago" value={PAYMENT_TERMS.find((term) => term.value === paymentTerms)?.label ?? paymentTerms} readOnly />
                         ) : (
                             <div className="space-y-2">
@@ -518,8 +617,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                 selectionMode="single"
                                 />
                             </div>
-                        )}
-                        <BaseInput.Field label="Fecha de vencimiento" type="date" value={dueDate} onValueChange={setDueDate} readOnly={isReadOnly} isDisabled={!isReadOnly && paymentTerms === "contado"} />
+                        ))}
+                        {!isDeliveryNote && <BaseInput.Field label="Fecha de vencimiento" type="date" value={dueDate} onValueChange={setDueDate} readOnly={isReadOnly} isDisabled={!isReadOnly && paymentTerms === "contado"} />}
                     </div>
 
                     <BaseTextarea
@@ -646,11 +745,11 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                         </div>
                         <div className="mt-5 grid gap-2 border-t border-border-light pt-4">
                             {!isReadOnly && <>
-                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : "Confirmar factura"}</BaseButton.Root>
+                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<CheckCircle2 size={14} strokeWidth={2} />} onClick={handleConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : isDeliveryNote ? "Confirmar nota de entrega" : "Confirmar factura"}</BaseButton.Root>
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Save size={14} strokeWidth={2} />} onClick={handleSaveDraft} disabled={saving || confirming}>{saving ? "Guardando…" : "Guardar borrador"}</BaseButton.Root>
                             </>}
                             {isConfirmed && <>
-                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>{generatingPdf ? "Generando…" : "Descargar PDF legal"}</BaseButton.Root>
+                                <BaseButton.Root className="w-full" variant="primary" size="md" leftIcon={<FileText size={14} strokeWidth={2} />} onClick={handleDownloadPdf} disabled={generatingPdf}>{generatingPdf ? "Generando…" : isDeliveryNote ? "Descargar Nota de Entrega" : "Descargar PDF legal"}</BaseButton.Root>
                                 <BaseButton.Root className="w-full" variant="secondary" size="md" leftIcon={<Unlock size={14} strokeWidth={2} />} onClick={handleUnconfirm} disabled={unconfirming}>{unconfirming ? "Desconfirmando…" : "Desconfirmar"}</BaseButton.Root>
                             </>}
                         </div>

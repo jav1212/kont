@@ -22,6 +22,7 @@ type RawInvoice = {
     invoice_date: string;
     period: string;
     manual_period: boolean | null;
+    document_type: string | null;
     due_date: string | null;
     payment_terms: string | null;
     status: string;
@@ -83,6 +84,7 @@ const adjustment = (value: string | null): AdjustmentKind | null =>
 
 const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     id: invoice.id ?? '', empresa_id: invoice.companyId, cliente_id: invoice.customerId,
+    tipo_documento: invoice.documentType ?? 'venta',
     numero_factura: invoice.invoiceNumber, numero_control: invoice.controlNumber ?? '',
     fecha: invoice.date, periodo: invoice.period, periodo_manual: invoice.periodoManual ?? false,
     fecha_vencimiento: invoice.dueDate ?? null, condiciones_pago: invoice.paymentTerms ?? 'contado',
@@ -200,6 +202,7 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         return {
             id: row.id, companyId: row.company_id, customerId: row.customer_id,
             customerName: customer?.name, customerRif: customer?.rif, customerAddress: customer?.address,
+            documentType: row.document_type === 'nota_entrega' ? 'nota_entrega' : 'venta',
             invoiceNumber: row.invoice_number, controlNumber: row.control_number ?? '', date: row.invoice_date,
             period: row.period, periodoManual: row.manual_period === true, dueDate: row.due_date,
             paymentTerms: row.payment_terms ?? 'contado', status: row.status as SalesInvoiceStatus,

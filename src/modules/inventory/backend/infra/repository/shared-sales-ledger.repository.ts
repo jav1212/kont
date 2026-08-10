@@ -18,7 +18,7 @@ export class SharedSalesLedgerRepository implements ISalesLedgerRepository {
     try {
       const [{ data: invoiceData, error: invoiceError }, { data: movementData, error: movementError }] = await Promise.all([
         this.source.instance.from('shared_inventory_sales_invoices').select('id,invoice_date,invoice_number,customer_id,total')
-          .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('period', period).eq('status', 'confirmada'),
+          .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('period', period).eq('status', 'confirmada').eq('document_type', 'venta'),
         this.source.instance.from('shared_inventory_movements').select('id,date,notes,type,total_cost')
           .eq('tenant_id', this.tenantId).eq('company_id', companyId).eq('period', period).eq('type', 'autoconsumo'),
       ]);

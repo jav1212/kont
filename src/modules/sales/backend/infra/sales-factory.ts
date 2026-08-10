@@ -2,13 +2,9 @@
 // Owns: customers + sales invoices + IGTF percepción quincenal aggregate.
 // Consumed directly by API routes under app/api/sales/*.
 import { ServerSupabaseSource }       from '@/src/shared/backend/source/infra/server-supabase';
-import { RpcCustomerRepository }      from './repository/rpc-customer.repository';
 import { SharedCustomerRepository }   from './repository/shared-customer.repository';
-import { RpcSalesInvoiceRepository }  from './repository/rpc-sales-invoice.repository';
 import { SharedSalesInvoiceRepository } from './repository/shared-sales-invoice.repository';
-import { RpcIgtfFortnightlyRepository }  from './repository/rpc-igtf-fortnightly.repository';
 import { SharedIgtfFortnightlyRepository } from './repository/shared-igtf-fortnightly.repository';
-import { isSharedSchemaEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 import { ListCustomersUseCase }       from '../app/list-customers.use-case';
 import { SaveCustomerUseCase }        from '../app/save-customer.use-case';
@@ -22,17 +18,10 @@ import { DeleteSalesInvoiceUseCase }  from '../app/delete-sales-invoice.use-case
 import { GetIgtfFortnightlyReportUseCase } from '../app/get-igtf-fortnightly-report.use-case';
 
 export function getSalesActions(userId: string) {
-    const source            = new ServerSupabaseSource();
-    const sharedSalesCustomers = isSharedSchemaEnabled(userId);
-    const customerRepo = sharedSalesCustomers
-        ? new SharedCustomerRepository(source, userId)
-        : new RpcCustomerRepository(source, userId);
-    const invoiceRepo = isSharedSchemaEnabled(userId)
-        ? new SharedSalesInvoiceRepository(source, userId)
-        : new RpcSalesInvoiceRepository(source, userId);
-    const igtfFortnightlyRepo = isSharedSchemaEnabled(userId)
-        ? new SharedIgtfFortnightlyRepository(source, userId)
-        : new RpcIgtfFortnightlyRepository(source, userId);
+    const source = new ServerSupabaseSource();
+    const customerRepo = new SharedCustomerRepository(source, userId);
+    const invoiceRepo = new SharedSalesInvoiceRepository(source, userId);
+    const igtfFortnightlyRepo = new SharedIgtfFortnightlyRepository(source, userId);
 
     return {
         listCustomers:           new ListCustomersUseCase(customerRepo),

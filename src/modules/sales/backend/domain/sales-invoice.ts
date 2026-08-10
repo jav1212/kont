@@ -10,6 +10,7 @@ export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
 export type ItemCurrency = CurrencyCode;
 export type AdjustmentKind = 'monto' | 'porcentaje';
 export type SalesInvoiceStatus = 'borrador' | 'confirmada' | 'anulada';
+export type SalesDocumentType = 'venta' | 'nota_entrega';
 export type PaymentTerms = 'contado' | 'credito_15' | 'credito_30' | 'credito_60' | 'credito_90' | 'otro';
 
 /**
@@ -86,6 +87,9 @@ export interface SalesInvoice {
     customerName?:   string;
     customerRif?:    string;
     customerAddress?:string;
+
+    /** Operational document kind. Legacy rows are treated as regular sales. */
+    documentType?:   SalesDocumentType;
 
     /** Correlativo legal — auto-asignado al primer save si no se proveyó. */
     invoiceNumber:   string;

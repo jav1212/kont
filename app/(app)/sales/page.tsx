@@ -61,6 +61,7 @@ function StatusBadge({ status }: { status: SalesInvoiceStatus }) {
 }
 
 type StatusFilter = "all" | SalesInvoiceStatus;
+type DocumentTypeFilter = "all" | "venta" | "nota_entrega";
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
     { value: "all",        label: "Todas" },
     { value: "borrador",   label: "Borradores" },
@@ -78,6 +79,7 @@ export default function SalesDashboardPage() {
     const [period, setPeriod] = useState<string>(currentPeriodKey());
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+    const [typeFilter, setTypeFilter] = useState<DocumentTypeFilter>("all");
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
 
@@ -101,6 +103,7 @@ export default function SalesDashboardPage() {
         const q = search.trim().toLowerCase();
         return inPeriod
             .filter((f) => statusFilter === "all" || f.status === statusFilter)
+            .filter((f) => typeFilter === "all" || (f.documentType ?? "venta") === typeFilter)
             .filter((f) => {
                 if (!q) return true;
                 const hay = [
@@ -110,13 +113,14 @@ export default function SalesDashboardPage() {
                 return hay.includes(q);
             })
             .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-    }, [inPeriod, statusFilter, search]);
+    }, [inPeriod, statusFilter, typeFilter, search]);
 
     const kpi = useMemo(() => {
-        const confirmed = inPeriod.filter((f) => f.status === "confirmada");
+        const sales = inPeriod.filter((f) => (f.documentType ?? "venta") === "venta");
+        const confirmed = sales.filter((f) => f.status === "confirmada");
         return {
             confirmedCount: confirmed.length,
-            draftCount:     inPeriod.filter((f) => f.status === "borrador").length,
+            draftCount:     sales.filter((f) => f.status === "borrador").length,
             totalBs:        confirmed.reduce((acc, f) => acc + (f.total ?? 0), 0),
             ivaBs:          confirmed.reduce((acc, f) => acc + (f.vatAmount ?? 0), 0),
         };
@@ -142,7 +146,7 @@ export default function SalesDashboardPage() {
                     IGTF Quincenal
                 </BaseButton.Root>
                 <BaseButton.Root as={Link} href="/sales/new" variant="primary" size="sm" leftIcon={<Plus size={14} strokeWidth={2} />}>
-                    Nueva factura
+                    Nuevo documento
                 </BaseButton.Root>
             </PageHeader>
 
@@ -203,10 +207,17 @@ export default function SalesDashboardPage() {
                             );
                         })}
                     </div>
+                    <div className="inline-flex rounded-lg border border-border-light bg-surface-1 overflow-hidden">
+                        {([{ value: "all", label: "Todos" }, { value: "venta", label: "Ventas" }, { value: "nota_entrega", label: "Notas de entrega" }] as const).map((option, index) => (
+                            <button key={option.value} type="button" onClick={() => setTypeFilter(option.value)} className={["px-3 h-9 text-[11px] uppercase tracking-[0.12em] transition-colors", index > 0 ? "border-l border-border-light" : "", typeFilter === option.value ? "bg-primary-500/10 text-primary-500" : "text-[var(--text-secondary)] hover:bg-surface-2"].join(" ")}>
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
                     <div className="relative flex-1 min-w-[220px] max-w-md">
-                        <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                        <Search size={14} strokeWidth={2} className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-tertiary)]" />
                         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente, Nº factura o RIF…"
-                            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors" />
+                            className="h-9 w-full rounded-lg border border-border-light bg-surface-1 !pl-11 pr-3 font-mono text-[13px] text-foreground outline-none transition-colors placeholder:text-[var(--text-tertiary)] hover:border-border-medium focus:border-primary-500/60" />
                     </div>
                 </div>
 
@@ -238,7 +249,7 @@ export default function SalesDashboardPage() {
                             <table className="w-full min-w-[1024px] text-[13px]">
                                 <thead>
                                     <tr className="border-b border-border-light bg-surface-2/50">
-                                        {["Fecha", "Nº", "Cliente", "RIF", "Subtotal", "IVA", "IGTF", "Total", "Estado", "", ""].map((h, i) => (
+                                        {["Fecha", "Tipo", "Nº", "Cliente", "RIF", "Subtotal", "IVA", "IGTF", "Total", "Estado", "", ""].map((h, i) => (
                                             <th key={i}
                                                 className={["px-4 py-2.5 text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal whitespace-nowrap", ["Subtotal", "IVA", "IGTF", "Total"].includes(h) ? "text-right" : "text-left"].join(" ")}>
                                                 {h}
@@ -250,6 +261,7 @@ export default function SalesDashboardPage() {
                                     {filtered.map((f) => (
                                         <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
+                                            <td className="px-4 py-2.5 whitespace-nowrap"><span className="inline-flex rounded border border-border-light px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">{(f.documentType ?? "venta") === "nota_entrega" ? "Nota de entrega" : "Venta"}</span></td>
                                             <td className="px-4 py-2.5 text-foreground tabular-nums whitespace-nowrap">{f.invoiceNumber}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{f.customerName ?? "—"}</td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{f.customerRif ?? "—"}</td>
