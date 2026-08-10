@@ -419,7 +419,7 @@ export default function EntradasPage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar proveedor, Nº factura o Nº control…"
-                            className="w-full h-9 pl-9 pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
+                            className="w-full h-9 !pl-9 !pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
                         />
                     </div>
                 </div>
