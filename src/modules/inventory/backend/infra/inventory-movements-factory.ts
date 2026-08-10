@@ -2,13 +2,9 @@
 // Role: sub-factory for the Movements domain slice of inventory.
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.
 import { ServerSupabaseSource }            from '@/src/shared/backend/source/infra/server-supabase';
-import { RpcMovementRepository }           from './repository/rpc-movement.repository';
 import { SharedMovementRepository }        from './repository/shared-movement.repository';
-import { RpcMovementDraftRepository }      from './repository/rpc-movement-draft.repository';
 import { SharedMovementDraftRepository }   from './repository/shared-movement-draft.repository';
-import { RpcProductRepository }            from './repository/rpc-product.repository';
 import { SharedProductRepository }         from './repository/shared-product.repository';
-import { isSharedSchemaEnabled }          from '@/src/shared/backend/config/shared-schema-pilot';
 import { ListMovementsUseCase }            from '../app/list-movements.use-case';
 import { SaveMovementUseCase }             from '../app/save-movement.use-case';
 import { DeleteMovementUseCase }           from '../app/delete-movement.use-case';
@@ -22,16 +18,9 @@ import { DiscardMovementDraftUseCase }     from '../app/discard-movement-draft.u
 
 export function getInventoryMovementsActions(userId: string) {
     const source             = new ServerSupabaseSource();
-    const sharedInventory = isSharedSchemaEnabled(userId);
-    const movementRepo = sharedInventory
-        ? new SharedMovementRepository(source, userId)
-        : new RpcMovementRepository(source, userId);
-    const movementDraftRepo  = sharedInventory
-        ? new SharedMovementDraftRepository(source, userId)
-        : new RpcMovementDraftRepository(source, userId);
-    const productRepo        = sharedInventory
-        ? new SharedProductRepository(source, userId)
-        : new RpcProductRepository(source, userId);
+    const movementRepo = new SharedMovementRepository(source, userId);
+    const movementDraftRepo = new SharedMovementDraftRepository(source, userId);
+    const productRepo = new SharedProductRepository(source, userId);
 
     return {
         listMovements:       new ListMovementsUseCase(movementRepo),

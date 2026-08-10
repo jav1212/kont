@@ -1,9 +1,7 @@
 // Infrastructure layer — assembles the bonificaciones run dependency graph.
 import { ServerSupabaseSource }              from '@/src/shared/backend/source/infra/server-supabase';
 import { LocalEventBus }                     from '@/src/shared/backend/infra/local-event-bus';
-import { RpcBonificacionesRunRepository }    from './repository/rpc-bonificaciones-run.repository';
 import { SharedBonificacionesRunRepository } from './repository/shared-bonificaciones-run.repository';
-import { isSharedSchemaEnabled }             from '@/src/shared/backend/config/shared-schema-pilot';
 import { ConfirmBonificacionesRunUseCase }   from '../application/commands/confirm-bonificaciones-run.use-case';
 import { UnconfirmBonificacionesRunUseCase } from '../application/commands/unconfirm-bonificaciones-run.use-case';
 import { SaveDraftBonificacionesRunUseCase } from '../application/commands/save-draft-bonificaciones-run.use-case';
@@ -12,9 +10,7 @@ import { GetBonificacionesReceiptsUseCase }  from '../application/queries/get-bo
 
 export function getBonificacionesRunActions(userId: string) {
     const source     = new ServerSupabaseSource();
-    const repository = isSharedSchemaEnabled(userId)
-        ? new SharedBonificacionesRunRepository(source, userId)
-        : new RpcBonificacionesRunRepository(source, userId);
+    const repository = new SharedBonificacionesRunRepository(source, userId);
     const eventBus   = new LocalEventBus();
 
     return {

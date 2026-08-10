@@ -8,11 +8,8 @@
 // Uses ServerSupabaseSource + RPC functions in the public schema (same pattern
 // as inventory), since PostgREST does not expose tenant schemas directly.
 import { ServerSupabaseSource }             from '@/src/shared/backend/source/infra/server-supabase';
-import { isSharedSchemaEnabled }            from '@/src/shared/backend/config/shared-schema-pilot';
 import { LocalEventBus }                    from '@/src/shared/backend/infra/local-event-bus';
-import { SupabaseDocumentFolderRepository } from './repository/supabase-document-folder.repository';
 import { SharedDocumentFolderRepository }   from './repository/shared-document-folder.repository';
-import { SupabaseDocumentRepository }       from './repository/supabase-document.repository';
 import { SharedDocumentRepository }         from './repository/shared-document.repository';
 import { SupabaseDocumentStorageRepository } from './repository/supabase-document-storage.repository';
 import { CreateFolderUseCase }              from '../application/commands/create-folder.use-case';
@@ -32,9 +29,8 @@ export function getDocumentsActions(ownerId: string) {
     const source   = new ServerSupabaseSource();
     const eventBus = new LocalEventBus();
 
-    const sharedDocuments = isSharedSchemaEnabled(ownerId);
-    const folderRepo   = sharedDocuments ? new SharedDocumentFolderRepository(source, ownerId) : new SupabaseDocumentFolderRepository(source, ownerId);
-    const documentRepo = sharedDocuments ? new SharedDocumentRepository(source, ownerId) : new SupabaseDocumentRepository(source, ownerId);
+    const folderRepo   = new SharedDocumentFolderRepository(source, ownerId);
+    const documentRepo = new SharedDocumentRepository(source, ownerId);
     const storageRepo  = new SupabaseDocumentStorageRepository(source);
 
     return {
@@ -51,7 +47,7 @@ export function getDocumentsActions(ownerId: string) {
         findDocumentById: new FindDocumentByIdUseCase(documentRepo),
         replicateFolders: new ReplicateFoldersUseCase(
             folderRepo,
-            (tenantId) => sharedDocuments ? new SharedDocumentFolderRepository(source, tenantId) : new SupabaseDocumentFolderRepository(source, tenantId),
+            (tenantId) => new SharedDocumentFolderRepository(source, tenantId),
         ),
     };
 }

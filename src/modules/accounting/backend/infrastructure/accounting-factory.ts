@@ -1,18 +1,10 @@
 // Infrastructure layer — assembles the full accounting dependency graph.
-// All use cases are wired with their RPC repositories and shared source adapters.
 import { ServerSupabaseSource }                              from '@/src/shared/backend/source/infra/server-supabase';
-import { isSharedSchemaEnabled }                             from '@/src/shared/backend/config/shared-schema-pilot';
-import { RpcAccountRepository }                              from './repository/rpc-account.repository';
 import { SharedAccountRepository }                          from './repository/shared-account.repository';
-import { RpcChartRepository }                                from './repository/rpc-chart.repository';
 import { SharedChartRepository }                              from './repository/shared-chart.repository';
-import { RpcPeriodRepository }                               from './repository/rpc-period.repository';
 import { SharedPeriodRepository }                            from './repository/shared-period.repository';
-import { RpcJournalEntryRepository }                         from './repository/rpc-journal-entry.repository';
 import { SharedJournalEntryRepository }                       from './repository/shared-journal-entry.repository';
-import { RpcIntegrationRuleRepository }                      from './repository/rpc-integration-rule.repository';
 import { SharedIntegrationRuleRepository }                    from './repository/shared-integration-rule.repository';
-import { RpcIntegrationLogRepository }                       from './repository/rpc-integration-log.repository';
 import { SharedIntegrationLogRepository }                     from './repository/shared-integration-log.repository';
 import { SaveAccountUseCase }                                from '../application/commands/save-account.use-case';
 import { DeleteAccountUseCase }                              from '../application/commands/delete-account.use-case';
@@ -40,13 +32,12 @@ import { GetIntegrationLogUseCase }                          from '../applicatio
 
 export function getAccountingActions(userId: string) {
     const source        = new ServerSupabaseSource();
-    const accountingShared = isSharedSchemaEnabled(userId);
-    const accountRepo   = accountingShared ? new SharedAccountRepository(source, userId) : new RpcAccountRepository(source, userId);
-    const chartRepo     = accountingShared ? new SharedChartRepository(source, userId) : new RpcChartRepository(source, userId);
-    const periodRepo    = accountingShared ? new SharedPeriodRepository(source, userId) : new RpcPeriodRepository(source, userId);
-    const entryRepo     = accountingShared ? new SharedJournalEntryRepository(source, userId) : new RpcJournalEntryRepository(source, userId);
-    const ruleRepo      = accountingShared ? new SharedIntegrationRuleRepository(source, userId) : new RpcIntegrationRuleRepository(source, userId);
-    const logRepo       = accountingShared ? new SharedIntegrationLogRepository(source, userId) : new RpcIntegrationLogRepository(source, userId);
+    const accountRepo   = new SharedAccountRepository(source, userId);
+    const chartRepo     = new SharedChartRepository(source, userId);
+    const periodRepo    = new SharedPeriodRepository(source, userId);
+    const entryRepo     = new SharedJournalEntryRepository(source, userId);
+    const ruleRepo      = new SharedIntegrationRuleRepository(source, userId);
+    const logRepo       = new SharedIntegrationLogRepository(source, userId);
 
     return {
         // Accounts

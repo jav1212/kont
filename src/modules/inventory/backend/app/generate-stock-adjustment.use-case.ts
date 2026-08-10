@@ -106,7 +106,7 @@ export class GenerateStockAdjustmentUseCase
         }
 
         // ── Base Bs y target absoluto. Lee del MISMO RPC que el balance-report
-        // que el usuario consulta visualmente (tenant_inventario_reporte_saldo),
+        // que el usuario consulta visualmente en el reporte de saldo,
         // para que los KPIs "Entradas" y "Ventas (S/IVA)" mostrados en pantalla
         // coincidan exactamente con la base de cálculo del ajuste.
         const reportRes = await this.balanceReportRepo.getReport(companyId, period);

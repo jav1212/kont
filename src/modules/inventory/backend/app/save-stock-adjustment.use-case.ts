@@ -1,9 +1,8 @@
 // save-stock-adjustment.use-case — persiste un ajuste directo de existencia
-// modificando product.existencia_actual vía la RPC dedicada
-// `tenant_inventario_productos_set_existencia`. NO crea movimientos en el
+// modificando product.existencia_actual vía el repositorio shared. NO crea movimientos en el
 // kardex: el historial queda intacto y sólo el saldo del producto cambia.
 //
-// Importante: el RPC genérico `tenant_inventario_productos_upsert` excluye
+// Importante: el guardado genérico de productos excluye
 // existencia_actual del DO UPDATE como protección contra escrituras accidentales
 // del saldo desde la edición de metadata. Por eso aquí usamos setStock(), que
 // está diseñado específicamente para esta operación.

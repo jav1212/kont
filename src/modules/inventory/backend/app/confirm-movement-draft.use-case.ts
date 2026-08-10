@@ -1,6 +1,6 @@
 // confirm-movement-draft.use-case — promotes every row in a draft group to
 // a confirmed inventory movement. The repository delegates to the existing
-// `tenant_inventario_movimientos_save` RPC so COGS, costo_promedio, and
+// the shared movement transaction so COGS, costo_promedio, and
 // existencia_actual stay in sync.
 import { UseCase } from '@/src/core/domain/use-case';
 import { Result } from '@/src/core/domain/result';

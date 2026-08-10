@@ -2,9 +2,7 @@
 // Role: sub-factory for the Products domain slice of inventory.
 // Consumers: inventory-factory.ts (aggregator) — do not import directly in API routes.
 import { ServerSupabaseSource }       from '@/src/shared/backend/source/infra/server-supabase';
-import { RpcProductRepository }       from './repository/rpc-product.repository';
 import { SharedProductRepository }    from './repository/shared-product.repository';
-import { RpcDepartmentRepository }    from './repository/rpc-department.repository';
 import { SharedDepartmentRepository } from './repository/shared-department.repository';
 import { ListProductsUseCase }        from '../app/list-products.use-case';
 import { SaveProductUseCase }         from '../app/save-product.use-case';
@@ -14,16 +12,11 @@ import { SaveDepartmentUseCase }      from '../app/save-department.use-case';
 import { DeleteDepartmentUseCase }    from '../app/delete-department.use-case';
 import { GetProductHistoryUseCase }   from '../app/get-product-history.use-case';
 import { SharedProductHistoryRepository } from './repository/shared-product-history.repository';
-import { isSharedSchemaEnabled }      from '@/src/shared/backend/config/shared-schema-pilot';
 
 export function getInventoryProductsActions(userId: string) {
     const source         = new ServerSupabaseSource();
-    const productRepo = isSharedSchemaEnabled(userId)
-        ? new SharedProductRepository(source, userId)
-        : new RpcProductRepository(source, userId);
-    const departmentRepo = isSharedSchemaEnabled(userId)
-        ? new SharedDepartmentRepository(source, userId)
-        : new RpcDepartmentRepository(source, userId);
+    const productRepo = new SharedProductRepository(source, userId);
+    const departmentRepo = new SharedDepartmentRepository(source, userId);
     // Product history is intentionally available only in the shared schema.
     const productHistoryRepo = new SharedProductHistoryRepository(source, userId);
 

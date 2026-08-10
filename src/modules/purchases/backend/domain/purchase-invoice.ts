@@ -171,9 +171,9 @@ export interface PurchaseInvoice {
   items?: PurchaseInvoiceItem[];
   /**
    * Cantidad de items asociados a la factura en la base de datos. Se devuelve
-   * sólo en el listado (`tenant_inventario_facturas_get`) para permitir que el
+   * sólo en el listado para permitir que el
    * frontend filtre facturas pendientes de imputar sin tener que cargar el
-   * array completo. En el detalle (`tenant_inventario_factura_get`) viene
+   * array completo. En el detalle viene
    * `items` y este campo no se setea.
    */
   itemsCount?: number;

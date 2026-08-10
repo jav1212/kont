@@ -4,17 +4,13 @@
 // Invariante: siempre usa ServerSupabaseSource en el lado servidor.
 
 import { ServerSupabaseSource }            from '@/src/shared/backend/source/infra/server-supabase';
-import { RpcPayrollSettingsRepository }    from './repository/rpc-payroll-settings.repository';
 import { SharedPayrollSettingsRepository } from './repository/shared-payroll-settings.repository';
-import { isSharedSchemaEnabled }           from '@/src/shared/backend/config/shared-schema-pilot';
 import { GetPayrollSettingsUseCase }       from '../application/queries/get-payroll-settings.use-case';
 import { SavePayrollSettingsUseCase }      from '../application/commands/save-payroll-settings.use-case';
 
 export function getPayrollSettingsActions(userId: string) {
     const source = new ServerSupabaseSource();
-    const repo = isSharedSchemaEnabled(userId)
-        ? new SharedPayrollSettingsRepository(source, userId)
-        : new RpcPayrollSettingsRepository(source, userId);
+    const repo = new SharedPayrollSettingsRepository(source, userId);
 
     return {
         get:  new GetPayrollSettingsUseCase(repo),

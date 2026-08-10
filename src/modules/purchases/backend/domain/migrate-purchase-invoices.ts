@@ -1,5 +1,5 @@
 // Domain types for the bulk-migrate purchase-invoices operation.
-// Mirrors the jsonb shape returned by tenant_inventario_factura_migrate.
+// Mirrors the jsonb shape returned by the shared purchase-invoice migration RPC.
 
 export interface MigratedInvoice {
   id:               string;
