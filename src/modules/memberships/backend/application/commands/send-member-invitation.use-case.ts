@@ -41,7 +41,7 @@ export class SendMemberInvitationUseCase extends UseCase<Input, SentInvitation> 
         }
 
         if (!["admin", "contador", "contable", "vendedor", "cajero"].includes(role)) {
-            return Result.fail("role must be admin, contador, vendedor or cajero");
+            return Result.fail("role must be admin, contador, contable, vendedor or cajero");
         }
 
         if (callerRole === "contable") {
