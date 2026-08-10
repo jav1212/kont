@@ -39,7 +39,7 @@ interface Props {
     products: Product[];
     onChange: (items: PurchaseInvoiceItem[]) => void;
     readOnly?: boolean;
-    dollarRate?: number | null; // BCV rate for the period, used for USD-to-Bs conversion
+    dollarRate?: number | null; // Compatibility fallback for invoices saved before multi-currency rates.
     currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
     getExchangeRate?: (currencyCode: CurrencyCode) => number | null;
     selectedCurrency?: CurrencyCode;
@@ -397,7 +397,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     }
 
     // updateItem: handles each field explicitly to avoid unsafe casts.
-    // 'currencyCostInput' is a virtual field - triggers USD cost recomputation.
+    // 'currencyCostInput' is a virtual field - converts the selected currency to VES.
     // 'unitCostDisplay' is a virtual field - handles the IVA-incluido toggle: the
     //                   user-entered value is interpreted as gross and converted
     //                   to net before persisting.
@@ -486,7 +486,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
 
             if (field === 'quantity' || field === 'unitCost') {
                 item.totalCost = round(Number(item.quantity) * Number(item.unitCost));
-                if (item.currency !== 'D') item.currencyCost = null;
+                if (isLocalCurrency(item.currency)) item.currencyCost = null;
             }
             if (field === 'productId') {
                 const product = products.find((p) => p.id === val);
@@ -592,7 +592,9 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
 
             {!readOnly && (
                 <div className="mb-3 flex items-center gap-2 rounded-lg bg-surface-2/60 px-2.5 py-2 text-[11px]">
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Aplicar moneda seleccionada a todas las líneas</span>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">
+                        Usar {normalizeCurrencyCode(targetCurrency)} en todas las líneas
+                    </span>
                     <div className="flex items-center gap-2">
                         <input type="checkbox" checked={applyCurrencyToAll} onChange={(event) => { const checked = event.target.checked; onApplyCurrencyToAllChange?.(checked); if (checked) applyCurrencyToAllItems(targetCurrency); }} className="h-4 w-4 accent-[var(--primary-500)]" />
                         <button type="button" className="hidden">

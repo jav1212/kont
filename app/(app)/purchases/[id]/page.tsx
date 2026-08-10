@@ -39,14 +39,11 @@ import { IslrRetencionSection, emptyIslrValue, type IslrFormValue } from "@/src/
 import { IgtfSection, emptyIgtfValue, type IgtfFormValue } from "@/src/modules/purchases/frontend/components/igtf-section";
 import { PeriodoContableInput } from "@/src/modules/inventory/frontend/components/periodo-contable-input";
 import {
-    BcvRateInput,
     DEFAULT_RATE_DECIMALS,
-    parseRateStr,
-    roundRateValue,
-    useBcvRate,
 } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
-import { normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
+import { isLocalCurrency, normalizeCurrencyCode, type AppliedExchangeRate, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -108,7 +105,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [date, setDate] = useState("");
     const [invoiceCurrencyCode, setInvoiceCurrencyCode] = useState<CurrencyCode>("VES");
     const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(true);
-    const { options: currencyOptions, appliedRates, setAppliedRates, getRate } = useInvoiceExchangeRates(date);
+    const { options: currencyOptions, appliedRates, setAppliedRates, getRate, setManualRate, publishedDate, loading: currenciesLoading } = useInvoiceExchangeRates(date);
     const [notes, setNotes] = useState("");
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
     const [periodo, setPeriodo] = useState<string>("");
@@ -119,17 +116,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [islr, setIslr] = useState<IslrFormValue>(() => emptyIslrValue());
     const [igtf, setIgtf] = useState<IgtfFormValue>(() => emptyIgtfValue());
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
-    const {
-        rate: dollarRateStr,
-        rawRate,
-        decimals: rateDecimals,
-        setRateFromApi,
-        setRateTyped,
-        applyDecimals,
-    } = useBcvRate();
-    const [rateDateBcv, setRateDateBcv] = useState<string | null>(null);
-    const [rateLoading, setRateLoading] = useState(false);
-    const [rateError, setRateError] = useState<string | null>(null);
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -162,33 +148,6 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     // Auto-fetch BCV rate when fecha changes — only while in draft. Confirmadas
     // freeze the rate until the user desconfirma; refetching there would be a
     // surprise side-effect.
-    useEffect(() => {
-        // Existing invoices keep their stored BCV rate while editing.
-        // Refetching here would silently replace it with a more precise
-        // current API value and change historical fiscal totals.
-        if (!isDraft || !date || currentPurchaseInvoice?.id === id) return;
-        let cancelled = false;
-        setRateLoading(true);
-        setRateError(null);
-        fetch(`/api/bcv/rate?date=${date}&code=USD`)
-            .then((r) => r.json())
-            .then((json) => {
-                if (cancelled) return;
-                if (json.rate) {
-                    setRateFromApi(json.rate, rateDecimals);
-                    setRateDateBcv(json.date);
-                } else {
-                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
-                    setRateDateBcv(null);
-                }
-            })
-            .catch(() => { if (!cancelled) setRateError("Error al consultar BCV"); })
-            .finally(() => { if (!cancelled) setRateLoading(false); });
-        return () => { cancelled = true; };
-    // Auto-fetch on date change only; rateDecimals shouldn't retrigger the call.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date, isDraft, currentPurchaseInvoice?.id, id]);
-
     // Populate form when invoice loads — render-phase state update to avoid
     // setState-in-effect cascading renders. React batches all these setters
     // into a single re-render.
@@ -203,8 +162,21 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         setInvoiceNumber(currentPurchaseInvoice.invoiceNumber);
         setControlNumber(currentPurchaseInvoice.controlNumber ?? '');
         setDate(fmtDate(currentPurchaseInvoice.date));
-        setInvoiceCurrencyCode(normalizeCurrencyCode(currentPurchaseInvoice.currency));
-        setAppliedRates(currentPurchaseInvoice.exchangeRates ?? []);
+        const storedCurrency = normalizeCurrencyCode(currentPurchaseInvoice.currency);
+        setInvoiceCurrencyCode(storedCurrency);
+        const storedRates = [...(currentPurchaseInvoice.exchangeRates ?? [])];
+        if (!isLocalCurrency(storedCurrency)
+            && currentPurchaseInvoice.dollarRate != null
+            && !storedRates.some((rate) => normalizeCurrencyCode(rate.currencyCode) === storedCurrency)) {
+            storedRates.push({
+                currencyCode: storedCurrency,
+                vesPerUnit: currentPurchaseInvoice.dollarRate,
+                decimals: currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS,
+                effectiveDate: currentPurchaseInvoice.date,
+                source: "legacy",
+            } as AppliedExchangeRate);
+        }
+        setAppliedRates(storedRates);
         setNotes(currentPurchaseInvoice.notes);
         setItems(
             currentPurchaseInvoice.items && currentPurchaseInvoice.items.length > 0
@@ -247,22 +219,17 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
             (currentPurchaseInvoice.islrConcepto != null) ||
             (currentPurchaseInvoice.igtfAplica === true);
         if (hasAdj) setShowHeaderAdj(true);
-        const storedDecimals = currentPurchaseInvoice.rateDecimals ?? DEFAULT_RATE_DECIMALS;
-        if (currentPurchaseInvoice.dollarRate != null) {
-            setRateFromApi(currentPurchaseInvoice.dollarRate, storedDecimals);
-        }
-        if (currentPurchaseInvoice.rateDecimals != null && currentPurchaseInvoice.rateDecimals !== DEFAULT_RATE_DECIMALS) {
-            applyDecimals(storedDecimals);
-        }
     }
 
-    const effectiveDollarRate = (() => {
-        const parsedRate = parseRateStr(dollarRateStr);
-        const sourceRate = rawRate != null ? rawRate : parsedRate;
-        return isFinite(sourceRate) ? roundRateValue(sourceRate, 4) : null;
-    })();
-    // Derived totals — uses shared math
     const invoiceCurrency = invoiceCurrencyCode;
+    const effectiveDollarRate = getRate(invoiceCurrency);
+    const selectedAppliedRate = appliedRates.find(
+        (rate) => normalizeCurrencyCode(rate.currencyCode) === invoiceCurrency,
+    );
+    const rateDecimals = selectedAppliedRate?.decimals
+        ?? currentPurchaseInvoice?.rateDecimals
+        ?? DEFAULT_RATE_DECIMALS;
+    // Derived totals — uses shared math
     const lineInputs: LineInput[] = items.map((i) => ({
         quantity: i.quantity ?? 0,
         unitCost: i.currencyCost != null && normalizeCurrencyCode(i.currency) !== "VES" && getRate(i.currency)
@@ -673,7 +640,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             )}
                             <SummaryRow label="Total" value={`Bs. ${fmtN(heroTotal)}`} emphasis />
                             {effectiveDollarRate && heroTotal > 0 && (
-                                <SummaryRow label="≈ USD" value={`$ ${fmtN(heroTotal / effectiveDollarRate)}`} />
+                                <SummaryRow label={`≈ ${invoiceCurrencyCode}`} value={`${invoiceCurrencyCode} ${fmtN(heroTotal / effectiveDollarRate)}`} />
                             )}
                             {hasRetencion && (
                                 <SummaryRow label="Total a pagar" value={`Bs. ${fmtN(totalAPagar)}`} />
@@ -834,7 +801,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     <label className={labelCls}>Proveedor</label>
                                     {isDraft ? (
@@ -898,22 +865,51 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 />
                                 <div>
                                     {isDraft ? (
-                                        <BcvRateInput
-                                            rate={dollarRateStr}
-                                            onRateChange={(v) => { setRateTyped(v); setRateDateBcv(null); }}
-                                            decimals={rateDecimals}
-                                            onDecimalsChange={applyDecimals}
-                                            loading={rateLoading}
-                                            bcvDate={rateDateBcv}
-                                            error={rateError}
-                                            showDecimals={false}
-                                            
+                                        <CurrencyCombobox
+                                            label="Moneda principal"
+                                            options={currencyOptions}
+                                            value={invoiceCurrencyCode}
+                                            onChange={(value) => setInvoiceCurrencyCode(normalizeCurrencyCode(value))}
                                         />
                                     ) : (
                                         <>
-                                            <label className={labelCls}>Tasa BCV (Bs/USD)</label>
+                                            <label className={labelCls}>Moneda principal</label>
                                             <div className={readonlyCls + " flex items-center"}>
-                                                {invoice.dollarRate != null
+                                                {normalizeCurrencyCode(invoice.currency)}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                <div>
+                                    {isDraft ? (
+                                        isLocalCurrency(invoiceCurrencyCode) ? (
+                                            <>
+                                                <label className={labelCls}>Tasa de cambio</label>
+                                                <div className={readonlyCls + " flex items-center"}>No aplica · moneda local</div>
+                                            </>
+                                        ) : (
+                                            <BaseInput.Field
+                                                label={`Tasa · Bs/${invoiceCurrencyCode}`}
+                                                type="number"
+                                                min="0"
+                                                step="0.0001"
+                                                value={getRate(invoiceCurrencyCode) ? String(getRate(invoiceCurrencyCode)) : ""}
+                                                onValueChange={(value) => setManualRate(invoiceCurrencyCode, Number(String(value).replace(",", ".")) || 0, rateDecimals)}
+                                                description={publishedDate ? `BCV ${publishedDate}` : "Tasa manual"}
+                                                isDisabled={currenciesLoading}
+                                            />
+                                        )
+                                    ) : (
+                                        <>
+                                            <label className={labelCls}>
+                                                {isLocalCurrency(invoice.currency)
+                                                    ? "Tasa de cambio"
+                                                    : `Tasa · Bs/${normalizeCurrencyCode(invoice.currency)}`}
+                                            </label>
+                                            <div className={readonlyCls + " flex items-center"}>
+                                                {isLocalCurrency(invoice.currency)
+                                                    ? "No aplica · moneda local"
+                                                    : invoice.dollarRate != null
                                                     ? invoice.dollarRate.toLocaleString("es-VE", {
                                                           minimumFractionDigits: invoice.rateDecimals ?? DEFAULT_RATE_DECIMALS,
                                                           maximumFractionDigits: invoice.rateDecimals ?? DEFAULT_RATE_DECIMALS,
@@ -1059,8 +1055,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 };
                                 const dInputs: LineInput[] = displayItems.map((i) => ({
                                     quantity: i.quantity ?? 0,
-                                    unitCost: i.currency === "D" && i.currencyCost != null && effectiveDollarRate != null
-            ? i.currencyCost * effectiveDollarRate
+                                    unitCost: !isLocalCurrency(i.currency) && i.currencyCost != null && getRate(i.currency) != null
+            ? i.currencyCost * getRate(i.currency)!
             : (i.unitCost ?? 0),
                                     currency: i.currency ?? "B",
                                     currencyCost: i.currencyCost ?? null,
@@ -1352,15 +1348,20 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 {(() => {
                                     const summaryRate = (isDraft ? effectiveDollarRate : invoice.dollarRate) ?? effectiveDollarRate;
                                     // The summary reflects persisted invoice amounts. This prevents a second
-                                    // local recalculation from changing a loaded USD invoice while its rate hydrates.
+                                    // local recalculation from changing a loaded foreign-currency invoice while its rate hydrates.
                                     const summarySubtotal = isDraft ? totals.baseIVA : invoice.subtotal;
                                     const summaryVatAmount = isDraft ? totals.ivaMonto : invoice.vatAmount;
                                     const summaryTotal = isDraft ? total + totals.totalImpuestos : invoice.total;
-                                    const sourceSubtotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summarySubtotal / summaryRate : null;
-                                    const sourceVatAmount = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryVatAmount / summaryRate : null;
-                                    const sourceTotal = invoiceCurrency === 'D' && summaryRate && summaryRate > 0 ? summaryTotal / summaryRate : null;
+                                    const hasSourceCurrency = !isLocalCurrency(invoiceCurrency) && summaryRate && summaryRate > 0;
+                                    const sourceSubtotal = hasSourceCurrency ? summarySubtotal / summaryRate : null;
+                                    const sourceVatAmount = hasSourceCurrency ? summaryVatAmount / summaryRate : null;
+                                    const sourceTotal = hasSourceCurrency ? summaryTotal / summaryRate : null;
                                     const usd = (n: number, source?: number | null) =>
-                                        source != null ? `$ ${fmtN(source)}` : (summaryRate && summaryRate > 0 ? `$ ${fmtN(n / summaryRate)}` : null);
+                                        isLocalCurrency(invoiceCurrency)
+                                            ? null
+                                            : source != null
+                                                ? `${invoiceCurrency} ${fmtN(source)}`
+                                                : (summaryRate && summaryRate > 0 ? `${invoiceCurrency} ${fmtN(n / summaryRate)}` : null);
                                     // Skip "Base IVA" + "IVA" rows when there's no IVA — they
                                     // would just echo the Total. Show only the Total in that case.
                                     const summaryHasIva = summaryVatAmount > 0;

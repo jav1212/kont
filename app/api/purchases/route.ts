@@ -9,7 +9,7 @@ export const GET = withTenant(async (req, { userId, actingAs, effectiveOwnerId, 
     if (!companyId) return Response.json({ error: 'companyId es requerido' }, { status: 400 });
     const ownerId = effectiveOwnerId;
     const result = await getPurchasesActions(tenantId).listPurchaseInvoices.execute({ companyId });
-    return handleResult(result);
+    return handleResult(result, 200, req);
 });
 
 export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId, tenantId}) => {
@@ -18,5 +18,5 @@ export const POST = withTenant(async (req, { userId, actingAs, effectiveOwnerId,
     if (!invoice || !items) return Response.json({ error: 'invoice e items son requeridos' }, { status: 400 });
     const ownerId = effectiveOwnerId;
     const result = await getPurchasesActions(tenantId).savePurchaseInvoice.execute({ invoice, items });
-    return handleResult(result);
+    return handleResult(result, 200, req);
 });

@@ -111,8 +111,21 @@ type RawSharedProduct = {
 const num = (value: number | string | null | undefined, fallback = 0): number =>
     value == null || value === '' ? fallback : Number(value);
 
+// Adjustment currency columns are legacy char(1) fields: B = bolívares,
+// D = foreign currency. The invoice and item currency fields use ISO codes.
+const toLegacyAdjustmentCurrency = (value?: string | null): 'B' | 'D' =>
+    !value || normalizeCurrencyCode(value) === 'VES' ? 'B' : 'D';
+
 const adjustment = (value: string | null): AdjustmentKind | null =>
     value === 'monto' || value === 'porcentaje' ? value : null;
+
+const batches = <T>(values: T[], size = 75): T[][] => {
+    const result: T[][] = [];
+    for (let index = 0; index < values.length; index += size) {
+        result.push(values.slice(index, index + size));
+    }
+    return result;
+};
 
 const invoicePayload = (invoice: PurchaseInvoice): Record<string, unknown> => ({
     id: invoice.id ?? '',
@@ -136,11 +149,11 @@ const invoicePayload = (invoice: PurchaseInvoice): Record<string, unknown> => ({
     tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null,
     tasa_decimales: invoice.rateDecimals ?? null,
     descuento_tipo: invoice.descuentoTipo ?? null,
-    descuento_moneda: invoice.descuentoMoneda ?? "B",
+    descuento_moneda: toLegacyAdjustmentCurrency(invoice.descuentoMoneda),
     descuento_valor: invoice.descuentoValor ?? null,
     descuento_monto: invoice.descuentoMonto ?? null,
     recargo_tipo: invoice.recargoTipo ?? null,
-    recargo_moneda: invoice.recargoMoneda ?? "B",
+    recargo_moneda: toLegacyAdjustmentCurrency(invoice.recargoMoneda),
     recargo_valor: invoice.recargoValor ?? null,
     recargo_monto: invoice.recargoMonto ?? null,
     retencion_iva_pct: invoice.retencionIvaPct ?? 0,
@@ -167,11 +180,11 @@ const itemPayload = (item: PurchaseInvoiceItem): Record<string, unknown> => ({
     costo_moneda: item.currencyCost ?? null,
     tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null,
     descuento_tipo: item.descuentoTipo ?? null,
-    descuento_moneda: item.descuentoMoneda ?? "B",
+    descuento_moneda: toLegacyAdjustmentCurrency(item.descuentoMoneda),
     descuento_valor: item.descuentoValor ?? null,
     descuento_monto: item.descuentoMonto ?? null,
     recargo_tipo: item.recargoTipo ?? null,
-    recargo_moneda: item.recargoMoneda ?? "B",
+    recargo_moneda: toLegacyAdjustmentCurrency(item.recargoMoneda),
     recargo_valor: item.recargoValor ?? null,
     recargo_monto: item.recargoMonto ?? null,
     base_iva: item.baseIVA ?? null,
@@ -201,16 +214,20 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             // Load all line items in one request. Calling load() once per
             // invoice created an N+1 pattern that became very slow for
             // companies with many purchase invoices.
-            const { data: itemData, error: itemError } = await this.source.instance
-                .from('shared_inventory_purchase_invoice_items')
-                .select('*')
-                .eq('tenant_id', this.tenantId)
-                .in('invoice_id', rows.map((row) => row.id))
-                .order('created_at', { ascending: true });
-            if (itemError) return Result.fail(itemError.message);
+            const itemRows: RawSharedItem[] = [];
+            for (const invoiceIds of batches(rows.map((row) => row.id))) {
+                const { data: itemData, error: itemError } = await this.source.instance
+                    .from('shared_inventory_purchase_invoice_items')
+                    .select('*')
+                    .eq('tenant_id', this.tenantId)
+                    .in('invoice_id', invoiceIds)
+                    .order('created_at', { ascending: true });
+                if (itemError) return Result.fail(itemError.message);
+                itemRows.push(...((itemData as RawSharedItem[]) ?? []));
+            }
 
             const itemsByInvoice = new Map<string, RawSharedItem[]>();
-            const rawItems = (itemData as RawSharedItem[] ?? []);
+            const rawItems = itemRows;
             const productNames = await this.loadProductNames(rawItems.map((item) => item.product_id));
             if (productNames.isFailure) return Result.fail(productNames.getError());
 
@@ -248,50 +265,122 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
     }
 
     async save(invoice: PurchaseInvoice, items: PurchaseInvoiceItem[]): Promise<Result<PurchaseInvoice>> {
-        const result = await this.callInvoiceFunction<RawSharedInvoice>('shared_inventory_purchase_invoice_save', [invoicePayload(invoice), items.map(itemPayload)]);
-        if (result.isFailure) return Result.fail(result.getError());
-        const metadata = await this.source.instance
-            .from('shared_inventory_purchase_invoices')
-            .update({
-                document_type: invoice.documentType ?? 'factura',
-                affected_invoice_id: invoice.affectedInvoiceId ?? null,
-                affected_invoice_number: invoice.affectedInvoiceNumber ?? null,
-                affected_control_number: invoice.affectedControlNumber ?? null,
-                note_reason: invoice.noteReason ?? null,
-                inventory_effect: invoice.inventoryEffect ?? (invoice.documentType === 'factura' ? 'additional_purchase' : 'none'),
-                discount_currency: invoice.descuentoMoneda ?? 'B',
-                surcharge_currency: invoice.recargoMoneda ?? 'B',
-                currency_code: normalizeCurrencyCode(invoice.currency),
-                exchange_rates: invoice.exchangeRates ?? [],
-                source_subtotal: invoice.sourceSubtotal ?? null,
-                source_vat_amount: invoice.sourceVatAmount ?? null,
-                source_total: invoice.sourceTotal ?? null,
-                financial_tax_currency_code: invoice.igtfCurrencyCode ?? null,
-                financial_tax_exchange_rate: invoice.igtfExchangeRate ?? null,
-            })
-            .eq('tenant_id', this.tenantId)
-            .eq('id', result.getValue().id)
-            .select('*')
-            .single();
-        if (metadata.error) return Result.fail(metadata.error.message);
+        try {
+            const invoiceId = invoice.id ?? crypto.randomUUID();
+            if (invoice.id) {
+                const { data: current, error: currentError } = await this.source.instance
+                    .from('shared_inventory_purchase_invoices')
+                    .select('status')
+                    .eq('tenant_id', this.tenantId)
+                    .eq('id', invoiceId)
+                    .maybeSingle();
+                if (currentError) return Result.fail(currentError.message);
+                if (current?.status === 'confirmada') return Result.fail('No se puede editar una factura confirmada');
+            }
 
-        const { data: savedItems, error: savedItemsError } = await this.source.instance
-            .from('shared_inventory_purchase_invoice_items')
-            .select('id')
-            .eq('tenant_id', this.tenantId)
-            .eq('invoice_id', result.getValue().id)
-            .order('created_at', { ascending: true });
-        if (savedItemsError) return Result.fail(savedItemsError.message);
-        for (let index = 0; index < items.length; index += 1) {
-            const itemId = (savedItems as Array<{ id: string }> | null)?.[index]?.id;
-            if (!itemId) continue;
-            const { error } = await this.source.instance
+            const now = new Date().toISOString();
+            const { data: savedInvoice, error: invoiceError } = await this.source.instance
+                .from('shared_inventory_purchase_invoices')
+                .upsert({
+                    tenant_id: this.tenantId,
+                    id: invoiceId,
+                    company_id: invoice.companyId,
+                    supplier_id: invoice.supplierId,
+                    invoice_number: invoice.invoiceNumber,
+                    control_number: invoice.controlNumber ?? '',
+                    invoice_date: invoice.date,
+                    period: invoice.period,
+                    manual_period: invoice.periodoManual ?? false,
+                    status: 'borrador',
+                    subtotal: invoice.subtotal,
+                    vat_percentage: invoice.vatPercentage,
+                    vat_amount: invoice.vatAmount,
+                    total: invoice.total,
+                    notes: invoice.notes,
+                    dollar_rate: invoice.dollarRate ?? null,
+                    rate_decimals: invoice.rateDecimals ?? null,
+                    discount_type: invoice.descuentoTipo ?? null,
+                    discount_currency: toLegacyAdjustmentCurrency(invoice.descuentoMoneda),
+                    discount_value: invoice.descuentoValor ?? null,
+                    discount_amount: invoice.descuentoMonto ?? null,
+                    surcharge_type: invoice.recargoTipo ?? null,
+                    surcharge_currency: toLegacyAdjustmentCurrency(invoice.recargoMoneda),
+                    surcharge_value: invoice.recargoValor ?? null,
+                    surcharge_amount: invoice.recargoMonto ?? null,
+                    vat_retention_percentage: invoice.retencionIvaPct ?? 0,
+                    vat_retention_amount: invoice.retencionIvaMonto ?? 0,
+                    income_tax_concept: invoice.islrConcepto ?? null,
+                    income_tax_percentage: invoice.islrPorcentaje ?? 0,
+                    income_tax_base: invoice.islrBaseRetencion ?? 0,
+                    income_tax_subtrahend: invoice.islrSustraendo ?? 0,
+                    income_tax_amount: invoice.islrMonto ?? 0,
+                    tax_unit_value: invoice.islrUnidadTributaria ?? null,
+                    financial_tax_applies: invoice.igtfAplica ?? false,
+                    financial_tax_percentage: invoice.igtfPorcentaje ?? 0,
+                    financial_tax_currency_base: invoice.igtfBaseDivisa ?? 0,
+                    financial_tax_bs_base: invoice.igtfBaseBs ?? 0,
+                    financial_tax_amount: invoice.igtfMonto ?? 0,
+                    taxes: invoice.impuestos ?? [],
+                    document_type: invoice.documentType ?? 'factura',
+                    affected_invoice_id: invoice.affectedInvoiceId ?? null,
+                    affected_invoice_number: invoice.affectedInvoiceNumber ?? null,
+                    affected_control_number: invoice.affectedControlNumber ?? null,
+                    note_reason: invoice.noteReason ?? null,
+                    inventory_effect: invoice.inventoryEffect ?? (invoice.documentType === 'factura' ? 'additional_purchase' : 'none'),
+                    currency_code: normalizeCurrencyCode(invoice.currency),
+                    exchange_rates: invoice.exchangeRates ?? [],
+                    source_subtotal: invoice.sourceSubtotal ?? null,
+                    source_vat_amount: invoice.sourceVatAmount ?? null,
+                    source_total: invoice.sourceTotal ?? null,
+                    financial_tax_currency_code: invoice.igtfCurrencyCode == null ? null : normalizeCurrencyCode(invoice.igtfCurrencyCode),
+                    financial_tax_exchange_rate: invoice.igtfExchangeRate ?? null,
+                    updated_at: now,
+                }, { onConflict: 'tenant_id,id' })
+                .select('*')
+                .single();
+            if (invoiceError) return Result.fail(invoiceError.message);
+
+            const { error: deleteItemsError } = await this.source.instance
                 .from('shared_inventory_purchase_invoice_items')
-                .update({ discount_currency: items[index].descuentoMoneda ?? 'B', surcharge_currency: items[index].recargoMoneda ?? 'B' })
-                .eq('tenant_id', this.tenantId).eq('id', itemId).eq('invoice_id', result.getValue().id);
-            if (error) return Result.fail(error.message);
+                .delete()
+                .eq('tenant_id', this.tenantId)
+                .eq('invoice_id', invoiceId);
+            if (deleteItemsError) return Result.fail(deleteItemsError.message);
+
+            if (items.length > 0) {
+                const rows = items.map((item) => ({
+                    tenant_id: this.tenantId,
+                    id: item.id ?? crypto.randomUUID(),
+                    invoice_id: invoiceId,
+                    product_id: item.productId,
+                    quantity: item.quantity,
+                    unit_cost: item.unitCost,
+                    total_cost: item.totalCost,
+                    vat_rate: item.vatRate,
+                    currency: normalizeCurrencyCode(item.currency),
+                    currency_cost: item.currencyCost ?? null,
+                    dollar_rate: item.exchangeRate ?? item.dollarRate ?? null,
+                    discount_type: item.descuentoTipo ?? null,
+                    discount_currency: toLegacyAdjustmentCurrency(item.descuentoMoneda),
+                    discount_value: item.descuentoValor ?? null,
+                    discount_amount: item.descuentoMonto ?? null,
+                    surcharge_type: item.recargoTipo ?? null,
+                    surcharge_currency: toLegacyAdjustmentCurrency(item.recargoMoneda),
+                    surcharge_value: item.recargoValor ?? null,
+                    surcharge_amount: item.recargoMonto ?? null,
+                    vat_base: item.baseIVA ?? item.totalCost,
+                    vat_included: item.ivaIncluido ?? false,
+                }));
+                const { error: itemsError } = await this.source.instance
+                    .from('shared_inventory_purchase_invoice_items')
+                    .insert(rows);
+                if (itemsError) return Result.fail(itemsError.message);
+            }
+
+            return this.load(savedInvoice as RawSharedInvoice);
+        } catch (error) {
+            return Result.fail(error instanceof Error ? error.message : 'Failed to save shared purchase invoice');
         }
-        return this.load(metadata.data as RawSharedInvoice);
     }
 
     async confirm(invoiceId: string): Promise<Result<PurchaseInvoice>> {
@@ -391,13 +480,17 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         const uniqueIds = [...new Set(supplierIds.filter(Boolean))];
         if (uniqueIds.length === 0) return Result.success(new Map());
         try {
-            const { data, error } = await this.source.instance
-                .from('shared_inventory_suppliers')
-                .select('id,name')
-                .eq('tenant_id', this.tenantId)
-                .in('id', uniqueIds);
-            if (error) return Result.fail(error.message);
-            return Result.success(new Map(((data as RawSharedSupplier[]) ?? []).map((supplier) => [supplier.id, supplier.name])));
+            const names = new Map<string, string>();
+            for (const ids of batches(uniqueIds)) {
+                const { data, error } = await this.source.instance
+                    .from('shared_inventory_suppliers')
+                    .select('id,name')
+                    .eq('tenant_id', this.tenantId)
+                    .in('id', ids);
+                if (error) return Result.fail(error.message);
+                for (const supplier of (data as RawSharedSupplier[]) ?? []) names.set(supplier.id, supplier.name);
+            }
+            return Result.success(names);
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared suppliers');
         }
@@ -407,13 +500,17 @@ export class SharedPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         const uniqueIds = [...new Set(productIds.filter(Boolean))];
         if (uniqueIds.length === 0) return Result.success(new Map());
         try {
-            const { data, error } = await this.source.instance
-                .from('shared_inventory_products')
-                .select('id,name')
-                .eq('tenant_id', this.tenantId)
-                .in('id', uniqueIds);
-            if (error) return Result.fail(error.message);
-            return Result.success(new Map(((data as RawSharedProduct[]) ?? []).map((product) => [product.id, product.name])));
+            const names = new Map<string, string>();
+            for (const ids of batches(uniqueIds)) {
+                const { data, error } = await this.source.instance
+                    .from('shared_inventory_products')
+                    .select('id,name')
+                    .eq('tenant_id', this.tenantId)
+                    .in('id', ids);
+                if (error) return Result.fail(error.message);
+                for (const product of (data as RawSharedProduct[]) ?? []) names.set(product.id, product.name);
+            }
+            return Result.success(names);
         } catch (error) {
             return Result.fail(error instanceof Error ? error.message : 'Failed to fetch shared products');
         }

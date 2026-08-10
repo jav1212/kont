@@ -101,7 +101,10 @@ export function usePurchases() {
         try {
             const res = await apiFetch(`/api/purchases?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar facturas'); return; }
+            if (!res.ok) {
+                notify.error(json.error ?? 'Error al cargar facturas', { errorCode: json.errorCode });
+                return;
+            }
             setPurchaseInvoices(json.data ?? []);
         } catch (e) {
             reportError('Error de red', e);
@@ -136,7 +139,10 @@ export function usePurchases() {
                 body: JSON.stringify({ invoice, items }),
             });
             const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al guardar factura'); return null; }
+            if (!res.ok) {
+                notify.error(json.error ?? 'Error al guardar factura', { errorCode: json.errorCode });
+                return null;
+            }
             const saved: PurchaseInvoice = json.data;
             setPurchaseInvoices((prev) => {
                 const idx = prev.findIndex((f) => f.id === saved.id);
