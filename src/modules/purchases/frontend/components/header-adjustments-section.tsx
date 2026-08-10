@@ -6,6 +6,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdjustmentCurrency, AdjustmentKind, HeaderAdjustments } from "@/src/modules/inventory/shared/totals";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 interface Props {
     value: HeaderAdjustments;
@@ -18,10 +20,10 @@ const labelCls =
     "min-w-[100px] font-mono text-[10px] uppercase tracking-[0.14em]";
 
 const selCls =
-    "h-8 px-1.5 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground hover:border-border-medium focus:border-primary-500 transition-colors";
+    "h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground hover:border-border-medium focus:border-primary-500 transition-colors";
 
 const inputCls =
-    "w-28 h-8 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
+    "w-28 h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
 
 interface RowProps {
     label:    string;
@@ -33,10 +35,11 @@ interface RowProps {
     onTipoChange:  (tipo: AdjustmentKind | null) => void;
     onAdjustmentChange?: (tipo: AdjustmentKind | null, moneda: AdjustmentCurrency) => void;
     onValorChange: (valor: number) => void;
+    currencyOptions: Array<{ code: CurrencyCode; label: string }>;
     readOnly?: boolean;
 }
 
-function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, readOnly }: RowProps) {
+function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, readOnly, currencyOptions }: RowProps) {
     const accentCls =
         accent === "negative" ? "text-error/80" : "text-amber-600";
 
@@ -66,7 +69,7 @@ function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange,
                     {hasValue
                         ? tipo === "porcentaje"
                             ? `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} %`
-                            : `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${moneda === "D" ? "divisa" : "Bs"}`
+                            : `${valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${isLocalCurrency(moneda) ? "Bs" : normalizeCurrencyCode(moneda)}`
                         : "—"}
                 </span>
             </div>
@@ -77,21 +80,21 @@ function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange,
         <div className="flex items-center gap-2">
             <span className={`${labelCls} ${accentCls}`}>{label}</span>
             <select
-                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : moneda === "D" ? "divisa" : "monto"}
+                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : "monto"}
                 onChange={(e) => {
                     const v = e.target.value;
                     if (!v) onTipoChange(null);
                     else if (v === "porcentaje") onTipoChange("porcentaje");
-                    else if (onAdjustmentChange) onAdjustmentChange("monto", v === "divisa" ? "D" : "B");
-                    else { onTipoChange("monto"); onMonedaChange(v === "divisa" ? "D" : "B"); }
+                    else if (onAdjustmentChange) onAdjustmentChange("monto", moneda);
+                    else onTipoChange("monto");
                 }}
                 className={selCls}
             >
                 <option value="">—</option>
                 <option value="porcentaje">%</option>
-                <option value="monto">Bs</option>
-                <option value="divisa">USD</option>
+                <option value="monto">Monto</option>
             </select>
+            {tipo === "monto" && <CurrencyCombobox label="" value={normalizeCurrencyCode(moneda)} options={currencyOptions} onChange={onMonedaChange} triggerClassName="!h-10 !w-32 !px-2 !text-[11px]" />}
             <input
                 type="text"
                 inputMode="decimal"
@@ -104,14 +107,14 @@ function Row({ label, accent, tipo, valor, moneda, onMonedaChange, onTipoChange,
                     const parsed = parseFloat(raw.replace(",", "."));
                     onValorChange(Number.isFinite(parsed) ? parsed : 0);
                 }}
-                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? (moneda === "D" ? "0,00 USD" : "0,00 Bs") : ""}
+                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? `0,00 ${isLocalCurrency(moneda) ? "Bs" : normalizeCurrencyCode(moneda)}` : ""}
                 className={inputCls}
             />
         </div>
     );
 }
 
-export function HeaderAdjustmentsSection({ value, onChange, readOnly }: Props) {
+export function HeaderAdjustmentsSection({ value, onChange, readOnly, currencyOptions = [{ code: "VES", label: "Bolívares · VES" }] }: Props & { currencyOptions?: Array<{ code: CurrencyCode; label: string }> }) {
     function update<K extends keyof HeaderAdjustments>(key: K, val: HeaderAdjustments[K]) {
         onChange({ ...value, [key]: val });
     }
@@ -129,6 +132,7 @@ export function HeaderAdjustmentsSection({ value, onChange, readOnly }: Props) {
                 onTipoChange={(v) => update("descuentoTipo", v)}
                 onValorChange={(v) => update("descuentoValor", v)}
                 readOnly={readOnly}
+                currencyOptions={currencyOptions}
             />
             <Row
                 label="Recargo"
@@ -141,6 +145,7 @@ export function HeaderAdjustmentsSection({ value, onChange, readOnly }: Props) {
                 onTipoChange={(v) => update("recargoTipo", v)}
                 onValorChange={(v) => update("recargoValor", v)}
                 readOnly={readOnly}
+                currencyOptions={currencyOptions}
             />
         </div>
     );

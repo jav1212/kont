@@ -21,7 +21,7 @@ import {
     type IgtfPerceptionFormValue,
 } from "./igtf-perception-section";
 import type { VatRate, PaymentTerms, IgtfConcept, SalesDocumentType } from "../../backend/domain/sales-invoice";
-import { computeInvoiceTotals, emptyHeaderAdjustments, type LineInput } from "@/src/modules/inventory/shared/totals";
+import { computeInvoiceTotals, emptyHeaderAdjustments, type HeaderAdjustments, type InvoiceTax, type LineInput } from "@/src/modules/inventory/shared/totals";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { SalesLineCombobox } from "./sales-line-combobox";
@@ -31,6 +31,8 @@ import { resolveProductSalePrice } from "@/src/modules/inventory/frontend/utils/
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
+import { CurrencyAdjustmentRow } from "@/src/modules/inventory/frontend/components/currency-adjustment-row";
+import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components/invoice-taxes-section";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -102,6 +104,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const [notes, setNotes]                 = useState("");
     const [items, setItems]                 = useState<SalesInvoiceItem[]>(() => [emptyItem()]);
     const [igtf, setIgtf]                   = useState<IgtfPerceptionFormValue>(() => emptyIgtfPerceptionValue());
+    const [headerAdj, setHeaderAdj]         = useState<HeaderAdjustments>(() => emptyHeaderAdjustments());
+    const [impuestos, setImpuestos]         = useState<InvoiceTax[]>([]);
     const [showIgtf, setShowIgtf]           = useState(false);
     const [newCustomer, setNewCustomer]     = useState<Customer | null>(null);
     const [savingCustomer, setSavingCustomer] = useState(false);
@@ -140,6 +144,8 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         setDueDate(currentSalesInvoice.dueDate ?? "");
         setPaymentTerms((currentSalesInvoice.paymentTerms as PaymentTerms) ?? "contado");
         setNotes(currentSalesInvoice.notes ?? "");
+        setHeaderAdj({ descuentoTipo: currentSalesInvoice.descuentoTipo ?? null, descuentoValor: currentSalesInvoice.descuentoValor ?? 0, descuentoMoneda: currentSalesInvoice.descuentoMoneda ?? "VES", recargoTipo: currentSalesInvoice.recargoTipo ?? null, recargoValor: currentSalesInvoice.recargoValor ?? 0, recargoMoneda: currentSalesInvoice.recargoMoneda ?? "VES" });
+        setImpuestos(currentSalesInvoice.impuestos ?? []);
         setItems(
             currentSalesInvoice.items && currentSalesInvoice.items.length > 0
                 ? currentSalesInvoice.items.map((i) => ({ ...i }))
@@ -186,7 +192,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             const qty   = next.quantity ?? 0;
             const price = next.unitPrice ?? 0;
             next.totalLine = round2(qty * price);
-            next.baseIVA   = next.totalLine;
+            next.baseIVA = next.totalLine;
             return next;
         }));
     }
@@ -290,12 +296,13 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
     const totals = useMemo(() => {
         const calculated = computeInvoiceTotals(
             salesLineInputs,
-            emptyHeaderAdjustments(),
+            headerAdj,
             2,
             0,
-            [],
+            impuestos,
             1,
             salesCurrency,
+            getRate,
         );
         const baseByRate = { exenta: 0, reducida_8: 0, general_16: 0 };
         calculated.items.forEach((line, index) => {
@@ -310,10 +317,12 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             iva16: calculated.ivaPorAlicuota.general_16,
             ivaTotal: calculated.ivaMonto,
             subtotal: calculated.baseIVA,
+            descuentoMonto: calculated.descuentoHeader,
+            recargoMonto: calculated.recargoHeader,
             igtfMonto,
-            total: round2(calculated.total + igtfMonto),
+            total: round2(calculated.total + calculated.totalImpuestos + igtfMonto),
         };
-    }, [salesLineInputs, salesCurrency, igtf]);
+    }, [salesLineInputs, salesCurrency, igtf, headerAdj, impuestos, getRate]);
 
     const customerObj = customers.find((c) => c.id === customerId);
     const usedCurrencies = [...new Set([invoiceCurrency, ...items.map((item) => normalizeCurrencyCode(item.currency))])];
@@ -355,8 +364,9 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             exchangeRates: appliedRates,
             dollarRate: invoiceRate,
             rateDecimals: appliedRates.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoiceCurrency))?.decimals ?? 4,
-            descuentoTipo:   null, descuentoValor: 0,
-            recargoTipo:     null, recargoValor: 0,
+            descuentoTipo:   headerAdj.descuentoTipo, descuentoValor: headerAdj.descuentoValor, descuentoMonto: totals.descuentoMonto, descuentoMoneda: headerAdj.descuentoMoneda,
+            recargoTipo:     headerAdj.recargoTipo, recargoValor: headerAdj.recargoValor, recargoMonto: totals.recargoMonto, recargoMoneda: headerAdj.recargoMoneda,
+            impuestos,
             igtfPerceptionApplies:     igtf.applies,
             igtfPerceptionConcept:   (igtf.concept ?? null) as IgtfConcept | null,
             igtfPerceptionPercentage: igtf.percentage,
@@ -666,10 +676,10 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                                     onProductSelect={(product) => selectProduct(idx, product.id!)}
                                     onClear={() => updateItem(idx, { productId: null, description: "" })}
                                 />
-                                <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
+                                <BaseInput.Field aria-label="Cantidad" type="number" min="0" step="0.01" inputClassName="text-right tabular-nums" value={it.quantity ? String(it.quantity) : ""} onValueChange={(value) => updateItem(idx, { quantity: parseFloat(value) || 0 })} isReadOnly={isReadOnly} />
                                 <CurrencyCombobox label="" options={currencyOptions} value={normalizeCurrencyCode(it.currency)} onChange={(value) => changeItemCurrency(idx, value)} disabled={isReadOnly} />
-                                <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" size="sm" inputClassName="text-right tabular-nums" value={(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) ? String(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) : ""} onValueChange={(value) => updatePriceManually(idx, parseFloat(value) || 0)} isReadOnly={isReadOnly} />
-                                <BaseSelect aria-label="Alícuota IVA" size="sm" items={VAT_OPTIONS.map((option) => ({ id: option.value, name: option.label }))} value={it.vatRate} onValueChange={(value) => updateItem(idx, { vatRate: value as VatRate })} selectionMode="single" isDisabled={isReadOnly} />
+                                <BaseInput.Field aria-label="Precio unitario" type="number" min="0" step="0.01" inputClassName="text-right tabular-nums" value={(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) ? String(!isLocalCurrency(it.currency) ? it.currencyPrice : it.unitPrice) : ""} onValueChange={(value) => updatePriceManually(idx, parseFloat(value) || 0)} isReadOnly={isReadOnly} />
+                                <BaseSelect aria-label="Alícuota IVA" items={VAT_OPTIONS.map((option) => ({ id: option.value, name: option.label }))} value={it.vatRate} onValueChange={(value) => updateItem(idx, { vatRate: value as VatRate })} selectionMode="single" isDisabled={isReadOnly} />
                                 <div className="pt-2 text-right text-[13px] font-semibold tabular-nums text-foreground">Bs. {fmtN(it.totalLine)}</div>
                                 {!isReadOnly && items.length > 1 ? (
                                     <button type="button" aria-label="Eliminar línea" onClick={() => removeItem(idx)} className="mt-1 flex size-8 items-center justify-center rounded-lg text-[var(--text-tertiary)] opacity-0 transition hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus:opacity-100">
@@ -690,6 +700,16 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
                     <span className="shrink-0">El inventario se descuenta al confirmar.</span>
                 </div>
             </InvoiceDetailCard>
+
+            <InvoiceSectionCard title="Ajustes e impuestos" subtitle="Descuentos, recargos e impuestos adicionales con monedas BCV.">
+                <div className="space-y-4">
+                    <div>
+                        <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Ajustes de factura</p>
+                        <div className="space-y-2"><CurrencyAdjustmentRow label="Descuento" tipo={headerAdj.descuentoTipo} valor={headerAdj.descuentoValor} moneda={headerAdj.descuentoMoneda} options={currencyOptions} onChange={(patch) => setHeaderAdj((current) => ({ ...current, descuentoTipo: patch.tipo === undefined ? current.descuentoTipo : patch.tipo, descuentoValor: patch.valor === undefined ? current.descuentoValor : patch.valor, descuentoMoneda: patch.moneda ?? current.descuentoMoneda }))} /><CurrencyAdjustmentRow label="Recargo" tipo={headerAdj.recargoTipo} valor={headerAdj.recargoValor} moneda={headerAdj.recargoMoneda} options={currencyOptions} onChange={(patch) => setHeaderAdj((current) => ({ ...current, recargoTipo: patch.tipo === undefined ? current.recargoTipo : patch.tipo, recargoValor: patch.valor === undefined ? current.recargoValor : patch.valor, recargoMoneda: patch.moneda ?? current.recargoMoneda }))} /></div>
+                    </div>
+                    <InvoiceTaxesSection value={impuestos} onChange={setImpuestos} baseIVA={totals.subtotal} total={totals.subtotal + totals.ivaTotal} dollarRate={invoiceRate} currencyOptions={currencyOptions} getExchangeRate={getRate} readOnly={isReadOnly} />
+                </div>
+            </InvoiceSectionCard>
 
             {/* IGTF percepción */}
             <div className="overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-sm">

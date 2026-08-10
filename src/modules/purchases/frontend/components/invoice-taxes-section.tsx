@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import type { InvoiceTax, TaxBase } from "@/src/modules/inventory/shared/totals";
 import { emptyInvoiceTax, roundN } from "@/src/modules/inventory/shared/totals";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 interface Props {
     value:    InvoiceTax[];
@@ -13,16 +15,18 @@ interface Props {
     decimals?: number;
     dollarRate?: number | null;
     readOnly?: boolean;
+    currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
+    getExchangeRate?: (currencyCode: CurrencyCode) => number | null;
 }
 
 const labelCls =
     "font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]";
 
 const selCls =
-    "h-8 px-1.5 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground hover:border-border-medium focus:border-primary-500 transition-colors";
+    "h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground hover:border-border-medium focus:border-primary-500 transition-colors";
 
 const inputCls =
-    "h-8 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
+    "h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
 
 const nameInputCls =
     "h-8 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
@@ -37,9 +41,11 @@ interface TaxRowProps {
     onChange: (index: number, tax: InvoiceTax) => void;
     onRemove: (index: number) => void;
     readOnly?: boolean;
+    currencyOptions: Array<{ code: CurrencyCode; label: string }>;
+    getExchangeRate?: (currencyCode: CurrencyCode) => number | null;
 }
 
-function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, onRemove, readOnly }: TaxRowProps) {
+function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, getExchangeRate, currencyOptions, onChange, onRemove, readOnly }: TaxRowProps) {
     const [text, setText] = useState<string>(() =>
         tax.valor === 0 ? "" : String(tax.valor).replace(".", ","),
     );
@@ -54,7 +60,10 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, on
     }, [tax.valor]);
 
     const computedMonto = (() => {
-        if (tax.tipo === "monto") return roundN(Math.max(0, tax.valor) * (tax.moneda === "D" ? (dollarRate && dollarRate > 0 ? dollarRate : 0) : 1), decimals);
+        if (tax.tipo === "monto") {
+            const rate = isLocalCurrency(tax.moneda) ? 1 : (getExchangeRate?.(tax.moneda) ?? dollarRate ?? 0);
+            return roundN(Math.max(0, tax.valor) * rate, decimals);
+        }
         if (tax.tipo === "porcentaje" && tax.valor > 0) {
             const base = tax.base === "post_iva" ? total : baseIVA;
             return roundN(base * tax.valor / 100, decimals);
@@ -76,7 +85,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, on
                 <span className="font-mono text-[12px] text-[var(--text-secondary)] tabular-nums">
                     {tax.tipo === "porcentaje"
                         ? `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} % ${tax.base === "post_iva" ? "post-IVA" : "pre-IVA"}`
-                        : `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${tax.moneda === "D" ? "divisa" : "Bs"}`}
+                        : `${tax.valor.toLocaleString("es-VE", { minimumFractionDigits: 2 })} ${isLocalCurrency(tax.moneda) ? "Bs" : normalizeCurrencyCode(tax.moneda)}`}
                 </span>
                 <span className="font-mono text-[11px] text-amber-600 tabular-nums ml-auto">
                     = Bs. {computedMonto.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
@@ -95,14 +104,14 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, on
                 className={`${nameInputCls} w-32 flex-shrink-0`}
             />
             <select
-                value={tax.tipo === "porcentaje" ? "porcentaje" : tax.moneda === "D" ? "divisa" : "monto"}
-                onChange={(e) => { const v = e.target.value; update(v === "porcentaje" ? { tipo: "porcentaje" } : { tipo: "monto", moneda: v === "divisa" ? "D" : "B" }); }}
+                value={tax.tipo === "porcentaje" ? "porcentaje" : "monto"}
+                onChange={(e) => { const v = e.target.value; update(v === "porcentaje" ? { tipo: "porcentaje" } : { tipo: "monto" }); }}
                 className={`${selCls} flex-shrink-0`}
             >
                 <option value="porcentaje">%</option>
-                <option value="monto">Bs</option>
-                <option value="divisa">USD</option>
+                <option value="monto">Monto</option>
             </select>
+            {tax.tipo === "monto" && <CurrencyCombobox label="" value={normalizeCurrencyCode(tax.moneda)} options={currencyOptions} onChange={(currency) => update({ moneda: currency })} triggerClassName="!h-10 !w-32 !px-2 !text-[11px]" />}
             <input
                 type="text"
                 inputMode="decimal"
@@ -114,7 +123,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, on
                     const parsed = parseFloat(raw.replace(",", "."));
                     update({ valor: Number.isFinite(parsed) ? parsed : 0 });
                 }}
-                placeholder={tax.tipo === "monto" ? (tax.moneda === "D" ? "0,00 USD" : "0,00 Bs") : "0,00"}
+                placeholder={tax.tipo === "monto" ? `0,00 ${isLocalCurrency(tax.moneda) ? "Bs" : normalizeCurrencyCode(tax.moneda)}` : "0,00"}
                 className={`${inputCls} w-24 flex-shrink-0`}
             />
             <select
@@ -143,7 +152,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, onChange, on
     );
 }
 
-export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals = 2, dollarRate = null, readOnly }: Props) {
+export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals = 2, dollarRate = null, getExchangeRate, currencyOptions = [{ code: "VES", label: "Bolívares · VES" }], readOnly }: Props) {
     const handleChange = (index: number, tax: InvoiceTax) => {
         const next = [...value];
         next[index] = tax;
@@ -189,6 +198,8 @@ export function InvoiceTaxesSection({ value, onChange, baseIVA, total, decimals 
                     onChange={handleChange}
                     onRemove={handleRemove}
                     dollarRate={dollarRate ?? null}
+                    getExchangeRate={getExchangeRate}
+                    currencyOptions={currencyOptions}
                     readOnly={readOnly}
                 />
             ))}

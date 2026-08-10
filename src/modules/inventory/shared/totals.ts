@@ -17,7 +17,7 @@
 // abajo trabaja siempre con `unitCost` neto.
 
 export type AdjustmentKind = 'monto' | 'porcentaje';
-import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from './currency';
+import { isLocalCurrency, normalizeCurrencyCode, rateForCurrency, type AppliedExchangeRate, type CurrencyCode } from './currency';
 
 export type AdjustmentCurrency = CurrencyCode;
 export type InvoiceCurrency = CurrencyCode;
@@ -104,10 +104,12 @@ function resolveAmount(
     decimals = 2,
     moneda: AdjustmentCurrency = 'B',
     dollarRate = 0,
+    exchangeRates: ExchangeRateLookup = [],
 ): number {
     if (!tipo || !Number.isFinite(valor) || valor <= 0) return 0;
     if (tipo === 'porcentaje') return roundN((baseFor * valor) / 100, decimals);
-    const amount = !isLocalCurrency(moneda) ? valor * (dollarRate > 0 ? dollarRate : 0) : valor;
+    const selectedRate = isLocalCurrency(moneda) ? 1 : (lookupRate(moneda, exchangeRates) ?? dollarRate);
+    const amount = !isLocalCurrency(moneda) ? valor * (selectedRate > 0 ? selectedRate : 0) : valor;
     return roundN(amount, decimals);
 }
 
@@ -148,7 +150,7 @@ export interface LineTotals {
     total:          number;  // baseIVA + ivaMonto (sin header spread)
 }
 
-export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0): LineTotals {
+export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0, exchangeRates: ExchangeRateLookup = []): LineTotals {
     const calculationDecimals = Math.max(4, decimals);
     const r = (n: number) => roundN(n, calculationDecimals);
 
@@ -161,6 +163,7 @@ export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0
         decimals,
         input.adjustments.descuentoMoneda,
         dollarRate,
+        exchangeRates,
     );
     const recargoMonto = resolveAmount(
         input.adjustments.recargoTipo,
@@ -169,6 +172,7 @@ export function computeLineTotals(input: LineInput, decimals = 2, dollarRate = 0
         decimals,
         input.adjustments.recargoMoneda,
         dollarRate,
+        exchangeRates,
     );
 
     const baseIVA  = r(base - descuentoMonto + recargoMonto);
@@ -226,6 +230,11 @@ export interface InvoiceTotals {
 }
 
 const scaleCurrency = (value: number, rate: number) => roundN(value * rate, 4);
+type ExchangeRateLookup = readonly AppliedExchangeRate[] | ((currencyCode: CurrencyCode) => number | null);
+
+function lookupRate(currencyCode: CurrencyCode, rates: ExchangeRateLookup): number | null {
+    return typeof rates === "function" ? rates(currencyCode) : rateForCurrency(currencyCode, rates);
+}
 
 export function computeInvoiceTotals(
     lines: Array<LineInput>,
@@ -235,6 +244,7 @@ export function computeInvoiceTotals(
     impuestos: InvoiceTax[] = [],
     dollarRate = 0,
     invoiceCurrency: InvoiceCurrency = 'B',
+    exchangeRates: ExchangeRateLookup = [],
 ): InvoiceTotals {
     // For USD invoices, calculate every component in USD first. The complete
     // result is converted once at the end, using the BCV rate with 4 decimals.
@@ -262,7 +272,7 @@ export function computeInvoiceTotals(
         };
         const sourceTaxes = impuestos.map((tax) => ({ ...tax, moneda: normalizeCurrencyCode(invoiceCurrency) }));
         const sourceDecimals = Math.max(decimals, 8);
-        const source = computeInvoiceTotals(sourceLines, sourceHeader, sourceDecimals, retencionIvaPct, sourceTaxes, 1, 'B');
+        const source = computeInvoiceTotals(sourceLines, sourceHeader, sourceDecimals, retencionIvaPct, sourceTaxes, 1, 'B', []);
         const bs = (value: number) => scaleCurrency(value, rate);
         const bsFiscal = (value: number) => roundN(value * rate, 2);
         const items = source.items.map((item) => ({
@@ -344,13 +354,13 @@ export function computeInvoiceTotals(
     });
 
     // Step 1: per-line totals sin header
-    const computed: LineTotals[] = normalizedLines.map((l) => computeLineTotals(l, calculationDecimals, dollarRate));
+    const computed: LineTotals[] = normalizedLines.map((l) => computeLineTotals(l, calculationDecimals, dollarRate, exchangeRates));
 
     const sumBaseIVA = computed.reduce((acc, c) => acc + c.baseIVA, 0);
 
     // Step 2: header adjustments resueltos sobre la sumBaseIVA
-    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA, calculationDecimals, header.descuentoMoneda, dollarRate);
-    const recargoHeader   = resolveAmount(header.recargoTipo, header.recargoValor, sumBaseIVA, calculationDecimals, header.recargoMoneda, dollarRate);
+    const descuentoHeader = resolveAmount(header.descuentoTipo, header.descuentoValor, sumBaseIVA, calculationDecimals, header.descuentoMoneda, dollarRate, exchangeRates);
+    const recargoHeader   = resolveAmount(header.recargoTipo, header.recargoValor, sumBaseIVA, calculationDecimals, header.recargoMoneda, dollarRate, exchangeRates);
 
     // Step 3: prorratear header sobre cada línea por peso de baseIVA
     const allUsd = normalizedLines.length > 0 && normalizedLines.every((line) => !isLocalCurrency(line.currency)) && dollarRate > 0;
@@ -431,7 +441,8 @@ export function computeInvoiceTotals(
     const resolvedImpuestos: InvoiceTax[] = impuestos.map((tax) => {
         let monto = 0;
         if (tax.tipo === 'monto') {
-            monto = r(Math.max(0, tax.valor) * (!isLocalCurrency(tax.moneda) ? (dollarRate > 0 ? dollarRate : 0) : 1));
+            const taxRate = isLocalCurrency(tax.moneda) ? 1 : (lookupRate(tax.moneda, exchangeRates) ?? dollarRate);
+            monto = r(Math.max(0, tax.valor) * (taxRate > 0 ? taxRate : 0));
         } else if (tax.tipo === 'porcentaje' && tax.valor > 0) {
             const taxBase = tax.base === 'post_iva' ? (baseIVA + ivaMonto) : baseIVA;
             monto = r(taxBase * tax.valor / 100);

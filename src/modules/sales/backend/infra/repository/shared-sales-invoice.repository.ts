@@ -33,13 +33,16 @@ type RawInvoice = {
     dollar_rate: number | string | null;
     currency_code: string | null;
     exchange_rates: unknown;
+    taxes: unknown;
     rate_decimals: number | null;
     discount_type: string | null;
     discount_value: number | string | null;
     discount_amount: number | string | null;
+    discount_currency: string | null;
     surcharge_type: string | null;
     surcharge_value: number | string | null;
     surcharge_amount: number | string | null;
+    surcharge_currency: string | null;
     financial_tax_applies: boolean | null;
     financial_tax_concept: string | null;
     financial_tax_percentage: number | string | null;
@@ -68,9 +71,11 @@ type RawItem = {
     discount_type: string | null;
     discount_value: number | string | null;
     discount_amount: number | string | null;
+    discount_currency: string | null;
     surcharge_type: string | null;
     surcharge_value: number | string | null;
     surcharge_amount: number | string | null;
+    surcharge_currency: string | null;
     vat_base: number | string | null;
     vat_included: boolean | null;
 };
@@ -90,9 +95,10 @@ const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     fecha_vencimiento: invoice.dueDate ?? null, condiciones_pago: invoice.paymentTerms ?? 'contado',
     subtotal: invoice.subtotal, iva_monto: invoice.vatAmount, total: invoice.total, notas: invoice.notes,
     tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null, tasa_decimales: invoice.rateDecimals ?? null,
+    currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [], taxes: invoice.impuestos ?? [],
     descuento_tipo: invoice.descuentoTipo ?? null, descuento_valor: invoice.descuentoValor ?? null,
-    descuento_monto: invoice.descuentoMonto ?? null, recargo_tipo: invoice.recargoTipo ?? null,
-    recargo_valor: invoice.recargoValor ?? null, recargo_monto: invoice.recargoMonto ?? null,
+    descuento_monto: invoice.descuentoMonto ?? null, descuento_moneda: invoice.descuentoMoneda ?? "VES", recargo_tipo: invoice.recargoTipo ?? null,
+    recargo_valor: invoice.recargoValor ?? null, recargo_monto: invoice.recargoMonto ?? null, recargo_moneda: invoice.recargoMoneda ?? "VES",
     igtf_percepcion_aplica: invoice.igtfPerceptionApplies ?? false,
     igtf_percepcion_concepto: invoice.igtfPerceptionConcept ?? null,
     igtf_percepcion_porcentaje: invoice.igtfPerceptionPercentage ?? 0,
@@ -105,9 +111,9 @@ const itemPayload = (item: SalesInvoiceItem): Record<string, unknown> => ({
     cantidad: item.quantity, precio_unitario: item.unitPrice, total_linea: item.totalLine,
     iva_alicuota: item.vatRate, moneda: item.currency, precio_moneda: item.currencyPrice ?? null,
     tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null, descuento_tipo: item.descuentoTipo ?? null,
-    descuento_valor: item.descuentoValor ?? null, descuento_monto: item.descuentoMonto ?? null,
+    descuento_valor: item.descuentoValor ?? null, descuento_monto: item.descuentoMonto ?? null, descuento_moneda: item.descuentoMoneda ?? "VES",
     recargo_tipo: item.recargoTipo ?? null, recargo_valor: item.recargoValor ?? null,
-    recargo_monto: item.recargoMonto ?? null, base_iva: item.baseIVA ?? null,
+    recargo_monto: item.recargoMonto ?? null, recargo_moneda: item.recargoMoneda ?? "VES", base_iva: item.baseIVA ?? null,
     iva_incluido: item.ivaIncluido ?? false,
 });
 
@@ -209,9 +215,10 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             subtotal: num(row.subtotal), vatAmount: num(row.vat_amount), total: num(row.total), notes: row.notes ?? '',
             currency: normalizeCurrencyCode(row.currency_code),
             exchangeRates: Array.isArray(row.exchange_rates) ? row.exchange_rates as AppliedExchangeRate[] : [],
+            impuestos: Array.isArray(row.taxes) ? row.taxes as SalesInvoice["impuestos"] : [],
             dollarRate: row.dollar_rate == null ? null : num(row.dollar_rate), rateDecimals: row.rate_decimals,
-            descuentoTipo: adjustment(row.discount_type), descuentoValor: num(row.discount_value), descuentoMonto: num(row.discount_amount),
-            recargoTipo: adjustment(row.surcharge_type), recargoValor: num(row.surcharge_value), recargoMonto: num(row.surcharge_amount),
+            descuentoTipo: adjustment(row.discount_type), descuentoValor: num(row.discount_value), descuentoMonto: num(row.discount_amount), descuentoMoneda: normalizeCurrencyCode(row.discount_currency),
+            recargoTipo: adjustment(row.surcharge_type), recargoValor: num(row.surcharge_value), recargoMonto: num(row.surcharge_amount), recargoMoneda: normalizeCurrencyCode(row.surcharge_currency),
             igtfPerceptionApplies: row.financial_tax_applies === true,
             igtfPerceptionConcept: row.financial_tax_concept as IgtfConcept | null,
             igtfPerceptionPercentage: num(row.financial_tax_percentage),
@@ -228,8 +235,8 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
                 currencyPrice: item.currency_price == null ? null : num(item.currency_price),
                 dollarRate: item.dollar_rate == null ? null : num(item.dollar_rate),
                 exchangeRate: item.dollar_rate == null ? null : num(item.dollar_rate),
-                descuentoTipo: adjustment(item.discount_type), descuentoValor: num(item.discount_value), descuentoMonto: num(item.discount_amount),
-                recargoTipo: adjustment(item.surcharge_type), recargoValor: num(item.surcharge_value), recargoMonto: num(item.surcharge_amount),
+                descuentoTipo: adjustment(item.discount_type), descuentoValor: num(item.discount_value), descuentoMonto: num(item.discount_amount), descuentoMoneda: normalizeCurrencyCode(item.discount_currency),
+                recargoTipo: adjustment(item.surcharge_type), recargoValor: num(item.surcharge_value), recargoMonto: num(item.surcharge_amount), recargoMoneda: normalizeCurrencyCode(item.surcharge_currency),
                 baseIVA: num(item.vat_base, num(item.line_total)), ivaIncluido: item.vat_included === true,
             })),
             createdAt: row.created_at ?? undefined, updatedAt: row.updated_at ?? undefined,

@@ -5,6 +5,7 @@
 //
 // VatRate, ItemCurrency, InvoiceStatus values are DB contracts.
 import type { AppliedExchangeRate, CurrencyCode } from '@/src/modules/inventory/shared/currency';
+import type { InvoiceTax } from '@/src/modules/inventory/shared/totals';
 
 export type VatRate = 'exenta' | 'reducida_8' | 'general_16';
 export type ItemCurrency = CurrencyCode;
@@ -72,9 +73,11 @@ export interface SalesInvoiceItem {
     descuentoTipo?:  AdjustmentKind | null;
     descuentoValor?: number;
     descuentoMonto?: number;
+    descuentoMoneda?: CurrencyCode;
     recargoTipo?:    AdjustmentKind | null;
     recargoValor?:   number;
     recargoMonto?:   number;
+    recargoMoneda?:  CurrencyCode;
 
     baseIVA?:        number;
     ivaIncluido?:    boolean;
@@ -121,9 +124,12 @@ export interface SalesInvoice {
     descuentoTipo?:  AdjustmentKind | null;
     descuentoValor?: number;
     descuentoMonto?: number;
+    descuentoMoneda?: CurrencyCode;
     recargoTipo?:    AdjustmentKind | null;
     recargoValor?:   number;
     recargoMonto?:   number;
+    recargoMoneda?:  CurrencyCode;
+    impuestos?:      InvoiceTax[];
 
     // ── IGTF Percepción (PA SNAT/2022/000013) ────────────────────────────────
     /** ¿Se cobró en divisa/cripto y aplica IGTF? */

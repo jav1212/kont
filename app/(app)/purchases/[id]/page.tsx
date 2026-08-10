@@ -286,7 +286,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
         ? (currentPurchaseInvoice.rateDecimals ?? rateDecimals)
         : rateDecimals;
     const fmtN = makeFmt(effectiveDecimals);
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, 1, "VES");
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, effectiveDecimals, retencionIvaPct, impuestos, 1, "VES", getRate);
     const subtotal  = totals.baseIVA;
     const vatAmount = totals.ivaMonto;
     const total     = totals.total;
@@ -980,7 +980,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
                                                 Se prorratean por línea según base IVA
                                             </p>
-                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} dollarRate={effectiveDollarRate} />
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} readOnly={!isDraft} dollarRate={effectiveDollarRate} currencyOptions={currencyOptions} />
                                         </div>
                                         <div className="pt-3 border-t border-border-light/60">
                                             <InvoiceTaxesSection
@@ -1036,9 +1036,9 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 products={products}
                                 onChange={setItems}
                                 readOnly={!isDraft}
-                                dollarRate={effectiveDollarRate}
                                 currencyOptions={currencyOptions}
                                 getExchangeRate={getRate}
+                                dollarRate={effectiveDollarRate}
                                 decimals={effectiveDecimals}
                                 selectedCurrency={invoiceCurrencyCode}
                                 applyCurrencyToAll={applyCurrencyToAll}
@@ -1076,7 +1076,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 }));
                                 const dRetencionPct = isDraft ? retencionIvaPct : (invoice.retencionIvaPct ?? 0);
                                 const dImpuestos = isDraft ? impuestos : (invoice.impuestos ?? []);
-                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos, isDraft ? (effectiveDollarRate ?? 0) : (invoice.dollarRate ?? 0), invoiceCurrency);
+                                const t = computeInvoiceTotals(dInputs, displayHeader, effectiveDecimals, dRetencionPct, dImpuestos, isDraft ? (effectiveDollarRate ?? 0) : (invoice.dollarRate ?? 0), invoiceCurrency, getRate);
                                 const dBaseExempt   = dInputs.reduce((acc, l, idx) => l.vatRate === "exenta"     ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed8   = dInputs.reduce((acc, l, idx) => l.vatRate === "reducida_8" ? acc + t.items[idx].baseIVAFinal : acc, 0);
                                 const dBaseTaxed16  = dInputs.reduce((acc, l, idx) => l.vatRate === "general_16" ? acc + t.items[idx].baseIVAFinal : acc, 0);

@@ -338,7 +338,7 @@ export default function NuevaFacturaPage() {
             recargoMoneda: i.recargoMoneda ?? 'B',
         },
     }));
-    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, 1, "VES");
+    const totals = computeInvoiceTotals(lineInputs, headerAdj, rateDecimals, retencionIvaPct, impuestos, 1, "VES", getRate);
     const fmtN = makeFmt(rateDecimals);
     const {
         subtotalBruto, descuentoLinea, recargoLinea,
@@ -935,12 +935,14 @@ export default function NuevaFacturaPage() {
                                             <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] mb-3">
                                                 Se prorratean por línea según base IVA
                                             </p>
-                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} dollarRate={effectiveDollarRate} />
+                                            <HeaderAdjustmentsSection value={headerAdj} onChange={setHeaderAdj} dollarRate={effectiveDollarRate} currencyOptions={currencyOptions} />
                                         </div>
                                         <div className="pt-3 border-t border-border-light/60">
                                             <InvoiceTaxesSection
                                                 value={impuestos}
                                                 dollarRate={effectiveDollarRate}
+                                                currencyOptions={currencyOptions}
+                                                getExchangeRate={getRate}
                                                 onChange={setImpuestos}
                                                 baseIVA={baseIVA}
                                                 total={total}

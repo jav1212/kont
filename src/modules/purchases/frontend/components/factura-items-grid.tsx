@@ -307,11 +307,12 @@ interface AjusteRowProps {
     onTipoChange:  (tipo: AdjustmentKind | null) => void;
     onAdjustmentChange?: (tipo: AdjustmentKind | null, moneda: AdjustmentCurrency) => void;
     onValorChange: (valor: number) => void;
+    currencyOptions?: Array<{ code: CurrencyCode; label: string }>;
     extraInput?: { value: string; onChange: (v: string) => void; placeholder: string };
     accent?:  "neutral" | "negative" | "positive" | "warning";
 }
 
-function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, extraInput, accent = "neutral" }: AjusteRowProps) {
+function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, onAdjustmentChange, onValorChange, extraInput, accent = "neutral", currencyOptions = [{ code: "VES", label: "Bolívares · VES" }] }: AjusteRowProps) {
     const accentCls =
         accent === "negative" ? "text-error/80"
         : accent === "positive" ? "text-[var(--text-success)]"
@@ -324,15 +325,15 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
                 {label}
             </span>
             <select
-                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : moneda === "D" ? "divisa" : "monto"}
-                onChange={(e) => { const v = e.target.value; if (!v) onTipoChange(null); else if (v === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", v === "divisa" ? "D" : "B"); else { onTipoChange("monto"); onMonedaChange(v === "divisa" ? "D" : "B"); } }}
+                value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : "monto"}
+                onChange={(e) => { const v = e.target.value; if (!v) onTipoChange(null); else if (v === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", moneda); else onTipoChange("monto"); }}
                 className="h-7 px-1.5 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground focus:border-primary-500/60 transition-colors"
             >
                 <option value="">—</option>
                 <option value="porcentaje">%</option>
-                <option value="monto">Bs</option>
-                <option value="divisa">USD</option>
+                <option value="monto">Monto</option>
             </select>
+            {tipo === "monto" && <CurrencyCombobox label="" value={normalizeCurrencyCode(moneda)} options={currencyOptions} onChange={(code) => onMonedaChange(code)} triggerClassName="!h-7 !w-28 !px-2 !text-[11px]" />}
             <input
                 type="text"
                 inputMode="decimal"
@@ -342,7 +343,7 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
                     const parsed = parseFloat(e.target.value.replace(",", "."));
                     onValorChange(isNaN(parsed) ? 0 : parsed);
                 }}
-                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? (moneda === "D" ? "0,00 USD" : "0,00 Bs") : ""}
+                placeholder={tipo === "porcentaje" ? "0,00 %" : tipo === "monto" ? `0,00 ${isLocalCurrency(moneda) ? "Bs" : normalizeCurrencyCode(moneda)}` : ""}
                 className="w-24 h-7 px-2 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed focus:border-primary-500/60 transition-colors"
             />
             {extraInput && (
@@ -513,7 +514,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     recargoValor: item.recargoValor ?? 0,
                     recargoMoneda: item.recargoMoneda ?? 'B',
                 },
-            }, decimals, rateFor(item.currency, item.exchangeRate ?? item.dollarRate) ?? 0);
+            }, decimals, rateFor(item.currency, item.exchangeRate ?? item.dollarRate) ?? 0, getExchangeRate);
             item.descuentoMonto = line.descuentoMonto;
             item.recargoMonto = line.recargoMonto;
             item.baseIVA = line.baseIVA;
@@ -840,6 +841,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     onAdjustmentChange={(tipo, moneda) => { const next = [...items]; next[idx] = { ...next[idx], descuentoTipo: tipo, descuentoMoneda: moneda }; onChange(next); }}
                                                     onTipoChange={(v) => updateItem(idx, "descuentoTipo", v)}
                                                     onValorChange={(v) => updateItem(idx, "descuentoValor", v)}
+                                                    currencyOptions={currencyOptions}
                                                 />
                                                 <AjusteRow
                                                     label="Recargo"
@@ -851,6 +853,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                     onAdjustmentChange={(tipo, moneda) => { const next = [...items]; next[idx] = { ...next[idx], recargoTipo: tipo, recargoMoneda: moneda }; onChange(next); }}
                                                     onTipoChange={(v) => updateItem(idx, "recargoTipo", v)}
                                                     onValorChange={(v) => updateItem(idx, "recargoValor", v)}
+                                                    currencyOptions={currencyOptions}
                                                 />
                                                 {hasAdj && item.baseIVA != null && item.baseIVA > 0 && (
                                                     <div className="pt-2 border-t border-border-light/40 flex items-center gap-4 font-mono text-[10px] text-[var(--text-tertiary)] uppercase tracking-[0.12em]">

@@ -163,7 +163,7 @@ export function SalesLineCombobox({
                 placeholder="Buscar producto o escribir servicio…"
                 autoComplete="off"
                 spellCheck={false}
-                className="h-9 w-full rounded-lg border border-[var(--control-border)] bg-surface-1 pl-9 pr-9 font-sans text-[13px] text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[var(--control-placeholder)] hover:border-[var(--control-border-hover)] focus:border-[var(--control-border-focus)] focus:shadow-[var(--control-focus-shadow)]"
+                className="h-10 w-full rounded-lg border border-[var(--control-border)] bg-surface-1 pl-9 pr-9 font-sans text-[13px] text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)] outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[var(--control-placeholder)] hover:border-[var(--control-border-hover)] focus:border-[var(--control-border-focus)] focus:shadow-[var(--control-focus-shadow)]"
             />
             {(selected || description) && (
                 <button
