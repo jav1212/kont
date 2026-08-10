@@ -28,6 +28,8 @@ import {
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 import { notify } from "@/src/shared/frontend/notify";
+import { ResponsiveBottomSheet } from "@/src/shared/frontend/components/responsive-bottom-sheet";
+import { ResponsiveSelect } from "@/src/shared/frontend/components/responsive-select";
 
 // -- types ---------------------------------------------------------------------
 
@@ -324,15 +326,12 @@ function AjusteRow({ label, tipo, valor, moneda, onMonedaChange, onTipoChange, o
             <span className={`min-w-[88px] font-mono text-[10px] uppercase tracking-[0.12em] ${accentCls}`}>
                 {label}
             </span>
-            <select
+            <ResponsiveSelect
                 value={!tipo ? "" : tipo === "porcentaje" ? "porcentaje" : "monto"}
-                onChange={(e) => { const v = e.target.value; if (!v) onTipoChange(null); else if (v === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", moneda); else onTipoChange("monto"); }}
-                className="h-7 px-1.5 rounded border border-border-light bg-surface-1 outline-none font-mono text-[11px] text-foreground focus:border-primary-500/60 transition-colors"
-            >
-                <option value="">—</option>
-                <option value="porcentaje">%</option>
-                <option value="monto">Monto</option>
-            </select>
+                options={[{ value: "", label: "—" }, { value: "porcentaje", label: "%" }, { value: "monto", label: "Monto" }]}
+                onChange={(value) => { if (!value) onTipoChange(null); else if (value === "porcentaje") onTipoChange("porcentaje"); else if (onAdjustmentChange) onAdjustmentChange("monto", moneda); else onTipoChange("monto"); }}
+                triggerClassName="!h-7 !w-24 !px-2 !font-mono !text-[11px]"
+            />
             {tipo === "monto" && <CurrencyCombobox label="" value={normalizeCurrencyCode(moneda)} options={currencyOptions} onChange={(code) => onMonedaChange(code)} triggerClassName="!h-7 !w-28 !px-2 !text-[11px]" />}
             <input
                 type="text"
@@ -366,6 +365,8 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     const rateFor = (currency: CurrencyCode, fallback?: number | null) => isLocalCurrency(currency) ? 1 : (getExchangeRate?.(currency) ?? fallback ?? dollarRate ?? null);
     const refs = useRef<Map<string, HTMLInputElement>>(new Map());
     const [expanded, setExpanded] = useState<Set<number>>(new Set());
+    const [editingMobileIndex, setEditingMobileIndex] = useState<number | null>(null);
+    const previousItemCount = useRef(items.length);
     const targetCurrency = normalizeCurrencyCode(selectedCurrency ?? items[0]?.currency ?? "VES");
     const bulkCurrency = targetCurrency;
     const targetRate = rateFor(targetCurrency);
@@ -373,6 +374,11 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     const fmtN = makeFmt(decimals);
     const round = (n: number) => roundN(n, decimals);
     const placeholder0 = `0,${"0".repeat(Math.max(2, decimals))}`;
+
+    useEffect(() => {
+        if (!readOnly && items.length > previousItemCount.current) setEditingMobileIndex(items.length - 1);
+        previousItemCount.current = items.length;
+    }, [items.length, readOnly]);
 
     function refKey(row: number, col: ColIdx) { return `${row}-${col}`; }
 
@@ -571,9 +577,10 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
     const hasExchangeRates = foreignItems.every((item) => Boolean(rateFor(item.currency, item.exchangeRate ?? item.dollarRate)));
     const foreignCurrencies = Array.from(new Set(foreignItems.map((item) => normalizeCurrencyCode(item.currency))));
     const foreignCurrencyOptions = currencyOptions.filter((option) => !isLocalCurrency(option.code));
+    const mobileItem = editingMobileIndex == null ? null : items[editingMobileIndex] ?? null;
 
     return (
-        <div className="overflow-x-auto overscroll-x-contain">
+        <div className="overscroll-x-contain md:overflow-x-auto">
             {hasForeignCurrency && (
                 <div className="hidden mb-3 flex items-center gap-2 text-[12px]">
                     <span className="text-[var(--text-tertiary)] uppercase tracking-[0.14em]">Tasa BCV</span>
@@ -613,7 +620,40 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                     </div>
                 </div>
             )}
-            <table className="w-full min-w-[880px] border-collapse text-[13px]">
+            <div className="space-y-3 md:hidden">
+                {items.map((item, idx) => {
+                    const foreign = !isLocalCurrency(item.currency);
+                    const productName = item.productName ?? products.find((product) => product.id === item.productId)?.name ?? "Seleccionar producto";
+                    const sourceTotal = foreign && rateFor(item.currency, item.exchangeRate ?? item.dollarRate)
+                        ? item.totalCost / rateFor(item.currency, item.exchangeRate ?? item.dollarRate)!
+                        : null;
+                    return (
+                        <article key={`mobile-item-${idx}`} className="rounded-xl border border-border-light bg-surface-1 p-3.5 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--text-tertiary)]">Línea {idx + 1}</span>
+                                    <h3 className={`mt-1 truncate font-sans text-[14px] font-semibold ${item.productId ? "text-foreground" : "text-[var(--text-tertiary)]"}`}>{productName}</h3>
+                                </div>
+                                {!readOnly && <div className="flex shrink-0 items-center gap-1">
+                                    <button type="button" onClick={() => setEditingMobileIndex(idx)} className="h-9 rounded-lg bg-surface-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-secondary)]">Editar</button>
+                                    <button type="button" onClick={() => removeRow(idx)} disabled={items.length === 1} aria-label={`Eliminar línea ${idx + 1}`} className="grid size-9 place-items-center rounded-lg text-lg text-error disabled:opacity-30">×</button>
+                                </div>}
+                            </div>
+                            <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-border-light pt-3">
+                                <div><dt className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Cantidad</dt><dd className="mt-1 tabular-nums text-[13px] text-foreground">{fmtN(item.quantity)}</dd></div>
+                                <div><dt className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Moneda</dt><dd className="mt-1 font-mono text-[12px] font-bold text-foreground">{normalizeCurrencyCode(item.currency)}</dd></div>
+                                <div><dt className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">IVA</dt><dd className="mt-1 text-[12px] text-foreground">{item.vatRate === "exenta" ? "Exenta" : item.vatRate === "reducida_8" ? "8%" : "16%"}{item.ivaIncluido ? " · Inc." : ""}</dd></div>
+                            </dl>
+                            <div className="mt-3 flex items-end justify-between gap-3 rounded-lg bg-surface-2/60 px-3 py-2.5">
+                                <div><p className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Costo unitario</p><p className="mt-1 tabular-nums text-[12px] text-[var(--text-secondary)]">{foreign ? `${normalizeCurrencyCode(item.currency)} ${fmtN(item.currencyCost ?? 0)}` : `Bs. ${fmtN(item.unitCost)}`}</p></div>
+                                <div className="text-right"><p className="text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Total</p><p className="mt-1 tabular-nums text-[15px] font-bold text-foreground">{sourceTotal != null ? `${normalizeCurrencyCode(item.currency)} ${fmtN(sourceTotal)}` : `Bs. ${fmtN(item.totalCost)}`}</p>{sourceTotal != null && <p className="mt-0.5 tabular-nums text-[10px] text-[var(--text-tertiary)]">≈ Bs. {fmtN(item.totalCost)}</p>}</div>
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
+
+            <table className="hidden w-full min-w-[880px] border-collapse text-[13px] md:table">
                 <thead>
                     <tr className="border-b border-border-light">
                         <th className="px-2 py-2 text-left text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] font-normal min-w-[220px]">
@@ -755,16 +795,12 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                             </span>
                                         ) : (
                                             <div className="flex items-center gap-1">
-                                                <select
-                                                    tabIndex={-1}
+                                                <ResponsiveSelect<VatRate>
                                                     value={item.vatRate ?? "general_16"}
-                                                    onChange={(e) => updateItem(idx, "vatRate", e.target.value as VatRate)}
-                                                    className="flex-1 h-8 pl-2 pr-6 outline-none bg-transparent text-[12px] text-foreground font-mono focus:bg-primary-500/[0.06] rounded transition-colors cursor-pointer truncate"
-                                                >
-                                                    <option value="exenta">Exenta (0%)</option>
-                                                    <option value="reducida_8">Red. (8%)</option>
-                                                    <option value="general_16">Gen. (16%)</option>
-                                                </select>
+                                                    options={[{ value: "exenta", label: "Exenta (0%)" }, { value: "reducida_8", label: "Red. (8%)" }, { value: "general_16", label: "Gen. (16%)" }]}
+                                                    onChange={(value) => updateItem(idx, "vatRate", value)}
+                                                    triggerClassName="!h-8 !border-0 !bg-transparent !px-2 !font-mono !text-[12px]"
+                                                />
                                                 <button
                                                     tabIndex={-1}
                                                     type="button"
@@ -888,17 +924,52 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                 <button
                     tabIndex={-1}
                     onClick={() => addRow(items.length)}
-                    className="mt-2 ml-1 text-[12px] text-[var(--text-tertiary)] hover:text-foreground uppercase tracking-[0.12em] transition-colors"
+                    className="mt-3 ml-1 text-[12px] text-[var(--text-tertiary)] hover:text-foreground uppercase tracking-[0.12em] transition-colors max-md:flex max-md:h-11 max-md:w-full max-md:items-center max-md:justify-center max-md:rounded-xl max-md:border max-md:border-dashed max-md:border-border-medium max-md:bg-surface-1"
                 >
                     + agregar fila{" "}
-                    <span className="normal-case opacity-40 ml-1 tracking-normal">(Tab desde la ultima celda)</span>
+                    <span className="normal-case opacity-40 ml-1 tracking-normal max-md:hidden">(Tab desde la ultima celda)</span>
                 </button>
             )}
 
             {!readOnly && (
-                <p className="mt-3 ml-1 text-[11px] text-[var(--text-tertiary)] opacity-60 tracking-wide">
+                <p className="mt-3 ml-1 text-[11px] text-[var(--text-tertiary)] opacity-60 tracking-wide max-md:hidden">
                     Tab / Shift+Tab - moverse entre celdas &nbsp;|&nbsp; Enter - bajar en la misma columna &nbsp;|&nbsp; Up/Down - cambiar fila &nbsp;|&nbsp; + - agregar ajustes (descuento, recargo)
                 </p>
+            )}
+
+            {!readOnly && mobileItem && editingMobileIndex != null && (
+                <ResponsiveBottomSheet
+                    open
+                    onClose={() => setEditingMobileIndex(null)}
+                    title={`Editar línea ${editingMobileIndex + 1}`}
+                    subtitle="Producto, moneda, costo e IVA"
+                    contentClassName="px-4 pb-4"
+                    footer={<button type="button" onClick={() => setEditingMobileIndex(null)} className="h-11 w-full rounded-xl bg-primary-500 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-white">Aplicar línea</button>}
+                >
+                    <div className="space-y-4">
+                        <ResponsiveSelect
+                            label="Producto"
+                            title="Seleccionar producto"
+                            subtitle="Busca por nombre o código"
+                            searchable
+                            value={mobileItem.productId}
+                            placeholder="Seleccionar producto…"
+                            options={products.filter((product) => product.id).map((product) => ({ value: product.id!, label: product.name, description: product.code }))}
+                            onChange={(value) => updateItem(editingMobileIndex, "productId", value)}
+                            triggerClassName="!h-12 !rounded-xl !text-[16px]"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="block"><span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Cantidad</span><input type="number" inputMode="decimal" min="0" value={mobileItem.quantity || ""} onChange={(event) => updateItem(editingMobileIndex, "quantity", Number(event.target.value))} className="h-12 w-full rounded-xl border border-border-default bg-surface-1 px-3 text-right font-mono text-[16px] text-foreground outline-none" /></label>
+                            <CurrencyCombobox label="Moneda" value={normalizeCurrencyCode(mobileItem.currency)} options={currencyOptions} onChange={(value) => updateItem(editingMobileIndex, "currency", value as ItemCurrency)} triggerClassName="!h-12 !rounded-xl !text-[16px]" />
+                        </div>
+                        <label className="block"><span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Costo unitario · {normalizeCurrencyCode(mobileItem.currency)}</span><input type="number" inputMode="decimal" min="0" value={(isLocalCurrency(mobileItem.currency) ? (mobileItem.ivaIncluido ? grossFromNet(mobileItem.unitCost, mobileItem.vatRate ?? "general_16") : mobileItem.unitCost) : mobileItem.currencyCost) || ""} onChange={(event) => updateItem(editingMobileIndex, isLocalCurrency(mobileItem.currency) ? "unitCostDisplay" : "currencyCostInput", Number(event.target.value))} className="h-12 w-full rounded-xl border border-border-default bg-surface-1 px-3 text-right font-mono text-[16px] text-foreground outline-none" /></label>
+                        <div className="grid grid-cols-[1fr_auto] gap-3">
+                            <ResponsiveSelect<VatRate> label="IVA" title="Seleccionar IVA" value={mobileItem.vatRate ?? "general_16"} options={[{ value: "exenta", label: "Exenta (0%)" }, { value: "reducida_8", label: "Reducida (8%)" }, { value: "general_16", label: "General (16%)" }]} onChange={(value) => updateItem(editingMobileIndex, "vatRate", value)} triggerClassName="!h-12 !rounded-xl !text-[16px]" />
+                            <label className="flex min-w-24 flex-col"><span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Incluido</span><button type="button" disabled={(mobileItem.vatRate ?? "general_16") === "exenta"} onClick={() => updateItem(editingMobileIndex, "ivaIncluido", !mobileItem.ivaIncluido)} className={`h-12 rounded-xl border px-3 font-mono text-[11px] font-bold uppercase ${mobileItem.ivaIncluido ? "border-primary-500/40 bg-primary-500/10 text-primary-500" : "border-border-default bg-surface-1 text-[var(--text-secondary)]"}`}>{mobileItem.ivaIncluido ? "Sí" : "No"}</button></label>
+                        </div>
+                        <div className="rounded-xl bg-surface-2 px-3 py-3 text-right"><p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">Total de la línea</p><p className="mt-1 tabular-nums text-[18px] font-bold text-foreground">Bs. {fmtN(mobileItem.totalCost)}</p></div>
+                    </div>
+                </ResponsiveBottomSheet>
             )}
         </div>
     );

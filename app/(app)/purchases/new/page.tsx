@@ -18,6 +18,8 @@ import { useDebouncedAutoSave } from "@/src/shared/frontend/hooks/use-debounced-
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
+import { InvoiceMobileActionBar } from "@/src/shared/frontend/components/invoices/invoice-mobile-action-bar";
+import { ResponsiveSelect } from "@/src/shared/frontend/components/responsive-select";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -705,7 +707,7 @@ export default function NuevaFacturaPage() {
     }
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-surface-2 font-mono max-md:pb-28">
             <PageHeader title="Nueva Factura de Compra" subtitle="Registrar compra a proveedor">
                 <CompanyContextPill />
                 <AutoSaveStatusPill state={autosave} />
@@ -741,21 +743,16 @@ export default function NuevaFacturaPage() {
                         <InvoiceSectionCard className="order-1" title="Datos de la factura" subtitle="Identifica el comprobante y define cómo entra al período contable." bodyClassName="">
 
                             {/* ── Group 1 · Identificación ───────────────────────── */}
-                            <div className="px-6 pt-5 pb-5">
+                            <div className="px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
                                 <div className="mb-3 flex items-center gap-2">
                                     <span className={groupLabelCls}>Identificación</span>
                                     <span className="flex-1 h-px bg-border-light" />
                                 </div>
 
                                 {/* Proveedor (span 2) + Nº Factura */}
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="col-span-2">
-                                        <label className={labelCls}>Tipo de documento <span className="text-error/80">*</span></label>
-                                        <select className={`${fieldCls} mb-4`} value={documentType} onChange={(e) => setDocumentType(e.target.value as PurchaseDocumentType)}>
-                                            <option value="factura">Factura de compra</option>
-                                            <option value="nota_credito">Nota de crédito</option>
-                                            <option value="nota_debito">Nota de débito</option>
-                                        </select>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                    <div className="md:col-span-2">
+                                        <ResponsiveSelect<PurchaseDocumentType> className="mb-4" label="Tipo de documento" title="Tipo de documento" value={documentType} onChange={setDocumentType} options={[{ value: "factura", label: "Factura de compra" }, { value: "nota_credito", label: "Nota de crédito" }, { value: "nota_debito", label: "Nota de débito" }]} />
                                         <label className={labelCls}>
                                             Proveedor <span className="text-error/80">*</span>
                                         </label>
@@ -793,7 +790,7 @@ export default function NuevaFacturaPage() {
                                 {documentType !== "factura" && (
                                     <div className="mt-4 rounded-lg border border-border-light bg-surface-2/40 p-4">
                                         <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Documento afectado</div>
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                             <BaseInput.Field
                                                 label="Nº factura afectada"
                                                 isRequired
@@ -811,13 +808,7 @@ export default function NuevaFacturaPage() {
                                             </datalist>
                                             <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} placeholder="Opcional" />
                                             <div>
-                                                <label className={labelCls}>Efecto en inventario</label>
-                                                <select className={fieldCls} value={inventoryEffect} onChange={(e) => setInventoryEffect(e.target.value as PurchaseInventoryEffect)}>
-                                                    <option value="none">Solo ajuste fiscal/financiero</option>
-                                                    {documentType === "nota_credito"
-                                                        ? <option value="return_to_supplier">Devolución al proveedor</option>
-                                                        : <option value="additional_purchase">Entrada adicional</option>}
-                                                </select>
+                                                <ResponsiveSelect<PurchaseInventoryEffect> label="Efecto en inventario" title="Efecto en inventario" value={inventoryEffect} onChange={setInventoryEffect} options={documentType === "nota_credito" ? [{ value: "none", label: "Solo ajuste fiscal/financiero" }, { value: "return_to_supplier", label: "Devolución al proveedor" }] : [{ value: "none", label: "Solo ajuste fiscal/financiero" }, { value: "additional_purchase", label: "Entrada adicional" }]} />
                                             </div>
                                         </div>
                                         <div className="mt-3">
@@ -826,7 +817,7 @@ export default function NuevaFacturaPage() {
                                     </div>
                                 )}
 
-                                <div className="mt-4 grid grid-cols-3 gap-4">
+                                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <BaseInput.Field
                                         label="Nº Control"
                                         value={controlNumber}
@@ -837,13 +828,13 @@ export default function NuevaFacturaPage() {
                             </div>
 
                             {/* ── Group 2 · Fechas y tasa ────────────────────────── */}
-                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                            <div className="border-t border-border-light px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
                                 <div className="mb-3 flex items-center gap-2">
                                     <span className={groupLabelCls}>Fechas y tasa</span>
                                     <span className="flex-1 h-px bg-border-light" />
                                 </div>
 
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <BaseInput.Field
                                         label="Fecha"
                                         type="date"
@@ -872,7 +863,7 @@ export default function NuevaFacturaPage() {
                             </div>
 
                             {/* ── Group 3 · Notas ────────────────────────────────── */}
-                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                            <div className="border-t border-border-light px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
                                 <div className="mb-3 flex items-center gap-2">
                                     <span className={groupLabelCls}>Notas</span>
                                     <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--text-tertiary)]/70">opcional</span>
@@ -894,7 +885,7 @@ export default function NuevaFacturaPage() {
                             </div>
 
                             {/* ── Group 4 · Ajustes (collapsible) ───────────────── */}
-                            <div className="px-6 pt-5 pb-5 border-t border-border-light">
+                            <div className="border-t border-border-light px-4 pb-5 pt-4 sm:px-6 sm:pt-5">
                                 <button
                                     type="button"
                                     onClick={() => setShowHeaderAdj((v) => !v)}
@@ -1281,42 +1272,14 @@ export default function NuevaFacturaPage() {
                             placeholder="Ej. 001"
                         />
                         <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className={labelCls}>Tipo</label>
-                                <select
-                                    className={fieldCls}
-                                    value={qcProduct.type}
-                                    onChange={(e) => setQcProduct(p => ({ ...p, type: e.target.value as ProductType }))}
-                                >
-                                    <option value="mercancia">Mercancía</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className={labelCls}>IVA</label>
-                                <select
-                                    className={fieldCls}
-                                    value={qcProduct.vatType}
-                                    onChange={(e) => setQcProduct(p => ({ ...p, vatType: e.target.value as VatType }))}
-                                >
-                                    <option value="general">General (16%)</option>
-                                    <option value="exento">Exento</option>
-                                </select>
-                            </div>
+                            <ResponsiveSelect<ProductType> label="Tipo" value={qcProduct.type} options={[{ value: "mercancia", label: "Mercancía" }]} onChange={(value) => setQcProduct((product) => ({ ...product, type: value }))} />
+                            <ResponsiveSelect<VatType> label="IVA" value={qcProduct.vatType} options={[{ value: "general", label: "General (16%)" }, { value: "exento", label: "Exento" }]} onChange={(value) => setQcProduct((product) => ({ ...product, vatType: value }))} />
                         </div>
                         <div className="grid grid-cols-1 gap-3">
                             <div>
                                 <label className={labelCls}>Departamento</label>
                                 <div className="flex gap-1">
-                                    <select
-                                        className={fieldCls}
-                                        value={qcProduct.departmentId}
-                                        onChange={(e) => setQcProduct(p => ({ ...p, departmentId: e.target.value }))}
-                                    >
-                                        <option value="">Sin departamento</option>
-                                        {departments.filter(d => d.active).map(d => (
-                                            <option key={d.id} value={d.id}>{d.name}</option>
-                                        ))}
-                                    </select>
+                                    <ResponsiveSelect searchable value={qcProduct.departmentId} placeholder="Sin departamento" options={[{ value: "", label: "Sin departamento" }, ...departments.filter((department) => department.active && department.id).map((department) => ({ value: department.id!, label: department.name }))]} onChange={(value) => setQcProduct((product) => ({ ...product, departmentId: value }))} className="flex-1" />
                                     <button
                                         type="button"
                                         onClick={() => setQcDeptOpen(v => !v)}
@@ -1374,6 +1337,13 @@ export default function NuevaFacturaPage() {
                     </div>
                 </QuickModal>
             )}
+
+            <InvoiceMobileActionBar
+                itemCount={itemCount}
+                totalLabel={`Bs. ${fmtN(heroTotal)}`}
+                secondaryAction={<BaseButton.Root variant="secondary" size="md" leftIcon={<Save size={14} />} onClick={handleSaveDraft} loading={saving} disabled={confirming}>Guardar</BaseButton.Root>}
+                primaryAction={<BaseButton.Root variant="primary" size="md" leftIcon={<CheckCircle2 size={14} />} onClick={handleOpenConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : "Confirmar"}</BaseButton.Root>}
+            />
 
             {/* Confirm dialog — surfaces the active company before persisting */}
             <ConfirmCompanyDialog

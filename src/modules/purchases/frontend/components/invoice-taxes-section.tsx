@@ -6,6 +6,7 @@ import type { InvoiceTax, TaxBase } from "@/src/modules/inventory/shared/totals"
 import { emptyInvoiceTax, roundN } from "@/src/modules/inventory/shared/totals";
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
+import { ResponsiveSelect } from "@/src/shared/frontend/components/responsive-select";
 
 interface Props {
     value:    InvoiceTax[];
@@ -21,9 +22,6 @@ interface Props {
 
 const labelCls =
     "font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--text-tertiary)]";
-
-const selCls =
-    "h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground hover:border-border-medium focus:border-primary-500 transition-colors";
 
 const inputCls =
     "h-10 px-2 rounded-md border border-border-default bg-surface-1 outline-none font-mono text-[12px] text-foreground tabular-nums text-right disabled:opacity-40 disabled:cursor-not-allowed hover:border-border-medium focus:border-primary-500 transition-colors";
@@ -95,23 +93,20 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, getExchangeR
     }
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border border-border-light bg-surface-1/40 p-2 sm:grid-cols-2 xl:grid-cols-[minmax(160px,1.4fr)_minmax(105px,.65fr)_minmax(120px,.75fr)_minmax(125px,.75fr)_minmax(115px,.7fr)_auto] xl:items-center">
             <input
                 type="text"
                 value={tax.nombre}
                 onChange={(e) => update({ nombre: e.target.value })}
                 placeholder="Nombre"
-                className={`${nameInputCls} w-32 flex-shrink-0`}
+                className={`${nameInputCls} !h-10 min-w-0 w-full`}
             />
-            <select
+            <ResponsiveSelect
                 value={tax.tipo === "porcentaje" ? "porcentaje" : "monto"}
-                onChange={(e) => { const v = e.target.value; update(v === "porcentaje" ? { tipo: "porcentaje" } : { tipo: "monto" }); }}
-                className={`${selCls} flex-shrink-0`}
-            >
-                <option value="porcentaje">%</option>
-                <option value="monto">Monto</option>
-            </select>
-            {tax.tipo === "monto" && <CurrencyCombobox label="" value={normalizeCurrencyCode(tax.moneda)} options={currencyOptions} onChange={(currency) => update({ moneda: currency })} triggerClassName="!h-10 !w-32 !px-2 !text-[11px]" />}
+                options={[{ value: "porcentaje", label: "Porcentaje" }, { value: "monto", label: "Monto" }]}
+                onChange={(next) => update(next === "porcentaje" ? { tipo: "porcentaje" } : { tipo: "monto" })}
+            />
+            {tax.tipo === "monto" ? <CurrencyCombobox label="" value={normalizeCurrencyCode(tax.moneda)} options={currencyOptions} onChange={(currency) => update({ moneda: currency })} triggerClassName="!h-10 !w-full !px-2 !text-[11px]" /> : <div className="hidden xl:block" />}
             <input
                 type="text"
                 inputMode="decimal"
@@ -124,22 +119,18 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, getExchangeR
                     update({ valor: Number.isFinite(parsed) ? parsed : 0 });
                 }}
                 placeholder={tax.tipo === "monto" ? `0,00 ${isLocalCurrency(tax.moneda) ? "Bs" : normalizeCurrencyCode(tax.moneda)}` : "0,00"}
-                className={`${inputCls} w-24 flex-shrink-0`}
+                className={`${inputCls} min-w-0 w-full`}
             />
-            <select
+            <ResponsiveSelect<TaxBase>
                 value={tax.base}
-                onChange={(e) => update({ base: e.target.value as TaxBase })}
+                onChange={(base) => update({ base })}
                 disabled={tax.tipo === "monto"}
-                className={`${selCls} flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-                <option value="pre_iva">Pre-IVA</option>
-                <option value="post_iva">Post-IVA</option>
-            </select>
-            {computedMonto > 0 && (
-                <span className="font-mono text-[11px] text-amber-600 tabular-nums whitespace-nowrap ml-auto">
+                options={[{ value: "pre_iva", label: "Pre-IVA" }, { value: "post_iva", label: "Post-IVA" }]}
+            />
+            <div className="flex min-h-10 items-center justify-end gap-2 sm:col-span-2 xl:col-span-1">
+            {computedMonto > 0 && <span className="font-mono text-[11px] text-amber-600 tabular-nums whitespace-nowrap">
                     Bs. {computedMonto.toLocaleString("es-VE", { minimumFractionDigits: 2 })}
-                </span>
-            )}
+                </span>}
             <button
                 type="button"
                 onClick={() => onRemove(index)}
@@ -148,6 +139,7 @@ function TaxRow({ tax, index, baseIVA, total, decimals, dollarRate, getExchangeR
             >
                 <X size={13} strokeWidth={2.2} />
             </button>
+            </div>
         </div>
     );
 }

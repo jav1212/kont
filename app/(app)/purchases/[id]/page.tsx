@@ -13,6 +13,8 @@ import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
 import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import { InvoiceDetailCard, InvoiceSectionCard, InvoiceSummaryCard } from "@/src/shared/frontend/components/invoices/invoice-form-cards";
+import { InvoiceMobileActionBar } from "@/src/shared/frontend/components/invoices/invoice-mobile-action-bar";
+import { ResponsiveSelect } from "@/src/shared/frontend/components/responsive-select";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
@@ -577,7 +579,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const documentNumberLabel = activeDocumentType === "nota_credito" ? "Nº Nota de crédito" : activeDocumentType === "nota_debito" ? "Nº Nota de débito" : "Nº Factura";
 
     return (
-        <div className="min-h-full bg-surface-2 font-mono">
+        <div className="min-h-full bg-surface-2 font-mono max-md:pb-28">
             <PageHeader
                 title={`${documentTypeLabel} de Compra`}
                 subtitle={invoice.invoiceNumber || `#${id.slice(0, 8)}`}
@@ -792,29 +794,16 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
 
                             {isDraft && (
                                 <div className="mb-4">
-                                    <label className={labelCls}>Tipo de documento</label>
-                                    <select className={fieldCls} value={documentType} onChange={(e) => setDocumentType(e.target.value as PurchaseDocumentType)}>
-                                        <option value="factura">Factura</option>
-                                        <option value="nota_credito">Nota de crédito</option>
-                                        <option value="nota_debito">Nota de débito</option>
-                                    </select>
+                                    <ResponsiveSelect<PurchaseDocumentType> label="Tipo de documento" title="Tipo de documento" value={documentType} onChange={setDocumentType} options={[{ value: "factura", label: "Factura" }, { value: "nota_credito", label: "Nota de crédito" }, { value: "nota_debito", label: "Nota de débito" }]} />
                                 </div>
                             )}
 
                             <div className="grid grid-cols-1 gap-4 mb-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
-                                    <label className={labelCls}>Proveedor</label>
                                     {isDraft ? (
-                                        <select className={fieldCls} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-                                            <option value="">Seleccionar proveedor…</option>
-                                            {suppliers.filter((s) => s.active).map((s) => (
-                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                            ))}
-                                        </select>
+                                        <ResponsiveSelect label="Proveedor" title="Seleccionar proveedor" subtitle="Busca por nombre o RIF" searchable value={supplierId} placeholder="Seleccionar proveedor…" onChange={setSupplierId} options={suppliers.filter((supplier) => supplier.active && supplier.id).map((supplier) => ({ value: supplier.id!, label: supplier.name, description: supplier.rif }))} />
                                     ) : (
-                                        <div className={readonlyCls + " flex items-center"}>
-                                            {invoice.supplierName ?? "—"}
-                                        </div>
+                                        <><label className={labelCls}>Proveedor</label><div className={readonlyCls + " flex items-center"}>{invoice.supplierName ?? "—"}</div></>
                                     )}
                                 </div>
                                 <div>
@@ -843,7 +832,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                                 <div>
                                     {isDraft ? (
                                         <BaseInput.Field label="Fecha" type="date" value={date} onValueChange={setDate} />
@@ -924,15 +913,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             {activeDocumentType !== "factura" && (
                                 <div className="rounded-lg border border-border-light bg-surface-2 p-4 mb-4">
                                     <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--text-tertiary)] mb-3">Documento afectado</h3>
-                                    <div className="grid grid-cols-3 gap-4 text-[12px]">
-                                        <div>{isDraft ? <><select className={fieldCls} value={affectedInvoiceNumber} onChange={(e) => handleAffectedInvoiceNumberChange(e.target.value)}>
-                                                <option value="">Seleccionar factura existente...</option>
-                                                {affectedInvoiceCandidates.map((candidate) => <option key={candidate.id} value={candidate.invoiceNumber}>{candidate.invoiceNumber}{candidate.controlNumber ? ` · Control ${candidate.controlNumber}` : ""}</option>)}
-                                            </select>
-                                            <BaseInput.Field label="Nº Factura afectada" value={affectedInvoiceNumber} onValueChange={handleAffectedInvoiceNumberChange} list="detail-affected-invoice-options" helperText="Busca una factura confirmada del proveedor" />
-                                            <datalist id="detail-affected-invoice-options">
-                                                {affectedInvoiceCandidates.map((candidate) => <option key={candidate.id} value={candidate.invoiceNumber}>{candidate.controlNumber ? `Control ${candidate.controlNumber}` : ""}</option>)}
-                                            </datalist></> : <><span className={labelCls}>Nº Factura afectada</span><span className="text-foreground tabular-nums">{invoice.affectedInvoiceNumber || "—"}</span></>}</div>
+                                    <div className="grid grid-cols-1 gap-4 text-[12px] md:grid-cols-3">
+                                        <div>{isDraft ? <ResponsiveSelect label="Nº Factura afectada" title="Seleccionar factura" searchable value={affectedInvoiceNumber} placeholder="Seleccionar factura existente…" onChange={handleAffectedInvoiceNumberChange} options={affectedInvoiceCandidates.map((candidate) => ({ value: candidate.invoiceNumber, label: candidate.invoiceNumber, description: candidate.controlNumber ? `Control ${candidate.controlNumber}` : undefined }))} /> : <><span className={labelCls}>Nº Factura afectada</span><span className="text-foreground tabular-nums">{invoice.affectedInvoiceNumber || "—"}</span></>}</div>
                                         <div>{isDraft ? <BaseInput.Field label="Control afectado" value={affectedControlNumber} onValueChange={setAffectedControlNumber} /> : <><span className={labelCls}>Control afectado</span><span className="text-foreground tabular-nums">{invoice.affectedControlNumber || "—"}</span></>}</div>
                                         <div>{isDraft ? <BaseInput.Field label="Motivo" value={noteReason} onValueChange={setNoteReason} /> : <><span className={labelCls}>Motivo</span><span className="text-foreground">{invoice.noteReason || "—"}</span></>}</div>
                                     </div>
@@ -1530,6 +1512,12 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                     </aside>
                 </div>
             </div>
+            {isDraft && <InvoiceMobileActionBar
+                itemCount={items.filter((item) => item.productId).length}
+                totalLabel={`Bs. ${fmtN(total + totals.totalImpuestos)}`}
+                secondaryAction={<BaseButton.Root variant="secondary" size="md" leftIcon={<Save size={14} />} onClick={handleSaveDraft} disabled={saving || confirming}>Guardar</BaseButton.Root>}
+                primaryAction={<BaseButton.Root variant="primary" size="md" leftIcon={<CheckCircle2 size={14} />} onClick={handleConfirm} disabled={saving || confirming}>{confirming ? "Confirmando…" : "Confirmar"}</BaseButton.Root>}
+            />}
         </div>
     );
 }

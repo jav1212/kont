@@ -25,7 +25,7 @@ export function InvoiceSectionCard({
 }: InvoiceSectionCardProps) {
     return (
         <section className={`overflow-hidden rounded-xl border border-border-light bg-surface-1 shadow-sm ${className}`}>
-            <header className="flex items-start justify-between gap-4 border-b border-border-light px-6 py-5">
+            <header className="flex items-start justify-between gap-4 border-b border-border-light px-4 py-4 sm:px-6 sm:py-5">
                 <div className="flex min-w-0 items-start gap-3">
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">{icon}</div>
                     <div className="min-w-0">
@@ -72,7 +72,7 @@ export function InvoiceDetailCard({
         : `${count} ${count === 1 ? itemName : `${itemName}s`}`;
 
     return (
-        <section className={`min-w-0 rounded-xl border border-border-light bg-surface-1 p-6 shadow-sm ${className}`}>
+        <section className={`min-w-0 rounded-xl border border-border-light bg-surface-1 p-4 shadow-sm sm:p-6 ${className}`}>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
                     <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary-500/20 bg-primary-500/10 text-primary-500">
