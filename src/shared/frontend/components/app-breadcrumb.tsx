@@ -37,8 +37,8 @@ export function AppBreadcrumb({ pageTitle }: { pageTitle?: string }) {
                 {items.map((item, index) => {
                     const current = index === items.length - 1;
                     return (
-                        <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1">
-                            {index > 0 && <ChevronRight size={13} className="shrink-0 text-[var(--text-tertiary)]" aria-hidden />}
+                        <li key={`${item.label}-${index}`} className={["min-w-0 items-center gap-1", current ? "flex" : "hidden sm:flex"].join(" ")}>
+                            {index > 0 && <ChevronRight size={13} className="hidden shrink-0 text-[var(--text-tertiary)] sm:block" aria-hidden />}
                             {item.href && !current ? (
                                 <Link href={item.href} className="shrink-0 text-[var(--text-tertiary)] transition-colors hover:text-foreground">{item.label}</Link>
                             ) : (

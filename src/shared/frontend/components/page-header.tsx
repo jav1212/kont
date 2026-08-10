@@ -212,7 +212,7 @@ export function PageHeader({
                             onClick={() => window.location.reload()}
                             aria-label="Recargar página"
                             title="Recargar página"
-                            className="inline-flex size-9 items-center justify-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
+                            className="hidden xl:inline-flex size-9 items-center justify-center rounded-lg border border-border-light bg-surface-1 text-[var(--text-secondary)] shadow-sm transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
                         >
                             <RefreshCw size={15} strokeWidth={1.9} />
                         </button>
