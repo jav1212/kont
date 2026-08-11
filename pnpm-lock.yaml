@@ -29,6 +29,15 @@ importers:
       '@heroui/theme':
         specifier: ^2.4.26
         version: 2.4.26(tailwindcss@4.2.1)
+      '@kontave/access-control-application':
+        specifier: workspace:*
+        version: link:packages/access-control/application
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:packages/access-control/domain
+      '@kontave/access-control-supabase':
+        specifier: workspace:*
+        version: link:packages/access-control/supabase
       '@kontave/auth-domain':
         specifier: workspace:*
         version: link:packages/auth/domain
@@ -249,6 +258,70 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/access-control/application:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/access-control/domain:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/access-control/supabase:
+    dependencies:
+      '@kontave/access-control-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/access-control/testing:
+    dependencies:
+      '@kontave/access-control-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/auth/application:
     dependencies:
       '@kontave/auth-domain':
@@ -289,6 +362,9 @@ importers:
 
   packages/billing/application:
     dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../access-control/domain
       '@kontave/billing-domain':
         specifier: workspace:*
         version: link:../domain
@@ -330,6 +406,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       typescript:
         specifier: ^5.9.2
@@ -337,6 +416,9 @@ importers:
 
   packages/billing/testing:
     dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../access-control/domain
       '@kontave/billing-application':
         specifier: workspace:*
         version: link:../application
@@ -438,6 +520,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       typescript:
         specifier: ^5.9.2

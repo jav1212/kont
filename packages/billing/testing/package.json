@@ -6,6 +6,7 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('Billing fixtures are checked by TypeScript')\"" },
   "dependencies": {
+    "@kontave/access-control-domain": "workspace:*",
     "@kontave/billing-application": "workspace:*",
     "@kontave/billing-domain": "workspace:*",
     "@kontave/organizations-domain": "workspace:*"

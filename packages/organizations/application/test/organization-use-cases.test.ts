@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   companyId,
+  MembershipStatus,
+  OrganizationRole,
+  OrganizationStatus,
   organizationId,
   userId,
   type OrganizationAccess,
@@ -12,8 +15,8 @@ import { ListOrganizationCompanies, type OrganizationDirectory } from "../src/in
 const ownerId = userId("user-1");
 const ownOrganizationId = organizationId("org-1");
 const access: OrganizationAccess = {
-  organization: { id: ownOrganizationId, name: "Kontave", slug: "kontave", status: "active" },
-  membership: { organizationId: ownOrganizationId, userId: ownerId, role: "owner", status: "active", permissions: ["*"] },
+  organization: { id: ownOrganizationId, name: "Kontave", slug: "kontave", status: OrganizationStatus.Active },
+  membership: { organizationId: ownOrganizationId, userId: ownerId, role: OrganizationRole.Owner, status: MembershipStatus.Active, permissions: ["*"] },
 };
 const company: OrganizationCompany = { id: companyId("J-1"), organizationId: ownOrganizationId, name: "Empresa", rif: "J-1" };
 

@@ -16,6 +16,9 @@
     "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
   },
   "dependencies": {
+    "@kontave/access-control-application": "workspace:*",
+    "@kontave/access-control-domain": "workspace:*",
+    "@kontave/access-control-supabase": "workspace:*",
     "@kontave/billing-application": "workspace:*",
     "@kontave/billing-domain": "workspace:*",
     "@kontave/billing-supabase": "workspace:*",

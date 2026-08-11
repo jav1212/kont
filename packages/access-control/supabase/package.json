@@ -1,0 +1,6 @@
+{
+  "name": "@kontave/access-control-supabase", "version": "0.1.0", "private": true, "type": "module", "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('Access Control Supabase adapter is checked by TypeScript')\"" },
+  "dependencies": { "@kontave/access-control-application": "workspace:*", "@kontave/access-control-domain": "workspace:*", "@kontave/organizations-domain": "workspace:*", "@supabase/supabase-js": "^2.99.1", "zod": "^4.3.6" },
+  "devDependencies": { "typescript": "^5.9.2" }
+}

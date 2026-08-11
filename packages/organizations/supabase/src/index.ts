@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { OrganizationDirectory } from "@kontave/organizations-application";
 import {
   OrganizationFailure,
+  OrganizationRole,
   companyId,
   organizationId,
   userId,
@@ -9,10 +10,10 @@ import {
   type OrganizationAccess,
   type OrganizationCompany,
   type OrganizationId,
-  type OrganizationRole,
   type Permission,
   type UserId,
 } from "@kontave/organizations-domain";
+import { companyRowSchema, membershipRowSchema, organizationRowSchema, type CompanyRow } from "./persistence-codecs";
 
 export interface OrganizationsSupabaseConfiguration {
   readonly url: string;
@@ -26,10 +27,6 @@ export function createOrganizationsDirectory(configuration: OrganizationsSupabas
   return new SupabaseOrganizationDirectory(client);
 }
 
-type MembershipRow = { organization_id: string; user_id: string; role: string; status: string };
-type OrganizationRow = { id: string; name: string; slug: string; status: string };
-type CompanyRow = { organization_id: string; id: string; name: string; rif: string | null };
-
 class SupabaseOrganizationDirectory implements OrganizationDirectory {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -41,7 +38,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
         .eq("user_id", targetUserId)
         .eq("status", "active");
       if (membershipError) throw membershipError;
-      const memberships = (membershipData ?? []) as MembershipRow[];
+      const memberships = membershipRowSchema.array().parse(membershipData ?? []);
       if (memberships.length === 0) return [];
 
       const { data: organizationData, error: organizationError } = await this.client
@@ -49,7 +46,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
         .select("id,name,slug,status")
         .in("id", memberships.map((membership) => membership.organization_id));
       if (organizationError) throw organizationError;
-      const organizations = new Map(((organizationData ?? []) as OrganizationRow[]).map((row) => [row.id, row]));
+      const organizations = new Map(organizationRowSchema.array().parse(organizationData ?? []).map((row) => [row.id, row]));
       const permissions = await this.loadPermissions(memberships.map((membership) => membership.role));
 
       return memberships.flatMap((membership): OrganizationAccess[] => {
@@ -61,14 +58,14 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
             id: organizationId(organization.id),
             name: organization.name,
             slug: organization.slug,
-            status: organization.status === "active" ? "active" : "suspended",
+            status: organization.status,
           },
           membership: {
             organizationId: organizationId(membership.organization_id),
             userId: userId(membership.user_id),
             role,
-            status: membership.status === "active" ? "active" : "suspended",
-            permissions: role === "owner" ? ["*"] : permissions.get(role) ?? [],
+            status: membership.status,
+            permissions: role === OrganizationRole.Owner ? ["*"] : permissions.get(role) ?? [],
           },
         }];
       });
@@ -90,7 +87,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
         .eq("organization_id", targetOrganizationId)
         .order("name", { ascending: true });
       if (error) throw error;
-      return ((data ?? []) as CompanyRow[]).map(mapCompany);
+      return companyRowSchema.array().parse(data ?? []).map(mapCompany);
     } catch (cause: unknown) {
       throw repositoryFailure(cause);
     }
@@ -105,14 +102,14 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
         .eq("id", targetCompanyId)
         .maybeSingle();
       if (error) throw error;
-      return data ? mapCompany(data as CompanyRow) : null;
+      return data ? mapCompany(companyRowSchema.parse(data)) : null;
     } catch (cause: unknown) {
       throw repositoryFailure(cause);
     }
   }
 
   private async loadPermissions(databaseRoles: readonly string[]): Promise<Map<OrganizationRole, readonly Permission[]>> {
-    const legacyRoles = [...new Set(databaseRoles.filter((role) => role !== "owner").map(toLegacyRole))];
+    const legacyRoles = [...new Set(databaseRoles.map(mapRole).filter((role) => role !== OrganizationRole.Owner).map(toLegacyRole))];
     if (legacyRoles.length === 0) return new Map();
     const { data, error } = await this.client
       .from("shared_authorization_role_permissions")
@@ -135,20 +132,14 @@ function mapCompany(row: CompanyRow): OrganizationCompany {
 }
 
 function mapRole(role: string): OrganizationRole {
-  if (role === "owner" || role === "admin" || role === "seller" || role === "cashier" || role === "accountant") return role;
-  if (role === "contador" || role === "contable") return "accountant";
-  if (role === "vendedor") return "seller";
-  if (role === "cajero") return "cashier";
+  const mapped = DATABASE_ROLE_MAP.get(role);
+  if (mapped) return mapped;
   throw new OrganizationFailure("ORGANIZATION_REPOSITORY_UNAVAILABLE", "La organización contiene un rol desconocido.");
 }
 
-function toLegacyRole(role: string): string {
-  const normalized = mapRole(role);
-  if (normalized === "accountant") return "contador";
-  if (normalized === "seller") return "vendedor";
-  if (normalized === "cashier") return "cajero";
-  return normalized;
-}
+const DATABASE_ROLE_MAP = new Map<string, OrganizationRole>([["owner",OrganizationRole.Owner],["admin",OrganizationRole.Admin],["accountant",OrganizationRole.Accountant],["contador",OrganizationRole.Accountant],["contable",OrganizationRole.Accountant],["seller",OrganizationRole.Seller],["vendedor",OrganizationRole.Seller],["cashier",OrganizationRole.Cashier],["cajero",OrganizationRole.Cashier]]);
+const LEGACY_ROLE_MAP = new Map<OrganizationRole,string>([[OrganizationRole.Owner,"owner"],[OrganizationRole.Admin,"admin"],[OrganizationRole.Accountant,"contador"],[OrganizationRole.Seller,"vendedor"],[OrganizationRole.Cashier,"cajero"]]);
+function toLegacyRole(role: OrganizationRole): string { const mapped=LEGACY_ROLE_MAP.get(role); if (!mapped) throw new OrganizationFailure("ORGANIZATION_REPOSITORY_UNAVAILABLE", "No existe traducción para el rol."); return mapped; }
 
 function repositoryFailure(cause: unknown): OrganizationFailure {
   if (cause instanceof OrganizationFailure) return cause;

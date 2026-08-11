@@ -1,5 +1,7 @@
 import {
   OrganizationFailure,
+  hasActiveOrganizationAccess,
+  isOrganizationOwner,
   type CompanyId,
   type OrganizationAccess,
   type OrganizationCompany,
@@ -20,10 +22,10 @@ export class ListOrganizations {
   async execute(userId: UserId): Promise<readonly OrganizationAccess[]> {
     const access = await this.directory.listAccessForUser(userId);
     return access
-      .filter((entry) => entry.membership.status === "active" && entry.organization.status === "active")
+      .filter(hasActiveOrganizationAccess)
       .sort((left, right) => {
-        if (left.membership.role === "owner" && right.membership.role !== "owner") return -1;
-        if (left.membership.role !== "owner" && right.membership.role === "owner") return 1;
+        if (isOrganizationOwner(left.membership) && !isOrganizationOwner(right.membership)) return -1;
+        if (!isOrganizationOwner(left.membership) && isOrganizationOwner(right.membership)) return 1;
         return left.organization.name.localeCompare(right.organization.name);
       });
   }
@@ -70,7 +72,7 @@ export async function requireOrganizationAccess(
   organizationId: OrganizationId,
 ): Promise<OrganizationAccess> {
   const access = await directory.findAccess(userId, organizationId);
-  if (!access || access.membership.status !== "active" || access.organization.status !== "active") {
+  if (!access || !hasActiveOrganizationAccess(access)) {
     throw new OrganizationFailure("ORGANIZATION_ACCESS_DENIED", "No tienes acceso a esta organización.");
   }
   return access;

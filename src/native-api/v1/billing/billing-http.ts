@@ -1,7 +1,9 @@
 import { BillingFailure } from "@kontave/billing-domain";
+import { AuthorizationDenied } from "@kontave/access-control-domain";
 import { nativeError } from "../http/native-response";
 
 export function billingErrorResponse(cause: unknown, requestId: string): Response {
+  if (cause instanceof AuthorizationDenied) return nativeError("BILLING_ACCESS_DENIED", "No tienes acceso a esta operación de facturación.", requestId, 403);
   if (cause instanceof TypeError) return nativeError("INVALID_REQUEST", "La solicitud no es válida.", requestId, 400);
   if (cause instanceof BillingFailure) {
     if (cause.code === "BILLING_ACCESS_DENIED") return nativeError(cause.code, cause.message, requestId, 403);

@@ -1,10 +1,10 @@
 import type { OrganizationId } from "@kontave/organizations-domain";
 
-export type Currency = "USD" | "VES";
-export type BillingCycle = "monthly" | "quarterly" | "annual";
-export type SubscriptionStatus = "trial" | "active" | "suspended" | "cancelled";
-export type InvoiceStatus = "draft" | "open" | "paid" | "void" | "uncollectible";
-export type PaymentMethodKind = "card" | "bank_transfer" | "cash" | "other";
+export enum Currency { Usd = "USD", Ves = "VES" }
+export enum BillingCycle { Monthly = "monthly", Quarterly = "quarterly", Annual = "annual" }
+export enum SubscriptionStatus { Trial = "trial", Active = "active", Suspended = "suspended", Cancelled = "cancelled" }
+export enum InvoiceStatus { Draft = "draft", Open = "open", Paid = "paid", Void = "void", Uncollectible = "uncollectible" }
+export enum PaymentMethodKind { Card = "card", BankTransfer = "bank_transfer", Cash = "cash", Other = "other" }
 
 export interface Money { readonly minorAmount: bigint; readonly currency: Currency }
 export interface BillingAccount {

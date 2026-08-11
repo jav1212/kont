@@ -6,9 +6,9 @@ export type OrganizationId = string & { readonly [organizationIdBrand]: true };
 export type CompanyId = string & { readonly [companyIdBrand]: true };
 export type UserId = string & { readonly [userIdBrand]: true };
 
-export type OrganizationStatus = "active" | "suspended";
-export type OrganizationRole = "owner" | "admin" | "accountant" | "seller" | "cashier";
-export type MembershipStatus = "active" | "suspended";
+export enum OrganizationStatus { Active = "active", Suspended = "suspended" }
+export enum OrganizationRole { Owner = "owner", Admin = "admin", Accountant = "accountant", Seller = "seller", Cashier = "cashier" }
+export enum MembershipStatus { Active = "active", Suspended = "suspended" }
 export type Permission = `${string}.${string}` | "*";
 
 export interface Organization {
@@ -25,6 +25,8 @@ export interface OrganizationMembership {
   readonly status: MembershipStatus;
   readonly permissions: readonly Permission[];
 }
+export function isOrganizationOwner(membership: OrganizationMembership): boolean { return membership.role === OrganizationRole.Owner; }
+export function hasActiveOrganizationAccess(access: OrganizationAccess): boolean { return access.membership.status === MembershipStatus.Active && access.organization.status === OrganizationStatus.Active; }
 
 export interface OrganizationCompany {
   readonly id: CompanyId;
