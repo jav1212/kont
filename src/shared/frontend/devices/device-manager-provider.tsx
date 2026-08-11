@@ -1,5 +1,7 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createIncidentCode } from "@/src/core/errors/incident-code";
+import { reportClientError } from "@/src/shared/frontend/utils/report-client-error";
 import { DEVICE_PROTOCOL_VERSION, parseDeviceManagerEvent, type BarcodeScannedEvent, type DeviceInfo, type DeviceStatus } from "../../devices/device-contracts";
 
 export type DeviceContextName = "purchase" | "sale" | "product-capture";
@@ -16,7 +18,7 @@ const ENABLED_KEY = "kontave.devices.enabled"; const TOKEN_KEY = "kontave.device
 export function DeviceManagerProvider({ children }: { children: React.ReactNode }) {
     const [enabled, setEnabledState] = useState(false); const [available, setAvailable] = useState(false); const [paired, setPaired] = useState(false); const [pairing, setPairing] = useState(false);
     const [status, setStatus] = useState<DeviceStatus>("disconnected"); const [managerVersion, setManagerVersion] = useState<string | null>(null); const [device, setDevice] = useState<DeviceInfo | null>(null); const [lastError, setLastError] = useState<string | null>(null); const [lastScan, setLastScan] = useState<BarcodeScannedEvent | null>(null); const [generation, setGeneration] = useState(0);
-    const socketRef = useRef<WebSocket | null>(null); const listeners = useRef(new Map<DeviceContextName, Set<Listener>>()); const seen = useRef(new Set<string>());
+    const socketRef = useRef<WebSocket | null>(null); const listeners = useRef(new Map<DeviceContextName, Set<Listener>>()); const seen = useRef(new Set<string>()); const reportedErrors = useRef(new Set<string>());
     useEffect(() => setEnabledState(localStorage.getItem(ENABLED_KEY) === "true"), []);
     const setEnabled = useCallback((value: boolean) => { localStorage.setItem(ENABLED_KEY, String(value)); setEnabledState(value); if (!value) { setAvailable(false); setPaired(false); setStatus("disconnected"); } }, []);
     const reconnect = useCallback(() => setGeneration((value) => value + 1), []);
@@ -31,7 +33,22 @@ export function DeviceManagerProvider({ children }: { children: React.ReactNode 
                 if (event.type === "manager.hello") { setManagerVersion(event.managerVersion); setPaired(event.paired); if (!event.paired && token) localStorage.removeItem(TOKEN_KEY); if (event.protocolVersion !== DEVICE_PROTOCOL_VERSION) setLastError("La versión de Kontave Device Manager no es compatible"); }
                 if (event.type === "pairing.result") { setPairing(false); setPaired(event.approved); if (event.approved && event.token) localStorage.setItem(TOKEN_KEY, event.token); if (!event.approved) setLastError(event.message ?? "Emparejamiento rechazado"); }
                 if (event.type === "device.status") { setStatus(event.status); setDevice(event.device); if (event.message) setLastError(event.message); }
-                if (event.type === "manager.error") setLastError(event.message);
+                if (event.type === "manager.error") {
+                    setLastError(event.message);
+                    const deduplicationKey = event.eventId ?? `${event.code}:${event.message}:${event.occurredAt ?? ""}`;
+                    if (!reportedErrors.current.has(deduplicationKey)) {
+                        reportedErrors.current.add(deduplicationKey);
+                        if (reportedErrors.current.size > 200) reportedErrors.current.delete(reportedErrors.current.values().next().value!);
+                        reportClientError({
+                            code: createIncidentCode(),
+                            message: "Error en Kontave Device Manager",
+                            technicalMessage: event.message,
+                            source: "network",
+                            route: "/device-manager",
+                            metadata: { managerErrorCode: event.code, managerVersion: event.managerVersion, installId: event.installId, occurredAt: event.occurredAt },
+                        });
+                    }
+                }
                 if (event.type !== "barcode.scanned") return; setLastScan(event); if (document.visibilityState !== "visible" || !document.hasFocus() || seen.current.has(event.eventId)) return; seen.current.add(event.eventId); if (seen.current.size > 200) seen.current.delete(seen.current.values().next().value!); const capture = listeners.current.get("product-capture"); const targets = capture?.size ? capture : new Set([...(listeners.current.get("purchase") ?? []), ...(listeners.current.get("sale") ?? [])]); targets.forEach((listener) => listener(event));
             } catch { setLastError("El administrador de dispositivos envió un mensaje inválido"); } };
             socket.onerror = () => setLastError("No se pudo conectar con Kontave Device Manager"); socket.onclose = () => { if (stopped) return; setAvailable(false); setStatus("reconnecting"); timer = setTimeout(connect, delays[Math.min(retry++, delays.length - 1)]); };

@@ -8,7 +8,7 @@ export type DeviceManagerEvent =
     | { type: "device.status"; device: DeviceInfo | null; status: DeviceStatus; message?: string }
     | BarcodeScannedEvent
     | { type: "pairing.result"; approved: boolean; token?: string; message?: string }
-    | { type: "manager.error"; code: string; message: string };
+    | { type: "manager.error"; code: string; message: string; eventId?: string; occurredAt?: string; managerVersion?: string; installId?: string };
 
 export function parseDeviceManagerEvent(value: unknown): DeviceManagerEvent | null {
     if (!value || typeof value !== "object") return null;
