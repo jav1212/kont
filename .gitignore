@@ -25,6 +25,8 @@
 
 # production
 /build
+/scanner-agent/dist/
+/.pnpm-store/
 
 # misc
 .DS_Store

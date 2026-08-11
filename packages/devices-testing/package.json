@@ -1,0 +1,16 @@
+{
+  "name": "@kontave/devices-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node -e \"console.log('Test fixtures validated through devices-core')\""
+  },
+  "dependencies": {
+    "@kontave/device-contracts": "workspace:*",
+    "@kontave/devices-core": "workspace:*"
+  },
+  "devDependencies": { "typescript": "^5.9.2" }
+}

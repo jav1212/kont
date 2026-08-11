@@ -10,6 +10,32 @@ pnpm build      # Production build + TypeScript check
 pnpm lint       # ESLint
 ```
 
+## New architecture development
+
+Kontave is adopting an incremental pnpm monorepo for native Desktop and Mobile clients. The production Next.js application remains at the repository root until the shared architecture has been validated by Desktop and Device Bridge.
+
+New code under `apps/` and `packages/` must follow these rules:
+
+- Use hexagonal architecture and pragmatic DDD. Domain and application layers define ports; platform and persistence code provide adapters.
+- Dependencies point inward. Domain/application code must not import React, Next.js, Electron, React Native, Supabase, SerialPort, HTTP, or platform storage.
+- Applications may import packages, but packages must never import applications and applications must never import one another.
+- Repository interfaces belong to the owning domain/application package. Supabase, HTTP, SQLite, and device implementations are adapters.
+- Use strict TypeScript, typed expected errors, explicit dependencies, immutable data where practical, and tests for critical behavior.
+- Apply DRY to shared business knowledge and contracts, not superficial visual similarity between platforms.
+- Comments explain intent, constraints, compatibility decisions, and non-obvious behavior. Do not narrate self-explanatory code.
+- Do not add generic `utils`, `helpers`, or unbounded `shared` modules. Place code in the capability that owns it and expose it through the package public API.
+
+### Production Web freeze
+
+Until the native foundation is validated:
+
+- Do not move the root `app`, `src`, or `public` directories.
+- Do not make the production Web depend on new workspace packages without an explicit migration task.
+- Keep API and database changes backward compatible and additive.
+- Allow critical fixes, but avoid broad refactors of production Web as part of Desktop/core work.
+
+Architecture decisions and detailed standards live in `docs/adr/` and `docs/standards/`.
+
 There are no tests in this project.
 
 ## Architecture

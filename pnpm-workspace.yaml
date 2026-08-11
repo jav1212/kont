@@ -1,3 +1,15 @@
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "tooling/*"
+
+# Corepack provides pnpm in this repository; avoid pnpm spawning an unavailable
+# global shim while checking dependency state before every workspace script.
+verifyDepsBeforeRun: false
+
+allowBuilds:
+  "@heroui/shared-utils": false
+  core-js: false
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
