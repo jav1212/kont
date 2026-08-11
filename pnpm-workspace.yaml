@@ -11,6 +11,8 @@ allowBuilds:
   "@heroui/shared-utils": false
   "@serialport/bindings-cpp": true
   core-js: false
+  electron: true
+  electron-winstaller: false
   esbuild: true
   sharp: false
   unrs-resolver: false

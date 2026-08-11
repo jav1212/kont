@@ -7,7 +7,6 @@ import { join } from "node:path";
 import { DeviceManager, type ManagerSnapshot } from "../core/device-manager.js";
 import { configPath, loadConfig, saveConfig } from "../core/config.js";
 import { Logger } from "../core/logger.js";
-import { QW2100Adapter } from "../devices/barcode-scanner/qw2100-adapter.js";
 import { DeviceGateway } from "../gateway/device-gateway.js";
 
 let tray: Tray | null = null; let window: BrowserWindow | null = null; let manager: DeviceManager | null = null; let quitting = false;
@@ -85,7 +84,7 @@ async function startApplication(): Promise<void> {
     lastReportedError.set(reportMessage, now);
     gateway.broadcast({ type: "manager.error", code: "DEVICE_MANAGER_ERROR", message: reportMessage, eventId: randomUUID(), occurredAt, managerVersion: app.getVersion(), installId: config.installId });
   });
-  manager = new DeviceManager(new QW2100Adapter(config), gateway, logger);
+  manager = new DeviceManager(config, gateway, logger);
   manager.onChange(updateTray);
   try {
     await manager.start();

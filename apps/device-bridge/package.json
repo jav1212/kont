@@ -1,5 +1,5 @@
 {
-  "name": "kontave-devices-manager",
+  "name": "@kontave/device-bridge",
   "version": "0.1.4",
   "description": "Administrador local seguro de dispositivos para Kontave",
   "author": "Kontave",
@@ -10,15 +10,18 @@
     "dev": "tsx src/cli.ts",
     "desktop:dev": "pnpm build && electron .",
     "ports": "tsx src/tools/list-ports.ts",
-    "test": "tsx --test test/**/*.test.ts",
+    "test": "corepack pnpm build:shared && tsx --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build",
+    "build": "corepack pnpm build:shared && tsc",
     "dist:win": "pnpm build && electron-builder --win nsis --publish never",
     "release": "pnpm dist:win"
   },
   "dependencies": {
+    "@kontave/device-contracts": "workspace:*",
+    "@kontave/devices-core": "workspace:*",
+    "@kontave/devices-node": "workspace:*",
     "electron-updater": "^6.6.2",
-    "serialport": "^13.0.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
