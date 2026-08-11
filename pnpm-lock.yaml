@@ -65,6 +65,15 @@ importers:
       '@kontave/organizations-supabase':
         specifier: workspace:*
         version: link:packages/organizations/supabase
+      '@kontave/referrals-application':
+        specifier: workspace:*
+        version: link:packages/referrals/application
+      '@kontave/referrals-domain':
+        specifier: workspace:*
+        version: link:packages/referrals/domain
+      '@kontave/referrals-supabase':
+        specifier: workspace:*
+        version: link:packages/referrals/supabase
       '@serwist/next':
         specifier: ^9.5.7
         version: 9.5.7(next@16.1.6(@babel/core@7.29.0(supports-color@7.2.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -542,6 +551,82 @@ importers:
         version: 5.9.3
 
   packages/platform/native-api-contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/referrals/application:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/referrals-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/referrals-testing':
+        specifier: workspace:*
+        version: link:../testing
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/referrals/domain:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/referrals/supabase:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/referrals-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/referrals-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/referrals/testing:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/referrals-domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: ^5.9.2

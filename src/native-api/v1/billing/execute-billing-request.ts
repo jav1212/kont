@@ -3,7 +3,7 @@ import { authenticateNativeRequest } from "../auth/native-auth-context";
 import { nativeError, nativeSuccess } from "../http/native-response";
 import { billingErrorResponse } from "./billing-http";
 import type { BillingAuthorizationContext } from "@kontave/billing-application";
-import { AuthorizationSource } from "@kontave/access-control-domain";
+import { nativeClientSource } from "../http/native-client-source";
 
 export async function executeBillingRequest<T>(
   request: Request,
@@ -14,13 +14,8 @@ export async function executeBillingRequest<T>(
   try {
     const identity = await authenticateNativeRequest(request);
     if (!identity) return nativeError("INVALID_ACCESS_TOKEN", "La sesión no es válida o expiró.", requestId, 401);
-    return nativeSuccess(await operation(userId(identity.userId), organizationId(rawOrganizationId), { requestId, source: nativeSource(request.headers.get("x-kontave-client")), occurredAt: new Date().toISOString() }), requestId);
+    return nativeSuccess(await operation(userId(identity.userId), organizationId(rawOrganizationId), { requestId, source: nativeClientSource(request.headers.get("x-kontave-client")), occurredAt: new Date().toISOString() }), requestId);
   } catch (cause: unknown) {
     return billingErrorResponse(cause, requestId);
   }
 }
-const NATIVE_SOURCE = new Map<string, AuthorizationSource>([
-  [AuthorizationSource.Mobile, AuthorizationSource.Mobile], [AuthorizationSource.Web, AuthorizationSource.Web],
-  [AuthorizationSource.System, AuthorizationSource.System], [AuthorizationSource.Desktop, AuthorizationSource.Desktop],
-]);
-function nativeSource(value: string | null): BillingAuthorizationContext["source"] { return value ? NATIVE_SOURCE.get(value) ?? AuthorizationSource.Desktop : AuthorizationSource.Desktop; }

@@ -53,6 +53,8 @@ export const PERMISSIONS = {
   ACCOUNTING_POST: "accounting.post",
   ACCOUNTING_CLOSE: "accounting.close",
   REPORTS_READ: "reports.read",
+  REFERRALS_READ: "referrals.read",
+  REFERRALS_MANAGE: "referrals.manage",
 } as const;
 
 type PermissionValue = typeof PERMISSIONS[keyof typeof PERMISSIONS];

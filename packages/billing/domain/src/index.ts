@@ -65,6 +65,29 @@ export interface BillingOverview {
   readonly entitlements: OrganizationEntitlements;
   readonly usage: OrganizationUsage;
 }
+export enum BillingCreditEntryType {
+  ReferralGrant = "referral_grant",
+  PromotionalGrant = "promotional_grant",
+  ManualAdjustment = "manual_adjustment",
+  InvoiceApplication = "invoice_application",
+  GrantReversal = "grant_reversal",
+  ApplicationReversal = "application_reversal",
+  Expiration = "expiration",
+}
+export interface BillingCreditEntry {
+  readonly id: string;
+  readonly organizationId: OrganizationId;
+  readonly type: BillingCreditEntryType;
+  readonly amount: Money;
+  readonly sourceType: string;
+  readonly sourceId: string;
+  readonly idempotencyKey: string;
+  readonly occurredAt: string;
+}
+export interface BillingCreditBalance {
+  readonly organizationId: OrganizationId;
+  readonly balance: Money;
+}
 
 export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE";
 export class BillingFailure extends Error {

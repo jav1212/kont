@@ -8,6 +8,12 @@ export type NativeApiErrorCode =
   | "COMPANY_ACCESS_DENIED"
   | "BILLING_ACCESS_DENIED"
   | "BILLING_ACCOUNT_NOT_FOUND"
+  | "REFERRAL_ACCESS_DENIED"
+  | "REFERRAL_NOT_FOUND"
+  | "SELF_REFERRAL"
+  | "ALREADY_ATTRIBUTED"
+  | "INVALID_REWARD"
+  | "REPOSITORY_UNAVAILABLE"
   | "METHOD_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
@@ -77,4 +83,34 @@ export interface NativePaymentMethodDto {
 export interface NativeBillingOverviewDto {
   readonly account: NativeBillingAccountDto; readonly subscriptions: readonly NativeSubscriptionDto[];
   readonly entitlements: NativeEntitlementsDto; readonly usage: NativeUsageDto;
+}
+
+export interface NativeReferralAttributionDto {
+  readonly id: string;
+  readonly referrerOrganizationId: string;
+  readonly referredOrganizationId: string;
+  readonly code: string;
+  readonly status: string;
+  readonly attributedAt: string;
+}
+
+export interface NativeReferralRewardDto {
+  readonly id: string;
+  readonly beneficiaryOrganizationId: string;
+  readonly referredOrganizationId: string;
+  readonly policyId: string;
+  readonly policyVersion: number;
+  readonly rewardType: string;
+  readonly configuredValue: number;
+  readonly calculatedCredit: NativeMoneyDto;
+  readonly sourceInvoiceId: string;
+  readonly status: string;
+}
+
+export interface NativeReferralOverviewDto {
+  readonly code: string;
+  readonly referredBy: string | null;
+  readonly attributions: number;
+  readonly rewards: readonly NativeReferralRewardDto[];
+  readonly balance: NativeMoneyDto;
 }
