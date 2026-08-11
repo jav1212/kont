@@ -1,4 +1,4 @@
-import type { DeviceCapability, DeviceDescriptor, DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
+import type { DeviceCapability, DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceSessionEvent } from "@kontave/device-contracts";
 import type { DeviceAdapter, DeviceCandidate, DeviceEventSink, DeviceLogger, DeviceSession } from "@kontave/devices-core";
 
 /** Test-only adapter used to verify orchestration without physical hardware. */
@@ -30,6 +30,7 @@ export class FakeScannerAdapter implements DeviceAdapter {
     signal.throwIfAborted();
     return {
       device: candidate.descriptor,
+      subscribe: (_listener: (event: DeviceSessionEvent) => void) => () => undefined,
       disconnect: async () => {
         this.disconnectCount += 1;
       },

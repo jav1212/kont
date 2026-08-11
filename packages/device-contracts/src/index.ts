@@ -25,6 +25,7 @@ export interface DeviceDescriptor {
   readonly manufacturer: string;
   readonly model: string;
   readonly connection: DeviceConnectionKind;
+  readonly connectionAddress?: string;
   readonly capabilities: readonly DeviceCapability[];
 }
 
@@ -38,11 +39,21 @@ export type DeviceLifecycleState =
   | "stopped";
 
 export interface DeviceFailure {
-  readonly code: string;
+  readonly code: DeviceFailureCode;
   readonly message: string;
   readonly recoverable: boolean;
   readonly cause?: unknown;
 }
+
+export type DeviceFailureCode =
+  | "DEVICE_CAPABILITY_UNSUPPORTED"
+  | "DEVICE_NOT_FOUND"
+  | "DEVICE_CONNECTION_FAILED"
+  | "DEVICE_CONNECTION_LOST"
+  | "DEVICE_PERMISSION_DENIED"
+  | "DEVICE_OPERATION_CANCELLED"
+  | "DEVICE_PROTOCOL_INCOMPATIBLE"
+  | "DEVICE_UNEXPECTED_ERROR";
 
 export type DeviceEvent =
   | { readonly type: "device.state-changed"; readonly state: DeviceLifecycleState }
@@ -51,6 +62,11 @@ export type DeviceEvent =
   | { readonly type: "barcode.scanned"; readonly eventId: string; readonly deviceId: string; readonly value: string; readonly occurredAt: string }
   | { readonly type: "device.failed"; readonly failure: DeviceFailure };
 
+export type DeviceSessionEvent = Extract<
+  DeviceEvent,
+  { readonly type: "barcode.scanned" | "device.disconnected" | "device.failed" }
+>;
+
 export interface DeviceHandshake {
   readonly protocolVersion: typeof DEVICE_PROTOCOL_VERSION;
   readonly client: {
@@ -58,4 +74,34 @@ export interface DeviceHandshake {
     readonly version: string;
   };
   readonly requestedCapabilities: readonly DeviceCapability[];
+}
+
+export type DeviceCommand =
+  | { readonly type: "device.connect"; readonly capability: DeviceCapability }
+  | { readonly type: "device.disconnect" }
+  | { readonly type: "device.status" };
+
+export interface DeviceProtocolRequest {
+  readonly protocolVersion: typeof DEVICE_PROTOCOL_VERSION;
+  readonly requestId: string;
+  readonly command: DeviceCommand;
+}
+
+export type DeviceProtocolResponse =
+  | {
+      readonly protocolVersion: typeof DEVICE_PROTOCOL_VERSION;
+      readonly requestId: string;
+      readonly ok: true;
+      readonly device?: DeviceDescriptor;
+      readonly state: DeviceLifecycleState;
+    }
+  | {
+      readonly protocolVersion: typeof DEVICE_PROTOCOL_VERSION;
+      readonly requestId: string;
+      readonly ok: false;
+      readonly failure: DeviceFailure;
+    };
+
+export function isCompatibleProtocolVersion(value: unknown): value is typeof DEVICE_PROTOCOL_VERSION {
+  return value === DEVICE_PROTOCOL_VERSION;
 }

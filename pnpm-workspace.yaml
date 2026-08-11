@@ -9,6 +9,7 @@ verifyDepsBeforeRun: false
 
 allowBuilds:
   "@heroui/shared-utils": false
+  "@serialport/bindings-cpp": true
   core-js: false
   esbuild: true
   sharp: false

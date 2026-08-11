@@ -1,31 +1,48 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { DeviceDescriptor, DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
-import { DeviceManager, type DeviceAdapter, type DeviceCandidate, type DeviceEventSink, type DeviceLogger, type DeviceSession } from "../src/index.js";
+import type { DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceSessionEvent } from "@kontave/device-contracts";
+import { DeviceManager, ExponentialBackoffPolicy, type DeviceAdapter, type DeviceCandidate, type DeviceEventSink, type DeviceLogger, type DeviceSession, type Sleeper } from "../src/index.js";
 
 class TestScannerAdapter implements DeviceAdapter {
-  readonly id = "test-scanner";
+  readonly id: string;
   readonly capabilities = ["barcode.scan"] as const;
-  readonly device: DeviceDescriptor = {
-    id: "scanner-1",
-    category: "barcode-scanner",
-    manufacturer: "Kontave",
-    model: "Test Scanner",
-    connection: "serial",
-    capabilities: this.capabilities,
-  };
+  readonly device: DeviceDescriptor;
   available = true;
+  availableAfterDiscoveries = 0;
+  discoveryCount = 0;
   disconnectCount = 0;
 
+  constructor(id = "test-scanner", deviceId = "scanner-1") {
+    this.id = id;
+    this.device = {
+      id: deviceId,
+      category: "barcode-scanner",
+      manufacturer: "Kontave",
+      model: "Test Scanner",
+      connection: "serial",
+      capabilities: this.capabilities,
+    };
+  }
+
   async discover(_signal: AbortSignal): Promise<readonly DeviceCandidate[]> {
-    return this.available ? [{ descriptor: this.device, adapterId: this.id }] : [];
+    this.discoveryCount += 1;
+    const ready = this.available && this.discoveryCount > this.availableAfterDiscoveries;
+    return ready ? [{ descriptor: this.device, adapterId: this.id }] : [];
   }
 
   async connect(candidate: DeviceCandidate, _signal: AbortSignal): Promise<DeviceSession> {
     return {
       device: candidate.descriptor,
+      subscribe: (_listener: (event: DeviceSessionEvent) => void) => () => undefined,
       disconnect: async () => { this.disconnectCount += 1; },
     };
+  }
+}
+
+class ImmediateSleeper implements Sleeper {
+  readonly delays: number[] = [];
+  async sleep(delayMs: number, _signal: AbortSignal): Promise<void> {
+    this.delays.push(delayMs);
   }
 }
 
@@ -86,5 +103,42 @@ describe("DeviceManager", () => {
     assert.equal(manager.state, "stopped");
     assert.equal(adapter.disconnectCount, 1);
     assert.equal(events.events.at(-1)?.type, "device.disconnected");
+  });
+
+  it("selects an explicitly preferred device across compatible adapters", async () => {
+    const first = new TestScannerAdapter("first-adapter", "scanner-a");
+    const preferred = new TestScannerAdapter("preferred-adapter", "scanner-b");
+    const manager = new DeviceManager({
+      adapters: [first, preferred],
+      events: new TestEventSink(),
+      logger: new TestLogger(),
+    });
+
+    const device = await manager.connectFirst("barcode.scan", {
+      preferredDeviceId: "scanner-b",
+    });
+
+    assert.equal(device.id, "scanner-b");
+  });
+
+  it("retries recoverable discovery failures using the configured backoff", async () => {
+    const adapter = new TestScannerAdapter();
+    adapter.availableAfterDiscoveries = 2;
+    const sleeper = new ImmediateSleeper();
+    const manager = new DeviceManager({
+      adapters: [adapter],
+      events: new TestEventSink(),
+      logger: new TestLogger(),
+      sleeper,
+    });
+
+    const device = await manager.connectFirst("barcode.scan", {
+      reconnection: new ExponentialBackoffPolicy(3, 100, 1_000),
+    });
+
+    assert.equal(device.id, adapter.device.id);
+    assert.equal(adapter.discoveryCount, 3);
+    assert.deepEqual(sleeper.delays, [100, 200]);
+    assert.equal(manager.state, "ready");
   });
 });

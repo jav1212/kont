@@ -1,0 +1,21 @@
+{
+  "name": "@kontave/devices-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@kontave/device-contracts": "workspace:*",
+    "@kontave/devices-core": "workspace:*",
+    "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}
