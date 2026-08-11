@@ -7,6 +7,10 @@
 //                     con línea de corte.
 
 import jsPDF from "jspdf";
+import {
+    ART_105_LEGAL_SECTION_PARAGRAPHS,
+    ART_105_LEGAL_SECTION_TITLE,
+} from "./art-105-legal-section";
 import { loadImageAsBase64 } from "./pdf-image-helper";
 import { formatPayrollAmount } from "./payroll-pdf-format";
 import {
@@ -256,23 +260,38 @@ async function generateGeneralPdf(
         if (col === 2 || i === active.length - 1) y += SIG_H + 5;
     });
 
-    if (y + 18 > pageBounds(doc).contentBot) {
+    const FONT_LEGAL = 7.6;
+    const LINE_H_LEGAL = 3.3;
+    const legalParas = ART_105_LEGAL_SECTION_PARAGRAPHS;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(FONT_LEGAL);
+    const wrappedParas = legalParas.map((paragraph) => doc.splitTextToSize(paragraph, W) as string[]);
+    const totalLegalLines = wrappedParas.reduce((total, lines) => total + lines.length, 0);
+    const PARA_GAP = 1.6;
+    const TITLE_BLOCK_H = 7.5;
+    const legalHeight = TITLE_BLOCK_H + totalLegalLines * LINE_H_LEGAL + (legalParas.length - 1) * PARA_GAP + 4;
+
+    if (y + legalHeight > pageBounds(doc).contentBot) {
         doc.addPage();
         y = repaintPageHeader(doc, pageHeader);
     }
     hline(doc, ML, y, W, COLORS.border, 0.2);
     y += 4;
 
-    const legal =
-        "El presente reporte acredita el pago del beneficio de alimentación (cesta ticket) correspondiente " +
-        "a la segunda quincena del período indicado, de conformidad con la Ley de Alimentación para los " +
-        "Trabajadores y las Trabajadoras (LOTTT). El trabajador confirma la recepción del beneficio con su firma.";
+    renderLabel(doc, ART_105_LEGAL_SECTION_TITLE, ML, y, "left", COLORS.inkMed, 8);
+    fill(doc, ML, y + 1.6, 18, 0.5, COLORS.orange);
+    y += TITLE_BLOCK_H;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.8);
+    doc.setFontSize(FONT_LEGAL);
     doc.setTextColor(COLORS.muted[0], COLORS.muted[1], COLORS.muted[2]);
-    const lines = doc.splitTextToSize(legal, W) as string[];
-    lines.forEach((ln, i) => doc.text(ln, ML, y + i * 3.5));
+
+    wrappedParas.forEach((lines, paragraphIndex) => {
+        lines.forEach((line, lineIndex) => doc.text(line, ML, y + lineIndex * LINE_H_LEGAL));
+        y += lines.length * LINE_H_LEGAL;
+        if (paragraphIndex < wrappedParas.length - 1) y += PARA_GAP;
+    });
 
     drawFooter(doc, kontaLogo);
 
