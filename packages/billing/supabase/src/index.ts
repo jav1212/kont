@@ -1,14 +1,59 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { OrganizationBillingRepository } from "@kontave/billing-application";
-import { BillingFailure, limit, money, type BillingAccount, type Invoice, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type Subscription } from "@kontave/billing-domain";
+import type { BillingCreditLedgerRepository, OrganizationBillingRepository } from "@kontave/billing-application";
+import { BillingFailure, Currency, limit, money, type BillingAccount, type BillingCreditApplication, type BillingCreditBalance, type Invoice, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type Subscription } from "@kontave/billing-domain";
 import type { OrganizationId } from "@kontave/organizations-domain";
-import { billingAccountRowSchema, entitlementRowSchema, invoiceRowSchema, paymentMethodRowSchema, subscriptionRowSchema } from "./persistence-codecs";
+import { billingAccountRowSchema, billingCreditApplicationRowSchema, entitlementRowSchema, invoiceRowSchema, paymentMethodRowSchema, subscriptionRowSchema } from "./persistence-codecs";
 
 export interface BillingSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
 export function createOrganizationBillingRepository(configuration: BillingSupabaseConfiguration): OrganizationBillingRepository {
   return new SupabaseOrganizationBillingRepository(createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }));
+}
+export function createBillingCreditLedger(configuration: BillingSupabaseConfiguration): BillingCreditLedgerRepository {
+  return new SupabaseBillingCreditLedger(createBillingClient(configuration));
+}
+
+function createBillingClient(configuration: BillingSupabaseConfiguration): SupabaseClient {
+  return createClient(configuration.url, configuration.serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
+class SupabaseBillingCreditLedger implements BillingCreditLedgerRepository {
+  constructor(private readonly client: SupabaseClient) {}
+  async getBalance(organizationId: OrganizationId): Promise<BillingCreditBalance> {
+    const { data, error } = await this.client.rpc("organization_billing_credit_balance", { p_organization_id: organizationId, p_currency: Currency.Usd });
+    if (error) throw new BillingFailure("BILLING_REPOSITORY_UNAVAILABLE", "No se pudo consultar el saldo de créditos.", { cause: error });
+    return { organizationId, balance: money(BigInt(data ?? 0), Currency.Usd) };
+  }
+  async issue(input: Parameters<BillingCreditLedgerRepository["issue"]>[0]): Promise<void> {
+    const { error } = await this.client.rpc("issue_organization_billing_credit", {
+      p_organization_id: input.organizationId, p_entry_type: input.type,
+      p_amount_minor: input.amount.minorAmount.toString(), p_currency: input.amount.currency,
+      p_source_type: input.sourceType, p_source_id: input.sourceId,
+      p_idempotency_key: input.idempotencyKey, p_occurred_at: input.occurredAt,
+    });
+    if (error) throw new BillingFailure("BILLING_REPOSITORY_UNAVAILABLE", "No se pudo emitir el crédito.", { cause: error });
+  }
+  async apply(input: Parameters<BillingCreditLedgerRepository["apply"]>[0]): Promise<BillingCreditApplication> {
+    const { data, error } = await this.client.rpc("apply_organization_billing_credit", {
+      p_organization_id: input.organizationId, p_invoice_id: input.invoiceId,
+      p_amount_minor: input.amount.minorAmount.toString(), p_currency: input.amount.currency,
+      p_idempotency_key: input.idempotencyKey, p_occurred_at: input.occurredAt,
+    });
+    if (error) throw mapCreditError(error);
+    const row = billingCreditApplicationRowSchema.parse(data);
+    return { id: row.id, organizationId: input.organizationId, invoiceId: input.invoiceId, entryId: row.entry_id, amount: money(BigInt(row.amount_minor), input.amount.currency), appliedAt: row.created_at };
+  }
+}
+
+function mapCreditError(error: { message?: string }): BillingFailure {
+  const message = error.message ?? "";
+  if (message.includes("insufficient_credit")) return new BillingFailure("BILLING_CREDIT_INSUFFICIENT", "El saldo de crédito es insuficiente.");
+  if (message.includes("currency_mismatch")) return new BillingFailure("BILLING_CURRENCY_MISMATCH", "La moneda del crédito no coincide con la factura.");
+  if (message.includes("invoice_not_applicable")) return new BillingFailure("BILLING_INVOICE_NOT_APPLICABLE", "La factura no admite créditos.");
+  return new BillingFailure("BILLING_REPOSITORY_UNAVAILABLE", "No se pudo aplicar el crédito.", { cause: error });
 }
 
 class SupabaseOrganizationBillingRepository implements OrganizationBillingRepository {

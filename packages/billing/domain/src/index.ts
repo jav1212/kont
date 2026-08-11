@@ -88,8 +88,16 @@ export interface BillingCreditBalance {
   readonly organizationId: OrganizationId;
   readonly balance: Money;
 }
+export interface BillingCreditApplication {
+  readonly id: string;
+  readonly organizationId: OrganizationId;
+  readonly invoiceId: string;
+  readonly entryId: string;
+  readonly amount: Money;
+  readonly appliedAt: string;
+}
 
-export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE";
+export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE" | "BILLING_CREDIT_INSUFFICIENT" | "BILLING_INVOICE_NOT_APPLICABLE" | "BILLING_CURRENCY_MISMATCH";
 export class BillingFailure extends Error {
   constructor(readonly code: BillingFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);

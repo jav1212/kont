@@ -59,7 +59,7 @@ test("grants twenty percent only for the first paid invoice and records billing 
   assert.equal(credits.issued.length, 1);
 });
 
-test("returns an existing reward without issuing duplicate credit", async () => {
+test("reconciles an existing reward through the idempotent billing port", async () => {
   const existing = {
     id: "00000000-0000-4000-8000-000000000005",
     beneficiaryOrganizationId: referrer,
@@ -83,5 +83,6 @@ test("returns an existing reward without issuing duplicate credit", async () => 
   });
 
   assert.equal(result, existing);
-  assert.equal(credits.issued.length, 0);
+  assert.equal(credits.issued.length, 1);
+  assert.equal(credits.issued[0]?.idempotencyKey, `referral:${existing.id}`);
 });

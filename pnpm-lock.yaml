@@ -50,6 +50,9 @@ importers:
       '@kontave/billing-domain':
         specifier: workspace:*
         version: link:packages/billing/domain
+      '@kontave/billing-orchestration':
+        specifier: workspace:*
+        version: link:packages/billing/orchestration
       '@kontave/billing-supabase':
         specifier: workspace:*
         version: link:packages/billing/supabase
@@ -65,6 +68,15 @@ importers:
       '@kontave/organizations-supabase':
         specifier: workspace:*
         version: link:packages/organizations/supabase
+      '@kontave/payments-application':
+        specifier: workspace:*
+        version: link:packages/payments/application
+      '@kontave/payments-domain':
+        specifier: workspace:*
+        version: link:packages/payments/domain
+      '@kontave/payments-supabase':
+        specifier: workspace:*
+        version: link:packages/payments/supabase
       '@kontave/referrals-application':
         specifier: workspace:*
         version: link:packages/referrals/application
@@ -401,6 +413,31 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/billing/orchestration:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/payments-application':
+        specifier: workspace:*
+        version: link:../../payments/application
+      '@kontave/payments-domain':
+        specifier: workspace:*
+        version: link:../../payments/domain
+      '@kontave/referrals-application':
+        specifier: workspace:*
+        version: link:../../referrals/application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/billing/supabase:
     dependencies:
       '@kontave/billing-application':
@@ -543,6 +580,82 @@ importers:
         specifier: workspace:*
         version: link:../application
       '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/payments/application:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/payments-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/payments/domain:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/payments/supabase:
+    dependencies:
+      '@kontave/billing-domain':
+        specifier: workspace:*
+        version: link:../../billing/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/payments-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/payments-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/payments/testing:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/payments-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/payments-domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:

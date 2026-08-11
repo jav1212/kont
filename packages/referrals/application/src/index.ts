@@ -72,7 +72,10 @@ export class GrantReferralReward {
     if (!input.isFirstPaidInvoice) return null;
 
     const existing = await this.repository.findRewardBySource(input.sourceInvoiceId);
-    if (existing) return existing;
+    if (existing) {
+      await this.issueRewardCredit(existing, input.occurredAt);
+      return existing;
+    }
 
     const attribution = await this.repository.findAttribution(input.referredOrganizationId);
     if (!attribution || attribution.status !== AttributionStatus.Active) return null;
@@ -92,16 +95,20 @@ export class GrantReferralReward {
       status: RewardStatus.Granted,
     });
 
-    await this.credits.issue({
+    await this.issueRewardCredit(reward, input.occurredAt);
+    return reward;
+  }
+
+  private issueRewardCredit(reward: ReferralReward, occurredAt: string): Promise<void> {
+    return this.credits.issue({
       organizationId: reward.beneficiaryOrganizationId,
       type: BillingCreditEntryType.ReferralGrant,
-      amount: credit,
+      amount: reward.calculatedCredit,
       sourceType: "referral_reward",
       sourceId: reward.id,
       idempotencyKey: `referral:${reward.id}`,
-      occurredAt: input.occurredAt,
+      occurredAt,
     });
-    return reward;
   }
 }
 

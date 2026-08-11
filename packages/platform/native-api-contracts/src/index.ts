@@ -14,6 +14,16 @@ export type NativeApiErrorCode =
   | "ALREADY_ATTRIBUTED"
   | "INVALID_REWARD"
   | "REPOSITORY_UNAVAILABLE"
+  | "PAYMENT_NOT_FOUND"
+  | "PAYMENT_ALREADY_FINALIZED"
+  | "PAYMENT_AMOUNT_INVALID"
+  | "PAYMENT_CURRENCY_MISMATCH"
+  | "PAYMENT_INVOICE_NOT_PAYABLE"
+  | "PAYMENT_REPOSITORY_UNAVAILABLE"
+  | "BILLING_CREDIT_INSUFFICIENT"
+  | "BILLING_INVOICE_NOT_APPLICABLE"
+  | "BILLING_CURRENCY_MISMATCH"
+  | "BILLING_REPOSITORY_UNAVAILABLE"
   | "METHOD_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
@@ -113,4 +123,13 @@ export interface NativeReferralOverviewDto {
   readonly attributions: number;
   readonly rewards: readonly NativeReferralRewardDto[];
   readonly balance: NativeMoneyDto;
+}
+export interface NativePaymentDto {
+  readonly id: string; readonly organizationId: string; readonly invoiceId: string;
+  readonly provider: string; readonly providerReference: string; readonly amount: NativeMoneyDto;
+  readonly status: string; readonly confirmedAt: string | null; readonly createdAt: string;
+}
+export interface NativeBillingCreditApplicationDto {
+  readonly id: string; readonly organizationId: string; readonly invoiceId: string;
+  readonly entryId: string; readonly amount: NativeMoneyDto; readonly appliedAt: string;
 }

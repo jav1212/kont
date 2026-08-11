@@ -1,5 +1,5 @@
 import { PERMISSIONS, permissionCode, type AuthorizationSource, type PermissionCode } from "@kontave/access-control-domain";
-import { BillingFailure, type BillingAccount, type BillingOverview, type Invoice, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type Subscription } from "@kontave/billing-domain";
+import { BillingCreditEntryType, BillingFailure, type BillingAccount, type BillingCreditApplication, type BillingCreditBalance, type BillingOverview, type Invoice, type Money, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type Subscription } from "@kontave/billing-domain";
 import type { OrganizationId, UserId } from "@kontave/organizations-domain";
 
 export interface BillingAuthorizationContext { readonly requestId: string; readonly source: AuthorizationSource; readonly occurredAt: string }
@@ -13,6 +13,26 @@ export interface OrganizationBillingRepository {
   getUsage(organizationId: OrganizationId, entitlements: OrganizationEntitlements): Promise<OrganizationUsage>;
   listInvoices(organizationId: OrganizationId): Promise<readonly Invoice[]>;
   listPaymentMethods(organizationId: OrganizationId): Promise<readonly PaymentMethod[]>;
+}
+export interface BillingCreditLedgerRepository {
+  getBalance(organizationId: OrganizationId): Promise<BillingCreditBalance>;
+  issue(input: { organizationId: OrganizationId; type: BillingCreditEntryType; amount: Money; sourceType: string; sourceId: string; idempotencyKey: string; occurredAt: string }): Promise<void>;
+  apply(input: { organizationId: OrganizationId; invoiceId: string; amount: Money; idempotencyKey: string; occurredAt: string }): Promise<BillingCreditApplication>;
+}
+
+export class GetBillingCreditBalance {
+  constructor(private readonly ledger: BillingCreditLedgerRepository) {}
+  execute(organizationId: OrganizationId) { return this.ledger.getBalance(organizationId); }
+}
+
+export class ApplyBillingCredit {
+  constructor(private readonly ledger: BillingCreditLedgerRepository) {}
+  execute(input: { organizationId: OrganizationId; invoiceId: string; amount: Money; idempotencyKey: string; occurredAt: string }) {
+    if (input.amount.minorAmount <= BigInt(0)) {
+      throw new BillingFailure("BILLING_CREDIT_INSUFFICIENT", "El crédito aplicado debe ser mayor que cero.");
+    }
+    return this.ledger.apply(input);
+  }
 }
 abstract class AuthorizedBillingUseCase {
   constructor(protected readonly repository: OrganizationBillingRepository, private readonly authorization: OrganizationBillingAuthorization) {}
