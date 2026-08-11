@@ -28,9 +28,10 @@ import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem, PurchaseDocumentType, PurchaseInventoryEffect } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
 import { parseRateStr, roundRateValue, useBcvRate } from "@/src/modules/inventory/frontend/components/bcv-rate-input";
-import type { ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { Product, ProductType, VatType } from "@/src/modules/inventory/backend/domain/product";
 import {
     computeInvoiceTotals,
+    computeLineTotals,
     emptyHeaderAdjustments,
     type HeaderAdjustments,
     type AdjustmentKind,
@@ -45,6 +46,8 @@ import { SupplierCombobox } from "@/src/modules/purchases/frontend/components/su
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
 import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
+import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
+import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -187,7 +190,7 @@ export default function NuevaFacturaPage() {
     const [qcSupplier, setQcSupplier] = useState({ name: '', rif: '' });
 
     // Quick create product form
-    const [qcProduct, setQcProduct] = useState({ name: '', code: '', type: 'mercancia' as ProductType, vatType: 'general' as VatType, departmentId: '' });
+    const [qcProduct, setQcProduct] = useState({ name: '', code: '', barcode: '', type: 'mercancia' as ProductType, vatType: 'general' as VatType, departmentId: '' });
     // Quick create department (nested inside product modal)
     const [qcDeptName, setQcDeptName] = useState('');
     const [qcDeptOpen, setQcDeptOpen] = useState(false);
@@ -581,6 +584,7 @@ export default function NuevaFacturaPage() {
             companyId: companyId!,
             name: qcProduct.name.trim(),
             code: qcProduct.code.trim(),
+            barcode: qcProduct.barcode.trim() || undefined,
             description: '',
             type: qcProduct.type,
             measureUnit: 'unidad',
@@ -593,10 +597,54 @@ export default function NuevaFacturaPage() {
         });
         setQcSaving(false);
         if (saved) {
+            addScannedProduct(saved);
             setQcMode(null);
-            setQcProduct({ name: '', code: '', type: 'mercancia', vatType: 'general', departmentId: '' });
+            setQcProduct({ name: '', code: '', barcode: '', type: 'mercancia', vatType: 'general', departmentId: '' });
         }
     }
+
+    function addScannedProduct(product: Product) {
+        if (!product.id) return;
+        const productId = product.id;
+        setItems((current) => {
+            const existing = current.findIndex((item) => item.productId === productId);
+            if (existing >= 0) {
+                return current.map((item, index) => {
+                    if (index !== existing) return item;
+                    const quantity = item.quantity + 1;
+                    const totals = computeLineTotals({
+                        quantity, unitCost: item.unitCost, currency: item.currency, currencyCost: item.currencyCost,
+                        vatRate: item.vatRate,
+                        adjustments: {
+                            descuentoTipo: item.descuentoTipo ?? null, descuentoValor: item.descuentoValor ?? 0, descuentoMoneda: item.descuentoMoneda ?? "VES",
+                            recargoTipo: item.recargoTipo ?? null, recargoValor: item.recargoValor ?? 0, recargoMoneda: item.recargoMoneda ?? "VES",
+                        },
+                    }, rateDecimals, effectiveDollarRate ?? 0, appliedRates);
+                    return { ...item, quantity, totalCost: totals.base, descuentoMonto: totals.descuentoMonto, recargoMonto: totals.recargoMonto, baseIVA: totals.baseIVA };
+                });
+            }
+            const item: PurchaseInvoiceItem = { ...emptyItem(invoiceCurrencyCode), productId, productName: product.name, vatRate: product.vatType === "exento" ? "exenta" : "general_16" };
+            const empty = current.findIndex((candidate) => !candidate.productId);
+            return empty >= 0 ? current.map((candidate, index) => index === empty ? item : candidate) : [...current, item];
+        });
+    }
+
+    useDeviceSubscription("product-capture", (scan) => setQcProduct((current) => ({
+        ...current,
+        code: current.code.trim() || scan.barcode,
+        barcode: scan.barcode,
+    })), qcMode === "product");
+    useDeviceSubscription("purchase", (scan) => {
+        const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
+        if (product) { addScannedProduct(product); return; }
+        setQcProduct((current) => ({
+            ...current,
+            code: current.code.trim() || scan.barcode,
+            barcode: scan.barcode,
+        }));
+        setQcMode("product");
+        notify.info(`Código ${scan.barcode} no registrado. Completa el producto.`);
+    }, qcMode !== "product");
 
     if (confirmed && savedId) {
         const period = (periodoManual && periodo) || date.slice(0, 7);
@@ -1194,7 +1242,7 @@ export default function NuevaFacturaPage() {
                         className="order-2"
                         count={itemCount}
                         onAddLine={() => setItems((current) => [...current, emptyItem(invoiceCurrencyCode)])}
-                        secondaryAction={<BaseButton.Root variant="secondary" size="sm" leftIcon={<Plus size={13} strokeWidth={2} />} onClick={() => setQcMode('product')}>Nuevo producto</BaseButton.Root>}
+                        secondaryAction={<div className="flex items-center gap-2"><DeviceStatusControl /><BaseButton.Root variant="secondary" size="sm" leftIcon={<Plus size={13} strokeWidth={2} />} onClick={() => setQcMode('product')}>Nuevo producto</BaseButton.Root></div>}
                     >
 
                         <FacturaItemsGrid
@@ -1270,6 +1318,12 @@ export default function NuevaFacturaPage() {
                             value={qcProduct.code}
                             onValueChange={(v) => setQcProduct(p => ({ ...p, code: v }))}
                             placeholder="Ej. 001"
+                        />
+                        <BaseInput.Field
+                            label="Código de barras"
+                            value={qcProduct.barcode}
+                            onValueChange={(v) => setQcProduct(p => ({ ...p, barcode: v }))}
+                            placeholder="Escribe o escanea el código"
                         />
                         <div className="grid grid-cols-2 gap-3">
                             <ResponsiveSelect<ProductType> label="Tipo" value={qcProduct.type} options={[{ value: "mercancia", label: "Mercancía" }]} onChange={(value) => setQcProduct((product) => ({ ...product, type: value }))} />

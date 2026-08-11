@@ -178,8 +178,10 @@ const PROD_HEADERS = [
     "metodo_valuacion",
     "iva_tipo", "activo", "departamento_nombre",
     "precio_venta_modo", "precio_venta_valor", "precio_venta_moneda",
+    "codigo_barras",
 ] as const;
 const LEGACY_PROD_HEADERS = PROD_HEADERS.slice(0, 9);
+const PRE_BARCODE_PROD_HEADERS = PROD_HEADERS.slice(0, 12);
 
 const VALID_TYPES: ProductType[]          = ["mercancia"];
 const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
@@ -202,6 +204,7 @@ export function productsToCsv(products: Product[]): string {
             csvCell(p.salePricing?.mode === "fixed" ? "fijo" : p.salePricing?.mode === "markup" ? "porcentaje" : ""),
             csvCell(p.salePricing ? (p.salePricing.mode === "fixed" ? p.salePricing.amount : p.salePricing.percentage) : ""),
             csvCell(p.salePricing?.currency ?? ""),
+            csvCell(p.barcode ?? ""),
         ].join(",")
     );
     return [header, ...rows].join("\r\n");
@@ -209,6 +212,7 @@ export function productsToCsv(products: Product[]): string {
 
 export interface ProductCsvRow {
     code:            string;
+    barcode?:        string;
     name:            string;
     description:     string;
     type:            ProductType;
@@ -235,7 +239,8 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
     const parsedHeaders = parseHeader(lines[0]);
     const header = parsedHeaders.join(",");
     const isLegacy = header === LEGACY_PROD_HEADERS.join(",");
-    if (!isLegacy && header !== PROD_HEADERS.join(",")) {
+    const isPreBarcode = header === PRE_BARCODE_PROD_HEADERS.join(",");
+    if (!isLegacy && !isPreBarcode && header !== PROD_HEADERS.join(",")) {
         return { products: [], errors: [`Encabezado inválido. Se esperaba: ${PROD_HEADERS.join(",")}`] };
     }
 
@@ -247,7 +252,7 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
         const [
             code, name, description, typeRaw, unitRaw,
             methodRaw,
-            vatRaw, activeRaw, deptName, saleModeRaw, saleValueRaw, saleCurrencyRaw,
+            vatRaw, activeRaw, deptName, saleModeRaw, saleValueRaw, saleCurrencyRaw, barcode,
         ] = clean;
 
         if (!name) { errors.push(`Línea ${i + 1}: nombre vacío.`); continue; }
@@ -301,6 +306,7 @@ export function parseProductsCsv(raw: string, departments: Department[]): Produc
 
         products.push({
             code:            code ?? "",
+            barcode:         barcode?.trim() || undefined,
             name,
             description:     description ?? "",
             type,

@@ -15,6 +15,8 @@ export interface Product {
   id?: string;
   companyId: string;
   code: string;
+  /** Optional scanner-facing identifier. Stored as text to preserve leading zeroes. */
+  barcode?: string;
   name: string;
   description: string;
   type: ProductType;

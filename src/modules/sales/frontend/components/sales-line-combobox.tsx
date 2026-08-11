@@ -42,7 +42,8 @@ export function SalesLineCombobox({
         .filter((product) => {
             if (!normalizedQuery) return true;
             return product.name.toLocaleLowerCase("es").includes(normalizedQuery)
-                || product.code.toLocaleLowerCase("es").includes(normalizedQuery);
+                || product.code.toLocaleLowerCase("es").includes(normalizedQuery)
+                || (product.barcode?.toLocaleLowerCase("es").includes(normalizedQuery) ?? false);
         })
         .slice(0, 14), [products, normalizedQuery]);
 
@@ -202,7 +203,7 @@ export function SalesLineCombobox({
                                     <span className="min-w-0">
                                         <span className="block truncate text-[13px] font-medium">{product.name}</span>
                                         <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--text-tertiary)]">
-                                            {product.code || "Sin código"} · {fmtStock(product.currentStock)} {product.measureUnit}
+                                            {product.code || "Sin código"}{product.barcode ? ` · ${product.barcode}` : ""} · {fmtStock(product.currentStock)} {product.measureUnit}
                                         </span>
                                     </span>
                                     <span className="flex items-center gap-2">

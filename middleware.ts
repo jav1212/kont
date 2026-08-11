@@ -28,7 +28,7 @@ const DEFAULT_CSP = [
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com https://vercel.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-monitor-bcv.vercel.app https://vercel.live",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api-monitor-bcv.vercel.app https://vercel.live wss://localhost:47831",
     "frame-src 'self' https://vercel.live",
     "frame-ancestors 'none'",
     "form-action 'self'",

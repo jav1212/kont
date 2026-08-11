@@ -33,6 +33,8 @@ import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 import { CurrencyAdjustmentRow } from "@/src/modules/inventory/frontend/components/currency-adjustment-row";
 import { InvoiceTaxesSection } from "@/src/modules/purchases/frontend/components/invoice-taxes-section";
+import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
+import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 
 const fmtN = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -251,6 +253,36 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             exchangeRate: resolved && !isLocalCurrency(resolved.currency) ? productRate : null,
         });
     }
+
+    useDeviceSubscription("sale", (scan) => {
+        if (isReadOnly) return;
+        const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
+        if (!product?.id) { notify.error(`Código de barras no registrado: ${scan.barcode}`); return; }
+        setItems((current) => {
+            const requested = current.filter((item) => item.productId === product.id).reduce((sum, item) => sum + item.quantity, 0);
+            if (requested + 1 > product.currentStock) {
+                notify.error(`Stock insuficiente para ${product.name}: disponible ${fmtN(product.currentStock)}`);
+                return current;
+            }
+            const existing = current.findIndex((item) => item.productId === product.id);
+            if (existing >= 0) return current.map((item, index) => index === existing ? { ...item, quantity: item.quantity + 1, totalLine: round2((item.quantity + 1) * item.unitPrice), baseIVA: round2((item.quantity + 1) * item.unitPrice) } : item);
+            const empty = current.findIndex((item) => !item.productId && !item.description.trim());
+            const rate = getRate(product.salePricing?.currency ?? "VES");
+            const resolved = resolveProductSalePrice(product, rate);
+            const item: SalesInvoiceItem = {
+                ...emptyItem(), productId: product.id, description: product.name,
+                vatRate: product.vatType === "exento" ? "exenta" : "general_16",
+                currency: resolved?.currency ?? product.salePricing?.currency ?? "VES",
+                currencyPrice: resolved && !isLocalCurrency(resolved.currency) ? resolved.sourcePrice : null,
+                unitPrice: resolved?.unitPriceBs ?? 0,
+                totalLine: resolved?.unitPriceBs ?? 0,
+                baseIVA: resolved?.unitPriceBs ?? 0,
+                dollarRate: resolved && !isLocalCurrency(resolved.currency) ? rate : null,
+                exchangeRate: resolved && !isLocalCurrency(resolved.currency) ? rate : null,
+            };
+            return empty >= 0 ? current.map((candidate, index) => index === empty ? item : candidate) : [...current, item];
+        });
+    }, !isReadOnly);
 
     useEffect(() => {
         if (suggestedLines.size === 0) return;
@@ -651,6 +683,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             </InvoiceSectionCard>
 
             {/* Items */}
+            {!isReadOnly && <div className="flex justify-end"><DeviceStatusControl /></div>}
             <InvoiceDetailCard
                 count={items.filter((item) => item.productId || item.description.trim()).length}
                 itemName="línea"

@@ -12,6 +12,7 @@ import {
     Gift,
     Palette,
     Download,
+    MonitorCog,
     type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ const NAV_GROUPS: ReadonlyArray<NavGroup> = [
             { href: "/settings/referrals",     label: "Referidos",   subtitle: "Invita a otros profesionales y gana crédito.",     icon: Gift       },
             { href: "/settings/apariencia",    label: "Apariencia",  subtitle: "Tema y preferencias visuales (este navegador).",   icon: Palette    },
             { href: "/settings/instalar-app",  label: "Instalar app", subtitle: "Cómo agregar Konta a Windows, macOS, Android o iOS.", icon: Download },
+            { href: "/settings/devices",       label: "Dispositivos", subtitle: "Conecta lectores y equipos locales con Kontave.", icon: MonitorCog },
         ],
     },
 ];

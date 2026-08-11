@@ -46,6 +46,8 @@ import {
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
 import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 import { isLocalCurrency, normalizeCurrencyCode, type AppliedExchangeRate, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
+import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 
 // ── types ──────────────────────────────────────────────────────────────────────
 
@@ -146,6 +148,23 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     }, [id, loadPurchaseInvoice]);
 
     const isDraft = currentPurchaseInvoice?.status === "borrador";
+
+    useDeviceSubscription("purchase", (scan) => {
+        const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
+        if (!product?.id) { notify.error(`Código de barras no registrado: ${scan.barcode}`); return; }
+        setItems((current) => {
+            const existing = current.findIndex((item) => item.productId === product.id);
+            if (existing >= 0) return current.map((item, index) => {
+                if (index !== existing) return item;
+                const quantity = item.quantity + 1;
+                const totalCost = quantity * item.unitCost;
+                return { ...item, quantity, totalCost, baseIVA: totalCost };
+            });
+            const item = { ...emptyItem(invoiceCurrencyCode), productId: product.id!, productName: product.name, vatRate: product.vatType === "exento" ? "exenta" as const : "general_16" as const };
+            const empty = current.findIndex((candidate) => !candidate.productId);
+            return empty >= 0 ? current.map((candidate, index) => index === empty ? item : candidate) : [...current, item];
+        });
+    }, Boolean(isDraft));
 
     // Auto-fetch BCV rate when fecha changes — only while in draft. Confirmadas
     // freeze the rate until the user desconfirma; refetching there would be a
@@ -1008,6 +1027,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                             subtitle="Productos que ingresan al inventario al confirmar."
                             readOnly={!isDraft}
                             onAddLine={() => setItems((current) => [...current, emptyItem(invoiceCurrencyCode)])}
+                            secondaryAction={isDraft ? <DeviceStatusControl /> : undefined}
                         >
                             <FacturaItemsGrid
                                 items={items}

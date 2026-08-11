@@ -109,7 +109,8 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
         (p) =>
             p.active &&
             (p.name.toLowerCase().includes(search.toLowerCase()) ||
-                p.code.toLowerCase().includes(search.toLowerCase())),
+                p.code.toLowerCase().includes(search.toLowerCase()) ||
+                (p.barcode?.toLowerCase().includes(search.toLowerCase()) ?? false)),
     ).slice(0, 14);
 
     useEffect(() => {

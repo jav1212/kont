@@ -21,6 +21,8 @@ import { FilterChip } from "@/src/shared/frontend/components/filter-chip";
 import { useUndoableDelete } from "@/src/shared/frontend/hooks/use-undoable-delete";
 import { ProductSalePricingFields, formatProductSalePricing } from "@/src/modules/inventory/frontend/components/product-sale-pricing-fields";
 import type { Product, ProductType, MeasureUnit, ValuationMethod, VatType } from "@/src/modules/inventory/backend/domain/product";
+import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
+import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 import {
     productsToCsv,
     parseProductsCsv,
@@ -95,6 +97,7 @@ function empty(companyId: string): Product {
     return {
         companyId,
         code:            "",
+        barcode:         "",
         name:            "",
         description:     "",
         type:            "mercancia",
@@ -239,6 +242,12 @@ export default function ProductosPage() {
         if (saved) closeForm();
     }
 
+    useDeviceSubscription("product-capture", (scan) => setForm((current) => current ? {
+        ...current,
+        code: current.code.trim() || scan.barcode,
+        barcode: scan.barcode,
+    } : current), Boolean(form));
+
     function handleDelete(id: string) {
         setConfirmDelete(null);
         setSelected((s) => { const n = new Set(s); n.delete(id); return n; });
@@ -284,7 +293,7 @@ export default function ProductosPage() {
         setImporting(true);
         for (const p of importResult.products) {
             // If a product with this code already exists, update it (avoid duplicates)
-            const existing = p.code ? products.find((x) => x.code === p.code) : undefined;
+            const existing = products.find((x) => (p.barcode && x.barcode === p.barcode) || (p.code && x.code === p.code));
             await saveProduct({
                 ...p,
                 id:           existing?.id,
@@ -319,7 +328,7 @@ export default function ProductosPage() {
             if (estadoFilter === "activo"   && !p.active) return false;
             if (estadoFilter === "inactivo" &&  p.active) return false;
             if (!q) return true;
-            return [p.code, p.name, p.description ?? "", p.departmentName ?? ""]
+            return [p.code, p.barcode ?? "", p.name, p.description ?? "", p.departmentName ?? ""]
                 .join(" ").toLowerCase().includes(q);
         });
     }, [visibleProducts, search, estadoFilter]);
@@ -614,14 +623,23 @@ export default function ProductosPage() {
                 >
                     {form && (
                         <div className="space-y-1">
+                            <div className="flex justify-end pb-2"><DeviceStatusControl /></div>
                             <FormSection icon={Tag} title="Identidad" description="Código interno y nombre comercial.">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <BaseInput.Field
                                         label="Código"
                                         type="text"
                                         value={form.code}
                                         onValueChange={(v) => set("code", v)}
                                         placeholder="P001"
+                                    />
+                                    <BaseInput.Field
+                                        label="Código de barras"
+                                        type="text"
+                                        value={form.barcode ?? ""}
+                                        onValueChange={(v) => set("barcode", v)}
+                                        placeholder="7501234567890"
+                                        description="Opcional · escríbelo o escanéalo"
                                     />
                                     <BaseInput.Field
                                         label="Nombre"
@@ -814,6 +832,11 @@ export default function ProductosPage() {
                                     badge={<TipoBadge tipo={p.type} />}
                                     rows={[
                                         {
+                                            label: "Código de barras",
+                                            value: p.barcode || "—",
+                                            align: "right",
+                                        },
+                                        {
                                             label: "Existencia",
                                             value: (
                                                 <>
@@ -876,6 +899,7 @@ export default function ProductosPage() {
                                         </th>
                                         {[
                                             { label: "Código",       align: "text-left"  },
+                                            { label: "Código barras", align: "text-left" },
                                             { label: "Nombre",       align: "text-left"  },
                                             { label: "Departamento", align: "text-left"  },
                                             { label: "Existencia",   align: "text-right" },
@@ -914,6 +938,7 @@ export default function ProductosPage() {
                                                 />
                                             </td>
                                             <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.code || "—"}</td>
+                                            <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-[var(--text-secondary)]">{p.barcode || "—"}</td>
                                             <td className="px-4 py-3 font-sans font-semibold text-foreground">
                                                 <div className="flex flex-col">
                                                     <span>{p.name}</span>
