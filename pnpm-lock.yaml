@@ -38,6 +38,15 @@ importers:
       '@kontave/native-api-contracts':
         specifier: workspace:*
         version: link:packages/platform/native-api-contracts
+      '@kontave/organizations-application':
+        specifier: workspace:*
+        version: link:packages/organizations/application
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:packages/organizations/domain
+      '@kontave/organizations-supabase':
+        specifier: workspace:*
+        version: link:packages/organizations/supabase
       '@serwist/next':
         specifier: ^9.5.7
         version: 9.5.7(next@16.1.6(@babel/core@7.29.0(supports-color@7.2.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -318,6 +327,57 @@ importers:
       '@kontave/devices-core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/organizations/application:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/organizations/domain:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/organizations/supabase:
+    dependencies:
+      '@kontave/organizations-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/organizations/testing:
+    dependencies:
+      '@kontave/organizations-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: ^5.9.2

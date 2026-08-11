@@ -1,6 +1,11 @@
 export type NativeApiErrorCode =
   | "AUTHENTICATION_REQUIRED"
   | "INVALID_ACCESS_TOKEN"
+  | "INVALID_REQUEST"
+  | "ORGANIZATION_NOT_FOUND"
+  | "ORGANIZATION_ACCESS_DENIED"
+  | "COMPANY_NOT_FOUND"
+  | "COMPANY_ACCESS_DENIED"
   | "METHOD_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
@@ -28,4 +33,19 @@ export interface NativeAuthenticatedUserDto {
 
 export interface NativeSessionDto {
   readonly user: NativeAuthenticatedUserDto;
+}
+
+export interface NativeOrganizationDto {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly role: "owner" | "admin" | "accountant" | "seller" | "cashier";
+  readonly permissions: readonly string[];
+}
+
+export interface NativeOrganizationCompanyDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly rif: string | null;
 }

@@ -8,6 +8,7 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `devices/`: contratos, núcleo portable, adaptadores de plataforma y utilidades de prueba para dispositivos.
 - `ui/`: contratos visuales, tokens, marca y componentes por tecnología de renderizado.
 - `platform/`: contratos y capacidades transversales de integración entre aplicaciones y backend.
+- `organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
 
 ## Reglas
 

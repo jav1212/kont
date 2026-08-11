@@ -1,0 +1,17 @@
+{
+  "name": "@kontave/organizations-supabase",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node -e \"console.log('Organizations Supabase adapter is checked by TypeScript')\""
+  },
+  "dependencies": {
+    "@kontave/organizations-application": "workspace:*",
+    "@kontave/organizations-domain": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1"
+  },
+  "devDependencies": { "typescript": "^5.9.2" }
+}
