@@ -15,9 +15,12 @@
     "dist:win": "corepack pnpm build && electron-builder --win nsis --publish never"
   },
   "dependencies": {
+    "@kontave/brand-assets": "workspace:*",
+    "@kontave/design-tokens": "workspace:*",
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
     "@kontave/devices-node": "workspace:*",
+    "@kontave/ui-web": "workspace:*",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -25,12 +28,12 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "6.0.5",
+    "@vitejs/plugin-react": "5.2.0",
     "electron": "37.10.3",
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
     "typescript": "^5.9.2",
-    "vite": "8.2.1"
+    "vite": "7.3.6"
   },
   "build": {
     "appId": "com.kontave.desktop",
