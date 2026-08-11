@@ -1,0 +1,51 @@
+{
+  "name": "@kontave/desktop",
+  "version": "0.1.0",
+  "description": "Aplicación nativa de escritorio de la plataforma Kontave",
+  "author": "Kontave",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build",
+    "build": "corepack pnpm build:shared && electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('Desktop contract checks run through TypeScript')\"",
+    "dist:win": "corepack pnpm build && electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "@kontave/device-contracts": "workspace:*",
+    "@kontave/devices-core": "workspace:*",
+    "@kontave/devices-node": "workspace:*",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "6.0.5",
+    "electron": "37.10.3",
+    "electron-builder": "26.15.3",
+    "electron-vite": "5.0.0",
+    "typescript": "^5.9.2",
+    "vite": "8.2.1"
+  },
+  "build": {
+    "appId": "com.kontave.desktop",
+    "productName": "Kontave Desktop",
+    "asar": true,
+    "files": ["out/**/*", "package.json"],
+    "directories": { "output": "release" },
+    "win": {
+      "target": ["nsis"],
+      "artifactName": "Kontave-Desktop-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
