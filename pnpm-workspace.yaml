@@ -1,6 +1,6 @@
 packages:
   - "apps/*"
-  - "packages/*"
+  - "packages/*/*"
   - "tooling/*"
 
 # Corepack provides pnpm in this repository; avoid pnpm spawning an unavailable

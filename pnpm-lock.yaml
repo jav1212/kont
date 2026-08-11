@@ -31,13 +31,13 @@ importers:
         version: 2.4.26(tailwindcss@4.2.1)
       '@kontave/auth-domain':
         specifier: workspace:*
-        version: link:packages/auth-domain
+        version: link:packages/auth/domain
       '@kontave/auth-supabase':
         specifier: workspace:*
-        version: link:packages/auth-supabase
+        version: link:packages/auth/supabase
       '@kontave/native-api-contracts':
         specifier: workspace:*
-        version: link:packages/native-api-contracts
+        version: link:packages/platform/native-api-contracts
       '@serwist/next':
         specifier: ^9.5.7
         version: 9.5.7(next@16.1.6(@babel/core@7.29.0(supports-color@7.2.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -131,31 +131,31 @@ importers:
     dependencies:
       '@kontave/auth-application':
         specifier: workspace:*
-        version: link:../../packages/auth-application
+        version: link:../../packages/auth/application
       '@kontave/auth-domain':
         specifier: workspace:*
-        version: link:../../packages/auth-domain
+        version: link:../../packages/auth/domain
       '@kontave/auth-supabase':
         specifier: workspace:*
-        version: link:../../packages/auth-supabase
+        version: link:../../packages/auth/supabase
       '@kontave/brand-assets':
         specifier: workspace:*
-        version: link:../../packages/brand-assets
+        version: link:../../packages/ui/brand-assets
       '@kontave/design-tokens':
         specifier: workspace:*
-        version: link:../../packages/design-tokens
+        version: link:../../packages/ui/design-tokens
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../../packages/device-contracts
+        version: link:../../packages/devices/contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../../packages/devices-core
+        version: link:../../packages/devices/core
       '@kontave/devices-node':
         specifier: workspace:*
-        version: link:../../packages/devices-node
+        version: link:../../packages/devices/node
       '@kontave/ui-web':
         specifier: workspace:*
-        version: link:../../packages/ui-web
+        version: link:../../packages/ui/web
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -198,13 +198,13 @@ importers:
     dependencies:
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../../packages/device-contracts
+        version: link:../../packages/devices/contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../../packages/devices-core
+        version: link:../../packages/devices/core
       '@kontave/devices-node':
         specifier: workspace:*
-        version: link:../../packages/devices-node
+        version: link:../../packages/devices/node
       electron-updater:
         specifier: ^6.6.2
         version: 6.8.9(supports-color@7.2.0)
@@ -231,11 +231,11 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
-  packages/auth-application:
+  packages/auth/application:
     dependencies:
       '@kontave/auth-domain':
         specifier: workspace:*
-        version: link:../auth-domain
+        version: link:../domain
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -244,7 +244,7 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/auth-domain:
+  packages/auth/domain:
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -253,14 +253,14 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/auth-supabase:
+  packages/auth/supabase:
     dependencies:
       '@kontave/auth-application':
         specifier: workspace:*
-        version: link:../auth-application
+        version: link:../application
       '@kontave/auth-domain':
         specifier: workspace:*
-        version: link:../auth-domain
+        version: link:../domain
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -269,9 +269,17 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/brand-assets: {}
+  packages/devices/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
 
-  packages/design-tokens:
+  packages/devices/core:
+    dependencies:
+      '@kontave/device-contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -280,33 +288,14 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/device-contracts:
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/devices-core:
+  packages/devices/node:
     dependencies:
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../device-contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/devices-node:
-    dependencies:
-      '@kontave/device-contracts':
-        specifier: workspace:*
-        version: link:../device-contracts
+        version: link:../contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../devices-core
+        version: link:../core
       serialport:
         specifier: ^13.0.0
         version: 13.0.0(supports-color@7.2.0)
@@ -321,36 +310,47 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/devices-testing:
+  packages/devices/testing:
     dependencies:
       '@kontave/device-contracts':
         specifier: workspace:*
-        version: link:../device-contracts
+        version: link:../contracts
       '@kontave/devices-core':
         specifier: workspace:*
-        version: link:../devices-core
+        version: link:../core
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/native-api-contracts:
+  packages/platform/native-api-contracts:
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/ui-contracts:
+  packages/ui/brand-assets: {}
+
+  packages/ui/contracts:
     devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/ui-web:
+  packages/ui/design-tokens:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/ui/web:
     dependencies:
       '@kontave/ui-contracts':
         specifier: workspace:*
-        version: link:../ui-contracts
+        version: link:../contracts
       react:
         specifier: ^19.0.0
         version: 19.2.3
