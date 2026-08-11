@@ -1,0 +1,12 @@
+{
+  "name": "@kontave/native-api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node -e \"console.log('Native API contracts are checked by TypeScript')\""
+  },
+  "devDependencies": { "typescript": "^5.9.2" }
+}

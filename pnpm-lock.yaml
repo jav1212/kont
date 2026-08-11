@@ -29,6 +29,15 @@ importers:
       '@heroui/theme':
         specifier: ^2.4.26
         version: 2.4.26(tailwindcss@4.2.1)
+      '@kontave/auth-domain':
+        specifier: workspace:*
+        version: link:packages/auth-domain
+      '@kontave/auth-supabase':
+        specifier: workspace:*
+        version: link:packages/auth-supabase
+      '@kontave/native-api-contracts':
+        specifier: workspace:*
+        version: link:packages/native-api-contracts
       '@serwist/next':
         specifier: ^9.5.7
         version: 9.5.7(next@16.1.6(@babel/core@7.29.0(supports-color@7.2.0))(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
@@ -120,6 +129,15 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@kontave/auth-application':
+        specifier: workspace:*
+        version: link:../../packages/auth-application
+      '@kontave/auth-domain':
+        specifier: workspace:*
+        version: link:../../packages/auth-domain
+      '@kontave/auth-supabase':
+        specifier: workspace:*
+        version: link:../../packages/auth-supabase
       '@kontave/brand-assets':
         specifier: workspace:*
         version: link:../../packages/brand-assets
@@ -138,6 +156,9 @@ importers:
       '@kontave/ui-web':
         specifier: workspace:*
         version: link:../../packages/ui-web
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -210,6 +231,44 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/auth-application:
+    dependencies:
+      '@kontave/auth-domain':
+        specifier: workspace:*
+        version: link:../auth-domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/auth-domain:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/auth-supabase:
+    dependencies:
+      '@kontave/auth-application':
+        specifier: workspace:*
+        version: link:../auth-application
+      '@kontave/auth-domain':
+        specifier: workspace:*
+        version: link:../auth-domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/brand-assets: {}
 
   packages/design-tokens:
@@ -270,6 +329,12 @@ importers:
       '@kontave/devices-core':
         specifier: workspace:*
         version: link:../devices-core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/native-api-contracts:
     devDependencies:
       typescript:
         specifier: ^5.9.2

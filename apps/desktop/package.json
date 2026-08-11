@@ -15,12 +15,16 @@
     "dist:win": "corepack pnpm build && electron-builder --win nsis --publish never"
   },
   "dependencies": {
+    "@kontave/auth-application": "workspace:*",
+    "@kontave/auth-domain": "workspace:*",
+    "@kontave/auth-supabase": "workspace:*",
     "@kontave/brand-assets": "workspace:*",
     "@kontave/design-tokens": "workspace:*",
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
     "@kontave/devices-node": "workspace:*",
     "@kontave/ui-web": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

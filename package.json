@@ -16,6 +16,9 @@
     "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
   },
   "dependencies": {
+    "@kontave/auth-domain": "workspace:*",
+    "@kontave/auth-supabase": "workspace:*",
+    "@kontave/native-api-contracts": "workspace:*",
     "@heroui/accordion": "^2.2.29",
     "@heroui/input": "^2.4.33",
     "@heroui/react": "^2.8.10",

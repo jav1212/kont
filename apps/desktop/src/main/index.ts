@@ -3,7 +3,10 @@ import { join } from "node:path";
 import type { DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
 import { DeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices-core";
 import { DatalogicQw2100Adapter, NodeSerialPortProvider } from "@kontave/devices-node";
+import { createSupabaseAuthenticationGateway } from "@kontave/auth-supabase";
 import { DESKTOP_IPC, type DesktopDeviceStatus } from "../shared/desktop-api.js";
+import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
+import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
 
 let mainWindow: BrowserWindow | undefined;
 
@@ -51,8 +54,12 @@ class DesktopDeviceHost implements DeviceEventSink, DeviceLogger {
 }
 
 const devices = new DesktopDeviceHost();
+let auth: DesktopAuthController | undefined;
 
 function registerIpc(): void {
+  ipcMain.handle(DESKTOP_IPC.getAuthState, () => auth?.getState() ?? { status: "loading" });
+  ipcMain.handle(DESKTOP_IPC.signIn, (_event, command: unknown) => auth?.signIn(command));
+  ipcMain.handle(DESKTOP_IPC.signOut, () => auth?.signOut());
   ipcMain.handle(DESKTOP_IPC.connectDevice, () => devices.connect());
   ipcMain.handle(DESKTOP_IPC.disconnectDevice, () => devices.disconnect());
   ipcMain.handle(DESKTOP_IPC.getDeviceStatus, () => devices.status());
@@ -88,8 +95,18 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  const supabaseUrl = process.env.KONTAVE_SUPABASE_URL;
+  const supabaseAnonKey = process.env.KONTAVE_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("KONTAVE_SUPABASE_URL y KONTAVE_SUPABASE_ANON_KEY son obligatorias para Desktop.");
+  }
+  auth = new DesktopAuthController(
+    createSupabaseAuthenticationGateway({ url: supabaseUrl, anonKey: supabaseAnonKey }, new DesktopSecureStorage()),
+    () => mainWindow,
+  );
   registerIpc();
   createWindow();
+  void auth.initialize();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

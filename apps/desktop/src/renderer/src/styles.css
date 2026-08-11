@@ -11,3 +11,8 @@ h1, h2, p { margin: 0; }
 .device-details { display: grid; grid-template-columns: 8.125rem 1fr; gap: var(--kt-space-3); margin: var(--kt-space-6) 0; }
 .device-details dd { margin: 0; font-weight: 650; }
 .device-actions { display: flex; margin-top: var(--kt-space-4); }
+.device-actions { gap: var(--kt-space-3); }
+.auth-card { max-width: 30rem; margin: 0 auto; }
+.auth-card h2 { margin-top: var(--kt-space-1); }
+.auth-form { display: grid; gap: var(--kt-space-4); margin-top: var(--kt-space-6); }
+.signed-in-user { margin-top: var(--kt-space-3); color: var(--kt-text-subtle); font-size: .875rem; }
