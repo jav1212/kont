@@ -16,6 +16,9 @@
     "db:types": "npx -y supabase@latest gen types typescript --project-id fvantswxhepvkloygcvc --schema public > types/database.ts"
   },
   "dependencies": {
+    "@kontave/billing-application": "workspace:*",
+    "@kontave/billing-domain": "workspace:*",
+    "@kontave/billing-supabase": "workspace:*",
     "@kontave/auth-domain": "workspace:*",
     "@kontave/auth-supabase": "workspace:*",
     "@kontave/native-api-contracts": "workspace:*",

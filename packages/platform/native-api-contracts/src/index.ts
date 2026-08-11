@@ -6,6 +6,8 @@ export type NativeApiErrorCode =
   | "ORGANIZATION_ACCESS_DENIED"
   | "COMPANY_NOT_FOUND"
   | "COMPANY_ACCESS_DENIED"
+  | "BILLING_ACCESS_DENIED"
+  | "BILLING_ACCOUNT_NOT_FOUND"
   | "METHOD_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
@@ -48,4 +50,31 @@ export interface NativeOrganizationCompanyDto {
   readonly organizationId: string;
   readonly name: string;
   readonly rif: string | null;
+}
+
+export interface NativeMoneyDto { readonly minorAmount: string; readonly currency: "USD" | "VES" }
+export interface NativeBillingAccountDto {
+  readonly id: string; readonly organizationId: string; readonly legalName: string;
+  readonly taxId: string | null; readonly billingEmail: string | null;
+  readonly countryCode: string; readonly currency: "USD" | "VES";
+}
+export interface NativeSubscriptionDto {
+  readonly id: string; readonly productCode: string; readonly planId: string | null; readonly planName: string | null;
+  readonly status: string; readonly billingCycle: string | null; readonly currentPeriodStart: string | null; readonly currentPeriodEnd: string | null;
+}
+export interface NativeEntitlementsDto {
+  readonly maxCompanies: number | null; readonly maxMembers: number | null; readonly maxDevices: number | null; readonly enabledModules: readonly string[];
+}
+export interface NativeLimitDto { readonly used: number; readonly maximum: number | null; readonly remaining: number | null }
+export interface NativeUsageDto { readonly companies: NativeLimitDto; readonly members: NativeLimitDto; readonly devices: NativeLimitDto }
+export interface NativeInvoiceDto {
+  readonly id: string; readonly number: string; readonly status: string; readonly subtotal: NativeMoneyDto;
+  readonly tax: NativeMoneyDto; readonly total: NativeMoneyDto; readonly issuedAt: string | null; readonly dueAt: string | null; readonly paidAt: string | null;
+}
+export interface NativePaymentMethodDto {
+  readonly id: string; readonly kind: string; readonly provider: string; readonly displayLabel: string; readonly isDefault: boolean;
+}
+export interface NativeBillingOverviewDto {
+  readonly account: NativeBillingAccountDto; readonly subscriptions: readonly NativeSubscriptionDto[];
+  readonly entitlements: NativeEntitlementsDto; readonly usage: NativeUsageDto;
 }

@@ -1,0 +1,14 @@
+{
+  "name": "@kontave/billing-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('Billing fixtures are checked by TypeScript')\"" },
+  "dependencies": {
+    "@kontave/billing-application": "workspace:*",
+    "@kontave/billing-domain": "workspace:*",
+    "@kontave/organizations-domain": "workspace:*"
+  },
+  "devDependencies": { "typescript": "^5.9.2" }
+}
