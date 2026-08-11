@@ -6,7 +6,7 @@
 // inventario abre cada una para imputar productos y mover stock.
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, Inbox, Trash2 } from "lucide-react";
+import { ChevronLeft, Inbox, Search, Trash2 } from "lucide-react";
 import { useContextRouter as useRouter } from "@/src/shared/frontend/hooks/use-url-context";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
 import { BaseButton } from "@/src/shared/frontend/components/base-button";
@@ -33,14 +33,30 @@ export default function ComprasPendientesPage() {
         }
     }, [companyId, loadPurchaseInvoices, loadSuppliers]);
 
-    const supplierName = (id: string) => suppliers.find((s) => s.id === id)?.name ?? "—";
     const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+    const [search, setSearch] = useState("");
     const [deletingBatch, setDeletingBatch] = useState(false);
+
+    const supplierNameById = useMemo(
+        () => new Map(suppliers.map((supplier) => [supplier.id, supplier.name])),
+        [suppliers],
+    );
 
     const pendientes = useMemo(
         () => purchaseInvoices.filter((invoice) => isPendingImputation(invoice) || (invoice.status === "borrador" && isPurchaseBookImported(invoice))),
         [purchaseInvoices],
     );
+
+    const filteredPendientes = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return pendientes;
+
+        return pendientes.filter((invoice) => [
+            invoice.supplierName ?? supplierNameById.get(invoice.supplierId) ?? "",
+            invoice.invoiceNumber ?? "",
+            invoice.controlNumber ?? "",
+        ].join(" ").toLowerCase().includes(query));
+    }, [pendientes, search, supplierNameById]);
 
 
     const importedDrafts = useMemo(
@@ -80,11 +96,24 @@ export default function ComprasPendientesPage() {
             <div className="px-4 sm:px-6 py-4 sm:py-6 max-w-5xl mx-auto">
                 <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--text-tertiary)] font-bold">
-                        {pendientes.length} pendiente{pendientes.length === 1 ? "" : "s"}
+                        {search.trim() ? `${filteredPendientes.length} de ${pendientes.length}` : pendientes.length} pendiente{pendientes.length === 1 ? "" : "s"}
                     </p>
                     <p className="hidden sm:block font-sans text-[12px] text-[var(--text-tertiary)]">
                         Los productos se validan contra el libro antes de confirmar.
                     </p>
+                </div>
+
+                <div className="mb-4 rounded-xl border border-border-light bg-surface-1 p-3 shadow-[var(--shadow-sm)]">
+                    <div className="relative w-full sm:max-w-[520px]">
+                        <Search size={14} strokeWidth={2} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] pointer-events-none" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Buscar proveedor, Nº factura o Nº control…"
+                            className="w-full h-9 !pl-9 !pr-3 rounded-lg border border-border-light bg-surface-1 outline-none font-mono text-[13px] text-foreground placeholder:text-[var(--text-tertiary)] focus:border-primary-500/60 hover:border-border-medium transition-colors"
+                        />
+                    </div>
                 </div>
 
                 <div className="mb-4 rounded-xl border border-border-light bg-surface-1 px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -116,14 +145,30 @@ export default function ComprasPendientesPage() {
                             Cuando el contador registre una factura por flujo rápido (sin productos), aparecerá aquí para que la imputes.
                         </p>
                     </div>
+                ) : filteredPendientes.length === 0 ? (
+                    <div className="rounded-xl border border-border-light bg-surface-1 px-4 py-12 flex flex-col items-center gap-2 text-center">
+                        <p className="font-mono text-[12px] uppercase tracking-[0.12em] text-foreground">
+                            Sin resultados
+                        </p>
+                        <p className="font-sans text-[13px] text-[var(--text-tertiary)]">
+                            Ninguna compra pendiente coincide con la búsqueda.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setSearch("")}
+                            className="mt-2 text-[11px] uppercase tracking-[0.14em] text-primary-500 hover:text-primary-600 transition-colors"
+                        >
+                            Limpiar búsqueda
+                        </button>
+                    </div>
                 ) : (
                     <div className="flex flex-col gap-3">
-                        {pendientes.map((inv) => (
+                        {filteredPendientes.map((inv) => (
                             <BaseListCard
                                 key={inv.id}
                                 href={`/inventory/compras-pendientes/${inv.id}`}
                                 title={inv.invoiceNumber || `#${inv.id?.slice(0, 8)}`}
-                                subtitle={supplierName(inv.supplierId)}
+                                subtitle={inv.supplierName ?? supplierNameById.get(inv.supplierId) ?? "—"}
                                 rows={[
                                     { label: "Fecha", value: fmtDate(inv.date), align: "right", numeric: true },
                                     {
