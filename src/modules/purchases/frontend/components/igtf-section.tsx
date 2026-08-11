@@ -14,6 +14,7 @@
 
 import { useEffect } from "react";
 import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 export interface IgtfFormValue {
     aplica:      boolean;
@@ -132,9 +133,14 @@ export function IgtfSection({ value, onChange, dollarRate, readOnly, currencyOpt
                 <>
                     <div>
                         <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1">Moneda del pago</label>
-                        <select className={`${fieldCls} w-full`} value={value.currencyCode} onChange={(event) => onChange({ ...value, currencyCode: event.target.value })} disabled={readOnly}>
-                            {currencyOptions.filter((option) => option.code !== "VES").map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
-                        </select>
+                        <CurrencyCombobox
+                            label=""
+                            value={value.currencyCode}
+                            options={currencyOptions.filter((option) => option.code !== "VES")}
+                            onChange={(currencyCode) => onChange({ ...value, currencyCode })}
+                            disabled={readOnly}
+                            triggerClassName="!h-10 !w-full !text-[14px]"
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>

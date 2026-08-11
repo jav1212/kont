@@ -12,6 +12,7 @@
 import { useEffect } from "react";
 import { IGTF_CONCEPTS, IGTF_CONCEPT_LABELS, type IgtfConcept } from "@/src/modules/sales/backend/domain/sales-invoice";
 import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 
 export interface IgtfPerceptionFormValue {
     applies:    boolean;
@@ -140,9 +141,14 @@ export function IgtfPerceptionSection({ value, onChange, dollarRate, readOnly, c
                 <>
                     <div>
                         <label className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] block mb-1.5">Moneda del cobro</label>
-                        <select className={`${fieldCls} w-full`} value={value.currencyCode} onChange={(event) => onChange({ ...value, currencyCode: event.target.value })} disabled={readOnly}>
-                            {currencyOptions.filter((option) => option.code !== "VES").map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}
-                        </select>
+                        <CurrencyCombobox
+                            label=""
+                            value={value.currencyCode}
+                            options={currencyOptions.filter((option) => option.code !== "VES")}
+                            onChange={(currencyCode) => onChange({ ...value, currencyCode })}
+                            disabled={readOnly}
+                            triggerClassName="!h-10 !w-full !text-[14px]"
+                        />
                     </div>
                     {/* Concepto */}
                     <div>
