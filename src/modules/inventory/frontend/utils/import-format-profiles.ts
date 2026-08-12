@@ -31,6 +31,10 @@ export interface ImportFormatProfile {
    * (first row with 3+ non-empty string cells) is used.
    */
   headerRowIndex: number | null;
+  /** Headers supplied by the profile when the source file has no header row. */
+  syntheticHeaders?: string[];
+  /** First data row (0-based). Required for headerless reports with preamble rows. */
+  dataStartRowIndex?: number;
 
   /**
    * Explicit column-to-field mappings keyed by normalized header.
@@ -56,6 +60,47 @@ export interface ImportFormatProfile {
     filenamePattern?: RegExp;
   };
 }
+
+const INVENTARIO3_HEADERS = [
+  "codigo", "descripcion", "departamento", "existencia", "precio 1",
+  "precio 2", "precio 3", "precio 4", "iva", "unidad", "extras",
+  "departamento 1", "departamento 2", "departamento 3", "departamento 4",
+  "departamento 5", "departamento 6", "departamento 7", "departamento 8",
+  "departamento 9", "departamento 10", "tipo origen", "precio divisa",
+  "estanteria", "moneda",
+];
+
+const INVENTARIO3_PROFILE: ImportFormatProfile = {
+  id: "portal_inventory_v3",
+  label: "El Portal · INVENTARIO3",
+  description: "Catálogo sin encabezados; código mixto, existencia y precio de venta.",
+  sheet: { strategy: "first" },
+  headerRowIndex: null,
+  syntheticHeaders: INVENTARIO3_HEADERS,
+  dataStartRowIndex: 7,
+  columnMap: {
+    codigo: { target: "product", field: "sourceIdentifier" },
+    descripcion: { target: "product", field: "name" },
+    departamento: { target: "department", field: "name" },
+    existencia: { target: "movement", field: "initialStock" },
+    "precio 1": { target: "product", field: "salePrice" },
+    iva: { target: "product", field: "vatType" },
+    unidad: { target: "product", field: "measureUnit" },
+    "tipo origen": { target: "product", field: "sourceType" },
+    moneda: { target: "custom", field: "moneda_origen" },
+    "precio divisa": { target: "custom", field: "precio_divisa_referencia" },
+    extras: null, estanteria: null,
+    "precio 2": null, "precio 3": null, "precio 4": null,
+    "departamento 1": null, "departamento 2": null, "departamento 3": null,
+    "departamento 4": null, "departamento 5": null, "departamento 6": null,
+    "departamento 7": null, "departamento 8": null, "departamento 9": null,
+    "departamento 10": null,
+  },
+  detect: {
+    requiredHeaders: [],
+    filenamePattern: /^inventario3\.csv$/i,
+  },
+};
 
 // ── Concrete profiles ──────────────────────────────────────────────────────
 
@@ -179,6 +224,7 @@ const SUPERMARKET_ENTRIES_PROFILE: ImportFormatProfile = {
 // To add a new client format, define a profile above and add it here.
 
 const PROFILES: ImportFormatProfile[] = [
+  INVENTARIO3_PROFILE,
   PHARMACY_POS_PROFILE,
   SUPERMARKET_ENTRIES_PROFILE,
 ];
@@ -207,6 +253,9 @@ export function detectFormatProfile(
   let bestResult: ProfileDetectionResult | null = null;
 
   for (const profile of PROFILES) {
+    if (profile.syntheticHeaders && profile.detect.filenamePattern?.test(fileName)) {
+      return { profile, confidence: 1 };
+    }
     // Gate: all required headers must be present
     const allRequired = profile.detect.requiredHeaders.every(rh => headerSet.has(rh));
     if (!allRequired) continue;

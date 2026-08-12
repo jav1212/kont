@@ -4,15 +4,48 @@
 // No side effects — all I/O happens in the calling hook.
 
 import * as XLSX from "xlsx";
-import type { VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { MeasureUnit, SalePricing, VatType } from "@/src/modules/inventory/backend/domain/product";
+import type { CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import type { CustomFieldDefinition } from "@/src/modules/companies/frontend/hooks/use-companies";
+
+/** Parse semicolon-delimited CSV as text so locale-formatted numbers remain untouched. */
+export function parseSemicolonCsvWorkbook(raw: string): XLSX.WorkBook {
+  const lines = raw.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  while (lines.length > 0 && !lines[lines.length - 1].trim()) lines.pop();
+  const rows = lines.map((line) => {
+    const cells: string[] = [];
+    let cell = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"') {
+        if (quoted && line[index + 1] === '"') { cell += '"'; index += 1; }
+        else quoted = !quoted;
+      } else if (char === ";" && !quoted) {
+        cells.push(cell);
+        cell = "";
+      } else cell += char;
+    }
+    cells.push(cell);
+    return cells;
+  });
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "Inventario");
+  return workbook;
+}
 
 // ── System field target discriminated union ─────────────────────────────────
 
 export type SystemFieldTarget =
   | { target: "product"; field: "code" }
+  | { target: "product"; field: "sourceIdentifier" }
+  | { target: "product"; field: "barcode" }
   | { target: "product"; field: "name" }
   | { target: "product"; field: "vatType" }
+  | { target: "product"; field: "measureUnit" }
+  | { target: "product"; field: "sourceType" }
+  | { target: "product"; field: "salePrice" }
+  | { target: "product"; field: "saleCurrency" }
   | { target: "department"; field: "name" }
   | { target: "movement"; field: "initialStock" }
   | { target: "movement"; field: "initialCost" }
@@ -52,8 +85,20 @@ export interface ExcelParseResult {
   selectedSheet?: string;
 }
 
+export type IdentifierClassification = "barcode" | "internal_code" | "invalid";
+
 export interface ExcelImportRow {
-  product: { code: string; name: string; vatType: VatType };
+  sourceRow: number;
+  product: {
+    code: string;
+    barcode?: string;
+    identifierClassification: IdentifierClassification;
+    name: string;
+    vatType: VatType;
+    measureUnit: MeasureUnit;
+    sourceType: string;
+    salePricing?: SalePricing;
+  };
   departmentName: string | null;
   initialStock: number;
   initialCost: number;
@@ -100,6 +145,29 @@ export function normalizeVatType(raw: string | number): VatType {
   return "general";
 }
 
+export function normalizeMeasureUnit(raw: unknown): MeasureUnit | null {
+  const value = String(raw ?? "").trim().toUpperCase();
+  if (value === "UNI" || value === "UNIDAD") return "unidad";
+  if (value === "KG") return "kg";
+  if (value === "GR" || value === "G") return "g";
+  return null;
+}
+
+export function classifySourceIdentifier(raw: unknown): { code: string; barcode?: string; classification: IdentifierClassification } {
+  const value = String(raw ?? "").trim();
+  if (/^\d{8,14}$/.test(value)) return { code: value, barcode: value, classification: "barcode" };
+  if (/^[A-Za-z0-9_-]{1,128}$/.test(value)) return { code: value, classification: "internal_code" };
+  return { code: value, classification: "invalid" };
+}
+
+function normalizeSaleCurrency(raw: unknown): CurrencyCode | null {
+  const value = String(raw ?? "").trim().toUpperCase();
+  if (value === "USD $" || value === "USD" || value === "D") return "USD";
+  if (value === "BS." || value === "BS" || value === "VES" || value === "B") return "VES";
+  if (value === "EUR €" || value === "EUR") return "EUR";
+  return null;
+}
+
 export function normalizeCurrency(raw: string | number): "B" | "D" | null {
   const s = String(raw).trim().toUpperCase();
   if (s === "D" || s === "USD" || s === "$") return "D";
@@ -110,7 +178,12 @@ export function normalizeCurrency(raw: string | number): "B" | "D" | null {
 export function parseNumeric(raw: unknown): number {
   if (typeof raw === "number") return isNaN(raw) ? 0 : raw;
   if (typeof raw !== "string") return 0;
-  const cleaned = raw.replace(/[^0-9.,\-]/g, "").replace(/,/g, ".");
+  let cleaned = raw.replace(/[^0-9.,\-]/g, "");
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  if (lastComma > lastDot) cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+  else if (lastDot > lastComma && lastComma >= 0) cleaned = cleaned.replace(/,/g, "");
+  else if (lastComma >= 0) cleaned = cleaned.replace(",", ".");
   const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : n;
 }
@@ -241,6 +314,8 @@ export interface ParseSheetOptions {
   headerRowIndex?: number;
   /** Custom mapping function (e.g. from a detected format profile). */
   mapHeaders?: (headers: string[]) => ColumnMapping[];
+  syntheticHeaders?: string[];
+  dataStartRowIndex?: number;
 }
 
 // Extract headers, preview, and mappings from a specific sheet.
@@ -262,6 +337,13 @@ export function parseExcelSheet(
 
   // Find header row: use fixed index when provided, otherwise auto-detect
   let headerRowIndex = options?.headerRowIndex ?? -1;
+  if (options?.syntheticHeaders) {
+    const headers = options.syntheticHeaders;
+    const suggestedMappings = options.mapHeaders ? options.mapHeaders(headers) : autoDetectMappings(headers);
+    const dataStart = options.dataStartRowIndex ?? 0;
+    const previewRows = rows.slice(dataStart, dataStart + 10).map((row) => Object.fromEntries(headers.map((header, index) => [header, String(row[index] ?? "")])));
+    return { sheetNames: workbook.SheetNames, headers, suggestedMappings, previewRows, totalRows: Math.max(0, rows.length - dataStart) };
+  }
   if (headerRowIndex < 0) {
     headerRowIndex = 0;
     for (let i = 0; i < Math.min(rows.length, 10); i++) {
@@ -300,6 +382,7 @@ export function applyMappings(
   workbook: XLSX.WorkBook,
   sheetName: string,
   mappings: ColumnMapping[],
+  options?: Pick<ParseSheetOptions, "syntheticHeaders" | "dataStartRowIndex">,
 ): ExcelImportResult {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return { rows: [], errors: [], warnings: [], newCustomFields: [] };
@@ -338,7 +421,10 @@ export function applyMappings(
   const rows: ExcelImportRow[] = [];
   const errors: Array<{ row: number; message: string }> = [];
   const warnings: Array<{ row: number; message: string }> = [];
-  const dataStart = headerRowIndex + 1;
+  const dataStart = options?.syntheticHeaders ? (options.dataStartRowIndex ?? 0) : headerRowIndex + 1;
+
+  const seenCodes = new Map<string, number>();
+  const seenBarcodes = new Map<string, number>();
 
   for (let i = dataStart; i < allRows.length; i++) {
     const raw = allRows[i];
@@ -347,7 +433,13 @@ export function applyMappings(
     const rowNum = i + 1; // 1-based for user display
 
     // Extract product fields
-    const code = String(getVal(raw, "product.code") ?? "").trim();
+    const sourceIdentifier = getVal(raw, "product.sourceIdentifier");
+    const explicitCode = String(getVal(raw, "product.code") ?? "").trim();
+    const explicitBarcode = String(getVal(raw, "product.barcode") ?? "").trim();
+    const identifier = sourceIdentifier !== undefined
+      ? classifySourceIdentifier(sourceIdentifier)
+      : { code: explicitCode, barcode: explicitBarcode || undefined, classification: explicitBarcode ? "barcode" as const : "internal_code" as const };
+    const code = identifier.code;
     const name = String(getVal(raw, "product.name") ?? "").trim();
 
     if (!name && !code) {
@@ -358,8 +450,31 @@ export function applyMappings(
       errors.push({ row: rowNum, message: `Fila sin nombre de producto (código: "${code}")` });
       continue;
     }
+    if (!code || identifier.classification === "invalid") {
+      errors.push({ row: rowNum, message: `Código inválido para "${name}" (${code || "vacío"}).` });
+      continue;
+    }
+    const priorCodeRow = seenCodes.get(code);
+    if (priorCodeRow) {
+      errors.push({ row: rowNum, message: `Código duplicado "${code}" (también en fila ${priorCodeRow}).` });
+      continue;
+    }
+    seenCodes.set(code, rowNum);
+    if (identifier.barcode) {
+      const priorBarcodeRow = seenBarcodes.get(identifier.barcode);
+      if (priorBarcodeRow) {
+        errors.push({ row: rowNum, message: `Código de barras duplicado "${identifier.barcode}" (también en fila ${priorBarcodeRow}).` });
+        continue;
+      }
+      seenBarcodes.set(identifier.barcode, rowNum);
+    }
 
     const rawVat = getVal(raw, "product.vatType");
+    const vatLabel = String(rawVat ?? "").trim().toUpperCase();
+    if (vatLabel === "IVA2") {
+      errors.push({ row: rowNum, message: "IVA2 requiere definición manual; no se puede importar automáticamente." });
+      continue;
+    }
     const vatType = rawVat !== undefined ? normalizeVatType(rawVat as string | number) : "general";
 
     // Department
@@ -368,6 +483,10 @@ export function applyMappings(
 
     // Movement fields
     const initialStock = parseNumeric(getVal(raw, "movement.initialStock"));
+    if (initialStock < 0) {
+      errors.push({ row: rowNum, message: `Existencia negativa (${initialStock}); corrígela antes de importar.` });
+      continue;
+    }
     const initialCost = parseNumeric(getVal(raw, "movement.initialCost"));
     const entradaQty = parseNumeric(getVal(raw, "movement.entradaQty"));
     const entradaCost = parseNumeric(getVal(raw, "movement.entradaCost"));
@@ -381,6 +500,28 @@ export function applyMappings(
     const rawCurrency = getVal(raw, "currency.currency");
     const currency = rawCurrency !== undefined ? normalizeCurrency(rawCurrency as string | number) : null;
     const dollarRate = parseNumeric(getVal(raw, "currency.dollarRate")) || null;
+
+    const rawUnit = getVal(raw, "product.measureUnit");
+    const measureUnit = rawUnit === undefined ? "unidad" : normalizeMeasureUnit(rawUnit);
+    if (!measureUnit) {
+      errors.push({ row: rowNum, message: `Unidad no soportada "${String(rawUnit)}".` });
+      continue;
+    }
+    const sourceType = String(getVal(raw, "product.sourceType") ?? "Producto").trim();
+    if (sourceType && sourceType.toLowerCase() !== "producto") {
+      errors.push({ row: rowNum, message: `Tipo "${sourceType}" requiere modelado o revisión manual.` });
+      continue;
+    }
+    const salePrice = parseNumeric(getVal(raw, "product.salePrice"));
+    // INVENTARIO3's primary price column is the local-currency price; its
+    // trailing "moneda" field is retained as source metadata because it does
+    // not consistently describe that amount. Generic mapped files can still
+    // supply an explicit saleCurrency.
+    const saleCurrency = normalizeSaleCurrency(getVal(raw, "product.saleCurrency"))
+      ?? (salePrice > 0 ? "VES" : null);
+    const salePricing = salePrice > 0 && saleCurrency
+      ? { mode: "fixed" as const, amount: salePrice, currency: saleCurrency }
+      : undefined;
 
     // Custom fields
     const customFields: Record<string, unknown> = {};
@@ -403,7 +544,8 @@ export function applyMappings(
     }
 
     rows.push({
-      product: { code, name, vatType },
+      sourceRow: rowNum,
+      product: { code, barcode: identifier.barcode, identifierClassification: identifier.classification, name, vatType, measureUnit, sourceType, salePricing },
       departmentName,
       initialStock, initialCost,
       entradaQty, entradaCost,
@@ -464,6 +606,8 @@ export function parseExcelFileWithProfiles(
     const targetSheet = selectSheet(sheetNames, profile.sheet, workbook);
     const options: ParseSheetOptions = {
       headerRowIndex: profile.headerRowIndex ?? undefined,
+      syntheticHeaders: profile.syntheticHeaders,
+      dataStartRowIndex: profile.dataStartRowIndex,
       mapHeaders: (headers) => applyProfileMappings(headers, profile),
     };
 
@@ -514,8 +658,14 @@ function tryDetectFromSheet(
 
 export const SYSTEM_FIELD_OPTIONS: Array<{ label: string; value: string; target: SystemFieldTarget }> = [
   { label: "Código del producto", value: "product.code", target: { target: "product", field: "code" } },
+  { label: "Identificador (clasificar)", value: "product.sourceIdentifier", target: { target: "product", field: "sourceIdentifier" } },
+  { label: "Código de barras", value: "product.barcode", target: { target: "product", field: "barcode" } },
   { label: "Nombre del producto", value: "product.name", target: { target: "product", field: "name" } },
   { label: "IVA (tipo)", value: "product.vatType", target: { target: "product", field: "vatType" } },
+  { label: "Unidad de medida", value: "product.measureUnit", target: { target: "product", field: "measureUnit" } },
+  { label: "Tipo de origen", value: "product.sourceType", target: { target: "product", field: "sourceType" } },
+  { label: "Precio de venta", value: "product.salePrice", target: { target: "product", field: "salePrice" } },
+  { label: "Moneda del precio", value: "product.saleCurrency", target: { target: "product", field: "saleCurrency" } },
   { label: "Departamento", value: "department.name", target: { target: "department", field: "name" } },
   { label: "Existencia inicial", value: "movement.initialStock", target: { target: "movement", field: "initialStock" } },
   { label: "Costo inicial", value: "movement.initialCost", target: { target: "movement", field: "initialCost" } },

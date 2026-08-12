@@ -12,6 +12,7 @@ import { BaseInput } from "@/src/shared/frontend/components/base-input";
 import {
   parseExcelSheet,
   parseExcelFileWithProfiles,
+  parseSemicolonCsvWorkbook,
   applyMappings,
   SYSTEM_FIELD_OPTIONS,
   type ColumnMapping,
@@ -76,6 +77,7 @@ export function ExcelImportWizard() {
     period: getCurrentPeriod(),
     date: getTodayDate(),
     reference: "",
+    importInitialStock: false,
   });
 
   // Step 4 state
@@ -90,8 +92,9 @@ export function ExcelImportWizard() {
     setFileError(null);
 
     try {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
+      const wb = file.name.toLowerCase().endsWith(".csv")
+        ? parseSemicolonCsvWorkbook(await file.text())
+        : XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
       workbookRef.current = wb;
       setFileName(file.name);
 
@@ -118,7 +121,7 @@ export function ExcelImportWizard() {
       setMappings(result.suggestedMappings);
       setImportConfig(prev => ({ ...prev, reference: `Importación Excel - ${file.name}` }));
     } catch {
-      setFileError("No se pudo leer el archivo. Verifica que sea un archivo Excel válido (.xls o .xlsx).");
+      setFileError("No se pudo leer el archivo. Verifica que sea CSV, XLS o XLSX válido.");
     }
 
     if (fileRef.current) fileRef.current.value = "";
@@ -132,6 +135,8 @@ export function ExcelImportWizard() {
     const options: ParseSheetOptions | undefined = dp
       ? {
           headerRowIndex: dp.headerRowIndex,
+          syntheticHeaders: dp.profile.syntheticHeaders,
+          dataStartRowIndex: dp.profile.dataStartRowIndex,
           mapHeaders: (headers) => applyProfileMappings(headers, dp.profile),
         }
       : undefined;
@@ -162,11 +167,31 @@ export function ExcelImportWizard() {
 
   const handleStartImport = useCallback(async () => {
     if (!workbookRef.current || !selectedSheet) return;
-    const result = applyMappings(workbookRef.current, selectedSheet, mappings);
+    const profile = detectedProfileRef.current?.profile;
+    const result = applyMappings(workbookRef.current, selectedSheet, mappings, {
+      syntheticHeaders: profile?.syntheticHeaders,
+      dataStartRowIndex: profile?.dataStartRowIndex,
+    });
     setImportData(result);
     setStep(3);
+    if (result.errors.length > 0) return;
     await executeImport(result.rows, result.newCustomFields, importConfig);
   }, [selectedSheet, mappings, importConfig, executeImport]);
+
+  const downloadConflicts = useCallback(() => {
+    if (!importData?.errors.length) return;
+    const escape = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+    const csv = "\uFEFF" + [
+      ["fila", "conflicto"].map(escape).join(","),
+      ...importData.errors.map((error) => [error.row, error.message].map(escape).join(",")),
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "conflictos-inventario.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [importData]);
 
   // ── Render ────────────────────────────────────────────────────────────
 
@@ -215,7 +240,7 @@ export function ExcelImportWizard() {
             Seleccionar archivo Excel
           </h2>
           <p className="text-[12px] text-[var(--text-tertiary)]">
-            Sube tu archivo de inventario (.xls o .xlsx). El sistema detectará automáticamente las columnas y te permitirá ajustar el mapeo.
+            Sube tu archivo de inventario (.csv, .xls o .xlsx). El sistema detectará automáticamente las columnas y te permitirá ajustar el mapeo.
           </p>
 
           <div
@@ -234,11 +259,11 @@ export function ExcelImportWizard() {
               <>
                 <Upload size={32} className="text-[var(--text-tertiary)]" />
                 <span className="text-[13px] text-[var(--text-tertiary)]">Haz clic para seleccionar un archivo</span>
-                <span className="text-[11px] text-[var(--text-disabled)]">.xls, .xlsx</span>
+                <span className="text-[11px] text-[var(--text-disabled)]">.csv, .xls, .xlsx</span>
               </>
             )}
           </div>
-          <input ref={fileRef} type="file" accept=".xls,.xlsx" className="hidden" onChange={handleFileSelect} />
+          <input ref={fileRef} type="file" accept=".csv,.xls,.xlsx" className="hidden" onChange={handleFileSelect} />
 
           {fileError && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-red-500 text-[13px]">
@@ -412,6 +437,19 @@ export function ExcelImportWizard() {
             </div>
           </div>
 
+          <label className="flex items-start gap-3 rounded-lg border border-border-light bg-surface-2/40 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={importConfig.importInitialStock}
+              onChange={(event) => setImportConfig((current) => ({ ...current, importInitialStock: event.target.checked }))}
+              className="mt-0.5 size-4 accent-primary-500"
+            />
+            <span>
+              <span className="block text-[12px] font-medium text-foreground">Crear saldos iniciales valorados</span>
+              <span className="block text-[11px] text-[var(--text-tertiary)]">Solo se crean cuando la existencia es positiva y hay costo inicial o promedio. INVENTARIO3 no trae un costo confiable.</span>
+            </span>
+          </label>
+
           {/* Summary */}
           {parseResult && (
             <div className="px-4 py-3 rounded-lg bg-surface-2/50 border border-border-light space-y-1">
@@ -431,7 +469,7 @@ export function ExcelImportWizard() {
       {step === 3 && (
         <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
           <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
-            {progress.phase === "done" ? "Importación completada" : "Importando..."}
+            {importData?.errors.length ? "Conflictos que debes corregir" : progress.phase === "done" ? "Importación completada" : "Importando..."}
           </h2>
 
           {/* Progress bar */}
@@ -471,6 +509,18 @@ export function ExcelImportWizard() {
           </div>
 
           {/* Errors */}
+          {importData && importData.errors.length > 0 && (
+            <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] space-y-1 max-h-72 overflow-y-auto">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[12px] font-medium text-red-500">{importData.errors.length} conflictos bloqueantes. No se importó ningún dato.</p>
+                <button type="button" onClick={downloadConflicts} className="text-[11px] font-medium text-red-600 underline underline-offset-2">Descargar CSV</button>
+              </div>
+              {importData.errors.slice(0, 100).map((err, i) => (
+                <p key={i} className="text-[11px] text-red-500"><X size={10} className="inline mr-1" />Fila {err.row}: {err.message}</p>
+              ))}
+              {importData.errors.length > 100 && <p className="text-[11px] text-[var(--text-tertiary)]">...y {importData.errors.length - 100} conflictos más</p>}
+            </div>
+          )}
           {progress.errors.length > 0 && (
             <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] space-y-1 max-h-40 overflow-y-auto">
               {progress.errors.slice(0, 20).map((err, i) => (
@@ -506,7 +556,7 @@ export function ExcelImportWizard() {
       {/* ── Navigation ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          {step > 0 && step < 3 && (
+          {step > 0 && (step < 3 || (step === 3 && progress.phase === "idle")) && (
             <BaseButton.Root variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} leftIcon={<ArrowLeft size={14} />}>
               Atrás
             </BaseButton.Root>

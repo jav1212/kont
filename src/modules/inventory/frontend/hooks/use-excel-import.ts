@@ -40,6 +40,8 @@ export interface ImportConfig {
   period: string;    // YYYY-MM
   date: string;      // YYYY-MM-DD
   reference: string;
+  /** Catalog-only by default. Initial stock requires a positive valuation cost. */
+  importInitialStock: boolean;
 }
 
 // ── Hook ────────────────────────────────────────────────────────────────────
@@ -84,6 +86,26 @@ export function useExcelImport() {
       Object.assign(localProgress, partial);
       setProgress({ ...localProgress });
     };
+
+    // Resolve identity before any writes. Barcode is authoritative for scanner-facing
+    // products; internal code is the fallback. A disagreement is blocking because it
+    // could attach a purchase to the wrong product.
+    const existingByCode = new Map(products.filter((p) => p.code).map((p) => [p.code, p]));
+    const existingByBarcode = new Map(products.filter((p) => p.barcode).map((p) => [p.barcode!, p]));
+    for (const row of rows) {
+      const byCode = existingByCode.get(row.product.code);
+      const byBarcode = row.product.barcode ? existingByBarcode.get(row.product.barcode) : undefined;
+      if (byCode && byBarcode && byCode.id !== byBarcode.id) {
+        localProgress.errors.push({
+          row: row.sourceRow,
+          message: `El código ${row.product.code} y el barcode ${row.product.barcode} pertenecen a productos distintos.`,
+        });
+      }
+    }
+    if (localProgress.errors.length > 0) {
+      update({ phase: "error", errors: localProgress.errors });
+      return;
+    }
 
     // ── Phase 1: Departments ──────────────────────────────────────────────
 
@@ -137,12 +159,6 @@ export function useExcelImport() {
     const BATCH_SIZE = 50;
     const productIdMap = new Map<string, string>(); // code → id
 
-    // Build existing product lookup by code
-    const existingByCode = new Map<string, Product>();
-    for (const p of products) {
-      if (p.code) existingByCode.set(p.code, p);
-    }
-
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       if (cancelledRef.current) return;
       const batch = rows.slice(i, i + BATCH_SIZE);
@@ -150,23 +166,26 @@ export function useExcelImport() {
       for (const row of batch) {
         if (cancelledRef.current) return;
 
-        const existing = row.product.code ? existingByCode.get(row.product.code) : undefined;
+        const existing = (row.product.barcode ? existingByBarcode.get(row.product.barcode) : undefined)
+          ?? (row.product.code ? existingByCode.get(row.product.code) : undefined);
         const deptId = row.departmentName ? deptMap.get(row.departmentName.toUpperCase()) : undefined;
 
         const product: Product = {
           id: existing?.id,
           companyId,
           code: row.product.code,
+          barcode: row.product.barcode ?? existing?.barcode,
           name: row.product.name,
           description: existing?.description ?? "",
           type: existing?.type ?? "mercancia",
-          measureUnit: existing?.measureUnit ?? "unidad",
+          measureUnit: row.product.measureUnit ?? existing?.measureUnit ?? "unidad",
           valuationMethod: existing?.valuationMethod ?? "promedio_ponderado",
-          currentStock: 0,
-          averageCost: 0,
+          currentStock: existing?.currentStock ?? 0,
+          averageCost: existing?.averageCost ?? 0,
           active: true,
           departmentId: deptId ?? existing?.departmentId,
           vatType: row.product.vatType,
+          salePricing: row.product.salePricing ?? existing?.salePricing,
           customFields: { ...(existing?.customFields ?? {}), ...row.customFields },
         };
 
@@ -194,7 +213,7 @@ export function useExcelImport() {
     // Count how many movements we'll create
     let movementTotal = 0;
     for (const row of rows) {
-      if (row.initialStock > 0) movementTotal++;
+      if (config.importInitialStock && row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0)) movementTotal++;
       if (row.entradaQty > 0) movementTotal++;
       if (row.salidaQty > 0) movementTotal++;
       if (row.autoconsumoQty > 0) movementTotal++;
@@ -224,7 +243,7 @@ export function useExcelImport() {
         };
 
         // 1. Initial stock as ajuste_positivo
-        if (row.initialStock > 0) {
+        if (config.importInitialStock && row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0)) {
           const unitCost = row.initialStock > 0 && row.initialCost > 0
             ? row.initialCost / row.initialStock
             : row.averageCost || 0;
