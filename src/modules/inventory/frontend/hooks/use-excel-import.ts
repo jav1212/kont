@@ -24,15 +24,17 @@ export interface ImportProgress {
   skipped: number;
 }
 
-const INITIAL_PROGRESS: ImportProgress = {
-  phase: "idle",
-  current: 0,
-  total: 0,
-  errors: [],
-  created: { departments: 0, products: 0, movements: 0 },
-  updated: { products: 0 },
-  skipped: 0,
-};
+function createInitialProgress(): ImportProgress {
+  return {
+    phase: "idle",
+    current: 0,
+    total: 0,
+    errors: [],
+    created: { departments: 0, products: 0, movements: 0 },
+    updated: { products: 0 },
+    skipped: 0,
+  };
+}
 
 // ── Import configuration ────────────────────────────────────────────────────
 
@@ -48,17 +50,16 @@ export interface ImportConfig {
 
 export function useExcelImport() {
   const {
-    products, departments,
     loadProducts, loadDepartments,
-    saveProduct, saveDepartment, saveMovement,
+    saveProductDetailed, saveDepartment, saveMovement,
   } = useInventory();
   const { companyId, company, saveInventoryConfig } = useCompany();
 
-  const [progress, setProgress] = useState<ImportProgress>(INITIAL_PROGRESS);
+  const [progress, setProgress] = useState<ImportProgress>(createInitialProgress);
   const cancelledRef = useRef(false);
 
   const reset = useCallback(() => {
-    setProgress(INITIAL_PROGRESS);
+    setProgress(createInitialProgress());
     cancelledRef.current = false;
   }, []);
 
@@ -77,11 +78,18 @@ export function useExcelImport() {
     if (!companyId) return;
     cancelledRef.current = false;
 
-    // Ensure we have fresh data
-    await loadProducts(companyId);
-    await loadDepartments(companyId);
+    // Use the values returned by the requests. React state updates are async and
+    // still contain the previous catalog during this import callback.
+    const freshProducts = await loadProducts(companyId, true);
+    const freshDepartments = await loadDepartments(companyId, true);
 
-    const localProgress: ImportProgress = { ...INITIAL_PROGRESS };
+    const localProgress = createInitialProgress();
+    if (!freshProducts || !freshDepartments) {
+      localProgress.phase = "error";
+      localProgress.errors.push({ row: 0, message: "No se pudo cargar el catálogo actual antes de importar." });
+      setProgress({ ...localProgress });
+      return;
+    }
     const update = (partial: Partial<ImportProgress>) => {
       Object.assign(localProgress, partial);
       setProgress({ ...localProgress });
@@ -90,8 +98,8 @@ export function useExcelImport() {
     // Resolve identity before any writes. Barcode is authoritative for scanner-facing
     // products; internal code is the fallback. A disagreement is blocking because it
     // could attach a purchase to the wrong product.
-    const existingByCode = new Map(products.filter((p) => p.code).map((p) => [p.code, p]));
-    const existingByBarcode = new Map(products.filter((p) => p.barcode).map((p) => [p.barcode!, p]));
+    const existingByCode = new Map(freshProducts.filter((p) => p.code).map((p) => [p.code, p]));
+    const existingByBarcode = new Map(freshProducts.filter((p) => p.barcode).map((p) => [p.barcode!, p]));
     for (const row of rows) {
       const byCode = existingByCode.get(row.product.code);
       const byBarcode = row.product.barcode ? existingByBarcode.get(row.product.barcode) : undefined;
@@ -116,7 +124,7 @@ export function useExcelImport() {
 
     // Build a mutable map of department name (uppercase) → id
     const deptMap = new Map<string, string>();
-    for (const d of departments) {
+    for (const d of freshDepartments) {
       deptMap.set(d.name.toUpperCase(), d.id ?? "");
     }
 
@@ -189,16 +197,19 @@ export function useExcelImport() {
           customFields: { ...(existing?.customFields ?? {}), ...row.customFields },
         };
 
-        const saved = await saveProduct(product);
+        const result = await saveProductDetailed(product);
+        const saved = result.product;
         if (saved?.id) {
           productIdMap.set(row.product.code, saved.id);
           if (existing) localProgress.updated.products++;
           else localProgress.created.products++;
+          if (saved.code) existingByCode.set(saved.code, saved);
+          if (saved.barcode) existingByBarcode.set(saved.barcode, saved);
         } else {
           localProgress.skipped++;
           localProgress.errors.push({
-            row: i + batch.indexOf(row) + 1,
-            message: `No se pudo guardar el producto "${row.product.name}"`,
+            row: row.sourceRow,
+            message: `${row.product.name}: ${result.error ?? "No se pudo guardar el producto"}`,
           });
         }
         localProgress.current++;
@@ -322,7 +333,7 @@ export function useExcelImport() {
     }
 
     update({ phase: "done" });
-  }, [companyId, company, products, departments, loadProducts, loadDepartments, saveProduct, saveDepartment, saveMovement, saveInventoryConfig]);
+  }, [companyId, company, loadProducts, loadDepartments, saveProductDetailed, saveDepartment, saveMovement, saveInventoryConfig]);
 
   return { progress, executeImport, reset, cancel };
 }

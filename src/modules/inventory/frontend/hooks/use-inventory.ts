@@ -56,6 +56,11 @@ export type {
     AdjustmentBaseSource, AdjustmentMode,
     SaveStockAdjustmentInput, SaveStockAdjustmentOutput,
 };
+
+export interface SaveProductResult {
+    product: Product | null;
+    error: string | null;
+}
 export type {
     MovementDraftSaveInput, MovementDraftSaveResult, MovementDraftSummary,
     MovementDraftGroup, MovementDraftKind, MovementDraftConfirmResult,
@@ -150,29 +155,52 @@ export function useInventory() {
         }
     }, []);
 
-    const saveProduct = useCallback(async (product: Product): Promise<Product | null> => {
-        try {
-            const res = await apiFetch('/api/inventory/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(product),
-            });
-            const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al guardar producto'); return null; }
-            const saved: Product = json.data;
-            setProducts((prev) => {
-                const idx = prev.findIndex((p) => p.id === saved.id);
-                return idx >= 0
-                    ? prev.map((p) => (p.id === saved.id ? saved : p))
-                    : [...prev, saved];
-            });
-            invalidateInventoryCache(product.companyId);
-            return saved;
-        } catch (e) {
-            reportError('Error de red', e);
-            return null;
+    const saveProductDetailed = useCallback(async (product: Product): Promise<SaveProductResult> => {
+        const maxAttempts = 3;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const res = await apiFetch('/api/inventory/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(product),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const error = typeof json.error === 'string' ? json.error : `Error HTTP ${res.status}`;
+                    const retryable = res.status === 429 || res.status >= 500;
+                    if (retryable && attempt < maxAttempts) {
+                        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+                        continue;
+                    }
+                    return { product: null, error };
+                }
+
+                const saved = json.data as Product;
+                setProducts((prev) => {
+                    const idx = prev.findIndex((p) => p.id === saved.id);
+                    return idx >= 0
+                        ? prev.map((p) => (p.id === saved.id ? saved : p))
+                        : [...prev, saved];
+                });
+                invalidateInventoryCache(product.companyId);
+                return { product: saved, error: null };
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Error de red';
+                if (attempt < maxAttempts) {
+                    await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+                    continue;
+                }
+                return { product: null, error: message };
+            }
         }
+        return { product: null, error: 'No se pudo guardar el producto' };
     }, []);
+
+    const saveProduct = useCallback(async (product: Product): Promise<Product | null> => {
+        const result = await saveProductDetailed(product);
+        if (result.error) notify.error(result.error);
+        return result.product;
+    }, [saveProductDetailed]);
 
     const loadProductHistory = useCallback(async (companyId: string, productId: string): Promise<ProductHistory | null> => {
         setLoadingProductHistory(true);
@@ -355,23 +383,25 @@ export function useInventory() {
 
     // ── Departments ────────────────────────────────────────────────────────────
 
-    const loadDepartments = useCallback(async (companyId: string) => {
+    const loadDepartments = useCallback(async (companyId: string, force = false): Promise<Department[] | null> => {
         const key = inventoryCacheKey(companyId, 'departments');
         const cached = key ? inventoryCache.departments.get(key) : undefined;
-        if (cached && cached.expiresAt > Date.now()) {
+        if (!force && cached && cached.expiresAt > Date.now()) {
             setDepartments(cached.data);
-            return;
+            return cached.data;
         }
         setLoadingDepartments(true);
         try {
             const res = await apiFetch(`/api/inventory/departments?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar departamentos'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar departamentos'); return null; }
             const data = (json.data ?? []) as Department[];
             setDepartments(data);
             if (key) inventoryCache.departments.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
+            return data;
         } catch (e) {
             reportError('Error de red', e);
+            return null;
         } finally {
             setLoadingDepartments(false);
         }
@@ -714,7 +744,7 @@ export function useInventory() {
         loadingBalanceReport,
         loadingProductHistory,
         // actions
-        loadProducts, saveProduct, deleteProduct, loadProductHistory,
+        loadProducts, saveProduct, saveProductDetailed, deleteProduct, loadProductHistory,
         loadMovements, saveMovement, deleteMovement, updateMovementMeta,
         loadPeriodCloses, savePeriodClose,
         loadDepartments, saveDepartment, deleteDepartment,
