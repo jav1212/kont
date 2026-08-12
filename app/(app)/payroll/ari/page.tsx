@@ -55,7 +55,7 @@ function getZeroReasonMessageLegacy(result: ReturnType<typeof computeAri>): stri
         case "no_sujeto_umbral":
             return "Remuneración trimestral <= 250 U.T. — el trabajador no está sujeto a retención en este trimestre.";
         case "sin_enriquecimiento_gravable":
-            return "Los desgravámenes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
+            return "El desgravamen supera la remuneracion estimada: la base gravable se limita a 0 U.T. y no hay retencion.";
         case "rebajas_agotan_impuesto":
             return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retención.";
         default:
@@ -68,7 +68,7 @@ function getZeroReasonMessage(result: ReturnType<typeof computeAri>): string | n
         case "no_sujeto_umbral":
             return "Remuneracion trimestral <= 250 U.T. - el trabajador no esta sujeto a retencion en este trimestre.";
         case "sin_enriquecimiento_gravable":
-            return "Los desgravamenes consumen la base gravable y el enriquecimiento neto queda en 0 U.T. o menos.";
+            return "El desgravamen supera la remuneracion estimada: la base gravable se limita a 0 U.T. y no hay retencion.";
         case "rebajas_agotan_impuesto":
             return "Las rebajas del trimestre agotan el impuesto determinado, por lo que no corresponde retencion.";
         default:

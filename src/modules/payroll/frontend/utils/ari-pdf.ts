@@ -71,7 +71,7 @@ function getZeroReasonText(motivo: AriPdfData["motivoPorcentajeCero"]): string |
         case "no_sujeto_umbral":
             return "Remuneracion trimestral <= 250 U.T. - no sujeto a retencion.";
         case "sin_enriquecimiento_gravable":
-            return "Desgravamenes consumen la base gravable - no hay enriquecimiento neto gravable.";
+            return "El desgravamen supera la remuneracion estimada: base gravable limitada a 0 U.T. - no hay retencion.";
         case "rebajas_agotan_impuesto":
             return "Las rebajas agotan el impuesto determinado - no corresponde retencion.";
         default:
@@ -114,8 +114,8 @@ function drawParamsStrip(doc: Doc, x: number, w: number, y: number, cols: ParamC
 interface AriRow { label: string; sub?: string; value: string; strong?: boolean; }
 
 function drawAriTable(doc: Doc, x: number, w: number, y: number, rows: AriRow[]): number {
-    const colLabel = w * 0.64;
-    const colValue = w * 0.36;
+    const colLabel = w * 0.60;
+    const colValue = w * 0.40;
 
     drawHeaderRow(doc, y, 6, [
         { x,             w: colLabel, text: "Concepto (Forma AR-I)", align: "left"  },
@@ -128,7 +128,7 @@ function drawAriTable(doc: Doc, x: number, w: number, y: number, rows: AriRow[])
         if (i % 2 === 1) fill(doc, x, y, w, H, COLORS.rowAlt);
         renderText(doc, r.label, x + 3, y + (r.sub ? 4.4 : 5), 9.2, !!r.strong, COLORS.ink, "left", colLabel - 4, "helvetica");
         if (r.sub) renderText(doc, r.sub, x + 3, y + 8.2, 7, false, COLORS.muted, "left", colLabel - 4, "helvetica");
-        renderMono(doc, r.value, x + w - 3, y + (r.sub ? 6 : 5.2), 9.5, !!r.strong, r.strong ? COLORS.ink : COLORS.inkMed, "right");
+        renderMono(doc, r.value, x + w - 3, y + (r.sub ? 6 : 5.2), 8.8, !!r.strong, r.strong ? COLORS.ink : COLORS.inkMed, "right");
         y += H;
     });
 

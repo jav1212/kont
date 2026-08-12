@@ -120,7 +120,10 @@ export function computeAri(input: AriDeclarationInput): AriResult {
     const deduccionUT        = desgravamenesUT > 0 ? desgravamenesUT : desgravamenUnicoUT;
 
     // F — enriquecimiento neto gravable en U.T.
-    const enriquecimientoNetoUT = remuneracionUT - deduccionUT;
+    const enriquecimientoNetoCalculadoUT = remuneracionUT - deduccionUT;
+    // La base gravable no puede ser negativa. Si los desgravamenes superan la
+    // remuneracion, la diferencia solo explica por que no hay retencion.
+    const enriquecimientoNetoUT = Math.max(0, enriquecimientoNetoCalculadoUT);
 
     // G — impuesto del trimestre gravable según la Tarifa Nº 1
     const { alicuota, sustraendo } = tramoTarifa(Math.max(0, enriquecimientoNetoUT));
@@ -146,7 +149,7 @@ export function computeAri(input: AriDeclarationInput): AriResult {
     const motivoPorcentajeCero =
         !sujetoARetencion && remuneracionUT > 0
             ? "no_sujeto_umbral"
-            : enriquecimientoNetoUT <= 0
+            : enriquecimientoNetoCalculadoUT <= 0
                 ? "sin_enriquecimiento_gravable"
                 : impuestoARetenerUT <= 0 && impuestoUT > 0
                     ? "rebajas_agotan_impuesto"
