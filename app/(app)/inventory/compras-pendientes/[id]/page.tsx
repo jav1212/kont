@@ -19,6 +19,8 @@ import type { PurchaseInvoiceItem } from "@/src/modules/purchases/backend/domain
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { getPurchaseBookImportMeta, isPurchaseBookImported } from "@/src/modules/purchases/backend/domain/purchase-book-import";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
+import { QuickProductCreator } from "@/src/modules/purchases/frontend/components/quick-product-creator";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 
 const fmt = (n: number) =>
     n.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -29,7 +31,7 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
     const { id } = use(params);
     const router = useRouter();
     const { companyId } = useCompany();
-    const { products, loadProducts } = useInventory();
+    const { products, departments, loadProducts, saveProduct } = useInventory();
     const {
         currentPurchaseInvoice, loadingPurchaseInvoice, loadPurchaseInvoice,
         suppliers, loadSuppliers,
@@ -39,6 +41,8 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
     const [applyCurrencyToAll, setApplyCurrencyToAll] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [createProductName, setCreateProductName] = useState<string | null>(null);
+    const [createProductIndex, setCreateProductIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (companyId) {
@@ -68,6 +72,19 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
 
     const validItems = items.filter((it) => it.productId && (it.quantity ?? 0) > 0);
     const canSubmit = validItems.length > 0 && (!imported || cuadra) && !submitting;
+
+    function handleProductCreated(product: Product) {
+        const productId = product.id;
+        if (!productId) return;
+        setItems((current) => {
+            const index = createProductIndex ?? current.findIndex((item) => !item.productId);
+            if (index < 0) return current;
+            const next = { ...current[index], productId, productName: product.name, vatRate: product.vatType === "exento" ? "exenta" as const : "general_16" as const };
+            return current.map((item, itemIndex) => itemIndex === index ? next : item);
+        });
+        setCreateProductName(null);
+        setCreateProductIndex(null);
+    }
 
     async function handleSubmit() {
         if (!canSubmit || !currentPurchaseInvoice?.id) return;
@@ -167,8 +184,20 @@ export default function ComprasPendientesDetailPage({ params }: { params: Promis
                         applyCurrencyToAll={applyCurrencyToAll}
                         onApplyCurrencyToAllChange={setApplyCurrencyToAll}
                         decimals={2}
+                        onRequestCreateProduct={(search, index) => { setCreateProductName(search); setCreateProductIndex(index ?? null); }}
                     />
                 </div>
+
+                {createProductName !== null && companyId && (
+                    <QuickProductCreator
+                        companyId={companyId}
+                        departments={departments}
+                        initialName={createProductName}
+                        saveProduct={saveProduct}
+                        onCreated={handleProductCreated}
+                        onClose={() => { setCreateProductName(null); setCreateProductIndex(null); }}
+                    />
+                )}
 
                 {/* Comparación de totales */}
                 <div className={[

@@ -20,11 +20,13 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import { usePurchases } from "@/src/modules/purchases/frontend/hooks/use-purchases";
 import { notify } from "@/src/shared/frontend/notify";
 import type { PurchaseInvoice, PurchaseInvoiceItem, PurchaseDocumentType } from "@/src/modules/purchases/backend/domain/purchase-invoice";
+import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import { isPendingImputation } from "@/src/modules/purchases/backend/domain/purchase-invoice";
 import { Inbox } from "lucide-react";
 import { generateComprobanteIvaPdf } from "@/src/modules/purchases/frontend/utils/comprobante-iva-pdf";
 import { generateComprobanteIslrPdf } from "@/src/modules/purchases/frontend/utils/comprobante-islr-pdf";
 import { FacturaItemsGrid, emptyItem } from "@/src/modules/purchases/frontend/components/factura-items-grid";
+import { QuickProductCreator } from "@/src/modules/purchases/frontend/components/quick-product-creator";
 import { ConfirmCompanyDialog, SummaryRow } from "@/src/shared/frontend/components/confirm-company-dialog";
 import {
     computeInvoiceTotals,
@@ -89,7 +91,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const router = useRouter();
     const { companyId, company } = useCompany();
     const {
-        products, loadProducts,
+        products, departments, loadProducts, saveProduct,
         saveMovement,
     } = useInventory();
     const {
@@ -120,6 +122,8 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     const [islr, setIslr] = useState<IslrFormValue>(() => emptyIslrValue());
     const [igtf, setIgtf] = useState<IgtfFormValue>(() => emptyIgtfValue());
     const [showHeaderAdj, setShowHeaderAdj] = useState<boolean>(false);
+    const [createProductName, setCreateProductName] = useState<string | null>(null);
+    const [createProductIndex, setCreateProductIndex] = useState<number | null>(null);
 
     const [saving, setSaving] = useState(false);
     const [confirming, setConfirming] = useState(false);
@@ -148,6 +152,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
     }, [id, loadPurchaseInvoice]);
 
     const isDraft = currentPurchaseInvoice?.status === "borrador";
+
+    function handleProductCreated(product: Product) {
+        const productId = product.id;
+        if (!productId) return;
+        setItems((current) => {
+            const index = createProductIndex ?? current.findIndex((item) => !item.productId);
+            if (index < 0) return current;
+            const next = { ...current[index], productId, productName: product.name, vatRate: product.vatType === "exento" ? "exenta" as const : "general_16" as const };
+            return current.map((item, itemIndex) => itemIndex === index ? next : item);
+        });
+        setCreateProductName(null);
+        setCreateProductIndex(null);
+    }
 
     useDeviceSubscription("purchase", (scan) => {
         const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
@@ -1041,7 +1058,19 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
                                 selectedCurrency={invoiceCurrencyCode}
                                 applyCurrencyToAll={applyCurrencyToAll}
                                 onApplyCurrencyToAllChange={setApplyCurrencyToAll}
+                                onRequestCreateProduct={isDraft ? (search, index) => { setCreateProductName(search); setCreateProductIndex(index ?? null); } : undefined}
                             />
+
+                            {createProductName !== null && companyId && (
+                                <QuickProductCreator
+                                    companyId={companyId}
+                                    departments={departments}
+                                    initialName={createProductName}
+                                    saveProduct={saveProduct}
+                                    onCreated={handleProductCreated}
+                                    onClose={() => { setCreateProductName(null); setCreateProductIndex(null); }}
+                                />
+                            )}
 
                             {/* Totals */}
                             {(() => {

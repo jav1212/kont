@@ -50,7 +50,7 @@ interface Props {
     /** Calculation precision: how many decimals all derived totals are rounded to.
      *  Drives both the on-screen formatter and the rounding of `totalCost`. */
     decimals?: number;
-    onRequestCreateProduct?: (search: string) => void;
+    onRequestCreateProduct?: (search: string, itemIndex?: number) => void;
 }
 
 // -- helpers -------------------------------------------------------------------
@@ -88,10 +88,11 @@ interface ProductCellProps {
     onSelect: (id: string) => void;
     onNavigate: (dir: NavDir) => void;
     registerRef: (el: HTMLInputElement | null) => void;
-    onRequestCreate?: (search: string) => void;
+    onRequestCreate?: (search: string, itemIndex?: number) => void;
+    itemIndex: number;
 }
 
-function ProductComboCell({ productId, products, onSelect, onNavigate, registerRef, onRequestCreate }: ProductCellProps) {
+function ProductComboCell({ productId, products, onSelect, onNavigate, registerRef, onRequestCreate, itemIndex }: ProductCellProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [hiIdx, setHiIdx] = useState(0);
@@ -234,7 +235,7 @@ function ProductComboCell({ productId, products, onSelect, onNavigate, registerR
                             className="w-full px-3 py-2 text-left text-[12px] text-primary-500 hover:bg-primary-500/[0.06] border-t border-border-light/50 transition-colors"
                             onMouseDown={(e) => {
                                 e.preventDefault();
-                                onRequestCreate(search);
+                                onRequestCreate(search, itemIndex);
                                 closeDropdown();
                             }}
                         >
@@ -708,6 +709,7 @@ export function FacturaItemsGrid({ items, products, onChange, readOnly = false, 
                                                 onNavigate={(dir) => handleNavigate(idx, 0, dir)}
                                                 registerRef={registerRef(idx, 0)}
                                                 onRequestCreate={onRequestCreateProduct}
+                                                itemIndex={idx}
                                             />
                                         )}
                                     </td>
