@@ -25,8 +25,8 @@ interface PortalMenuProps {
     align?: "left" | "right";
     /** Gap in px between the trigger and the panel. Default 6. */
     gap?: number;
-    /** Vertical side where the panel opens. Default "bottom". */
-    side?: "top" | "bottom";
+    /** Vertical side where the panel opens. "auto" chooses the side with more room. */
+    side?: "top" | "bottom" | "auto";
     children: ReactNode;
     /** Extra classes for the panel container. */
     className?: string;
@@ -54,10 +54,20 @@ export function PortalMenu({
         const r = el.getBoundingClientRect();
         const viewportPadding = 8;
         const panelWidth = node.getBoundingClientRect().width;
+        const panelHeight = node.getBoundingClientRect().height;
         const maxLeft = Math.max(viewportPadding, window.innerWidth - viewportPadding - panelWidth);
         const anchoredLeft = align === "right" ? r.right - panelWidth : r.left;
         const clampedLeft = Math.min(Math.max(viewportPadding, anchoredLeft), maxLeft);
-        if (side === "top") {
+        const spaceAbove = Math.max(0, r.top - gap - viewportPadding);
+        const spaceBelow = Math.max(0, window.innerHeight - r.bottom - gap - viewportPadding);
+        const opensAbove = side === "top" || (side === "auto" && panelHeight > spaceBelow && spaceAbove > spaceBelow);
+
+        if (side === "auto") {
+            node.style.maxHeight = `${Math.max(1, opensAbove ? spaceAbove : spaceBelow)}px`;
+            node.style.overflowY = "auto";
+        }
+
+        if (opensAbove) {
             node.style.bottom = `${window.innerHeight - r.top + gap}px`;
             node.style.top = "auto";
         } else {

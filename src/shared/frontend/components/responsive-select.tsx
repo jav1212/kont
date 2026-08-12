@@ -77,7 +77,7 @@ export function ResponsiveSelect<T extends string>({
     return <div className={className}>
         {label && <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)]">{label}</label>}
         <div ref={anchorRef}><button type="button" disabled={disabled} onClick={() => setOpen((current) => !current)} aria-haspopup="listbox" aria-expanded={open} className={`flex h-10 w-full items-center justify-between rounded-lg border border-[var(--control-border)] bg-surface-1 px-3 font-sans text-[14px] text-foreground outline-none hover:border-[var(--control-border-hover)] focus-visible:border-[var(--control-border-focus)] focus-visible:shadow-[var(--control-focus-shadow)] disabled:bg-[var(--control-disabled-bg)] ${triggerClassName}`}><span className={`truncate ${selected ? "" : "text-[var(--text-tertiary)]"}`}>{selected?.label ?? placeholder}</span><ChevronIcon open={open} /></button></div>
-        {!isMobile && <PortalMenu open={open} onClose={close} anchorRef={anchorRef} align="left" className="!w-[min(380px,calc(100vw-16px))] !p-0 overflow-hidden">{content}</PortalMenu>}
+        {!isMobile && <PortalMenu open={open} onClose={close} anchorRef={anchorRef} align="left" side="auto" className="!w-[min(380px,calc(100vw-16px))] !p-0 overflow-hidden">{content}</PortalMenu>}
         {isMobile && <ResponsiveBottomSheet open={open} onClose={close} title={title} subtitle={subtitle} contentClassName="flex flex-col">{content}</ResponsiveBottomSheet>}
     </div>;
 }
