@@ -1,4 +1,5 @@
 import type { OrganizationId } from "@kontave/organizations-domain";
+import type { CompanyId } from "@kontave/companies-domain";
 
 declare const moduleIdBrand: unique symbol;
 export type ModuleId = string & { readonly [moduleIdBrand]: true };
@@ -68,6 +69,22 @@ export interface ModuleInstallation {
   readonly suspendedAt: string | null;
 }
 
+export enum CompanyModuleActivationStatus {
+  Active = "active",
+  Suspended = "suspended",
+}
+
+export interface CompanyModuleActivation {
+  readonly id: string;
+  readonly companyId: CompanyId;
+  readonly moduleId: ModuleId;
+  readonly moduleCode: ModuleCode;
+  readonly status: CompanyModuleActivationStatus;
+  readonly configurationVersion: number;
+  readonly activatedAt: string;
+  readonly suspendedAt: string | null;
+}
+
 export type ModuleFailureCode =
   | "MODULE_INVALID"
   | "MODULE_NOT_FOUND"
@@ -78,6 +95,7 @@ export type ModuleFailureCode =
   | "MODULE_NOT_INSTALLED"
   | "MODULE_NOT_ACTIVE"
   | "MODULE_CAPABILITY_UNAVAILABLE"
+  | "COMPANY_MODULE_NOT_ACTIVE"
   | "MODULE_REPOSITORY_UNAVAILABLE";
 
 export class ModuleFailure extends Error {

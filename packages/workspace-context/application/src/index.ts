@@ -14,6 +14,45 @@ import {
   type OrganizationDelegation,
 } from "@kontave/organization-delegations-domain";
 import type { OrganizationId, UserId } from "@kontave/organizations-domain";
+import type { CompanyRepository } from "@kontave/companies-application";
+import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies-domain";
+import type { ModuleCapability } from "@kontave/modules-domain";
+
+export interface CompanyExecutionContext {
+  readonly actorUserId: UserId;
+  readonly actingOrganizationId: OrganizationId;
+  readonly targetOrganizationId: OrganizationId;
+  readonly company: Company;
+  readonly accessPath: OrganizationAccessPath;
+}
+
+export interface CompanyCapabilityRequirement {
+  execute(companyId: CompanyId, capability: ModuleCapability): Promise<void>;
+}
+
+export class ResolveCompanyExecutionContext {
+  constructor(
+    private readonly accessPaths: ResolveWorkspaceAccessPath,
+    private readonly companies: CompanyRepository,
+    private readonly capabilities: CompanyCapabilityRequirement,
+  ) {}
+  async execute(input: {
+    readonly userId: UserId;
+    readonly actingOrganizationId: OrganizationId;
+    readonly targetOrganizationId: OrganizationId;
+    readonly companyId: CompanyId;
+    readonly capability: ModuleCapability;
+    readonly occurredAt: string;
+  }): Promise<CompanyExecutionContext> {
+    const accessPath = await this.accessPaths.execute(input);
+    const company = await this.companies.findById(input.companyId);
+    if (!company) throw new CompanyFailure("COMPANY_NOT_FOUND", "The company does not exist.");
+    company.assertBelongsTo(input.targetOrganizationId);
+    company.assertOperational();
+    await this.capabilities.execute(company.id, input.capability);
+    return { actorUserId: input.userId, actingOrganizationId: input.actingOrganizationId, targetOrganizationId: input.targetOrganizationId, company, accessPath };
+  }
+}
 
 export interface DirectOrganizationAccess {
   readonly organizationId: OrganizationId;

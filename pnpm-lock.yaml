@@ -56,6 +56,18 @@ importers:
       '@kontave/billing-supabase':
         specifier: workspace:*
         version: link:packages/billing/supabase
+      '@kontave/companies-application':
+        specifier: workspace:*
+        version: link:packages/companies/application
+      '@kontave/companies-contracts':
+        specifier: workspace:*
+        version: link:packages/companies/contracts
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:packages/companies/domain
+      '@kontave/companies-supabase':
+        specifier: workspace:*
+        version: link:packages/companies/supabase
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:packages/modules/application
@@ -506,6 +518,79 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/companies/application:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/companies/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/companies/domain:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/companies/supabase:
+    dependencies:
+      '@kontave/companies-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/companies/testing:
+    dependencies:
+      '@kontave/companies-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/devices/contracts:
     devDependencies:
       typescript:
@@ -562,6 +647,9 @@ importers:
 
   packages/modules/application:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
       '@kontave/modules-domain':
         specifier: workspace:*
         version: link:../domain
@@ -587,6 +675,9 @@ importers:
 
   packages/modules/domain:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../organizations/domain
@@ -600,6 +691,9 @@ importers:
 
   packages/modules/supabase:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:../application
@@ -971,6 +1065,18 @@ importers:
       '@kontave/access-control-domain':
         specifier: workspace:*
         version: link:../../access-control/domain
+      '@kontave/companies-application':
+        specifier: workspace:*
+        version: link:../../companies/application
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/modules-application':
+        specifier: workspace:*
+        version: link:../../modules/application
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../modules/domain
       '@kontave/organization-delegations-application':
         specifier: workspace:*
         version: link:../../organization-delegations/application

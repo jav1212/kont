@@ -1,5 +1,7 @@
 import type { OrganizationId } from "@kontave/organizations-domain";
+import type { CompanyId } from "@kontave/companies-domain";
 import {
+  CompanyModuleActivationStatus,
   ModuleFailure,
   ModuleInstallationStatus,
   assertModuleCanActivate,
@@ -8,6 +10,7 @@ import {
   type ModuleCode,
   type ModuleDefinition,
   type ModuleInstallation,
+  type CompanyModuleActivation,
 } from "@kontave/modules-domain";
 
 export interface ModuleCatalogRepository {
@@ -24,6 +27,34 @@ export interface OrganizationModuleRepository {
 
 export interface ModuleEntitlementService {
   isEntitled(organizationId: OrganizationId, code: ModuleCode): Promise<boolean>;
+}
+
+export interface CompanyModuleActivationRepository {
+  list(companyId: CompanyId): Promise<readonly CompanyModuleActivation[]>;
+  find(companyId: CompanyId, code: ModuleCode): Promise<CompanyModuleActivation | null>;
+  activate(companyId: CompanyId, definition: ModuleDefinition, occurredAt: string): Promise<CompanyModuleActivation>;
+  suspend(companyId: CompanyId, code: ModuleCode, occurredAt: string): Promise<CompanyModuleActivation>;
+}
+
+export class ActivateCompanyModule {
+  constructor(private readonly catalog: ModuleCatalogRepository, private readonly organizationModules: OrganizationModuleRepository, private readonly companyModules: CompanyModuleActivationRepository) {}
+  async execute(organizationId: OrganizationId, companyId: CompanyId, code: ModuleCode, occurredAt: string) {
+    const installed = await this.organizationModules.find(organizationId, code);
+    if (!installed || installed.status !== ModuleInstallationStatus.Active) {
+      throw new ModuleFailure("MODULE_NOT_ACTIVE", "The module is not active for the organization.");
+    }
+    return this.companyModules.activate(companyId, await requireDefinition(this.catalog, code), occurredAt);
+  }
+}
+
+export class RequireCompanyModuleCapability {
+  constructor(private readonly catalog: ModuleCatalogRepository, private readonly activations: CompanyModuleActivationRepository) {}
+  async execute(companyId: CompanyId, capability: ModuleCapability): Promise<void> {
+    const providers = (await this.catalog.list()).filter((definition) => moduleProvides(definition, capability));
+    const active = await this.activations.list(companyId);
+    const allowed = providers.some((provider) => active.some((activation) => activation.moduleId === provider.id && activation.status === CompanyModuleActivationStatus.Active));
+    if (!allowed) throw new ModuleFailure("COMPANY_MODULE_NOT_ACTIVE", "The module capability is not active for this company.");
+  }
 }
 
 export class ListAvailableModules {

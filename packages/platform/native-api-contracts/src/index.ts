@@ -33,6 +33,7 @@ export type NativeApiErrorCode =
   | "MODULE_NOT_INSTALLED"
   | "MODULE_NOT_ACTIVE"
   | "MODULE_CAPABILITY_UNAVAILABLE"
+  | "COMPANY_MODULE_NOT_ACTIVE"
   | "MODULE_REPOSITORY_UNAVAILABLE"
   | "DELEGATION_INVALID"
   | "DELEGATION_NOT_FOUND"
@@ -82,6 +83,17 @@ export interface NativeOrganizationCompanyDto {
   readonly organizationId: string;
   readonly name: string;
   readonly rif: string | null;
+}
+
+export interface NativeCompanyDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly legacyCompanyId: string | null;
+  readonly legalName: string;
+  readonly tradeName: string | null;
+  readonly taxId: string | null;
+  readonly country: string;
+  readonly status: string;
 }
 
 export interface NativeOrganizationAccessPathDto {
