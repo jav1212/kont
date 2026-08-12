@@ -57,6 +57,8 @@ export const PERMISSIONS = {
   REFERRALS_MANAGE: "referrals.manage",
   MODULES_READ: "modules.read",
   MODULES_MANAGE: "modules.manage",
+  ORGANIZATION_DELEGATIONS_READ: "organization_delegations.read",
+  ORGANIZATION_DELEGATIONS_MANAGE: "organization_delegations.manage",
 } as const;
 
 type PermissionValue = typeof PERMISSIONS[keyof typeof PERMISSIONS];

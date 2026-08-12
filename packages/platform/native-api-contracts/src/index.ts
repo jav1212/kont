@@ -34,6 +34,12 @@ export type NativeApiErrorCode =
   | "MODULE_NOT_ACTIVE"
   | "MODULE_CAPABILITY_UNAVAILABLE"
   | "MODULE_REPOSITORY_UNAVAILABLE"
+  | "DELEGATION_INVALID"
+  | "DELEGATION_NOT_FOUND"
+  | "DELEGATION_NOT_ACTIVE"
+  | "DELEGATION_TRANSITION_INVALID"
+  | "ACCESS_PATH_NOT_FOUND"
+  | "ORGANIZATION_ACCESS_REPOSITORY_UNAVAILABLE"
   | "METHOD_NOT_ALLOWED"
   | "INTERNAL_ERROR";
 
@@ -76,6 +82,21 @@ export interface NativeOrganizationCompanyDto {
   readonly organizationId: string;
   readonly name: string;
   readonly rif: string | null;
+}
+
+export interface NativeOrganizationAccessPathDto {
+  readonly kind: string;
+  readonly actorUserId: string;
+  readonly actingOrganizationId: string;
+  readonly targetOrganizationId: string;
+  readonly delegationId: string | null;
+  readonly scopes: readonly string[];
+}
+
+export interface NativeAccessibleOrganizationDto {
+  readonly organizationId: string;
+  readonly name: string;
+  readonly accessPath: NativeOrganizationAccessPathDto;
 }
 
 export interface NativeMoneyDto { readonly minorAmount: string; readonly currency: "USD" | "VES" }

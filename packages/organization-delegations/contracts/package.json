@@ -1,0 +1,1 @@
+{"name":"@kontave/organization-delegations-contracts","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts"},"scripts":{"check":"tsc --noEmit","test":"node -e \"console.log('Organization delegation contracts checked by TypeScript')\""},"devDependencies":{"typescript":"^5.9.2"}}

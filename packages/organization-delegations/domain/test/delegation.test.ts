@@ -1,0 +1,4 @@
+import assert from "node:assert/strict";import test from "node:test";import{organizationId}from"@kontave/organizations-domain";import{DelegatedScope,OrganizationDelegationStatus,assertValidDelegation,canAcceptDelegation}from"../src/index.js";
+test("self delegation is rejected",()=>assert.throws(()=>assertValidDelegation(organizationId("a"),organizationId("a"),[DelegatedScope.Accounting]),{code:"DELEGATION_SELF_REFERENCE"}));
+test("delegations require explicit scopes",()=>assert.throws(()=>assertValidDelegation(organizationId("a"),organizationId("b"),[]),{code:"DELEGATION_SCOPES_EMPTY"}));
+test("only pending delegations can be accepted",()=>{assert.equal(canAcceptDelegation(OrganizationDelegationStatus.Pending),true);assert.equal(canAcceptDelegation(OrganizationDelegationStatus.Active),false)});
