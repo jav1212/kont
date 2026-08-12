@@ -68,6 +68,18 @@ importers:
       '@kontave/companies-supabase':
         specifier: workspace:*
         version: link:packages/companies/supabase
+      '@kontave/employees-application':
+        specifier: workspace:*
+        version: link:packages/employees/application
+      '@kontave/employees-contracts':
+        specifier: workspace:*
+        version: link:packages/employees/contracts
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:packages/employees/domain
+      '@kontave/employees-supabase':
+        specifier: workspace:*
+        version: link:packages/employees/supabase
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:packages/modules/application
@@ -643,6 +655,79 @@ importers:
     devDependencies:
       typescript:
         specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/employees/application:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/employees/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/employees/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/employees/supabase:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/employees-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/employees/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/employees-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      typescript:
+        specifier: ^5
         version: 5.9.3
 
   packages/modules/application:

@@ -95,6 +95,7 @@ export interface NativeCompanyDto {
   readonly country: string;
   readonly status: string;
 }
+export interface NativeEmployeeDto {readonly id:string;readonly companyId:string;readonly legacyEmployeeId:string|null;readonly nationalId:string;readonly fullName:string;readonly position:string;readonly hiredOn:string|null;readonly employmentType:string;readonly status:string;readonly monthlySalaryMinor:string;readonly currency:string;readonly compensationEffectiveFrom:string;readonly version:number}
 
 export interface NativeOrganizationAccessPathDto {
   readonly kind: string;

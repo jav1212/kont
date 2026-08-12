@@ -1,0 +1,2 @@
+import{z}from"zod";import{Currency,EmployeeStatus,EmploymentType}from"@kontave/employees-domain";
+export const employeeRowSchema=z.object({id:z.string(),company_id:z.string(),legacy_employee_id:z.string().nullable(),national_id:z.string(),full_name:z.string(),position:z.string(),hired_on:z.string().nullable(),employment_type:z.enum(EmploymentType),terminated_on:z.string().nullable(),status:z.enum(EmployeeStatus),version:z.number().int().positive(),monthly_salary_minor:z.union([z.string(),z.number()]),currency:z.enum(Currency),effective_from:z.string()});
