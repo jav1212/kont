@@ -126,23 +126,25 @@ export function useInventory() {
 
     // ── Products ───────────────────────────────────────────────────────────────
 
-    const loadProducts = useCallback(async (companyId: string, force = false) => {
+    const loadProducts = useCallback(async (companyId: string, force = false): Promise<Product[] | null> => {
         const key = inventoryCacheKey(companyId, 'products');
         const cached = key ? inventoryCache.products.get(key) : undefined;
         if (!force && cached && cached.expiresAt > Date.now()) {
             setProducts(cached.data);
-            return;
+            return cached.data;
         }
         setLoadingProducts(true);
         try {
             const res = await apiFetch(`/api/inventory/products?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar productos'); return; }
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar productos'); return null; }
             const data = (json.data ?? []) as Product[];
             setProducts(data);
             if (key) inventoryCache.products.set(key, { data, expiresAt: Date.now() + INVENTORY_CACHE_TTL_MS });
+            return data;
         } catch (e) {
             reportError('Error de red', e);
+            return null;
         } finally {
             setLoadingProducts(false);
         }

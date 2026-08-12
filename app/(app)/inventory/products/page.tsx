@@ -185,6 +185,7 @@ export default function ProductosPage() {
     const [search, setSearch] = useState("");
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
     const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [currentPage, setCurrentPage] = useState(1);
     const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
 
@@ -292,16 +293,22 @@ export default function ProductosPage() {
     async function handleImport() {
         if (!importResult || !companyId) return;
         setImporting(true);
+        const currentProducts = [...(await loadProducts(companyId, true) ?? products)];
         for (const p of importResult.products) {
             // If a product with this code already exists, update it (avoid duplicates)
-            const existing = products.find((x) => (p.barcode && x.barcode === p.barcode) || (p.code && x.code === p.code));
-            await saveProduct({
+            const existing = currentProducts.find((x) => (p.barcode && x.barcode === p.barcode) || (p.code && x.code === p.code));
+            const saved = await saveProduct({
                 ...p,
                 id:           existing?.id,
                 companyId,
                 currentStock: existing?.currentStock ?? 0,
                 averageCost:  existing?.averageCost ?? 0,
             });
+            if (saved) {
+                const index = currentProducts.findIndex((item) => item.id === saved.id);
+                if (index >= 0) currentProducts[index] = saved;
+                else currentProducts.push(saved);
+            }
         }
         setImporting(false);
         setImportResult(null);
@@ -335,9 +342,19 @@ export default function ProductosPage() {
     }, [visibleProducts, search, estadoFilter]);
 
     const hasFilters = search.trim() !== "" || estadoFilter !== "todos";
+    const pageSize = 50;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const pageProducts = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    useEffect(() => {
+        setCurrentPage((page) => Math.min(page, totalPages));
+    }, [totalPages]);
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, estadoFilter]);
     function clearFilters() {
         setSearch("");
         setEstadoFilter("todos");
+        setCurrentPage(1);
     }
 
     return (
@@ -785,7 +802,7 @@ export default function ProductosPage() {
                             Catálogo de productos
                         </h2>
                         <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--text-tertiary)] tabular-nums">
-                            {filtered.length} / {products.length}
+                            {filtered.length.toLocaleString()} / {products.length.toLocaleString()}
                         </span>
                     </div>
                     {loadingProducts ? (
@@ -824,7 +841,7 @@ export default function ProductosPage() {
                         <>
                         {/* Mobile: card list */}
                         <div className="md:hidden flex flex-col gap-3 p-3">
-                            {filtered.map((p) => (
+                            {pageProducts.map((p) => (
                                 <BaseListCard
                                     key={p.id}
                                     onClick={() => p.id ? router.push(`/inventory/products/${p.id}`) : openEdit(p)}
@@ -919,7 +936,7 @@ export default function ProductosPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="font-sans">
-                                    {filtered.map((p) => (
+                                    {pageProducts.map((p) => (
                                         <tr key={p.id} className={[
                                             "border-b border-border-light/70 align-middle transition-colors even:bg-surface-2/25",
                                             selected.has(p.id!) ? "bg-primary-500/5 hover:bg-primary-500/10" : "hover:bg-surface-2",
@@ -1019,6 +1036,21 @@ export default function ProductosPage() {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                        <div className="flex flex-col gap-3 border-t border-border-light bg-surface-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <span className="font-mono text-[11px] text-[var(--text-tertiary)]">
+                                Página {currentPage} de {totalPages} · {filtered.length.toLocaleString()} productos filtrados
+                            </span>
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <BaseButton.Root variant="ghost" size="sm" isDisabled={currentPage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
+                                        Anterior
+                                    </BaseButton.Root>
+                                    <BaseButton.Root variant="ghost" size="sm" isDisabled={currentPage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}>
+                                        Siguiente
+                                    </BaseButton.Root>
+                                </div>
+                            )}
                         </div>
                         </>
                     )}

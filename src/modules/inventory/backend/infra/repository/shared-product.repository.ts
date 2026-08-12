@@ -10,7 +10,33 @@ type RawProduct = { id:string|null; company_id:string; code:string|null; barcode
 export class SharedProductRepository implements IProductRepository {
   constructor(private readonly source: ISource<SupabaseClient>, private readonly tenantId: string) {}
 
-  async findByCompany(companyId:string):Promise<Result<Product[]>> { try { const {data,error}=await this.source.instance.from('shared_inventory_products').select('*,shared_inventory_departments(name)').eq('tenant_id',this.tenantId).eq('company_id',companyId).order('name'); if(error)return Result.fail(error.message); return Result.success(((data as (RawProduct & {shared_inventory_departments?:{name:string}|null})[])??[]).map(r=>this.map(r))); } catch(e){return Result.fail(e instanceof Error?e.message:'Failed to fetch products');} }
+  async findByCompany(companyId:string):Promise<Result<Product[]>> {
+    try {
+      // PostgREST/Supabase applies a default 1,000-row limit when no range is
+      // specified. Read in deterministic pages so catalog totals and imports
+      // remain correct for large companies.
+      const pageSize = 1_000;
+      const rows: (RawProduct & {shared_inventory_departments?:{name:string}|null})[] = [];
+
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await this.source.instance
+          .from('shared_inventory_products')
+          .select('*,shared_inventory_departments(name)')
+          .eq('tenant_id', this.tenantId)
+          .eq('company_id', companyId)
+          .order('name', { ascending: true })
+          .order('id', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (error) return Result.fail(error.message);
+
+        const page = (data as (RawProduct & {shared_inventory_departments?:{name:string}|null})[]) ?? [];
+        rows.push(...page);
+        if (page.length < pageSize) break;
+      }
+
+      return Result.success(rows.map(r => this.map(r)));
+    } catch(e){return Result.fail(e instanceof Error?e.message:'Failed to fetch products');}
+  }
   async upsert(p:Product):Promise<Result<Product>> { try { const currency=p.salePricing?normalizeCurrencyCode(p.salePricing.currency):null; const {data,error}=await this.source.instance.from('shared_inventory_products').upsert({tenant_id:this.tenantId,id:p.id??crypto.randomUUID(),company_id:p.companyId,code:p.code,barcode:p.barcode?.trim()||null,name:p.name,description:p.description,type:p.type,measure_unit:p.measureUnit,valuation_method:p.valuationMethod,current_stock:p.currentStock,average_cost:p.averageCost,active:p.active,department_id:p.departmentId??null,vat_type:p.vatType,custom_fields:p.customFields??{},sale_price_mode:p.salePricing?.mode??null,sale_price_value:p.salePricing?(p.salePricing.mode==='fixed'?p.salePricing.amount:p.salePricing.percentage):null,sale_price_currency:currency==='VES'?'B':currency==='USD'?'D':null,sale_price_currency_code:currency,updated_at:new Date().toISOString()},{onConflict:'tenant_id,id'}).select('*').single(); if(error)return Result.fail(error.code==='23505'?'El código de barras ya está asignado a otro producto de esta empresa':error.message); return Result.success(this.map(data as RawProduct)); } catch(e){return Result.fail(e instanceof Error?e.message:'Failed to save product');} }
   async setStock(companyId:string,productId:string,newStock:number):Promise<Result<Product>> { if(newStock<0)return Result.fail('Stock must be non-negative'); try { const {data,error}=await this.source.instance.from('shared_inventory_products').update({current_stock:newStock,updated_at:new Date().toISOString()}).eq('tenant_id',this.tenantId).eq('company_id',companyId).eq('id',productId).select('*').single(); if(error)return Result.fail(error.message); return Result.success(this.map(data as RawProduct)); } catch(e){return Result.fail(e instanceof Error?e.message:'Failed to set product stock');} }
   async delete(id:string):Promise<Result<DeleteProductOutcome>> { try { const {error}=await this.source.instance.from('shared_inventory_products').update({active:false,updated_at:new Date().toISOString()}).eq('tenant_id',this.tenantId).eq('id',id); return error?Result.fail(error.message):Result.success({softDeleted:true}); } catch(e){return Result.fail(e instanceof Error?e.message:'Failed to delete product');} }
