@@ -3,7 +3,7 @@ import type { CurrencyCode } from '../../shared/currency';
 // Represents an inventory product in the system.
 // ProductType, MeasureUnit, ValuationMethod, VatType values are DB enum string literals — do not change.
 export type ProductType = 'mercancia';
-export type MeasureUnit = 'unidad' | 'kg' | 'g' | 'm' | 'm2' | 'm3' | 'litro' | 'caja' | 'rollo' | 'paquete';
+export type MeasureUnit = 'unidad' | 'kg' | 'g' | 'm' | 'm2' | 'm3' | 'litro' | 'galon' | 'caja' | 'rollo' | 'paquete';
 export type ValuationMethod = 'promedio_ponderado' | 'peps';
 export type VatType = 'exento' | 'general';
 export type SaleCurrency = CurrencyCode;

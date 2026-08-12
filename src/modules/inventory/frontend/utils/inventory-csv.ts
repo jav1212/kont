@@ -184,7 +184,7 @@ const LEGACY_PROD_HEADERS = PROD_HEADERS.slice(0, 9);
 const PRE_BARCODE_PROD_HEADERS = PROD_HEADERS.slice(0, 12);
 
 const VALID_TYPES: ProductType[]          = ["mercancia"];
-const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "caja", "rollo", "paquete"];
+const VALID_UNITS: MeasureUnit[]          = ["unidad", "kg", "g", "m", "m2", "m3", "litro", "galon", "caja", "rollo", "paquete"];
 const VALID_METHODS: ValuationMethod[]    = ["promedio_ponderado", "peps"];
 const VALID_VAT_TYPES: VatType[]          = ["exento", "general"];
 

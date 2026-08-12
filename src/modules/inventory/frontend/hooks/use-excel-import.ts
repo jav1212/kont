@@ -40,7 +40,7 @@ export interface ImportConfig {
   period: string;    // YYYY-MM
   date: string;      // YYYY-MM-DD
   reference: string;
-  /** Catalog-only by default. Initial stock requires a positive valuation cost. */
+  /** Catalog-only by default. Positive stock requires a valuation cost; negative stock may start at zero cost. */
   importInitialStock: boolean;
 }
 
@@ -213,7 +213,9 @@ export function useExcelImport() {
     // Count how many movements we'll create
     let movementTotal = 0;
     for (const row of rows) {
-      if (config.importInitialStock && row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0)) movementTotal++;
+      if (config.importInitialStock && (
+        row.initialStock < 0 || (row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0))
+      )) movementTotal++;
       if (row.entradaQty > 0) movementTotal++;
       if (row.salidaQty > 0) movementTotal++;
       if (row.autoconsumoQty > 0) movementTotal++;
@@ -242,17 +244,21 @@ export function useExcelImport() {
           dollarRate: row.dollarRate ?? undefined,
         };
 
-        // 1. Initial stock as ajuste_positivo
-        if (config.importInitialStock && row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0)) {
+        // 1. Initial stock as a signed adjustment. Legacy negative balances are
+        // valid migration state and must remain negative until replenished.
+        const shouldImportInitialStock = config.importInitialStock && (
+          row.initialStock < 0 || (row.initialStock > 0 && (row.initialCost > 0 || row.averageCost > 0))
+        );
+        if (shouldImportInitialStock) {
           const unitCost = row.initialStock > 0 && row.initialCost > 0
             ? row.initialCost / row.initialStock
             : row.averageCost || 0;
           await saveMovement({
             ...baseMovement,
-            type: "ajuste_positivo",
-            quantity: row.initialStock,
+            type: row.initialStock < 0 ? "ajuste_negativo" : "ajuste_positivo",
+            quantity: Math.abs(row.initialStock),
             unitCost,
-            totalCost: row.initialStock * unitCost,
+            totalCost: Math.abs(row.initialStock) * unitCost,
             balanceQuantity: row.initialStock,
           } as Movement);
           localProgress.created.movements++;

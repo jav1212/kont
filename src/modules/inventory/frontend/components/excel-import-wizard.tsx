@@ -446,7 +446,7 @@ export function ExcelImportWizard() {
             />
             <span>
               <span className="block text-[12px] font-medium text-foreground">Crear saldos iniciales valorados</span>
-              <span className="block text-[11px] text-[var(--text-tertiary)]">Solo se crean cuando la existencia es positiva y hay costo inicial o promedio. INVENTARIO3 no trae un costo confiable.</span>
+              <span className="block text-[11px] text-[var(--text-tertiary)]">Las existencias positivas requieren costo inicial o promedio. Las negativas se conservan como ajuste negativo, incluso sin costo.</span>
             </span>
           </label>
 

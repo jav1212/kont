@@ -77,6 +77,7 @@ const UNIDADES: { value: MeasureUnit; label: string }[] = [
     { value: "m2",      label: "m²"      },
     { value: "m3",      label: "m³"      },
     { value: "litro",   label: "Litro"   },
+    { value: "galon",   label: "Galón"   },
     { value: "caja",    label: "Caja"    },
     { value: "rollo",   label: "Rollo"   },
     { value: "paquete", label: "Paquete" },

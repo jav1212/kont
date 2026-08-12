@@ -19,7 +19,7 @@ const labelCls = "mb-1.5 block font-mono text-[11px] font-semibold uppercase tra
 const units: { value: MeasureUnit; label: string }[] = [
     { value: "unidad", label: "Unidad" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
     { value: "m", label: "m" }, { value: "m2", label: "m²" }, { value: "m3", label: "m³" },
-    { value: "litro", label: "Litro" }, { value: "caja", label: "Caja" }, { value: "rollo", label: "Rollo" }, { value: "paquete", label: "Paquete" },
+    { value: "litro", label: "Litro" }, { value: "galon", label: "Galón" }, { value: "caja", label: "Caja" }, { value: "rollo", label: "Rollo" }, { value: "paquete", label: "Paquete" },
 ];
 
 function Section({ title, description, icon: Icon, children, className = "" }: { title: string; description: string; icon: typeof Tag; children: React.ReactNode; className?: string }) {

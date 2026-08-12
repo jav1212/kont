@@ -66,7 +66,7 @@ const ROUND4 = (n: number) => Math.round(n * 10000) / 10000;
 // entero — el Libro de Inventario refleja la existencia física real (Código de Comercio
 // Art. 32/34). Por eso el producto sumidero del cuadre sólo puede recibir un delta
 // fraccionario si su unidad es continua.
-const CONTINUOUS_UNITS = new Set<MeasureUnit>(['kg', 'g', 'm', 'm2', 'm3', 'litro']);
+const CONTINUOUS_UNITS = new Set<MeasureUnit>(['kg', 'g', 'm', 'm2', 'm3', 'litro', 'galon']);
 
 export class GenerateStockAdjustmentUseCase
     extends UseCase<GenerateStockAdjustmentInput, StockAdjustmentPreview> {

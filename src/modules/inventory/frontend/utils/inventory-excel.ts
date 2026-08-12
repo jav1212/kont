@@ -150,6 +150,7 @@ export function normalizeMeasureUnit(raw: unknown): MeasureUnit | null {
   if (value === "UNI" || value === "UNIDAD") return "unidad";
   if (value === "KG") return "kg";
   if (value === "GR" || value === "G") return "g";
+  if (value === "GAL" || value === "GALON" || value === "GALÓN") return "galon";
   return null;
 }
 
@@ -484,8 +485,7 @@ export function applyMappings(
     // Movement fields
     const initialStock = parseNumeric(getVal(raw, "movement.initialStock"));
     if (initialStock < 0) {
-      errors.push({ row: rowNum, message: `Existencia negativa (${initialStock}); corrígela antes de importar.` });
-      continue;
+      warnings.push({ row: rowNum, message: `Existencia negativa (${initialStock}); se conservará al importar el inventario inicial.` });
     }
     const initialCost = parseNumeric(getVal(raw, "movement.initialCost"));
     const entradaQty = parseNumeric(getVal(raw, "movement.entradaQty"));
@@ -508,7 +508,8 @@ export function applyMappings(
       continue;
     }
     const sourceType = String(getVal(raw, "product.sourceType") ?? "Producto").trim();
-    if (sourceType && sourceType.toLowerCase() !== "producto") {
+    const supportedSourceTypes = new Set(["producto", "compuesto", "contorno"]);
+    if (sourceType && !supportedSourceTypes.has(sourceType.toLowerCase())) {
       errors.push({ row: rowNum, message: `Tipo "${sourceType}" requiere modelado o revisión manual.` });
       continue;
     }
@@ -525,6 +526,7 @@ export function applyMappings(
 
     // Custom fields
     const customFields: Record<string, unknown> = {};
+    if (sourceType) customFields.tipo_origen = sourceType;
     for (const cm of customMappings) {
       const val = raw[cm.index];
       if (val !== undefined && val !== null && val !== "") {
