@@ -56,6 +56,18 @@ importers:
       '@kontave/billing-supabase':
         specifier: workspace:*
         version: link:packages/billing/supabase
+      '@kontave/modules-application':
+        specifier: workspace:*
+        version: link:packages/modules/application
+      '@kontave/modules-contracts':
+        specifier: workspace:*
+        version: link:packages/modules/contracts
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:packages/modules/domain
+      '@kontave/modules-supabase':
+        specifier: workspace:*
+        version: link:packages/modules/supabase
       '@kontave/native-api-contracts':
         specifier: workspace:*
         version: link:packages/platform/native-api-contracts
@@ -528,6 +540,79 @@ importers:
       '@kontave/devices-core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/modules/application:
+    dependencies:
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      '@kontave/modules-testing':
+        specifier: workspace:*
+        version: link:../testing
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/modules/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/modules/domain:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/modules/supabase:
+    dependencies:
+      '@kontave/modules-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/modules/testing:
+    dependencies:
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
     devDependencies:
       typescript:
         specifier: ^5.9.2

@@ -1,0 +1,1 @@
+{"name":"@kontave/modules-testing","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts"},"scripts":{"check":"tsc --noEmit","test":"node -e \"console.log('Module fixtures checked by TypeScript')\""},"dependencies":{"@kontave/modules-domain":"workspace:*","@kontave/organizations-domain":"workspace:*"},"devDependencies":{"typescript":"^5.9.2"}}
