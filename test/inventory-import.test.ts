@@ -70,3 +70,19 @@ test("acepta GAL y los tipos Compuesto y Contorno conservando el tipo de origen"
     assert.equal(result.rows[0].customFields.tipo_origen, sourceType);
   }
 });
+
+test("separa filas conflictivas sin descartar los productos válidos", () => {
+  const preamble = Array.from({ length: 7 }, () => ";");
+  const valid = "850241000402;VALIDO;;1;100;0;0;0;IVA1;UNI;;0;0;0;0;0;0;0;0;0;0;Producto;0;;VES";
+  const invalid = "CODIGO CON ESPACIOS;INVALIDO;;1;100;0;0;0;IVA1;UNI;;0;0;0;0;0;0;0;0;0;0;Producto;0;;VES";
+  const workbook = parseSemicolonCsvWorkbook([...preamble, valid, invalid].join("\n"));
+  const parsed = parseExcelFileWithProfiles(workbook, "INVENTARIO3.csv");
+  const result = applyMappings(workbook, parsed.selectedSheet!, parsed.suggestedMappings, {
+    syntheticHeaders: parsed.detectedProfileFull?.syntheticHeaders,
+    dataStartRowIndex: parsed.detectedProfileFull?.dataStartRowIndex,
+  });
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].product.name, "VALIDO");
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0].message, /Código inválido/);
+});

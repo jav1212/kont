@@ -174,7 +174,7 @@ export function ExcelImportWizard() {
     });
     setImportData(result);
     setStep(3);
-    if (result.errors.length > 0) return;
+    if (result.rows.length === 0) return;
     await executeImport(result.rows, result.newCustomFields, importConfig);
   }, [selectedSheet, mappings, importConfig, executeImport]);
 
@@ -469,7 +469,11 @@ export function ExcelImportWizard() {
       {step === 3 && (
         <div className="rounded-xl border border-border-light bg-surface-1 p-6 space-y-4">
           <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-foreground">
-            {importData?.errors.length ? "Conflictos que debes corregir" : progress.phase === "done" ? "Importación completada" : "Importando..."}
+            {progress.phase === "done"
+              ? "Importación completada"
+              : importData && importData.rows.length === 0
+                ? "No hay filas válidas para importar"
+                : "Importando filas válidas..."}
           </h2>
 
           {/* Progress bar */}
@@ -512,7 +516,9 @@ export function ExcelImportWizard() {
           {importData && importData.errors.length > 0 && (
             <div className="px-4 py-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] space-y-1 max-h-72 overflow-y-auto">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[12px] font-medium text-red-500">{importData.errors.length} conflictos bloqueantes. No se importó ningún dato.</p>
+                <p className="text-[12px] font-medium text-red-500">
+                  {importData.errors.length} filas conflictivas omitidas. {importData.rows.length} filas válidas {progress.phase === "done" ? "fueron procesadas" : "se importarán"}.
+                </p>
                 <button type="button" onClick={downloadConflicts} className="text-[11px] font-medium text-red-600 underline underline-offset-2">Descargar CSV</button>
               </div>
               {importData.errors.slice(0, 100).map((err, i) => (
@@ -547,7 +553,7 @@ export function ExcelImportWizard() {
           {/* Done message */}
           {progress.phase === "done" && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-lg border border-green-500/20 bg-green-500/[0.05] text-green-600 text-[13px]">
-              <CheckCircle2 size={16} /> Importación finalizada correctamente.
+              <CheckCircle2 size={16} /> Importación finalizada: se procesaron {importData?.rows.length ?? 0} filas válidas{importData?.errors.length ? ` y se omitieron ${importData.errors.length} con conflictos` : ""}.
             </div>
           )}
         </div>
