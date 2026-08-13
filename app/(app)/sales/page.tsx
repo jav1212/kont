@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     Search, ChevronLeft, ChevronRight, Calendar, FileText, Plus,
-    Archive, Trash2, AlertTriangle, Receipt, Users,
+    Archive, Trash2, AlertTriangle, Receipt, Users, ShoppingCart,
 } from "lucide-react";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
 import { PageHeader } from "@/src/shared/frontend/components/page-header";
@@ -136,6 +136,9 @@ export default function SalesDashboardPage() {
     return (
         <div className="min-h-full bg-background font-mono">
             <PageHeader title="Ventas" subtitle={`Tablero · ${periodLabel(period)}`}>
+                <BaseButton.Root as={Link} href="/sales/pos" variant="primary" size="sm" leftIcon={<ShoppingCart size={14} strokeWidth={2} />}>
+                    Punto de venta
+                </BaseButton.Root>
                 <BaseButton.Root as={Link} href="/sales/customers" variant="ghost" size="sm" leftIcon={<Users size={14} strokeWidth={2} />}>
                     Clientes
                 </BaseButton.Root>
@@ -145,7 +148,7 @@ export default function SalesDashboardPage() {
                 <BaseButton.Root as={Link} href="/sales/igtf-fortnightly" variant="secondary" size="sm" leftIcon={<Receipt size={14} strokeWidth={2} />}>
                     IGTF Quincenal
                 </BaseButton.Root>
-                <BaseButton.Root as={Link} href="/sales/new" variant="primary" size="sm" leftIcon={<Plus size={14} strokeWidth={2} />}>
+                <BaseButton.Root as={Link} href="/sales/new" variant="secondary" size="sm" leftIcon={<Plus size={14} strokeWidth={2} />}>
                     Nuevo documento
                 </BaseButton.Root>
             </PageHeader>
@@ -261,7 +264,7 @@ export default function SalesDashboardPage() {
                                     {filtered.map((f) => (
                                         <tr key={f.id} className="border-b border-border-light/50 hover:bg-surface-2 transition-colors">
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{fmtDate(f.date)}</td>
-                                            <td className="px-4 py-2.5 whitespace-nowrap"><span className="inline-flex rounded border border-border-light px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">{(f.documentType ?? "venta") === "nota_entrega" ? "Nota de entrega" : "Venta"}</span></td>
+                                            <td className="px-4 py-2.5 whitespace-nowrap"><span className="inline-flex rounded border border-border-light px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-secondary)]">{(f.documentType ?? "venta") === "nota_entrega" ? "Nota de entrega" : f.salesChannel === "pos" ? "Venta · POS" : "Venta"}</span></td>
                                             <td className="px-4 py-2.5 text-foreground tabular-nums whitespace-nowrap">{f.invoiceNumber}</td>
                                             <td className="px-4 py-2.5 text-foreground font-medium">{f.customerName ?? "—"}</td>
                                             <td className="px-4 py-2.5 text-[var(--text-secondary)] tabular-nums whitespace-nowrap">{f.customerRif ?? "—"}</td>

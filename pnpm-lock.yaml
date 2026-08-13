@@ -812,6 +812,32 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/monetary/domain:
+    dependencies:
+      decimal.js:
+        specifier: ^10.6.0
+        version: 10.6.0
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/monetary/testing:
+    dependencies:
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/organization-delegations/application:
     dependencies:
       '@kontave/organization-delegations-domain':

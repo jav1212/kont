@@ -23,6 +23,7 @@ type RawInvoice = {
     period: string;
     manual_period: boolean | null;
     document_type: string | null;
+    sales_channel: string | null;
     due_date: string | null;
     payment_terms: string | null;
     status: string;
@@ -90,6 +91,7 @@ const adjustment = (value: string | null): AdjustmentKind | null =>
 const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     id: invoice.id ?? '', empresa_id: invoice.companyId, cliente_id: invoice.customerId,
     tipo_documento: invoice.documentType ?? 'venta',
+    canal_venta: invoice.salesChannel ?? 'administrative',
     numero_factura: invoice.invoiceNumber, numero_control: invoice.controlNumber ?? '',
     fecha: invoice.date, periodo: invoice.period, periodo_manual: invoice.periodoManual ?? false,
     fecha_vencimiento: invoice.dueDate ?? null, condiciones_pago: invoice.paymentTerms ?? 'contado',
@@ -158,6 +160,7 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         const saved = result.getValue();
         const { error } = await this.source.instance.from('shared_inventory_sales_invoices').update({
             currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [],
+            sales_channel: invoice.salesChannel ?? 'administrative',
             financial_tax_currency_code: invoice.igtfPerceptionCurrencyCode ?? null,
             financial_tax_exchange_rate: invoice.igtfPerceptionExchangeRate ?? null,
         }).eq('tenant_id', this.tenantId).eq('id', saved.id);
@@ -165,9 +168,9 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
         return this.findById(saved.id);
     }
 
-    async confirm(id: string): Promise<Result<SalesInvoice>> {
+    async confirm(id: string, allowNegativeStock = false): Promise<Result<SalesInvoice>> {
         return this.callFunction<RawInvoice>('shared_inventory_sales_invoice_confirm', {
-            p_tenant_id: this.tenantId, p_invoice_id: id,
+            p_tenant_id: this.tenantId, p_invoice_id: id, p_allow_negative_stock: allowNegativeStock,
         }).then((result) => result.isFailure ? Result.fail(result.getError()) : this.load(result.getValue()));
     }
 
@@ -209,6 +212,7 @@ export class SharedSalesInvoiceRepository implements ISalesInvoiceRepository {
             id: row.id, companyId: row.company_id, customerId: row.customer_id,
             customerName: customer?.name, customerRif: customer?.rif, customerAddress: customer?.address,
             documentType: row.document_type === 'nota_entrega' ? 'nota_entrega' : 'venta',
+            salesChannel: row.sales_channel === 'pos' ? 'pos' : 'administrative',
             invoiceNumber: row.invoice_number, controlNumber: row.control_number ?? '', date: row.invoice_date,
             period: row.period, periodoManual: row.manual_period === true, dueDate: row.due_date,
             paymentTerms: row.payment_terms ?? 'contado', status: row.status as SalesInvoiceStatus,

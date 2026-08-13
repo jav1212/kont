@@ -65,6 +65,27 @@ export function useSales() {
         }
     }, []);
 
+    const ensureConsumerFinal = useCallback(async (companyId: string): Promise<Customer | null> => {
+        try {
+            const res = await apiFetch('/api/sales/customers/consumer-final', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companyId }),
+            });
+            const json = await res.json();
+            if (!res.ok) { notify.error(json.error ?? 'No se pudo preparar Consumidor Final'); return null; }
+            const customer: Customer = json.data;
+            setCustomers((current) => {
+                const exists = current.some((candidate) => candidate.id === customer.id);
+                return exists ? current.map((candidate) => candidate.id === customer.id ? customer : candidate) : [...current, customer];
+            });
+            return customer;
+        } catch (error) {
+            reportError('Error al preparar Consumidor Final', error);
+            return null;
+        }
+    }, []);
+
     const deleteCustomer = useCallback(async (id: string): Promise<{ ok: boolean; softDeleted?: boolean }> => {
         try {
             const res = await apiFetch(`/api/sales/customers/${id}`, { method: 'DELETE' });
@@ -165,9 +186,13 @@ export function useSales() {
         }
     }, []);
 
-    const confirmSalesInvoice = useCallback(async (invoiceId: string): Promise<SalesInvoice | null> => {
+    const confirmSalesInvoice = useCallback(async (invoiceId: string, options?: { allowNegativeStock?: boolean }): Promise<SalesInvoice | null> => {
         try {
-            const res = await apiFetch(`/api/sales/${invoiceId}/confirm`, { method: 'POST' });
+            const res = await apiFetch(`/api/sales/${invoiceId}/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ allowNegativeStock: options?.allowNegativeStock === true }),
+            });
             const json = await res.json();
             if (!res.ok) { notify.error(json.error ?? 'Error al confirmar factura'); return null; }
             const headerOnly: SalesInvoice = json.data;
@@ -230,7 +255,7 @@ export function useSales() {
         // loading
         loadingCustomers, loadingSalesInvoices, loadingSalesInvoice,
         // customer actions
-        loadCustomers, saveCustomer, deleteCustomer,
+        loadCustomers, saveCustomer, ensureConsumerFinal, deleteCustomer,
         // invoice actions
         loadSalesInvoices, loadSalesInvoice, saveSalesInvoice,
         deleteSalesInvoice, confirmSalesInvoice, unconfirmSalesInvoice,

@@ -61,7 +61,7 @@ function buildModuleSubtitle(moduleId: string | null, planName?: string | null):
     switch (moduleId) {
         case "payroll":     return currentQuincenaLabel();
         case "purchases":   return "Facturas · Proveedores · Retenciones";
-        case "sales":       return "Facturas · Clientes · IGTF";
+        case "sales":       return "Punto de venta · Facturas · Clientes";
         case "inventory":   return "Productos · Movimientos";
         case "accounting":  return "Libro diario";
         case "companies":   return "Directorio";

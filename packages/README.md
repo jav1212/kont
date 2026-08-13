@@ -10,6 +10,7 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `ui/`: contratos visuales, tokens, marca y componentes por tecnología de renderizado.
 - `platform/`: contratos y capacidades transversales de integración entre aplicaciones y backend.
 - `organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
+- `monetary/`: dinero exacto, monedas, tasas de cambio, conversión, redondeo y distribución de residuos.
 
 ## Reglas
 

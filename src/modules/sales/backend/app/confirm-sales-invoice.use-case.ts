@@ -3,12 +3,12 @@ import { Result } from '@/src/core/domain/result';
 import { SalesInvoice } from '../domain/sales-invoice';
 import { ISalesInvoiceRepository } from '../domain/repository/sales-invoice.repository';
 
-interface Input { invoiceId: string; }
+interface Input { invoiceId: string; allowNegativeStock?: boolean; }
 
 export class ConfirmSalesInvoiceUseCase extends UseCase<Input, SalesInvoice> {
     constructor(private readonly repo: ISalesInvoiceRepository) { super(); }
     async execute(input: Input): Promise<Result<SalesInvoice>> {
         if (!input.invoiceId) return Result.fail('invoiceId is required');
-        return this.repo.confirm(input.invoiceId);
+        return this.repo.confirm(input.invoiceId, input.allowNegativeStock === true);
     }
 }
