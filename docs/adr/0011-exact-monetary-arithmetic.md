@@ -20,7 +20,7 @@ Se crea la capacidad `monetary` con los paquetes `@kontave/monetary-domain` y `@
 - El redondeo es una política explícita aplicada solamente en fronteras declaradas.
 - La distribución de importes garantiza que la suma de las partes sea idéntica al total. Se soporta acarreo a la última parte para compatibilidad y mayor residuo para casos nuevos.
 - Los importes pueden ser negativos. Cada dominio consumidor impone sus restricciones de signo.
-- La procedencia y vigencia de una tasa se modelan como un snapshot inmutable, pero la obtención desde BCV u otra fuente pertenece a adaptadores externos.
+- La procedencia y vigencia de una tasa se modelan como un snapshot inmutable, pero su obtención pertenece exclusivamente a adaptadores externos.
 
 ## Consecuencias
 
