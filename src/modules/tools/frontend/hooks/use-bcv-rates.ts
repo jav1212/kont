@@ -61,14 +61,25 @@ export function useBcvRates(date?: string | null, initialData?: { date: string; 
             const res = await fetch(url);
             const body = await res.json();
             if (!res.ok) {
-                notify.error(body.error ?? "Error al consultar BCV.", { id: ERROR_TOAST_ID });
+                const resolution = res.headers.get("X-BCV-Resolution");
+                if (res.status === 404) {
+                    notify.warning(`${body.error ?? "Sin tasa BCV para esa fecha"} Puedes ingresarla manualmente.`, { id: ERROR_TOAST_ID });
+                } else {
+                    notify.error(body.error ?? "Error al consultar BCV.", {
+                        id: ERROR_TOAST_ID,
+                        errorMetadata: { endpoint: url, requestedDate: date ?? "today", statusCode: res.status, resolution },
+                    });
+                }
                 setLoading(false);
                 return;
             }
             cache.set(key, { at: Date.now(), payload: body });
             setState(body);
         } catch {
-            notify.error("No se pudo conectar con el BCV.", { id: ERROR_TOAST_ID });
+            notify.error("No se pudo conectar con el BCV.", {
+                id: ERROR_TOAST_ID,
+                errorMetadata: { endpoint: date ? `/api/bcv/rates?date=${date}` : "/api/bcv/rates", requestedDate: date ?? "today", statusCode: 0, resolution: "network-error" },
+            });
         } finally {
             setLoading(false);
         }

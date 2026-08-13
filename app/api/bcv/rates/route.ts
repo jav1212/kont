@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-    fetchBcvCurrentAll,
-    fetchBcvListFallback,
-    normalizeEntry,
-    parseVeDate,
-    todayCaracas,
-    type NormalizedRate,
-} from "../_lib";
+import { normalizeEntry, parseVeDate, resolveBcvEntries, todayCaracas, type NormalizedRate } from "../_lib";
 
-// GET /api/bcv/rates
-//   Optional ?date=YYYY-MM-DD (if omitted → today's rates including percentageChange)
+// GET /api/bcv/rates?date=YYYY-MM-DD
 // Response: { date: "YYYY-MM-DD", rates: NormalizedRate[] }
-
 export async function GET(req: NextRequest) {
     const date = req.nextUrl.searchParams.get("date");
 
@@ -20,32 +11,16 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const useToday = !date || date === todayCaracas();
-
-        if (useToday) {
-            // Use /exchange-rate — returns all currencies with percentageChange
-            const all = await fetchBcvCurrentAll();
-            const rates = all
-                .filter((e) => /^[A-Z]{3}$/.test(e.code))
-                .map(normalizeEntry)
-                .filter((e) => Number.isFinite(e.sell) && e.sell > 0);
-
-            if (!rates.length) {
-                return NextResponse.json({ error: "No hay tasas disponibles." }, { status: 404 });
-            }
-
-            return NextResponse.json({ date: rates[0].date, rates });
+        const resolution = await resolveBcvEntries(date ?? todayCaracas());
+        if (!resolution.entries.length) {
+            return NextResponse.json(
+                { error: "No hay tasas disponibles para esa fecha." },
+                { status: 404, headers: { "X-BCV-Resolution": resolution.strategy } },
+            );
         }
 
-        // Historic date — use /exchange-rate/list (no percentageChange provided)
-        const raw = await fetchBcvListFallback(date!, 7);
-        if (!raw.length) {
-            return NextResponse.json({ error: "No hay tasas disponibles para esa fecha." }, { status: 404 });
-        }
-
-        // Group by date, pick the most recent date ≤ requested
         const byDate = new Map<string, NormalizedRate[]>();
-        for (const entry of raw) {
+        for (const entry of resolution.entries) {
             if (!/^[A-Z]{3}$/.test(entry.code)) continue;
             const iso = parseVeDate(entry.date);
             if (!byDate.has(iso)) byDate.set(iso, []);
@@ -53,17 +28,24 @@ export async function GET(req: NextRequest) {
             if (Number.isFinite(normalized.sell) && normalized.sell > 0) byDate.get(iso)!.push(normalized);
         }
 
-        const sortedDates = [...byDate.keys()].sort().reverse();
-        for (const d of sortedDates) {
-            const rates = byDate.get(d)!;
-            if (rates.length > 0) return NextResponse.json({ date: d, rates });
+        for (const effectiveDate of [...byDate.keys()].sort().reverse()) {
+            const rates = byDate.get(effectiveDate)!;
+            if (rates.length) {
+                return NextResponse.json(
+                    { date: effectiveDate, rates },
+                    { headers: { "X-BCV-Resolution": resolution.strategy } },
+                );
+            }
         }
 
-        return NextResponse.json({ error: "No hay tasas disponibles para esa fecha." }, { status: 404 });
+        return NextResponse.json(
+            { error: "No hay tasas disponibles para esa fecha." },
+            { status: 404, headers: { "X-BCV-Resolution": resolution.strategy } },
+        );
     } catch {
         return NextResponse.json(
             { error: "No se pudo consultar el BCV." },
-            { status: 502 }
+            { status: 502, headers: { "X-BCV-Resolution": "provider-error" } },
         );
     }
 }

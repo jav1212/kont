@@ -34,6 +34,8 @@ export interface NotifyOpts {
     id?:          string | number;
     /** Backend-generated incident code; absent means this is a client-side error. */
     errorCode?:   string;
+    /** Non-sensitive diagnostic context persisted with client-side incidents. */
+    errorMetadata?: Record<string, unknown>;
     /** Optional action button rendered next to the toast (e.g. "Deshacer"). */
     action?: {
         label:   string;
@@ -53,10 +55,13 @@ export const notify = {
                 source: "client",
                 route,
                 method: "CLIENT",
-                metadata: typeof navigator !== "undefined" ? { userAgent: navigator.userAgent } : undefined,
+                metadata: {
+                    ...(typeof navigator !== "undefined" ? { userAgent: navigator.userAgent } : {}),
+                    ...opts?.errorMetadata,
+                },
             });
         }
-        const { errorCode: _errorCode, action, description, ...toastOpts } = opts ?? {};
+        const { errorCode: _errorCode, errorMetadata: _errorMetadata, action, description, ...toastOpts } = opts ?? {};
         return toast.error(message, {
             ...toastOpts,
             description: description ?? `Código: ${code}`,

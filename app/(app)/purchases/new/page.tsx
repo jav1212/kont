@@ -159,9 +159,6 @@ export default function NuevaFacturaPage() {
         setRateFromApi,
         applyDecimals,
     } = useBcvRate();
-    const [_rateDateBcv, setRateDateBcv] = useState<string | null>(null);
-    const [rateLoading, setRateLoading] = useState(false);
-    const [_rateError, setRateError] = useState<string | null>(null);
     const [items, setItems] = useState<PurchaseInvoiceItem[]>([emptyItem()]);
     const [periodo, setPeriodo] = useState<string>(() => date.slice(0, 7));
     const [periodoManual, setPeriodoManual] = useState<boolean>(false);
@@ -279,41 +276,20 @@ export default function NuevaFacturaPage() {
 
     // Pre-fill rate from last period close when closes load (only if BCV hasn't filled it)
     useEffect(() => {
-        if (currentDollarRate != null && dollarRate === "" && !rateLoading) {
+        if (currentDollarRate != null && dollarRate === "" && !currenciesLoading) {
             setRateFromApi(currentDollarRate, rateDecimals);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDollarRate]);
 
-    // Auto-fetch BCV rate when date changes
+    // Keep the legacy display/calculation rate synchronized with the single
+    // multimoneda BCV request. This avoids a second, competing USD fetch.
     useEffect(() => {
-        if (!date) return;
-        let cancelled = false;
-        setRateLoading(true);
-        setRateError(null);
-        fetch(`/api/bcv/rate?date=${date}&code=USD`)
-            .then((r) => r.json())
-            .then((json) => {
-                if (cancelled) return;
-                if (json.rate) {
-                    setRateFromApi(json.rate, rateDecimals);
-                    setRateDateBcv(json.date);
-                } else {
-                    setRateError(json.error ?? "Sin datos BCV para esta fecha");
-                    setRateDateBcv(null);
-                }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    setRateError("Error al consultar BCV");
-                    setRateDateBcv(null);
-                }
-            })
-            .finally(() => { if (!cancelled) setRateLoading(false); });
-        return () => { cancelled = true; };
-    // Auto-fetch on date change only; `rateDecimals` shouldn't retrigger a fetch.
+        const usdRate = getRate("USD");
+        if (usdRate != null && usdRate > 0) setRateFromApi(usdRate, rateDecimals);
+    // Rate precision is intentionally applied when the BCV payload changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date]);
+    }, [appliedRates]);
 
     const preciseLineDollarRate = items
         .map((item) => !isLocalCurrency(item.currency) && item.dollarRate != null && item.dollarRate > 0 ? item.dollarRate : null)

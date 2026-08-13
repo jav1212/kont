@@ -164,3 +164,50 @@ export async function fetchBcvCurrentAll(init?: { revalidate?: number; noStore?:
     const data = (await res.json()) as BcvEntry[];
     return Array.isArray(data) ? data : [];
 }
+
+export type BcvResolution = {
+    entries: BcvEntry[];
+    strategy: "current-cache" | "current-fresh" | "history-cache" | "history-fresh" | "empty";
+};
+
+/** Never trust a cached empty payload: verify it once without cache. */
+export async function resolveBcvEntries(
+    date: string,
+    dependencies: {
+        current?: typeof fetchBcvCurrentAll;
+        history?: typeof fetchBcvListFallback;
+        today?: () => string;
+    } = {},
+): Promise<BcvResolution> {
+    const current = dependencies.current ?? fetchBcvCurrentAll;
+    const history = dependencies.history ?? fetchBcvListFallback;
+    const isToday = date === (dependencies.today ?? todayCaracas)();
+    let successfulRequest = false;
+
+    if (isToday) {
+        try {
+            const cached = await current();
+            successfulRequest = true;
+            if (cached.length) return { entries: cached, strategy: "current-cache" };
+        } catch { /* The historical feed remains a valid fallback. */ }
+        try {
+            const fresh = await current({ noStore: true });
+            successfulRequest = true;
+            if (fresh.length) return { entries: fresh, strategy: "current-fresh" };
+        } catch { /* The historical feed remains a valid fallback. */ }
+    }
+
+    try {
+        const cachedHistory = await history(date, 7);
+        successfulRequest = true;
+        if (cachedHistory.length) return { entries: cachedHistory, strategy: "history-cache" };
+    } catch { /* Verify once without cache before surfacing a provider failure. */ }
+    try {
+        const freshHistory = await history(date, 7, { noStore: true });
+        successfulRequest = true;
+        if (freshHistory.length) return { entries: freshHistory, strategy: "history-fresh" };
+    } catch { /* Handled below. */ }
+
+    if (!successfulRequest) throw new Error("BCV provider unavailable");
+    return { entries: [], strategy: "empty" };
+}
