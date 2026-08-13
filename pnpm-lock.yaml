@@ -730,6 +730,47 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/inventory/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/inventory/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/modules/application:
     dependencies:
       '@kontave/companies-domain':
