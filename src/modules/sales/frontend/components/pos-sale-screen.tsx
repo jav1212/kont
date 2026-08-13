@@ -7,8 +7,9 @@ import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-invento
 import type { Product } from "@/src/modules/inventory/backend/domain/product";
 import { resolveProductSalePrice } from "@/src/modules/inventory/frontend/utils/product-sale-price";
 import { useInvoiceExchangeRates } from "@/src/modules/inventory/frontend/hooks/use-invoice-exchange-rates";
+import { CurrencyCombobox } from "@/src/modules/inventory/frontend/components/currency-combobox";
 import { computeInvoiceTotals, emptyHeaderAdjustments, emptyLineAdjustments, type HeaderAdjustments, type LineInput } from "@/src/modules/inventory/shared/totals";
-import { normalizeCurrencyCode } from "@/src/modules/inventory/shared/currency";
+import { isLocalCurrency, normalizeCurrencyCode, type CurrencyCode } from "@/src/modules/inventory/shared/currency";
 import { useSales, type Customer, type SalesInvoice, type SalesInvoiceItem } from "../hooks/use-sales";
 import { CustomerCombobox } from "./customer-combobox";
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
@@ -37,7 +38,7 @@ export function PosSaleScreen() {
     const { products, departments, loadProducts, loadDepartments } = useInventory();
     const { customers, loadCustomers, saveCustomer, ensureConsumerFinal, saveSalesInvoice, confirmSalesInvoice } = useSales();
     const date = getTodayIsoDate();
-    const { appliedRates, getRate, publishedDate } = useInvoiceExchangeRates(date);
+    const { options: currencyOptions, appliedRates, getRate, publishedDate } = useInvoiceExchangeRates(date);
     const searchRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState("");
     const [departmentId, setDepartmentId] = useState("all");
@@ -48,6 +49,7 @@ export function PosSaleScreen() {
     const [cartOpen, setCartOpen] = useState(false);
     const [pendingPrice, setPendingPrice] = useState<Product | null>(null);
     const [manualPrice, setManualPrice] = useState("");
+    const [manualCurrency, setManualCurrency] = useState<CurrencyCode>("VES");
     const [creatingCustomer, setCreatingCustomer] = useState(false);
     const [customerDraft, setCustomerDraft] = useState({ rif: "", name: "" });
     const [finishing, setFinishing] = useState(false);
@@ -65,13 +67,14 @@ export function PosSaleScreen() {
         return { resolved: resolveProductSalePrice(product, rate), rate };
     }, [getRate]);
 
-    const addResolvedProduct = useCallback((product: Product, overridePrice?: number) => {
+    const addResolvedProduct = useCallback((product: Product, manual?: { amount: number; currency: CurrencyCode; rate: number }) => {
         if (!product.id) return;
         const { resolved, rate } = resolvePrice(product);
-        const unitPrice = overridePrice ?? resolved?.unitPriceBs;
+        const unitPrice = manual ? round2(manual.amount * manual.rate) : resolved?.unitPriceBs;
         if (unitPrice == null || unitPrice <= 0) {
             setPendingPrice(product);
             setManualPrice("");
+            setManualCurrency(normalizeCurrencyCode(product.salePricing?.currency ?? "VES"));
             return;
         }
         setCart((current) => {
@@ -79,15 +82,26 @@ export function PosSaleScreen() {
             if (existing) return current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line);
             return [...current, {
                 product, quantity: 1, unitPrice,
-                sourceCurrency: overridePrice != null ? "VES" : normalizeCurrencyCode(resolved?.currency ?? "VES"),
-                sourcePrice: overridePrice != null ? null : resolved?.sourcePrice ?? null,
-                exchangeRate: overridePrice != null ? null : rate,
-                manualPrice: overridePrice != null,
+                sourceCurrency: manual ? normalizeCurrencyCode(manual.currency) : normalizeCurrencyCode(resolved?.currency ?? "VES"),
+                sourcePrice: manual && !isLocalCurrency(manual.currency) ? manual.amount : resolved?.sourcePrice ?? null,
+                exchangeRate: manual && !isLocalCurrency(manual.currency) ? manual.rate : (!manual ? rate : null),
+                manualPrice: manual != null,
             }];
         });
         setQuery("");
         requestAnimationFrame(() => searchRef.current?.focus());
     }, [resolvePrice]);
+
+    const manualRate = getRate(manualCurrency);
+    const manualAmount = Number(manualPrice);
+    const manualUnitPriceBs = manualAmount > 0 && manualRate ? round2(manualAmount * manualRate) : 0;
+    const canAddManualPrice = manualAmount > 0 && manualRate != null && manualRate > 0;
+
+    function addManualPrice() {
+        if (!pendingPrice || !canAddManualPrice || !manualRate) return;
+        addResolvedProduct(pendingPrice, { amount: manualAmount, currency: manualCurrency, rate: manualRate });
+        setPendingPrice(null);
+    }
 
     useDeviceSubscription("sale", (scan) => {
         const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
@@ -232,7 +246,7 @@ export function PosSaleScreen() {
             <aside className="hidden min-h-0 border-l border-border-light lg:block">{cartPanel}</aside>
         </div>
         {cartOpen && <div className="fixed inset-0 z-[90] bg-black/45 lg:hidden" onClick={() => setCartOpen(false)}><aside className="ml-auto h-full w-full max-w-md" onClick={(event) => event.stopPropagation()}>{cartPanel}</aside></div>}
-        {pendingPrice && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-sm rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold text-foreground">Precio temporal</h2><p className="mt-1 text-[13px] text-[var(--text-secondary)]">{pendingPrice.name} no tiene un precio de venta disponible.</p><label className="mt-5 block font-mono text-[10px] uppercase tracking-[.12em] text-[var(--text-tertiary)]">Precio unitario en bolívares</label><input autoFocus type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && Number(manualPrice) > 0) { addResolvedProduct(pendingPrice, Number(manualPrice)); setPendingPrice(null); } }} className="mt-2 h-11 w-full rounded-lg border border-border-light px-3 font-mono outline-none focus:border-primary-500"/><div className="mt-5 flex justify-end gap-2"><button onClick={() => setPendingPrice(null)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={() => { if (Number(manualPrice) > 0) { addResolvedProduct(pendingPrice, Number(manualPrice)); setPendingPrice(null); } }} disabled={Number(manualPrice) <= 0} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Agregar</button></div></div></div>}
+        {pendingPrice && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-sm rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold text-foreground">Precio temporal</h2><p className="mt-1 text-[13px] text-[var(--text-secondary)]">{pendingPrice.name} no tiene un precio de venta disponible.</p><div className="mt-5 grid grid-cols-[1fr_112px] items-end gap-3"><div><label className="block font-mono text-[10px] uppercase tracking-[.12em] text-[var(--text-tertiary)]">Precio unitario</label><input autoFocus type="number" min="0.01" step="0.01" value={manualPrice} onChange={(event) => setManualPrice(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addManualPrice(); }} className="mt-2 h-10 w-full rounded-lg border border-border-light px-3 font-mono outline-none focus:border-primary-500"/></div><CurrencyCombobox label="Moneda" value={manualCurrency} options={currencyOptions} onChange={setManualCurrency} /></div>{!isLocalCurrency(manualCurrency) && <div className={`mt-3 rounded-lg border px-3 py-2 text-[12px] ${manualRate ? "border-border-light bg-surface-2 text-[var(--text-secondary)]" : "border-red-500/20 bg-red-500/5 text-red-600"}`}>{manualRate ? <>Tasa: Bs {money(manualRate)} · Equivalente: <strong className="text-foreground">Bs {money(manualUnitPriceBs)}</strong></> : `No hay una tasa disponible para ${manualCurrency}.`}</div>}<div className="mt-5 flex justify-end gap-2"><button onClick={() => setPendingPrice(null)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={addManualPrice} disabled={!canAddManualPrice} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Agregar</button></div></div></div>}
         {creatingCustomer && <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/45 p-4"><div className="w-full max-w-md rounded-xl border border-border-light bg-surface-1 p-6 shadow-2xl"><h2 className="text-[16px] font-semibold">Nuevo cliente</h2><div className="mt-5 grid gap-3"><input autoFocus value={customerDraft.rif} onChange={(event) => setCustomerDraft((current) => ({ ...current, rif: event.target.value }))} placeholder="RIF o cédula" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/><input value={customerDraft.name} onChange={(event) => setCustomerDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre o razón social" className="h-10 rounded-lg border border-border-light px-3 outline-none focus:border-primary-500"/></div><div className="mt-5 flex justify-end gap-2"><button onClick={() => setCreatingCustomer(false)} className="h-9 rounded-lg border border-border-light px-4 text-[12px]">Cancelar</button><button onClick={createCustomer} disabled={!customerDraft.rif.trim() || !customerDraft.name.trim()} className="h-9 rounded-lg bg-primary-500 px-4 text-[12px] font-semibold text-white disabled:opacity-50">Crear cliente</button></div></div></div>}
         {completed && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-md rounded-2xl border border-border-light bg-surface-1 p-7 text-center shadow-2xl"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600"><CheckCircle2 size={30}/></div><h2 className="mt-4 text-xl font-semibold">Venta confirmada</h2><p className="mt-1 font-mono text-[12px] text-[var(--text-tertiary)]">Factura Nº {completed.invoiceNumber}</p><p className="mt-5 font-mono text-3xl font-bold text-foreground">Bs {money(completed.total)}</p><div className="mt-6 grid gap-2"><button onClick={downloadPdf} disabled={generatingPdf} className="h-11 rounded-xl bg-primary-500 text-[12px] font-bold uppercase tracking-[.1em] text-white">{generatingPdf ? "Generando…" : "Descargar factura A4"}</button><Link href={`/sales/${completed.id}`} className="flex h-10 items-center justify-center rounded-xl border border-border-light text-[12px]">Abrir factura</Link><button onClick={resetSale} className="h-10 rounded-xl text-[12px] font-semibold text-primary-500">Nueva venta</button></div></div></div>}
     </div>;
