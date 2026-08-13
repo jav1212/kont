@@ -1126,6 +1126,35 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/products/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/products/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/referrals/application:
     dependencies:
       '@kontave/billing-domain':
