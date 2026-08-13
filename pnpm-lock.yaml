@@ -1079,6 +1079,47 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/payroll/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:../../employees/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/payroll/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/employees-domain':
+        specifier: workspace:*
+        version: link:../../employees/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/payroll-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/platform/native-api-contracts:
     devDependencies:
       typescript:

@@ -12,6 +12,8 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
 - `monetary/`: dinero exacto, monedas, tasas de cambio, resolución y caché de tasas, conversión, redondeo, distribución de residuos y adaptadores de proveedores cambiarios.
 
+- `payroll/`: definiciones, relaciones, periodos, elementos, entradas, calculo trazable, balances, corridas y utilidades de prueba de nomina.
+
 ## Reglas
 
 1. Un dominio no importa frameworks ni infraestructura.
