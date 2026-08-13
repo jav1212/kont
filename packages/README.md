@@ -13,6 +13,7 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `products/`: identidad de productos, SKU, códigos de barras, categorías, unidades base, ciclo de vida y utilidades de prueba.
 - `inventory/`: operaciones y efectos físicos, ubicaciones, lotes, conteos, posiciones y valuación de existencias.
 - `monetary/`: dinero exacto, monedas, tasas de cambio, resolución y caché de tasas, conversión, redondeo, distribución de residuos y adaptadores de proveedores cambiarios.
+- `observability/`: contratos de incidentes, políticas portables, adaptadores operativos y dobles de prueba.
 
 - `payroll/`: definiciones, relaciones, periodos, elementos, entradas, calculo trazable, balances, corridas y utilidades de prueba de nomina.
 

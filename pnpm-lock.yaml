@@ -908,6 +908,57 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/observability/application:
+    dependencies:
+      '@kontave/observability-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/observability/contracts:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/observability/supabase:
+    dependencies:
+      '@kontave/observability-application':
+        specifier: workspace:*
+        version: link:../application
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/observability/testing:
+    dependencies:
+      '@kontave/observability-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/organization-delegations/application:
     dependencies:
       '@kontave/organization-delegations-domain':
