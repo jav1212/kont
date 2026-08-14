@@ -1,0 +1,25 @@
+export type SalesFailureCode =
+  | "SALES_IDENTIFIER_INVALID"
+  | "SALES_DATE_INVALID"
+  | "CUSTOMER_INVALID"
+  | "CUSTOMER_INACTIVE"
+  | "SALES_ORDER_INVALID"
+  | "SALES_ORDER_TRANSITION_INVALID"
+  | "SALES_DISPATCH_INVALID"
+  | "SALES_DISPATCH_TRANSITION_INVALID"
+  | "CUSTOMER_RETURN_INVALID"
+  | "CUSTOMER_RETURN_TRANSITION_INVALID"
+  | "CUSTOMER_INVOICE_MATCH_INVALID"
+  | "SALES_CURRENCY_MISMATCH"
+  | "SALES_QUANTITY_EXCEEDED"
+  | "SALES_NOT_FOUND"
+  | "SALES_CONCURRENCY_CONFLICT"
+  | "SALES_REPOSITORY_UNAVAILABLE"
+  | "SALES_INVENTORY_UNAVAILABLE";
+
+export class SalesFailure extends Error {
+  constructor(readonly code: SalesFailureCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "SalesFailure";
+  }
+}

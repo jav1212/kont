@@ -1,0 +1,21 @@
+{
+  "name": "@kontave/sales-application",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit", "test": "tsx --test test/**/*.test.ts" },
+  "dependencies": {
+    "@kontave/fiscal-domain": "workspace:*",
+    "@kontave/monetary-domain": "workspace:*",
+    "@kontave/sales-domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@kontave/companies-domain": "workspace:*",
+    "@kontave/fiscal-testing": "workspace:*",
+    "@kontave/products-domain": "workspace:*",
+    "@kontave/sales-testing": "workspace:*",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}
