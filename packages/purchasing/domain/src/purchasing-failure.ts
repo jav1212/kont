@@ -1,0 +1,25 @@
+export type PurchasingFailureCode =
+  | "PURCHASING_IDENTIFIER_INVALID"
+  | "PURCHASING_DATE_INVALID"
+  | "SUPPLIER_INVALID"
+  | "SUPPLIER_INACTIVE"
+  | "PURCHASE_ORDER_INVALID"
+  | "PURCHASE_ORDER_TRANSITION_INVALID"
+  | "PURCHASE_RECEIPT_INVALID"
+  | "PURCHASE_RECEIPT_TRANSITION_INVALID"
+  | "PURCHASE_RETURN_INVALID"
+  | "PURCHASE_RETURN_TRANSITION_INVALID"
+  | "PURCHASE_INVOICE_MATCH_INVALID"
+  | "PURCHASE_CURRENCY_MISMATCH"
+  | "PURCHASE_QUANTITY_EXCEEDED"
+  | "PURCHASE_NOT_FOUND"
+  | "PURCHASE_CONCURRENCY_CONFLICT"
+  | "PURCHASE_REPOSITORY_UNAVAILABLE"
+  | "PURCHASE_INVENTORY_UNAVAILABLE";
+
+export class PurchasingFailure extends Error {
+  constructor(readonly code: PurchasingFailureCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "PurchasingFailure";
+  }
+}
