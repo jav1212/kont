@@ -21,6 +21,7 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `observability/`: contratos de incidentes, políticas portables, adaptadores operativos y dobles de prueba.
 - `client-feedback/`: feedback semántico portable, resolución de fallos inesperados y dobles de prueba para clientes.
 - `client-interaction/`: bloqueo global portable mediante leases concurrentes y estado semántico observable.
+- `client-connectivity/`: contratos serializables, monitoreo portable y dobles de prueba para disponibilidad del backend.
 
 - `payroll/`: definiciones, relaciones, periodos, elementos, entradas, cálculo trazable, balances, corridas, políticas legales venezolanas y utilidades de prueba de nómina.
 

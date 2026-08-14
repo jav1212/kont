@@ -1,0 +1,16 @@
+{
+  "name": "@kontave/client-connectivity-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@kontave/client-connectivity-application": "workspace:*",
+    "@kontave/client-connectivity-contracts": "workspace:*"
+  },
+  "devDependencies": { "tsx": "^4.23.12", "typescript": "^5.9.2" }
+}

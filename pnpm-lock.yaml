@@ -542,6 +542,41 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/client-connectivity/application:
+    dependencies:
+      '@kontave/client-connectivity-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-connectivity/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-connectivity/testing:
+    dependencies:
+      '@kontave/client-connectivity-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-connectivity-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/client-feedback/application:
     devDependencies:
       tsx:
