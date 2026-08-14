@@ -20,6 +20,7 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `monetary/`: dinero exacto, monedas, tasas de cambio, resolución y caché de tasas, conversión, redondeo, distribución de residuos y adaptadores de proveedores cambiarios.
 - `observability/`: contratos de incidentes, políticas portables, adaptadores operativos y dobles de prueba.
 - `client-feedback/`: feedback semántico portable, resolución de fallos inesperados y dobles de prueba para clientes.
+- `client-interaction/`: bloqueo global portable mediante leases concurrentes y estado semántico observable.
 
 - `payroll/`: definiciones, relaciones, periodos, elementos, entradas, cálculo trazable, balances, corridas, políticas legales venezolanas y utilidades de prueba de nómina.
 
