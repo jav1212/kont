@@ -228,6 +228,12 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@fontsource/darker-grotesque':
+        specifier: ^5.2.8
+        version: 5.3.0
+      '@fontsource/dosis':
+        specifier: ^5.2.8
+        version: 5.3.0
       '@kontave/auth-application':
         specifier: workspace:*
         version: link:../../packages/auth/application
@@ -240,6 +246,9 @@ importers:
       '@kontave/brand-assets':
         specifier: workspace:*
         version: link:../../packages/ui/brand-assets
+      '@kontave/client-feedback-application':
+        specifier: workspace:*
+        version: link:../../packages/client-feedback/application
       '@kontave/design-tokens':
         specifier: workspace:*
         version: link:../../packages/ui/design-tokens
@@ -252,12 +261,15 @@ importers:
       '@kontave/devices-node':
         specifier: workspace:*
         version: link:../../packages/devices/node
-      '@kontave/ui-web':
+      '@kontave/ui-dom':
         specifier: workspace:*
-        version: link:../../packages/ui/web
+        version: link:../../packages/ui/dom
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
+      lucide-react:
+        specifier: ^1.7.0
+        version: 1.7.0(react@19.2.3)
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -530,6 +542,28 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/client-feedback/application:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-feedback/testing:
+    dependencies:
+      '@kontave/client-feedback-application':
+        specifier: workspace:*
+        version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/companies/application:
     dependencies:
       '@kontave/companies-domain':
@@ -728,6 +762,50 @@ importers:
     devDependencies:
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/fiscal/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/fiscal/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/history/core:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
         version: 5.9.3
 
   packages/inventory/domain:
@@ -1212,6 +1290,22 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/payroll/venezuela:
+    dependencies:
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/payroll-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/platform/native-api-contracts:
     devDependencies:
       typescript:
@@ -1237,6 +1331,103 @@ importers:
         specifier: workspace:*
         version: link:../../companies/domain
       '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/purchasing/application:
+    dependencies:
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../../fiscal/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/purchasing-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/purchasing-testing':
+        specifier: workspace:*
+        version: link:../testing
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/purchasing/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../../fiscal/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/purchasing/inventory:
+    dependencies:
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:../../inventory/domain
+      '@kontave/purchasing-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/purchasing/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/purchasing-domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:
@@ -1323,6 +1514,188 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/sales/application:
+    dependencies:
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../../fiscal/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/sales-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/fiscal-testing':
+        specifier: workspace:*
+        version: link:../../fiscal/testing
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/sales-testing':
+        specifier: workspace:*
+        version: link:../testing
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/sales/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../../fiscal/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/sales/inventory:
+    dependencies:
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:../../inventory/domain
+      '@kontave/sales-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/sales/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/sales-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/taxation/domain:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/taxation/fiscal:
+    dependencies:
+      '@kontave/fiscal-domain':
+        specifier: workspace:*
+        version: link:../../fiscal/domain
+      '@kontave/taxation-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/taxation/testing:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      '@kontave/taxation-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/taxation-venezuela':
+        specifier: workspace:*
+        version: link:../venezuela
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/taxation/venezuela:
+    dependencies:
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/taxation-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/ui/brand-assets: {}
 
   packages/ui/contracts:
@@ -1340,8 +1713,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
-  packages/ui/web:
+  packages/ui/dom:
     dependencies:
+      '@kontave/client-feedback-application':
+        specifier: workspace:*
+        version: link:../../client-feedback/application
       '@kontave/ui-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -1351,6 +1727,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.3(react@19.2.3)
+      sonner:
+        specifier: ^1.7.4
+        version: 1.7.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@types/react':
         specifier: ^19.2.0
@@ -1893,6 +2272,12 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@fontsource/darker-grotesque@5.3.0':
+    resolution: {integrity: sha512-wbFQQ/PQZ+SCi2iHNoh7pgyt2HCfTgSlt+heRxrKbz3QXFSkHGNHyYC7fJFc1fUe1CXgqzshu6s51f+mM9ZwWQ==}
+
+  '@fontsource/dosis@5.3.0':
+    resolution: {integrity: sha512-qW82PZqGdPK7KsOm3tkCWohdyPltMxJ/detZSwsAplZVFqQPh1JwpwFQOuZ5/wFKcBSjD7ORx1SKcHFkkH+Rqw==}
 
   '@formatjs/ecma402-abstract@2.3.6':
     resolution: {integrity: sha512-HJnTFeRM2kVFVr5gr5kH1XP6K0JcJtE7Lzvtr3FS/so5f1kpsqqqxy5JF+FRaO6H2qmcMfAUIox7AJteieRtVw==}
@@ -6837,6 +7222,10 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@fontsource/darker-grotesque@5.3.0': {}
+
+  '@fontsource/dosis@5.3.0': {}
 
   '@formatjs/ecma402-abstract@2.3.6':
     dependencies:

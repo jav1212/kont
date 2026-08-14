@@ -9,13 +9,19 @@ Los paquetes se agrupan por capacidad arquitectónica. La carpeta facilita la na
 - `devices/`: contratos, núcleo portable, adaptadores de plataforma y utilidades de prueba para dispositivos.
 - `ui/`: contratos visuales, tokens, marca y componentes por tecnología de renderizado.
 - `platform/`: contratos y capacidades transversales de integración entre aplicaciones y backend.
+- `history/`: historial Memento portable para borradores y adaptadores de presentación por plataforma.
 - `organizations/`: espacios de trabajo, membresías, empresas accesibles y sus adaptadores.
 - `products/`: identidad de productos, SKU, códigos de barras, categorías, unidades base, ciclo de vida y utilidades de prueba.
 - `inventory/`: operaciones y efectos físicos, ubicaciones, lotes, conteos, posiciones y valuación de existencias.
+- `fiscal/`: facturas y notas fiscales, partes, líneas, ajustes, determinaciones tributarias, pagos aplicados, totales y evidencia de emisión.
+- `taxation/`: perfiles tributarios de productos, reglas temporales, políticas venezolanas de IVA e IGTF e integración con documentos fiscales.
+- `purchasing/`: proveedores, órdenes, recepciones, conciliación de facturas, devoluciones y publicación idempotente hacia inventario.
+- `sales/`: clientes, acuerdos comerciales, despachos, conciliación fiscal, devoluciones y publicación idempotente hacia inventario.
 - `monetary/`: dinero exacto, monedas, tasas de cambio, resolución y caché de tasas, conversión, redondeo, distribución de residuos y adaptadores de proveedores cambiarios.
 - `observability/`: contratos de incidentes, políticas portables, adaptadores operativos y dobles de prueba.
+- `client-feedback/`: feedback semántico portable, resolución de fallos inesperados y dobles de prueba para clientes.
 
-- `payroll/`: definiciones, relaciones, periodos, elementos, entradas, calculo trazable, balances, corridas y utilidades de prueba de nomina.
+- `payroll/`: definiciones, relaciones, periodos, elementos, entradas, cálculo trazable, balances, corridas, políticas legales venezolanas y utilidades de prueba de nómina.
 
 ## Reglas
 

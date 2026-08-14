@@ -18,6 +18,8 @@ La autenticación se divide en:
 - `auth-supabase`: adaptadores concretos de Supabase.
 - `native-api-contracts`: DTOs y envoltorios HTTP versionados.
 
+Las capacidades portables incluyen inicio y restauración de sesión, registro de credenciales, verificación y reenvío de OTP, y recuperación de contraseña mediante OTP. Los nombres, teléfonos, referidos, aceptación de términos y demás pasos de onboarding pertenecen a sus capacidades dueñas y no al dominio de autenticación.
+
 La API acepta exclusivamente `Authorization: Bearer <token>` y valida el token con el proveedor. Las respuestas usan:
 
 ```json
@@ -31,6 +33,8 @@ o:
 ```
 
 Desktop conserva los tokens en el proceso principal de Electron usando `safeStorage`. El renderer recibe solo el estado autenticado y la identidad sanitizada mediante IPC validado.
+
+Los errores esperados cruzan IPC como resultados sanitizados con códigos estables. Los tokens de acceso, refresh tokens y sesiones temporales de recuperación nunca cruzan hacia el renderer.
 
 ## Variables de Desktop
 

@@ -6,6 +6,12 @@ const api: KontaveDesktopApi = {
   auth: {
     getState: () => ipcRenderer.invoke(DESKTOP_IPC.getAuthState),
     signIn: (command) => ipcRenderer.invoke(DESKTOP_IPC.signIn, command),
+    register: (command) => ipcRenderer.invoke(DESKTOP_IPC.register, command),
+    verifyRegistration: (command) => ipcRenderer.invoke(DESKTOP_IPC.verifyRegistration, command),
+    resendRegistration: (command) => ipcRenderer.invoke(DESKTOP_IPC.resendRegistration, command),
+    requestPasswordRecovery: (command) => ipcRenderer.invoke(DESKTOP_IPC.requestPasswordRecovery, command),
+    verifyPasswordRecovery: (command) => ipcRenderer.invoke(DESKTOP_IPC.verifyPasswordRecovery, command),
+    completePasswordRecovery: (command) => ipcRenderer.invoke(DESKTOP_IPC.completePasswordRecovery, command),
     signOut: () => ipcRenderer.invoke(DESKTOP_IPC.signOut),
     subscribe(listener) {
       const handler = (_event: Electron.IpcRendererEvent, payload: Parameters<typeof listener>[0]) => listener(payload);

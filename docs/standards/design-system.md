@@ -5,7 +5,7 @@
 - `design-tokens`: valores portables y temas semánticos.
 - `brand-assets`: fuentes canónicas de identidad.
 - `ui-contracts`: significados compartidos sin dependencia de framework.
-- `ui-web`: primitivas React DOM para Web y Desktop.
+- `ui-dom`: primitivas React DOM independientes del cliente para Web, Desktop y otros hosts DOM.
 - `ui-native`: futura implementación React Native, creada con Mobile.
 
 ## Selección de capa

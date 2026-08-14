@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { "./kontave-mark.svg": "./src/kontave-mark.svg" },
+  "exports": {
+    "./kontave-icon.png": "./src/kontave-icon.png",
+    "./kontave-mark.svg": "./src/kontave-mark.svg"
+  },
   "files": ["src"]
 }

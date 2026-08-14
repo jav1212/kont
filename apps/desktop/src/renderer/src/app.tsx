@@ -1,7 +1,25 @@
-import { useEffect, useState, type FormEvent } from "react";
-import markUrl from "@kontave/brand-assets/kontave-mark.svg";
-import { Alert, Button, Card, PageShell, StatusBadge, TextField } from "@kontave/ui-web";
+import { useEffect, useState, type ReactNode } from "react";
+import { LogOut, PanelLeftClose, PanelLeftOpen, Usb } from "lucide-react";
+import {
+  Alert,
+  Button,
+  Card,
+  LogoFull,
+  LogoMark,
+  Sidebar,
+  SidebarAction,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNav,
+  SidebarSection,
+  StatusBadge,
+  type SidebarPresentation,
+} from "@kontave/ui-dom";
 import type { DesktopAuthState, DesktopDeviceStatus } from "../../shared/desktop-api.js";
+import { AuthExperience } from "./auth/auth-experience.js";
+
+const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
+const SIDEBAR_PREFERENCE_KEY = "kontave.desktop.sidebar-collapsed";
 
 export function App() {
   const [auth, setAuth] = useState<DesktopAuthState>({ status: "loading" });
@@ -11,55 +29,102 @@ export function App() {
     return window.kontave.auth.subscribe(setAuth);
   }, []);
 
-  return <PageShell>
-    <DesktopHeader />
-    {auth.status === "loading" ? <Card className="auth-card">Restaurando sesión segura…</Card> : null}
-    {auth.status === "anonymous" ? <SignInCard onAuthenticated={setAuth} /> : null}
-    {auth.status === "authenticated" ? <DeviceCard auth={auth} onSignedOut={setAuth} /> : null}
-  </PageShell>;
-}
-
-function DesktopHeader() {
-  return <header className="desktop-header">
-    <img className="desktop-mark" src={markUrl} alt="" />
-    <div><h1>Kontave Desktop</h1><p>Aplicación nativa de escritorio</p></div>
-  </header>;
-}
-
-function SignInCard({ onAuthenticated }: { readonly onAuthenticated: (state: DesktopAuthState) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(false);
-
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    setError(undefined);
-    setLoading(true);
-    try {
-      onAuthenticated(await window.kontave.auth.signIn({ email, password }));
-    } catch (cause: unknown) {
-      setError(readErrorMessage(cause, "No se pudo iniciar sesión."));
-    } finally {
-      setLoading(false);
-    }
+  if (auth.status === "authenticated") {
+    return <DesktopAppShell auth={auth} onSignedOut={setAuth}>
+      <DeviceCard />
+    </DesktopAppShell>;
   }
 
-  return <Card className="auth-card" aria-labelledby="sign-in-title">
-    <div><span className="desktop-label">Cuenta Kontave</span><h2 id="sign-in-title">Iniciar sesión</h2></div>
-    <form className="auth-form" onSubmit={(event) => void submit(event)}>
-      <TextField label="Correo electrónico" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
-      <TextField label="Contraseña" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-      {error ? <Alert intent="danger">{error}</Alert> : null}
-      <Button type="submit" loading={loading}>Continuar</Button>
-    </form>
-  </Card>;
+  return <AuthExperience state={auth} onAuthenticated={setAuth} />;
 }
 
-function DeviceCard({ auth, onSignedOut }: {
+function DesktopAppShell({ auth, children, onSignedOut }: {
   readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
+  readonly children: ReactNode;
   readonly onSignedOut: (state: DesktopAuthState) => void;
 }) {
+  const compactViewport = useCompactDesktopViewport();
+  const [userCollapsed, setUserCollapsed] = useState(() => localStorage.getItem(SIDEBAR_PREFERENCE_KEY) === "true");
+  const presentation: SidebarPresentation = compactViewport || userCollapsed ? "collapsed" : "expanded";
+  const collapsed = presentation === "collapsed";
+
+  function toggleSidebar(): void {
+    const next = !userCollapsed;
+    setUserCollapsed(next);
+    localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(next));
+  }
+
+  function signOut(): void {
+    void window.kontave.auth.signOut().then((result) => {
+      if (result.ok) onSignedOut(result.value);
+    });
+  }
+
+  return <div className="desktop-shell">
+    <Sidebar
+      presentation={presentation}
+      aria-label="Navegación principal"
+      className={compactViewport ? "desktop-sidebar desktop-sidebar--viewport-compact" : "desktop-sidebar"}
+    >
+      <SidebarHeader className="desktop-sidebar-header">
+        <div className="desktop-sidebar-brand">
+          {collapsed ? <LogoMark size={24} /> : <LogoFull size={24} />}
+        </div>
+        {!compactViewport ? <Button
+          appearance="text"
+          size="sm"
+          className="desktop-sidebar-toggle"
+          aria-label={collapsed ? "Expandir navegación" : "Contraer navegación"}
+          title={collapsed ? "Expandir navegación" : "Contraer navegación"}
+          onClick={toggleSidebar}
+        >
+          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+        </Button> : null}
+      </SidebarHeader>
+
+      <SidebarNav aria-label="Secciones de Kontave">
+        <SidebarSection label="Operación local">
+          <SidebarAction active icon={<Usb />} label="Dispositivos" />
+        </SidebarSection>
+      </SidebarNav>
+
+      <SidebarFooter>
+        <div className="desktop-sidebar-account" title={auth.user.email ?? auth.user.id}>
+          <span className="desktop-sidebar-avatar" aria-hidden="true">{accountInitial(auth)}</span>
+          <span className="desktop-sidebar-account-copy">
+            <strong>Cuenta Kontave</strong>
+            <span>{auth.user.email ?? auth.user.id}</span>
+          </span>
+        </div>
+        <SidebarAction icon={<LogOut />} label="Cerrar sesión" onClick={signOut} />
+      </SidebarFooter>
+    </Sidebar>
+
+    <div className="desktop-workspace">
+      <header className="desktop-toolbar">
+        <div>
+          <h1>Dispositivos</h1>
+        </div>
+      </header>
+      <main className="desktop-content">{children}</main>
+    </div>
+  </div>;
+}
+
+function useCompactDesktopViewport(): boolean {
+  const [compact, setCompact] = useState(() => window.matchMedia(DESKTOP_COMPACT_QUERY).matches);
+
+  useEffect(() => {
+    const media = window.matchMedia(DESKTOP_COMPACT_QUERY);
+    const update = (event: MediaQueryListEvent): void => setCompact(event.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return compact;
+}
+
+function DeviceCard() {
   const [status, setStatus] = useState<DesktopDeviceStatus>({ state: "idle" });
   const [error, setError] = useState<string>();
   const [connecting, setConnecting] = useState(false);
@@ -84,10 +149,9 @@ function DeviceCard({ auth, onSignedOut }: {
 
   return <Card className="device-card" aria-labelledby="device-title">
     <div className="device-heading">
-      <div><span className="desktop-label">Dispositivos</span><h2 id="device-title">Administrador local</h2></div>
+      <div><span className="desktop-label">Conexión local</span><h2 id="device-title">Scanner de códigos</h2></div>
       <StatusBadge intent={statusIntent(status.state)}>{status.state}</StatusBadge>
     </div>
-    <p className="signed-in-user">Sesión: {auth.user.email ?? auth.user.id}</p>
     <dl className="device-details">
       <dt>Equipo</dt><dd>{status.device ? `${status.device.manufacturer} ${status.device.model}` : "Sin dispositivo"}</dd>
       <dt>Conexión</dt><dd>{status.device?.connectionAddress ?? "—"}</dd>
@@ -95,9 +159,12 @@ function DeviceCard({ auth, onSignedOut }: {
     {error ? <Alert intent="danger">{error}</Alert> : null}
     <div className="device-actions">
       <Button loading={connecting} onClick={() => void connect()}>Conectar scanner</Button>
-      <Button intent="neutral" onClick={() => void window.kontave.auth.signOut().then(onSignedOut)}>Cerrar sesión</Button>
     </div>
   </Card>;
+}
+
+function accountInitial(auth: Extract<DesktopAuthState, { status: "authenticated" }>): string {
+  return (auth.user.email ?? auth.user.id).trim().charAt(0).toLocaleUpperCase("es");
 }
 
 function readErrorMessage(cause: unknown, fallback: string): string {

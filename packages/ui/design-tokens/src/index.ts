@@ -2,7 +2,7 @@ export type KontaveTheme = "light" | "dark";
 
 export const designTokens = {
   color: {
-    brand: { 50: "#FFF4F0", 100: "#FFE5DB", 200: "#FFC9B5", 500: "#D93A10", 600: "#B22C0B", accent: "#FF4A18" },
+    brand: { 50: "#FFF4F0", 100: "#FFE5DB", 200: "#FFC9B5", 400: "#FF7450", 500: "#D93A10", 600: "#B22C0B", 800: "#661805", 900: "#3D0F03", accent: "#FF4A18" },
     neutral: { 50: "#F8F9FC", 100: "#EEF0F7", 200: "#DDE1EE", 400: "#A0A9C2", 600: "#464D66", 700: "#333A52", 900: "#111525", 950: "#090B12" },
     status: { success: "#047857", warning: "#92400E", danger: "#B91C1C", info: "#2563EB" },
   },
@@ -11,6 +11,11 @@ export const designTokens = {
   shadow: { sm: "0 1px 3px rgb(8 9 16 / 0.08)", md: "0 8px 24px rgb(8 9 16 / 0.10)" },
   motion: { fast: "100ms", base: "150ms", slow: "300ms", easing: "cubic-bezier(0.25, 1, 0.5, 1)" },
   control: { heightSm: "2.25rem", heightMd: "2.5rem", heightLg: "3rem" },
+  typography: {
+    body: '"Dosis", ui-sans-serif, system-ui, sans-serif',
+    display: '"Darker Grotesque", "Dosis", ui-sans-serif, system-ui, sans-serif',
+    mono: 'ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace',
+  },
 } as const;
 
 const baseVariables: Readonly<Record<string, string>> = {
@@ -22,6 +27,10 @@ const baseVariables: Readonly<Record<string, string>> = {
   "--kt-shadow-sm": designTokens.shadow.sm, "--kt-shadow-md": designTokens.shadow.md,
   "--kt-motion-fast": designTokens.motion.fast, "--kt-motion-base": designTokens.motion.base, "--kt-easing": designTokens.motion.easing,
   "--kt-control-sm": designTokens.control.heightSm, "--kt-control-md": designTokens.control.heightMd, "--kt-control-lg": designTokens.control.heightLg,
+  "--kt-font-body": designTokens.typography.body, "--kt-font-display": designTokens.typography.display,
+  "--kt-font-action": designTokens.typography.display, "--kt-font-mono": designTokens.typography.mono,
+  "--kt-brand-bright": designTokens.color.brand[400], "--kt-brand-accent": designTokens.color.brand.accent,
+  "--kt-brand-deep": designTokens.color.brand[800], "--kt-brand-ink": designTokens.color.brand[900],
 };
 
 export const themeVariables: Readonly<Record<KontaveTheme, Readonly<Record<string, string>>>> = {

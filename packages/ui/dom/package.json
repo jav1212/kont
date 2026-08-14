@@ -1,11 +1,15 @@
 {
-  "name": "@kontave/ui-web",
+  "name": "@kontave/ui-dom",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('UI behavior validated by consumers')\"" },
   "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
-  "dependencies": { "@kontave/ui-contracts": "workspace:*" },
+  "dependencies": {
+    "@kontave/client-feedback-application": "workspace:*",
+    "@kontave/ui-contracts": "workspace:*",
+    "sonner": "^1.7.4"
+  },
   "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "^5.9.2" }
 }

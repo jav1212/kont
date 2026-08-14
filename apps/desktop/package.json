@@ -19,12 +19,16 @@
     "@kontave/auth-domain": "workspace:*",
     "@kontave/auth-supabase": "workspace:*",
     "@kontave/brand-assets": "workspace:*",
+    "@kontave/client-feedback-application": "workspace:*",
     "@kontave/design-tokens": "workspace:*",
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
     "@kontave/devices-node": "workspace:*",
-    "@kontave/ui-web": "workspace:*",
+    "@kontave/ui-dom": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
+    "@fontsource/darker-grotesque": "^5.2.8",
+    "@fontsource/dosis": "^5.2.8",
+    "lucide-react": "^1.7.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -44,9 +48,16 @@
     "productName": "Kontave Desktop",
     "asar": true,
     "files": ["out/**/*", "package.json"],
+    "extraResources": [
+      {
+        "from": "../../packages/ui/brand-assets/src/kontave-icon.png",
+        "to": "kontave-icon.png"
+      }
+    ],
     "directories": { "output": "release" },
     "win": {
       "target": ["nsis"],
+      "icon": "../../packages/ui/brand-assets/src/kontave-icon.png",
       "artifactName": "Kontave-Desktop-Setup.${ext}"
     },
     "nsis": {
