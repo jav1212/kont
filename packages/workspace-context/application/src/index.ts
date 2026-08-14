@@ -64,6 +64,69 @@ export interface DirectOrganizationAccessDirectory {
   findForUser(userId: UserId, organizationId: OrganizationId): Promise<DirectOrganizationAccess | null>;
 }
 
+export interface WorkspacePortfolioEntry extends AccessibleOrganization {
+  readonly avatarUrl?: string;
+}
+
+export interface WorkspacePortfolioSource {
+  list(): Promise<readonly WorkspacePortfolioEntry[]>;
+}
+
+export interface ActiveWorkspaceSelectionStore {
+  read(): Promise<OrganizationId | null>;
+  write(organizationId: OrganizationId | null): Promise<void>;
+}
+
+export interface ActiveWorkspaceContext {
+  readonly portfolio: readonly WorkspacePortfolioEntry[];
+  readonly active: WorkspacePortfolioEntry | null;
+}
+
+const EMPTY_WORKSPACE_CONTEXT: ActiveWorkspaceContext = Object.freeze({
+  portfolio: Object.freeze([]),
+  active: null,
+});
+
+/**
+ * Owns portable workspace selection policy. Fetching and persistence remain
+ * ports because credentials and storage are platform concerns.
+ */
+export class WorkspaceContextSession {
+  private context: ActiveWorkspaceContext = EMPTY_WORKSPACE_CONTEXT;
+
+  constructor(
+    private readonly portfolioSource: WorkspacePortfolioSource,
+    private readonly selectionStore: ActiveWorkspaceSelectionStore,
+  ) {}
+
+  get current(): ActiveWorkspaceContext { return this.context; }
+
+  async restore(): Promise<ActiveWorkspaceContext> {
+    const portfolio = Object.freeze([...(await this.portfolioSource.list())]);
+    const storedOrganizationId = await this.selectionStore.read();
+    const active = selectRestoredWorkspace(portfolio, storedOrganizationId);
+    this.context = Object.freeze({ portfolio, active });
+    await this.selectionStore.write(active?.organizationId ?? null);
+    return this.context;
+  }
+
+  async select(organizationId: OrganizationId): Promise<ActiveWorkspaceContext> {
+    const active = this.context.portfolio.find((entry) => entry.organizationId === organizationId);
+    if (!active) {
+      throw new OrganizationAccessFailure("ACCESS_PATH_NOT_FOUND", "El espacio de trabajo no está disponible.");
+    }
+    this.context = Object.freeze({ portfolio: this.context.portfolio, active });
+    await this.selectionStore.write(active.organizationId);
+    return this.context;
+  }
+
+  async clear(): Promise<ActiveWorkspaceContext> {
+    this.context = EMPTY_WORKSPACE_CONTEXT;
+    await this.selectionStore.write(null);
+    return this.context;
+  }
+}
+
 export class ListWorkspacePortfolio {
   constructor(
     private readonly directAccess: DirectOrganizationAccessDirectory,
@@ -141,6 +204,19 @@ export class DelegatedPermissionScopePolicy {
 function isAssignedAndEffective(access: DelegatedOrganizationAccess, occurredAt: string): boolean {
   return access.assignmentStatus === DelegationAssignmentStatus.Active
     && isDelegationEffective(access.delegation, occurredAt);
+}
+
+function selectRestoredWorkspace(
+  portfolio: readonly WorkspacePortfolioEntry[],
+  storedOrganizationId: OrganizationId | null,
+): WorkspacePortfolioEntry | null {
+  if (storedOrganizationId) {
+    const stored = portfolio.find((entry) => entry.organizationId === storedOrganizationId);
+    if (stored) return stored;
+  }
+  return portfolio.find((entry) => entry.accessPath.kind === OrganizationAccessPathKind.DirectMembership)
+    ?? portfolio[0]
+    ?? null;
 }
 
 function directWorkspace(userId: UserId, access: DirectOrganizationAccess): AccessibleOrganization {

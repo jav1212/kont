@@ -1,7 +1,7 @@
 import { createElement, type HTMLAttributes } from "react";
 import { classNames } from "./internal/class-names.js";
 
-export type TextElement = "span" | "p" | "small" | "strong";
+export type TextElement = "span" | "p" | "small" | "strong" | "h1" | "h2" | "h3";
 export type TextTone = "default" | "muted" | "subtle" | "inherit";
 
 export interface TextProps extends HTMLAttributes<HTMLElement> {

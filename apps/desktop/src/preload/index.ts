@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DeviceEvent } from "@kontave/device-contracts";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
-import { DESKTOP_IPC, type KontaveDesktopApi } from "../shared/desktop-api.js";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+import { DESKTOP_IPC, type DesktopWorkspaceState, type KontaveDesktopApi } from "../shared/desktop-api.js";
 
 const api: KontaveDesktopApi = {
   auth: {
@@ -39,6 +40,24 @@ const api: KontaveDesktopApi = {
       const handler = (_event: Electron.IpcRendererEvent, payload: ClientUpdateSnapshot) => listener(payload);
       ipcRenderer.on(DESKTOP_IPC.updateStateChanged, handler);
       return () => ipcRenderer.off(DESKTOP_IPC.updateStateChanged, handler);
+    },
+  },
+  workspace: {
+    getState: () => ipcRenderer.invoke(DESKTOP_IPC.getWorkspaceState),
+    select: (workspaceId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspace, workspaceId),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: DesktopWorkspaceState) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.workspaceStateChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.workspaceStateChanged, handler);
+    },
+  },
+  connectivity: {
+    getSnapshot: () => ipcRenderer.invoke(DESKTOP_IPC.getConnectivitySnapshot),
+    refresh: () => ipcRenderer.invoke(DESKTOP_IPC.refreshConnectivity),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: ConnectivitySnapshot) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.connectivityChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.connectivityChanged, handler);
     },
   },
 };

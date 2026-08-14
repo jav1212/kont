@@ -21,3 +21,10 @@ Una regla o estado de negocio no pertenece a UI. Un layout específico de una pa
 - Sin imports desde aplicaciones.
 - Sin estilos de marca duplicados en consumidores.
 - TypeScript y build de al menos un consumidor real aprobados.
+
+## Primitivas obligatorias en clientes DOM
+
+- Los controles interactivos usan `Button`; las aplicaciones y los componentes compuestos no declaran `<button>` directamente.
+- El contenido textual inline usa `Text`; las aplicaciones y los componentes compuestos no declaran `<span>` directamente.
+- Solamente la implementación interna de una primitiva puede emitir esos elementos HTML para preservar su semántica y accesibilidad.
+- Una necesidad visual nueva amplía la API tipada de la primitiva propietaria en lugar de crear una implementación paralela en el consumidor.

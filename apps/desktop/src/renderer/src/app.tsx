@@ -1,37 +1,65 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { LogOut, PanelLeftClose, PanelLeftOpen, Usb } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { LogOut, Usb } from "lucide-react";
+import { applyDesignTokens, type KontaveTheme } from "@kontave/design-tokens";
+import { errorFeedback } from "@kontave/client-feedback-application";
 import {
   Alert,
   Button,
   Card,
-  LogoFull,
-  LogoMark,
-  Sidebar,
-  SidebarAction,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarNav,
-  SidebarSection,
   StatusBadge,
-  type SidebarPresentation,
+  Text,
+  WorkspaceSidebar,
+  presentFeedback,
+  type WorkspaceSidebarAccountAction,
+  type WorkspaceSidebarModule,
+  type WorkspaceSidebarSection,
 } from "@kontave/ui-dom";
-import type { DesktopAuthState, DesktopDeviceStatus } from "../../shared/desktop-api.js";
+import type { DesktopAuthState, DesktopDeviceStatus, DesktopWorkspaceState } from "../../shared/desktop-api.js";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { AuthExperience } from "./auth/auth-experience.js";
+import { clientInteractionAvailable, restoreDesktopSession } from "./client-interaction.js";
+import { desktopConnectivityStore } from "./connectivity-store.js";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
-const SIDEBAR_PREFERENCE_KEY = "kontave.desktop.sidebar-collapsed";
+const DESKTOP_MODULES: readonly WorkspaceSidebarModule[] = [{
+  id: "devices",
+  label: "Dispositivos",
+  subtitle: "Operación local",
+  icon: <Usb />,
+}];
+const DESKTOP_SECTIONS: readonly WorkspaceSidebarSection[] = [{
+  id: "local-operation",
+  items: [{ id: "devices", active: true, icon: <Usb />, label: "Dispositivos" }],
+}];
+const DESKTOP_ACCOUNT_ACTIONS: readonly WorkspaceSidebarAccountAction[] = [{
+  id: "sign-out",
+  label: "Cerrar sesión",
+  icon: <LogOut />,
+  tone: "danger",
+}];
 
 export function App() {
   const [auth, setAuth] = useState<DesktopAuthState>({ status: "loading" });
+  const [workspace, setWorkspace] = useState<DesktopWorkspaceState>({ status: "loading" });
+  const [theme, setTheme] = useState<KontaveTheme>(() => localStorage.getItem("kontave.desktop.theme") === "dark" ? "dark" : "light");
 
   useEffect(() => {
-    void window.kontave.auth.getState().then(setAuth);
+    void restoreDesktopSession().then(setAuth).catch(() => undefined);
     return window.kontave.auth.subscribe(setAuth);
   }, []);
 
+  useEffect(() => {
+    void window.kontave.workspace.getState().then(setWorkspace).catch(() => undefined);
+    return window.kontave.workspace.subscribe(setWorkspace);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("kontave.desktop.theme", theme);
+    applyDesignTokens(document.documentElement, theme);
+  }, [theme]);
+
   if (auth.status === "authenticated") {
-    return <DesktopAppShell auth={auth} onSignedOut={setAuth}>
+    return <DesktopAppShell auth={auth} workspace={workspace} theme={theme} onThemeChange={setTheme} onSignedOut={setAuth}>
       <DeviceCard />
     </DesktopAppShell>;
   }
@@ -39,67 +67,61 @@ export function App() {
   return <AuthExperience state={auth} onAuthenticated={setAuth} />;
 }
 
-function DesktopAppShell({ auth, children, onSignedOut }: {
+function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, workspace }: {
   readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
   readonly children: ReactNode;
   readonly onSignedOut: (state: DesktopAuthState) => void;
+  readonly onThemeChange: (theme: KontaveTheme) => void;
+  readonly theme: KontaveTheme;
+  readonly workspace: DesktopWorkspaceState;
 }) {
   const compactViewport = useCompactDesktopViewport();
-  const [userCollapsed, setUserCollapsed] = useState(() => localStorage.getItem(SIDEBAR_PREFERENCE_KEY) === "true");
-  const presentation: SidebarPresentation = compactViewport || userCollapsed ? "collapsed" : "expanded";
-  const collapsed = presentation === "collapsed";
-
-  function toggleSidebar(): void {
-    const next = !userCollapsed;
-    setUserCollapsed(next);
-    localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(next));
-  }
+  const connectivity = useSyncExternalStore(
+    desktopConnectivityStore.subscribe,
+    desktopConnectivityStore.getSnapshot,
+    desktopConnectivityStore.getSnapshot,
+  );
 
   function signOut(): void {
+    if (!clientInteractionAvailable()) return;
     void window.kontave.auth.signOut().then((result) => {
       if (result.ok) onSignedOut(result.value);
     });
   }
 
   return <div className="desktop-shell">
-    <Sidebar
-      presentation={presentation}
-      aria-label="Navegación principal"
-      className={compactViewport ? "desktop-sidebar desktop-sidebar--viewport-compact" : "desktop-sidebar"}
-    >
-      <SidebarHeader className="desktop-sidebar-header">
-        <div className="desktop-sidebar-brand">
-          {collapsed ? <LogoMark size={24} /> : <LogoFull size={24} />}
-        </div>
-        {!compactViewport ? <Button
-          appearance="text"
-          size="sm"
-          className="desktop-sidebar-toggle"
-          aria-label={collapsed ? "Expandir navegación" : "Contraer navegación"}
-          title={collapsed ? "Expandir navegación" : "Contraer navegación"}
-          onClick={toggleSidebar}
-        >
-          {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-        </Button> : null}
-      </SidebarHeader>
-
-      <SidebarNav aria-label="Secciones de Kontave">
-        <SidebarSection label="Operación local">
-          <SidebarAction active icon={<Usb />} label="Dispositivos" />
-        </SidebarSection>
-      </SidebarNav>
-
-      <SidebarFooter>
-        <div className="desktop-sidebar-account" title={auth.user.email ?? auth.user.id}>
-          <span className="desktop-sidebar-avatar" aria-hidden="true">{accountInitial(auth)}</span>
-          <span className="desktop-sidebar-account-copy">
-            <strong>Cuenta Kontave</strong>
-            <span>{auth.user.email ?? auth.user.id}</span>
-          </span>
-        </div>
-        <SidebarAction icon={<LogOut />} label="Cerrar sesión" onClick={signOut} />
-      </SidebarFooter>
-    </Sidebar>
+    <WorkspaceSidebar
+      presentation={compactViewport ? "collapsed" : "persistent"}
+      modules={DESKTOP_MODULES}
+      activeModuleId="devices"
+      sections={DESKTOP_SECTIONS}
+      account={{
+        name: accountDisplayName(auth),
+        email: auth.user.email ?? auth.user.id,
+        theme,
+        activeWorkspaceId: workspace.status === "ready" ? workspace.activeWorkspaceId : null,
+        workspaceSectionLabel: "Cambiar espacio",
+        workspaces: workspace.status === "ready" ? workspace.workspaces.map((entry) => ({
+          id: entry.id,
+          name: entry.name,
+          ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}),
+          description: entry.access === "direct" ? "Acceso directo" : "Acceso delegado",
+          ...(entry.access === "delegated" ? { badge: "Delegado" } : {}),
+        })) : [],
+      }}
+      accountActions={DESKTOP_ACCOUNT_ACTIONS}
+      onSelectWorkspace={(workspaceId) => {
+        if (!clientInteractionAvailable()) return;
+        void window.kontave.workspace.select(workspaceId).then((result) => {
+          if (result.ok) return;
+          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "workspace-selection-failed" }));
+        });
+      }}
+      onThemeChange={onThemeChange}
+      onAccountAction={(actionId) => {
+        if (actionId === "sign-out") signOut();
+      }}
+    />
 
     <div className="desktop-workspace">
       <header className="desktop-toolbar">
@@ -107,7 +129,14 @@ function DesktopAppShell({ auth, children, onSignedOut }: {
           <h1>Dispositivos</h1>
         </div>
       </header>
-      <main className="desktop-content"><UpdateNotice />{children}</main>
+      <main className="desktop-content">
+        {connectivity.availability === "degraded" ? <Alert intent="warning" className="desktop-connectivity-notice">
+          La conexión es inestable. Algunas operaciones pueden tardar más.{' '}
+          <Button size="sm" onClick={() => void desktopConnectivityStore.refresh()}>Reintentar</Button>
+        </Alert> : null}
+        <UpdateNotice />
+        {children}
+      </main>
     </div>
   </div>;
 }
@@ -181,6 +210,7 @@ function DeviceCard() {
   }, []);
 
   async function connect(): Promise<void> {
+    if (!clientInteractionAvailable()) return;
     setError(undefined);
     setConnecting(true);
     try { setStatus(await window.kontave.devices.connect()); }
@@ -190,7 +220,7 @@ function DeviceCard() {
 
   return <Card className="device-card" aria-labelledby="device-title">
     <div className="device-heading">
-      <div><span className="desktop-label">Conexión local</span><h2 id="device-title">Scanner de códigos</h2></div>
+      <div><Text className="desktop-label">Conexión local</Text><h2 id="device-title">Scanner de códigos</h2></div>
       <StatusBadge intent={statusIntent(status.state)}>{status.state}</StatusBadge>
     </div>
     <dl className="device-details">
@@ -204,8 +234,9 @@ function DeviceCard() {
   </Card>;
 }
 
-function accountInitial(auth: Extract<DesktopAuthState, { status: "authenticated" }>): string {
-  return (auth.user.email ?? auth.user.id).trim().charAt(0).toLocaleUpperCase("es");
+function accountDisplayName(auth: Extract<DesktopAuthState, { status: "authenticated" }>): string {
+  const identity = auth.user.email ?? auth.user.id;
+  return identity.includes("@") ? identity.slice(0, identity.indexOf("@")) : "Cuenta Kontave";
 }
 
 function readErrorMessage(cause: unknown, fallback: string): string {

@@ -55,27 +55,12 @@ h1, h2, p { margin: 0; }
 .auth-success { display: grid; gap: var(--kt-space-6); }
 
 .desktop-shell { display: flex; width: 100%; height: 100dvh; min-width: 0; color: var(--kt-text); background: var(--kt-background); }
-.desktop-sidebar { flex: 0 0 auto; }
-.desktop-sidebar-header { position: relative; }
-.desktop-sidebar-brand { display: flex; min-width: 0; align-items: center; gap: var(--kt-space-3); }
-.desktop-sidebar-toggle { display: inline-flex; width: 2rem; height: 2rem; margin-left: auto; flex: 0 0 2rem; align-items: center; justify-content: center; border: 0; border-radius: var(--kt-radius-sm); padding: 0; color: var(--kt-text-subtle); background: transparent; cursor: pointer; }
-.desktop-sidebar-toggle:hover { color: var(--kt-text); background: var(--kt-surface-muted); }
-.desktop-sidebar-toggle:focus-visible { outline: 2px solid var(--kt-focus); outline-offset: 2px; }
-.desktop-sidebar-toggle svg { width: 1.125rem; height: 1.125rem; }
-.desktop-sidebar[data-presentation="collapsed"]:not(.desktop-sidebar--viewport-compact) .desktop-sidebar-brand { display: none; }
-.desktop-sidebar-account { display: flex; min-width: 0; align-items: center; gap: var(--kt-space-3); border-radius: var(--kt-radius-sm); padding: var(--kt-space-2) var(--kt-space-3); }
-.desktop-sidebar-avatar { display: inline-flex; width: 2rem; height: 2rem; flex: 0 0 2rem; align-items: center; justify-content: center; border-radius: var(--kt-radius-full); color: #fff; background: var(--kt-primary); font-size: .75rem; font-weight: 800; }
-.desktop-sidebar-account-copy { display: flex; min-width: 0; flex-direction: column; gap: .125rem; }
-.desktop-sidebar-account-copy strong, .desktop-sidebar-account-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.desktop-sidebar-account-copy strong { font-size: .75rem; }
-.desktop-sidebar-account-copy span { color: var(--kt-text-subtle); font-size: .6875rem; }
-.desktop-sidebar[data-presentation="collapsed"] .desktop-sidebar-account { justify-content: center; padding-inline: var(--kt-space-2); }
-.desktop-sidebar[data-presentation="collapsed"] .desktop-sidebar-account-copy { display: none; }
 
 .desktop-workspace { display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .desktop-toolbar { display: flex; min-height: 4rem; align-items: center; padding: 0 clamp(var(--kt-space-5), 3vw, var(--kt-space-8)); border-bottom: 1px solid var(--kt-border-subtle); background: var(--kt-surface); }
 .desktop-toolbar h1 { margin-top: .125rem; font-size: 1.125rem; letter-spacing: -.01em; }
 .desktop-content { min-width: 0; flex: 1; overflow: auto; padding: clamp(var(--kt-space-5), 3vw, var(--kt-space-8)); }
+.desktop-connectivity-notice { margin-bottom: var(--kt-space-4); }
 .device-card { max-width: 48rem; }
 .device-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--kt-space-4); }
 .device-heading h2 { margin-top: var(--kt-space-1); }
@@ -122,7 +107,6 @@ h1, h2, p { margin: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desktop-sidebar-toggle { transition: none; }
   .auth-visual::before, .auth-visual::after, .auth-visual__glow { animation: none; }
   .auth-card { animation: none; }
 }

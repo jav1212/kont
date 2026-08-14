@@ -82,6 +82,10 @@ export class AuthenticationService {
   signOut(): Promise<void> {
     return this.gateway.signOut();
   }
+
+  getAccessToken(): Promise<string | null> {
+    return this.gateway.getAccessToken();
+  }
 }
 
 export class RegistrationService {

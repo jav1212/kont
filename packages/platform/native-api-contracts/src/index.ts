@@ -109,6 +109,7 @@ export interface NativeOrganizationAccessPathDto {
 export interface NativeAccessibleOrganizationDto {
   readonly organizationId: string;
   readonly name: string;
+  readonly avatarUrl?: string;
   readonly accessPath: NativeOrganizationAccessPathDto;
 }
 

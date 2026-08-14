@@ -25,7 +25,17 @@ export default defineConfig({
       // Only the main process receives the Supabase configuration.
       envDir: workspaceRoot,
       envPrefix: ["MAIN_VITE_", "VITE_", "NEXT_PUBLIC_", "KONTAVE_"],
-      plugins: [externalizeDepsPlugin({ exclude: ["@kontave/auth-application", "@kontave/auth-domain", "@kontave/auth-supabase"] })],
+      plugins: [externalizeDepsPlugin({ exclude: [
+        "@kontave/auth-application",
+        "@kontave/auth-domain",
+        "@kontave/auth-supabase",
+        "@kontave/client-connectivity-application",
+        "@kontave/client-connectivity-contracts",
+        "@kontave/native-api-contracts",
+        "@kontave/organization-delegations-domain",
+        "@kontave/organizations-domain",
+        "@kontave/workspace-context-application",
+      ] })],
     },
     preload: {
       // Sandboxed preload scripts must be self-contained CommonJS bundles.

@@ -8,6 +8,7 @@
   "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
   "dependencies": {
     "@kontave/client-feedback-application": "workspace:*",
+    "@kontave/client-interaction-application": "workspace:*",
     "@kontave/ui-contracts": "workspace:*",
     "sonner": "^1.7.4"
   },

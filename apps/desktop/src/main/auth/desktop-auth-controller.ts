@@ -30,6 +30,8 @@ export class DesktopAuthController {
 
   getState(): DesktopAuthState { return this.state; }
 
+  getAccessToken(): Promise<string | null> { return this.authentication.getAccessToken(); }
+
   async initialize(): Promise<DesktopAuthState> {
     const session = await this.authentication.restoreSession();
     return this.update(session ? mapSession(session) : { status: "anonymous" });

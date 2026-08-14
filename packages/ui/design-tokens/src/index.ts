@@ -41,6 +41,10 @@ export const themeVariables: Readonly<Record<KontaveTheme, Readonly<Record<strin
     "--kt-border": "#AEB6C8", "--kt-border-subtle": "#D9DDE8", "--kt-primary": "#D93A10",
     "--kt-primary-hover": "#B22C0B", "--kt-primary-soft": "#FFF4F0", "--kt-focus": "#D93A10",
     "--kt-success": "#047857", "--kt-warning": "#92400E", "--kt-danger": "#B91C1C", "--kt-info": "#2563EB",
+    "--kt-sidebar-background": "#FFFFFF", "--kt-sidebar-border": "#D9DDE8",
+    "--kt-sidebar-label": "#5F6780", "--kt-sidebar-text": "#464D66", "--kt-sidebar-text-strong": "#111525",
+    "--kt-sidebar-hover": "#EEF0F7", "--kt-sidebar-active-background": "#FFE5DB",
+    "--kt-sidebar-active-text": "#B22C0B", "--kt-sidebar-active-border": "#FFC9B5",
   },
   dark: {
     ...baseVariables,
@@ -49,6 +53,11 @@ export const themeVariables: Readonly<Record<KontaveTheme, Readonly<Record<strin
     "--kt-border": "#66718C", "--kt-border-subtle": "#3D424A", "--kt-primary": "#FF4A18",
     "--kt-primary-hover": "#FF7450", "--kt-primary-soft": "#3D0F03", "--kt-focus": "#FF7450",
     "--kt-success": "#34D399", "--kt-warning": "#FBBF24", "--kt-danger": "#F87171", "--kt-info": "#60A5FA",
+    "--kt-sidebar-background": "#111315", "--kt-sidebar-border": "rgb(255 255 255 / 0.06)",
+    "--kt-sidebar-label": "rgb(232 236 248 / 0.62)", "--kt-sidebar-text": "rgb(232 236 248 / 0.72)",
+    "--kt-sidebar-text-strong": "rgb(232 236 248 / 0.92)", "--kt-sidebar-hover": "rgb(255 255 255 / 0.06)",
+    "--kt-sidebar-active-background": "rgb(255 74 24 / 0.16)", "--kt-sidebar-active-text": "#FF7450",
+    "--kt-sidebar-active-border": "rgb(255 74 24 / 0.36)",
   },
 };
 

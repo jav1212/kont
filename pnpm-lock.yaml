@@ -246,9 +246,18 @@ importers:
       '@kontave/brand-assets':
         specifier: workspace:*
         version: link:../../packages/ui/brand-assets
+      '@kontave/client-connectivity-application':
+        specifier: workspace:*
+        version: link:../../packages/client-connectivity/application
+      '@kontave/client-connectivity-contracts':
+        specifier: workspace:*
+        version: link:../../packages/client-connectivity/contracts
       '@kontave/client-feedback-application':
         specifier: workspace:*
         version: link:../../packages/client-feedback/application
+      '@kontave/client-interaction-application':
+        specifier: workspace:*
+        version: link:../../packages/client-interaction/application
       '@kontave/client-updates-application':
         specifier: workspace:*
         version: link:../../packages/client-updates/application
@@ -270,9 +279,21 @@ importers:
       '@kontave/devices-node':
         specifier: workspace:*
         version: link:../../packages/devices/node
+      '@kontave/native-api-contracts':
+        specifier: workspace:*
+        version: link:../../packages/platform/native-api-contracts
+      '@kontave/organization-delegations-domain':
+        specifier: workspace:*
+        version: link:../../packages/organization-delegations/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../packages/organizations/domain
       '@kontave/ui-dom':
         specifier: workspace:*
         version: link:../../packages/ui/dom
+      '@kontave/workspace-context-application':
+        specifier: workspace:*
+        version: link:../../packages/workspace-context/application
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -1844,6 +1865,9 @@ importers:
       '@kontave/client-feedback-application':
         specifier: workspace:*
         version: link:../../client-feedback/application
+      '@kontave/client-interaction-application':
+        specifier: workspace:*
+        version: link:../../client-interaction/application
       '@kontave/ui-contracts':
         specifier: workspace:*
         version: link:../contracts

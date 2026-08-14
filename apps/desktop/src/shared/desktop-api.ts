@@ -1,6 +1,7 @@
 import type { AuthenticationFailureCode } from "@kontave/auth-domain";
 import type { DeviceDescriptor, DeviceEvent, DeviceLifecycleState } from "@kontave/device-contracts";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 
 export const DESKTOP_IPC = {
   getAuthState: "auth:state",
@@ -22,6 +23,12 @@ export const DESKTOP_IPC = {
   downloadUpdate: "updates:download",
   applyUpdate: "updates:apply",
   updateStateChanged: "updates:state-changed",
+  getWorkspaceState: "workspace:state",
+  selectWorkspace: "workspace:select",
+  workspaceStateChanged: "workspace:state-changed",
+  getConnectivitySnapshot: "connectivity:snapshot",
+  refreshConnectivity: "connectivity:refresh",
+  connectivityChanged: "connectivity:changed",
 } as const;
 
 export interface DesktopAuthUser {
@@ -70,6 +77,27 @@ export interface DesktopDeviceStatus {
   readonly device?: DeviceDescriptor;
 }
 
+export interface DesktopWorkspaceEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly avatarUrl?: string;
+  readonly access: "direct" | "delegated";
+  readonly scopes: readonly string[];
+}
+
+export type DesktopWorkspaceState =
+  | { readonly status: "loading" }
+  | { readonly status: "unavailable" }
+  | {
+    readonly status: "ready";
+    readonly workspaces: readonly DesktopWorkspaceEntry[];
+    readonly activeWorkspaceId: string | null;
+  };
+
+export type DesktopWorkspaceResult =
+  | { readonly ok: true; readonly value: DesktopWorkspaceState }
+  | { readonly ok: false; readonly error: { readonly message: string } };
+
 export interface KontaveDesktopApi {
   readonly auth: {
     getState(): Promise<DesktopAuthState>;
@@ -95,5 +123,15 @@ export interface KontaveDesktopApi {
     download(): Promise<ClientUpdateSnapshot>;
     apply(): Promise<ClientUpdateSnapshot>;
     subscribe(listener: (state: ClientUpdateSnapshot) => void): () => void;
+  };
+  readonly workspace: {
+    getState(): Promise<DesktopWorkspaceState>;
+    select(workspaceId: string): Promise<DesktopWorkspaceResult>;
+    subscribe(listener: (state: DesktopWorkspaceState) => void): () => void;
+  };
+  readonly connectivity: {
+    getSnapshot(): Promise<ConnectivitySnapshot>;
+    refresh(): Promise<ConnectivitySnapshot>;
+    subscribe(listener: (snapshot: ConnectivitySnapshot) => void): () => void;
   };
 }

@@ -4,6 +4,11 @@ export { LogoFull, LogoMark, type LogoProps } from "./logo.js";
 export { Button, type ButtonAppearance, type ButtonProps } from "./button.js";
 export { Card } from "./card.js";
 export { PageShell, Stack } from "./layout.js";
+export {
+  GlobalInteractionBoundary,
+  LoadingAnimation,
+  type GlobalInteractionBoundaryProps,
+} from "./global-interaction-boundary.js";
 export { StatusBadge, type StatusBadgeProps } from "./status-badge.js";
 export {
   Sidebar,
@@ -18,6 +23,18 @@ export {
   type SidebarPresentation,
   type SidebarProps,
 } from "./sidebar.js";
+export {
+  WorkspaceSidebar,
+  type WorkspaceSidebarAccount,
+  type WorkspaceSidebarAccountAction,
+  type WorkspaceSidebarCompany,
+  type WorkspaceSidebarItem,
+  type WorkspaceSidebarModule,
+  type WorkspaceSidebarPresentation,
+  type WorkspaceSidebarProps,
+  type WorkspaceSidebarSection,
+  type WorkspaceSidebarWorkspace,
+} from "./workspace-sidebar.js";
 export { TextField, type TextFieldProps } from "./text-field.js";
 export { Text, type TextElement, type TextProps, type TextTone } from "./text.js";
 export {

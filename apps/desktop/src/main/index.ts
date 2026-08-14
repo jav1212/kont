@@ -1,18 +1,29 @@
-import { app, BrowserWindow, ipcMain, Menu, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, powerMonitor, shell } from "electron";
 import { join } from "node:path";
 import type { DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
 import { DeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices-core";
 import { DatalogicQw2100Adapter, NodeSerialPortProvider } from "@kontave/devices-node";
 import { createSupabaseAuthenticationGateway } from "@kontave/auth-supabase";
 import { AuthenticationFailure } from "@kontave/auth-domain";
+import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
 import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
+import { WorkspaceContextSession } from "@kontave/workspace-context-application";
 import { DESKTOP_IPC, type DesktopAuthResult, type DesktopDeviceStatus } from "../shared/desktop-api.js";
 import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
+import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe.js";
+import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller.js";
+import { DesktopWorkspacePortfolioSource } from "./workspace/desktop-workspace-portfolio-source.js";
+import { DesktopWorkspaceSelectionStore } from "./workspace/desktop-workspace-selection-store.js";
 
 let mainWindow: BrowserWindow | undefined;
 let updates: ClientUpdateCoordinator | undefined;
+let workspace: DesktopWorkspaceController | undefined;
+let connectivity: ConnectivityMonitor | undefined;
+let connectivityInterval: ReturnType<typeof setInterval> | undefined;
+let initialization: Promise<void> | undefined;
 
 class DesktopDeviceHost implements DeviceEventSink, DeviceLogger {
   private readonly manager = new DeviceManager({
@@ -61,15 +72,18 @@ const devices = new DesktopDeviceHost();
 let auth: DesktopAuthController | undefined;
 
 function registerIpc(): void {
-  ipcMain.handle(DESKTOP_IPC.getAuthState, () => auth?.getState() ?? { status: "loading" });
-  ipcMain.handle(DESKTOP_IPC.signIn, (_event, command: unknown) => runAuthOperation((controller) => controller.signIn(command)));
+  ipcMain.handle(DESKTOP_IPC.getAuthState, async () => {
+    await initialization;
+    return auth?.getState() ?? { status: "loading" };
+  });
+  ipcMain.handle(DESKTOP_IPC.signIn, (_event, command: unknown) => runAuthOperation(async (controller) => synchronizeWorkspace(await controller.signIn(command))));
   ipcMain.handle(DESKTOP_IPC.register, (_event, command: unknown) => runAuthOperation((controller) => controller.register(command)));
-  ipcMain.handle(DESKTOP_IPC.verifyRegistration, (_event, command: unknown) => runAuthOperation((controller) => controller.verifyRegistration(command)));
+  ipcMain.handle(DESKTOP_IPC.verifyRegistration, (_event, command: unknown) => runAuthOperation(async (controller) => synchronizeWorkspace(await controller.verifyRegistration(command))));
   ipcMain.handle(DESKTOP_IPC.resendRegistration, (_event, command: unknown) => runAuthOperation((controller) => controller.resendRegistration(command)));
   ipcMain.handle(DESKTOP_IPC.requestPasswordRecovery, (_event, command: unknown) => runAuthOperation((controller) => controller.requestPasswordRecovery(command)));
   ipcMain.handle(DESKTOP_IPC.verifyPasswordRecovery, (_event, command: unknown) => runAuthOperation((controller) => controller.verifyPasswordRecovery(command)));
-  ipcMain.handle(DESKTOP_IPC.completePasswordRecovery, (_event, command: unknown) => runAuthOperation((controller) => controller.completePasswordRecovery(command)));
-  ipcMain.handle(DESKTOP_IPC.signOut, () => runAuthOperation((controller) => controller.signOut()));
+  ipcMain.handle(DESKTOP_IPC.completePasswordRecovery, (_event, command: unknown) => runAuthOperation(async (controller) => synchronizeWorkspace(await controller.completePasswordRecovery(command))));
+  ipcMain.handle(DESKTOP_IPC.signOut, () => runAuthOperation(async (controller) => synchronizeWorkspace(await controller.signOut())));
   ipcMain.handle(DESKTOP_IPC.connectDevice, () => devices.connect());
   ipcMain.handle(DESKTOP_IPC.disconnectDevice, () => devices.disconnect());
   ipcMain.handle(DESKTOP_IPC.getDeviceStatus, () => devices.status());
@@ -77,11 +91,61 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.checkForUpdate, () => updateCoordinator().check());
   ipcMain.handle(DESKTOP_IPC.downloadUpdate, () => updateCoordinator().download());
   ipcMain.handle(DESKTOP_IPC.applyUpdate, () => updateCoordinator().apply());
+  ipcMain.handle(DESKTOP_IPC.getWorkspaceState, async () => {
+    await initialization;
+    return workspaceController().getState();
+  });
+  ipcMain.handle(DESKTOP_IPC.selectWorkspace, (_event, workspaceId: unknown) => workspaceController().select(workspaceId));
+  ipcMain.handle(DESKTOP_IPC.getConnectivitySnapshot, () => connectivityMonitor().getSnapshot());
+  ipcMain.handle(DESKTOP_IPC.refreshConnectivity, () => connectivityMonitor().refresh());
 }
 
 function updateCoordinator(): ClientUpdateCoordinator {
   if (!updates) throw new Error("Desktop updates are not initialized.");
   return updates;
+}
+
+function workspaceController(): DesktopWorkspaceController {
+  if (!workspace) throw new Error("Desktop workspace context is not initialized.");
+  return workspace;
+}
+
+function connectivityMonitor(): ConnectivityMonitor {
+  if (!connectivity) throw new Error("Desktop connectivity is not initialized.");
+  return connectivity;
+}
+
+async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthController["initialize"]>>) {
+  if (state.status !== "authenticated") {
+    await workspaceController().clear();
+    return state;
+  }
+  if (blocksRemoteOperations(connectivityMonitor().getSnapshot())) workspaceController().markUnavailable();
+  else await workspaceController().initialize();
+  return state;
+}
+
+function blocksRemoteOperations(snapshot: ConnectivitySnapshot): boolean {
+  return snapshot.availability === "unavailable"
+    || (snapshot.availability === "unknown" && snapshot.reason !== null);
+}
+
+function publishConnectivity(): void {
+  const snapshot = connectivityMonitor().getSnapshot();
+  mainWindow?.webContents.send(DESKTOP_IPC.connectivityChanged, snapshot);
+  if (
+    snapshot.availability === "available"
+    && auth?.getState().status === "authenticated"
+    && workspaceController().getState().status === "unavailable"
+  ) {
+    void workspaceController().initialize().catch((cause: unknown) => {
+      console.error(JSON.stringify({
+        level: "error",
+        code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
+        message: cause instanceof Error ? cause.message : "Unknown workspace refresh failure",
+      }));
+    });
+  }
 }
 
 async function runAuthOperation<T>(operation: (controller: DesktopAuthController) => Promise<T>): Promise<DesktopAuthResult<T>> {
@@ -162,6 +226,25 @@ app.whenReady().then(() => {
     createSupabaseAuthenticationGateway({ url: supabaseUrl, anonKey: supabaseAnonKey }, new DesktopSecureStorage()),
     () => mainWindow,
   );
+  const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
+  connectivity = new ConnectivityMonitor({
+    probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
+    failureThreshold: 3,
+    unexpectedFailureObserver: {
+      record: (cause) => console.error(JSON.stringify({
+        level: "error",
+        code: "DESKTOP_CONNECTIVITY_PROBE_FAILED",
+        message: cause instanceof Error ? cause.message : "Unknown connectivity probe failure",
+      })),
+    },
+  });
+  workspace = new DesktopWorkspaceController(
+    new WorkspaceContextSession(
+      new DesktopWorkspacePortfolioSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+      new DesktopWorkspaceSelectionStore(),
+    ),
+    () => mainWindow,
+  );
   updates = new ClientUpdateCoordinator(createElectronClientUpdateProvider({
     enabled: app.isPackaged,
     installed: {
@@ -183,16 +266,25 @@ app.whenReady().then(() => {
     })),
   });
   updates.subscribe(() => mainWindow?.webContents.send(DESKTOP_IPC.updateStateChanged, updateCoordinator().getSnapshot()));
+  connectivity.subscribe(publishConnectivity);
   Menu.setApplicationMenu(null);
   registerIpc();
-  createWindow();
-  void auth.initialize().catch((cause: unknown) => {
+  initialization = auth.initialize()
+    .then(async (state) => {
+      await connectivityMonitor().refresh();
+      return synchronizeWorkspace(state);
+    })
+    .then(() => undefined);
+  void initialization.catch((cause: unknown) => {
     console.error(JSON.stringify({
       level: "error",
-      code: "DESKTOP_AUTH_INITIALIZATION_FAILED",
-      message: cause instanceof Error ? cause.message : "Unknown authentication initialization failure",
+      code: "DESKTOP_INITIALIZATION_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown desktop initialization failure",
     }));
   });
+  createWindow();
+  connectivityInterval = setInterval(() => void connectivityMonitor().refresh(), 30_000);
+  powerMonitor.on("resume", () => void connectivityMonitor().refresh());
   if (app.isPackaged) setTimeout(() => void updates?.check(), 15_000);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -204,5 +296,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  if (connectivityInterval) clearInterval(connectivityInterval);
   void devices.disconnect();
 });
