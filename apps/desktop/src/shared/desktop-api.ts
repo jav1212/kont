@@ -1,5 +1,6 @@
 import type { AuthenticationFailureCode } from "@kontave/auth-domain";
 import type { DeviceDescriptor, DeviceEvent, DeviceLifecycleState } from "@kontave/device-contracts";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 
 export const DESKTOP_IPC = {
   getAuthState: "auth:state",
@@ -16,6 +17,11 @@ export const DESKTOP_IPC = {
   disconnectDevice: "devices:disconnect",
   getDeviceStatus: "devices:status",
   deviceEvent: "devices:event",
+  getUpdateState: "updates:state",
+  checkForUpdate: "updates:check",
+  downloadUpdate: "updates:download",
+  applyUpdate: "updates:apply",
+  updateStateChanged: "updates:state-changed",
 } as const;
 
 export interface DesktopAuthUser {
@@ -82,5 +88,12 @@ export interface KontaveDesktopApi {
     disconnect(): Promise<DesktopDeviceStatus>;
     getStatus(): Promise<DesktopDeviceStatus>;
     subscribe(listener: (event: DeviceEvent) => void): () => void;
+  };
+  readonly updates: {
+    getState(): Promise<ClientUpdateSnapshot>;
+    check(): Promise<ClientUpdateSnapshot>;
+    download(): Promise<ClientUpdateSnapshot>;
+    apply(): Promise<ClientUpdateSnapshot>;
+    subscribe(listener: (state: ClientUpdateSnapshot) => void): () => void;
   };
 }

@@ -249,6 +249,15 @@ importers:
       '@kontave/client-feedback-application':
         specifier: workspace:*
         version: link:../../packages/client-feedback/application
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../../packages/client-updates/application
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../../packages/client-updates/contracts
+      '@kontave/client-updates-electron':
+        specifier: workspace:*
+        version: link:../../packages/client-updates/electron
       '@kontave/design-tokens':
         specifier: workspace:*
         version: link:../../packages/ui/design-tokens
@@ -307,6 +316,12 @@ importers:
 
   apps/device-bridge:
     dependencies:
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../../packages/client-updates/application
+      '@kontave/client-updates-electron':
+        specifier: workspace:*
+        version: link:../../packages/client-updates/electron
       '@kontave/device-contracts':
         specifier: workspace:*
         version: link:../../packages/devices/contracts
@@ -316,9 +331,6 @@ importers:
       '@kontave/devices-node':
         specifier: workspace:*
         version: link:../../packages/devices/node
-      electron-updater:
-        specifier: ^6.6.2
-        version: 6.8.9(supports-color@7.2.0)
       ws:
         specifier: ^8.18.3
         version: 8.21.3
@@ -613,6 +625,63 @@ importers:
       '@kontave/client-interaction-application':
         specifier: workspace:*
         version: link:../application
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-updates/application:
+    dependencies:
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-updates/contracts:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-updates/electron:
+    dependencies:
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      electron-updater:
+        specifier: ^6.8.9
+        version: 6.8.9(supports-color@7.2.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client-updates/testing:
+    dependencies:
+      '@kontave/client-updates-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       tsx:
         specifier: ^4.23.12

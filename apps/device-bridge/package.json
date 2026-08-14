@@ -12,7 +12,7 @@
     "ports": "tsx src/tools/list-ports.ts",
     "test": "corepack pnpm build:shared && tsx --test test/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build",
+    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build && corepack pnpm --filter @kontave/client-updates-contracts build && corepack pnpm --filter @kontave/client-updates-application build && corepack pnpm --filter @kontave/client-updates-electron build",
     "build": "corepack pnpm build:shared && tsc",
     "dist:win": "pnpm build && electron-builder --win nsis --publish never",
     "release": "pnpm dist:win"
@@ -21,7 +21,8 @@
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
     "@kontave/devices-node": "workspace:*",
-    "electron-updater": "^6.6.2",
+    "@kontave/client-updates-application": "workspace:*",
+    "@kontave/client-updates-electron": "workspace:*",
     "ws": "^8.18.3"
   },
   "devDependencies": {

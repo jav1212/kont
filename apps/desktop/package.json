@@ -8,7 +8,7 @@
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build",
+    "build:shared": "corepack pnpm --filter @kontave/device-contracts build && corepack pnpm --filter @kontave/devices-core build && corepack pnpm --filter @kontave/devices-node build && corepack pnpm --filter @kontave/client-updates-contracts build && corepack pnpm --filter @kontave/client-updates-application build && corepack pnpm --filter @kontave/client-updates-electron build",
     "build": "corepack pnpm build:shared && electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "node -e \"console.log('Desktop contract checks run through TypeScript')\"",
@@ -20,6 +20,9 @@
     "@kontave/auth-supabase": "workspace:*",
     "@kontave/brand-assets": "workspace:*",
     "@kontave/client-feedback-application": "workspace:*",
+    "@kontave/client-updates-application": "workspace:*",
+    "@kontave/client-updates-contracts": "workspace:*",
+    "@kontave/client-updates-electron": "workspace:*",
     "@kontave/design-tokens": "workspace:*",
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
@@ -64,6 +67,7 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "publish": [{ "provider": "github", "owner": "jav1212", "repo": "kont", "releaseType": "release" }]
   }
 }

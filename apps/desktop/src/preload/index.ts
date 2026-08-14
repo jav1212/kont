@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DeviceEvent } from "@kontave/device-contracts";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { DESKTOP_IPC, type KontaveDesktopApi } from "../shared/desktop-api.js";
 
 const api: KontaveDesktopApi = {
@@ -27,6 +28,17 @@ const api: KontaveDesktopApi = {
       const handler = (_event: Electron.IpcRendererEvent, payload: DeviceEvent) => listener(payload);
       ipcRenderer.on(DESKTOP_IPC.deviceEvent, handler);
       return () => ipcRenderer.off(DESKTOP_IPC.deviceEvent, handler);
+    },
+  },
+  updates: {
+    getState: () => ipcRenderer.invoke(DESKTOP_IPC.getUpdateState),
+    check: () => ipcRenderer.invoke(DESKTOP_IPC.checkForUpdate),
+    download: () => ipcRenderer.invoke(DESKTOP_IPC.downloadUpdate),
+    apply: () => ipcRenderer.invoke(DESKTOP_IPC.applyUpdate),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: ClientUpdateSnapshot) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.updateStateChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.updateStateChanged, handler);
     },
   },
 };

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } from "electron";
-import updater from "electron-updater";
+import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
+import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -9,10 +10,9 @@ import { configPath, loadConfig, saveConfig } from "../core/config.js";
 import { Logger } from "../core/logger.js";
 import { DeviceGateway } from "../gateway/device-gateway.js";
 
-let tray: Tray | null = null; let window: BrowserWindow | null = null; let manager: DeviceManager | null = null; let quitting = false;
+let tray: Tray | null = null; let window: BrowserWindow | null = null; let manager: DeviceManager | null = null; let updates: ClientUpdateCoordinator | null = null;
 const logger = new Logger();
 const lastReportedError = new Map<string, number>();
-const { autoUpdater } = updater;
 process.on("uncaughtException", (error) => logger.error("Excepción no controlada", error.stack ?? error.message));
 process.on("unhandledRejection", (reason) => logger.error("Promesa rechazada", String(reason)));
 const assetPath = (name: string) => app.isPackaged ? join(process.resourcesPath, "assets", name) : join(app.getAppPath(), "assets", name);
@@ -35,10 +35,56 @@ function updateTray(state: ManagerSnapshot): void {
     { label: state.device ? `${state.device.model} (${state.device.connection})` : "Sin dispositivo", enabled: false },
     { type: "separator" }, { label: "Abrir diagnóstico", click: () => showWindow() },
     { label: "Abrir registros", click: () => void shell.showItemInFolder(logger.path) }, { label: "Abrir configuración", click: () => void shell.showItemInFolder(configPath) },
-    { type: "separator" }, { label: "Buscar actualizaciones", click: () => void autoUpdater.checkForUpdates().catch((error: unknown) => logger.error("Actualización fallida", String(error))) },
-    { label: "Salir", click: () => { quitting = true; app.quit(); } },
+    { type: "separator" }, { label: "Buscar actualizaciones", click: () => void checkForClientUpdate(true) },
+    { label: "Salir", click: () => app.quit() },
   ]));
   if (window?.isVisible()) showWindow(state);
+}
+
+async function checkForClientUpdate(interactive: boolean): Promise<void> {
+  if (!updates) return;
+  try {
+    const checked = await updates.check();
+    if (checked.status === "up-to-date") {
+      if (interactive) await dialog.showMessageBox({ type: "info", message: "Kontave Device Manager está actualizado." });
+      return;
+    }
+    if (checked.status === "failed") {
+      logger.error("Comprobación de actualizaciones fallida", checked.failure.code);
+      if (interactive) dialog.showErrorBox("Actualizaciones", "No se pudo comprobar si existe una actualización. Intenta nuevamente más tarde.");
+      return;
+    }
+    if (checked.status !== "available") return;
+    const response = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Después", "Descargar"],
+      defaultId: 1,
+      cancelId: 0,
+      message: `Kontave Device Manager ${checked.release.productVersion} está disponible.`,
+      detail: "Puedes seguir usando la aplicación mientras se descarga.",
+    });
+    if (response.response !== 1) return;
+    const downloaded = await updates.download();
+    if (downloaded.status === "failed") {
+      logger.error("Descarga de actualización fallida", downloaded.failure.code);
+      dialog.showErrorBox("Actualizaciones", "No se pudo descargar la actualización. Intenta nuevamente más tarde.");
+      return;
+    }
+    if (downloaded.status !== "ready") return;
+    const install = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Instalar después", "Reiniciar e instalar"],
+      defaultId: 1,
+      cancelId: 0,
+      message: "La actualización está lista para instalarse.",
+      detail: "Kontave Device Manager solo se cerrará si eliges reiniciar ahora.",
+    });
+    if (install.response === 1) {
+      await updates.apply();
+    }
+  } catch (error: unknown) {
+    logger.error("Operación de actualización fallida", String(error));
+  }
 }
 
 async function ensureTls(owner: BrowserWindow): Promise<void> {
@@ -58,6 +104,22 @@ async function startApplication(): Promise<void> {
   logger.info("Esperando a que Electron esté listo", { version: app.getVersion(), packaged: app.isPackaged, args: process.argv });
   await app.whenReady();
   logger.info("Electron listo");
+
+  updates = new ClientUpdateCoordinator(createElectronClientUpdateProvider({
+    enabled: app.isPackaged,
+    installed: {
+      product: "kontave-device-manager",
+      platform: process.platform,
+      architecture: process.arch,
+      channel: "production",
+      productVersion: app.getVersion(),
+      buildNumber: null,
+      runtimeVersion: null,
+      apiVersion: "device-protocol-v1",
+    },
+  }), undefined, {
+    record: (operation, cause, code) => logger.error(`Actualización ${operation} falló [${code}]`, String(cause)),
+  });
 
   app.setLoginItemSettings({ openAtLogin: true, args: ["--hidden"] });
   tray = new Tray(trayIcon);
@@ -94,10 +156,7 @@ async function startApplication(): Promise<void> {
   }
   if (!process.argv.includes("--hidden")) showWindow();
 
-  autoUpdater.autoDownload = false;
-  autoUpdater.on("update-available", async () => { if ((await dialog.showMessageBox({ type: "info", buttons: ["Después", "Descargar"], defaultId: 1, message: "Hay una actualización disponible." })).response === 1) void autoUpdater.downloadUpdate(); });
-  autoUpdater.on("update-downloaded", () => { quitting = true; autoUpdater.quitAndInstall(); });
-  if (app.isPackaged) setTimeout(() => void autoUpdater.checkForUpdates().catch((error: unknown) => logger.error("Comprobación de actualizaciones fallida", String(error))), 15_000);
+  if (app.isPackaged) setTimeout(() => void checkForClientUpdate(false), 15_000);
 }
 
 if (!hasSingleInstanceLock) {

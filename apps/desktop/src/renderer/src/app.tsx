@@ -16,6 +16,7 @@ import {
   type SidebarPresentation,
 } from "@kontave/ui-dom";
 import type { DesktopAuthState, DesktopDeviceStatus } from "../../shared/desktop-api.js";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { AuthExperience } from "./auth/auth-experience.js";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
@@ -106,9 +107,49 @@ function DesktopAppShell({ auth, children, onSignedOut }: {
           <h1>Dispositivos</h1>
         </div>
       </header>
-      <main className="desktop-content">{children}</main>
+      <main className="desktop-content"><UpdateNotice />{children}</main>
     </div>
   </div>;
+}
+
+function UpdateNotice() {
+  const [state, setState] = useState<ClientUpdateSnapshot>();
+
+  useEffect(() => {
+    void window.kontave.updates.getState().then(setState);
+    return window.kontave.updates.subscribe(setState);
+  }, []);
+
+  if (!state || state.status === "idle" || state.status === "up-to-date" || state.status === "checking") return null;
+  if (state.status === "available") {
+    return <Alert intent="warning">
+      Kontave Desktop {state.release.productVersion} está disponible.{' '}
+      <Button size="sm" onClick={() => void window.kontave.updates.download().then(setState)}>Descargar</Button>
+    </Alert>;
+  }
+  if (state.status === "downloading") {
+    const progress = state.progress === null ? "" : ` (${Math.round(state.progress * 100)}%)`;
+    return <Alert intent="warning">Descargando la actualización{progress}. Puedes continuar trabajando.</Alert>;
+  }
+  if (state.status === "ready") {
+    return <Alert intent="warning">
+      La actualización está lista. Guarda tu trabajo antes de reiniciar.{' '}
+      <Button size="sm" onClick={() => void window.kontave.updates.apply()}>Reiniciar e instalar</Button>
+    </Alert>;
+  }
+  if (state.status === "failed") {
+    return <Alert intent="danger">
+      No se pudo completar la actualización ({state.failure.code}).{' '}
+      {state.failure.retryable ? <Button size="sm" onClick={() => void retryUpdate(state).then(setState)}>Reintentar</Button> : null}
+    </Alert>;
+  }
+  return <Alert intent="warning">Aplicando la actualización…</Alert>;
+}
+
+function retryUpdate(state: Extract<ClientUpdateSnapshot, { status: "failed" }>): Promise<ClientUpdateSnapshot> {
+  if (state.failure.operation === "download") return window.kontave.updates.download();
+  if (state.failure.operation === "apply") return window.kontave.updates.apply();
+  return window.kontave.updates.check();
 }
 
 function useCompactDesktopViewport(): boolean {

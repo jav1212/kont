@@ -5,11 +5,14 @@ import { DeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type Dev
 import { DatalogicQw2100Adapter, NodeSerialPortProvider } from "@kontave/devices-node";
 import { createSupabaseAuthenticationGateway } from "@kontave/auth-supabase";
 import { AuthenticationFailure } from "@kontave/auth-domain";
+import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
+import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
 import { DESKTOP_IPC, type DesktopAuthResult, type DesktopDeviceStatus } from "../shared/desktop-api.js";
 import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
 
 let mainWindow: BrowserWindow | undefined;
+let updates: ClientUpdateCoordinator | undefined;
 
 class DesktopDeviceHost implements DeviceEventSink, DeviceLogger {
   private readonly manager = new DeviceManager({
@@ -70,6 +73,15 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.connectDevice, () => devices.connect());
   ipcMain.handle(DESKTOP_IPC.disconnectDevice, () => devices.disconnect());
   ipcMain.handle(DESKTOP_IPC.getDeviceStatus, () => devices.status());
+  ipcMain.handle(DESKTOP_IPC.getUpdateState, () => updateCoordinator().getSnapshot());
+  ipcMain.handle(DESKTOP_IPC.checkForUpdate, () => updateCoordinator().check());
+  ipcMain.handle(DESKTOP_IPC.downloadUpdate, () => updateCoordinator().download());
+  ipcMain.handle(DESKTOP_IPC.applyUpdate, () => updateCoordinator().apply());
+}
+
+function updateCoordinator(): ClientUpdateCoordinator {
+  if (!updates) throw new Error("Desktop updates are not initialized.");
+  return updates;
 }
 
 async function runAuthOperation<T>(operation: (controller: DesktopAuthController) => Promise<T>): Promise<DesktopAuthResult<T>> {
@@ -150,6 +162,27 @@ app.whenReady().then(() => {
     createSupabaseAuthenticationGateway({ url: supabaseUrl, anonKey: supabaseAnonKey }, new DesktopSecureStorage()),
     () => mainWindow,
   );
+  updates = new ClientUpdateCoordinator(createElectronClientUpdateProvider({
+    enabled: app.isPackaged,
+    installed: {
+      product: "kontave-desktop",
+      platform: process.platform,
+      architecture: process.arch,
+      channel: "production",
+      productVersion: app.getVersion(),
+      buildNumber: null,
+      runtimeVersion: null,
+      apiVersion: "v1",
+    },
+  }), undefined, {
+    record: (operation, cause, code) => console.error(JSON.stringify({
+      level: "error",
+      code,
+      operation,
+      message: cause instanceof Error ? cause.message : "Unknown update failure",
+    })),
+  });
+  updates.subscribe(() => mainWindow?.webContents.send(DESKTOP_IPC.updateStateChanged, updateCoordinator().getSnapshot()));
   Menu.setApplicationMenu(null);
   registerIpc();
   createWindow();
@@ -160,6 +193,7 @@ app.whenReady().then(() => {
       message: cause instanceof Error ? cause.message : "Unknown authentication initialization failure",
     }));
   });
+  if (app.isPackaged) setTimeout(() => void updates?.check(), 15_000);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
