@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Activity, CreditCard, LifeBuoy, LogOut, Settings, UserRound, Usb } from "lucide-react";
-import { applyDesignTokens, type KontaveTheme } from "@kontave/design-tokens";
+import { Activity, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench } from "lucide-react";
+import type { KontaveTheme } from "@kontave/design-tokens";
 import { errorFeedback } from "@kontave/client-feedback-application";
 import {
   Alert,
@@ -12,8 +12,8 @@ import {
   presentFeedback,
   PortalStatusIndicator,
   type WorkspaceSidebarAccountAction,
+  type WorkspaceSidebarItem,
   type WorkspaceSidebarModule,
-  type WorkspaceSidebarSection,
 } from "@kontave/ui-dom";
 import type {
   DesktopAuthState,
@@ -23,23 +23,20 @@ import type {
   DesktopExternalDestination,
   DesktopPlatformStatusState,
   DesktopWorkspaceState,
+  DesktopWorkspaceEntry,
 } from "../../shared/desktop-api.js";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { AuthExperience } from "./auth/auth-experience.js";
 import { clientInteractionAvailable, restoreDesktopSession } from "./client-interaction.js";
 import { desktopConnectivityStore } from "./connectivity-store.js";
+import { applyDesktopTheme } from "./desktop-theme.js";
+import { defaultModuleNavigationItem, moduleNavigationLabel, moduleNavigationSections } from "./module-navigation.js";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
-const DESKTOP_MODULES: readonly WorkspaceSidebarModule[] = [{
-  id: "devices",
-  label: "Dispositivos",
-  subtitle: "Operación local",
-  icon: <Usb />,
-}];
-const DESKTOP_SECTIONS: readonly WorkspaceSidebarSection[] = [{
-  id: "local-operation",
-  items: [{ id: "devices", active: true, icon: <Usb />, label: "Dispositivos" }],
-}];
+const DESKTOP_UTILITIES: readonly WorkspaceSidebarItem[] = [
+  { id: "settings", label: "Configuración", icon: <Settings /> },
+  { id: "help", label: "Ayuda", icon: <LifeBuoy /> },
+];
 const DESKTOP_ACCOUNT_ACTIONS: readonly WorkspaceSidebarAccountAction[] = [
   { id: "settings", label: "Configuración", icon: <Settings />, placement: "header" },
   { id: "profile", label: "Mi perfil", icon: <UserRound /> },
@@ -83,7 +80,7 @@ export function App() {
 
   useEffect(() => {
     localStorage.setItem("kontave.desktop.theme", theme);
-    applyDesignTokens(document.documentElement, theme);
+    applyDesktopTheme(document.documentElement, theme);
   }, [theme]);
 
   if (auth.status === "authenticated") {
@@ -107,11 +104,15 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   readonly workspace: DesktopWorkspaceState;
 }) {
   const compactViewport = useCompactDesktopViewport();
+  const activeModuleId = workspace.status === "ready" ? workspace.activeModuleId : null;
+  const [activeNavigationId, setActiveNavigationId] = useState<string | null>(() => defaultModuleNavigationItem(activeModuleId));
   const connectivity = useSyncExternalStore(
     desktopConnectivityStore.subscribe,
     desktopConnectivityStore.getSnapshot,
     desktopConnectivityStore.getSnapshot,
   );
+
+  useEffect(() => setActiveNavigationId(defaultModuleNavigationItem(activeModuleId)), [activeModuleId]);
 
   function signOut(): void {
     if (!clientInteractionAvailable()) return;
@@ -130,6 +131,23 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
 
   const personalIdentity = currentUser.status === "ready" ? currentUser.user : null;
   const portalAvailability = platformStatus.status === "ready" ? platformStatus.availability : "unknown";
+  const availableModules: readonly WorkspaceSidebarModule[] = workspace.status === "ready"
+    ? workspace.modules.map((module) => ({
+      id: module.id,
+      label: module.name,
+      subtitle: "Módulo organizacional",
+      icon: moduleIcon(module.id),
+    }))
+    : [];
+  const availableCompanies = workspace.status === "ready"
+    ? workspace.companies.map((company) => ({
+      id: company.id,
+      name: company.name,
+      subtitle: company.rif ?? "Empresa de la organización",
+      ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
+    }))
+    : [];
+  const navigationSections = moduleNavigationSections(activeModuleId, activeNavigationId);
   const accountActions: readonly WorkspaceSidebarAccountAction[] = [
     ...DESKTOP_ACCOUNT_ACTIONS,
     {
@@ -144,26 +162,42 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   return <div className="desktop-shell">
     <WorkspaceSidebar
       presentation={compactViewport ? "collapsed" : "persistent"}
-      modules={DESKTOP_MODULES}
-      activeModuleId="devices"
-      sections={DESKTOP_SECTIONS}
+      modules={availableModules}
+      activeModuleId={activeModuleId}
+      companies={availableCompanies}
+      activeCompanyId={workspace.status === "ready" ? workspace.activeCompanyId : null}
+      activeWorkspaceId={workspace.status === "ready" ? workspace.activeWorkspaceId : null}
+      workspaces={workspace.status === "ready" && workspace.workspaces.length > 1
+        ? workspace.workspaces.map(toSidebarWorkspace)
+        : []}
+      sections={navigationSections}
+      utilities={DESKTOP_UTILITIES}
       account={{
         name: personalIdentity?.displayName ?? accountDisplayName(auth),
         email: personalIdentity?.email ?? auth.user.email ?? auth.user.id,
         ...(personalIdentity?.avatarUrl ? { avatarUrl: personalIdentity.avatarUrl } : {}),
         ...(billingPlan.status === "ready" && billingPlan.planName ? { planName: billingPlan.planName } : {}),
         theme,
-        activeWorkspaceId: workspace.status === "ready" ? workspace.activeWorkspaceId : null,
-        workspaceSectionLabel: "Cambiar espacio",
-        workspaces: workspace.status === "ready" ? workspace.workspaces.map((entry) => ({
-          id: entry.id,
-          name: entry.name,
-          ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}),
-          description: entry.access === "direct" ? "Acceso directo" : "Acceso delegado",
-          ...(entry.access === "delegated" ? { badge: "Delegado" } : {}),
-        })) : [],
       }}
       accountActions={accountActions}
+      onNavigate={(itemId) => {
+        if (itemId === "settings" || itemId === "help") openExternal(itemId);
+        else setActiveNavigationId(itemId);
+      }}
+      onSelectModule={(moduleId) => {
+        if (!clientInteractionAvailable()) return;
+        void window.kontave.workspace.selectModule(moduleId).then((result) => {
+          if (result.ok) return;
+          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "module-selection-failed" }));
+        });
+      }}
+      onSelectCompany={(companyId) => {
+        if (!clientInteractionAvailable()) return;
+        void window.kontave.workspace.selectCompany(companyId).then((result) => {
+          if (result.ok) return;
+          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "company-selection-failed" }));
+        });
+      }}
       onSelectWorkspace={(workspaceId) => {
         if (!clientInteractionAvailable()) return;
         void window.kontave.workspace.select(workspaceId).then((result) => {
@@ -181,7 +215,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
     <div className="desktop-workspace">
       <header className="desktop-toolbar">
         <div>
-          <h1>Dispositivos</h1>
+          <h1>{moduleNavigationLabel(activeModuleId, activeNavigationId)}</h1>
         </div>
       </header>
       <main className="desktop-content">
@@ -292,6 +326,35 @@ function DeviceCard() {
 function accountDisplayName(auth: Extract<DesktopAuthState, { status: "authenticated" }>): string {
   const identity = auth.user.email ?? auth.user.id;
   return identity.includes("@") ? identity.slice(0, identity.indexOf("@")) : "Cuenta Kontave";
+}
+
+function moduleIcon(moduleId: string): ReactNode {
+  if (moduleId === "payroll") return <Calculator />;
+  if (moduleId === "purchases") return <ShoppingBasket />;
+  if (moduleId === "sales") return <ShoppingCart />;
+  if (moduleId === "inventory") return <Boxes />;
+  if (moduleId === "accounting") return <BookOpen />;
+  if (moduleId === "tools") return <Wrench />;
+  if (moduleId === "companies") return <Building2 />;
+  if (moduleId === "documents") return <Files />;
+  return <Usb />;
+}
+
+function toSidebarWorkspace(entry: DesktopWorkspaceEntry) {
+  // Renderer hot reload can temporarily retain state emitted by an older main
+  // process. Preserve safe compatibility without ever promoting it to personal.
+  const relationship = entry.relationship === "personal" || entry.relationship === "member" || entry.relationship === "delegated"
+    ? entry.relationship
+    : entry.access === "delegated" ? "delegated" : "member";
+  return {
+    id: entry.id,
+    name: entry.name,
+    relationship,
+    ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}),
+    description: relationship === "personal" ? "Mi cuenta"
+      : relationship === "member" ? "Membresía directa"
+      : "Acceso delegado",
+  } as const;
 }
 
 function isExternalDestination(value: string): value is DesktopExternalDestination {

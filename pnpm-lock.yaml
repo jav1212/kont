@@ -246,9 +246,6 @@ importers:
       '@fontsource/darker-grotesque':
         specifier: ^5.2.8
         version: 5.3.0
-      '@fontsource/dosis':
-        specifier: ^5.2.8
-        version: 5.3.0
       '@kontave/auth-application':
         specifier: workspace:*
         version: link:../../packages/auth/application
@@ -294,6 +291,12 @@ importers:
       '@kontave/devices-node':
         specifier: workspace:*
         version: link:../../packages/devices/node
+      '@kontave/modules-application':
+        specifier: workspace:*
+        version: link:../../packages/modules/application
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../packages/modules/domain
       '@kontave/native-api-contracts':
         specifier: workspace:*
         version: link:../../packages/platform/native-api-contracts

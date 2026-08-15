@@ -1,4 +1,4 @@
-import { ActivateModule, InstallModule, ListAvailableModules, ListOrganizationModules, SuspendModule } from "@kontave/modules-application";
+import { ActivateModule, InstallModule, ListAvailableModules, ListAvailableOrganizationModules, ListOrganizationModules, SuspendModule } from "@kontave/modules-application";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
 
 export function createModuleActions() {
@@ -8,6 +8,7 @@ export function createModuleActions() {
   const infrastructure = createModulesInfrastructure({ url, serviceRoleKey });
   return {
     catalog: new ListAvailableModules(infrastructure.catalog),
+    availableOrganizationModules: new ListAvailableOrganizationModules(infrastructure.catalog, infrastructure.installations),
     organizationModules: new ListOrganizationModules(infrastructure.installations),
     install: new InstallModule(infrastructure.catalog, infrastructure.installations, infrastructure.entitlements),
     activate: new ActivateModule(infrastructure.catalog, infrastructure.installations, infrastructure.entitlements),

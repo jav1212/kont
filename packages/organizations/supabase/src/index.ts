@@ -5,6 +5,7 @@ import type {
 } from "@kontave/organizations-application";
 import {
   OrganizationFailure,
+  OrganizationRelationship,
   OrganizationRole,
   companyId,
   organizationId,
@@ -56,7 +57,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
 
       const { data: organizationData, error: organizationError } = await this.client
         .from("organizations")
-        .select("id,name,slug,status")
+        .select("id,legacy_tenant_id,name,slug,status")
         .in("id", memberships.map((membership) => membership.organization_id));
       if (organizationError) throw organizationError;
       const organizations = new Map(organizationRowSchema.array().parse(organizationData ?? []).map((row) => [row.id, row]));
@@ -67,6 +68,9 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
         if (!organization) return [];
         const role = mapRole(membership.role);
         return [{
+          relationship: organization.legacy_tenant_id === targetUserId
+            ? OrganizationRelationship.Personal
+            : OrganizationRelationship.Member,
           organization: {
             id: organizationId(organization.id),
             name: organization.name,
@@ -146,7 +150,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
     try {
       const { data, error } = await this.client
         .from("shared_companies")
-        .select("organization_id,id,name,rif")
+        .select("organization_id,id,name,rif,logo_url")
         .eq("organization_id", targetOrganizationId)
         .order("name", { ascending: true });
       if (error) throw error;
@@ -160,7 +164,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
     try {
       const { data, error } = await this.client
         .from("shared_companies")
-        .select("organization_id,id,name,rif")
+        .select("organization_id,id,name,rif,logo_url")
         .eq("organization_id", targetOrganizationId)
         .eq("id", targetCompanyId)
         .maybeSingle();
@@ -191,7 +195,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
 }
 
 function mapCompany(row: CompanyRow): OrganizationCompany {
-  return { id: companyId(row.id), organizationId: organizationId(row.organization_id), name: row.name, rif: row.rif };
+  return { id: companyId(row.id), organizationId: organizationId(row.organization_id), name: row.name, rif: row.rif, logoUrl: row.logo_url };
 }
 
 function mapRole(role: string): OrganizationRole {

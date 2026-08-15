@@ -92,6 +92,7 @@ export interface NativeOrganizationCompanyDto {
   readonly organizationId: string;
   readonly name: string;
   readonly rif: string | null;
+  readonly logoUrl: string | null;
 }
 
 export interface NativeCompanyDto {
@@ -119,8 +120,11 @@ export interface NativeAccessibleOrganizationDto {
   readonly organizationId: string;
   readonly name: string;
   readonly avatarUrl: string | null;
+  readonly relationship: NativeOrganizationRelationship;
   readonly accessPath: NativeOrganizationAccessPathDto;
 }
+
+export type NativeOrganizationRelationship = "personal" | "member" | "delegated";
 
 export interface NativeMoneyDto { readonly minorAmount: string; readonly currency: "USD" | "VES" }
 export interface NativeBillingAccountDto {

@@ -22,11 +22,12 @@ export function createOrganizationAccessActions() {
       return (await organizations.listAccessForUser(userId)).map((access) => ({
         organizationId: access.organization.id,
         name: access.organization.name,
+        relationship: access.relationship,
       }));
     },
     async findForUser(userId, organizationId) {
       const access = await organizations.findAccess(userId, organizationId);
-      return access ? { organizationId: access.organization.id, name: access.organization.name } : null;
+      return access ? { organizationId: access.organization.id, name: access.organization.name, relationship: access.relationship } : null;
     },
   };
   const repository = createOrganizationAccessInfrastructure({ url, serviceRoleKey }).delegations;

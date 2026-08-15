@@ -6,6 +6,7 @@ export function toAccessibleOrganizationDto(value: WorkspacePortfolioEntry): Nat
     organizationId: value.organizationId,
     name: value.name,
     avatarUrl: value.avatarUrl,
+    relationship: value.relationship,
     accessPath: {
       kind: value.accessPath.kind,
       actorUserId: value.accessPath.actorUserId,

@@ -11,8 +11,13 @@ export function moduleId(value: string): ModuleId {
 
 export enum ModuleCode {
   Payroll = "payroll",
+  Purchases = "purchases",
+  Sales = "sales",
   Inventory = "inventory",
   Accounting = "accounting",
+  Tools = "tools",
+  Companies = "companies",
+  Documents = "documents",
 }
 
 export enum ModuleLifecycleStatus {
@@ -36,6 +41,11 @@ export enum Platform {
   Web = "web",
   Desktop = "desktop",
   Mobile = "mobile",
+}
+
+export function platform(value: string): Platform {
+  if (value === Platform.Web || value === Platform.Desktop || value === Platform.Mobile) return value;
+  throw new ModuleFailure("MODULE_INVALID", "The requested platform is invalid.");
 }
 
 export enum ModuleCapability {

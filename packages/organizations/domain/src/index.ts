@@ -9,6 +9,8 @@ export type UserId = string & { readonly [userIdBrand]: true };
 export enum OrganizationStatus { Active = "active", Suspended = "suspended" }
 export enum OrganizationRole { Owner = "owner", Admin = "admin", Accountant = "accountant", Seller = "seller", Cashier = "cashier" }
 export enum MembershipStatus { Active = "active", Suspended = "suspended" }
+export const OrganizationRelationship = { Personal: "personal", Member: "member", Delegated: "delegated" } as const;
+export type OrganizationRelationship = typeof OrganizationRelationship[keyof typeof OrganizationRelationship];
 export type Permission = `${string}.${string}` | "*";
 
 export interface Organization {
@@ -33,11 +35,13 @@ export interface OrganizationCompany {
   readonly organizationId: OrganizationId;
   readonly name: string;
   readonly rif: string | null;
+  readonly logoUrl: string | null;
 }
 
 export interface OrganizationAccess {
   readonly organization: Organization;
   readonly membership: OrganizationMembership;
+  readonly relationship: Exclude<OrganizationRelationship, "delegated">;
 }
 
 export type OrganizationFailureCode =

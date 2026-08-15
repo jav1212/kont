@@ -4,6 +4,7 @@ import {
   companyId,
   MembershipStatus,
   OrganizationRole,
+  OrganizationRelationship,
   OrganizationStatus,
   organizationId,
   userId,
@@ -15,10 +16,11 @@ import { ListOrganizationCompanies, type OrganizationDirectory } from "../src/in
 const ownerId = userId("user-1");
 const ownOrganizationId = organizationId("org-1");
 const access: OrganizationAccess = {
+  relationship: OrganizationRelationship.Personal,
   organization: { id: ownOrganizationId, name: "Kontave", slug: "kontave", status: OrganizationStatus.Active },
   membership: { organizationId: ownOrganizationId, userId: ownerId, role: OrganizationRole.Owner, status: MembershipStatus.Active, permissions: ["*"] },
 };
-const company: OrganizationCompany = { id: companyId("J-1"), organizationId: ownOrganizationId, name: "Empresa", rif: "J-1" };
+const company: OrganizationCompany = { id: companyId("J-1"), organizationId: ownOrganizationId, name: "Empresa", rif: "J-1", logoUrl: null };
 
 class FakeDirectory implements OrganizationDirectory {
   async listAccessForUser() { return [access]; }

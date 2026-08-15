@@ -9,7 +9,7 @@ import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
 import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
-import { WorkspaceContextSession } from "@kontave/workspace-context-application";
+import { WorkspaceCompanyContextSession, WorkspaceContextSession, WorkspaceModuleContextSession } from "@kontave/workspace-context-application";
 import { DESKTOP_IPC, type DesktopAuthResult, type DesktopDeviceStatus } from "../shared/desktop-api.js";
 import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
@@ -17,6 +17,10 @@ import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe.
 import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller.js";
 import { DesktopWorkspacePortfolioSource } from "./workspace/desktop-workspace-portfolio-source.js";
 import { DesktopWorkspaceSelectionStore } from "./workspace/desktop-workspace-selection-store.js";
+import { DesktopWorkspaceCompanySource } from "./workspace/desktop-workspace-company-source.js";
+import { DesktopWorkspaceCompanyStore } from "./workspace/desktop-workspace-company-store.js";
+import { DesktopWorkspaceModuleSource } from "./workspace/desktop-workspace-module-source.js";
+import { DesktopWorkspaceModuleStore } from "./workspace/desktop-workspace-module-store.js";
 import { DesktopCurrentUserController } from "./profile/desktop-current-user-controller.js";
 import { DesktopCurrentUserSource } from "./profile/desktop-current-user-source.js";
 import { DesktopExternalNavigation } from "./navigation/desktop-external-navigation.js";
@@ -111,6 +115,8 @@ function registerIpc(): void {
     if (result.ok && result.value.status === "ready") await refreshBillingPlan(result.value.activeWorkspaceId);
     return result;
   });
+  ipcMain.handle(DESKTOP_IPC.selectWorkspaceModule, (_event, moduleId: unknown) => workspaceController().selectModule(moduleId));
+  ipcMain.handle(DESKTOP_IPC.selectWorkspaceCompany, (_event, companyId: unknown) => workspaceController().selectCompany(companyId));
   ipcMain.handle(DESKTOP_IPC.getCurrentUser, async () => {
     await initialization;
     return currentUserController().getState();
@@ -351,6 +357,14 @@ app.whenReady().then(() => {
     new WorkspaceContextSession(
       new DesktopWorkspacePortfolioSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
       new DesktopWorkspaceSelectionStore(),
+    ),
+    new WorkspaceModuleContextSession(
+      new DesktopWorkspaceModuleSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+      new DesktopWorkspaceModuleStore(),
+    ),
+    new WorkspaceCompanyContextSession(
+      new DesktopWorkspaceCompanySource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+      new DesktopWorkspaceCompanyStore(),
     ),
     () => mainWindow,
   );

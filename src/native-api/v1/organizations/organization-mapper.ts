@@ -17,5 +17,6 @@ export function toCompanyDto(company: OrganizationCompany): NativeOrganizationCo
     organizationId: company.organizationId,
     name: company.name,
     rif: company.rif,
+    logoUrl: company.logoUrl,
   };
 }

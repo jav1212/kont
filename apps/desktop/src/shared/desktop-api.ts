@@ -25,6 +25,8 @@ export const DESKTOP_IPC = {
   updateStateChanged: "updates:state-changed",
   getWorkspaceState: "workspace:state",
   selectWorkspace: "workspace:select",
+  selectWorkspaceModule: "workspace:module-select",
+  selectWorkspaceCompany: "workspace:company-select",
   workspaceStateChanged: "workspace:state-changed",
   getCurrentUser: "profile:current",
   currentUserChanged: "profile:current-changed",
@@ -122,7 +124,20 @@ export interface DesktopWorkspaceEntry {
   readonly name: string;
   readonly avatarUrl?: string;
   readonly access: "direct" | "delegated";
+  readonly relationship: "personal" | "member" | "delegated";
   readonly scopes: readonly string[];
+}
+
+export interface DesktopWorkspaceModuleEntry {
+  readonly id: string;
+  readonly name: string;
+}
+
+export interface DesktopWorkspaceCompanyEntry {
+  readonly id: string;
+  readonly name: string;
+  readonly rif: string | null;
+  readonly logoUrl?: string;
 }
 
 export type DesktopWorkspaceState =
@@ -132,6 +147,10 @@ export type DesktopWorkspaceState =
     readonly status: "ready";
     readonly workspaces: readonly DesktopWorkspaceEntry[];
     readonly activeWorkspaceId: string | null;
+    readonly modules: readonly DesktopWorkspaceModuleEntry[];
+    readonly activeModuleId: string | null;
+    readonly companies: readonly DesktopWorkspaceCompanyEntry[];
+    readonly activeCompanyId: string | null;
   };
 
 export type DesktopWorkspaceResult =
@@ -167,6 +186,8 @@ export interface KontaveDesktopApi {
   readonly workspace: {
     getState(): Promise<DesktopWorkspaceState>;
     select(workspaceId: string): Promise<DesktopWorkspaceResult>;
+    selectModule(moduleId: string): Promise<DesktopWorkspaceResult>;
+    selectCompany(companyId: string): Promise<DesktopWorkspaceResult>;
     subscribe(listener: (state: DesktopWorkspaceState) => void): () => void;
   };
   readonly profile: {

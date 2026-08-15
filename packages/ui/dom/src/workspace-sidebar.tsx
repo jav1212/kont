@@ -52,9 +52,11 @@ export interface WorkspaceSidebarAccount {
 export interface WorkspaceSidebarWorkspace {
   readonly id: string;
   readonly name: string;
+  readonly contextLabel?: string;
   readonly description?: string;
   readonly badge?: string;
   readonly avatarUrl?: string;
+  readonly relationship: "personal" | "member" | "delegated";
 }
 
 export interface WorkspaceSidebarAccountAction {
@@ -73,6 +75,8 @@ export interface WorkspaceSidebarProps {
   readonly activeModuleId: string | null;
   readonly companies?: readonly WorkspaceSidebarCompany[];
   readonly activeCompanyId?: string | null;
+  readonly workspaces?: readonly WorkspaceSidebarWorkspace[];
+  readonly activeWorkspaceId?: string | null;
   readonly sections: readonly WorkspaceSidebarSection[];
   readonly utilities?: readonly WorkspaceSidebarItem[];
   readonly account: WorkspaceSidebarAccount;
@@ -93,6 +97,7 @@ export function WorkspaceSidebar({
   account,
   accountActions = [],
   activeCompanyId = null,
+  activeWorkspaceId = null,
   activeModuleId,
   className,
   closeIcon,
@@ -110,6 +115,7 @@ export function WorkspaceSidebar({
   presentation = "persistent",
   sections,
   utilities = [],
+  workspaces = [],
 }: WorkspaceSidebarProps) {
   const compact = presentation === "collapsed";
   const activeModule = modules.find(({ id }) => id === activeModuleId) ?? modules[0] ?? null;
@@ -132,13 +138,11 @@ export function WorkspaceSidebar({
     </header>
 
     {!compact ? <div className="kt-workspace-sidebar__context">
-      <Selector
-        kind="module"
-        items={modules}
-        selected={activeModule}
-        emptyLabel="Seleccionar módulo"
-        onSelect={onSelectModule}
-      />
+      {workspaces.length > 0 ? <WorkspaceContextSelector
+        items={workspaces}
+        selected={workspaces.find(({ id }) => id === activeWorkspaceId) ?? workspaces[0] ?? null}
+        onSelect={onSelectWorkspace}
+      /> : null}
       {companies.length > 0 ? <Selector
         kind="company"
         items={companies}
@@ -146,6 +150,13 @@ export function WorkspaceSidebar({
         emptyLabel="Seleccionar empresa"
         onSelect={onSelectCompany}
       /> : null}
+      <Selector
+        kind="module"
+        items={modules}
+        selected={activeModule}
+        emptyLabel="Seleccionar módulo"
+        onSelect={onSelectModule}
+      />
     </div> : null}
 
     <nav className="kt-workspace-sidebar__navigation" aria-label="Secciones del módulo">
@@ -193,8 +204,29 @@ function Selector<TEntry extends SelectorEntry>({
   readonly selected: TEntry | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const containerRef = useDismissibleMenu<HTMLDivElement>(open, () => setOpen(false));
   const label = kind === "module" ? "Módulo" : "Empresa";
+  const visibleItems = query.trim()
+    ? items.filter((item) => selectorEntryLabel(item).toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es")))
+    : items;
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    const frame = requestAnimationFrame(() => searchRef.current?.focus());
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [kind, open]);
 
   return <div className="kt-sidebar-selector" ref={containerRef}>
     <Button
@@ -211,8 +243,22 @@ function Selector<TEntry extends SelectorEntry>({
       </Text>
       <ChevronIcon open={open} />
     </Button>
-    {open ? <div className="kt-sidebar-menu" role="listbox" aria-label={`${label}s disponibles`}>
-      {items.map((item) => {
+    {open ? <div className="kt-sidebar-menu" data-kind={kind} role="listbox" aria-label={`${label}s disponibles`}>
+      <div className="kt-sidebar-menu__search">
+        <label className="kt-sidebar-menu__search-field">
+          <SearchIcon />
+          <input
+            ref={searchRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={kind === "module" ? "Buscar módulo..." : "Buscar empresa..."}
+            aria-label={kind === "module" ? "Buscar módulo" : "Buscar empresa"}
+          />
+        </label>
+        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onClick={() => setOpen(false)}>Esc</Button>
+      </div>
+      <div className="kt-sidebar-menu__options">
+      {visibleItems.map((item) => {
         const itemLabel = "label" in item ? item.label : item.name;
         const active = item.id === selected?.id;
         return <Button
@@ -227,7 +273,9 @@ function Selector<TEntry extends SelectorEntry>({
             setOpen(false);
           }}
         >
-          <SelectorAvatar entry={item} kind={kind} small />
+          {kind === "module"
+            ? <Text className="kt-sidebar-menu__module-icon" tone="inherit" aria-hidden="true">{(item as WorkspaceSidebarModule).icon ?? <ModuleIcon />}</Text>
+            : <SelectorAvatar entry={item} kind={kind} small />}
           <Text className="kt-sidebar-menu__option-copy" tone="inherit">
             <Text as="strong" tone="inherit">{itemLabel}</Text>
             {item.subtitle ? <Text as="small" tone="inherit">{item.subtitle}</Text> : null}
@@ -235,8 +283,113 @@ function Selector<TEntry extends SelectorEntry>({
           {active ? <CheckIcon /> : null}
         </Button>;
       })}
+      {visibleItems.length === 0 ? <Text className="kt-sidebar-menu__empty">
+        {kind === "module" ? "No hay módulos que coincidan." : "No hay empresas que coincidan."}
+      </Text> : null}
+      </div>
     </div> : null}
   </div>;
+}
+
+function SearchIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="1.8"/><path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>;
+}
+
+function WorkspaceContextSelector({ items, onSelect, selected }: {
+  readonly items: readonly WorkspaceSidebarWorkspace[];
+  readonly onSelect?: ((id: string) => void) | undefined;
+  readonly selected: WorkspaceSidebarWorkspace | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const containerRef = useDismissibleMenu<HTMLDivElement>(open, () => setOpen(false));
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  const visible = normalizedQuery
+    ? items.filter((item) => item.name.toLocaleLowerCase("es").includes(normalizedQuery))
+    : items;
+  const personal = visible.filter((item) => item.relationship === "personal");
+  const members = visible.filter((item) => item.relationship === "member");
+  const delegated = visible.filter((item) => item.relationship === "delegated");
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    const frame = requestAnimationFrame(() => searchRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+
+  const canSwitch = items.length > 1;
+  return <div className="kt-workspace-context" ref={containerRef}>
+    <Text as="small" className="kt-workspace-context__eyebrow">Trabajando en</Text>
+    <Button
+      appearance="unstyled"
+      className="kt-workspace-context__trigger"
+      aria-expanded={canSwitch ? open : undefined}
+      aria-haspopup={canSwitch ? "listbox" : undefined}
+      onClick={() => canSwitch && setOpen((current) => !current)}
+    >
+      <WorkspaceAvatar workspace={selected} />
+      <Text className="kt-workspace-context__copy" tone="inherit">
+        <Text as="strong" tone="inherit">{selected?.contextLabel ?? selected?.name ?? "Cuenta no disponible"}</Text>
+        <Text as="small" tone="inherit">{selected?.description ?? "Cuenta de trabajo"}</Text>
+      </Text>
+      {canSwitch ? <ChevronIcon open={open} /> : null}
+    </Button>
+    {open && canSwitch ? <div className="kt-workspace-context__menu" role="listbox" aria-label="Cuentas disponibles">
+      <div className="kt-sidebar-menu__search">
+        <label className="kt-sidebar-menu__search-field">
+          <SearchIcon />
+          <input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cuenta..." aria-label="Buscar cuenta" />
+        </label>
+        <Button appearance="unstyled" className="kt-sidebar-menu__escape" onClick={() => setOpen(false)}>Esc</Button>
+      </div>
+      <div className="kt-workspace-context__options">
+        <WorkspaceGroup label="Mi cuenta" items={personal} selectedId={selected?.id} onSelect={(id) => { onSelect?.(id); setOpen(false); }} />
+        <WorkspaceGroup label="Otras cuentas" items={members} selectedId={selected?.id} onSelect={(id) => { onSelect?.(id); setOpen(false); }} />
+        <WorkspaceGroup label="Cuentas cliente" items={delegated} selectedId={selected?.id} onSelect={(id) => { onSelect?.(id); setOpen(false); }} />
+        {visible.length === 0 ? <Text className="kt-sidebar-menu__empty">No hay cuentas que coincidan.</Text> : null}
+      </div>
+    </div> : null}
+  </div>;
+}
+
+function WorkspaceGroup({ items, label, onSelect, selectedId }: {
+  readonly items: readonly WorkspaceSidebarWorkspace[];
+  readonly label: string;
+  readonly onSelect: (id: string) => void;
+  readonly selectedId: string | undefined;
+}) {
+  if (items.length === 0) return null;
+  return <section className="kt-workspace-context__group">
+    <Text as="h3">{label}</Text>
+    {items.map((item) => <Button
+      appearance="unstyled"
+      className="kt-workspace-context__option"
+      data-active={item.id === selectedId}
+      role="option"
+      aria-selected={item.id === selectedId}
+      key={item.id}
+      onClick={() => onSelect(item.id)}
+    >
+      <WorkspaceAvatar workspace={item} small />
+      <Text className="kt-workspace-context__copy" tone="inherit">
+        <Text as="strong" tone="inherit">{item.name}</Text>
+        <Text as="small" tone="inherit">{item.description ?? label}</Text>
+      </Text>
+      {item.id === selectedId ? <CheckIcon /> : null}
+    </Button>)}
+  </section>;
+}
+
+function WorkspaceAvatar({ small = false, workspace }: {
+  readonly small?: boolean;
+  readonly workspace: WorkspaceSidebarWorkspace | null;
+}) {
+  const initial = workspace?.name.trim().charAt(0).toLocaleUpperCase("es") || "?";
+  return <Text className="kt-workspace-context__avatar" data-small={small} tone="inherit" aria-hidden="true">
+    <ImageWithFallback alt="" src={workspace?.avatarUrl} fallback={initial} />
+  </Text>;
 }
 
 function SelectorAvatar({ entry, kind, small = false }: {

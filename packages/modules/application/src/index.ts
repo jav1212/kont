@@ -3,6 +3,7 @@ import type { CompanyId } from "@kontave/companies-domain";
 import {
   CompanyModuleActivationStatus,
   ModuleFailure,
+  ModuleLifecycleStatus,
   ModuleInstallationStatus,
   assertModuleCanActivate,
   moduleProvides,
@@ -10,6 +11,7 @@ import {
   type ModuleCode,
   type ModuleDefinition,
   type ModuleInstallation,
+  type Platform,
   type CompanyModuleActivation,
 } from "@kontave/modules-domain";
 
@@ -65,6 +67,40 @@ export class ListAvailableModules {
 export class ListOrganizationModules {
   constructor(private readonly repository: OrganizationModuleRepository) {}
   execute(organizationId: OrganizationId) { return this.repository.list(organizationId); }
+}
+
+export interface AvailableOrganizationModule {
+  readonly id: ModuleDefinition["id"];
+  readonly code: ModuleCode;
+  readonly name: string;
+}
+
+/** Resolves modules that are installed, active, and supported by a client platform. */
+export class ListAvailableOrganizationModules {
+  constructor(
+    private readonly catalog: ModuleCatalogRepository,
+    private readonly installations: OrganizationModuleRepository,
+  ) {}
+
+  async execute(
+    organizationId: OrganizationId,
+    platform: Platform,
+  ): Promise<readonly AvailableOrganizationModule[]> {
+    const [definitions, installed] = await Promise.all([
+      this.catalog.list(),
+      this.installations.list(organizationId),
+    ]);
+    const activeModuleIds = new Set(
+      installed
+        .filter((installation) => installation.status === ModuleInstallationStatus.Active)
+        .map((installation) => installation.moduleId),
+    );
+    return definitions
+      .filter((definition) => definition.status === ModuleLifecycleStatus.Active)
+      .filter((definition) => definition.supportedPlatforms.includes(platform))
+      .filter((definition) => activeModuleIds.has(definition.id))
+      .map((definition) => ({ id: definition.id, code: definition.code, name: definition.name }));
+  }
 }
 
 export class InstallModule {

@@ -1,4 +1,6 @@
-import type { ModuleDefinitionDto, ModuleInstallationDto } from "@kontave/modules-contracts";
+import type { AvailableOrganizationModuleDto, ModuleDefinitionDto, ModuleInstallationDto } from "@kontave/modules-contracts";
+import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import type { ModuleDefinition, ModuleInstallation } from "@kontave/modules-domain";
 export function toModuleDefinitionDto(value: ModuleDefinition): ModuleDefinitionDto { return { id:value.id,code:value.code,name:value.name,status:value.status,capabilities:value.capabilities,dependencies:value.dependencies,supportedPlatforms:value.supportedPlatforms }; }
 export function toModuleInstallationDto(value: ModuleInstallation): ModuleInstallationDto { return { id:value.id,organizationId:value.organizationId,moduleId:value.moduleId,moduleCode:value.moduleCode,status:value.status,configurationVersion:value.configurationVersion,installedAt:value.installedAt,activatedAt:value.activatedAt,suspendedAt:value.suspendedAt }; }
+export function toAvailableOrganizationModuleDto(value: AvailableOrganizationModule): AvailableOrganizationModuleDto { return { id:value.id,code:value.code,name:value.name }; }

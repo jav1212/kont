@@ -13,11 +13,12 @@ import {
   type OrganizationAccessPath,
   type OrganizationDelegation,
 } from "@kontave/organization-delegations-domain";
-import type { OrganizationId, UserId } from "@kontave/organizations-domain";
+import { OrganizationRelationship, type CompanyId as OrganizationCompanyId, type OrganizationCompany, type OrganizationId, type UserId } from "@kontave/organizations-domain";
 import type { OrganizationPresentationDirectory } from "@kontave/organizations-application";
 import type { CompanyRepository } from "@kontave/companies-application";
 import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies-domain";
-import type { ModuleCapability } from "@kontave/modules-domain";
+import type { AvailableOrganizationModule } from "@kontave/modules-application";
+import type { ModuleCapability, ModuleCode } from "@kontave/modules-domain";
 
 export interface CompanyExecutionContext {
   readonly actorUserId: UserId;
@@ -58,6 +59,7 @@ export class ResolveCompanyExecutionContext {
 export interface DirectOrganizationAccess {
   readonly organizationId: OrganizationId;
   readonly name: string;
+  readonly relationship: "personal" | "member";
 }
 
 export interface DirectOrganizationAccessDirectory {
@@ -67,6 +69,7 @@ export interface DirectOrganizationAccessDirectory {
 
 export interface WorkspacePortfolioEntry extends AccessibleOrganization {
   readonly avatarUrl: string | null;
+  readonly relationship: OrganizationRelationship;
 }
 
 export interface WorkspacePortfolioSource {
@@ -124,6 +127,137 @@ export class WorkspaceContextSession {
   async clear(): Promise<ActiveWorkspaceContext> {
     this.context = EMPTY_WORKSPACE_CONTEXT;
     await this.selectionStore.write(null);
+    return this.context;
+  }
+}
+
+export interface WorkspaceCompanySource {
+  listByOrganization(organizationId: OrganizationId): Promise<readonly OrganizationCompany[]>;
+}
+
+export interface ActiveWorkspaceCompanyStore {
+  read(organizationId: OrganizationId): Promise<OrganizationCompanyId | null>;
+  write(organizationId: OrganizationId, companyId: OrganizationCompanyId | null): Promise<void>;
+}
+
+export interface ActiveWorkspaceCompanyContext {
+  readonly organizationId: OrganizationId | null;
+  readonly companies: readonly OrganizationCompany[];
+  readonly active: OrganizationCompany | null;
+}
+
+export class WorkspaceCompanySelectionFailure extends Error {
+  readonly code = "COMPANY_NOT_FOUND";
+  constructor(message: string) { super(message); this.name = "WorkspaceCompanySelectionFailure"; }
+}
+
+const EMPTY_WORKSPACE_COMPANY_CONTEXT: ActiveWorkspaceCompanyContext = Object.freeze({
+  organizationId: null,
+  companies: Object.freeze([]),
+  active: null,
+});
+
+/** Owns company selection inside one organization; client organizations remain workspace entries. */
+export class WorkspaceCompanyContextSession {
+  private context: ActiveWorkspaceCompanyContext = EMPTY_WORKSPACE_COMPANY_CONTEXT;
+
+  constructor(
+    private readonly source: WorkspaceCompanySource,
+    private readonly store: ActiveWorkspaceCompanyStore,
+  ) {}
+
+  get current(): ActiveWorkspaceCompanyContext { return this.context; }
+
+  async restore(organizationId: OrganizationId | null): Promise<ActiveWorkspaceCompanyContext> {
+    if (!organizationId) return this.clear();
+    const companies = Object.freeze([...(await this.source.listByOrganization(organizationId))]);
+    if (companies.some((company) => company.organizationId !== organizationId)) {
+      throw new WorkspaceCompanySelectionFailure("Una empresa no pertenece a la organización activa.");
+    }
+    const storedCompanyId = await this.store.read(organizationId);
+    const active = companies.find((company) => company.id === storedCompanyId) ?? companies[0] ?? null;
+    this.context = Object.freeze({ organizationId, companies, active });
+    await this.store.write(organizationId, active?.id ?? null);
+    return this.context;
+  }
+
+  async select(companyId: OrganizationCompanyId): Promise<ActiveWorkspaceCompanyContext> {
+    const organizationId = this.context.organizationId;
+    if (!organizationId) throw new WorkspaceCompanySelectionFailure("No hay una organización activa.");
+    const active = this.context.companies.find((company) => company.id === companyId);
+    if (!active) throw new WorkspaceCompanySelectionFailure("La empresa no pertenece a la organización activa.");
+    this.context = Object.freeze({ ...this.context, active });
+    await this.store.write(organizationId, active.id);
+    return this.context;
+  }
+
+  async clear(): Promise<ActiveWorkspaceCompanyContext> {
+    this.context = EMPTY_WORKSPACE_COMPANY_CONTEXT;
+    return this.context;
+  }
+}
+
+export interface WorkspaceModuleSource {
+  listAvailable(organizationId: OrganizationId): Promise<readonly AvailableOrganizationModule[]>;
+}
+
+export interface ActiveWorkspaceModuleStore {
+  read(organizationId: OrganizationId): Promise<ModuleCode | null>;
+  write(organizationId: OrganizationId, moduleCode: ModuleCode | null): Promise<void>;
+}
+
+export interface ActiveWorkspaceModuleContext {
+  readonly organizationId: OrganizationId | null;
+  readonly modules: readonly AvailableOrganizationModule[];
+  readonly active: AvailableOrganizationModule | null;
+}
+
+export class WorkspaceModuleSelectionFailure extends Error {
+  readonly code = "MODULE_NOT_ACTIVE";
+  constructor(message: string) { super(message); this.name = "WorkspaceModuleSelectionFailure"; }
+}
+
+const EMPTY_WORKSPACE_MODULE_CONTEXT: ActiveWorkspaceModuleContext = Object.freeze({
+  organizationId: null,
+  modules: Object.freeze([]),
+  active: null,
+});
+
+/** Owns module selection within the active organization; module availability remains owned by modules. */
+export class WorkspaceModuleContextSession {
+  private context: ActiveWorkspaceModuleContext = EMPTY_WORKSPACE_MODULE_CONTEXT;
+
+  constructor(
+    private readonly source: WorkspaceModuleSource,
+    private readonly store: ActiveWorkspaceModuleStore,
+  ) {}
+
+  get current(): ActiveWorkspaceModuleContext { return this.context; }
+
+  async restore(organization: OrganizationId | null): Promise<ActiveWorkspaceModuleContext> {
+    if (!organization) return this.clear();
+    const modules = Object.freeze([...(await this.source.listAvailable(organization))]);
+    const storedCode = await this.store.read(organization);
+    const active = modules.find((module) => module.code === storedCode) ?? modules[0] ?? null;
+    this.context = Object.freeze({ organizationId: organization, modules, active });
+    await this.store.write(organization, active?.code ?? null);
+    return this.context;
+  }
+
+  async select(moduleCode: ModuleCode): Promise<ActiveWorkspaceModuleContext> {
+    const organization = this.context.organizationId;
+    if (!organization) {
+      throw new WorkspaceModuleSelectionFailure("No hay una organización activa para seleccionar el módulo.");
+    }
+    const active = this.context.modules.find((module) => module.code === moduleCode);
+    if (!active) throw new WorkspaceModuleSelectionFailure("El módulo no está disponible en este espacio de trabajo.");
+    this.context = Object.freeze({ ...this.context, active });
+    await this.store.write(organization, active.code);
+    return this.context;
+  }
+
+  async clear(): Promise<ActiveWorkspaceModuleContext> {
+    this.context = EMPTY_WORKSPACE_MODULE_CONTEXT;
     return this.context;
   }
 }
@@ -223,17 +357,19 @@ function selectRestoredWorkspace(
     const stored = portfolio.find((entry) => entry.organizationId === storedOrganizationId);
     if (stored) return stored;
   }
-  return portfolio.find((entry) => entry.accessPath.kind === OrganizationAccessPathKind.DirectMembership)
-    ?? portfolio[0]
+  return portfolio.find((entry) => entry.relationship === OrganizationRelationship.Personal)
+    ?? portfolio.find((entry) => entry.relationship === OrganizationRelationship.Member)
+    ?? portfolio.find((entry) => entry.relationship === OrganizationRelationship.Delegated)
     ?? null;
 }
 
-function directWorkspace(userId: UserId, access: DirectOrganizationAccess): AccessibleOrganization {
-  return { organizationId: access.organizationId, name: access.name, accessPath: directPath(userId, access.organizationId) };
+function directWorkspace(userId: UserId, access: DirectOrganizationAccess): AccessibleOrganization & { readonly relationship: "personal" | "member" } {
+  return { organizationId: access.organizationId, name: access.name, relationship: access.relationship, accessPath: directPath(userId, access.organizationId) };
 }
 
-function delegatedWorkspace(userId: UserId, access: DelegatedOrganizationAccess): AccessibleOrganization {
+function delegatedWorkspace(userId: UserId, access: DelegatedOrganizationAccess): AccessibleOrganization & { readonly relationship: "delegated" } {
   return {
+    relationship: OrganizationRelationship.Delegated,
     organizationId: access.delegation.clientOrganizationId,
     name: access.clientOrganizationName,
     accessPath: delegatedPath(userId, access.delegation),

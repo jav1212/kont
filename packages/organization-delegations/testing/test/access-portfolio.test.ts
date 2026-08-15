@@ -7,13 +7,13 @@ import {
 } from "@kontave/organization-delegations-application";
 import { ListWorkspacePortfolio, ResolveWorkspaceAccessPath } from "@kontave/workspace-context-application";
 import { DelegatedScope, OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
-import { organizationId, userId } from "@kontave/organizations-domain";
+import { OrganizationRelationship, organizationId, userId } from "@kontave/organizations-domain";
 import { InMemoryOrganizationDelegationRepository } from "../src/index";
 
 class DirectDirectory {
-  async listForUser() { return [{ organizationId: organizationId("provider"), name: "Oficina KM11" }]; }
+  async listForUser() { return [{ organizationId: organizationId("provider"), name: "Oficina KM11", relationship: OrganizationRelationship.Member }]; }
   async findForUser(_user: unknown, id: ReturnType<typeof organizationId>) {
-    return id === organizationId("provider") ? { organizationId: id, name: "Oficina KM11" } : null;
+    return id === organizationId("provider") ? { organizationId: id, name: "Oficina KM11", relationship: OrganizationRelationship.Member } : null;
   }
 }
 
@@ -47,6 +47,8 @@ test("builds an explicit one-hop delegated access path", async () => {
   assert.equal(portfolio.length, 2);
   assert.equal(portfolio.find((item) => item.organizationId === organizationId("client"))?.avatarUrl, "https://cdn.example.com/client.png");
   assert.equal(portfolio.find((item) => item.organizationId === organizationId("provider"))?.avatarUrl, null);
+  assert.equal(portfolio.find((item) => item.organizationId === organizationId("provider"))?.relationship, "member");
+  assert.equal(portfolio.find((item) => item.organizationId === organizationId("client"))?.relationship, "delegated");
   const path = await new ResolveWorkspaceAccessPath(directory, repository).execute({
     userId: actor,
     actingOrganizationId: organizationId("provider"),

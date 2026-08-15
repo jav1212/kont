@@ -44,6 +44,7 @@ function readWorkspaceDto(value: unknown): NativeAccessibleOrganizationDto {
     // Older v1 deployments omitted this additive field; treat omission as the
     // same no-logo state while newer servers return an explicit null.
     avatarUrl: record.avatarUrl === undefined || record.avatarUrl === null ? null : readUrl(record.avatarUrl),
+    relationship: readRelationship(record.relationship, accessPath.kind),
     accessPath: {
       kind: readText(accessPath.kind),
       actorUserId: readText(accessPath.actorUserId),
@@ -65,6 +66,7 @@ function toAccessibleOrganization(dto: NativeAccessibleOrganizationDto): Workspa
     organizationId: organizationId(dto.organizationId),
     name: dto.name,
     avatarUrl: dto.avatarUrl,
+    relationship: dto.relationship,
     accessPath: {
       kind,
       actorUserId: userId(dto.accessPath.actorUserId),
@@ -74,6 +76,13 @@ function toAccessibleOrganization(dto: NativeAccessibleOrganizationDto): Workspa
       scopes: dto.accessPath.scopes.map(readScope),
     },
   };
+}
+
+function readRelationship(value: unknown, accessPathKind: unknown): NativeAccessibleOrganizationDto["relationship"] {
+  if (value === "personal" || value === "member" || value === "delegated") return value;
+  // Additive compatibility with older v1 deployments. A direct membership is
+  // never promoted to personal without explicit backend evidence.
+  return accessPathKind === OrganizationAccessPathKind.DelegatedOrganization ? "delegated" : "member";
 }
 
 function readScope(value: string): DelegatedScope {

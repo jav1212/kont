@@ -1,23 +1,22 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { applyDesignTokens, type KontaveTheme } from "@kontave/design-tokens";
+import type { KontaveTheme } from "@kontave/design-tokens";
 import { GlobalInteractionBoundary, ToastViewport } from "@kontave/ui-dom";
-import "@fontsource/dosis/latin-400.css";
-import "@fontsource/dosis/latin-500.css";
-import "@fontsource/dosis/latin-600.css";
-import "@fontsource/dosis/latin-700.css";
+import "@fontsource/darker-grotesque/latin-400.css";
+import "@fontsource/darker-grotesque/latin-500.css";
 import "@fontsource/darker-grotesque/latin-600.css";
 import "@fontsource/darker-grotesque/latin-700.css";
 import "@fontsource/darker-grotesque/latin-800.css";
 import "@fontsource/darker-grotesque/latin-900.css";
 import { App } from "./app.js";
 import { handleGlobalInteractionAction, interactionGate } from "./client-interaction.js";
+import { applyDesktopTheme } from "./desktop-theme.js";
 import "./styles.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Desktop root element was not found.");
 const storedTheme = localStorage.getItem("kontave.desktop.theme");
-applyDesignTokens(document.documentElement, isKontaveTheme(storedTheme) ? storedTheme : "light");
+applyDesktopTheme(document.documentElement, isKontaveTheme(storedTheme) ? storedTheme : "light");
 createRoot(root).render(
   <StrictMode>
     <GlobalInteractionBoundary gate={interactionGate} onAction={handleGlobalInteractionAction}>

@@ -18,3 +18,8 @@ export interface ModuleInstallationDto {
   readonly activatedAt: string | null;
   readonly suspendedAt: string | null;
 }
+export interface AvailableOrganizationModuleDto {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+}

@@ -45,6 +45,8 @@ const api: KontaveDesktopApi = {
   workspace: {
     getState: () => ipcRenderer.invoke(DESKTOP_IPC.getWorkspaceState),
     select: (workspaceId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspace, workspaceId),
+    selectModule: (moduleId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspaceModule, moduleId),
+    selectCompany: (companyId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspaceCompany, companyId),
     subscribe(listener) {
       const handler = (_event: Electron.IpcRendererEvent, payload: DesktopWorkspaceState) => listener(payload);
       ipcRenderer.on(DESKTOP_IPC.workspaceStateChanged, handler);
