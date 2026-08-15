@@ -17,6 +17,15 @@ class DirectDirectory {
   }
 }
 
+class PresentationDirectory {
+  async listByOrganizationIds(ids: readonly ReturnType<typeof organizationId>[]) {
+    return ids.map((id) => ({
+      organizationId: id,
+      avatarUrl: id === organizationId("client") ? "https://cdn.example.com/client.png" : null,
+    }));
+  }
+}
+
 test("builds an explicit one-hop delegated access path", async () => {
   const repository = new InMemoryOrganizationDelegationRepository();
   repository.names.set(organizationId("client"), "Cliente CA");
@@ -33,8 +42,11 @@ test("builds an explicit one-hop delegated access path", async () => {
   await new AssignDelegationMember(repository).execute(delegation.id, actor, actor, "2026-08-02T00:00:00.000Z");
 
   const directory = new DirectDirectory();
-  const portfolio = await new ListWorkspacePortfolio(directory, repository).execute(actor, "2026-08-03T00:00:00.000Z");
+  const portfolio = await new ListWorkspacePortfolio(directory, repository, new PresentationDirectory())
+    .execute(actor, "2026-08-03T00:00:00.000Z");
   assert.equal(portfolio.length, 2);
+  assert.equal(portfolio.find((item) => item.organizationId === organizationId("client"))?.avatarUrl, "https://cdn.example.com/client.png");
+  assert.equal(portfolio.find((item) => item.organizationId === organizationId("provider"))?.avatarUrl, null);
   const path = await new ResolveWorkspaceAccessPath(directory, repository).execute({
     userId: actor,
     actingOrganizationId: organizationId("provider"),

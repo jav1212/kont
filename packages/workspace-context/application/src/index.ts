@@ -14,6 +14,7 @@ import {
   type OrganizationDelegation,
 } from "@kontave/organization-delegations-domain";
 import type { OrganizationId, UserId } from "@kontave/organizations-domain";
+import type { OrganizationPresentationDirectory } from "@kontave/organizations-application";
 import type { CompanyRepository } from "@kontave/companies-application";
 import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies-domain";
 import type { ModuleCapability } from "@kontave/modules-domain";
@@ -65,7 +66,7 @@ export interface DirectOrganizationAccessDirectory {
 }
 
 export interface WorkspacePortfolioEntry extends AccessibleOrganization {
-  readonly avatarUrl?: string;
+  readonly avatarUrl: string | null;
 }
 
 export interface WorkspacePortfolioSource {
@@ -131,17 +132,25 @@ export class ListWorkspacePortfolio {
   constructor(
     private readonly directAccess: DirectOrganizationAccessDirectory,
     private readonly delegations: OrganizationDelegationRepository,
+    private readonly presentations: OrganizationPresentationDirectory,
   ) {}
 
-  async execute(userId: UserId, occurredAt: string): Promise<readonly AccessibleOrganization[]> {
+  async execute(userId: UserId, occurredAt: string): Promise<readonly WorkspacePortfolioEntry[]> {
     const [direct, delegated] = await Promise.all([
       this.directAccess.listForUser(userId),
       this.delegations.listAssignedToUser(userId),
     ]);
-    return [
+    const portfolio = [
       ...direct.map((item) => directWorkspace(userId, item)),
       ...delegated.filter((item) => isAssignedAndEffective(item, occurredAt)).map((item) => delegatedWorkspace(userId, item)),
-    ].sort((left, right) => left.name.localeCompare(right.name));
+    ];
+    const presentations = new Map(
+      (await this.presentations.listByOrganizationIds(portfolio.map((item) => item.organizationId)))
+        .map((item) => [item.organizationId, item.avatarUrl]),
+    );
+    return portfolio
+      .map((item) => ({ ...item, avatarUrl: presentations.get(item.organizationId) ?? null }))
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 }
 

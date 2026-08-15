@@ -1,23 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  OrganizationAccessPathKind,
-  type AccessibleOrganization,
-} from "@kontave/organization-delegations-domain";
+import { OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
 import { organizationId, userId, type OrganizationId } from "@kontave/organizations-domain";
 import {
   WorkspaceContextSession,
   type ActiveWorkspaceSelectionStore,
+  type WorkspacePortfolioEntry,
   type WorkspacePortfolioSource,
 } from "../src/index.js";
 
 const actor = userId("user-1");
 
-function workspace(id: string, kind: OrganizationAccessPathKind): AccessibleOrganization {
+function workspace(id: string, kind: OrganizationAccessPathKind): WorkspacePortfolioEntry {
   const organization = organizationId(id);
   return {
     organizationId: organization,
     name: id,
+    avatarUrl: null,
     accessPath: {
       kind,
       actorUserId: actor,

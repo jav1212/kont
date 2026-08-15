@@ -31,7 +31,7 @@ export function createOrganizationAccessActions() {
   };
   const repository = createOrganizationAccessInfrastructure({ url, serviceRoleKey }).delegations;
   return {
-    portfolio: new ListWorkspacePortfolio(directAccess, repository),
+    portfolio: new ListWorkspacePortfolio(directAccess, repository, organizations),
     resolvePath: new ResolveWorkspaceAccessPath(directAccess, repository),
     create: new CreateOrganizationDelegation(repository),
     accept: new AcceptOrganizationDelegation(repository),

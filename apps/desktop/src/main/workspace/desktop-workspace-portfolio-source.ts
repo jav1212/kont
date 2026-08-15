@@ -41,7 +41,9 @@ function readWorkspaceDto(value: unknown): NativeAccessibleOrganizationDto {
   return {
     organizationId: readText(record.organizationId),
     name: readText(record.name),
-    ...(record.avatarUrl === undefined || record.avatarUrl === null ? {} : { avatarUrl: readUrl(record.avatarUrl) }),
+    // Older v1 deployments omitted this additive field; treat omission as the
+    // same no-logo state while newer servers return an explicit null.
+    avatarUrl: record.avatarUrl === undefined || record.avatarUrl === null ? null : readUrl(record.avatarUrl),
     accessPath: {
       kind: readText(accessPath.kind),
       actorUserId: readText(accessPath.actorUserId),
@@ -62,7 +64,7 @@ function toAccessibleOrganization(dto: NativeAccessibleOrganizationDto): Workspa
   return {
     organizationId: organizationId(dto.organizationId),
     name: dto.name,
-    ...(dto.avatarUrl ? { avatarUrl: dto.avatarUrl } : {}),
+    avatarUrl: dto.avatarUrl,
     accessPath: {
       kind,
       actorUserId: userId(dto.accessPath.actorUserId),

@@ -11,6 +11,7 @@
     "@kontave/companies-domain": "workspace:*",
     "@kontave/organization-delegations-application": "workspace:*",
     "@kontave/organization-delegations-domain": "workspace:*",
+    "@kontave/organizations-application": "workspace:*",
     "@kontave/organizations-domain": "workspace:*",
     "@kontave/modules-application": "workspace:*",
     "@kontave/modules-domain": "workspace:*"

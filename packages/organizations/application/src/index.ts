@@ -16,6 +16,17 @@ export interface OrganizationDirectory {
   findCompany(organizationId: OrganizationId, companyId: CompanyId): Promise<OrganizationCompany | null>;
 }
 
+export interface OrganizationPresentation {
+  readonly organizationId: OrganizationId;
+  readonly avatarUrl: string | null;
+}
+
+export interface OrganizationPresentationDirectory {
+  listByOrganizationIds(
+    organizationIds: readonly OrganizationId[],
+  ): Promise<readonly OrganizationPresentation[]>;
+}
+
 export class ListOrganizations {
   constructor(private readonly directory: OrganizationDirectory) {}
 

@@ -1,5 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { OrganizationDirectory } from "@kontave/organizations-application";
+import type {
+  OrganizationDirectory,
+  OrganizationPresentationDirectory,
+} from "@kontave/organizations-application";
 import {
   OrganizationFailure,
   OrganizationRole,
@@ -13,21 +16,29 @@ import {
   type Permission,
   type UserId,
 } from "@kontave/organizations-domain";
-import { companyRowSchema, membershipRowSchema, organizationRowSchema, type CompanyRow } from "./persistence-codecs";
+import {
+  companyRowSchema,
+  membershipRowSchema,
+  organizationPresentationRowSchema,
+  organizationRowSchema,
+  type CompanyRow,
+} from "./persistence-codecs";
 
 export interface OrganizationsSupabaseConfiguration {
   readonly url: string;
   readonly serviceRoleKey: string;
 }
 
-export function createOrganizationsDirectory(configuration: OrganizationsSupabaseConfiguration): OrganizationDirectory {
+export function createOrganizationsDirectory(
+  configuration: OrganizationsSupabaseConfiguration,
+): OrganizationDirectory & OrganizationPresentationDirectory {
   const client = createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return new SupabaseOrganizationDirectory(client);
 }
 
-class SupabaseOrganizationDirectory implements OrganizationDirectory {
+class SupabaseOrganizationDirectory implements OrganizationDirectory, OrganizationPresentationDirectory {
   constructor(private readonly client: SupabaseClient) {}
 
   async listAccessForUser(targetUserId: UserId): Promise<readonly OrganizationAccess[]> {
@@ -77,6 +88,25 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory {
   async findAccess(targetUserId: UserId, targetOrganizationId: OrganizationId): Promise<OrganizationAccess | null> {
     const access = await this.listAccessForUser(targetUserId);
     return access.find((entry) => entry.organization.id === targetOrganizationId) ?? null;
+  }
+
+  async listByOrganizationIds(
+    targetOrganizationIds: readonly OrganizationId[],
+  ): Promise<readonly { organizationId: OrganizationId; avatarUrl: string | null }[]> {
+    if (targetOrganizationIds.length === 0) return [];
+    try {
+      const { data, error } = await this.client
+        .from("organizations")
+        .select("id,avatar_url")
+        .in("id", [...new Set(targetOrganizationIds)]);
+      if (error) throw error;
+      return organizationPresentationRowSchema.array().parse(data ?? []).map((row) => ({
+        organizationId: organizationId(row.id),
+        avatarUrl: row.avatar_url,
+      }));
+    } catch (cause: unknown) {
+      throw repositoryFailure(cause);
+    }
   }
 
   async listCompanies(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {

@@ -1,10 +1,11 @@
 import type { NativeAccessibleOrganizationDto } from "@kontave/native-api-contracts";
-import type { AccessibleOrganization } from "@kontave/organization-delegations-domain";
+import type { WorkspacePortfolioEntry } from "@kontave/workspace-context-application";
 
-export function toAccessibleOrganizationDto(value: AccessibleOrganization): NativeAccessibleOrganizationDto {
+export function toAccessibleOrganizationDto(value: WorkspacePortfolioEntry): NativeAccessibleOrganizationDto {
   return {
     organizationId: value.organizationId,
     name: value.name,
+    avatarUrl: value.avatarUrl,
     accessPath: {
       kind: value.accessPath.kind,
       actorUserId: value.accessPath.actorUserId,
