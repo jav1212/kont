@@ -7,7 +7,7 @@ import type {
   VerifyPasswordRecoveryCodeCommand,
   VerifyRegistrationCodeCommand,
 } from "@kontave/auth-application";
-import { AuthenticationFailure, type AuthenticatedIdentity, type AuthenticatedSession } from "@kontave/auth-domain";
+import { AuthenticationFailure, type AuthenticatedIdentity, type AuthenticatedSession, type RefreshedAuthenticatedSession } from "@kontave/auth-domain";
 
 export interface SupabaseAuthConfiguration {
   readonly url: string;
@@ -19,7 +19,7 @@ export function createSupabaseAuthenticationGateway(
   storage: SupportedStorage,
 ): AuthenticationProvider {
   const client = createClient(configuration.url, configuration.anonKey, {
-    auth: { storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    auth: { storage, persistSession: true, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return new SupabaseAuthenticationGateway(client);
 }
@@ -103,6 +103,45 @@ class SupabaseAuthenticationGateway implements AuthenticationProvider {
     if (error) throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo obtener la sesión.", { cause: error });
     return data.session?.access_token ?? null;
   }
+
+  async refreshSession(): Promise<RefreshedAuthenticatedSession> {
+    const { data: current, error: readError } = await this.client.auth.getSession();
+    if (readError) {
+      throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo leer la sesión para renovarla.", { cause: readError });
+    }
+    const refreshToken = current.session?.refresh_token;
+    if (!refreshToken) return this.expiredSession();
+
+    const { data, error } = await this.client.auth.refreshSession({ refresh_token: refreshToken });
+    if (error || !data.session?.access_token || !data.session.refresh_token) {
+      if (!error || isInvalidRefreshFailure(error)) return this.expiredSession(error ?? undefined);
+      throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo renovar la sesión.", { cause: error });
+    }
+    // Supabase persists refreshSession() results through the configured
+    // SupportedStorage, which is DesktopSecureStorage in the native client.
+    return {
+      session: mapSession(data.session),
+      credentials: { accessToken: data.session.access_token, refreshToken: data.session.refresh_token },
+    };
+  }
+
+  async clearSession(): Promise<void> {
+    const { error } = await this.client.auth.signOut({ scope: "local" });
+    if (error) throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo eliminar la sesión local.", { cause: error });
+  }
+
+  private async expiredSession(cause?: unknown): Promise<never> {
+    try { await this.clearSession(); } catch { /* Expiration remains authoritative even if cleanup fails. */ }
+    throw new AuthenticationFailure("SESSION_EXPIRED", "La sesión expiró. Inicia sesión nuevamente.", { cause });
+  }
+}
+
+function isInvalidRefreshFailure(error: AuthError): boolean {
+  return error.status === 400 || error.status === 401
+    || error.code === "refresh_token_not_found"
+    || error.code === "refresh_token_already_used"
+    || error.code === "invalid_refresh_token"
+    || error.code === "session_not_found";
 }
 
 function mapProviderFailure(

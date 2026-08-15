@@ -9,10 +9,11 @@ import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
 import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
-import { WorkspaceContextCoordinator } from "@kontave/workspace-context-application";
+import { WorkspaceContextCoordinator } from "@kontave/workspace-context-application/coordinator";
 import { DESKTOP_IPC, type DesktopAuthResult, type DesktopDeviceStatus } from "../shared/desktop-api.js";
 import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
+import { DesktopAuthenticatedRequest } from "./auth/desktop-authenticated-request.js";
 import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe.js";
 import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller.js";
 import { DesktopWorkspacePortfolioSource } from "./workspace/desktop-workspace-portfolio-source.js";
@@ -190,6 +191,14 @@ async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthControl
   return state;
 }
 
+async function handleSessionExpired(): Promise<void> {
+  auth?.expireSession();
+  await workspaceController().clear();
+  currentUserController().clear();
+  billingPlanController().clear();
+  platformStatusController().clear();
+}
+
 async function initializeWorkspace(): Promise<void> {
   try {
     await workspaceController().initialize();
@@ -347,10 +356,12 @@ app.whenReady().then(() => {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY son obligatorias para Desktop.");
   }
-  auth = new DesktopAuthController(
-    createSupabaseAuthenticationGateway({ url: supabaseUrl, anonKey: supabaseAnonKey }, new DesktopSecureStorage()),
-    () => mainWindow,
+  const authenticationProvider = createSupabaseAuthenticationGateway(
+    { url: supabaseUrl, anonKey: supabaseAnonKey },
+    new DesktopSecureStorage(),
   );
+  auth = new DesktopAuthController(authenticationProvider, () => mainWindow);
+  const authenticatedRequest = new DesktopAuthenticatedRequest(auth.sessions);
   const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
   connectivity = new ConnectivityMonitor({
     probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
@@ -365,26 +376,27 @@ app.whenReady().then(() => {
   });
   workspace = new DesktopWorkspaceController(
     new WorkspaceContextCoordinator(
-      new DesktopWorkspacePortfolioSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
-      new DesktopWorkspaceCompanySource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
-      new DesktopWorkspaceModuleSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+      new DesktopWorkspacePortfolioSource(apiBaseUrl, authenticatedRequest),
+      new DesktopWorkspaceCompanySource(apiBaseUrl, authenticatedRequest),
+      new DesktopWorkspaceModuleSource(apiBaseUrl, authenticatedRequest),
       new DesktopWorkspaceContextStore(),
     ),
     () => mainWindow,
   );
   currentUser = new DesktopCurrentUserController(
-    new DesktopCurrentUserSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    new DesktopCurrentUserSource(apiBaseUrl, authenticatedRequest),
     () => mainWindow,
   );
   billingPlan = new DesktopBillingPlanController(
-    new DesktopBillingPlanSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    new DesktopBillingPlanSource(apiBaseUrl, authenticatedRequest),
     () => mainWindow,
   );
   platformStatus = new DesktopPlatformStatusController(
-    new DesktopPlatformStatusSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    new DesktopPlatformStatusSource(apiBaseUrl, authenticatedRequest),
     () => mainWindow,
   );
   externalNavigation = new DesktopExternalNavigation(apiBaseUrl);
+  auth.sessions.subscribeSessionExpired(() => { void handleSessionExpired(); });
   updates = new ClientUpdateCoordinator(createElectronClientUpdateProvider({
     enabled: app.isPackaged,
     installed: {

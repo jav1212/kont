@@ -1,5 +1,6 @@
 import {
   AuthenticationService,
+  NativeSessionRefreshCoordinator,
   PasswordRecoveryService,
   RegistrationService,
   type AuthenticationProvider,
@@ -26,7 +27,10 @@ export class DesktopAuthController {
     this.authentication = new AuthenticationService(provider);
     this.registration = new RegistrationService(provider);
     this.recovery = new PasswordRecoveryService(provider);
+    this.sessions = new NativeSessionRefreshCoordinator(provider);
   }
+
+  readonly sessions: NativeSessionRefreshCoordinator;
 
   getState(): DesktopAuthState { return this.state; }
 
@@ -34,11 +38,14 @@ export class DesktopAuthController {
 
   async initialize(): Promise<DesktopAuthState> {
     const session = await this.authentication.restoreSession();
+    if (session) this.sessions.markAuthenticated();
     return this.update(session ? mapSession(session) : { status: "anonymous" });
   }
 
   async signIn(input: unknown): Promise<DesktopAuthState> {
-    return this.update(mapSession(await this.authentication.signIn(readEmailPassword(input))));
+    const session = await this.authentication.signIn(readEmailPassword(input));
+    this.sessions.markAuthenticated();
+    return this.update(mapSession(session));
   }
 
   register(input: unknown): Promise<DesktopPendingEmail> {
@@ -46,7 +53,9 @@ export class DesktopAuthController {
   }
 
   async verifyRegistration(input: unknown): Promise<DesktopAuthState> {
-    return this.update(mapSession(await this.registration.verifyCode(readEmailCode(input))));
+    const session = await this.registration.verifyCode(readEmailCode(input));
+    this.sessions.markAuthenticated();
+    return this.update(mapSession(session));
   }
 
   async resendRegistration(input: unknown): Promise<null> {
@@ -69,6 +78,10 @@ export class DesktopAuthController {
 
   async signOut(): Promise<DesktopAuthState> {
     await this.authentication.signOut();
+    return this.update({ status: "anonymous" });
+  }
+
+  expireSession(): DesktopAuthState {
     return this.update({ status: "anonymous" });
   }
 

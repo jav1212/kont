@@ -1,4 +1,5 @@
 import type { DesktopBillingPlanState } from "../../shared/desktop-api.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
 
 interface SubscriptionSummary {
   readonly planName: string | null;
@@ -8,22 +9,14 @@ interface SubscriptionSummary {
 export class DesktopBillingPlanSource {
   constructor(
     private readonly baseUrl: string,
-    private readonly getAccessToken: () => Promise<string | null>,
+    private readonly request: DesktopAuthenticatedRequest,
   ) {}
 
   async getForOrganization(organizationId: string): Promise<DesktopBillingPlanState> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) return { status: "unavailable" };
-
-    const response = await fetch(new URL(
+    const response = await this.request.fetch(new URL(
       `/api/native/v1/organizations/${encodeURIComponent(organizationId)}/billing/overview`,
       this.baseUrl,
-    ), {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "x-kontave-client": "desktop",
-      },
-    });
+    ));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
 

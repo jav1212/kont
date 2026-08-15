@@ -6,23 +6,16 @@ import {
 } from "@kontave/organization-delegations-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
 import type { WorkspacePortfolioEntry, WorkspacePortfolioSource } from "@kontave/workspace-context-application";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
 
 export class DesktopWorkspacePortfolioSource implements WorkspacePortfolioSource {
   constructor(
     private readonly baseUrl: string,
-    private readonly getAccessToken: () => Promise<string | null>,
+    private readonly request: DesktopAuthenticatedRequest,
   ) {}
 
   async list(): Promise<readonly WorkspacePortfolioEntry[]> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) return [];
-
-    const response = await fetch(new URL("/api/native/v1/organization-access", this.baseUrl), {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "x-kontave-client": "desktop",
-      },
-    });
+    const response = await this.request.fetch(new URL("/api/native/v1/organization-access", this.baseUrl));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return readPortfolio(payload).map(toAccessibleOrganization);

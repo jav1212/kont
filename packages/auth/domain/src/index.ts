@@ -8,6 +8,16 @@ export interface AuthenticatedSession {
   readonly expiresAt: number | null;
 }
 
+export interface AuthenticationCredentials {
+  readonly accessToken: string;
+  readonly refreshToken: string;
+}
+
+export interface RefreshedAuthenticatedSession {
+  readonly session: AuthenticatedSession;
+  readonly credentials: AuthenticationCredentials;
+}
+
 export type AuthenticationFailureCode =
   | "EMAIL_NOT_VERIFIED"
   | "IDENTITY_ALREADY_EXISTS"

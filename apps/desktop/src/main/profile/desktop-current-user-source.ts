@@ -1,22 +1,15 @@
 import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
 import type { DesktopCurrentUserState } from "../../shared/desktop-api.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
 
 export class DesktopCurrentUserSource {
   constructor(
     private readonly baseUrl: string,
-    private readonly getAccessToken: () => Promise<string | null>,
+    private readonly request: DesktopAuthenticatedRequest,
   ) {}
 
   async getCurrent(): Promise<DesktopCurrentUserState> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) return { status: "unavailable" };
-
-    const response = await fetch(new URL("/api/native/v1/me", this.baseUrl), {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "x-kontave-client": "desktop",
-      },
-    });
+    const response = await this.request.fetch(new URL("/api/native/v1/me", this.baseUrl));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return { status: "ready", user: readCurrentUser(payload) };

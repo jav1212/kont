@@ -3,7 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ModuleCode } from "@kontave/modules-domain";
 import { companyId, organizationId, type CompanyId, type OrganizationId } from "@kontave/organizations-domain";
-import type { PersistedWorkspaceContext, WorkspaceContextStore } from "@kontave/workspace-context-application";
+import type { PersistedWorkspaceContext, WorkspaceContextStore } from "@kontave/workspace-context-application/coordinator";
 import { DesktopWorkspaceCompanyStore } from "./desktop-workspace-company-store.js";
 import { DesktopWorkspaceModuleStore } from "./desktop-workspace-module-store.js";
 import { DesktopWorkspaceSelectionStore } from "./desktop-workspace-selection-store.js";

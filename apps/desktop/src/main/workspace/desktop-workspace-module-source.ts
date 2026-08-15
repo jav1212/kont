@@ -2,17 +2,16 @@ import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import type { ModuleCode, ModuleId } from "@kontave/modules-domain";
 import type { OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceModuleSource } from "@kontave/workspace-context-application";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
 
 export class DesktopWorkspaceModuleSource implements WorkspaceModuleSource {
-  constructor(private readonly baseUrl: string, private readonly getAccessToken: () => Promise<string | null>) {}
+  constructor(private readonly baseUrl: string, private readonly request: DesktopAuthenticatedRequest) {}
 
   async listAvailable(organizationId: OrganizationId): Promise<readonly AvailableOrganizationModule[]> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) return [];
-    const response = await fetch(new URL(
+    const response = await this.request.fetch(new URL(
       `/api/native/v1/organizations/${encodeURIComponent(organizationId)}/modules/available?platform=desktop`,
       this.baseUrl,
-    ), { headers: { authorization: `Bearer ${accessToken}`, "x-kontave-client": "desktop" } });
+    ));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return readModules(payload);

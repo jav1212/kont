@@ -7,7 +7,7 @@ import {
   type WorkspaceContextFailure,
   type WorkspaceContextSnapshot,
   type WorkspaceContextStatus,
-} from "@kontave/workspace-context-application";
+} from "@kontave/workspace-context-application/coordinator";
 import { DESKTOP_IPC, type DesktopWorkspaceResult, type DesktopWorkspaceState } from "../../shared/desktop-api.js";
 
 export class DesktopWorkspaceController {

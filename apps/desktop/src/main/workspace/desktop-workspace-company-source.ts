@@ -1,17 +1,16 @@
 import type { NativeOrganizationCompanyDto } from "@kontave/native-api-contracts";
 import { companyId, organizationId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource } from "@kontave/workspace-context-application";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
 
 export class DesktopWorkspaceCompanySource implements WorkspaceCompanySource {
-  constructor(private readonly baseUrl: string, private readonly getAccessToken: () => Promise<string | null>) {}
+  constructor(private readonly baseUrl: string, private readonly request: DesktopAuthenticatedRequest) {}
 
   async listByOrganization(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {
-    const accessToken = await this.getAccessToken();
-    if (!accessToken) return [];
-    const response = await fetch(new URL(
+    const response = await this.request.fetch(new URL(
       `/api/native/v1/organizations/${encodeURIComponent(targetOrganizationId)}/companies`,
       this.baseUrl,
-    ), { headers: { authorization: `Bearer ${accessToken}`, "x-kontave-client": "desktop" } });
+    ));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return readCompanies(payload);

@@ -3,6 +3,7 @@ import {
   assertPasswordAccepted,
   type AuthenticatedIdentity,
   type AuthenticatedSession,
+  type RefreshedAuthenticatedSession,
 } from "@kontave/auth-domain";
 
 export const authenticationCodeLength = 8;
@@ -43,6 +44,8 @@ export interface SessionPort {
   restoreSession(): Promise<AuthenticatedSession | null>;
   signOut(): Promise<void>;
   getAccessToken(): Promise<string | null>;
+  refreshSession(): Promise<RefreshedAuthenticatedSession>;
+  clearSession(): Promise<void>;
 }
 
 export interface RegistrationPort {
@@ -85,6 +88,81 @@ export class AuthenticationService {
 
   getAccessToken(): Promise<string | null> {
     return this.gateway.getAccessToken();
+  }
+}
+
+/** Adapter-facing signal that the current access token was rejected. */
+export class AccessTokenRejectedFailure extends Error {
+  constructor() {
+    super("The access token was rejected.");
+    this.name = "AccessTokenRejectedFailure";
+  }
+}
+
+export type SessionExpiredSubscriber = (failure: AuthenticationFailure) => void;
+
+/** Coordinates token renewal for every authenticated native operation. */
+export class NativeSessionRefreshCoordinator {
+  private refreshFlight: Promise<RefreshedAuthenticatedSession> | null = null;
+  private expirationFlight: Promise<AuthenticationFailure> | null = null;
+  private readonly subscribers = new Set<SessionExpiredSubscriber>();
+
+  constructor(private readonly gateway: AuthenticationGateway) {}
+
+  subscribeSessionExpired(subscriber: SessionExpiredSubscriber): () => void {
+    this.subscribers.add(subscriber);
+    return () => { this.subscribers.delete(subscriber); };
+  }
+
+  markAuthenticated(): void {
+    this.expirationFlight = null;
+  }
+
+  async execute<T>(operation: (accessToken: string) => Promise<T>): Promise<T> {
+    const accessToken = await this.gateway.getAccessToken();
+    if (!accessToken) throw await this.expire();
+    try {
+      return await operation(accessToken);
+    } catch (cause: unknown) {
+      if (!(cause instanceof AccessTokenRejectedFailure)) throw cause;
+    }
+
+    const refreshed = await this.refresh();
+    try {
+      return await operation(refreshed.credentials.accessToken);
+    } catch (cause: unknown) {
+      if (!(cause instanceof AccessTokenRejectedFailure)) throw cause;
+      throw await this.expire(cause);
+    }
+  }
+
+  private refresh(): Promise<RefreshedAuthenticatedSession> {
+    if (this.refreshFlight) return this.refreshFlight;
+    const flight = this.gateway.refreshSession().catch(async (cause: unknown) => {
+      if (cause instanceof AuthenticationFailure && cause.code === "SESSION_EXPIRED") {
+        throw await this.expire(cause);
+      }
+      throw cause;
+    }).finally(() => {
+      if (this.refreshFlight === flight) this.refreshFlight = null;
+    });
+    this.refreshFlight = flight;
+    return flight;
+  }
+
+  private expire(cause?: unknown): Promise<AuthenticationFailure> {
+    if (this.expirationFlight) return this.expirationFlight;
+    const failure = cause instanceof AuthenticationFailure && cause.code === "SESSION_EXPIRED"
+      ? cause
+      : new AuthenticationFailure("SESSION_EXPIRED", "La sesión expiró. Inicia sesión nuevamente.", { cause });
+    const flight = this.gateway.clearSession()
+      .catch(() => undefined)
+      .then(() => {
+        for (const subscriber of this.subscribers) subscriber(failure);
+        return failure;
+      });
+    this.expirationFlight = flight;
+    return flight;
   }
 }
 

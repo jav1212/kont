@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { AuthenticatedSession } from "@kontave/auth-domain";
+import { AuthenticationFailure, type AuthenticatedSession, type RefreshedAuthenticatedSession } from "@kontave/auth-domain";
 import {
   AuthenticationService,
   PasswordRecoveryService,
@@ -22,6 +22,8 @@ class AuthenticationGatewaySpy implements AuthenticationGateway {
   async restoreSession(): Promise<AuthenticatedSession | null> { return null; }
   async signOut(): Promise<void> {}
   async getAccessToken(): Promise<string | null> { return null; }
+  async refreshSession(): Promise<RefreshedAuthenticatedSession> { throw new AuthenticationFailure("SESSION_EXPIRED", "expired"); }
+  async clearSession(): Promise<void> {}
 }
 
 class RegistrationPortSpy implements RegistrationPort {
