@@ -5,6 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "mobile:dev": "corepack pnpm --filter @kontave/mobile dev",
+    "mobile:android": "corepack pnpm --filter @kontave/mobile android",
+    "mobile:ios": "corepack pnpm --filter @kontave/mobile ios",
+    "mobile:web": "corepack pnpm --filter @kontave/mobile web",
     "build": "next build --webpack",
     "start": "next start",
     "check:architecture": "corepack pnpm --filter \"@kontave/*\" run check",

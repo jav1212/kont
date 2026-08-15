@@ -59,9 +59,46 @@ const isAdminPublic = (p: string) =>
     p === '/admin/forgot-password' ||
     p === '/admin/reset-password';
 
+const isNativeApi = (p: string) => p.startsWith('/api/native/v1/');
+
+function nativeApiOrigin(request: NextRequest): string | null {
+    const origin = request.headers.get('origin');
+    if (!origin) return null;
+
+    const configuredOrigins = (process.env.KONTAVE_NATIVE_API_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+    if (configuredOrigins.includes(origin)) return origin;
+
+    if (process.env.NODE_ENV === 'development' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)) {
+        return origin;
+    }
+    return null;
+}
+
+function applyNativeApiCors(response: NextResponse, origin: string): NextResponse {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Kontave-Client');
+    response.headers.set('Access-Control-Max-Age', '86400');
+    response.headers.append('Vary', 'Origin');
+    return response;
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const isAdminSession = request.cookies.get('kont-admin')?.value === '1';
+
+    if (isNativeApi(pathname)) {
+        const origin = nativeApiOrigin(request);
+        if (request.method === 'OPTIONS') {
+            return origin
+                ? applyNativeApiCors(new NextResponse(null, { status: 204 }), origin)
+                : new NextResponse(null, { status: 403 });
+        }
+        return origin ? applyNativeApiCors(NextResponse.next({ request }), origin) : NextResponse.next({ request });
+    }
 
     // Crear respuesta que puede propagar cookies (necesario para signOut)
     const response = NextResponse.next({ request });
@@ -214,5 +251,6 @@ export const config = {
         '/herramientas/:path*',
         '/admin',
         '/admin/:path*',
+        '/api/native/v1/:path*',
     ],
 };
