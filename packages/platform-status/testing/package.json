@@ -1,0 +1,13 @@
+{
+  "name": "@kontave/platform-status-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('Platform status test doubles are checked by TypeScript')\"" },
+  "dependencies": {
+    "@kontave/platform-status-application": "workspace:*",
+    "@kontave/platform-status-domain": "workspace:*"
+  },
+  "devDependencies": { "typescript": "^5.9.2" }
+}

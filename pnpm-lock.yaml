@@ -125,6 +125,15 @@ importers:
       '@kontave/payments-supabase':
         specifier: workspace:*
         version: link:packages/payments/supabase
+      '@kontave/platform-status-application':
+        specifier: workspace:*
+        version: link:packages/platform-status/application
+      '@kontave/platform-status-domain':
+        specifier: workspace:*
+        version: link:packages/platform-status/domain
+      '@kontave/platform-status-supabase':
+        specifier: workspace:*
+        version: link:packages/platform-status/supabase
       '@kontave/profile-application':
         specifier: workspace:*
         version: link:packages/profile/application
@@ -1455,6 +1464,63 @@ importers:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform-status/application:
+    dependencies:
+      '@kontave/platform-status-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform-status/domain:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform-status/supabase:
+    dependencies:
+      '@kontave/platform-status-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/platform-status-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/platform-status/testing:
+    dependencies:
+      '@kontave/platform-status-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/platform-status-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

@@ -21,6 +21,7 @@ export type NativeApiErrorCode =
   | "PAYMENT_INVOICE_NOT_PAYABLE"
   | "PAYMENT_REPOSITORY_UNAVAILABLE"
   | "PROFILE_REPOSITORY_UNAVAILABLE"
+  | "PLATFORM_STATUS_REPOSITORY_UNAVAILABLE"
   | "BILLING_CREDIT_INSUFFICIENT"
   | "BILLING_INVOICE_NOT_APPLICABLE"
   | "BILLING_CURRENCY_MISMATCH"
@@ -146,6 +147,32 @@ export interface NativePaymentMethodDto {
 export interface NativeBillingOverviewDto {
   readonly account: NativeBillingAccountDto; readonly subscriptions: readonly NativeSubscriptionDto[];
   readonly entitlements: NativeEntitlementsDto; readonly usage: NativeUsageDto;
+}
+
+export type NativePortalAvailability = "operational" | "degraded" | "down" | "unknown";
+
+export interface NativePortalStatusDto {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly category: "fiscal" | "laboral" | "mercantil";
+  readonly logoUrl: string | null;
+  readonly status: NativePortalAvailability;
+  readonly responseTimeMs: number | null;
+  readonly checkedAt: string | null;
+}
+
+export interface NativePlatformStatusDto {
+  readonly status: NativePortalAvailability;
+  readonly observedAt: string | null;
+  readonly summary: {
+    readonly operational: number;
+    readonly degraded: number;
+    readonly down: number;
+    readonly unknown: number;
+    readonly total: number;
+  };
+  readonly portals: readonly NativePortalStatusDto[];
 }
 
 export interface NativeReferralAttributionDto {
