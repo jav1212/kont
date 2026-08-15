@@ -1,0 +1,1 @@
+{"name":"@kontave/preferences-testing","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts"},"scripts":{"check":"tsc --noEmit"},"dependencies":{"@kontave/preferences-application":"workspace:*","@kontave/preferences-domain":"workspace:*","@kontave/organizations-domain":"workspace:*"},"devDependencies":{"typescript":"^5.9.2"}}

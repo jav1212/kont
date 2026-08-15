@@ -1650,6 +1650,51 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/preferences/application:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/preferences-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/preferences/domain:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/preferences/testing:
+    dependencies:
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/preferences-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/preferences-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/products/domain:
     dependencies:
       '@kontave/companies-domain':
@@ -1987,6 +2032,66 @@ importers:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/settings/application:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../access-control/domain
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../modules/domain
+      '@kontave/navigation-domain':
+        specifier: workspace:*
+        version: link:../../navigation/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/settings-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/settings/contracts:
+    dependencies:
+      '@kontave/access-control-domain':
+        specifier: workspace:*
+        version: link:../../access-control/domain
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../modules/domain
+      '@kontave/navigation-domain':
+        specifier: workspace:*
+        version: link:../../navigation/domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/settings/testing:
+    dependencies:
+      '@kontave/modules-domain':
+        specifier: workspace:*
+        version: link:../../modules/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/settings-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/settings-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

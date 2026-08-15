@@ -73,6 +73,15 @@ export const NAVIGATION_DESTINATIONS = [
   { id: "profile", label: "Perfil", parentId: "home" },
   { id: "help", label: "Ayuda", parentId: "home" },
   { id: "settings", label: "Configuración", parentId: "home" },
+  { id: "settings.profile", label: "Perfil", parentId: "settings" },
+  { id: "settings.appearance", label: "Apariencia", parentId: "settings" },
+  { id: "settings.security", label: "Seguridad", parentId: "settings" },
+  { id: "settings.organization", label: "Organización", parentId: "settings" },
+  { id: "settings.members", label: "Miembros", parentId: "settings" },
+  { id: "settings.roles", label: "Roles y permisos", parentId: "settings" },
+  { id: "settings.billing", label: "Facturación", parentId: "settings" },
+  { id: "settings.company-documents", label: "Documentos y reportes", parentId: "settings" },
+  { id: "settings.devices", label: "Dispositivos", parentId: "settings" },
 ] as const satisfies readonly NavigationNode[];
 
 export type NavigationDestinationId = typeof NAVIGATION_DESTINATIONS[number]["id"];
