@@ -1,5 +1,10 @@
 {
   "extends": "../../../tooling/typescript/base.json",
-  "compilerOptions": { "noEmit": true },
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

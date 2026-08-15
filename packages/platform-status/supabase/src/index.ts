@@ -5,7 +5,7 @@ import {
   PortalAvailability,
   type PortalStatus,
 } from "@kontave/platform-status-domain";
-import { latestPortalStatusRowSchema } from "./persistence-codecs.js";
+import { latestPortalStatusRowSchema } from "./persistence-codecs";
 
 export interface PlatformStatusSupabaseConfiguration {
   readonly url: string;
