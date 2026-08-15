@@ -17,10 +17,21 @@ import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe.
 import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller.js";
 import { DesktopWorkspacePortfolioSource } from "./workspace/desktop-workspace-portfolio-source.js";
 import { DesktopWorkspaceSelectionStore } from "./workspace/desktop-workspace-selection-store.js";
+import { DesktopCurrentUserController } from "./profile/desktop-current-user-controller.js";
+import { DesktopCurrentUserSource } from "./profile/desktop-current-user-source.js";
+import { DesktopExternalNavigation } from "./navigation/desktop-external-navigation.js";
+import { DesktopBillingPlanController } from "./billing/desktop-billing-plan-controller.js";
+import { DesktopBillingPlanSource } from "./billing/desktop-billing-plan-source.js";
+import { DesktopPlatformStatusController } from "./platform-status/desktop-platform-status-controller.js";
+import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source.js";
 
 let mainWindow: BrowserWindow | undefined;
 let updates: ClientUpdateCoordinator | undefined;
 let workspace: DesktopWorkspaceController | undefined;
+let currentUser: DesktopCurrentUserController | undefined;
+let externalNavigation: DesktopExternalNavigation | undefined;
+let billingPlan: DesktopBillingPlanController | undefined;
+let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
 let initialization: Promise<void> | undefined;
@@ -95,7 +106,24 @@ function registerIpc(): void {
     await initialization;
     return workspaceController().getState();
   });
-  ipcMain.handle(DESKTOP_IPC.selectWorkspace, (_event, workspaceId: unknown) => workspaceController().select(workspaceId));
+  ipcMain.handle(DESKTOP_IPC.selectWorkspace, async (_event, workspaceId: unknown) => {
+    const result = await workspaceController().select(workspaceId);
+    if (result.ok && result.value.status === "ready") await refreshBillingPlan(result.value.activeWorkspaceId);
+    return result;
+  });
+  ipcMain.handle(DESKTOP_IPC.getCurrentUser, async () => {
+    await initialization;
+    return currentUserController().getState();
+  });
+  ipcMain.handle(DESKTOP_IPC.getBillingPlan, async () => {
+    await initialization;
+    return billingPlanController().getState();
+  });
+  ipcMain.handle(DESKTOP_IPC.getPlatformStatus, async () => {
+    await initialization;
+    return platformStatusController().getState();
+  });
+  ipcMain.handle(DESKTOP_IPC.openExternalDestination, (_event, destination: unknown) => externalNavigationController().open(destination));
   ipcMain.handle(DESKTOP_IPC.getConnectivitySnapshot, () => connectivityMonitor().getSnapshot());
   ipcMain.handle(DESKTOP_IPC.refreshConnectivity, () => connectivityMonitor().refresh());
 }
@@ -110,6 +138,26 @@ function workspaceController(): DesktopWorkspaceController {
   return workspace;
 }
 
+function currentUserController(): DesktopCurrentUserController {
+  if (!currentUser) throw new Error("Desktop current user is not initialized.");
+  return currentUser;
+}
+
+function externalNavigationController(): DesktopExternalNavigation {
+  if (!externalNavigation) throw new Error("Desktop external navigation is not initialized.");
+  return externalNavigation;
+}
+
+function billingPlanController(): DesktopBillingPlanController {
+  if (!billingPlan) throw new Error("Desktop billing plan is not initialized.");
+  return billingPlan;
+}
+
+function platformStatusController(): DesktopPlatformStatusController {
+  if (!platformStatus) throw new Error("Desktop platform status is not initialized.");
+  return platformStatus;
+}
+
 function connectivityMonitor(): ConnectivityMonitor {
   if (!connectivity) throw new Error("Desktop connectivity is not initialized.");
   return connectivity;
@@ -118,11 +166,73 @@ function connectivityMonitor(): ConnectivityMonitor {
 async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthController["initialize"]>>) {
   if (state.status !== "authenticated") {
     await workspaceController().clear();
+    currentUserController().clear();
+    billingPlanController().clear();
+    platformStatusController().clear();
     return state;
   }
-  if (blocksRemoteOperations(connectivityMonitor().getSnapshot())) workspaceController().markUnavailable();
-  else await workspaceController().initialize();
+  if (blocksRemoteOperations(connectivityMonitor().getSnapshot())) {
+    workspaceController().markUnavailable();
+    currentUserController().clear();
+    billingPlanController().clear();
+    platformStatusController().clear();
+  } else {
+    await refreshWorkspace();
+    await refreshCurrentUser();
+    const workspaceState = workspaceController().getState();
+    await refreshBillingPlan(workspaceState.status === "ready" ? workspaceState.activeWorkspaceId : null);
+    await refreshPlatformStatus();
+  }
   return state;
+}
+
+async function refreshWorkspace(): Promise<void> {
+  try {
+    await workspaceController().initialize();
+  } catch (cause: unknown) {
+    workspaceController().markUnavailable();
+    console.error(JSON.stringify({
+      level: "error",
+      code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown workspace refresh failure",
+    }));
+  }
+}
+
+async function refreshCurrentUser(): Promise<void> {
+  try {
+    await currentUserController().initialize();
+  } catch (cause: unknown) {
+    console.error(JSON.stringify({
+      level: "error",
+      code: "DESKTOP_CURRENT_USER_REFRESH_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown current user refresh failure",
+    }));
+  }
+}
+
+async function refreshBillingPlan(organizationId: string | null): Promise<void> {
+  try {
+    await billingPlanController().initialize(organizationId);
+  } catch (cause: unknown) {
+    console.error(JSON.stringify({
+      level: "error",
+      code: "DESKTOP_BILLING_PLAN_REFRESH_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown billing plan refresh failure",
+    }));
+  }
+}
+
+async function refreshPlatformStatus(): Promise<void> {
+  try {
+    await platformStatusController().initialize();
+  } catch (cause: unknown) {
+    console.error(JSON.stringify({
+      level: "error",
+      code: "DESKTOP_PLATFORM_STATUS_REFRESH_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown platform status refresh failure",
+    }));
+  }
 }
 
 function blocksRemoteOperations(snapshot: ConnectivitySnapshot): boolean {
@@ -136,14 +246,13 @@ function publishConnectivity(): void {
   if (
     snapshot.availability === "available"
     && auth?.getState().status === "authenticated"
-    && workspaceController().getState().status === "unavailable"
+    && (workspaceController().getState().status === "unavailable" || currentUserController().getState().status === "unavailable")
   ) {
-    void workspaceController().initialize().catch((cause: unknown) => {
-      console.error(JSON.stringify({
-        level: "error",
-        code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
-        message: cause instanceof Error ? cause.message : "Unknown workspace refresh failure",
-      }));
+    void refreshWorkspace().then(async () => {
+      await refreshCurrentUser();
+      const workspaceState = workspaceController().getState();
+      await refreshBillingPlan(workspaceState.status === "ready" ? workspaceState.activeWorkspaceId : null);
+      await refreshPlatformStatus();
     });
   }
 }
@@ -245,6 +354,19 @@ app.whenReady().then(() => {
     ),
     () => mainWindow,
   );
+  currentUser = new DesktopCurrentUserController(
+    new DesktopCurrentUserSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    () => mainWindow,
+  );
+  billingPlan = new DesktopBillingPlanController(
+    new DesktopBillingPlanSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    () => mainWindow,
+  );
+  platformStatus = new DesktopPlatformStatusController(
+    new DesktopPlatformStatusSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+    () => mainWindow,
+  );
+  externalNavigation = new DesktopExternalNavigation(apiBaseUrl);
   updates = new ClientUpdateCoordinator(createElectronClientUpdateProvider({
     enabled: app.isPackaged,
     installed: {

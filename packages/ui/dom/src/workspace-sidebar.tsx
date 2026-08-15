@@ -3,6 +3,8 @@ import { Button } from "./button.js";
 import { LogoFull, LogoMark } from "./logo.js";
 import { classNames } from "./internal/class-names.js";
 import { Text } from "./text.js";
+import { SubscriptionPlanBadge } from "./subscription-plan-badge.js";
+import { ImageWithFallback } from "./image-with-fallback.js";
 
 export type WorkspaceSidebarPresentation = "persistent" | "collapsed" | "drawer";
 
@@ -251,7 +253,7 @@ function SelectorAvatar({ entry, kind, small = false }: {
   const company = entry as WorkspaceSidebarCompany | null;
   const initial = company?.name.trim().charAt(0).toLocaleUpperCase("es") || "?";
   return <Text className="kt-sidebar-selector__avatar kt-sidebar-selector__avatar--company" data-small={small} tone="inherit" aria-hidden="true">
-    {company?.logoUrl ? <img alt="" src={company.logoUrl} /> : initial}
+    <ImageWithFallback alt="" src={company?.logoUrl} fallback={initial} />
   </Text>;
 }
 
@@ -290,10 +292,11 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
   const containerRef = useDismissibleMenu<HTMLDivElement>(open, () => setOpen(false));
   const initial = account.name.trim().charAt(0).toLocaleUpperCase("es") || account.email?.charAt(0).toUpperCase() || "?";
   const workspaces = account.workspaces ?? [];
-  const activeWorkspace = workspaces.find((workspace) => workspace.id === account.activeWorkspaceId);
-  const triggerName = activeWorkspace?.name ?? account.name;
-  const triggerDescription = activeWorkspace?.description ?? account.email;
-  const triggerAvatarUrl = activeWorkspace?.avatarUrl ?? account.avatarUrl;
+  // The account trigger represents the signed-in person. Workspaces have a
+  // separate identity and are selected inside the menu.
+  const triggerName = account.name;
+  const triggerDescription = account.email;
+  const triggerAvatarUrl = account.avatarUrl;
   const triggerInitial = triggerName.trim().charAt(0).toLocaleUpperCase("es") || initial;
   const headerActions = actions.filter((action) => action.placement === "header");
   const menuActions = actions.filter((action) => !action.placement || action.placement === "menu");
@@ -312,7 +315,7 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
       onClick={() => setOpen((current) => !current)}
     >
       <Text className="kt-sidebar-account__avatar" tone="inherit" aria-hidden="true">
-        {triggerAvatarUrl ? <img alt="" src={triggerAvatarUrl} /> : triggerInitial}
+        <ImageWithFallback alt="" src={triggerAvatarUrl} fallback={triggerInitial} />
       </Text>
       {!compact ? <Text className="kt-sidebar-account__copy" tone="inherit">
         <Text as="strong" tone="inherit">{triggerName}</Text>
@@ -325,7 +328,7 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
         <div className="kt-sidebar-account__summary">
           <Text as="strong" tone="inherit">{account.name}</Text>
           {account.email ? <Text as="small" tone="inherit">{account.email}</Text> : null}
-          {account.planName ? <Text tone="inherit">{account.planName}</Text> : null}
+          {account.planName ? <SubscriptionPlanBadge planName={account.planName} /> : null}
         </div>
         {headerActions.map((action) => <AccountActionButton action={action} iconOnly key={action.id} onAction={onAction} close={() => setOpen(false)} />)}
       </div>
@@ -347,7 +350,7 @@ function AccountCard({ account, actions, compact, onAction, onSelectWorkspace, o
             }}
           >
             <Text className="kt-sidebar-account__workspace-avatar" tone="inherit" aria-hidden="true">
-              {workspace.avatarUrl ? <img alt="" src={workspace.avatarUrl} /> : workspaceInitial}
+              <ImageWithFallback alt="" src={workspace.avatarUrl} fallback={workspaceInitial} />
             </Text>
             <Text className="kt-sidebar-account__workspace-copy" tone="inherit">
               <Text as="strong" tone="inherit">{workspace.name}</Text>

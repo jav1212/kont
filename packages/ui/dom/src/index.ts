@@ -1,6 +1,7 @@
 import "./styles.css";
 export { Alert, type AlertProps } from "./alert.js";
 export { LogoFull, LogoMark, type LogoProps } from "./logo.js";
+export { ImageWithFallback, type ImageWithFallbackProps } from "./image-with-fallback.js";
 export { Button, type ButtonAppearance, type ButtonProps } from "./button.js";
 export { Card } from "./card.js";
 export { PageShell, Stack } from "./layout.js";
@@ -10,6 +11,12 @@ export {
   type GlobalInteractionBoundaryProps,
 } from "./global-interaction-boundary.js";
 export { StatusBadge, type StatusBadgeProps } from "./status-badge.js";
+export { SubscriptionPlanBadge, type SubscriptionPlanBadgeProps } from "./subscription-plan-badge.js";
+export {
+  PortalStatusIndicator,
+  type PortalStatusAvailability,
+  type PortalStatusIndicatorProps,
+} from "./portal-status-indicator.js";
 export {
   Sidebar,
   SidebarAction,

@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { LogOut, Usb } from "lucide-react";
+import { Activity, CreditCard, LifeBuoy, LogOut, Settings, UserRound, Usb } from "lucide-react";
 import { applyDesignTokens, type KontaveTheme } from "@kontave/design-tokens";
 import { errorFeedback } from "@kontave/client-feedback-application";
 import {
@@ -10,11 +10,20 @@ import {
   Text,
   WorkspaceSidebar,
   presentFeedback,
+  PortalStatusIndicator,
   type WorkspaceSidebarAccountAction,
   type WorkspaceSidebarModule,
   type WorkspaceSidebarSection,
 } from "@kontave/ui-dom";
-import type { DesktopAuthState, DesktopDeviceStatus, DesktopWorkspaceState } from "../../shared/desktop-api.js";
+import type {
+  DesktopAuthState,
+  DesktopBillingPlanState,
+  DesktopCurrentUserState,
+  DesktopDeviceStatus,
+  DesktopExternalDestination,
+  DesktopPlatformStatusState,
+  DesktopWorkspaceState,
+} from "../../shared/desktop-api.js";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { AuthExperience } from "./auth/auth-experience.js";
 import { clientInteractionAvailable, restoreDesktopSession } from "./client-interaction.js";
@@ -31,16 +40,20 @@ const DESKTOP_SECTIONS: readonly WorkspaceSidebarSection[] = [{
   id: "local-operation",
   items: [{ id: "devices", active: true, icon: <Usb />, label: "Dispositivos" }],
 }];
-const DESKTOP_ACCOUNT_ACTIONS: readonly WorkspaceSidebarAccountAction[] = [{
-  id: "sign-out",
-  label: "Cerrar sesión",
-  icon: <LogOut />,
-  tone: "danger",
-}];
+const DESKTOP_ACCOUNT_ACTIONS: readonly WorkspaceSidebarAccountAction[] = [
+  { id: "settings", label: "Configuración", icon: <Settings />, placement: "header" },
+  { id: "profile", label: "Mi perfil", icon: <UserRound /> },
+  { id: "help", label: "Ayuda", icon: <LifeBuoy /> },
+  { id: "sign-out", label: "Cerrar sesión", icon: <LogOut />, tone: "danger" },
+  { id: "billing", label: "Facturación y plan", icon: <CreditCard />, placement: "billing" },
+];
 
 export function App() {
   const [auth, setAuth] = useState<DesktopAuthState>({ status: "loading" });
   const [workspace, setWorkspace] = useState<DesktopWorkspaceState>({ status: "loading" });
+  const [currentUser, setCurrentUser] = useState<DesktopCurrentUserState>({ status: "loading" });
+  const [billingPlan, setBillingPlan] = useState<DesktopBillingPlanState>({ status: "loading" });
+  const [platformStatus, setPlatformStatus] = useState<DesktopPlatformStatusState>({ status: "loading" });
   const [theme, setTheme] = useState<KontaveTheme>(() => localStorage.getItem("kontave.desktop.theme") === "dark" ? "dark" : "light");
 
   useEffect(() => {
@@ -49,8 +62,23 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    void window.kontave.billing.getPlan().then(setBillingPlan).catch(() => undefined);
+    return window.kontave.billing.subscribe(setBillingPlan);
+  }, []);
+
+  useEffect(() => {
+    void window.kontave.platformStatus.getCurrent().then(setPlatformStatus).catch(() => undefined);
+    return window.kontave.platformStatus.subscribe(setPlatformStatus);
+  }, []);
+
+  useEffect(() => {
     void window.kontave.workspace.getState().then(setWorkspace).catch(() => undefined);
     return window.kontave.workspace.subscribe(setWorkspace);
+  }, []);
+
+  useEffect(() => {
+    void window.kontave.profile.getCurrent().then(setCurrentUser).catch(() => undefined);
+    return window.kontave.profile.subscribe(setCurrentUser);
   }, []);
 
   useEffect(() => {
@@ -59,7 +87,7 @@ export function App() {
   }, [theme]);
 
   if (auth.status === "authenticated") {
-    return <DesktopAppShell auth={auth} workspace={workspace} theme={theme} onThemeChange={setTheme} onSignedOut={setAuth}>
+    return <DesktopAppShell auth={auth} billingPlan={billingPlan} currentUser={currentUser} platformStatus={platformStatus} workspace={workspace} theme={theme} onThemeChange={setTheme} onSignedOut={setAuth}>
       <DeviceCard />
     </DesktopAppShell>;
   }
@@ -67,11 +95,14 @@ export function App() {
   return <AuthExperience state={auth} onAuthenticated={setAuth} />;
 }
 
-function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, workspace }: {
+function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut, onThemeChange, platformStatus, theme, workspace }: {
   readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
+  readonly billingPlan: DesktopBillingPlanState;
   readonly children: ReactNode;
+  readonly currentUser: DesktopCurrentUserState;
   readonly onSignedOut: (state: DesktopAuthState) => void;
   readonly onThemeChange: (theme: KontaveTheme) => void;
+  readonly platformStatus: DesktopPlatformStatusState;
   readonly theme: KontaveTheme;
   readonly workspace: DesktopWorkspaceState;
 }) {
@@ -89,6 +120,27 @@ function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, wo
     });
   }
 
+  function openExternal(destination: DesktopExternalDestination): void {
+    if (!clientInteractionAvailable()) return;
+    void window.kontave.navigation.openExternal(destination).then((result) => {
+      if (result.ok) return;
+      presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: `external-navigation-${destination}` }));
+    });
+  }
+
+  const personalIdentity = currentUser.status === "ready" ? currentUser.user : null;
+  const portalAvailability = platformStatus.status === "ready" ? platformStatus.availability : "unknown";
+  const accountActions: readonly WorkspaceSidebarAccountAction[] = [
+    ...DESKTOP_ACCOUNT_ACTIONS,
+    {
+      id: "status",
+      label: "Estado de portales",
+      icon: <Activity />,
+      placement: "status",
+      indicator: <PortalStatusIndicator status={portalAvailability} />,
+    },
+  ];
+
   return <div className="desktop-shell">
     <WorkspaceSidebar
       presentation={compactViewport ? "collapsed" : "persistent"}
@@ -96,8 +148,10 @@ function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, wo
       activeModuleId="devices"
       sections={DESKTOP_SECTIONS}
       account={{
-        name: accountDisplayName(auth),
-        email: auth.user.email ?? auth.user.id,
+        name: personalIdentity?.displayName ?? accountDisplayName(auth),
+        email: personalIdentity?.email ?? auth.user.email ?? auth.user.id,
+        ...(personalIdentity?.avatarUrl ? { avatarUrl: personalIdentity.avatarUrl } : {}),
+        ...(billingPlan.status === "ready" && billingPlan.planName ? { planName: billingPlan.planName } : {}),
         theme,
         activeWorkspaceId: workspace.status === "ready" ? workspace.activeWorkspaceId : null,
         workspaceSectionLabel: "Cambiar espacio",
@@ -109,7 +163,7 @@ function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, wo
           ...(entry.access === "delegated" ? { badge: "Delegado" } : {}),
         })) : [],
       }}
-      accountActions={DESKTOP_ACCOUNT_ACTIONS}
+      accountActions={accountActions}
       onSelectWorkspace={(workspaceId) => {
         if (!clientInteractionAvailable()) return;
         void window.kontave.workspace.select(workspaceId).then((result) => {
@@ -120,6 +174,7 @@ function DesktopAppShell({ auth, children, onSignedOut, onThemeChange, theme, wo
       onThemeChange={onThemeChange}
       onAccountAction={(actionId) => {
         if (actionId === "sign-out") signOut();
+        else if (isExternalDestination(actionId)) openExternal(actionId);
       }}
     />
 
@@ -237,6 +292,10 @@ function DeviceCard() {
 function accountDisplayName(auth: Extract<DesktopAuthState, { status: "authenticated" }>): string {
   const identity = auth.user.email ?? auth.user.id;
   return identity.includes("@") ? identity.slice(0, identity.indexOf("@")) : "Cuenta Kontave";
+}
+
+function isExternalDestination(value: string): value is DesktopExternalDestination {
+  return value === "settings" || value === "profile" || value === "help" || value === "billing" || value === "status";
 }
 
 function readErrorMessage(cause: unknown, fallback: string): string {

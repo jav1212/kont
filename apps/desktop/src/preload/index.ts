@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { DeviceEvent } from "@kontave/device-contracts";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
-import { DESKTOP_IPC, type DesktopWorkspaceState, type KontaveDesktopApi } from "../shared/desktop-api.js";
+import { DESKTOP_IPC, type DesktopBillingPlanState, type DesktopCurrentUserState, type DesktopPlatformStatusState, type DesktopWorkspaceState, type KontaveDesktopApi } from "../shared/desktop-api.js";
 
 const api: KontaveDesktopApi = {
   auth: {
@@ -50,6 +50,33 @@ const api: KontaveDesktopApi = {
       ipcRenderer.on(DESKTOP_IPC.workspaceStateChanged, handler);
       return () => ipcRenderer.off(DESKTOP_IPC.workspaceStateChanged, handler);
     },
+  },
+  profile: {
+    getCurrent: () => ipcRenderer.invoke(DESKTOP_IPC.getCurrentUser),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: DesktopCurrentUserState) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.currentUserChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.currentUserChanged, handler);
+    },
+  },
+  billing: {
+    getPlan: () => ipcRenderer.invoke(DESKTOP_IPC.getBillingPlan),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: DesktopBillingPlanState) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.billingPlanChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.billingPlanChanged, handler);
+    },
+  },
+  platformStatus: {
+    getCurrent: () => ipcRenderer.invoke(DESKTOP_IPC.getPlatformStatus),
+    subscribe(listener) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: DesktopPlatformStatusState) => listener(payload);
+      ipcRenderer.on(DESKTOP_IPC.platformStatusChanged, handler);
+      return () => ipcRenderer.off(DESKTOP_IPC.platformStatusChanged, handler);
+    },
+  },
+  navigation: {
+    openExternal: (destination) => ipcRenderer.invoke(DESKTOP_IPC.openExternalDestination, destination),
   },
   connectivity: {
     getSnapshot: () => ipcRenderer.invoke(DESKTOP_IPC.getConnectivitySnapshot),

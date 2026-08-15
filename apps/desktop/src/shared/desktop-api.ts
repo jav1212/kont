@@ -26,6 +26,13 @@ export const DESKTOP_IPC = {
   getWorkspaceState: "workspace:state",
   selectWorkspace: "workspace:select",
   workspaceStateChanged: "workspace:state-changed",
+  getCurrentUser: "profile:current",
+  currentUserChanged: "profile:current-changed",
+  getBillingPlan: "billing:plan",
+  billingPlanChanged: "billing:plan-changed",
+  getPlatformStatus: "platform:status",
+  platformStatusChanged: "platform:status-changed",
+  openExternalDestination: "navigation:open-external",
   getConnectivitySnapshot: "connectivity:snapshot",
   refreshConnectivity: "connectivity:refresh",
   connectivityChanged: "connectivity:changed",
@@ -35,6 +42,39 @@ export interface DesktopAuthUser {
   readonly id: string;
   readonly email: string | null;
 }
+
+export type DesktopCurrentUserState =
+  | { readonly status: "loading" }
+  | { readonly status: "unavailable" }
+  | {
+    readonly status: "ready";
+    readonly user: {
+      readonly userId: string;
+      readonly email: string | null;
+      readonly displayName: string | null;
+      readonly avatarUrl: string | null;
+    };
+  };
+
+export type DesktopExternalDestination = "settings" | "profile" | "help" | "billing" | "status";
+
+export type DesktopBillingPlanState =
+  | { readonly status: "loading" }
+  | { readonly status: "unavailable" }
+  | { readonly status: "ready"; readonly organizationId: string; readonly planName: string | null };
+
+export type DesktopPlatformStatusState =
+  | { readonly status: "loading" }
+  | { readonly status: "unavailable" }
+  | {
+    readonly status: "ready";
+    readonly availability: "operational" | "degraded" | "down" | "unknown";
+    readonly observedAt: string | null;
+  };
+
+export type DesktopExternalNavigationResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: { readonly message: string } };
 
 export type DesktopAuthState =
   | { readonly status: "loading" }
@@ -128,6 +168,21 @@ export interface KontaveDesktopApi {
     getState(): Promise<DesktopWorkspaceState>;
     select(workspaceId: string): Promise<DesktopWorkspaceResult>;
     subscribe(listener: (state: DesktopWorkspaceState) => void): () => void;
+  };
+  readonly profile: {
+    getCurrent(): Promise<DesktopCurrentUserState>;
+    subscribe(listener: (state: DesktopCurrentUserState) => void): () => void;
+  };
+  readonly billing: {
+    getPlan(): Promise<DesktopBillingPlanState>;
+    subscribe(listener: (state: DesktopBillingPlanState) => void): () => void;
+  };
+  readonly platformStatus: {
+    getCurrent(): Promise<DesktopPlatformStatusState>;
+    subscribe(listener: (state: DesktopPlatformStatusState) => void): () => void;
+  };
+  readonly navigation: {
+    openExternal(destination: DesktopExternalDestination): Promise<DesktopExternalNavigationResult>;
   };
   readonly connectivity: {
     getSnapshot(): Promise<ConnectivitySnapshot>;

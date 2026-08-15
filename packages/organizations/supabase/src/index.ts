@@ -19,8 +19,10 @@ import {
 import {
   companyRowSchema,
   membershipRowSchema,
+  organizationOwnerRowSchema,
   organizationPresentationRowSchema,
   organizationRowSchema,
+  profilePresentationRowSchema,
   type CompanyRow,
 } from "./persistence-codecs";
 
@@ -100,13 +102,44 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
         .select("id,avatar_url")
         .in("id", [...new Set(targetOrganizationIds)]);
       if (error) throw error;
-      return organizationPresentationRowSchema.array().parse(data ?? []).map((row) => ({
+      const organizations = organizationPresentationRowSchema.array().parse(data ?? []);
+      const missingBranding = organizations.filter((row) => !row.avatar_url).map((row) => row.id);
+      const legacyAvatars = await this.loadLegacyOwnerAvatars(missingBranding);
+      return organizations.map((row) => ({
         organizationId: organizationId(row.id),
-        avatarUrl: row.avatar_url,
+        // Migrated Web tenants historically used the owner's profile avatar as
+        // their visual identity. Preserve that presentation until explicit
+        // organization branding is configured.
+        avatarUrl: row.avatar_url ?? legacyAvatars.get(row.id) ?? null,
       }));
     } catch (cause: unknown) {
       throw repositoryFailure(cause);
     }
+  }
+
+  private async loadLegacyOwnerAvatars(
+    organizationIds: readonly string[],
+  ): Promise<ReadonlyMap<string, string | null>> {
+    if (organizationIds.length === 0) return new Map();
+    const { data: ownerData, error: ownerError } = await this.client
+      .from("organization_memberships")
+      .select("organization_id,user_id")
+      .in("organization_id", [...new Set(organizationIds)])
+      .eq("role", OrganizationRole.Owner)
+      .eq("status", "active");
+    if (ownerError) throw ownerError;
+    const owners = organizationOwnerRowSchema.array().parse(ownerData ?? []);
+    if (owners.length === 0) return new Map();
+
+    const { data: profileData, error: profileError } = await this.client
+      .from("profiles")
+      .select("id,avatar_url")
+      .in("id", [...new Set(owners.map((row) => row.user_id))]);
+    if (profileError) throw profileError;
+    const profiles = new Map(
+      profilePresentationRowSchema.array().parse(profileData ?? []).map((row) => [row.id, row.avatar_url]),
+    );
+    return new Map(owners.map((owner) => [owner.organization_id, profiles.get(owner.user_id) ?? null]));
   }
 
   async listCompanies(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {
