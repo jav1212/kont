@@ -9,18 +9,16 @@ import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
 import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
-import { WorkspaceCompanyContextSession, WorkspaceContextSession, WorkspaceModuleContextSession } from "@kontave/workspace-context-application";
+import { WorkspaceContextCoordinator } from "@kontave/workspace-context-application";
 import { DESKTOP_IPC, type DesktopAuthResult, type DesktopDeviceStatus } from "../shared/desktop-api.js";
 import { DesktopAuthController } from "./auth/desktop-auth-controller.js";
 import { DesktopSecureStorage } from "./auth/desktop-secure-storage.js";
 import { FetchConnectivityProbe } from "./connectivity/fetch-connectivity-probe.js";
 import { DesktopWorkspaceController } from "./workspace/desktop-workspace-controller.js";
 import { DesktopWorkspacePortfolioSource } from "./workspace/desktop-workspace-portfolio-source.js";
-import { DesktopWorkspaceSelectionStore } from "./workspace/desktop-workspace-selection-store.js";
 import { DesktopWorkspaceCompanySource } from "./workspace/desktop-workspace-company-source.js";
-import { DesktopWorkspaceCompanyStore } from "./workspace/desktop-workspace-company-store.js";
 import { DesktopWorkspaceModuleSource } from "./workspace/desktop-workspace-module-source.js";
-import { DesktopWorkspaceModuleStore } from "./workspace/desktop-workspace-module-store.js";
+import { DesktopWorkspaceContextStore } from "./workspace/desktop-workspace-context-store.js";
 import { DesktopCurrentUserController } from "./profile/desktop-current-user-controller.js";
 import { DesktopCurrentUserSource } from "./profile/desktop-current-user-source.js";
 import { DesktopExternalNavigation } from "./navigation/desktop-external-navigation.js";
@@ -183,7 +181,7 @@ async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthControl
     billingPlanController().clear();
     platformStatusController().clear();
   } else {
-    await refreshWorkspace();
+    await initializeWorkspace();
     await refreshCurrentUser();
     const workspaceState = workspaceController().getState();
     await refreshBillingPlan(workspaceState.status === "ready" ? workspaceState.activeWorkspaceId : null);
@@ -192,11 +190,23 @@ async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthControl
   return state;
 }
 
-async function refreshWorkspace(): Promise<void> {
+async function initializeWorkspace(): Promise<void> {
   try {
     await workspaceController().initialize();
   } catch (cause: unknown) {
     workspaceController().markUnavailable();
+    console.error(JSON.stringify({
+      level: "error",
+      code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
+      message: cause instanceof Error ? cause.message : "Unknown workspace refresh failure",
+    }));
+  }
+}
+
+async function refreshWorkspace(): Promise<void> {
+  try {
+    await workspaceController().refresh();
+  } catch (cause: unknown) {
     console.error(JSON.stringify({
       level: "error",
       code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
@@ -354,17 +364,11 @@ app.whenReady().then(() => {
     },
   });
   workspace = new DesktopWorkspaceController(
-    new WorkspaceContextSession(
+    new WorkspaceContextCoordinator(
       new DesktopWorkspacePortfolioSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
-      new DesktopWorkspaceSelectionStore(),
-    ),
-    new WorkspaceModuleContextSession(
-      new DesktopWorkspaceModuleSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
-      new DesktopWorkspaceModuleStore(),
-    ),
-    new WorkspaceCompanyContextSession(
       new DesktopWorkspaceCompanySource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
-      new DesktopWorkspaceCompanyStore(),
+      new DesktopWorkspaceModuleSource(apiBaseUrl, () => auth?.getAccessToken() ?? Promise.resolve(null)),
+      new DesktopWorkspaceContextStore(),
     ),
     () => mainWindow,
   );
@@ -420,7 +424,13 @@ app.whenReady().then(() => {
   });
   createWindow();
   connectivityInterval = setInterval(() => void connectivityMonitor().refresh(), 30_000);
-  powerMonitor.on("resume", () => void connectivityMonitor().refresh());
+  powerMonitor.on("resume", () => {
+    void connectivityMonitor().refresh().then(() => {
+      if (auth?.getState().status === "authenticated" && !blocksRemoteOperations(connectivityMonitor().getSnapshot())) {
+        return refreshWorkspace();
+      }
+    });
+  });
   if (app.isPackaged) setTimeout(() => void updates?.check(), 15_000);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

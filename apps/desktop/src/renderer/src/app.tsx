@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Activity, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench } from "lucide-react";
+import { Activity, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench, X } from "lucide-react";
 import type { KontaveTheme } from "@kontave/design-tokens";
 import { errorFeedback } from "@kontave/client-feedback-application";
 import {
@@ -33,6 +33,7 @@ import { applyDesktopTheme } from "./desktop-theme.js";
 import { defaultModuleNavigationItem, moduleNavigationLabel, moduleNavigationSections } from "./module-navigation.js";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
+const DESKTOP_SIDEBAR_PINNED_KEY = "kontave.desktop.sidebar-pinned";
 const DESKTOP_UTILITIES: readonly WorkspaceSidebarItem[] = [
   { id: "settings", label: "Configuración", icon: <Settings /> },
   { id: "help", label: "Ayuda", icon: <LifeBuoy /> },
@@ -104,6 +105,8 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   readonly workspace: DesktopWorkspaceState;
 }) {
   const compactViewport = useCompactDesktopViewport();
+  const [sidebarPinned, setSidebarPinned] = useState(readSidebarPinned);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const activeModuleId = workspace.status === "ready" ? workspace.activeModuleId : null;
   const [activeNavigationId, setActiveNavigationId] = useState<string | null>(() => defaultModuleNavigationItem(activeModuleId));
   const connectivity = useSyncExternalStore(
@@ -113,6 +116,11 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   );
 
   useEffect(() => setActiveNavigationId(defaultModuleNavigationItem(activeModuleId)), [activeModuleId]);
+  useEffect(() => localStorage.setItem(DESKTOP_SIDEBAR_PINNED_KEY, String(sidebarPinned)), [sidebarPinned]);
+  useEffect(() => setDrawerOpen(false), [compactViewport]);
+
+  const sidebarPresentation = compactViewport ? "drawer" : sidebarPinned ? "persistent" : "collapsed";
+  const closeDrawer = (): void => { if (compactViewport) setDrawerOpen(false); };
 
   function signOut(): void {
     if (!clientInteractionAvailable()) return;
@@ -160,8 +168,17 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   ];
 
   return <div className="desktop-shell">
+    {compactViewport && drawerOpen ? <button
+      type="button"
+      className="desktop-sidebar-backdrop"
+      aria-label="Cerrar navegación"
+      onClick={() => setDrawerOpen(false)}
+    /> : null}
     <WorkspaceSidebar
-      presentation={compactViewport ? "collapsed" : "persistent"}
+      presentation={sidebarPresentation}
+      open={compactViewport ? drawerOpen : true}
+      onOpenChange={setDrawerOpen}
+      closeIcon={<X />}
       modules={availableModules}
       activeModuleId={activeModuleId}
       companies={availableCompanies}
@@ -181,11 +198,13 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       }}
       accountActions={accountActions}
       onNavigate={(itemId) => {
+        closeDrawer();
         if (itemId === "settings" || itemId === "help") openExternal(itemId);
         else setActiveNavigationId(itemId);
       }}
       onSelectModule={(moduleId) => {
         if (!clientInteractionAvailable()) return;
+        closeDrawer();
         void window.kontave.workspace.selectModule(moduleId).then((result) => {
           if (result.ok) return;
           presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "module-selection-failed" }));
@@ -193,6 +212,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       }}
       onSelectCompany={(companyId) => {
         if (!clientInteractionAvailable()) return;
+        closeDrawer();
         void window.kontave.workspace.selectCompany(companyId).then((result) => {
           if (result.ok) return;
           presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "company-selection-failed" }));
@@ -200,6 +220,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       }}
       onSelectWorkspace={(workspaceId) => {
         if (!clientInteractionAvailable()) return;
+        closeDrawer();
         void window.kontave.workspace.select(workspaceId).then((result) => {
           if (result.ok) return;
           presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "workspace-selection-failed" }));
@@ -214,7 +235,14 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
 
     <div className="desktop-workspace">
       <header className="desktop-toolbar">
-        <div>
+        <Button
+          appearance="unstyled"
+          className="desktop-sidebar-toggle"
+          aria-label={compactViewport ? "Abrir navegación" : sidebarPinned ? "Contraer barra lateral" : "Fijar barra lateral"}
+          aria-expanded={compactViewport ? drawerOpen : sidebarPinned}
+          onClick={() => compactViewport ? setDrawerOpen(true) : setSidebarPinned((current) => !current)}
+        >{compactViewport ? <Menu /> : sidebarPinned ? <PanelLeftClose /> : <PanelLeftOpen />}</Button>
+        <div className="desktop-toolbar__title">
           <h1>{moduleNavigationLabel(activeModuleId, activeNavigationId)}</h1>
         </div>
       </header>
@@ -281,6 +309,10 @@ function useCompactDesktopViewport(): boolean {
   }, []);
 
   return compact;
+}
+
+function readSidebarPinned(): boolean {
+  return localStorage.getItem(DESKTOP_SIDEBAR_PINNED_KEY) !== "false";
 }
 
 function DeviceCard() {

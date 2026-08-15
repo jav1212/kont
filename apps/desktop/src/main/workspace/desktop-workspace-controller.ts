@@ -2,105 +2,64 @@ import type { BrowserWindow } from "electron";
 import { OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
 import type { ModuleCode } from "@kontave/modules-domain";
 import { companyId, organizationId } from "@kontave/organizations-domain";
-import { WorkspaceCompanyContextSession, WorkspaceContextSession, WorkspaceModuleContextSession, type ActiveWorkspaceCompanyContext, type ActiveWorkspaceContext, type ActiveWorkspaceModuleContext } from "@kontave/workspace-context-application";
 import {
-  DESKTOP_IPC,
-  type DesktopWorkspaceResult,
-  type DesktopWorkspaceState,
-} from "../../shared/desktop-api.js";
+  WorkspaceContextCoordinator,
+  type WorkspaceContextFailure,
+  type WorkspaceContextSnapshot,
+  type WorkspaceContextStatus,
+} from "@kontave/workspace-context-application";
+import { DESKTOP_IPC, type DesktopWorkspaceResult, type DesktopWorkspaceState } from "../../shared/desktop-api.js";
 
 export class DesktopWorkspaceController {
   private state: DesktopWorkspaceState = { status: "unavailable" };
 
   constructor(
-    private readonly session: WorkspaceContextSession,
-    private readonly modules: WorkspaceModuleContextSession,
-    private readonly companies: WorkspaceCompanyContextSession,
+    private readonly coordinator: WorkspaceContextCoordinator,
     private readonly getWindow: () => BrowserWindow | undefined,
-  ) {}
+  ) {
+    coordinator.subscribe((state) => this.update(mapStatus(state)));
+  }
 
   getState(): DesktopWorkspaceState { return this.state; }
 
-  markUnavailable(): DesktopWorkspaceState {
-    return this.update({ status: "unavailable" });
-  }
+  markUnavailable(): DesktopWorkspaceState { return this.update({ status: "unavailable" }); }
 
   async initialize(): Promise<DesktopWorkspaceState> {
-    this.update({ status: "loading" });
-    try {
-      const context = await this.session.restore();
-      const organization = context.active?.organizationId ?? null;
-      const [modules, companies] = await Promise.all([this.restoreModules(organization), this.restoreCompanies(organization)]);
-      return this.update(mapContext(context, modules, companies));
-    } catch (cause: unknown) {
-      this.update({ status: "unavailable" });
-      throw cause;
-    }
+    const state = await this.coordinator.restore();
+    if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) throw state.error;
+    return this.state;
+  }
+
+  async refresh(): Promise<DesktopWorkspaceState> {
+    const state = await this.coordinator.refresh();
+    if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) throw state.error;
+    return this.state;
   }
 
   async clear(): Promise<DesktopWorkspaceState> {
-    await this.session.clear();
-    await this.modules.clear();
-    await this.companies.clear();
+    await this.coordinator.clear();
     return this.update({ status: "unavailable" });
   }
 
   async select(input: unknown): Promise<DesktopWorkspaceResult> {
-    try {
-      if (typeof input !== "string") throw new TypeError("Workspace id is invalid.");
-      const context = await this.session.select(organizationId(input));
-      const organization = context.active?.organizationId ?? null;
-      const [modules, companies] = await Promise.all([this.restoreModules(organization), this.restoreCompanies(organization)]);
-      return { ok: true, value: this.update(mapContext(context, modules, companies)) };
-    } catch {
-      return { ok: false, error: { message: "No se pudo cambiar el espacio de trabajo." } };
-    }
+    if (typeof input !== "string") return invalidResult("WORKSPACE_NOT_AVAILABLE", "El espacio de trabajo no es válido.");
+    return this.toResult(await this.coordinator.selectWorkspace(organizationId(input)));
   }
 
   async selectModule(input: unknown): Promise<DesktopWorkspaceResult> {
-    try {
-      if (typeof input !== "string") throw new TypeError("Module code is invalid.");
-      if (!isModuleCode(input)) throw new TypeError("Module code is invalid.");
-      const code = input as ModuleCode;
-      return { ok: true, value: this.update(mapContext(this.session.current, await this.modules.select(code), this.companies.current)) };
-    } catch {
-      return { ok: false, error: { message: "No se pudo cambiar el módulo activo." } };
-    }
+    if (typeof input !== "string" || !isModuleCode(input)) return invalidResult("MODULE_NOT_AVAILABLE", "El módulo no es válido.");
+    return this.toResult(await this.coordinator.selectModule(input as ModuleCode));
   }
 
   async selectCompany(input: unknown): Promise<DesktopWorkspaceResult> {
-    try {
-      if (typeof input !== "string") throw new TypeError("Company id is invalid.");
-      return { ok: true, value: this.update(mapContext(this.session.current, this.modules.current, await this.companies.select(companyId(input)))) };
-    } catch {
-      return { ok: false, error: { message: "No se pudo cambiar la empresa activa." } };
-    }
+    if (typeof input !== "string") return invalidResult("COMPANY_NOT_AVAILABLE", "La empresa no es válida.");
+    return this.toResult(await this.coordinator.selectCompany(companyId(input)));
   }
 
-  private async restoreModules(organization: ReturnType<typeof organizationId> | null): Promise<ActiveWorkspaceModuleContext> {
-    try { return await this.modules.restore(organization); }
-    catch (cause: unknown) {
-      await this.modules.clear();
-      console.error(JSON.stringify({
-        level: "error",
-        code: "DESKTOP_WORKSPACE_MODULES_REFRESH_FAILED",
-        message: cause instanceof Error ? cause.message : "Unknown workspace modules refresh failure",
-      }));
-      return this.modules.current;
-    }
-  }
-
-  private async restoreCompanies(organization: ReturnType<typeof organizationId> | null): Promise<ActiveWorkspaceCompanyContext> {
-    try { return await this.companies.restore(organization); }
-    catch (cause: unknown) {
-      await this.companies.clear();
-      console.error(JSON.stringify({
-        level: "error",
-        code: "DESKTOP_WORKSPACE_COMPANIES_REFRESH_FAILED",
-        message: cause instanceof Error ? cause.message : "Unknown workspace companies refresh failure",
-      }));
-      return this.companies.current;
-    }
+  private toResult(status: WorkspaceContextStatus): DesktopWorkspaceResult {
+    return status.status === "failed"
+      ? { ok: false, error: { code: status.error.code, message: status.error.message } }
+      : { ok: true, value: this.state };
   }
 
   private update(state: DesktopWorkspaceState): DesktopWorkspaceState {
@@ -110,26 +69,31 @@ export class DesktopWorkspaceController {
   }
 }
 
-function isModuleCode(value: string): boolean {
-  return value === "payroll" || value === "purchases" || value === "sales"
-    || value === "inventory" || value === "accounting" || value === "tools"
-    || value === "companies" || value === "documents";
+function mapStatus(state: WorkspaceContextStatus): DesktopWorkspaceState {
+  if (state.status === "idle") return { status: "unavailable" };
+  if ((state.status === "loading" || state.status === "refreshing") && !hasValidSnapshot(state.snapshot)) return { status: "loading" };
+  if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) return { status: "unavailable" };
+  return mapSnapshot(state.snapshot);
 }
 
-function mapContext(context: ActiveWorkspaceContext, modules: ActiveWorkspaceModuleContext, companies: ActiveWorkspaceCompanyContext): DesktopWorkspaceState {
+function hasValidSnapshot(snapshot: WorkspaceContextSnapshot): boolean {
+  return snapshot.activeWorkspace !== null || snapshot.portfolio.length > 0;
+}
+
+function mapSnapshot(snapshot: WorkspaceContextSnapshot): DesktopWorkspaceState {
   return {
     status: "ready",
-    activeWorkspaceId: context.active?.organizationId ?? null,
-    activeModuleId: modules.active?.code ?? null,
-    modules: modules.modules.map((module) => ({ id: module.code, name: module.name })),
-    activeCompanyId: companies.active?.id ?? null,
-    companies: companies.companies.map((company) => ({
+    activeWorkspaceId: snapshot.activeWorkspace?.organizationId ?? null,
+    activeModuleId: snapshot.activeModule?.code ?? null,
+    modules: snapshot.modules.map((module) => ({ id: module.code, name: module.name })),
+    activeCompanyId: snapshot.activeCompany?.id ?? null,
+    companies: snapshot.companies.map((company) => ({
       id: company.id,
       name: company.name,
       rif: company.rif,
       ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
     })),
-    workspaces: context.portfolio.map((entry) => ({
+    workspaces: snapshot.portfolio.map((entry) => ({
       id: entry.organizationId,
       name: entry.name,
       ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}),
@@ -138,4 +102,14 @@ function mapContext(context: ActiveWorkspaceContext, modules: ActiveWorkspaceMod
       scopes: entry.accessPath.scopes,
     })),
   };
+}
+
+function invalidResult(code: WorkspaceContextFailure["code"], message: string): DesktopWorkspaceResult {
+  return { ok: false, error: { code, message } };
+}
+
+function isModuleCode(value: string): boolean {
+  return value === "payroll" || value === "purchases" || value === "sales"
+    || value === "inventory" || value === "accounting" || value === "tools"
+    || value === "companies" || value === "documents";
 }

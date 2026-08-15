@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { errorFeedback } from "@kontave/client-feedback-application";
-import { Button, Card, LogoFull, presentFeedback, Text, TextField } from "@kontave/ui-dom";
+import { Button, Card, Checkbox, LogoFull, presentFeedback, Text, TextField } from "@kontave/ui-dom";
 import { Eye, EyeOff } from "lucide-react";
 import type { DesktopAuthState } from "../../../shared/desktop-api.js";
 
@@ -9,8 +9,10 @@ export function SignInForm({ onAuthenticated, onCreateAccount, onForgotPassword 
   readonly onCreateAccount: () => void;
   readonly onForgotPassword: () => void;
 }) {
-  const [email, setEmail] = useState("");
+  const rememberedEmail = readRememberedEmail();
+  const [email, setEmail] = useState(rememberedEmail ?? "");
   const [password, setPassword] = useState("");
+  const [rememberEmail, setRememberEmail] = useState(rememberedEmail !== null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +21,10 @@ export function SignInForm({ onAuthenticated, onCreateAccount, onForgotPassword 
     setLoading(true);
     try {
       const result = await window.kontave.auth.signIn({ email, password });
-      if (result.ok) onAuthenticated(result.value);
+      if (result.ok) {
+        persistRememberedEmail(rememberEmail ? email : null);
+        onAuthenticated(result.value);
+      }
       else presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: result.error.code }));
     } catch {
       presentFeedback.execute(errorFeedback("No se pudo comunicar con Kontave.", { deduplicationKey: "auth-sign-in-communication" }));
@@ -49,6 +54,11 @@ export function SignInForm({ onAuthenticated, onCreateAccount, onForgotPassword 
         >{passwordVisible ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}</Button>}
         required
       />
+      <Checkbox
+        label="Recordarme"
+        checked={rememberEmail}
+        onChange={(event) => setRememberEmail(event.target.checked)}
+      />
       <Button type="submit" loading={loading}>Continuar</Button>
     </form>
     <div className="auth-secondary-action">
@@ -56,6 +66,18 @@ export function SignInForm({ onAuthenticated, onCreateAccount, onForgotPassword 
       <Button appearance="text" size="sm" className="auth-text-action" onClick={onCreateAccount}>Crear cuenta</Button>
     </div>
   </Card>;
+}
+
+const REMEMBERED_EMAIL_KEY = "kontave.desktop.remembered-email";
+
+function readRememberedEmail(): string | null {
+  const value = localStorage.getItem(REMEMBERED_EMAIL_KEY)?.trim();
+  return value || null;
+}
+
+function persistRememberedEmail(email: string | null): void {
+  if (email?.trim()) localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+  else localStorage.removeItem(REMEMBERED_EMAIL_KEY);
 }
 
 export function AuthHeading({ description, label, title, titleId }: {

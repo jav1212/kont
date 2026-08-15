@@ -155,7 +155,7 @@ export type DesktopWorkspaceState =
 
 export type DesktopWorkspaceResult =
   | { readonly ok: true; readonly value: DesktopWorkspaceState }
-  | { readonly ok: false; readonly error: { readonly message: string } };
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } };
 
 export interface KontaveDesktopApi {
   readonly auth: {

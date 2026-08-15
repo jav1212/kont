@@ -20,6 +20,8 @@ import { CompanyFailure, type Company, type CompanyId } from "@kontave/companies
 import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import type { ModuleCapability, ModuleCode } from "@kontave/modules-domain";
 
+export * from "./workspace-context-coordinator";
+
 export interface CompanyExecutionContext {
   readonly actorUserId: UserId;
   readonly actingOrganizationId: OrganizationId;
