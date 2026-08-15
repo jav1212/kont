@@ -3,7 +3,7 @@ import {
   type InteractionBlockLease,
   type InteractionBlockActionKind,
 } from "@kontave/client-interaction-application";
-import type { DesktopAuthState } from "../../shared/desktop-api.js";
+import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api.js";
 import { desktopConnectivityStore } from "./connectivity-store.js";
 
 export const interactionGate = new GlobalInteractionGate();
@@ -18,6 +18,9 @@ const startupLease: InteractionBlockLease = interactionGate.acquire({
 
 let sessionRestoration: Promise<DesktopAuthState> | null = null;
 let connectivityLease: InteractionBlockLease | null = null;
+let workspaceLease: InteractionBlockLease | null = null;
+let authenticated = false;
+let latestWorkspaceState: DesktopWorkspaceState = { status: "loading" };
 
 desktopConnectivityStore.subscribe(synchronizeConnectivityBlock);
 
@@ -56,6 +59,28 @@ export function handleGlobalInteractionAction(token: string, action: Interaction
       void desktopConnectivityStore.refresh();
       return;
     }
+    if (workspaceLease?.token === token) {
+      workspaceLease.update({
+        state: "working",
+        message: "Restaurando tu espacio de trabajo",
+        description: "Estamos obteniendo nuevamente el contexto de tu cuenta.",
+        referenceCode: null,
+        actions: [],
+      });
+      void window.kontave.workspace.refresh()
+        .then((result) => {
+          if (result.ok) {
+            synchronizeWorkspaceBlock(result.value);
+            return;
+          }
+          presentWorkspaceFailure(result.error.code, result.error.message);
+        })
+        .catch(() => presentWorkspaceFailure(
+          "DESKTOP_WORKSPACE_REFRESH_FAILED",
+          "No fue posible comunicar el reintento con el proceso principal.",
+        ));
+      return;
+    }
     window.location.reload();
     return;
   }
@@ -63,8 +88,78 @@ export function handleGlobalInteractionAction(token: string, action: Interaction
   if (action === "exit") window.close();
 }
 
+function presentWorkspaceFailure(code: string, message: string): void {
+  if (!authenticated) return;
+  const input = {
+    state: "failed" as const,
+    message: "No pudimos cargar tu espacio de trabajo",
+    description: message,
+    referenceCode: code,
+    actions: [
+      { kind: "retry" as const, label: "Reintentar" },
+      { kind: "exit" as const, label: "Salir" },
+    ],
+  };
+  if (workspaceLease) workspaceLease.update(input);
+  else workspaceLease = interactionGate.acquire({
+    kind: "unexpected_failure",
+    priority: 650,
+    ...input,
+  });
+}
+
 export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
+}
+
+export function synchronizeWorkspaceBlock(workspace: DesktopWorkspaceState): void {
+  latestWorkspaceState = workspace;
+  if (!authenticated) {
+    workspaceLease?.release();
+    workspaceLease = null;
+    return;
+  }
+
+  if (workspace.status === "ready") {
+    workspaceLease?.release();
+    workspaceLease = null;
+    return;
+  }
+
+  const input = workspace.status === "loading"
+    ? {
+      state: "working" as const,
+      message: "Restaurando tu espacio de trabajo",
+      description: "Estamos obteniendo el contexto de tu cuenta.",
+      referenceCode: null,
+      actions: [],
+    }
+    : {
+      state: "failed" as const,
+      message: "No pudimos cargar tu espacio de trabajo",
+      description: "Revisa tu sesión o vuelve a intentarlo.",
+      referenceCode: "DESKTOP_WORKSPACE_REFRESH_FAILED",
+      actions: [
+        { kind: "retry" as const, label: "Reintentar" },
+        { kind: "exit" as const, label: "Salir" },
+      ],
+    };
+
+  if (workspaceLease) workspaceLease.update(input);
+  else workspaceLease = interactionGate.acquire({
+    kind: workspace.status === "loading" ? "startup" : "unexpected_failure",
+    priority: 650,
+    ...input,
+  });
+}
+
+export function synchronizeAuthenticationInteraction(state: DesktopAuthState): void {
+  authenticated = state.status === "authenticated";
+  if (authenticated) synchronizeWorkspaceBlock(latestWorkspaceState);
+  else {
+    workspaceLease?.release();
+    workspaceLease = null;
+  }
 }
 
 function synchronizeConnectivityBlock(): void {

@@ -37,6 +37,7 @@ let billingPlan: DesktopBillingPlanController | undefined;
 let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
+let previousConnectivityAvailability: ConnectivitySnapshot["availability"] = "unknown";
 let initialization: Promise<void> | undefined;
 
 class DesktopDeviceHost implements DeviceEventSink, DeviceLogger {
@@ -108,6 +109,16 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.getWorkspaceState, async () => {
     await initialization;
     return workspaceController().getState();
+  });
+  ipcMain.handle(DESKTOP_IPC.refreshWorkspace, async () => {
+    const result = await workspaceController().retry();
+    if (!result.ok || result.value.status !== "ready" || auth?.getState().status !== "authenticated") return result;
+    await refreshCurrentUser();
+    if (auth?.getState().status !== "authenticated") return result;
+    await refreshBillingPlan(result.value.activeWorkspaceId);
+    if (auth?.getState().status !== "authenticated") return result;
+    await refreshPlatformStatus();
+    return result;
   });
   ipcMain.handle(DESKTOP_IPC.selectWorkspace, async (_event, workspaceId: unknown) => {
     const result = await workspaceController().select(workspaceId);
@@ -183,9 +194,12 @@ async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthControl
     platformStatusController().clear();
   } else {
     await initializeWorkspace();
+    if (auth?.getState().status !== "authenticated") return auth?.getState() ?? state;
     await refreshCurrentUser();
+    if (auth?.getState().status !== "authenticated") return auth?.getState() ?? state;
     const workspaceState = workspaceController().getState();
     await refreshBillingPlan(workspaceState.status === "ready" ? workspaceState.activeWorkspaceId : null);
+    if (auth?.getState().status !== "authenticated") return auth?.getState() ?? state;
     await refreshPlatformStatus();
   }
   return state;
@@ -203,6 +217,7 @@ async function initializeWorkspace(): Promise<void> {
   try {
     await workspaceController().initialize();
   } catch (cause: unknown) {
+    if (isSessionExpired(cause)) return;
     workspaceController().markUnavailable();
     console.error(JSON.stringify({
       level: "error",
@@ -216,6 +231,7 @@ async function refreshWorkspace(): Promise<void> {
   try {
     await workspaceController().refresh();
   } catch (cause: unknown) {
+    if (isSessionExpired(cause)) return;
     console.error(JSON.stringify({
       level: "error",
       code: "DESKTOP_WORKSPACE_REFRESH_FAILED",
@@ -228,6 +244,7 @@ async function refreshCurrentUser(): Promise<void> {
   try {
     await currentUserController().initialize();
   } catch (cause: unknown) {
+    if (isSessionExpired(cause)) return;
     console.error(JSON.stringify({
       level: "error",
       code: "DESKTOP_CURRENT_USER_REFRESH_FAILED",
@@ -240,6 +257,7 @@ async function refreshBillingPlan(organizationId: string | null): Promise<void> 
   try {
     await billingPlanController().initialize(organizationId);
   } catch (cause: unknown) {
+    if (isSessionExpired(cause)) return;
     console.error(JSON.stringify({
       level: "error",
       code: "DESKTOP_BILLING_PLAN_REFRESH_FAILED",
@@ -252,6 +270,7 @@ async function refreshPlatformStatus(): Promise<void> {
   try {
     await platformStatusController().initialize();
   } catch (cause: unknown) {
+    if (isSessionExpired(cause)) return;
     console.error(JSON.stringify({
       level: "error",
       code: "DESKTOP_PLATFORM_STATUS_REFRESH_FAILED",
@@ -265,11 +284,26 @@ function blocksRemoteOperations(snapshot: ConnectivitySnapshot): boolean {
     || (snapshot.availability === "unknown" && snapshot.reason !== null);
 }
 
+function isSessionExpired(cause: unknown): boolean {
+  let current: unknown = cause;
+  const visited = new Set<unknown>();
+  while (current instanceof Error && !visited.has(current)) {
+    if (current instanceof AuthenticationFailure && current.code === "SESSION_EXPIRED") return true;
+    visited.add(current);
+    current = current.cause;
+  }
+  return false;
+}
+
 function publishConnectivity(): void {
   const snapshot = connectivityMonitor().getSnapshot();
+  const recovered = snapshot.availability === "available"
+    && previousConnectivityAvailability !== "available"
+    && previousConnectivityAvailability !== "unknown";
+  previousConnectivityAvailability = snapshot.availability;
   mainWindow?.webContents.send(DESKTOP_IPC.connectivityChanged, snapshot);
   if (
-    snapshot.availability === "available"
+    recovered
     && auth?.getState().status === "authenticated"
     && (workspaceController().getState().status === "unavailable" || currentUserController().getState().status === "unavailable")
   ) {

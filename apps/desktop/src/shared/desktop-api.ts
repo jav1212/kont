@@ -24,6 +24,7 @@ export const DESKTOP_IPC = {
   applyUpdate: "updates:apply",
   updateStateChanged: "updates:state-changed",
   getWorkspaceState: "workspace:state",
+  refreshWorkspace: "workspace:refresh",
   selectWorkspace: "workspace:select",
   selectWorkspaceModule: "workspace:module-select",
   selectWorkspaceCompany: "workspace:company-select",
@@ -185,6 +186,7 @@ export interface KontaveDesktopApi {
   };
   readonly workspace: {
     getState(): Promise<DesktopWorkspaceState>;
+    refresh(): Promise<DesktopWorkspaceResult>;
     select(workspaceId: string): Promise<DesktopWorkspaceResult>;
     selectModule(moduleId: string): Promise<DesktopWorkspaceResult>;
     selectCompany(companyId: string): Promise<DesktopWorkspaceResult>;

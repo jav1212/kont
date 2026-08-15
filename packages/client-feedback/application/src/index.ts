@@ -67,6 +67,18 @@ export function errorFeedback(message: string, input: Omit<ClientFeedbackInput, 
   return clientFeedback({ ...input, intent: "error", message });
 }
 
+export function codedErrorFeedback(input: {
+  readonly code: string;
+  readonly message: string;
+  readonly deduplicationKey?: string | null;
+}): ClientFeedback {
+  const referenceCode = requiredText(input.code, 128, "Error code");
+  return errorFeedback(input.message, {
+    referenceCode,
+    deduplicationKey: input.deduplicationKey ?? referenceCode,
+  });
+}
+
 export function warningFeedback(message: string, input: Omit<ClientFeedbackInput, "intent" | "message"> = {}): ClientFeedback {
   return clientFeedback({ ...input, intent: "warning", message });
 }

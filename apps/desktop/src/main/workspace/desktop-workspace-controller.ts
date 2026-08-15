@@ -36,6 +36,10 @@ export class DesktopWorkspaceController {
     return this.state;
   }
 
+  async retry(): Promise<DesktopWorkspaceResult> {
+    return this.toResult(await this.coordinator.refresh());
+  }
+
   async clear(): Promise<DesktopWorkspaceState> {
     await this.coordinator.clear();
     return this.update({ status: "unavailable" });

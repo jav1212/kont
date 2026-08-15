@@ -44,6 +44,7 @@ const api: KontaveDesktopApi = {
   },
   workspace: {
     getState: () => ipcRenderer.invoke(DESKTOP_IPC.getWorkspaceState),
+    refresh: () => ipcRenderer.invoke(DESKTOP_IPC.refreshWorkspace),
     select: (workspaceId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspace, workspaceId),
     selectModule: (moduleId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspaceModule, moduleId),
     selectCompany: (companyId) => ipcRenderer.invoke(DESKTOP_IPC.selectWorkspaceCompany, companyId),

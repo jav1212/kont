@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Activity, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench, X } from "lucide-react";
 import type { KontaveTheme } from "@kontave/design-tokens";
-import { errorFeedback } from "@kontave/client-feedback-application";
+import { codedErrorFeedback, errorFeedback } from "@kontave/client-feedback-application";
 import {
   Alert,
   Button,
@@ -27,7 +27,12 @@ import type {
 } from "../../shared/desktop-api.js";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import { AuthExperience } from "./auth/auth-experience.js";
-import { clientInteractionAvailable, restoreDesktopSession } from "./client-interaction.js";
+import {
+  clientInteractionAvailable,
+  restoreDesktopSession,
+  synchronizeAuthenticationInteraction,
+  synchronizeWorkspaceBlock,
+} from "./client-interaction.js";
 import { desktopConnectivityStore } from "./connectivity-store.js";
 import { applyDesktopTheme } from "./desktop-theme.js";
 import { defaultModuleNavigationItem, moduleNavigationLabel, moduleNavigationSections } from "./module-navigation.js";
@@ -55,8 +60,12 @@ export function App() {
   const [theme, setTheme] = useState<KontaveTheme>(() => localStorage.getItem("kontave.desktop.theme") === "dark" ? "dark" : "light");
 
   useEffect(() => {
-    void restoreDesktopSession().then(setAuth).catch(() => undefined);
-    return window.kontave.auth.subscribe(setAuth);
+    const updateAuth = (state: DesktopAuthState): void => {
+      setAuth(state);
+      synchronizeAuthenticationInteraction(state);
+    };
+    void restoreDesktopSession().then(updateAuth).catch(() => undefined);
+    return window.kontave.auth.subscribe(updateAuth);
   }, []);
 
   useEffect(() => {
@@ -70,8 +79,18 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void window.kontave.workspace.getState().then(setWorkspace).catch(() => undefined);
-    return window.kontave.workspace.subscribe(setWorkspace);
+    const updateWorkspace = (state: DesktopWorkspaceState): void => {
+      setWorkspace(state);
+      synchronizeWorkspaceBlock(state);
+    };
+    synchronizeWorkspaceBlock(workspace);
+    void window.kontave.workspace.getState().then(updateWorkspace).catch(() => {
+      updateWorkspace({ status: "unavailable" });
+    });
+    return window.kontave.workspace.subscribe(updateWorkspace);
+    // The initial synchronization is intentionally performed once; subsequent
+    // workspace changes arrive through the native subscription.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -207,7 +226,11 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
         closeDrawer();
         void window.kontave.workspace.selectModule(moduleId).then((result) => {
           if (result.ok) return;
-          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "module-selection-failed" }));
+          presentFeedback.execute(codedErrorFeedback({
+            code: result.error.code,
+            message: result.error.message,
+            deduplicationKey: "module-selection-failed",
+          }));
         });
       }}
       onSelectCompany={(companyId) => {
@@ -215,7 +238,11 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
         closeDrawer();
         void window.kontave.workspace.selectCompany(companyId).then((result) => {
           if (result.ok) return;
-          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "company-selection-failed" }));
+          presentFeedback.execute(codedErrorFeedback({
+            code: result.error.code,
+            message: result.error.message,
+            deduplicationKey: "company-selection-failed",
+          }));
         });
       }}
       onSelectWorkspace={(workspaceId) => {
@@ -223,7 +250,11 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
         closeDrawer();
         void window.kontave.workspace.select(workspaceId).then((result) => {
           if (result.ok) return;
-          presentFeedback.execute(errorFeedback(result.error.message, { deduplicationKey: "workspace-selection-failed" }));
+          presentFeedback.execute(codedErrorFeedback({
+            code: result.error.code,
+            message: result.error.message,
+            deduplicationKey: "workspace-selection-failed",
+          }));
         });
       }}
       onThemeChange={onThemeChange}

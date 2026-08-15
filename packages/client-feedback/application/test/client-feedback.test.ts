@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  PresentFeedback, ResolveUnexpectedFailure, errorFeedback, reportedFailureFeedback,
+  PresentFeedback, ResolveUnexpectedFailure, codedErrorFeedback, errorFeedback, reportedFailureFeedback,
   type ClientFeedback, type FeedbackPresenter, type IncidentReporter,
 } from "../src/index.js";
 
@@ -23,6 +23,15 @@ test("expected failures are presented without creating an incident", () => {
   assert.equal(presenter.presented[0]?.referenceCode, null);
   useCase.dismiss(handle);
   assert.deepEqual(presenter.dismissed, ["feedback-1"]);
+});
+
+test("typed expected failures expose their stable code as a copyable reference", () => {
+  const feedback = codedErrorFeedback({
+    code: "WORKSPACE_MODULE_UNAVAILABLE",
+    message: "No se pudo cambiar el módulo activo.",
+  });
+  assert.equal(feedback.referenceCode, "WORKSPACE_MODULE_UNAVAILABLE");
+  assert.equal(feedback.deduplicationKey, "WORKSPACE_MODULE_UNAVAILABLE");
 });
 
 test("unexpected failures become portable feedback with the incident reference", async () => {
