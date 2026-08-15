@@ -20,6 +20,7 @@ export type NativeApiErrorCode =
   | "PAYMENT_CURRENCY_MISMATCH"
   | "PAYMENT_INVOICE_NOT_PAYABLE"
   | "PAYMENT_REPOSITORY_UNAVAILABLE"
+  | "PROFILE_REPOSITORY_UNAVAILABLE"
   | "BILLING_CREDIT_INSUFFICIENT"
   | "BILLING_INVOICE_NOT_APPLICABLE"
   | "BILLING_CURRENCY_MISMATCH"
@@ -68,6 +69,13 @@ export interface NativeAuthenticatedUserDto {
 
 export interface NativeSessionDto {
   readonly user: NativeAuthenticatedUserDto;
+}
+
+export interface NativeCurrentUserDto {
+  readonly userId: string;
+  readonly email: string | null;
+  readonly displayName: string | null;
+  readonly avatarUrl: string | null;
 }
 
 export interface NativeOrganizationDto {

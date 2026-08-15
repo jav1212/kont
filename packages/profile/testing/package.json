@@ -1,0 +1,13 @@
+{
+  "name": "@kontave/profile-testing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node -e \"console.log('Profile fixtures checked by TypeScript')\""
+  },
+  "dependencies": { "@kontave/profile-application": "workspace:*" },
+  "devDependencies": { "typescript": "^5.9.2" }
+}

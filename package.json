@@ -49,6 +49,8 @@
     "@kontave/payments-application": "workspace:*",
     "@kontave/payments-domain": "workspace:*",
     "@kontave/payments-supabase": "workspace:*",
+    "@kontave/profile-application": "workspace:*",
+    "@kontave/profile-supabase": "workspace:*",
     "@kontave/referrals-application": "workspace:*",
     "@kontave/referrals-domain": "workspace:*",
     "@kontave/referrals-supabase": "workspace:*",
