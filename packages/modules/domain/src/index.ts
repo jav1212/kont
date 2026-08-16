@@ -53,9 +53,11 @@ export enum ModuleCapability {
   PayrollEmployees = "payroll.employees",
   InventoryProducts = "inventory.products",
   InventoryMovements = "inventory.movements",
+  SalesDashboard = "sales.dashboard",
   AccountingEntries = "accounting.entries",
   AccountingPeriods = "accounting.periods",
   DocumentsFiles = "documents.files",
+  PurchasingDashboard = "purchases.dashboard",
 }
 
 export interface ModuleDefinition {

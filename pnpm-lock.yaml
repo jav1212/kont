@@ -212,6 +212,12 @@ importers:
       '@kontave/profile-supabase':
         specifier: workspace:*
         version: link:packages/profile/supabase
+      '@kontave/purchasing-application':
+        specifier: workspace:*
+        version: link:packages/purchasing/application
+      '@kontave/purchasing-supabase':
+        specifier: workspace:*
+        version: link:packages/purchasing/supabase
       '@kontave/referrals-application':
         specifier: workspace:*
         version: link:packages/referrals/application
@@ -221,6 +227,12 @@ importers:
       '@kontave/referrals-supabase':
         specifier: workspace:*
         version: link:packages/referrals/supabase
+      '@kontave/sales-application':
+        specifier: workspace:*
+        version: link:packages/sales/application
+      '@kontave/sales-supabase':
+        specifier: workspace:*
+        version: link:packages/sales/supabase
       '@kontave/taxation-application':
         specifier: workspace:*
         version: link:packages/taxation/application
@@ -2293,19 +2305,22 @@ importers:
 
   packages/purchasing/application:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
       '@kontave/fiscal-domain':
         specifier: workspace:*
         version: link:../../fiscal/domain
       '@kontave/monetary-domain':
         specifier: workspace:*
         version: link:../../monetary/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
       '@kontave/purchasing-domain':
         specifier: workspace:*
         version: link:../domain
     devDependencies:
-      '@kontave/companies-domain':
-        specifier: workspace:*
-        version: link:../../companies/domain
       '@kontave/products-domain':
         specifier: workspace:*
         version: link:../../products/domain
@@ -2359,6 +2374,31 @@ importers:
       '@kontave/products-domain':
         specifier: workspace:*
         version: link:../../products/domain
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/purchasing/supabase:
+    dependencies:
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../monetary/domain
+      '@kontave/purchasing-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/purchasing-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
@@ -2472,6 +2512,9 @@ importers:
       '@kontave/monetary-domain':
         specifier: workspace:*
         version: link:../../monetary/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
       '@kontave/sales-domain':
         specifier: workspace:*
         version: link:../domain
@@ -2535,6 +2578,22 @@ importers:
       tsx:
         specifier: ^4.23.12
         version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/sales/supabase:
+    dependencies:
+      '@kontave/sales-application':
+        specifier: workspace:*
+        version: link:../application
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

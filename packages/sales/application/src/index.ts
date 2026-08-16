@@ -18,6 +18,8 @@ import {
   type SalesOrderLineId,
 } from "@kontave/sales-domain";
 
+export * from "./sales-dashboard";
+
 export interface CustomerRepository { find(id: CustomerId): Promise<Customer | null> }
 export interface SalesOrderRepository { find(id: SalesOrder["id"]): Promise<SalesOrder | null> }
 export interface GoodsDispatchRepository { find(id: GoodsDispatchId): Promise<GoodsDispatch | null> }

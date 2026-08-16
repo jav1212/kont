@@ -1,0 +1,2 @@
+import{GetPurchasingDashboard}from"@kontave/purchasing-application/dashboard";import{createSupabasePurchasingDashboardReader}from"@kontave/purchasing-supabase";
+export function createPurchasingDashboardActions(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error("Native purchasing dashboard infrastructure is not configured.");return{get:new GetPurchasingDashboard(createSupabasePurchasingDashboardReader({url,serviceRoleKey:key}))}}

@@ -41,9 +41,12 @@ import { applyDesktopTheme } from "./desktop-theme.js";
 import { DesktopSettingsView } from "./settings-view.js";
 import { DesktopSettingsDetailView, type DesktopSettingsDestination } from "./settings-detail-view.js";
 import { InventoryDashboardView } from "./inventory-dashboard-view.js";
+import { SalesDashboardView } from "./sales-dashboard-view";
+import { PurchasingDashboardView } from "./purchasing-dashboard-view.js";
 import { ProductsView } from "./products-view.js";
 import { ProductCategoriesView } from "./product-categories-view.js";
 import { ProductDetailPage } from "./product-detail-page.js";
+import { InventoryOperationsView } from "./inventory-operations-view.js";
 import { resolveDesktopSettings } from "./desktop-settings.js";
 import {
   defaultModuleNavigationTarget,
@@ -202,9 +205,12 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   const settingsActive = activeNavigationTarget?.id === "settings" || activeNavigationTarget?.id.startsWith("settings.") === true;
   const settingsDetail = isDesktopSettingsDestination(activeNavigationTarget?.id) ? activeNavigationTarget.id : null;
   const inventoryDashboardActive = activeNavigationTarget?.id === "inventory.dashboard";
+  const salesDashboardActive = activeNavigationTarget?.id === "sales.dashboard";
+  const purchasingDashboardActive = activeNavigationTarget?.id === "purchases.dashboard";
   const inventoryProductsActive = activeNavigationTarget?.id === "inventory.products";
   const inventoryProductDetailId = activeNavigationTarget?.id === "inventory.product-detail" ? activeNavigationTarget.parameters.productId : null;
   const inventoryProductCategoriesActive = activeNavigationTarget?.id === "inventory.product-categories" || activeNavigationTarget?.id === "inventory.departments";
+  const inventoryFlowMode = activeNavigationTarget?.id === "inventory.inputs" ? "inputs" : activeNavigationTarget?.id === "inventory.outputs" ? "outputs" : activeNavigationTarget?.id === "inventory.operations" ? "operations" : null;
   const accountActions: readonly WorkspaceSidebarAccountAction[] = [
     ...DESKTOP_ACCOUNT_ACTIONS,
     {
@@ -352,7 +358,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
           <h1>{breadcrumbs.at(-1)?.label ?? "Dispositivos"}</h1>
         </div>
       </header>
-      <main className={`desktop-content${settingsActive ? " desktop-content--settings" : ""}${inventoryDashboardActive ? " desktop-content--inventory-dashboard" : ""}${inventoryProductsActive || inventoryProductCategoriesActive || inventoryProductDetailId ? " desktop-content--products" : ""}`}>
+      <main className={`desktop-content${settingsActive ? " desktop-content--settings" : ""}${inventoryDashboardActive || purchasingDashboardActive || salesDashboardActive ? " desktop-content--inventory-dashboard" : ""}${inventoryProductsActive || inventoryProductCategoriesActive || inventoryProductDetailId || inventoryFlowMode ? " desktop-content--products" : ""}`}>
         {connectivity.availability === "degraded" ? <Alert intent="warning" className="desktop-connectivity-notice">
           La conexión es inestable. Algunas operaciones pueden tardar más.{' '}
           <Button size="sm" onClick={() => void desktopConnectivityStore.refresh()}>Reintentar</Button>
@@ -368,14 +374,20 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
           theme={theme}
           workspace={workspace}
         /> : settingsActive ? <DesktopSettingsView sections={settingsSections} onSelect={selectSetting} />
+          : salesDashboardActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
+            ? <SalesDashboardView auth={auth} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} />
           : inventoryDashboardActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
             ? <InventoryDashboardView auth={auth} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} />
+            : purchasingDashboardActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
+              ? <PurchasingDashboardView key={`${workspace.activeWorkspaceId}:${workspace.activeCompanyId}`} auth={auth} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} />
             : inventoryProductsActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
               ? <ProductsView organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} onOpenProduct={productId=>setActiveNavigationTarget(dynamicNavigationTarget("inventory.product-detail",{productId}))} />
             : inventoryProductCategoriesActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
               ? <ProductCategoriesView organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} />
             : inventoryProductDetailId && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
               ? <ProductDetailPage userId={auth.user.id} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} productId={inventoryProductDetailId} onTitleChange={setProductDetailTitle}/>
+            : inventoryFlowMode && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
+              ? <InventoryOperationsView userId={auth.user.id} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} mode={inventoryFlowMode}/>
             : children}
       </main>
     </div>

@@ -21,6 +21,7 @@ export enum DelegatedScope {
   Accounting = "accounting",
   Payroll = "payroll",
   Inventory = "inventory",
+  Purchases = "purchases",
   Tax = "tax",
   Documents = "documents",
   Administration = "administration",

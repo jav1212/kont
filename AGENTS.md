@@ -21,6 +21,7 @@ New code under `apps/` and `packages/` must follow these rules:
 - Applications may import packages, but packages must never import applications and applications must never import one another.
 - Repository interfaces belong to the owning domain/application package. Supabase, HTTP, SQLite, and device implementations are adapters.
 - Use strict TypeScript, typed expected errors, explicit dependencies, immutable data where practical, and tests for critical behavior.
+- TypeScript imports and exports must remain extensionless. Do not add `.js` suffixes to TypeScript module specifiers; resolve compatibility through the workspace TypeScript/bundler configuration instead.
 - Apply DRY to shared business knowledge and contracts, not superficial visual similarity between platforms.
 - Comments explain intent, constraints, compatibility decisions, and non-obvious behavior. Do not narrate self-explanatory code.
 - Do not add generic `utils`, `helpers`, or unbounded `shared` modules. Place code in the capability that owns it and expose it through the package public API.

@@ -8,6 +8,7 @@
   "dependencies": {
     "@kontave/fiscal-domain": "workspace:*",
     "@kontave/monetary-domain": "workspace:*",
+    "@kontave/organizations-domain": "workspace:*",
     "@kontave/sales-domain": "workspace:*"
   },
   "devDependencies": {

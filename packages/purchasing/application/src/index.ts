@@ -1,4 +1,5 @@
 import type { FiscalDocument, FiscalDocumentId } from "@kontave/fiscal-domain";
+export * from "./purchasing-dashboard";
 import { addDecimal, compareDecimal, type ExactDecimal } from "@kontave/monetary-domain";
 import {
   PurchasingFailure,

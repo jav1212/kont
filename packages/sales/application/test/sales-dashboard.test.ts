@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { companyId, organizationId, userId } from "@kontave/organizations-domain";
+import { SalesDashboardFailure, validateSalesDashboardQuery, type SalesDashboardQuery } from "../src/index";
+const base: SalesDashboardQuery = { actorUserId: userId("user"), organizationId: organizationId("organization"), companyId: companyId("company"), from: "2026-01-01", to: "2026-01-31", granularity: "day", recentLimit: 5 };
+const rejects = (query: SalesDashboardQuery) => assert.throws(() => validateSalesDashboardQuery(query), SalesDashboardFailure);
+test("validates real ISO dates", () => { rejects({ ...base, from: "2026/01/01" }); rejects({ ...base, from: "2026-02-30" }); });
+test("rejects inverted and overlong periods", () => { rejects({ ...base, from: "2026-02-01" }); rejects({ ...base, from: "2024-01-01", to: "2025-01-01" }); });
+test("accepts a leap-year period of 366 inclusive days", () => assert.equal(validateSalesDashboardQuery({ ...base, from: "2024-01-01", to: "2024-12-31" }).to, "2024-12-31"));
+test("validates granularity and recent limit", () => { rejects({ ...base, granularity: "month" as "day" }); for (const recentLimit of [0, 101, 1.5]) rejects({ ...base, recentLimit }); });

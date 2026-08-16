@@ -12,6 +12,7 @@ import { App } from "./app.js";
 import { handleGlobalInteractionAction, interactionGate } from "./client-interaction.js";
 import { applyDesktopTheme } from "./desktop-theme.js";
 import "./styles.css";
+import "./inventory-operations.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Desktop root element was not found.");

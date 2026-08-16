@@ -50,6 +50,12 @@ export type NativeApiErrorCode =
   | "INVENTORY_DASHBOARD_INVALID"
   | "INVENTORY_DASHBOARD_ACCESS_DENIED"
   | "INVENTORY_DASHBOARD_UNAVAILABLE"
+  | "PURCHASING_DASHBOARD_INVALID"
+  | "PURCHASING_DASHBOARD_ACCESS_DENIED"
+  | "PURCHASING_DASHBOARD_UNAVAILABLE"
+  | "SALES_DASHBOARD_INVALID"
+  | "SALES_DASHBOARD_ACCESS_DENIED"
+  | "SALES_DASHBOARD_UNAVAILABLE"
   | "INVENTORY_PROFILE_VERSION_CONFLICT"
   | "INVENTORY_PROFILE_INVALID"
   | "INVENTORY_REPOSITORY_UNAVAILABLE"
@@ -246,6 +252,21 @@ export interface NativeInventoryDashboardDto {
   readonly recentOutboundMovements:readonly NativeRecentInventoryMovementDto[];
   readonly generatedAt: string;
 }
+
+export interface NativeSalesAmountDto { readonly amount: string; readonly currency: "VES" }
+export interface NativeSalesDashboardSummaryDto { readonly confirmedInvoicedAmount:NativeSalesAmountDto;readonly taxableBaseAmount:NativeSalesAmountDto;readonly vatDebitAmount:NativeSalesAmountDto;readonly confirmedInvoiceCount:number;readonly draftInvoiceCount:number;readonly averageTicketAmount:NativeSalesAmountDto }
+export interface NativeSalesDashboardDailyPointDto { readonly date:string;readonly confirmedInvoicedAmount:NativeSalesAmountDto;readonly taxableBaseAmount:NativeSalesAmountDto;readonly vatDebitAmount:NativeSalesAmountDto;readonly confirmedInvoiceCount:number }
+export interface NativeSalesDashboardDocumentDto { readonly id:string;readonly sourceKind:"legacy_sales_invoice";readonly documentType:"invoice";readonly invoiceNumber:string;readonly customerName:string|null;readonly date:string;readonly status:"confirmed"|"draft";readonly salesChannel:"administrative"|"pos";readonly subtotal:NativeSalesAmountDto;readonly taxableBase:NativeSalesAmountDto;readonly vatAmount:NativeSalesAmountDto;readonly total:NativeSalesAmountDto;readonly transactionCurrency:string;readonly sourceSubtotal:string|null;readonly sourceVatAmount:string|null;readonly sourceTotal:string|null }
+export interface NativeSalesDashboardDto { readonly period:{readonly from:string;readonly to:string;readonly granularity:"day"};readonly summary:NativeSalesDashboardSummaryDto;readonly charts:readonly NativeSalesDashboardDailyPointDto[];readonly recentConfirmedInvoices:readonly NativeSalesDashboardDocumentDto[];readonly recentDraftInvoices:readonly NativeSalesDashboardDocumentDto[];readonly generatedAt:string }
+
+export interface NativePurchasingAmountDto{readonly amount:string;readonly currency:"VES"}
+export interface NativePurchasingTransactionAmountDto{readonly amount:string;readonly currency:string}
+export interface NativePurchasingSupplierDto{readonly id:string|null;readonly legalName:string;readonly taxIdentifier:string|null}
+export interface NativePurchasingDashboardSummaryDto{readonly confirmedPurchaseTotal:NativePurchasingAmountDto;readonly vatCreditTotal:NativePurchasingAmountDto;readonly vatWithheldTotal:NativePurchasingAmountDto;readonly confirmedDocumentCount:number;readonly draftDocumentCount:number}
+export interface NativePurchasingDashboardDayDto{readonly date:string;readonly confirmedPurchaseTotal:NativePurchasingAmountDto;readonly vatCreditTotal:NativePurchasingAmountDto;readonly confirmedDocumentCount:number;readonly draftDocumentCount:number}
+export interface NativePurchasingTopSupplierDto{readonly supplier:NativePurchasingSupplierDto;readonly confirmedPurchaseTotal:NativePurchasingAmountDto;readonly confirmedDocumentCount:number}
+export interface NativeRecentPurchasingDocumentDto{readonly id:string;readonly documentType:"invoice"|"credit_note"|"debit_note";readonly invoiceNumber:string;readonly controlNumber:string|null;readonly supplier:NativePurchasingSupplierDto;readonly fiscalDate:string;readonly status:"draft"|"confirmed";readonly functionalAmounts:{readonly subtotal:NativePurchasingAmountDto;readonly vat:NativePurchasingAmountDto;readonly vatWithheld:NativePurchasingAmountDto;readonly total:NativePurchasingAmountDto};readonly transactionCurrency:string;readonly transactionAmounts:{readonly subtotal:NativePurchasingTransactionAmountDto|null;readonly vat:NativePurchasingTransactionAmountDto|null;readonly total:NativePurchasingTransactionAmountDto|null}}
+export interface NativePurchasingDashboardDto{readonly period:{readonly from:string;readonly to:string;readonly granularity:"day"};readonly summary:NativePurchasingDashboardSummaryDto;readonly daily:readonly NativePurchasingDashboardDayDto[];readonly topSuppliers:readonly NativePurchasingTopSupplierDto[];readonly recentDocuments:readonly NativeRecentPurchasingDocumentDto[];readonly generatedAt:string}
 
 export type NativeInventoryOperationReason="opening_balance"|"purchase_receipt"|"sales_issue"|"customer_return"|"supplier_return"|"transfer"|"stock_count_adjustment"|"self_consumption"|"production_consumption"|"production_output"|"reversal";
 export type NativeInventoryOperationStatus="draft"|"posted"|"reversed";

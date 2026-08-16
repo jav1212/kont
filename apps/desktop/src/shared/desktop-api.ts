@@ -9,6 +9,13 @@ import type {
   NativeCurrentUserDto,
   NativeDocumentDto,
   NativeInventoryDashboardDto,
+  NativeSalesDashboardDto,
+  NativePurchasingDashboardDto,
+  NativeInventoryFlowPageDto,
+  NativeInventoryOperationDetailDto,
+  NativeCreateInventoryOperationDto,
+  NativeUpdateInventoryOperationDto,
+  NativeReverseInventoryOperationDto,
   NativeExchangeRateSetDto,
   NativeOperationalDefaultsDto,
   NativeCreateProductCategoryDto,
@@ -83,6 +90,16 @@ export const DESKTOP_IPC = {
   revokeSettingsSession: "settings:session-revoke",
   revokeOtherSettingsSessions: "settings:sessions-revoke-others",
   getInventoryDashboard: "inventory:dashboard",
+  getSalesDashboard: "sales:dashboard",
+  getPurchasingDashboard: "purchasing:dashboard",
+  listInventoryEntries: "inventory:entries",
+  listInventoryOutputs: "inventory:outputs",
+  listInventoryOperations: "inventory:operations",
+  getInventoryOperation: "inventory:operation-get",
+  createInventoryOperation: "inventory:operation-create",
+  updateInventoryOperation: "inventory:operation-update",
+  postInventoryOperation: "inventory:operation-post",
+  reverseInventoryOperation: "inventory:operation-reverse",
   listProducts: "products:list",
   getProductPermissions: "products:permissions",
   getProduct: "products:get",
@@ -122,6 +139,26 @@ export interface DesktopInventoryDashboardQuery {
 export type DesktopInventoryDashboardResult =
   | { readonly ok: true; readonly value: DesktopInventoryDashboardSnapshot }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
+
+export interface DesktopSalesDashboardSnapshot {readonly operationContext:NativeOperationalDefaultsDto;readonly exchangeRates:NativeExchangeRateSetDto;readonly dashboard:NativeSalesDashboardDto}
+export interface DesktopSalesDashboardQuery {
+  readonly from?: string;
+  readonly to?: string;
+  readonly granularity?: "day";
+  readonly recentLimit?: number;
+}
+export type DesktopSalesDashboardResult={readonly ok:true;readonly value:DesktopSalesDashboardSnapshot}|{readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null}};
+
+export interface DesktopPurchasingDashboardSnapshot{readonly operationContext:NativeOperationalDefaultsDto;readonly exchangeRates:NativeExchangeRateSetDto;readonly dashboard:NativePurchasingDashboardDto}
+export interface DesktopPurchasingDashboardQuery{readonly from?:string;readonly to?:string;readonly recentLimit?:number}
+export type DesktopPurchasingDashboardResult={readonly ok:true;readonly value:DesktopPurchasingDashboardSnapshot}|{readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null}};
+
+export interface DesktopInventoryFlowQuery {
+  readonly from: string; readonly to: string; readonly reason?: string; readonly sourceKind?: string;
+  readonly productId?: string; readonly status?: "draft" | "posted" | "reversed";
+  readonly search?: string; readonly cursor?: string; readonly limit?: number;
+}
+export type DesktopInventoryResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
 
 export interface DesktopSettingsSnapshot {
   readonly profile: NativeCurrentUserDto;
@@ -322,7 +359,17 @@ export interface KontaveDesktopApi {
   };
   readonly inventory: {
     getDashboard(userId: string, organizationId: string, companyId: string, query?: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult>;
+    entries(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
+    outputs(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
+    operations(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
+    operation(organizationId:string,companyId:string,operationId:string):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
+    createOperation(organizationId:string,companyId:string,command:NativeCreateInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
+    updateOperation(organizationId:string,companyId:string,operationId:string,command:NativeUpdateInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
+    postOperation(organizationId:string,companyId:string,operationId:string,expectedVersion:number):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
+    reverseOperation(organizationId:string,companyId:string,operationId:string,command:NativeReverseInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
   };
+  readonly sales:{getDashboard(userId:string,organizationId:string,companyId:string,query?:DesktopSalesDashboardQuery):Promise<DesktopSalesDashboardResult>};
+  readonly purchasing:{getDashboard(userId:string,organizationId:string,companyId:string,query?:DesktopPurchasingDashboardQuery):Promise<DesktopPurchasingDashboardResult>};
   readonly products: {
     permissions(organizationId:string):Promise<DesktopProductsResult<readonly string[]>>;
     list(organizationId:string,companyId:string,query?:DesktopProductListQuery):Promise<DesktopProductsResult<NativeProductListDto>>;

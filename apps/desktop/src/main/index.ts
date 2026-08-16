@@ -29,6 +29,9 @@ import { DesktopPlatformStatusController } from "./platform-status/desktop-platf
 import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source.js";
 import { DesktopSettingsController } from "./settings/desktop-settings-controller.js";
 import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller.js";
+import { DesktopSalesDashboardController } from "./sales/desktop-sales-dashboard-controller";
+import { DesktopInventoryOperationsController } from "./inventory/desktop-inventory-operations-controller.js";
+import { DesktopPurchasingDashboardController } from "./purchasing/desktop-purchasing-dashboard-controller.js";
 import { DesktopProductsController } from "./products/desktop-products-controller.js";
 
 let mainWindow: BrowserWindow | undefined;
@@ -41,6 +44,9 @@ let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let settings: DesktopSettingsController | undefined;
 let inventoryDashboard: DesktopInventoryDashboardController | undefined;
+let salesDashboard:DesktopSalesDashboardController|undefined;
+let inventoryOperations: DesktopInventoryOperationsController | undefined;
+let purchasingDashboard: DesktopPurchasingDashboardController | undefined;
 let products: DesktopProductsController | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
 let previousConnectivityAvailability: ConnectivitySnapshot["availability"] = "unknown";
@@ -166,6 +172,16 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.getInventoryDashboard, (_event, actorId: unknown, organizationId: unknown, companyId: unknown, query: unknown) => (
     inventoryDashboardController().getDashboard(actorId, organizationId, companyId, query)
   ));
+  ipcMain.handle(DESKTOP_IPC.getSalesDashboard,(_event,actorId,organizationId,companyId,query)=>salesDashboardController().getDashboard(actorId,organizationId,companyId,query));
+  ipcMain.handle(DESKTOP_IPC.listInventoryEntries,(_event,organizationId,companyId,query)=>inventoryOperationsController().entries(organizationId,companyId,query));
+  ipcMain.handle(DESKTOP_IPC.listInventoryOutputs,(_event,organizationId,companyId,query)=>inventoryOperationsController().outputs(organizationId,companyId,query));
+  ipcMain.handle(DESKTOP_IPC.listInventoryOperations,(_event,organizationId,companyId,query)=>inventoryOperationsController().operations(organizationId,companyId,query));
+  ipcMain.handle(DESKTOP_IPC.getInventoryOperation,(_event,organizationId,companyId,operationId)=>inventoryOperationsController().operation(organizationId,companyId,operationId));
+  ipcMain.handle(DESKTOP_IPC.createInventoryOperation,(_event,organizationId,companyId,command)=>inventoryOperationsController().create(organizationId,companyId,command));
+  ipcMain.handle(DESKTOP_IPC.updateInventoryOperation,(_event,organizationId,companyId,operationId,command)=>inventoryOperationsController().update(organizationId,companyId,operationId,command));
+  ipcMain.handle(DESKTOP_IPC.postInventoryOperation,(_event,organizationId,companyId,operationId,expectedVersion)=>inventoryOperationsController().post(organizationId,companyId,operationId,expectedVersion));
+  ipcMain.handle(DESKTOP_IPC.reverseInventoryOperation,(_event,organizationId,companyId,operationId,command)=>inventoryOperationsController().reverse(organizationId,companyId,operationId,command));
+  ipcMain.handle(DESKTOP_IPC.getPurchasingDashboard,(_event,actorId:unknown,organizationId:unknown,companyId:unknown,query:unknown)=>purchasingDashboardController().getDashboard(actorId,organizationId,companyId,query));
   ipcMain.handle(DESKTOP_IPC.listProducts, (_event, organizationId, companyId, query) => productsController().list(organizationId, companyId, query));
   ipcMain.handle(DESKTOP_IPC.getProductPermissions, (_event, organizationId) => productsController().permissions(organizationId));
   ipcMain.handle(DESKTOP_IPC.getProduct, (_event, organizationId, companyId, productId) => productsController().get(organizationId, companyId, productId));
@@ -229,6 +245,13 @@ function inventoryDashboardController(): DesktopInventoryDashboardController {
   if (!inventoryDashboard) throw new Error("Desktop inventory dashboard is not initialized.");
   return inventoryDashboard;
 }
+function salesDashboardController():DesktopSalesDashboardController{if(!salesDashboard)throw new Error("Desktop sales dashboard is not initialized.");return salesDashboard;}
+
+function inventoryOperationsController(): DesktopInventoryOperationsController {
+  if (!inventoryOperations) throw new Error("Desktop inventory operations are not initialized.");
+  return inventoryOperations;
+}
+function purchasingDashboardController():DesktopPurchasingDashboardController{if(!purchasingDashboard)throw new Error("Desktop purchasing dashboard is not initialized.");return purchasingDashboard}
 
 function productsController(): DesktopProductsController {
   if (!products) throw new Error("Desktop products are not initialized.");
@@ -470,6 +493,9 @@ app.whenReady().then(() => {
   const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
   settings = new DesktopSettingsController(apiBaseUrl, authenticatedRequest);
   inventoryDashboard = new DesktopInventoryDashboardController(apiBaseUrl, authenticatedRequest);
+  salesDashboard=new DesktopSalesDashboardController(apiBaseUrl,authenticatedRequest);
+  inventoryOperations = new DesktopInventoryOperationsController(apiBaseUrl, authenticatedRequest);
+  purchasingDashboard = new DesktopPurchasingDashboardController(apiBaseUrl,authenticatedRequest);
   products = new DesktopProductsController(apiBaseUrl, authenticatedRequest);
   connectivity = new ConnectivityMonitor({
     probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),

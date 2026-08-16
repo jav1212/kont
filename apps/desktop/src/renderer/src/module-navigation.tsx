@@ -57,6 +57,7 @@ const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPrese
     { id: "inventory.dashboard", icon: <Gauge /> },
     { id: "inventory.products", icon: <Package />, group: "Catálogos" },
     { id: "inventory.product-categories", icon: <Building2 />, group: "Catálogos" },
+    { id: "inventory.inputs", icon: <ArrowRightLeft />, group: "Operaciones" },
     { id: "inventory.outputs", icon: <Boxes />, group: "Operaciones" },
     { id: "inventory.operations", icon: <ArrowRightLeft />, group: "Operaciones" },
     { id: "inventory.purchase-ledger", icon: <BookOpen />, group: "Reportes" },
