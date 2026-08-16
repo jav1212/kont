@@ -1,31 +1,10 @@
 -- Fiscal purchasing dashboard over the shared operational source of truth.
+-- Module availability is organization-scoped; company rows only scope operational data.
 alter table public.organization_delegation_scopes drop constraint if exists organization_delegation_scopes_scope_check;
 alter table public.organization_delegation_scopes add constraint organization_delegation_scopes_scope_check check(scope in('accounting','payroll','inventory','purchases','tax','documents','administration'));
 
 insert into public.module_capabilities(module_id,capability_code)
 select id,'purchases.dashboard' from public.module_catalog where code='purchases' on conflict do nothing;
-
-create or replace function public.sync_company_inventory_bundled_modules()
-returns trigger language plpgsql security definer set search_path=public as $$
-declare v_code text;v_status text;
-begin
-  select code into v_code from public.module_catalog where id=new.module_id;
-  if v_code<>'inventory' then return new;end if;
-  v_status:=case when new.status='active'then'active'else'suspended'end;
-  insert into public.shared_company_module_activations(tenant_id,company_id,module_id,status,activated_at,suspended_at,updated_at)
-  select new.tenant_id,new.company_id,m.id,v_status,
-    case when v_status='active'then coalesce(new.activated_at,now())else coalesce(existing.activated_at,new.activated_at,now())end,
-    case when v_status='suspended'then coalesce(new.suspended_at,now())else null end,now()
-  from public.module_catalog m
-  left join public.shared_company_module_activations existing on existing.tenant_id=new.tenant_id and existing.company_id=new.company_id and existing.module_id=m.id
-  where m.code in('purchases','sales')
-  on conflict(tenant_id,company_id,module_id)do update set status=excluded.status,activated_at=excluded.activated_at,suspended_at=excluded.suspended_at,updated_at=excluded.updated_at;
-  return new;
-end $$;
-revoke all on function public.sync_company_inventory_bundled_modules()from public,anon,authenticated;
-drop trigger if exists shared_company_inventory_sync_bundled_modules on public.shared_company_module_activations;
-create trigger shared_company_inventory_sync_bundled_modules after insert or update of status on public.shared_company_module_activations for each row execute function public.sync_company_inventory_bundled_modules();
-update public.shared_company_module_activations a set status=a.status,updated_at=now() from public.module_catalog m where m.id=a.module_id and m.code='inventory';
 
 create or replace function public.get_shared_purchasing_dashboard_snapshot(
  p_actor_user_id uuid,p_organization_id uuid,p_company_id text,p_from date,p_to date,p_granularity text default'day',p_recent_limit integer default 5

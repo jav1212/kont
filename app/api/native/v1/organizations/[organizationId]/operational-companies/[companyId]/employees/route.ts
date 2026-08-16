@@ -1,7 +1,7 @@
 import { PERMISSIONS, permissionCode, AuthorizationSource } from "@kontave/access-control-domain";
 import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
 import { companyId } from "@kontave/companies-domain";
-import { RequireCompanyModuleCapability } from "@kontave/modules-application";
+import { RequireModuleCapability } from "@kontave/modules-application";
 import { ModuleCapability } from "@kontave/modules-domain";
 import { createModulesInfrastructure } from "@kontave/modules-supabase";
 import { organizationId } from "@kontave/organizations-domain";
@@ -31,7 +31,7 @@ export async function GET(request: Request, context: { params: Promise<{ organiz
     });
     await createCompanyActions().getOperational.execute(organization, company);
     const modules = createModulesInfrastructure({ url, serviceRoleKey });
-    await new RequireCompanyModuleCapability(modules.catalog, modules.companyActivations).execute(organization, company, ModuleCapability.PayrollEmployees);
+    await new RequireModuleCapability(modules.catalog, modules.installations).execute(organization, ModuleCapability.PayrollEmployees);
     return nativeSuccess((await createEmployeeActions().list.execute(organization, company)).map(toEmployeeDto), requestId);
   } catch (cause) {
     console.error("native.employees.failed", { requestId, cause });

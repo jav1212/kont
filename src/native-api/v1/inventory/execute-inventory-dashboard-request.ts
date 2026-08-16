@@ -2,7 +2,7 @@ import{AuthorizationDenied,PERMISSIONS,permissionCode}from"@kontave/access-contr
 import{createSupabaseAuthorization}from"@kontave/access-control-supabase";
 import{InventoryDashboardFailure,type InventoryDashboardSnapshot}from"@kontave/inventory-application";
 import{companyId}from"@kontave/companies-domain";
-import{RequireCompanyModuleCapability}from"@kontave/modules-application";
+import{RequireModuleCapability}from"@kontave/modules-application";
 import{ModuleCapability,ModuleFailure}from"@kontave/modules-domain";
 import{createModulesInfrastructure}from"@kontave/modules-supabase";
 import{companyId as organizationCompanyId,organizationId,userId}from"@kontave/organizations-domain";
@@ -26,7 +26,7 @@ export async function executeInventoryDashboardRequest(request:Request,rawOrgani
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error("Native inventory dashboard infrastructure is not configured.");
   if(access.accessPath.kind===OrganizationAccessPathKind.DirectMembership)await createSupabaseAuthorization({url,serviceRoleKey:key}).require.execute({actor:{userId:identity.userId,organizationId:organization},permission,resource:{type:"inventory_dashboard",organizationId:organization,companyId:company},context:{requestId,source:nativeClientSource(request.headers.get("x-kontave-client")),occurredAt}});
   await createCompanyActions().getOperational.execute(organization,company);
-  const modules=createModulesInfrastructure({url,serviceRoleKey:key});await new RequireCompanyModuleCapability(modules.catalog,modules.companyActivations).execute(organization,company,ModuleCapability.InventoryMovements);
+  const modules=createModulesInfrastructure({url,serviceRoleKey:key});await new RequireModuleCapability(modules.catalog,modules.installations).execute(organization, ModuleCapability.InventoryMovements);
   const query=readQuery(request);
   const snapshot=await createInventoryDashboardActions().get.execute({actorUserId:userId(identity.userId),organizationId:organization,companyId:organizationCompanyId(rawCompanyId),...query});
   return nativeSuccess(selectPart(snapshot,part),requestId);

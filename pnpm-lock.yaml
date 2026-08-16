@@ -1373,9 +1373,6 @@ importers:
 
   packages/modules/application:
     dependencies:
-      '@kontave/companies-domain':
-        specifier: workspace:*
-        version: link:../../companies/domain
       '@kontave/modules-domain':
         specifier: workspace:*
         version: link:../domain
@@ -1401,9 +1398,6 @@ importers:
 
   packages/modules/domain:
     dependencies:
-      '@kontave/companies-domain':
-        specifier: workspace:*
-        version: link:../../companies/domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../organizations/domain
@@ -1417,9 +1411,6 @@ importers:
 
   packages/modules/supabase:
     dependencies:
-      '@kontave/companies-domain':
-        specifier: workspace:*
-        version: link:../../companies/domain
       '@kontave/modules-application':
         specifier: workspace:*
         version: link:../application

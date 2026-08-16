@@ -1,22 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { CompanyModuleActivationRepository, ModuleCatalogRepository, ModuleEntitlementService, OrganizationModuleRepository } from "@kontave/modules-application";
-import { companyId, type CompanyId } from "@kontave/companies-domain";
+import type { ModuleCatalogRepository, ModuleEntitlementService, OrganizationModuleRepository } from "@kontave/modules-application";
 import { ModuleEntitlementStatus, ModuleFailure, moduleId, type ModuleCode, type ModuleDefinition } from "@kontave/modules-domain";
 import { organizationId, type OrganizationId } from "@kontave/organizations-domain";
-import { companyModuleActivationRowSchema, moduleDefinitionRowSchema, moduleInstallationRowSchema } from "./persistence-codecs";
+import { moduleDefinitionRowSchema, moduleInstallationRowSchema } from "./persistence-codecs";
 
 export interface ModulesSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
 export function createModulesInfrastructure(configuration: ModulesSupabaseConfiguration) {
   const client = createClient(configuration.url, configuration.serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  return { catalog: new SupabaseModuleCatalog(client), installations: new SupabaseOrganizationModules(client), entitlements: new SupabaseModuleEntitlements(client), companyActivations: new SupabaseCompanyModuleActivations(client) };
-}
-
-class SupabaseCompanyModuleActivations implements CompanyModuleActivationRepository {
-  constructor(private readonly client: SupabaseClient) {}
-  async list(organization: OrganizationId,id: CompanyId) { const {data,error}=await this.client.rpc("list_shared_company_module_activations",{p_organization_id:organization,p_company_id:id});if(error)throw repositoryFailure(error);return companyModuleActivationRowSchema.array().parse(data??[]).map(mapCompanyActivation); }
-  async find(organization: OrganizationId,id: CompanyId, code: ModuleCode) { return (await this.list(organization,id)).find((activation)=>activation.moduleCode===code)??null; }
-  async activate(organization: OrganizationId,id: CompanyId, definition: ModuleDefinition, occurredAt: string) { const {data,error}=await this.client.rpc("activate_shared_company_module",{p_organization_id:organization,p_company_id:id,p_module_code:definition.code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
-  async suspend(organization: OrganizationId,id: CompanyId, code: ModuleCode, occurredAt: string) { const {data,error}=await this.client.rpc("suspend_shared_company_module",{p_organization_id:organization,p_company_id:id,p_module_code:code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
+  return { catalog: new SupabaseModuleCatalog(client), installations: new SupabaseOrganizationModules(client), entitlements: new SupabaseModuleEntitlements(client) };
 }
 
 class SupabaseModuleCatalog implements ModuleCatalogRepository {
@@ -38,6 +29,5 @@ class SupabaseModuleEntitlements implements ModuleEntitlementService {
 function relationCode(value:unknown):unknown{if(Array.isArray(value))return value[0]?.code;if(value&&typeof value==="object"&&"code"in value)return value.code;return undefined}
 function mapDefinition(row:ReturnType<typeof moduleDefinitionRowSchema.parse>):ModuleDefinition{return{id:moduleId(row.id),code:row.code,name:row.name,status:row.status,capabilities:row.capabilities,dependencies:row.dependencies,supportedPlatforms:row.supported_platforms}}
 function mapInstallation(row:ReturnType<typeof moduleInstallationRowSchema.parse>){return{id:row.id,organizationId:organizationId(row.organization_id),moduleId:moduleId(row.module_id),moduleCode:row.module_code,status:row.status,configurationVersion:row.configuration_version,installedAt:row.installed_at,activatedAt:row.activated_at,suspendedAt:row.suspended_at}}
-function mapCompanyActivation(row:ReturnType<typeof companyModuleActivationRowSchema.parse>){return{id:row.id,companyId:companyId(row.company_id),moduleId:moduleId(row.module_id),moduleCode:row.module_code,status:row.status,configurationVersion:row.configuration_version,activatedAt:row.activated_at,suspendedAt:row.suspended_at}}
 function repositoryFailure(cause:unknown){return new ModuleFailure("MODULE_REPOSITORY_UNAVAILABLE","No se pudo acceder a los módulos.",{cause})}
 function mapModuleError(error:{message?:string}){const message=error.message??"";if(message.includes("module_not_entitled"))return new ModuleFailure("MODULE_NOT_ENTITLED","La organización no tiene acceso comercial al módulo.");if(message.includes("module_dependency_missing"))return new ModuleFailure("MODULE_DEPENDENCY_MISSING","Falta una dependencia activa.");if(message.includes("module_dependent_active"))return new ModuleFailure("MODULE_DEPENDENT_ACTIVE","Otro módulo activo depende de este módulo.");if(message.includes("module_not_found"))return new ModuleFailure("MODULE_NOT_FOUND","El módulo no existe.");if(message.includes("module_already_installed"))return new ModuleFailure("MODULE_ALREADY_INSTALLED","El módulo ya está instalado.");return repositoryFailure(error)}

@@ -14,7 +14,7 @@ test("installs an entitled module through repositories", async () => {
   assert.equal(installed.moduleCode, ModuleCode.Inventory);
 });
 
-test("capability checks use active installations", async () => {
+test("capabilities belong to the organization and require only an active installation", async () => {
   const catalog = new InMemoryModuleCatalog([inventory]); const installations = new InMemoryOrganizationModules();
   await new InstallModule(catalog, installations, new InMemoryModuleEntitlements(new Set([ModuleCode.Inventory]))).execute(organization, ModuleCode.Inventory, new Date(0).toISOString());
   await new RequireModuleCapability(catalog, installations).execute(organization, ModuleCapability.InventoryProducts);

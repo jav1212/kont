@@ -1,5 +1,4 @@
 import type { OrganizationId } from "@kontave/organizations-domain";
-import type { CompanyId } from "@kontave/companies-domain";
 
 declare const moduleIdBrand: unique symbol;
 export type ModuleId = string & { readonly [moduleIdBrand]: true };
@@ -79,22 +78,6 @@ export interface ModuleInstallation {
   readonly configurationVersion: number;
   readonly installedAt: string;
   readonly activatedAt: string | null;
-  readonly suspendedAt: string | null;
-}
-
-export enum CompanyModuleActivationStatus {
-  Active = "active",
-  Suspended = "suspended",
-}
-
-export interface CompanyModuleActivation {
-  readonly id: string;
-  readonly companyId: CompanyId;
-  readonly moduleId: ModuleId;
-  readonly moduleCode: ModuleCode;
-  readonly status: CompanyModuleActivationStatus;
-  readonly configurationVersion: number;
-  readonly activatedAt: string;
   readonly suspendedAt: string | null;
 }
 

@@ -1,4 +1,5 @@
 -- Exact native Sales dashboard over the shared operational source of truth.
+-- Module availability is organization-scoped; company rows only scope operational data.
 -- Historical null bases followed the Web rule COALESCE(base_iva,total_linea).
 update public.shared_inventory_sales_invoice_items set vat_base=line_total where vat_base is null;
 alter table public.shared_inventory_sales_invoice_items alter column vat_base set not null;
