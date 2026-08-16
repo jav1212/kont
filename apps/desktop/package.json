@@ -15,14 +15,15 @@
     "dist:win": "corepack pnpm build && electron-builder --win nsis --publish never"
   },
   "dependencies": {
+    "@fontsource/darker-grotesque": "^5.2.8",
+    "@kontave/access-control-domain": "workspace:*",
     "@kontave/auth-application": "workspace:*",
     "@kontave/auth-domain": "workspace:*",
     "@kontave/auth-supabase": "workspace:*",
-    "@kontave/access-control-domain": "workspace:*",
     "@kontave/brand-assets": "workspace:*",
-    "@kontave/client-feedback-application": "workspace:*",
     "@kontave/client-connectivity-application": "workspace:*",
     "@kontave/client-connectivity-contracts": "workspace:*",
+    "@kontave/client-feedback-application": "workspace:*",
     "@kontave/client-interaction-application": "workspace:*",
     "@kontave/client-updates-application": "workspace:*",
     "@kontave/client-updates-contracts": "workspace:*",
@@ -31,12 +32,12 @@
     "@kontave/device-contracts": "workspace:*",
     "@kontave/devices-core": "workspace:*",
     "@kontave/devices-node": "workspace:*",
-    "@kontave/native-api-contracts": "workspace:*",
-    "@kontave/native-api-client": "workspace:*",
     "@kontave/modules-application": "workspace:*",
     "@kontave/modules-domain": "workspace:*",
-    "@kontave/navigation-domain": "workspace:*",
     "@kontave/monetary-domain": "workspace:*",
+    "@kontave/native-api-client": "workspace:*",
+    "@kontave/native-api-contracts": "workspace:*",
+    "@kontave/navigation-domain": "workspace:*",
     "@kontave/operation-context-application": "workspace:*",
     "@kontave/operation-context-domain": "workspace:*",
     "@kontave/organization-delegations-domain": "workspace:*",
@@ -46,7 +47,7 @@
     "@kontave/ui-dom": "workspace:*",
     "@kontave/workspace-context-application": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
-    "@fontsource/darker-grotesque": "^5.2.8",
+    "chart.js": "^4.5.1",
     "lucide-react": "^1.7.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -66,16 +67,23 @@
     "appId": "com.kontave.desktop",
     "productName": "Kontave Desktop",
     "asar": true,
-    "files": ["out/**/*", "package.json"],
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "../../packages/ui/brand-assets/src/kontave-app-icon.png",
         "to": "kontave-app-icon.png"
       }
     ],
-    "directories": { "output": "release" },
+    "directories": {
+      "output": "release"
+    },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "../../packages/ui/brand-assets/src/kontave-app-icon.png",
       "artifactName": "Kontave-Desktop-Setup.${ext}"
     },
@@ -88,6 +96,13 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
     },
-    "publish": [{ "provider": "github", "owner": "jav1212", "repo": "kont", "releaseType": "release" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jav1212",
+        "repo": "kont",
+        "releaseType": "release"
+      }
+    ]
   }
 }

@@ -178,6 +178,11 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.createProductCategory, (_event, organizationId, companyId, command) => productsController().createCategory(organizationId, companyId, command));
   ipcMain.handle(DESKTOP_IPC.updateProductCategory, (_event, organizationId, companyId, categoryId, command) => productsController().updateCategory(organizationId, companyId, categoryId, command));
   ipcMain.handle(DESKTOP_IPC.setProductCategoryStatus, (_event, organizationId, companyId, categoryId, active, expectedVersion) => productsController().setCategoryStatus(organizationId, companyId, categoryId, active, expectedVersion));
+  ipcMain.handle(DESKTOP_IPC.getProductCategory, (_event, organizationId, companyId, categoryId) => productsController().getCategory(organizationId, companyId, categoryId));
+  ipcMain.handle(DESKTOP_IPC.listProductCategoryOverview, (_event, organizationId, companyId, query) => productsController().categoryOverview(organizationId, companyId, query));
+  ipcMain.handle(DESKTOP_IPC.getProductUnitEconomics, (_event, organizationId, companyId, productId, query) => productsController().unitEconomics(organizationId, companyId, productId, query));
+  ipcMain.handle(DESKTOP_IPC.updateProductSalePricing, (_event, organizationId, companyId, productId, command) => productsController().updateSalePricing(organizationId, companyId, productId, command));
+  ipcMain.handle(DESKTOP_IPC.updateProductTaxation, (_event, organizationId, companyId, productId, command) => productsController().updateTaxation(organizationId, companyId, productId, command));
 }
 
 function updateCoordinator(): ClientUpdateCoordinator {

@@ -56,7 +56,7 @@ const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPrese
   inventory: [
     { id: "inventory.dashboard", icon: <Gauge /> },
     { id: "inventory.products", icon: <Package />, group: "Catálogos" },
-    { id: "inventory.departments", icon: <Building2 />, group: "Catálogos" },
+    { id: "inventory.product-categories", icon: <Building2 />, group: "Catálogos" },
     { id: "inventory.outputs", icon: <Boxes />, group: "Operaciones" },
     { id: "inventory.operations", icon: <ArrowRightLeft />, group: "Operaciones" },
     { id: "inventory.purchase-ledger", icon: <BookOpen />, group: "Reportes" },
@@ -135,6 +135,6 @@ export function desktopStaticNavigationTarget(id: string): NavigationTarget | nu
   return staticNavigationTarget(id as StaticDestinationId);
 }
 
-export function desktopBreadcrumbs(target: NavigationTarget | null): readonly BreadcrumbEntry[] {
-  return target ? resolveBreadcrumbs(target) : [];
+export function desktopBreadcrumbs(target: NavigationTarget | null, labels:Readonly<Record<string,string>>={}): readonly BreadcrumbEntry[] {
+  return target ? resolveBreadcrumbs(target,labels) : [];
 }

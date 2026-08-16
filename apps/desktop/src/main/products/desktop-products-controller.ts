@@ -1,11 +1,11 @@
 import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
 import type {
-  NativeCreateProductCategoryDto, NativeCreateProductDto, NativeProductCategoryDto, NativeProductDetailDto,
-  NativeOrganizationDto, NativeProductDto, NativeProductListDto, NativeProductMovementPageDto, NativeProductReplenishmentPolicyDto,
-  NativeUpdateProductCategoryDto, NativeUpdateProductDto, NativeUpdateProductInventoryProfileDto,
+  NativeCreateProductCategoryDto, NativeCreateProductDto, NativeProductCategoryDto, NativeProductCategoryOverviewDto, NativeProductCategoryOverviewItemDto, NativeProductDetailDto,
+  NativeOrganizationDto, NativeProductDto, NativeProductListDto, NativeProductMovementPageDto, NativeProductReplenishmentPolicyDto, NativeProductSalePricingDto, NativeProductTaxationDto, NativeProductUnitEconomicsDto,
+  NativeUpdateProductCategoryDto, NativeUpdateProductDto, NativeUpdateProductInventoryProfileDto, NativeUpdateProductSalePricingDto, NativeUpdateProductTaxationDto,
 } from "@kontave/native-api-contracts";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
-import type { DesktopProductListQuery, DesktopProductMovementQuery, DesktopProductsResult } from "../../shared/desktop-api.js";
+import type { DesktopProductCategoryOverviewQuery, DesktopProductInsightsQuery, DesktopProductListQuery, DesktopProductMovementQuery, DesktopProductsResult } from "../../shared/desktop-api.js";
 
 export class DesktopProductsController {
   private readonly client: NativeApiClient;
@@ -51,6 +51,18 @@ export class DesktopProductsController {
     return this.read(() => this.client.get(`${root(organizationId, companyId)}/product-categories?status=${normalized}`));
   }
 
+  categoryOverview(organizationId:unknown,companyId:unknown,query:unknown):Promise<DesktopProductsResult<NativeProductCategoryOverviewDto>>{
+    return this.read(()=>this.client.get(`${root(organizationId,companyId)}/product-categories/overview${queryString(readCategoryOverviewQuery(query))}`));
+  }
+
+  getCategory(organizationId:unknown,companyId:unknown,categoryId:unknown):Promise<DesktopProductsResult<NativeProductCategoryOverviewItemDto>>{
+    return this.read(()=>this.client.get(`${root(organizationId,companyId)}/product-categories/${segment(categoryId)}`));
+  }
+
+  unitEconomics(organizationId:unknown,companyId:unknown,productId:unknown,query:DesktopProductInsightsQuery):Promise<DesktopProductsResult<NativeProductUnitEconomicsDto>>{return this.read(()=>this.client.get(`${root(organizationId,companyId)}/products/${segment(productId)}/unit-economics${queryString(query)}`));}
+  updateSalePricing(organizationId:unknown,companyId:unknown,productId:unknown,command:NativeUpdateProductSalePricingDto):Promise<DesktopProductsResult<NativeProductSalePricingDto>>{return this.write(()=>this.client.request(`${root(organizationId,companyId)}/products/${segment(productId)}/sale-pricing`,json("PATCH",command)));}
+  updateTaxation(organizationId:unknown,companyId:unknown,productId:unknown,command:NativeUpdateProductTaxationDto):Promise<DesktopProductsResult<NativeProductTaxationDto>>{return this.write(()=>this.client.request(`${root(organizationId,companyId)}/products/${segment(productId)}/tax-profile`,json("PATCH",command)));}
+
   createCategory(organizationId: unknown, companyId: unknown, command: NativeCreateProductCategoryDto): Promise<DesktopProductsResult<NativeProductCategoryDto>> {
     return this.write(() => this.client.request(`${root(organizationId, companyId)}/product-categories`, json("POST", command)));
   }
@@ -83,4 +95,5 @@ function json(method: "POST" | "PATCH", body: unknown): RequestInit { return { m
 function queryString(query: object): string { const values = new URLSearchParams();Object.entries(query).forEach(([key, value]) => { if ((typeof value === "string" || typeof value === "number") && value !== "") values.set(key, String(value)); });const encoded = values.toString();return encoded ? `?${encoded}` : ""; }
 function readListQuery(value: unknown): DesktopProductListQuery { return typeof value === "object" && value !== null ? value as DesktopProductListQuery : {}; }
 function readMovementQuery(value: unknown): DesktopProductMovementQuery { return typeof value === "object" && value !== null ? value as DesktopProductMovementQuery : {}; }
+function readCategoryOverviewQuery(value:unknown):DesktopProductCategoryOverviewQuery{return typeof value==="object"&&value!==null?value as DesktopProductCategoryOverviewQuery:{};}
 function findNativeFailure(cause: unknown): NativeApiFailure | null { let current = cause;const visited = new Set<unknown>();while (current instanceof Error && !visited.has(current)) { if (current instanceof NativeApiFailure) return current;visited.add(current);current = current.cause; }return null; }

@@ -10,6 +10,7 @@
     "@kontave/client-feedback-application": "workspace:*",
     "@kontave/client-interaction-application": "workspace:*",
     "@kontave/ui-contracts": "workspace:*",
+    "flag-icons": "^7.5.0",
     "sonner": "^1.7.4"
   },
   "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "^5.9.2" }

@@ -121,6 +121,11 @@ const api: KontaveDesktopApi = {
     createCategory: (organizationId, companyId, command) => ipcRenderer.invoke(DESKTOP_IPC.createProductCategory, organizationId, companyId, command),
     updateCategory: (organizationId, companyId, categoryId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProductCategory, organizationId, companyId, categoryId, command),
     setCategoryStatus: (organizationId, companyId, categoryId, active, expectedVersion) => ipcRenderer.invoke(DESKTOP_IPC.setProductCategoryStatus, organizationId, companyId, categoryId, active, expectedVersion),
+    getCategory: (organizationId, companyId, categoryId) => ipcRenderer.invoke(DESKTOP_IPC.getProductCategory, organizationId, companyId, categoryId),
+    categoryOverview: (organizationId, companyId, query) => ipcRenderer.invoke(DESKTOP_IPC.listProductCategoryOverview, organizationId, companyId, query),
+    unitEconomics: (organizationId, companyId, productId, query) => ipcRenderer.invoke(DESKTOP_IPC.getProductUnitEconomics, organizationId, companyId, productId, query),
+    updateSalePricing: (organizationId, companyId, productId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProductSalePricing, organizationId, companyId, productId, command),
+    updateTaxation: (organizationId, companyId, productId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProductTaxation, organizationId, companyId, productId, command),
   },
 };
 

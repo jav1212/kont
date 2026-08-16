@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Boxes, RefreshCw, Repeat2 } from "lucide-react";
-import { Button, DatePeriodPicker, OptionPicker, Skeleton, presentFeedback } from "@kontave/ui-dom";
+import { Button, CurrencyFlag, DatePeriodPicker, OptionPicker, Skeleton, presentFeedback } from "@kontave/ui-dom";
 import { codedErrorFeedback } from "@kontave/client-feedback-application";
 import type { NativeInventoryDashboardChartPointDto, NativeRecentInventoryMovementDto } from "@kontave/native-api-contracts";
 import type { DesktopAuthState, DesktopInventoryDashboardQuery, DesktopInventoryDashboardSnapshot } from "../../shared/desktop-api.js";
@@ -55,11 +55,12 @@ export function InventoryDashboardView({ auth, companyId, organizationId }: Inve
   const summary = dashboard.summary;
   const exchangeRate = snapshot.exchangeRates.rates.find(({ baseCurrency }) => baseCurrency === displayCurrency) ?? null;
   const currencyOptions = [
-    { value: "VES", label: "Bolívar venezolano", description: "Moneda base del inventario" },
+    { value: "VES", label: "Bolívar venezolano", description: "Moneda base del inventario", icon: <CurrencyFlag currency="VES" /> },
     ...snapshot.exchangeRates.rates.map((rate) => ({
       value: rate.baseCurrency,
       label: currencyName(rate.baseCurrency),
       description: `1 ${rate.baseCurrency} = ${formatRate(rate.value)} VES`,
+      icon: <CurrencyFlag currency={rate.baseCurrency} />,
     })),
   ];
   const formatDashboardAmount = (value: string): string => formatAmount(value, displayCurrency, exchangeRate);

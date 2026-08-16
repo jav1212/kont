@@ -104,6 +104,51 @@ export function DatePeriodPicker({ className, label = "Período", locale = "es-V
   </div>;
 }
 
+export interface DatePickerProps {
+  readonly label?: string;
+  readonly value: string;
+  readonly max?: string;
+  readonly min?: string;
+  readonly className?: string;
+  readonly locale?: string;
+  readonly onChange: (date: string) => void;
+}
+
+export function DatePicker({ className, label = "Fecha", locale = "es-VE", max, min, onChange, value }: DatePickerProps) {
+  const [open, setOpen] = useState(false);
+  const selected = dateParts(value);
+  const [visibleMonth, setVisibleMonth] = useState(() => `${selected.year}-${String(selected.month).padStart(2, "0")}`);
+  const rootRef = useDismissiblePopover<HTMLDivElement>(open, () => setOpen(false));
+  const visible = monthParts(visibleMonth);
+  const firstWeekday = new Date(Date.UTC(visible.year, visible.month - 1, 1)).getUTCDay();
+  const days = new Date(Date.UTC(visible.year, visible.month, 0)).getUTCDate();
+  const cells = Array.from({ length: firstWeekday + days }, (_, index) => index < firstWeekday ? null : index - firstWeekday + 1);
+  const moveMonth = (offset: number): void => {
+    const next = new Date(Date.UTC(visible.year, visible.month - 1 + offset, 1));
+    setVisibleMonth(`${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`);
+  };
+  return <div className={classNames("kt-context-picker", className)} ref={rootRef}>
+    <Button appearance="unstyled" className="kt-context-picker__trigger" aria-expanded={open} aria-haspopup="dialog" onClick={() => {
+      if (!open) setVisibleMonth(`${selected.year}-${String(selected.month).padStart(2, "0")}`);
+      setOpen((current) => !current);
+    }}>
+      <CalendarIcon />
+      <span className="kt-context-picker__copy"><small>{label}</small><strong>{formatDate(value, locale)}</strong></span>
+      <ChevronIcon open={open} />
+    </Button>
+    {open ? <div className="kt-date-picker__panel" role="dialog" aria-label={`Seleccionar ${label.toLocaleLowerCase(locale)}`}>
+      <header><Button appearance="unstyled" aria-label="Mes anterior" onClick={() => moveMonth(-1)}><ArrowIcon direction="left" /></Button><strong>{formatMonth(visibleMonth, locale)}</strong><Button appearance="unstyled" aria-label="Mes siguiente" onClick={() => moveMonth(1)}><ArrowIcon direction="right" /></Button></header>
+      <div className="kt-date-picker__weekdays">{["D","L","M","M","J","V","S"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>
+      <div className="kt-date-picker__days">{cells.map((day, index) => {
+        if (day === null) return <span key={`empty-${index}`} />;
+        const date = `${visibleMonth}-${String(day).padStart(2, "0")}`;
+        const disabled = (min ? date < min : false) || (max ? date > max : false);
+        return <Button appearance="unstyled" key={date} disabled={disabled} data-active={date === value} aria-pressed={date === value} onClick={() => { onChange(date); setOpen(false); }}>{day}</Button>;
+      })}</div>
+    </div> : null}
+  </div>;
+}
+
 function monthParts(value: string): { readonly year: number; readonly month: number } {
   const match = /^(\d{4})-(\d{2})$/.exec(value);
   return { year: match ? Number(match[1]) : new Date().getFullYear(), month: match ? Number(match[2]) : new Date().getMonth() + 1 };
@@ -112,6 +157,17 @@ function monthParts(value: string): { readonly year: number; readonly month: num
 function formatMonth(value: string, locale: string): string {
   const { month, year } = monthParts(value);
   return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function dateParts(value: string): { readonly year: number; readonly month: number; readonly day: number } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const now = new Date();
+  return match ? { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) } : { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+}
+
+function formatDate(value: string, locale: string): string {
+  const { day, month, year } = dateParts(value);
+  return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, day)));
 }
 
 function useDismissiblePopover<TElement extends HTMLElement>(open: boolean, close: () => void) {

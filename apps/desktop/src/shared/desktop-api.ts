@@ -14,10 +14,17 @@ import type {
   NativeCreateProductCategoryDto,
   NativeCreateProductDto,
   NativeProductCategoryDto,
+  NativeProductCategoryOverviewDto,
+  NativeProductCategoryOverviewItemDto,
   NativeProductDetailDto,
   NativeProductDto,
   NativeProductListDto,
   NativeProductMovementPageDto,
+  NativeProductSalePricingDto,
+  NativeProductTaxationDto,
+  NativeProductUnitEconomicsDto,
+  NativeUpdateProductSalePricingDto,
+  NativeUpdateProductTaxationDto,
   NativeProductReplenishmentPolicyDto,
   NativeUpdateProductCategoryDto,
   NativeUpdateProductDto,
@@ -88,10 +95,17 @@ export const DESKTOP_IPC = {
   createProductCategory: "products:categories-create",
   updateProductCategory: "products:categories-update",
   setProductCategoryStatus: "products:categories-status",
+  getProductCategory: "products:categories-get",
+  listProductCategoryOverview: "products:categories-overview",
+  getProductUnitEconomics: "products:unit-economics",
+  updateProductSalePricing: "products:sale-pricing-update",
+  updateProductTaxation: "products:taxation-update",
 } as const;
 
 export interface DesktopProductListQuery { readonly search?: string;readonly status?: "active"|"inactive"|"all";readonly categoryId?: string;readonly stock?: "all"|"available"|"low"|"out";readonly sort?: "name"|"sku"|"stock"|"value"|"updatedAt";readonly direction?: "asc"|"desc";readonly cursor?: string;readonly limit?: number }
 export interface DesktopProductMovementQuery { readonly cursor?: string;readonly limit?: number;readonly from?: string;readonly to?: string;readonly type?: string }
+export interface DesktopProductCategoryOverviewQuery { readonly search?:string;readonly status?:"active"|"inactive"|"all";readonly sort?:"name"|"products"|"updatedAt";readonly direction?:"asc"|"desc";readonly cursor?:string;readonly limit?:number }
+export interface DesktopProductInsightsQuery {readonly from:string;readonly to:string;readonly granularity:"day"|"week"|"month"}
 export type DesktopProductsResult<T> = { readonly ok:true;readonly value:T } | { readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null} };
 
 export interface DesktopInventoryDashboardSnapshot {
@@ -322,5 +336,10 @@ export interface KontaveDesktopApi {
     createCategory(organizationId:string,companyId:string,command:NativeCreateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
     updateCategory(organizationId:string,companyId:string,categoryId:string,command:NativeUpdateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
     setCategoryStatus(organizationId:string,companyId:string,categoryId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
+    getCategory(organizationId:string,companyId:string,categoryId:string):Promise<DesktopProductsResult<NativeProductCategoryOverviewItemDto>>;
+    categoryOverview(organizationId:string,companyId:string,query?:DesktopProductCategoryOverviewQuery):Promise<DesktopProductsResult<NativeProductCategoryOverviewDto>>;
+    unitEconomics(organizationId:string,companyId:string,productId:string,query:DesktopProductInsightsQuery):Promise<DesktopProductsResult<NativeProductUnitEconomicsDto>>;
+    updateSalePricing(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductSalePricingDto):Promise<DesktopProductsResult<NativeProductSalePricingDto>>;
+    updateTaxation(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductTaxationDto):Promise<DesktopProductsResult<NativeProductTaxationDto>>;
   };
 }

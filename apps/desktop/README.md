@@ -81,6 +81,10 @@ El tablero de Inventario termina su período en la fecha efectiva del contexto y
 
 La pantalla de Productos consume el read model compuesto de `products` e `inventory`: identidad, categorías y ciclo de vida pertenecen a Productos; existencia, reposición, movimientos y valoración pertenecen a Inventario. Desktop conserva decimales como strings, trata los cursores como opacos y nunca persiste stock, costos ni versiones como fuente de verdad. Las mutaciones usan concurrencia optimista y no se reintentan automáticamente ante conflictos `409`.
 
+La ficha de Producto es un destino navegable. Identidad, reposición, precio comercial y tributación conservan versiones independientes; la analítica compara agregados ponderados de adquisiciones y ventas confirmadas sin presentar salidas manuales como ventas.
+
+La pantalla visible como “Departamentos” administra `product-categories`; el nombre conserva la terminología de Producción, pero no representa departamentos organizacionales. Consume el overview agregado para conteos y productos sin categoría, y mantiene creación, edición y ciclo de vida dentro del package de Productos.
+
 ### Configuración y preferencias
 
 - `@kontave/settings-contracts`
@@ -155,7 +159,12 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 | `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física |
 | `PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile` | Stock mínimo versionado |
 | `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements` | Historial auditable de sólo lectura |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/unit-economics` | Comparación ponderada de adquisición y venta realizada |
+| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/sale-pricing` | Política comercial versionada |
+| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/tax-profile` | Tratamiento tributario versionado |
 | `GET/POST/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories` | Administración de categorías |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/overview` | Vista paginada y resumen de “Departamentos” |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}` | Detalle de categoría y cantidad de productos |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
 
