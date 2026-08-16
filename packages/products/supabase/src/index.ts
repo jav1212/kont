@@ -8,7 +8,7 @@ import type {
 } from "@kontave/products-application";
 import {
   barcode, Product, ProductCategory, ProductCategoryStatus, ProductFailure, productCategoryId, productId,
-  ProductStatus, sku, UnitOfMeasure,
+  ProductStatus, rehydrateSku, UnitOfMeasure,
 } from "@kontave/products-domain";
 import { z } from "zod";
 
@@ -36,6 +36,6 @@ export class SupabaseProductsRepository implements ProductsRepository {
 export function createSupabaseProductsRepository(configuration:{readonly url:string;readonly serviceRoleKey:string}){return new SupabaseProductsRepository(createClient(configuration.url,configuration.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}));}
 function context(value:ProductCatalogContext){return{p_actor_user_id:value.actorUserId,p_organization_id:value.organizationId,p_company_id:value.companyId};}
 function mapCategory(value:z.infer<typeof categorySchema>){return new ProductCategory({...value,id:productCategoryId(value.id),companyId:companyId(value.companyId)});}
-function mapDetail(value:z.infer<typeof productSchema>):ProductDetail{return{product:new Product({id:productId(value.id),companyId:companyId(value.companyId),legacyProductId:value.legacyProductId,sku:sku(value.sku),barcodes:value.barcodes.map(barcode),name:value.name,description:value.description,categoryId:value.category?productCategoryId(value.category.id):null,baseUnit:value.baseUnit,status:value.status,version:value.version}),category:value.category?mapCategory(value.category):null,inventory:value.inventory,updatedAt:value.updatedAt,capabilities:value.capabilities};}
+function mapDetail(value:z.infer<typeof productSchema>):ProductDetail{return{product:new Product({id:productId(value.id),companyId:companyId(value.companyId),legacyProductId:value.legacyProductId,sku:rehydrateSku(value.sku,value.legacyProductId),barcodes:value.barcodes.map(barcode),name:value.name,description:value.description,categoryId:value.category?productCategoryId(value.category.id):null,baseUnit:value.baseUnit,status:value.status,version:value.version}),category:value.category?mapCategory(value.category):null,inventory:value.inventory,updatedAt:value.updatedAt,capabilities:value.capabilities};}
 function parse<T extends z.ZodType>(schema:T,value:unknown):z.infer<T>{const result=schema.safeParse(value);if(!result.success)throw new ProductFailure("PRODUCT_REPOSITORY_UNAVAILABLE","Product persistence returned invalid data.",{cause:result.error});return result.data;}
 function mapError(error:{message:string}):ProductFailure{const codes=["PRODUCT_CATEGORY_VERSION_CONFLICT","PRODUCT_LOCATION_TRACKING_UNAVAILABLE","PRODUCT_DUPLICATE_BARCODE","PRODUCT_DUPLICATE_CATEGORY","PRODUCT_DUPLICATE_SKU","PRODUCT_VERSION_CONFLICT","PRODUCT_CATEGORY_NOT_FOUND","PRODUCT_NOT_FOUND","PRODUCT_OUTSIDE_COMPANY","PRODUCT_ACCESS_DENIED","PRODUCT_TRANSITION_INVALID","PRODUCT_CATEGORY_INVALID","PRODUCT_INVALID"]as const;const code=codes.find(value=>error.message.includes(value));return new ProductFailure(code??"PRODUCT_REPOSITORY_UNAVAILABLE",code?error.message:"Product repository is unavailable.",{cause:error});}

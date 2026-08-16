@@ -26,6 +26,18 @@ export function sku(value: string): Sku {
   return normalized as Sku;
 }
 
+/**
+ * Rehydrates historical products that predate mandatory SKUs. New writes must
+ * continue to use `sku`; an empty value is accepted only for a legacy record.
+ */
+export function rehydrateSku(value: string, legacyProductId: string | null): Sku {
+  if (value.trim()) return sku(value);
+  if (!legacyProductId?.trim()) {
+    throw new ProductFailure("PRODUCT_IDENTIFIER_INVALID", "The product SKU is invalid.");
+  }
+  return "" as Sku;
+}
+
 export function barcode(value: string): Barcode {
   const normalized = value.trim();
   if (!normalized || normalized.length > 128 || controlCharacters.test(normalized)) {
