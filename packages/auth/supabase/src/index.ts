@@ -109,24 +109,43 @@ class SupabaseAuthenticationGateway implements AuthenticationProvider {
 
   async restoreSession(): Promise<AuthenticatedSession | null> {
     const { data, error } = await this.client.auth.getSession();
-    if (error) throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo restaurar la sesión.", { cause: error });
+    if (error) {
+      if (isInvalidRefreshFailure(error)) {
+        await this.clearSession().catch(() => undefined);
+        return null;
+      }
+      throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo restaurar la sesión.", { cause: error });
+    }
     return data.session ? mapSession(data.session) : null;
   }
 
   async signOut(): Promise<void> {
     const { error } = await this.client.auth.signOut();
-    if (error) throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo cerrar la sesión.", { cause: error });
+    if (error) {
+      if (isInvalidRefreshFailure(error)) {
+        await this.clearSession().catch(() => undefined);
+        return;
+      }
+      throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo cerrar la sesión.", { cause: error });
+    }
   }
 
   async getAccessToken(): Promise<string | null> {
     const { data, error } = await this.client.auth.getSession();
-    if (error) throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo obtener la sesión.", { cause: error });
+    if (error) {
+      if (isInvalidRefreshFailure(error)) {
+        await this.clearSession().catch(() => undefined);
+        return null;
+      }
+      throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo obtener la sesión.", { cause: error });
+    }
     return data.session?.access_token ?? null;
   }
 
   async refreshSession(): Promise<RefreshedAuthenticatedSession> {
     const { data: current, error: readError } = await this.client.auth.getSession();
     if (readError) {
+      if (isInvalidRefreshFailure(readError)) return this.expiredSession(readError);
       throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo leer la sesión para renovarla.", { cause: readError });
     }
     const refreshToken = current.session?.refresh_token;
