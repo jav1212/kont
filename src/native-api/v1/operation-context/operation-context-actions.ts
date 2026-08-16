@@ -1,4 +1,4 @@
-import { FixedCurrencyCatalog, InMemoryExchangeRateCache, ResolveExchangeRates } from "@kontave/monetary-application";
+import { InMemoryExchangeRateCache, IsoCurrencyCatalog, ResolveExchangeRates } from "@kontave/monetary-application";
 import { currency } from "@kontave/monetary-domain";
 import { MonitorBcvProvider } from "@kontave/monetary-monitor-bcv-adapter";
 import { OperationContextCoordinator } from "@kontave/operation-context-application";
@@ -7,7 +7,6 @@ import { createSupabaseOperationContextStore } from "@kontave/operation-context-
 
 const USD = currency("USD", 2);
 const VES = currency("VES", 2);
-const BCV_CURRENCIES = [USD, currency("EUR", 2), currency("CNY", 2), currency("TRY", 2), currency("RUB", 2)];
 
 export function createNativeOperationContextCoordinator(): OperationContextCoordinator {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,7 +24,7 @@ export function createNativeOperationContextCoordinator(): OperationContextCoord
 }
 
 export function createNativeExchangeRateResolver(): ResolveExchangeRates {
-  const catalog = new FixedCurrencyCatalog(BCV_CURRENCIES);
+  const catalog = new IsoCurrencyCatalog();
   const provider = new MonitorBcvProvider(catalog, VES);
   return new ResolveExchangeRates(provider, new InMemoryExchangeRateCache(), {
     currentTtlMilliseconds: 30 * 60_000,

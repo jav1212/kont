@@ -15,20 +15,37 @@ export interface OptionPickerProps<TValue extends string> {
   readonly value: TValue;
   readonly options: readonly OptionPickerEntry<TValue>[];
   readonly className?: string;
+  readonly searchable?: boolean;
+  readonly searchPlaceholder?: string;
   readonly onChange: (value: TValue) => void;
 }
 
-export function OptionPicker<TValue extends string>({ className, label, onChange, options, value }: OptionPickerProps<TValue>) {
+export function OptionPicker<TValue extends string>({ className, label, onChange, options, searchable = false, searchPlaceholder = "Buscar...", value }: OptionPickerProps<TValue>) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const rootRef = useDismissiblePopover<HTMLDivElement>(open, () => setOpen(false));
   const selected = options.find((option) => option.value === value) ?? options[0] ?? null;
+  const normalizedQuery = query.trim().toLocaleLowerCase("es");
+  const visibleOptions = normalizedQuery
+    ? options.filter((option) => `${option.label} ${option.value} ${option.description ?? ""}`.toLocaleLowerCase("es").includes(normalizedQuery))
+    : options;
+  const toggle = (): void => {
+    if (!open) {
+      setQuery("");
+      if (searchable) requestAnimationFrame(() => searchRef.current?.focus());
+    }
+    setOpen((current) => !current);
+  };
   return <div className={classNames("kt-context-picker", className)} ref={rootRef}>
-    <Button appearance="unstyled" className="kt-context-picker__trigger" aria-expanded={open} aria-haspopup="listbox" onClick={() => setOpen((current) => !current)}>
+    <Button appearance="unstyled" className="kt-context-picker__trigger" aria-expanded={open} aria-haspopup="listbox" onClick={toggle}>
       {selected?.icon ? <span className="kt-context-picker__icon" aria-hidden="true">{selected.icon}</span> : null}
       <span className="kt-context-picker__copy"><small>{label}</small><strong>{selected?.label ?? value}</strong></span>
       <ChevronIcon open={open} />
     </Button>
-    {open ? <div className="kt-context-picker__panel" role="listbox" aria-label={label}>{options.map((option) => <Button
+    {open ? <div className="kt-context-picker__panel" role="listbox" aria-label={label}>
+      {searchable ? <label className="kt-context-picker__search"><SearchIcon /><input ref={searchRef} value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={searchPlaceholder} aria-label={searchPlaceholder} /></label> : null}
+      <div className="kt-context-picker__options">{visibleOptions.map((option) => <Button
       appearance="unstyled"
       className="kt-context-picker__option"
       data-active={option.value === value}
@@ -41,7 +58,8 @@ export function OptionPicker<TValue extends string>({ className, label, onChange
       {option.icon ? <span className="kt-context-picker__option-icon" aria-hidden="true">{option.icon}</span> : null}
       <span><strong>{option.label}</strong>{option.description ? <small>{option.description}</small> : null}</span>
       {option.value === value ? <CheckIcon /> : null}
-    </Button>)}</div> : null}
+    </Button>)}{visibleOptions.length === 0 ? <p className="kt-context-picker__empty">No hay opciones que coincidan.</p> : null}</div>
+    </div> : null}
   </div>;
 }
 
@@ -114,4 +132,5 @@ function useDismissiblePopover<TElement extends HTMLElement>(open: boolean, clos
 function ChevronIcon({ open }: { readonly open: boolean }) { return <svg className="kt-context-picker__chevron" data-open={open} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m4.5 6 3.5 3.5L11.5 6" /></svg>; }
 function CheckIcon() { return <svg className="kt-context-picker__check" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m3 8.5 3 3 7-7" /></svg>; }
 function CalendarIcon() { return <svg className="kt-context-picker__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="2.5" y="4" width="15" height="13.5" rx="2"/><path d="M6 2v4M14 2v4M2.5 8h15"/></svg>; }
+function SearchIcon() { return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 4 4"/></svg>; }
 function ArrowIcon({ direction }: { readonly direction: "left" | "right" }) { return <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d={direction === "left" ? "m10 3-5 5 5 5" : "m6 3 5 5-5 5"}/></svg>; }

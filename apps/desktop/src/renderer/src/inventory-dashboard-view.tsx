@@ -72,7 +72,7 @@ export function InventoryDashboardView({ auth, companyId, organizationId }: Inve
       <div><h2>Tablero de inventario</h2><p>Actividad y valoración de la empresa seleccionada.</p></div>
       <div className="inventory-dashboard__context">
         <DatePeriodPicker label="Período mensual" value={selectedMonth} max={operationContext.effectiveDate.slice(0, 7)} onChange={selectMonth} />
-        <OptionPicker label="Moneda de presentación" value={displayCurrency} options={currencyOptions} onChange={setDisplayCurrency} />
+        <OptionPicker label="Moneda de presentación" value={displayCurrency} options={currencyOptions} searchable searchPlaceholder="Buscar moneda..." onChange={setDisplayCurrency} />
         <Button appearance="unstyled" className="inventory-dashboard__refresh" aria-label="Actualizar tablero" title="Actualizar tablero" onClick={() => load(monthQuery(selectedMonth, operationContext.effectiveDate))}><RefreshCw /></Button>
       </div>
     </div>
@@ -148,7 +148,9 @@ function formatAmount(value: string, currency: string, rate: { readonly value: s
 function formatShortDate(value: string): string { return new Intl.DateTimeFormat("es-VE", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)); }
 function recordTypeLabel(value: NativeRecentInventoryDocumentDto["recordType"]): string { return ({ invoice: "Factura", delivery_note: "Nota de entrega", debit_note: "Nota de débito", credit_note: "Nota de crédito", other: "Documento" })[value]; }
 function formatRate(value: string): string { return new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(Number(value)); }
-function currencyName(code: string): string { return ({ USD: "Dólar estadounidense", EUR: "Euro", CNY: "Yuan chino", TRY: "Lira turca", RUB: "Rublo ruso" } as Record<string, string>)[code] ?? code; }
+function currencyName(code: string): string {
+  return new Intl.DisplayNames(["es-VE"], { type: "currency" }).of(code) ?? code;
+}
 
 function monthQuery(month: string, effectiveDate: string): DesktopInventoryDashboardQuery {
   const from = `${month}-01`;

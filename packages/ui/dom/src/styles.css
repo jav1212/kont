@@ -245,6 +245,9 @@
 .kt-context-picker__chevron { width: .75rem; height: .75rem; flex: 0 0 .75rem; transition: transform var(--kt-motion-fast) var(--kt-easing); }
 .kt-context-picker__chevron[data-open="true"] { transform: rotate(180deg); }
 .kt-context-picker__panel, .kt-date-period-picker__panel { position: absolute; z-index: 150; top: calc(100% + .375rem); right: 0; min-width: 100%; overflow: hidden; border: 1px solid var(--kt-border-subtle); border-radius: .75rem; padding: .375rem; color: var(--kt-text-muted); background: var(--kt-surface); box-shadow: var(--kt-shadow-md); }
+.kt-context-picker__search { display: flex; height: 2.5rem; align-items: center; gap: .5rem; margin: .25rem; border: 1px solid var(--kt-border-subtle); border-radius: .5rem; padding: 0 .625rem; color: var(--kt-text-subtle); background: var(--kt-surface); }
+.kt-context-picker__search:focus-within { border-color: var(--kt-border); box-shadow: 0 0 0 2px color-mix(in srgb, var(--kt-primary) 12%, transparent); }.kt-context-picker__search svg { width: .875rem; height: .875rem; flex: 0 0 .875rem; }.kt-context-picker__search input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--kt-text); background: transparent; font: inherit; font-size: .75rem; }.kt-context-picker__search input::placeholder { color: var(--kt-text-subtle); }
+.kt-context-picker__options { max-height: min(22rem, calc(100dvh - 10rem)); overflow-y: auto; padding: .125rem; }
 .kt-context-picker__option { display: flex; width: 100%; min-height: 3rem; align-items: center; gap: .625rem; border-radius: .5rem; padding: .5rem .625rem; color: var(--kt-text-muted); background: transparent; font: inherit; text-align: left; cursor: pointer; }
 .kt-context-picker__option:hover, .kt-context-picker__option[data-active="true"] { color: var(--kt-text); background: color-mix(in srgb, var(--kt-background) 75%, transparent); }
 .kt-context-picker__option:focus-visible { outline: 2px solid var(--kt-primary); outline-offset: -2px; }
@@ -253,6 +256,7 @@
 .kt-context-picker__option strong { font-size: .78rem; font-weight: 600; }.kt-context-picker__option small { margin-top: .1rem; color: var(--kt-text-subtle); font-family: var(--kt-font-mono); font-size: .625rem; }
 .kt-context-picker__option-icon { display: grid; width: 1.75rem; height: 1.75rem; flex: 0 0 1.75rem; place-items: center; border: 1px solid var(--kt-border-subtle); border-radius: .4rem; background: var(--kt-background); }
 .kt-context-picker__check { width: .875rem; height: .875rem; margin-left: auto; color: var(--kt-primary); }
+.kt-context-picker__empty { margin: 0; padding: 1.25rem .75rem; color: var(--kt-text-subtle); font-size: .75rem; text-align: center; }
 .kt-date-period-picker__panel { width: 17rem; padding: .625rem; }
 .kt-date-period-picker__panel > header { display: grid; grid-template-columns: 2rem 1fr 2rem; align-items: center; margin-bottom: .5rem; }
 .kt-date-period-picker__panel > header strong { color: var(--kt-text); font-size: .8rem; text-align: center; }

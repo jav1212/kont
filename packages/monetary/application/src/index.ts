@@ -1,4 +1,4 @@
-import type { CurrencyCode, CurrencyDefinition, ExchangeRateSnapshot } from "@kontave/monetary-domain";
+import { currency, type CurrencyCode, type CurrencyDefinition, type ExchangeRateSnapshot } from "@kontave/monetary-domain";
 
 export type RateResolutionKind = "exact_date" | "previous_available_date";
 export type RateFreshness =
@@ -98,6 +98,12 @@ export class FixedCurrencyCatalog implements CurrencyCatalog {
   constructor(definitions: readonly CurrencyDefinition[]) { this.byCode = new Map(definitions.map((item) => [item.code, item])); }
   find(code: CurrencyCode): CurrencyDefinition | null { return this.byCode.get(code) ?? null; }
   list(): readonly CurrencyDefinition[] { return [...this.byCode.values()]; }
+}
+
+/** Accepts any valid ISO-style provider code without maintaining a stale UI allowlist. */
+export class IsoCurrencyCatalog implements CurrencyCatalog {
+  find(code: CurrencyCode): CurrencyDefinition { return currency(code, 2); }
+  list(): readonly CurrencyDefinition[] { return []; }
 }
 
 function requireDate(value: string): void {
