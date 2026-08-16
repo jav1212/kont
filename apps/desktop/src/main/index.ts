@@ -27,6 +27,7 @@ import { DesktopBillingPlanController } from "./billing/desktop-billing-plan-con
 import { DesktopBillingPlanSource } from "./billing/desktop-billing-plan-source.js";
 import { DesktopPlatformStatusController } from "./platform-status/desktop-platform-status-controller.js";
 import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source.js";
+import { DesktopSettingsController } from "./settings/desktop-settings-controller.js";
 
 let mainWindow: BrowserWindow | undefined;
 let updates: ClientUpdateCoordinator | undefined;
@@ -36,6 +37,7 @@ let externalNavigation: DesktopExternalNavigation | undefined;
 let billingPlan: DesktopBillingPlanController | undefined;
 let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
+let settings: DesktopSettingsController | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
 let previousConnectivityAvailability: ConnectivitySnapshot["availability"] = "unknown";
 let initialization: Promise<void> | undefined;
@@ -142,6 +144,13 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.openExternalDestination, (_event, destination: unknown) => externalNavigationController().open(destination));
   ipcMain.handle(DESKTOP_IPC.getConnectivitySnapshot, () => connectivityMonitor().getSnapshot());
   ipcMain.handle(DESKTOP_IPC.refreshConnectivity, () => connectivityMonitor().refresh());
+  ipcMain.handle(DESKTOP_IPC.getSettingsSnapshot, (_event, organizationId: unknown, companyId: unknown) => settingsController().getSnapshot(organizationId, companyId));
+  ipcMain.handle(DESKTOP_IPC.updateSettingsProfile, (_event, command: unknown) => settingsController().updateProfile(command));
+  ipcMain.handle(DESKTOP_IPC.updateSettingsPreferences, (_event, command: unknown) => settingsController().updatePreferences(command));
+  ipcMain.handle(DESKTOP_IPC.updateSettingsOrganization, (_event, organizationId: unknown, command: unknown) => settingsController().updateOrganization(organizationId, command));
+  ipcMain.handle(DESKTOP_IPC.changeSettingsPassword, (_event, password: unknown, revokeOthers: unknown) => settingsController().changePassword(password, revokeOthers));
+  ipcMain.handle(DESKTOP_IPC.revokeSettingsSession, (_event, sessionId: unknown) => settingsController().revokeSession(sessionId));
+  ipcMain.handle(DESKTOP_IPC.revokeOtherSettingsSessions, () => settingsController().revokeOtherSessions());
 }
 
 function updateCoordinator(): ClientUpdateCoordinator {
@@ -177,6 +186,11 @@ function platformStatusController(): DesktopPlatformStatusController {
 function connectivityMonitor(): ConnectivityMonitor {
   if (!connectivity) throw new Error("Desktop connectivity is not initialized.");
   return connectivity;
+}
+
+function settingsController(): DesktopSettingsController {
+  if (!settings) throw new Error("Desktop settings are not initialized.");
+  return settings;
 }
 
 async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthController["initialize"]>>) {
@@ -397,6 +411,7 @@ app.whenReady().then(() => {
   auth = new DesktopAuthController(authenticationProvider, () => mainWindow);
   const authenticatedRequest = new DesktopAuthenticatedRequest(auth.sessions);
   const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
+  settings = new DesktopSettingsController(apiBaseUrl, authenticatedRequest);
   connectivity = new ConnectivityMonitor({
     probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
     failureThreshold: 3,

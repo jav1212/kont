@@ -1,70 +1,82 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { NativeAccessibleOrganizationDto, NativeCurrentUserDto, NativeEmployeeDto, NativeOrganizationCompanyDto } from "@kontave/native-api-contracts";
-import { DelegatedScope, OrganizationAccessPathKind, organizationDelegationId } from "@kontave/organization-delegations-domain";
-import { organizationId, userId, type OrganizationId } from "@kontave/organizations-domain";
-import { WorkspaceContextSession, type ActiveWorkspaceContext, type ActiveWorkspaceSelectionStore, type WorkspacePortfolioEntry, type WorkspacePortfolioSource } from "@kontave/workspace-context-application";
+import type { ModuleCode } from "@kontave/modules-domain";
+import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
+import { companyId, organizationId } from "@kontave/organizations-domain";
+import { WorkspaceContextCoordinator, type WorkspaceContextStatus } from "@kontave/workspace-context-application/coordinator";
 import { createMobileApi } from "../api/mobile-api";
 import { useAuth } from "../auth/auth-context";
-import { readMobileSelection, writeMobileSelection } from "./mobile-selection-storage";
+import { useClientExperience } from "../client-experience/mobile-client-experience";
+import { MobileWorkspaceCompanySource, MobileWorkspaceContextStore, MobileWorkspaceModuleSource, MobileWorkspacePortfolioSource } from "./mobile-workspace-adapters";
 
-type WorkspaceState = { readonly status: "loading" } | { readonly status: "unavailable" } | { readonly status: "ready"; readonly context: ActiveWorkspaceContext; readonly user: NativeCurrentUserDto | null; readonly companies: readonly NativeOrganizationCompanyDto[]; readonly selectedCompanyId: string | null; readonly employees: readonly NativeEmployeeDto[]; readonly employeesLoading: boolean };
-interface WorkspaceValue { readonly state: WorkspaceState; readonly select: (id: string) => Promise<void>; readonly selectCompany: (id: string) => Promise<void>; readonly refresh: () => Promise<void>; }
-const WorkspaceContext = createContext<WorkspaceValue | null>(null);
+interface WorkspaceValue {
+  readonly state: WorkspaceContextStatus;
+  readonly user: NativeCurrentUserDto | null;
+  readonly selectWorkspace: (id: string) => Promise<boolean>;
+  readonly selectCompany: (id: string) => Promise<boolean>;
+  readonly selectModule: (code: ModuleCode) => Promise<boolean>;
+  readonly refresh: () => Promise<void>;
+}
+const MobileWorkspaceContext = createContext<WorkspaceValue | null>(null);
 
 export function MobileWorkspaceProvider({ children }: { readonly children: ReactNode }): React.JSX.Element {
   const auth = useAuth();
+  const { feedback, interaction } = useClientExperience();
   const api = useMemo(() => createMobileApi(auth.authenticatedFetch), [auth.authenticatedFetch]);
-  const session = useMemo(() => new WorkspaceContextSession(new MobilePortfolioSource(api), new MobileSelectionStore()), [api]);
-  const [state, setState] = useState<WorkspaceState>({ status: "loading" });
+  const coordinator = useMemo(() => new WorkspaceContextCoordinator(new MobileWorkspacePortfolioSource(api), new MobileWorkspaceCompanySource(api), new MobileWorkspaceModuleSource(api), new MobileWorkspaceContextStore()), [api]);
+  const [state, setState] = useState<WorkspaceContextStatus>(coordinator.current);
+  const [user, setUser] = useState<NativeCurrentUserDto | null>(null);
 
-  const loadContext = useCallback(async (context: ActiveWorkspaceContext) => {
-    const [user, companies] = await Promise.all([
-      api.get<NativeCurrentUserDto>("/api/native/v1/me"),
-      context.active ? api.get<readonly NativeOrganizationCompanyDto[]>(`/api/native/v1/organizations/${encodeURIComponent(context.active.organizationId)}/companies`) : Promise.resolve([]),
-    ]);
-    setState({ status: "ready", context, user, companies, selectedCompanyId: null, employees: [], employeesLoading: false });
-  }, [api]);
-  const refresh = useCallback(async () => { setState({ status: "loading" }); try { await loadContext(await session.restore()); } catch { setState({ status: "unavailable" }); } }, [loadContext, session]);
-  const select = useCallback(async (id: string) => { setState({ status: "loading" }); try { await loadContext(await session.select(organizationId(id))); } catch { setState({ status: "unavailable" }); } }, [loadContext, session]);
-  const selectCompany = useCallback(async (id: string) => {
-    if (state.status !== "ready" || !state.context.active) return;
-    const current = state;
-    const activeOrganizationId = state.context.active.organizationId;
-    setState({ ...current, selectedCompanyId: id, employees: [], employeesLoading: true });
-    try {
-      const employees = await api.get<readonly NativeEmployeeDto[]>(`/api/native/v1/organizations/${encodeURIComponent(activeOrganizationId)}/operational-companies/${encodeURIComponent(id)}/employees`);
-      setState({ ...current, selectedCompanyId: id, employees, employeesLoading: false });
-    } catch { setState({ ...current, selectedCompanyId: id, employees: [], employeesLoading: false }); }
-  }, [api, state]);
+  useEffect(() => coordinator.subscribe(setState), [coordinator]);
+  useEffect(() => {
+    if (state.status !== "failed") return;
+    feedback.execute({
+      intent: "error",
+      message: state.error.message,
+      description: `Código: ${state.error.code}`,
+      referenceCode: state.error.code,
+      deduplicationKey: `workspace-context-${state.error.code}`,
+    });
+  }, [feedback, state]);
   useEffect(() => {
     let active = true;
-    session.restore().then((context) => active ? loadContext(context) : undefined).catch(() => active && setState({ status: "unavailable" }));
+    void Promise.all([coordinator.restore(), api.get<NativeCurrentUserDto>("/api/native/v1/me")]).then(([, value]) => { if (active) setUser(value); }).catch(() => undefined);
     return () => { active = false; };
-  }, [loadContext, session]);
-  return <WorkspaceContext.Provider value={{ state, select, selectCompany, refresh }}>{children}</WorkspaceContext.Provider>;
+  }, [api, coordinator]);
+
+  const selectWorkspace = useCallback(async (id: string) => {
+    const lease = interaction.acquire({ kind: "exclusive_operation", state: "working", priority: 500, message: "Cambiando workspace", description: "Estamos preparando empresas, módulos y permisos." });
+    try {
+      const result = await coordinator.selectWorkspace(organizationId(id));
+      const selected = result.status === "ready" && result.snapshot.activeWorkspace?.organizationId === id;
+      if (selected) feedback.execute({ intent: "success", message: "Workspace actualizado", description: null, referenceCode: null, deduplicationKey: "workspace-selected" });
+      return selected;
+    } finally { lease.release(); }
+  }, [coordinator, feedback, interaction]);
+  const selectCompany = useCallback(async (id: string) => {
+    const lease = interaction.acquire({ kind: "exclusive_operation", state: "working", priority: 500, message: "Cambiando empresa" });
+    try {
+      const result = await coordinator.selectCompany(companyId(id));
+      const selected = result.status === "ready" && result.snapshot.activeCompany?.id === id;
+      if (selected) feedback.execute({ intent: "success", message: "Empresa actualizada", description: null, referenceCode: null, deduplicationKey: "company-selected" });
+      return selected;
+    } finally { lease.release(); }
+  }, [coordinator, feedback, interaction]);
+  const selectModule = useCallback(async (code: ModuleCode) => {
+    const lease = interaction.acquire({ kind: "exclusive_operation", state: "working", priority: 500, message: "Cambiando módulo" });
+    try {
+      const result = await coordinator.selectModule(code);
+      const selected = result.status === "ready" && result.snapshot.activeModule?.code === code;
+      if (selected) feedback.execute({ intent: "success", message: "Módulo actualizado", description: null, referenceCode: null, deduplicationKey: "module-selected" });
+      return selected;
+    } finally { lease.release(); }
+  }, [coordinator, feedback, interaction]);
+  const refresh = useCallback(async () => { await coordinator.refresh(); }, [coordinator]);
+  const value = useMemo<WorkspaceValue>(() => ({ state, user, selectWorkspace, selectCompany, selectModule, refresh }), [refresh, selectCompany, selectModule, selectWorkspace, state, user]);
+  return <MobileWorkspaceContext.Provider value={value}>{children}</MobileWorkspaceContext.Provider>;
 }
 
-export function useMobileWorkspace(): WorkspaceValue { const value = useContext(WorkspaceContext); if (!value) throw new Error("useMobileWorkspace requiere MobileWorkspaceProvider."); return value; }
-
-class MobileSelectionStore implements ActiveWorkspaceSelectionStore {
-  private readonly key = "kontave.mobile.active-workspace";
-  async read(): Promise<OrganizationId | null> { const value = await readMobileSelection(this.key); return value ? organizationId(value) : null; }
-  write(value: OrganizationId | null): Promise<void> { return writeMobileSelection(this.key, value); }
+export function useMobileWorkspace(): WorkspaceValue {
+  const value = useContext(MobileWorkspaceContext);
+  if (!value) throw new Error("useMobileWorkspace requiere MobileWorkspaceProvider.");
+  return value;
 }
-
-class MobilePortfolioSource implements WorkspacePortfolioSource {
-  constructor(private readonly api: ReturnType<typeof createMobileApi>) {}
-  async list(): Promise<readonly WorkspacePortfolioEntry[]> {
-    return (await this.api.get<readonly NativeAccessibleOrganizationDto[]>("/api/native/v1/organization-access")).map(mapWorkspace);
-  }
-}
-
-function mapWorkspace(dto: NativeAccessibleOrganizationDto): WorkspacePortfolioEntry {
-  const kind = dto.accessPath.kind === OrganizationAccessPathKind.DirectMembership ? OrganizationAccessPathKind.DirectMembership : dto.accessPath.kind === OrganizationAccessPathKind.DelegatedOrganization ? OrganizationAccessPathKind.DelegatedOrganization : invalidAccessPath();
-  return { organizationId: organizationId(dto.organizationId), name: dto.name, avatarUrl: dto.avatarUrl, relationship: dto.relationship, accessPath: {
-    kind, actorUserId: userId(dto.accessPath.actorUserId), actingOrganizationId: organizationId(dto.accessPath.actingOrganizationId), targetOrganizationId: organizationId(dto.accessPath.targetOrganizationId),
-    delegationId: dto.accessPath.delegationId ? organizationDelegationId(dto.accessPath.delegationId) : null, scopes: dto.accessPath.scopes.map(readScope),
-  } };
-}
-function readScope(value: string): DelegatedScope { const scope = Object.values(DelegatedScope).find((candidate) => candidate === value); if (!scope) throw new Error("Alcance delegado inválido."); return scope; }
-function invalidAccessPath(): never { throw new Error("Ruta de acceso organizacional inválida."); }

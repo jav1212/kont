@@ -24,7 +24,13 @@ function readCurrentUser(payload: unknown): NativeCurrentUserDto {
     email: readNullableText(data.email),
     displayName: readNullableText(data.displayName),
     avatarUrl: readNullableUrl(data.avatarUrl),
+    version: readVersion(data.version),
   };
+}
+
+function readVersion(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error("La versión del perfil no es válida.");
+  return value as number;
 }
 
 function readApiError(payload: unknown): string {

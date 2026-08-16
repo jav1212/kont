@@ -19,6 +19,8 @@ const startupLease: InteractionBlockLease = interactionGate.acquire({
 let sessionRestoration: Promise<DesktopAuthState> | null = null;
 let connectivityLease: InteractionBlockLease | null = null;
 let workspaceLease: InteractionBlockLease | null = null;
+let settingsLease: InteractionBlockLease | null = null;
+let settingsOperations = 0;
 let authenticated = false;
 let latestWorkspaceState: DesktopWorkspaceState = { status: "loading" };
 
@@ -110,6 +112,26 @@ function presentWorkspaceFailure(code: string, message: string): void {
 
 export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
+}
+
+export async function runSettingsInteraction<T>(operation: () => Promise<T>): Promise<T> {
+  settingsOperations += 1;
+  settingsLease ??= interactionGate.acquire({
+    kind: "exclusive_operation",
+    state: "working",
+    priority: 300,
+    message: "Cargando configuración",
+    description: "Estamos sincronizando las preferencias de tu cuenta.",
+  });
+  try {
+    return await operation();
+  } finally {
+    settingsOperations -= 1;
+    if (settingsOperations === 0) {
+      settingsLease.release();
+      settingsLease = null;
+    }
+  }
 }
 
 export function synchronizeWorkspaceBlock(workspace: DesktopWorkspaceState): void {

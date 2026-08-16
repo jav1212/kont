@@ -2,6 +2,23 @@
 .kt-stack { display: flex; flex-direction: column; gap: var(--kt-space-4); }
 .kt-card { padding: var(--kt-space-6); border: 1px solid var(--kt-border-subtle); border-radius: var(--kt-radius-lg); background: var(--kt-surface); box-shadow: var(--kt-shadow-md); }
 
+.kt-breadcrumbs { min-width: 0; color: var(--kt-text-subtle); font-size: .6875rem; line-height: 1; }
+.kt-breadcrumbs__list { display: flex; min-width: 0; gap: .25rem; align-items: center; overflow: hidden; margin: 0; padding: 0; list-style: none; white-space: nowrap; }
+.kt-breadcrumbs__item { display: inline-flex; min-width: 0; gap: .25rem; align-items: center; }
+.kt-breadcrumbs__item:last-child { overflow: hidden; }
+.kt-breadcrumbs__label { overflow: hidden; text-overflow: ellipsis; }
+.kt-breadcrumbs__separator { color: var(--kt-border-strong); }
+.kt-breadcrumbs__link { border: 0; padding: 0; color: inherit; background: transparent; font: inherit; cursor: pointer; }
+.kt-breadcrumbs__link:hover { color: var(--kt-text); text-decoration: underline; }
+.kt-breadcrumbs__link:focus-visible { border-radius: .125rem; outline: 2px solid var(--kt-focus); outline-offset: 2px; }
+@media (max-width: 48rem) {
+  .kt-breadcrumbs__item:not(:nth-last-child(-n + 2)) { display: none; }
+}
+@media (max-width: 30rem) {
+  .kt-breadcrumbs__item:not(:last-child) { display: none; }
+  .kt-breadcrumbs__item:last-child .kt-breadcrumbs__separator { display: none; }
+}
+
 .kt-button { display: inline-flex; align-items: center; justify-content: center; gap: var(--kt-space-2); border: 1px solid transparent; border-radius: var(--kt-radius-sm); padding: 0 var(--kt-space-4); font-family: var(--kt-font-action); font-size: inherit; font-weight: 700; cursor: pointer; transition: background var(--kt-motion-base) var(--kt-easing), border-color var(--kt-motion-base) var(--kt-easing), opacity var(--kt-motion-base) var(--kt-easing); }
 .kt-button--sm { min-height: var(--kt-control-sm); font-size: .8125rem; }
 .kt-button--md { min-height: var(--kt-control-md); font-size: .875rem; }
@@ -129,7 +146,18 @@
 .kt-workspace-sidebar[data-presentation="drawer"] { position: fixed; inset: 0 auto 0 0; width: min(20rem, calc(100vw - 1.5rem)); flex-basis: auto; box-shadow: var(--kt-shadow-md); transform: translateX(-100%); }
 .kt-workspace-sidebar[data-presentation="drawer"][data-open="true"] { transform: translateX(0); }
 .kt-workspace-sidebar__header { display: flex; height: 4rem; min-height: 4rem; align-items: center; justify-content: space-between; padding: 0 1.25rem; border-bottom: 1px solid var(--kt-sidebar-border); color: var(--kt-sidebar-text-strong); }
+.kt-workspace-sidebar__brand-toggle { position: relative; display: inline-grid; min-width: 2rem; min-height: 2rem; align-items: center; justify-items: start; border-radius: .5rem; color: inherit; cursor: pointer; }
+.kt-workspace-sidebar__brand-toggle-logo, .kt-workspace-sidebar__brand-toggle-action { grid-area: 1 / 1; display: inline-flex; align-items: center; transition: opacity 120ms ease, transform 120ms ease; }
+.kt-workspace-sidebar__brand-toggle-action { width: 2rem; height: 2rem; align-items: center; justify-content: center; opacity: 0; transform: scale(.92); }
+.kt-workspace-sidebar__brand-toggle-action svg { width: 1.125rem; height: 1.125rem; }
+.kt-workspace-sidebar__brand-toggle:hover .kt-workspace-sidebar__brand-toggle-logo,
+.kt-workspace-sidebar__brand-toggle:focus-visible .kt-workspace-sidebar__brand-toggle-logo { opacity: 0; transform: scale(.96); }
+.kt-workspace-sidebar__brand-toggle:hover .kt-workspace-sidebar__brand-toggle-action,
+.kt-workspace-sidebar__brand-toggle:focus-visible .kt-workspace-sidebar__brand-toggle-action { opacity: 1; transform: scale(1); }
+.kt-workspace-sidebar__brand-toggle:hover { background: var(--kt-sidebar-hover); }
+.kt-workspace-sidebar__brand-toggle:focus-visible { outline: 2px solid var(--kt-focus); outline-offset: 2px; }
 .kt-workspace-sidebar[data-presentation="collapsed"] .kt-workspace-sidebar__header { justify-content: center; padding-inline: .75rem; }
+.kt-workspace-sidebar[data-presentation="collapsed"] .kt-workspace-sidebar__brand-toggle { justify-items: center; }
 .kt-workspace-sidebar__icon-button { display: inline-flex; width: 2.25rem; height: 2.25rem; align-items: center; justify-content: center; border: 0; border-radius: .5rem; padding: 0; color: var(--kt-sidebar-label); background: transparent; cursor: pointer; }
 .kt-workspace-sidebar__icon-button:hover { color: var(--kt-sidebar-text-strong); background: var(--kt-sidebar-hover); }
 .kt-workspace-sidebar__icon-button:focus-visible { outline: 2px solid var(--kt-sidebar-active-border); outline-offset: 2px; }

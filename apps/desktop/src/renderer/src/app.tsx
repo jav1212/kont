@@ -1,9 +1,12 @@
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Activity, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench, X } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Activity, ArrowLeft, BookOpen, Boxes, Building2, Calculator, CreditCard, Files, LifeBuoy, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, ShoppingBasket, ShoppingCart, UserRound, Usb, Wrench, X } from "lucide-react";
 import type { KontaveTheme } from "@kontave/design-tokens";
 import { codedErrorFeedback, errorFeedback } from "@kontave/client-feedback-application";
+import type { NavigationTarget } from "@kontave/navigation-domain";
+import type { SettingsEntryId } from "@kontave/settings-contracts";
 import {
   Alert,
+  Breadcrumbs,
   Button,
   Card,
   StatusBadge,
@@ -35,7 +38,15 @@ import {
 } from "./client-interaction.js";
 import { desktopConnectivityStore } from "./connectivity-store.js";
 import { applyDesktopTheme } from "./desktop-theme.js";
-import { defaultModuleNavigationItem, moduleNavigationLabel, moduleNavigationSections } from "./module-navigation.js";
+import { DesktopSettingsView } from "./settings-view.js";
+import { DesktopSettingsDetailView, type DesktopSettingsDestination } from "./settings-detail-view.js";
+import { resolveDesktopSettings } from "./desktop-settings.js";
+import {
+  defaultModuleNavigationTarget,
+  desktopBreadcrumbs,
+  desktopStaticNavigationTarget,
+  moduleNavigationSections,
+} from "./module-navigation.js";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
 const DESKTOP_SIDEBAR_PINNED_KEY = "kontave.desktop.sidebar-pinned";
@@ -127,14 +138,16 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   const [sidebarPinned, setSidebarPinned] = useState(readSidebarPinned);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeModuleId = workspace.status === "ready" ? workspace.activeModuleId : null;
-  const [activeNavigationId, setActiveNavigationId] = useState<string | null>(() => defaultModuleNavigationItem(activeModuleId));
+  const [activeNavigationTarget, setActiveNavigationTarget] = useState<NavigationTarget | null>(
+    () => defaultModuleNavigationTarget(activeModuleId),
+  );
   const connectivity = useSyncExternalStore(
     desktopConnectivityStore.subscribe,
     desktopConnectivityStore.getSnapshot,
     desktopConnectivityStore.getSnapshot,
   );
 
-  useEffect(() => setActiveNavigationId(defaultModuleNavigationItem(activeModuleId)), [activeModuleId]);
+  useEffect(() => setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId)), [activeModuleId]);
   useEffect(() => localStorage.setItem(DESKTOP_SIDEBAR_PINNED_KEY, String(sidebarPinned)), [sidebarPinned]);
   useEffect(() => setDrawerOpen(false), [compactViewport]);
 
@@ -174,7 +187,11 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       ...(company.logoUrl ? { logoUrl: company.logoUrl } : {}),
     }))
     : [];
-  const navigationSections = moduleNavigationSections(activeModuleId, activeNavigationId);
+  const navigationSections = moduleNavigationSections(activeModuleId, activeNavigationTarget);
+  const breadcrumbs = desktopBreadcrumbs(activeNavigationTarget);
+  const settingsSections = useMemo(() => resolveDesktopSettings({ auth, connectivity, workspace }), [auth, connectivity, workspace]);
+  const settingsActive = activeNavigationTarget?.id === "settings" || activeNavigationTarget?.id.startsWith("settings.") === true;
+  const settingsDetail = isDesktopSettingsDestination(activeNavigationTarget?.id) ? activeNavigationTarget.id : null;
   const accountActions: readonly WorkspaceSidebarAccountAction[] = [
     ...DESKTOP_ACCOUNT_ACTIONS,
     {
@@ -185,6 +202,21 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       indicator: <PortalStatusIndicator status={portalAvailability} />,
     },
   ];
+
+  function selectSetting(entryId: SettingsEntryId): void {
+    const entry = settingsSections.flatMap((section) => section.entries).find(({ id }) => id === entryId);
+    if (!entry) return;
+    const target = desktopStaticNavigationTarget(entry.destination);
+    if (!target) {
+      presentFeedback.execute(codedErrorFeedback({
+        code: "DESTINATION_NOT_FOUND",
+        message: "La configuración no está disponible en Desktop.",
+        deduplicationKey: `settings-navigation-${entryId}`,
+      }));
+      return;
+    }
+    setActiveNavigationTarget(target);
+  }
 
   return <div className="desktop-shell">
     {compactViewport && drawerOpen ? <button
@@ -198,6 +230,9 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       open={compactViewport ? drawerOpen : true}
       onOpenChange={setDrawerOpen}
       closeIcon={<X />}
+      headerActionIcon={sidebarPinned ? <PanelLeftClose /> : <PanelLeftOpen />}
+      headerActionLabel={sidebarPinned ? "Contraer barra lateral" : "Expandir barra lateral"}
+      onHeaderAction={() => setSidebarPinned((current) => !current)}
       modules={availableModules}
       activeModuleId={activeModuleId}
       companies={availableCompanies}
@@ -218,8 +253,16 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       accountActions={accountActions}
       onNavigate={(itemId) => {
         closeDrawer();
-        if (itemId === "settings" || itemId === "help") openExternal(itemId);
-        else setActiveNavigationId(itemId);
+        if (itemId === "help") openExternal(itemId);
+        else {
+          const target = desktopStaticNavigationTarget(itemId);
+          if (target) setActiveNavigationTarget(target);
+          else presentFeedback.execute(codedErrorFeedback({
+            code: "DESTINATION_NOT_FOUND",
+            message: "El destino no está disponible en Desktop.",
+            deduplicationKey: `navigation-${itemId}`,
+          }));
+        }
       }}
       onSelectModule={(moduleId) => {
         if (!clientInteractionAvailable()) return;
@@ -260,30 +303,58 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
       onThemeChange={onThemeChange}
       onAccountAction={(actionId) => {
         if (actionId === "sign-out") signOut();
+        else if (actionId === "settings") {
+          const target = desktopStaticNavigationTarget("settings");
+          if (target) setActiveNavigationTarget(target);
+        }
         else if (isExternalDestination(actionId)) openExternal(actionId);
       }}
     />
 
     <div className="desktop-workspace">
       <header className="desktop-toolbar">
-        <Button
+        {compactViewport ? <Button
           appearance="unstyled"
           className="desktop-sidebar-toggle"
-          aria-label={compactViewport ? "Abrir navegación" : sidebarPinned ? "Contraer barra lateral" : "Fijar barra lateral"}
-          aria-expanded={compactViewport ? drawerOpen : sidebarPinned}
-          onClick={() => compactViewport ? setDrawerOpen(true) : setSidebarPinned((current) => !current)}
-        >{compactViewport ? <Menu /> : sidebarPinned ? <PanelLeftClose /> : <PanelLeftOpen />}</Button>
+          aria-label="Abrir navegación"
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen(true)}
+        ><Menu /></Button> : settingsActive ? <Button
+          appearance="unstyled"
+          className="desktop-page-back"
+          aria-label={settingsDetail ? "Volver a Configuración" : "Volver al módulo"}
+          onClick={() => setActiveNavigationTarget(settingsDetail
+            ? desktopStaticNavigationTarget("settings")
+            : defaultModuleNavigationTarget(activeModuleId))}
+        ><ArrowLeft /></Button> : null}
         <div className="desktop-toolbar__title">
-          <h1>{moduleNavigationLabel(activeModuleId, activeNavigationId)}</h1>
+          {breadcrumbs.length > 1 ? <Breadcrumbs items={breadcrumbs.map((entry) => ({
+            id: entry.destination.id,
+            label: entry.label,
+            current: entry.current,
+          }))} onNavigate={(destinationId) => {
+            const target = desktopStaticNavigationTarget(destinationId);
+            if (target) setActiveNavigationTarget(target);
+          }} /> : null}
+          <h1>{breadcrumbs.at(-1)?.label ?? "Dispositivos"}</h1>
         </div>
       </header>
-      <main className="desktop-content">
+      <main className={`desktop-content${settingsActive ? " desktop-content--settings" : ""}`}>
         {connectivity.availability === "degraded" ? <Alert intent="warning" className="desktop-connectivity-notice">
           La conexión es inestable. Algunas operaciones pueden tardar más.{' '}
           <Button size="sm" onClick={() => void desktopConnectivityStore.refresh()}>Reintentar</Button>
         </Alert> : null}
         <UpdateNotice />
-        {children}
+        {settingsDetail ? <DesktopSettingsDetailView
+          auth={auth}
+          billing={billingPlan}
+          currentUser={currentUser}
+          destination={settingsDetail}
+          deviceContent={children}
+          onThemeChange={onThemeChange}
+          theme={theme}
+          workspace={workspace}
+        /> : settingsActive ? <DesktopSettingsView sections={settingsSections} onSelect={selectSetting} /> : children}
       </main>
     </div>
   </div>;
@@ -422,6 +493,12 @@ function toSidebarWorkspace(entry: DesktopWorkspaceEntry) {
 
 function isExternalDestination(value: string): value is DesktopExternalDestination {
   return value === "settings" || value === "profile" || value === "help" || value === "billing" || value === "status";
+}
+
+function isDesktopSettingsDestination(value: string | undefined): value is DesktopSettingsDestination {
+  return value === "settings.profile" || value === "settings.appearance" || value === "settings.security"
+    || value === "settings.organization" || value === "settings.members" || value === "settings.roles"
+    || value === "settings.billing" || value === "settings.devices";
 }
 
 function readErrorMessage(cause: unknown, fallback: string): string {

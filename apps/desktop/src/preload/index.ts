@@ -90,6 +90,15 @@ const api: KontaveDesktopApi = {
       return () => ipcRenderer.off(DESKTOP_IPC.connectivityChanged, handler);
     },
   },
+  settings: {
+    getSnapshot: (organizationId, companyId) => ipcRenderer.invoke(DESKTOP_IPC.getSettingsSnapshot, organizationId, companyId),
+    updateProfile: (command) => ipcRenderer.invoke(DESKTOP_IPC.updateSettingsProfile, command),
+    updatePreferences: (command) => ipcRenderer.invoke(DESKTOP_IPC.updateSettingsPreferences, command),
+    updateOrganization: (organizationId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateSettingsOrganization, organizationId, command),
+    changePassword: (newPassword, revokeOtherSessions) => ipcRenderer.invoke(DESKTOP_IPC.changeSettingsPassword, newPassword, revokeOtherSessions),
+    revokeSession: (sessionId) => ipcRenderer.invoke(DESKTOP_IPC.revokeSettingsSession, sessionId),
+    revokeOtherSessions: () => ipcRenderer.invoke(DESKTOP_IPC.revokeOtherSettingsSessions),
+  },
 };
 
 contextBridge.exposeInMainWorld("kontave", api);

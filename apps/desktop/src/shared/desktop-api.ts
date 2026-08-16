@@ -2,6 +2,21 @@ import type { AuthenticationFailureCode } from "@kontave/auth-domain";
 import type { DeviceDescriptor, DeviceEvent, DeviceLifecycleState } from "@kontave/device-contracts";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+import type {
+  NativeAuthenticatedDeviceSessionDto,
+  NativeBillingOverviewDto,
+  NativeBillingPlanDto,
+  NativeCurrentUserDto,
+  NativeDocumentDto,
+  NativeManualPaymentRequestDto,
+  NativeOrganizationDto,
+  NativeOrganizationMemberDto,
+  NativeRoleDto,
+  NativeUpdateCurrentUserDto,
+  NativeUpdateOrganizationDto,
+  NativeUpdateUserPreferencesDto,
+  NativeUserPreferencesDto,
+} from "@kontave/native-api-contracts";
 
 export const DESKTOP_IPC = {
   getAuthState: "auth:state",
@@ -39,7 +54,31 @@ export const DESKTOP_IPC = {
   getConnectivitySnapshot: "connectivity:snapshot",
   refreshConnectivity: "connectivity:refresh",
   connectivityChanged: "connectivity:changed",
+  getSettingsSnapshot: "settings:snapshot",
+  updateSettingsProfile: "settings:profile-update",
+  updateSettingsPreferences: "settings:preferences-update",
+  updateSettingsOrganization: "settings:organization-update",
+  changeSettingsPassword: "settings:password-change",
+  revokeSettingsSession: "settings:session-revoke",
+  revokeOtherSettingsSessions: "settings:sessions-revoke-others",
 } as const;
+
+export interface DesktopSettingsSnapshot {
+  readonly profile: NativeCurrentUserDto;
+  readonly preferences: NativeUserPreferencesDto;
+  readonly organization: NativeOrganizationDto | null;
+  readonly sessions: readonly NativeAuthenticatedDeviceSessionDto[];
+  readonly members: readonly NativeOrganizationMemberDto[];
+  readonly roles: readonly NativeRoleDto[];
+  readonly billing: NativeBillingOverviewDto | null;
+  readonly billingPlans: readonly NativeBillingPlanDto[];
+  readonly paymentRequests: readonly NativeManualPaymentRequestDto[];
+  readonly documents: readonly NativeDocumentDto[];
+}
+
+export type DesktopSettingsResult<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
 
 export interface DesktopAuthUser {
   readonly id: string;
@@ -211,5 +250,14 @@ export interface KontaveDesktopApi {
     getSnapshot(): Promise<ConnectivitySnapshot>;
     refresh(): Promise<ConnectivitySnapshot>;
     subscribe(listener: (snapshot: ConnectivitySnapshot) => void): () => void;
+  };
+  readonly settings: {
+    getSnapshot(organizationId: string | null, companyId: string | null): Promise<DesktopSettingsResult<DesktopSettingsSnapshot>>;
+    updateProfile(command: NativeUpdateCurrentUserDto): Promise<DesktopSettingsResult<NativeCurrentUserDto>>;
+    updatePreferences(command: NativeUpdateUserPreferencesDto): Promise<DesktopSettingsResult<NativeUserPreferencesDto>>;
+    updateOrganization(organizationId: string, command: NativeUpdateOrganizationDto): Promise<DesktopSettingsResult<NativeOrganizationDto>>;
+    changePassword(newPassword: string, revokeOtherSessions: boolean): Promise<DesktopSettingsResult<{ readonly changed: boolean }>>;
+    revokeSession(sessionId: string): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
+    revokeOtherSessions(): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
   };
 }

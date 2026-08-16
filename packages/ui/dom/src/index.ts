@@ -4,6 +4,7 @@ export { LogoFull, LogoMark, type LogoProps } from "./logo.js";
 export { ImageWithFallback, type ImageWithFallbackProps } from "./image-with-fallback.js";
 export { Button, type ButtonAppearance, type ButtonProps } from "./button.js";
 export { Card } from "./card.js";
+export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from "./breadcrumbs.js";
 export { Checkbox, type CheckboxProps } from "./checkbox.js";
 export { PageShell, Stack } from "./layout.js";
 export {

@@ -2,20 +2,32 @@ import type { NativeApiError, NativeApiErrorCode, NativeApiSuccess } from "@kont
 
 export type NativeClientKind = "desktop" | "mobile";
 
+export interface NativeApiClientConfiguration {
+  readonly baseUrl: string;
+  readonly client: NativeClientKind;
+  readonly getAccessToken?: () => Promise<string | null>;
+  readonly authenticatedFetch?: (input: URL | string, init?: RequestInit) => Promise<Response>;
+  readonly timeoutMs?: number;
+}
+
 export class NativeApiFailure extends Error {
-  constructor(readonly code: NativeApiErrorCode | "INVALID_RESPONSE" | "NETWORK_UNAVAILABLE", message: string, readonly requestId: string | null = null, options?: ErrorOptions) {
-    super(message, options); this.name = "NativeApiFailure";
+  readonly code: NativeApiErrorCode | "INVALID_RESPONSE" | "NETWORK_UNAVAILABLE";
+  readonly requestId: string | null;
+
+  constructor(code: NativeApiErrorCode | "INVALID_RESPONSE" | "NETWORK_UNAVAILABLE", message: string, requestId: string | null = null, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "NativeApiFailure";
+    this.code = code;
+    this.requestId = requestId;
   }
 }
 
 export class NativeApiClient {
-  constructor(private readonly configuration: {
-    readonly baseUrl: string;
-    readonly client: NativeClientKind;
-    readonly getAccessToken?: () => Promise<string | null>;
-    readonly authenticatedFetch?: (input: URL | string, init?: RequestInit) => Promise<Response>;
-    readonly timeoutMs?: number;
-  }) {}
+  private readonly configuration: NativeApiClientConfiguration;
+
+  constructor(configuration: NativeApiClientConfiguration) {
+    this.configuration = configuration;
+  }
 
   async get<T>(path: string): Promise<T> { return this.request<T>(path, { method: "GET" }); }
 

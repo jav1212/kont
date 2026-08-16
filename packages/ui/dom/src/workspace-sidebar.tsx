@@ -83,8 +83,11 @@ export interface WorkspaceSidebarProps {
   readonly accountActions?: readonly WorkspaceSidebarAccountAction[];
   readonly footerSlot?: ReactNode;
   readonly closeIcon?: ReactNode;
+  readonly headerActionIcon?: ReactNode;
+  readonly headerActionLabel?: string;
   readonly className?: string;
   readonly onOpenChange?: (open: boolean) => void;
+  readonly onHeaderAction?: () => void;
   readonly onSelectModule?: (moduleId: string) => void;
   readonly onSelectCompany?: (companyId: string) => void;
   readonly onNavigate?: (itemId: string) => void;
@@ -103,8 +106,11 @@ export function WorkspaceSidebar({
   closeIcon,
   companies = [],
   footerSlot,
+  headerActionIcon,
+  headerActionLabel,
   modules,
   onAccountAction,
+  onHeaderAction,
   onNavigate,
   onOpenChange,
   onSelectCompany,
@@ -128,7 +134,18 @@ export function WorkspaceSidebar({
     data-presentation={presentation}
   >
     <header className="kt-workspace-sidebar__header">
-      {compact ? <LogoMark size={25} /> : <LogoFull size={25} />}
+      {presentation !== "drawer" && headerActionIcon && headerActionLabel && onHeaderAction ? <Button
+        appearance="unstyled"
+        className="kt-workspace-sidebar__brand-toggle"
+        aria-label={headerActionLabel}
+        title={headerActionLabel}
+        onClick={onHeaderAction}
+      >
+        <span className="kt-workspace-sidebar__brand-toggle-logo" aria-hidden="true">
+          {compact ? <LogoMark size={25} /> : <LogoFull size={25} />}
+        </span>
+        <span className="kt-workspace-sidebar__brand-toggle-action" aria-hidden="true">{headerActionIcon}</span>
+      </Button> : compact ? <LogoMark size={25} /> : <LogoFull size={25} />}
       {presentation === "drawer" ? <Button
         appearance="unstyled"
         className="kt-workspace-sidebar__icon-button"
