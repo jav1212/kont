@@ -42,6 +42,14 @@ export type NativeApiErrorCode =
   | "PREFERENCES_INVALID"
   | "PREFERENCES_VERSION_CONFLICT"
   | "PREFERENCES_REPOSITORY_UNAVAILABLE"
+  | "OPERATION_CONTEXT_INVALID"
+  | "OPERATION_CONTEXT_ACCESS_DENIED"
+  | "OPERATION_CONTEXT_VERSION_CONFLICT"
+  | "OPERATION_CONTEXT_RATE_UNAVAILABLE"
+  | "OPERATION_CONTEXT_REPOSITORY_UNAVAILABLE"
+  | "INVENTORY_DASHBOARD_INVALID"
+  | "INVENTORY_DASHBOARD_ACCESS_DENIED"
+  | "INVENTORY_DASHBOARD_UNAVAILABLE"
   | "PLATFORM_STATUS_REPOSITORY_UNAVAILABLE"
   | "DOCUMENT_INVALID"
   | "DOCUMENT_NOT_FOUND"
@@ -126,6 +134,73 @@ export interface NativeUpdateUserPreferencesDto {
   readonly expectedVersion: number;
   readonly appearance?: Partial<NativeUserPreferencesDto["appearance"]>;
   readonly regional?: Partial<NativeUserPreferencesDto["regional"]>;
+}
+
+export interface NativeExchangeRateSnapshotDto {
+  readonly baseCurrency: string;
+  readonly quoteCurrency: string;
+  readonly value: string;
+  readonly effectiveDate: string;
+  readonly capturedAt: string;
+  readonly source:
+    | { readonly kind: "official"; readonly authority: string; readonly reference: string | null }
+    | { readonly kind: "manual"; readonly reason: string };
+}
+
+export interface NativeOperationalDefaultsDto {
+  readonly effectiveDate: string;
+  readonly presentationCurrency: string;
+  readonly exchangeRate:
+    | { readonly status: "resolved"; readonly value: NativeExchangeRateSnapshotDto }
+    | { readonly status: "unavailable"; readonly effectiveDate: string };
+  readonly version: number;
+  readonly updatedAt: string;
+}
+
+export interface NativeUpdateOperationalDefaultsDto {
+  readonly expectedVersion: number;
+  readonly effectiveDate?: string;
+  readonly presentationCurrency?: string;
+  readonly manualExchangeRate?: { readonly baseCurrency: string; readonly value: string; readonly reason: string };
+}
+
+export interface NativeRefreshOperationalExchangeRateDto { readonly expectedVersion: number }
+
+export interface NativeInventoryAmountDto { readonly amount: string; readonly currency: "VES" }
+export interface NativeInventoryUnitFlowDto { readonly unit: string; readonly inbound: string; readonly outbound: string }
+export interface NativeInventoryDashboardSummaryDto {
+  readonly inboundValue: NativeInventoryAmountDto;
+  readonly outboundValue: NativeInventoryAmountDto;
+  readonly movementCount: number;
+  readonly inventoryValue: NativeInventoryAmountDto;
+  readonly quantities: readonly NativeInventoryUnitFlowDto[];
+  readonly valuationDate: string;
+}
+export interface NativeInventoryDashboardChartPointDto {
+  readonly date: string;
+  readonly inboundValue: NativeInventoryAmountDto;
+  readonly outboundValue: NativeInventoryAmountDto;
+  readonly movementCount: number;
+  readonly quantities: readonly NativeInventoryUnitFlowDto[];
+}
+export interface NativeRecentInventoryDocumentDto {
+  readonly id: string;
+  readonly recordType: "invoice" | "delivery_note" | "debit_note" | "credit_note" | "other";
+  readonly number: string;
+  readonly counterparty: string | null;
+  readonly date: string;
+  readonly status: string;
+  readonly total: NativeInventoryAmountDto;
+  readonly transactionCurrency: string;
+  readonly sourceTotal: string | null;
+}
+export interface NativeInventoryDashboardDto {
+  readonly period: { readonly from: string; readonly to: string; readonly granularity: "day" };
+  readonly summary: NativeInventoryDashboardSummaryDto;
+  readonly charts: readonly NativeInventoryDashboardChartPointDto[];
+  readonly recentSales: readonly NativeRecentInventoryDocumentDto[];
+  readonly recentPurchases: readonly NativeRecentInventoryDocumentDto[];
+  readonly generatedAt: string;
 }
 
 export interface NativeOrganizationDto {
