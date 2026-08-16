@@ -40,6 +40,7 @@ import { desktopConnectivityStore } from "./connectivity-store.js";
 import { applyDesktopTheme } from "./desktop-theme.js";
 import { DesktopSettingsView } from "./settings-view.js";
 import { DesktopSettingsDetailView, type DesktopSettingsDestination } from "./settings-detail-view.js";
+import { InventoryDashboardView } from "./inventory-dashboard-view.js";
 import { resolveDesktopSettings } from "./desktop-settings.js";
 import {
   defaultModuleNavigationTarget,
@@ -147,8 +148,12 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
     desktopConnectivityStore.getSnapshot,
   );
 
+  // Module changes intentionally reset navigation to that module's portable default.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId)), [activeModuleId]);
   useEffect(() => localStorage.setItem(DESKTOP_SIDEBAR_PINNED_KEY, String(sidebarPinned)), [sidebarPinned]);
+  // Crossing the responsive boundary must close a stale drawer presentation.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setDrawerOpen(false), [compactViewport]);
 
   const sidebarPresentation = compactViewport ? "drawer" : sidebarPinned ? "persistent" : "collapsed";
@@ -192,6 +197,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
   const settingsSections = useMemo(() => resolveDesktopSettings({ auth, connectivity, workspace }), [auth, connectivity, workspace]);
   const settingsActive = activeNavigationTarget?.id === "settings" || activeNavigationTarget?.id.startsWith("settings.") === true;
   const settingsDetail = isDesktopSettingsDestination(activeNavigationTarget?.id) ? activeNavigationTarget.id : null;
+  const inventoryDashboardActive = activeNavigationTarget?.id === "inventory.dashboard";
   const accountActions: readonly WorkspaceSidebarAccountAction[] = [
     ...DESKTOP_ACCOUNT_ACTIONS,
     {
@@ -339,7 +345,7 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
           <h1>{breadcrumbs.at(-1)?.label ?? "Dispositivos"}</h1>
         </div>
       </header>
-      <main className={`desktop-content${settingsActive ? " desktop-content--settings" : ""}`}>
+      <main className={`desktop-content${settingsActive ? " desktop-content--settings" : ""}${inventoryDashboardActive ? " desktop-content--inventory-dashboard" : ""}`}>
         {connectivity.availability === "degraded" ? <Alert intent="warning" className="desktop-connectivity-notice">
           La conexión es inestable. Algunas operaciones pueden tardar más.{' '}
           <Button size="sm" onClick={() => void desktopConnectivityStore.refresh()}>Reintentar</Button>
@@ -354,7 +360,10 @@ function DesktopAppShell({ auth, billingPlan, children, currentUser, onSignedOut
           onThemeChange={onThemeChange}
           theme={theme}
           workspace={workspace}
-        /> : settingsActive ? <DesktopSettingsView sections={settingsSections} onSelect={selectSetting} /> : children}
+        /> : settingsActive ? <DesktopSettingsView sections={settingsSections} onSelect={selectSetting} />
+          : inventoryDashboardActive && workspace.status === "ready" && workspace.activeWorkspaceId && workspace.activeCompanyId
+            ? <InventoryDashboardView auth={auth} organizationId={workspace.activeWorkspaceId} companyId={workspace.activeCompanyId} />
+            : children}
       </main>
     </div>
   </div>;

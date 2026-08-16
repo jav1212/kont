@@ -99,6 +99,15 @@ const api: KontaveDesktopApi = {
     revokeSession: (sessionId) => ipcRenderer.invoke(DESKTOP_IPC.revokeSettingsSession, sessionId),
     revokeOtherSessions: () => ipcRenderer.invoke(DESKTOP_IPC.revokeOtherSettingsSessions),
   },
+  inventory: {
+    getDashboard: (userId, organizationId, companyId, query) => ipcRenderer.invoke(
+      DESKTOP_IPC.getInventoryDashboard,
+      userId,
+      organizationId,
+      companyId,
+      query,
+    ),
+  },
 };
 
 contextBridge.exposeInMainWorld("kontave", api);

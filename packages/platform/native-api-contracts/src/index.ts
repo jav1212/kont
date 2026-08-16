@@ -166,6 +166,14 @@ export interface NativeUpdateOperationalDefaultsDto {
 
 export interface NativeRefreshOperationalExchangeRateDto { readonly expectedVersion: number }
 
+export interface NativeExchangeRateSetDto {
+  readonly requestedDate: string;
+  readonly effectiveDate: string;
+  readonly resolution: "exact_date" | "previous_available_date";
+  readonly observedAt: string;
+  readonly rates: readonly NativeExchangeRateSnapshotDto[];
+}
+
 export interface NativeInventoryAmountDto { readonly amount: string; readonly currency: "VES" }
 export interface NativeInventoryUnitFlowDto { readonly unit: string; readonly inbound: string; readonly outbound: string }
 export interface NativeInventoryDashboardSummaryDto {

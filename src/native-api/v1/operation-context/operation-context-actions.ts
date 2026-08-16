@@ -13,13 +13,7 @@ export function createNativeOperationContextCoordinator(): OperationContextCoord
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceRoleKey) throw new Error("Native operation-context infrastructure is not configured.");
-  const catalog = new FixedCurrencyCatalog(BCV_CURRENCIES);
-  const provider = new MonitorBcvProvider(catalog, VES);
-  const rates = new ResolveExchangeRates(provider, new InMemoryExchangeRateCache(), {
-    currentTtlMilliseconds: 30 * 60_000,
-    historicalTtlMilliseconds: 24 * 60 * 60_000,
-    staleIfErrorMilliseconds: 7 * 24 * 60 * 60_000,
-  });
+  const rates = createNativeExchangeRateResolver();
   const store = createSupabaseOperationContextStore({ url, serviceRoleKey });
   const clock = {
     now: () => new Date().toISOString(),
@@ -28,4 +22,14 @@ export function createNativeOperationContextCoordinator(): OperationContextCoord
     }).format(new Date())),
   };
   return new OperationContextCoordinator(store, rates, clock, USD, VES);
+}
+
+export function createNativeExchangeRateResolver(): ResolveExchangeRates {
+  const catalog = new FixedCurrencyCatalog(BCV_CURRENCIES);
+  const provider = new MonitorBcvProvider(catalog, VES);
+  return new ResolveExchangeRates(provider, new InMemoryExchangeRateCache(), {
+    currentTtlMilliseconds: 30 * 60_000,
+    historicalTtlMilliseconds: 24 * 60 * 60_000,
+    staleIfErrorMilliseconds: 7 * 24 * 60 * 60_000,
+  });
 }

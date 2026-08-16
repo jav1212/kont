@@ -28,6 +28,7 @@ import { DesktopBillingPlanSource } from "./billing/desktop-billing-plan-source.
 import { DesktopPlatformStatusController } from "./platform-status/desktop-platform-status-controller.js";
 import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source.js";
 import { DesktopSettingsController } from "./settings/desktop-settings-controller.js";
+import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller.js";
 
 let mainWindow: BrowserWindow | undefined;
 let updates: ClientUpdateCoordinator | undefined;
@@ -38,6 +39,7 @@ let billingPlan: DesktopBillingPlanController | undefined;
 let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let settings: DesktopSettingsController | undefined;
+let inventoryDashboard: DesktopInventoryDashboardController | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
 let previousConnectivityAvailability: ConnectivitySnapshot["availability"] = "unknown";
 let initialization: Promise<void> | undefined;
@@ -159,6 +161,9 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.changeSettingsPassword, (_event, password: unknown, revokeOthers: unknown) => settingsController().changePassword(password, revokeOthers));
   ipcMain.handle(DESKTOP_IPC.revokeSettingsSession, (_event, sessionId: unknown) => settingsController().revokeSession(sessionId));
   ipcMain.handle(DESKTOP_IPC.revokeOtherSettingsSessions, () => settingsController().revokeOtherSessions());
+  ipcMain.handle(DESKTOP_IPC.getInventoryDashboard, (_event, actorId: unknown, organizationId: unknown, companyId: unknown, query: unknown) => (
+    inventoryDashboardController().getDashboard(actorId, organizationId, companyId, query)
+  ));
 }
 
 function updateCoordinator(): ClientUpdateCoordinator {
@@ -199,6 +204,11 @@ function connectivityMonitor(): ConnectivityMonitor {
 function settingsController(): DesktopSettingsController {
   if (!settings) throw new Error("Desktop settings are not initialized.");
   return settings;
+}
+
+function inventoryDashboardController(): DesktopInventoryDashboardController {
+  if (!inventoryDashboard) throw new Error("Desktop inventory dashboard is not initialized.");
+  return inventoryDashboard;
 }
 
 async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthController["initialize"]>>) {
@@ -435,6 +445,7 @@ app.whenReady().then(() => {
   const authenticatedRequest = new DesktopAuthenticatedRequest(auth.sessions);
   const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
   settings = new DesktopSettingsController(apiBaseUrl, authenticatedRequest);
+  inventoryDashboard = new DesktopInventoryDashboardController(apiBaseUrl, authenticatedRequest);
   connectivity = new ConnectivityMonitor({
     probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
     failureThreshold: 3,

@@ -345,6 +345,9 @@ importers:
       '@kontave/modules-domain':
         specifier: workspace:*
         version: link:../../packages/modules/domain
+      '@kontave/monetary-domain':
+        specifier: workspace:*
+        version: link:../../packages/monetary/domain
       '@kontave/native-api-client':
         specifier: workspace:*
         version: link:../../packages/platform/native-api-client
@@ -354,6 +357,12 @@ importers:
       '@kontave/navigation-domain':
         specifier: workspace:*
         version: link:../../packages/navigation/domain
+      '@kontave/operation-context-application':
+        specifier: workspace:*
+        version: link:../../packages/operation-context/application
+      '@kontave/operation-context-domain':
+        specifier: workspace:*
+        version: link:../../packages/operation-context/domain
       '@kontave/organization-delegations-domain':
         specifier: workspace:*
         version: link:../../packages/organization-delegations/domain

@@ -69,6 +69,16 @@ Coordinan organización, empresa y módulo activos. Las selecciones se persisten
 
 Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. Desktop no almacena rutas Web ni `href` como identidad de navegación.
 
+### Contexto operativo e inventario
+
+- `@kontave/operation-context-domain`
+- `@kontave/operation-context-application`
+- `@kontave/monetary-domain`
+
+El contexto operativo conserva por usuario, organización y empresa la fecha efectiva, moneda de presentación y tasa seleccionada. El proceso principal de Desktop inicializa su coordinador portable mediante un store HTTP autenticado; el renderer recibe únicamente el snapshot resultante.
+
+El tablero de Inventario termina su período en la fecha efectiva del contexto y presenta valores reales de entradas, salidas, movimientos, valoración y documentos recientes. Los nombres técnicos `recentSales` y `recentPurchases` del contrato se presentan como “Más salidas” y “Más entradas”, porque la interfaz describe el flujo físico del inventario y no presupone órdenes que no existen.
+
 ### Configuración y preferencias
 
 - `@kontave/settings-contracts`
@@ -136,6 +146,8 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 | `GET /api/native/v1/organizations/{organizationId}/billing/plans` | Planes disponibles |
 | `GET /api/native/v1/organizations/{organizationId}/billing/payment-requests` | Solicitudes de pago |
 | `GET /api/native/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/operation-context` | Fecha, moneda y tasa efectivas |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard` | Snapshot agregado del tablero de Inventario |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
 

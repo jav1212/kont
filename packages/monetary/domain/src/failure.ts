@@ -10,12 +10,15 @@ export type MonetaryFailureCode =
   | "INVALID_ALLOCATION";
 
 export class MonetaryFailure extends Error {
+  readonly code: MonetaryFailureCode;
+
   constructor(
-    readonly code: MonetaryFailureCode,
+    code: MonetaryFailureCode,
     message: string,
     options?: ErrorOptions,
   ) {
     super(message, options);
+    this.code = code;
     this.name = "MonetaryFailure";
   }
 }

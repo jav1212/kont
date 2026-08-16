@@ -8,6 +8,9 @@ import type {
   NativeBillingPlanDto,
   NativeCurrentUserDto,
   NativeDocumentDto,
+  NativeInventoryDashboardDto,
+  NativeExchangeRateSetDto,
+  NativeOperationalDefaultsDto,
   NativeManualPaymentRequestDto,
   NativeOrganizationDto,
   NativeOrganizationMemberDto,
@@ -61,7 +64,23 @@ export const DESKTOP_IPC = {
   changeSettingsPassword: "settings:password-change",
   revokeSettingsSession: "settings:session-revoke",
   revokeOtherSettingsSessions: "settings:sessions-revoke-others",
+  getInventoryDashboard: "inventory:dashboard",
 } as const;
+
+export interface DesktopInventoryDashboardSnapshot {
+  readonly operationContext: NativeOperationalDefaultsDto;
+  readonly exchangeRates: NativeExchangeRateSetDto;
+  readonly dashboard: NativeInventoryDashboardDto;
+}
+
+export interface DesktopInventoryDashboardQuery {
+  readonly from?: string;
+  readonly to?: string;
+}
+
+export type DesktopInventoryDashboardResult =
+  | { readonly ok: true; readonly value: DesktopInventoryDashboardSnapshot }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
 
 export interface DesktopSettingsSnapshot {
   readonly profile: NativeCurrentUserDto;
@@ -259,5 +278,8 @@ export interface KontaveDesktopApi {
     changePassword(newPassword: string, revokeOtherSessions: boolean): Promise<DesktopSettingsResult<{ readonly changed: boolean }>>;
     revokeSession(sessionId: string): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
     revokeOtherSessions(): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
+  };
+  readonly inventory: {
+    getDashboard(userId: string, organizationId: string, companyId: string, query?: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult>;
   };
 }
