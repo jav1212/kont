@@ -145,9 +145,17 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.getConnectivitySnapshot, () => connectivityMonitor().getSnapshot());
   ipcMain.handle(DESKTOP_IPC.refreshConnectivity, () => connectivityMonitor().refresh());
   ipcMain.handle(DESKTOP_IPC.getSettingsSnapshot, (_event, organizationId: unknown, companyId: unknown) => settingsController().getSnapshot(organizationId, companyId));
-  ipcMain.handle(DESKTOP_IPC.updateSettingsProfile, (_event, command: unknown) => settingsController().updateProfile(command));
+  ipcMain.handle(DESKTOP_IPC.updateSettingsProfile, async (_event, command: unknown) => {
+    const result = await settingsController().updateProfile(command);
+    if (result.ok) currentUserController().synchronize(result.value);
+    return result;
+  });
   ipcMain.handle(DESKTOP_IPC.updateSettingsPreferences, (_event, command: unknown) => settingsController().updatePreferences(command));
-  ipcMain.handle(DESKTOP_IPC.updateSettingsOrganization, (_event, organizationId: unknown, command: unknown) => settingsController().updateOrganization(organizationId, command));
+  ipcMain.handle(DESKTOP_IPC.updateSettingsOrganization, async (_event, organizationId: unknown, command: unknown) => {
+    const result = await settingsController().updateOrganization(organizationId, command);
+    if (result.ok) await workspaceController().refresh();
+    return result;
+  });
   ipcMain.handle(DESKTOP_IPC.changeSettingsPassword, (_event, password: unknown, revokeOthers: unknown) => settingsController().changePassword(password, revokeOthers));
   ipcMain.handle(DESKTOP_IPC.revokeSettingsSession, (_event, sessionId: unknown) => settingsController().revokeSession(sessionId));
   ipcMain.handle(DESKTOP_IPC.revokeOtherSettingsSessions, () => settingsController().revokeOtherSessions());
