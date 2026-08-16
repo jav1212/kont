@@ -89,8 +89,10 @@ class SupabaseProfileRowSource implements ProfileRowSource {
   async update(changes: { readonly displayName?: string | null; readonly avatarUrl?: string | null }, expectedVersion: number) {
     return this.client.rpc("update_current_profile", {
       p_expected_version: expectedVersion,
-      p_display_name: changes.displayName,
-      p_avatar_url: changes.avatarUrl,
+      // PostgREST resolves RPC overloads from the complete argument set. The
+      // update flags distinguish "not supplied" from an intentional null.
+      p_display_name: changes.displayName ?? null,
+      p_avatar_url: changes.avatarUrl ?? null,
       p_update_display_name: changes.displayName !== undefined,
       p_update_avatar_url: changes.avatarUrl !== undefined,
     }).single();
