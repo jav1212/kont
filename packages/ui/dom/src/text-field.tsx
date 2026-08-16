@@ -1,7 +1,9 @@
 import { forwardRef, useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import type { FieldLoadingState } from "@kontave/ui-contracts";
 import { classNames } from "./internal/class-names.js";
+import { FieldSkeleton } from "./skeleton.js";
 
-export interface TextFieldProps extends Omit<ComponentPropsWithoutRef<"input">, "size"> {
+export interface TextFieldProps extends Omit<ComponentPropsWithoutRef<"input">, "size">, FieldLoadingState {
   readonly label: string;
   readonly labelAction?: ReactNode;
   readonly endAdornment?: ReactNode;
@@ -10,9 +12,10 @@ export interface TextFieldProps extends Omit<ComponentPropsWithoutRef<"input">, 
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { className, endAdornment, error, hint, id: providedId, label, labelAction, ...props },
+  { className, endAdornment, error, hint, id: providedId, label, labelAction, loading = false, loadingLabel = false, ...props },
   ref,
 ) {
+  if (loading) return <FieldSkeleton hint={Boolean(hint || error)} label={label} loadingLabel={loadingLabel} />;
   const generatedId = useId();
   const id = providedId ?? generatedId;
   const messageId = error || hint ? `${id}-message` : undefined;

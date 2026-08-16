@@ -45,6 +45,7 @@ export {
   type WorkspaceSidebarWorkspace,
 } from "./workspace-sidebar.js";
 export { TextField, type TextFieldProps } from "./text-field.js";
+export { FieldSkeleton, Skeleton, type FieldSkeletonProps, type SkeletonProps } from "./skeleton.js";
 export { Text, type TextElement, type TextProps, type TextTone } from "./text.js";
 export {
   presentFeedback,

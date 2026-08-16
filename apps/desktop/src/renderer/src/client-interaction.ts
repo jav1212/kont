@@ -114,14 +114,14 @@ export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
 }
 
-export async function runSettingsInteraction<T>(operation: () => Promise<T>): Promise<T> {
+export async function runSettingsMutation<T>(message: string, operation: () => Promise<T>): Promise<T> {
   settingsOperations += 1;
   settingsLease ??= interactionGate.acquire({
     kind: "exclusive_operation",
     state: "working",
     priority: 300,
-    message: "Cargando configuración",
-    description: "Estamos sincronizando las preferencias de tu cuenta.",
+    message,
+    description: "Espera mientras Kontave confirma la operación.",
   });
   try {
     return await operation();
