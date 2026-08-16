@@ -239,6 +239,8 @@ export interface NativeInventoryDashboardDto {
 
 export type NativeUnitOfMeasure="each"|"kilogram"|"gram"|"meter"|"square_meter"|"cubic_meter"|"liter"|"gallon"|"box"|"roll"|"package";
 export interface NativeProductCategoryDto{readonly id:string;readonly name:string;readonly description:string|null;readonly status:"active"|"inactive";readonly version:number}
+export interface NativeProductCategoryOverviewItemDto extends NativeProductCategoryDto{readonly productCount:number;readonly createdAt:string|null;readonly updatedAt:string|null}
+export interface NativeProductCategoryOverviewDto{readonly items:readonly NativeProductCategoryOverviewItemDto[];readonly nextCursor:string|null;readonly total:number;readonly summary:{readonly active:number;readonly inactive:number;readonly inUse:number;readonly unused:number;readonly unassignedProducts:number}}
 export interface NativeProductInventorySummaryDto{
   readonly onHand:{readonly quantity:string;readonly unit:NativeUnitOfMeasure};
   readonly replenishment:{readonly minimumQuantity:string|null;readonly state:"available"|"low"|"out";readonly version:number;readonly updatedAt:string};

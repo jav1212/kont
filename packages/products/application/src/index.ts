@@ -61,6 +61,16 @@ export interface UpdateProductCommand extends ProductCatalogContext {
 }
 export interface ProductVersionCommand extends ProductCatalogContext { readonly productId: ProductId; readonly expectedVersion: number }
 export interface ProductCategoryListQuery extends ProductCatalogContext { readonly status: ProductCategoryStatus | "all" }
+export type ProductCategoryOverviewSort = "name" | "products" | "updatedAt";
+export interface ProductCategoryOverviewQuery extends ProductCatalogContext {
+  readonly search: string | null; readonly status: ProductCategoryStatus | "all"; readonly sort: ProductCategoryOverviewSort;
+  readonly direction: SortDirection; readonly cursor: string | null; readonly limit: number;
+}
+export interface ProductCategoryOverviewItem { readonly category: ProductCategory; readonly productCount: number; readonly createdAt: string | null; readonly updatedAt: string | null }
+export interface ProductCategoryOverviewPage {
+  readonly items: readonly ProductCategoryOverviewItem[]; readonly nextCursor: string | null; readonly total: number;
+  readonly summary: { readonly active: number; readonly inactive: number; readonly inUse: number; readonly unused: number; readonly unassignedProducts: number };
+}
 export interface CreateProductCategoryCommand extends ProductCatalogContext { readonly name: string; readonly description: string | null }
 export interface UpdateProductCategoryCommand extends ProductCatalogContext { readonly categoryId: ProductCategoryId; readonly name?: string; readonly description?: string | null; readonly expectedVersion: number }
 export interface ProductCategoryVersionCommand extends ProductCatalogContext { readonly categoryId: ProductCategoryId; readonly expectedVersion: number }
@@ -73,6 +83,8 @@ export interface ProductsRepository {
   setStatus(command: ProductVersionCommand, status: ProductStatus): Promise<ProductDetail>;
   listMovements(query: ProductMovementQuery): Promise<ProductMovementPage>;
   listCategories(query: ProductCategoryListQuery): Promise<readonly ProductCategory[]>;
+  getCategory(context: ProductCatalogContext, categoryId: ProductCategoryId): Promise<ProductCategoryOverviewItem | null>;
+  overviewCategories(query: ProductCategoryOverviewQuery): Promise<ProductCategoryOverviewPage>;
   createCategory(command: CreateProductCategoryCommand): Promise<ProductCategory>;
   updateCategory(command: UpdateProductCategoryCommand): Promise<ProductCategory>;
   setCategoryStatus(command: ProductCategoryVersionCommand, status: ProductCategoryStatus): Promise<ProductCategory>;
@@ -85,6 +97,8 @@ export class UpdateProduct { constructor(private readonly repository: ProductsRe
 export class SetProductStatus { constructor(private readonly repository: ProductsRepository,private readonly status:ProductStatus) {} execute(command: ProductVersionCommand) { expectedVersion(command.expectedVersion);return this.repository.setStatus(command,this.status); } }
 export class ListProductMovements { constructor(private readonly repository: ProductsRepository) {} execute(query: ProductMovementQuery) { return this.repository.listMovements(validateMovement(query)); } }
 export class ListProductCategories { constructor(private readonly repository: ProductsRepository) {} execute(query: ProductCategoryListQuery) { return this.repository.listCategories(query); } }
+export class GetProductCategory { constructor(private readonly repository: ProductsRepository) {} async execute(context:ProductCatalogContext,id:ProductCategoryId){const value=await this.repository.getCategory(context,id);if(!value)throw new ProductFailure("PRODUCT_CATEGORY_NOT_FOUND","Product category was not found.");return value;} }
+export class ListProductCategoryOverview { constructor(private readonly repository:ProductsRepository){} execute(query:ProductCategoryOverviewQuery){if(!Number.isSafeInteger(query.limit)||query.limit<1||query.limit>100)invalid("Product category page limit must be between 1 and 100.");if(query.search!==null&&query.search.trim().length>200)invalid("Product category search is invalid.");return this.repository.overviewCategories({...query,search:query.search?.trim()||null});} }
 export class CreateProductCategory { constructor(private readonly repository: ProductsRepository) {} execute(command: CreateProductCategoryCommand) { return this.repository.createCategory(command); } }
 export class UpdateProductCategory { constructor(private readonly repository: ProductsRepository) {} execute(command: UpdateProductCategoryCommand) { expectedVersion(command.expectedVersion);return this.repository.updateCategory(command); } }
 export class SetProductCategoryStatus { constructor(private readonly repository: ProductsRepository,private readonly status:ProductCategoryStatus) {} execute(command: ProductCategoryVersionCommand) { expectedVersion(command.expectedVersion);return this.repository.setCategoryStatus(command,this.status); } }

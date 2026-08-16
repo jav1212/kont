@@ -32,6 +32,9 @@ export const NAVIGATION_DESTINATIONS = [
   { id: "inventory.dashboard", label: "Tablero", parentId: "inventory" },
   { id: "inventory.products", label: "Productos", parentId: "inventory" },
   { id: "inventory.product-detail", label: "Producto", parentId: "inventory.products" },
+  { id: "inventory.product-categories", label: "Departamentos", parentId: "inventory" },
+  { id: "inventory.product-category-detail", label: "Departamento", parentId: "inventory.product-categories" },
+  // Compatibility aliases for native clients while they migrate to the portable product-category terminology.
   { id: "inventory.departments", label: "Departamentos", parentId: "inventory" },
   { id: "inventory.department-detail", label: "Departamento", parentId: "inventory.departments" },
   { id: "inventory.outputs", label: "Salidas", parentId: "inventory" },
@@ -96,6 +99,7 @@ export interface NavigationParametersByDestination {
   readonly "purchases.detail": { readonly purchaseId: string };
   readonly "sales.detail": { readonly saleId: string };
   readonly "inventory.product-detail": { readonly productId: string };
+  readonly "inventory.product-category-detail": { readonly categoryId: string };
   readonly "inventory.department-detail": { readonly departmentId: string };
   readonly "accounting.journal-entry": { readonly entryId: string };
   readonly "companies.detail": { readonly companyId: string };
@@ -139,6 +143,7 @@ const REQUIRED_PARAMETERS: Readonly<Partial<Record<NavigationDestinationId, read
   "purchases.detail": ["purchaseId"],
   "sales.detail": ["saleId"],
   "inventory.product-detail": ["productId"],
+  "inventory.product-category-detail": ["categoryId"],
   "inventory.department-detail": ["departmentId"],
   "accounting.journal-entry": ["entryId"],
   "companies.detail": ["companyId"],
