@@ -1,5 +1,5 @@
 import { Decimal as DecimalJs } from "decimal.js";
-import { MonetaryFailure } from "./failure.js";
+import { MonetaryFailure } from "./failure";
 
 declare const exactDecimalBrand: unique symbol;
 export type ExactDecimal = string & { readonly [exactDecimalBrand]: true };

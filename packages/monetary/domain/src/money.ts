@@ -1,5 +1,5 @@
-import { exactDecimal, type ExactDecimal, type RoundingMode } from "./decimal.js";
-import { MonetaryFailure } from "./failure.js";
+import { exactDecimal, type ExactDecimal, type RoundingMode } from "./decimal";
+import { MonetaryFailure } from "./failure";
 
 declare const currencyCodeBrand: unique symbol;
 export type CurrencyCode = string & { readonly [currencyCodeBrand]: true };

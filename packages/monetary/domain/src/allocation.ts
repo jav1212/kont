@@ -1,7 +1,7 @@
 import { Decimal as DecimalJs } from "decimal.js";
-import { exactDecimal, type ExactDecimal } from "./decimal.js";
-import { MonetaryFailure } from "./failure.js";
-import { moneyFromMinor, type Money } from "./money.js";
+import { exactDecimal, type ExactDecimal } from "./decimal";
+import { MonetaryFailure } from "./failure";
+import { moneyFromMinor, type Money } from "./money";
 
 export type AllocationStrategy = "last_part_carry" | "largest_remainder";
 

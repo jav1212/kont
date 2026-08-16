@@ -1,6 +1,6 @@
-import { decimalScale, exactDecimal, multiplyDecimal, type ExactDecimal, type RoundingMode } from "./decimal.js";
-import { MonetaryFailure } from "./failure.js";
-import { moneyToDecimal, quantizeMoney, sameCurrency, subtractMoney, type CurrencyDefinition, type Money } from "./money.js";
+import { decimalScale, exactDecimal, multiplyDecimal, type ExactDecimal, type RoundingMode } from "./decimal";
+import { MonetaryFailure } from "./failure";
+import { moneyToDecimal, quantizeMoney, sameCurrency, subtractMoney, type CurrencyDefinition, type Money } from "./money";
 
 export interface ExchangeRate {
   readonly baseCurrency: CurrencyDefinition;
