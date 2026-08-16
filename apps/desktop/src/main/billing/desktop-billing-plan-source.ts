@@ -1,5 +1,5 @@
-import type { DesktopBillingPlanState } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopBillingPlanState } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 interface SubscriptionSummary {
   readonly planName: string | null;

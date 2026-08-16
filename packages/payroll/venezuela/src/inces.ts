@@ -1,7 +1,7 @@
 import { exactDecimal, moneyFromMinor, type Money } from "@kontave/monetary-domain";
-import { percentageOf } from "./calculation.js";
-import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment.js";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { percentageOf } from "./calculation";
+import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
+import { VenezuelanPayrollFailure } from "./failure";
 
 export function assessIncesEmployer(input: {
   readonly calendarQuarter: string;

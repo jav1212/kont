@@ -3,9 +3,9 @@ import type {
   GlobalInteractionGate,
   InteractionBlockActionKind,
 } from "@kontave/client-interaction-application";
-import { Button } from "./button.js";
-import { LogoMark } from "./logo.js";
-import { Text } from "./text.js";
+import { Button } from "./button";
+import { LogoMark } from "./logo";
+import { Text } from "./text";
 
 export interface GlobalInteractionBoundaryProps {
   readonly gate: GlobalInteractionGate;

@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { dataDirectory } from "./config.js";
+import { dataDirectory } from "./config";
 export class Logger {
   readonly path = join(dataDirectory, "device-manager.log");
   private errorListeners = new Set<(entry: { message: string; detail?: string; occurredAt: string }) => void>();

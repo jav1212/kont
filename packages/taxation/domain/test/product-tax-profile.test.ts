@@ -8,7 +8,7 @@ import {
   productTaxProfileId,
   taxCode,
   taxationDate,
-} from "../src/index.js";
+} from "../src/index";
 
 const IVA = taxCode("IVA");
 

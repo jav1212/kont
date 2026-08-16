@@ -4,8 +4,8 @@ import { currency, currencyCode, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
 import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
 import type { NativeExchangeRateSetDto, NativeInventoryDashboardDto, NativeOperationalDefaultsDto } from "@kontave/native-api-contracts";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
-import type { DesktopInventoryDashboardQuery, DesktopInventoryDashboardResult } from "../../shared/desktop-api.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+import type { DesktopInventoryDashboardQuery, DesktopInventoryDashboardResult } from "../../shared/desktop-api";
 
 export class DesktopInventoryDashboardController {
   private readonly client: NativeApiClient;

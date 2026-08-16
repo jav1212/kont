@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { DeviceFailure, DeviceSessionEvent } from "@kontave/device-contracts";
 import type { DeviceAdapter, DeviceCandidate, DeviceSession } from "@kontave/devices-core";
-import { DelimitedBarcodeParser } from "./barcode-parser.js";
-import type { SerialConnection, SerialPortDescriptor, SerialPortProvider } from "./serial-port-provider.js";
+import { DelimitedBarcodeParser } from "./barcode-parser";
+import type { SerialConnection, SerialPortDescriptor, SerialPortProvider } from "./serial-port-provider";
 
 const DATALOGIC_VENDOR_ID = "05f9";
 

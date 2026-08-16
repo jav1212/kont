@@ -6,7 +6,7 @@ import {
   dynamicNavigationTarget,
   resolveBreadcrumbs,
   staticNavigationTarget,
-} from "../src/index.js";
+} from "../src/index";
 
 test("resolves a portable breadcrumb without platform routes", () => {
   const breadcrumb = resolveBreadcrumbs(staticNavigationTarget("payroll.employees"));

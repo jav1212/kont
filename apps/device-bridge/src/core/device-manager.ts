@@ -1,10 +1,10 @@
 import type { DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceLifecycleState } from "@kontave/device-contracts";
 import { DeviceManager as CoreDeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices-core";
 import { DatalogicQw2100Adapter, NodeSerialPortProvider, type DatalogicQw2100Configuration } from "@kontave/devices-node";
-import type { DeviceGateway } from "../gateway/device-gateway.js";
-import type { DeviceInfo, DeviceStatus } from "../protocol/contracts.js";
-import type { ManagerConfig } from "./config.js";
-import type { Logger } from "./logger.js";
+import type { DeviceGateway } from "../gateway/device-gateway";
+import type { DeviceInfo, DeviceStatus } from "../protocol/contracts";
+import type { ManagerConfig } from "./config";
+import type { Logger } from "./logger";
 
 export interface ManagerSnapshot {
   readonly status: DeviceStatus;

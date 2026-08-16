@@ -13,7 +13,7 @@ import {
   reconcileRpe,
   resolveVenezuelanRule,
   venezuelanPayrollPolicyReference,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2);
 const money = (value: string) => moneyFromDecimal(value, VES);

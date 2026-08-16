@@ -1,4 +1,4 @@
-import { FiscalFailure } from "./fiscal-failure.js";
+import { FiscalFailure } from "./fiscal-failure";
 
 export interface FiscalPartySnapshot {
   readonly taxIdentifier: string;

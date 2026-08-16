@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolvePurchasingDashboardPeriod } from "./desktop-purchasing-dashboard-controller.js";
+import { resolvePurchasingDashboardPeriod } from "./desktop-purchasing-dashboard-controller";
 
 test("defaults to the complete month of the company effective date", () => {
   assert.deepEqual(resolvePurchasingDashboardPeriod("2026-02-14", {}), {

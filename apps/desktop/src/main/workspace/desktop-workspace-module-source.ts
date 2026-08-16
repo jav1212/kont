@@ -2,7 +2,7 @@ import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import type { ModuleCode, ModuleId } from "@kontave/modules-domain";
 import type { OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceModuleSource } from "@kontave/workspace-context-application";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopWorkspaceModuleSource implements WorkspaceModuleSource {
   constructor(private readonly baseUrl: string, private readonly request: DesktopAuthenticatedRequest) {}

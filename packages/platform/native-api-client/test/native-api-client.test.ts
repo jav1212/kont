@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { NativeApiClient, NativeApiFailure } from "../src/index.js";
+import { NativeApiClient, NativeApiFailure } from "../src/index";
 
 test("adds bearer token and mobile client header", async () => {
   const originalFetch = globalThis.fetch;

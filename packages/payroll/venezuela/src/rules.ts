@@ -1,6 +1,6 @@
 import type { RoundingMode } from "@kontave/monetary-domain";
 import type { PayrollPolicyReference } from "@kontave/payroll-domain";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { VenezuelanPayrollFailure } from "./failure";
 
 export type VenezuelanObligationCode =
   | "VE_IVSS_EMPLOYEE"

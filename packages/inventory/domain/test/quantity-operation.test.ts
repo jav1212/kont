@@ -12,7 +12,7 @@ import {
   quantity,
   stockEffect,
   stockEffectId,
-} from "../src/index.js";
+} from "../src/index";
 
 const COMPANY_ID = companyId("company-1");
 const PRODUCT_ID = productId("product-1");

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AuthorizationSource, PERMISSIONS, Role, RoleKind, RoleStatus, permissionCode, roleId, membershipId, type AuthorizationSnapshot } from "@kontave/access-control-domain";
 import { MembershipStatus, OrganizationStatus } from "@kontave/organizations-domain";
-import { EvaluateAuthorization, RequireAuthorization, type AccessControlRepository, type AuthorizationAudit } from "../src/index.js";
+import { EvaluateAuthorization, RequireAuthorization, type AccessControlRepository, type AuthorizationAudit } from "../src/index";
 const snapshot: AuthorizationSnapshot = { membershipId: membershipId("member-1"), membershipStatus: MembershipStatus.Active, authorizationVersion: 1, organizationStatus: OrganizationStatus.Active, role: new Role({ id: roleId("role-1"), organizationId: "org-1", code: "custom", name: "Custom", description: "", kind: RoleKind.Custom, status: RoleStatus.Active, version: 1, permissions: [permissionCode(PERMISSIONS.BILLING_READ)] }) };
 class Repository implements AccessControlRepository { constructor(private readonly value: AuthorizationSnapshot | null) {} async findSnapshot() { return this.value; } }
 class Audit implements AuthorizationAudit { calls = 0; async record() { this.calls += 1; } }

@@ -5,7 +5,7 @@ import {
   SupabaseIncidentRecorder,
   type IncidentSupabaseClient,
   type SystemErrorLogRow,
-} from "../src/index.js";
+} from "../src/index";
 
 const incident: Incident = {
   schemaVersion: 1,

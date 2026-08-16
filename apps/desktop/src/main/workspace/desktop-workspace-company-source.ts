@@ -1,7 +1,7 @@
 import type { NativeOrganizationCompanyDto } from "@kontave/native-api-contracts";
 import { companyId, organizationId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource } from "@kontave/workspace-context-application";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopWorkspaceCompanySource implements WorkspaceCompanySource {
   constructor(private readonly baseUrl: string, private readonly request: DesktopAuthenticatedRequest) {}

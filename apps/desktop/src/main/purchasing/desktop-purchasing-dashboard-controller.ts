@@ -1,8 +1,8 @@
 import { localDate } from "@kontave/operation-context-domain";
 import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
 import type { NativeExchangeRateSetDto, NativeOperationalDefaultsDto, NativePurchasingDashboardDto } from "@kontave/native-api-contracts";
-import type { DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardResult } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardResult } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopPurchasingDashboardController {
   private readonly client: NativeApiClient;

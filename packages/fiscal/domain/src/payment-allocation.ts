@@ -1,5 +1,5 @@
 import { sameCurrency, type ExchangeRateSnapshot, type Money } from "@kontave/monetary-domain";
-import { FiscalFailure } from "./fiscal-failure.js";
+import { FiscalFailure } from "./fiscal-failure";
 
 export interface FiscalPaymentAllocation {
   readonly key: string;

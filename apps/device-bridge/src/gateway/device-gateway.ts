@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { createServer as createHttpServer, type Server as HttpServer } from "node:http";
 import { createServer as createHttpsServer, type Server as HttpsServer } from "node:https";
 import { WebSocket, WebSocketServer } from "ws";
-import { saveConfig, type ManagerConfig } from "../core/config.js";
-import { parseClientMessage, PROTOCOL_VERSION, type ManagerEvent } from "../protocol/contracts.js";
+import { saveConfig, type ManagerConfig } from "../core/config";
+import { parseClientMessage, PROTOCOL_VERSION, type ManagerEvent } from "../protocol/contracts";
 
 export interface PairingRequest { clientName: string; origin: string }
 export class DeviceGateway {

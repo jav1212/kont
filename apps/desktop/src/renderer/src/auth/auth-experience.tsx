@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Card, LogoFull, PageShell, Text } from "@kontave/ui-dom";
-import type { DesktopAuthState } from "../../../shared/desktop-api.js";
-import { PasswordRecoveryForm } from "./password-recovery-form.js";
-import { RegistrationForm } from "./registration-form.js";
-import { SignInForm } from "./sign-in-form.js";
+import type { DesktopAuthState } from "../../../shared/desktop-api";
+import { PasswordRecoveryForm } from "./password-recovery-form";
+import { RegistrationForm } from "./registration-form";
+import { SignInForm } from "./sign-in-form";
 
 type AuthScreen = "sign-in" | "registration" | "recovery";
 

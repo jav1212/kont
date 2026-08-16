@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { allocateMoney, allocationPart, currency, moneyFromDecimal } from "../src/index.js";
+import { allocateMoney, allocationPart, currency, moneyFromDecimal } from "../src/index";
 
 const VES = currency("VES", 2);
 

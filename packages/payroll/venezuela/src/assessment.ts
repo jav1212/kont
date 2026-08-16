@@ -6,8 +6,8 @@ import {
   subtractMoney,
   type Money,
 } from "@kontave/monetary-domain";
-import type { VenezuelanObligationCode } from "./rules.js";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import type { VenezuelanObligationCode } from "./rules";
+import { VenezuelanPayrollFailure } from "./failure";
 
 export interface StatutoryObligationAssessment {
   readonly code: VenezuelanObligationCode;

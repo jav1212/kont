@@ -7,8 +7,8 @@ import {
   type ExactDecimal,
   type Money,
 } from "@kontave/monetary-domain";
-import { percentageOf, requireNonNegativeDecimal } from "./calculation.js";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { percentageOf, requireNonNegativeDecimal } from "./calculation";
+import { VenezuelanPayrollFailure } from "./failure";
 
 export interface AriTaxBracket {
   readonly upperBoundUt: ExactDecimal | null;

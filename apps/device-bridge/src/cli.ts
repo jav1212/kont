@@ -1,7 +1,7 @@
-import { DeviceManager } from "./core/device-manager.js";
-import { loadConfig, saveConfig } from "./core/config.js";
-import { Logger } from "./core/logger.js";
-import { DeviceGateway } from "./gateway/device-gateway.js";
+import { DeviceManager } from "./core/device-manager";
+import { loadConfig, saveConfig } from "./core/config";
+import { Logger } from "./core/logger";
+import { DeviceGateway } from "./gateway/device-gateway";
 const config = loadConfig(); saveConfig(config); const logger = new Logger();
 const gateway = new DeviceGateway(config, "0.1.0", async () => process.env.KONTAVE_ALLOW_HEADLESS_PAIRING === "true");
 const manager = new DeviceManager(config, gateway, logger);

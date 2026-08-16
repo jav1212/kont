@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { errorFeedback } from "@kontave/client-feedback-application";
 import { Button, Card, Checkbox, LogoFull, presentFeedback, Text, TextField } from "@kontave/ui-dom";
 import { Eye, EyeOff } from "lucide-react";
-import type { DesktopAuthState } from "../../../shared/desktop-api.js";
+import type { DesktopAuthState } from "../../../shared/desktop-api";
 
 export function SignInForm({ onAuthenticated, onCreateAccount, onForgotPassword }: {
   readonly onAuthenticated: (state: DesktopAuthState) => void;

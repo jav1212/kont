@@ -1,6 +1,6 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import type { SupplierId } from "./identifiers.js";
-import { PurchasingFailure } from "./purchasing-failure.js";
+import type { SupplierId } from "./identifiers";
+import { PurchasingFailure } from "./purchasing-failure";
 
 export type SupplierStatus = "active" | "inactive";
 export interface SupplierState {

@@ -12,7 +12,7 @@ import {
   taxationDate,
   type TaxTreatment,
 } from "@kontave/taxation-domain";
-import { VENEZUELAN_IVA, resolveVenezuelanVat } from "../src/index.js";
+import { VENEZUELAN_IVA, resolveVenezuelanVat } from "../src/index";
 
 const VES = currency("VES", 2);
 

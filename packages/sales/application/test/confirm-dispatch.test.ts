@@ -3,7 +3,7 @@ import test from "node:test";
 import { exactDecimal } from "@kontave/monetary-domain";
 import { SalesFailure, type CustomerInvoiceMatch, type CustomerReturn, type CustomerReturnConfirmed, type GoodsDispatch, type SalesDispatchConfirmed, type SalesDispatchReversed } from "@kontave/sales-domain";
 import { SALES_ORDER_LINE_ID, approvedSalesOrderFixture, customerFixture, goodsDispatchFixture } from "@kontave/sales-testing";
-import { ConfirmGoodsDispatch, PostSalesEventToInventory, type SalesCommitPort } from "../src/index.js";
+import { ConfirmGoodsDispatch, PostSalesEventToInventory, type SalesCommitPort } from "../src/index";
 
 test("confirm dispatch atomically commits aggregate and outbox event without calling inventory", async () => {
   const committed: Array<{ dispatch: GoodsDispatch; event: SalesDispatchConfirmed | SalesDispatchReversed }> = [];

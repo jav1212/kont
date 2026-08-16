@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ElectronClientUpdateProvider, type ElectronUpdaterPort } from "../src/index.js";
+import { ElectronClientUpdateProvider, type ElectronUpdaterPort } from "../src/index";
 
 class FakeElectronUpdater implements ElectronUpdaterPort {
   autoDownload = true;

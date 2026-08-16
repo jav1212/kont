@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { currency, exchangeRate, type ExchangeRateSnapshot } from "@kontave/monetary-domain";
-import { InMemoryExchangeRateCache, ResolveExchangeRates, type ExchangeRateProvider, type ExchangeRateSet } from "../src/index.js";
+import { InMemoryExchangeRateCache, ResolveExchangeRates, type ExchangeRateProvider, type ExchangeRateSet } from "../src/index";
 
 const VES = currency("VES", 2); const USD = currency("USD", 2);
 const snapshot: ExchangeRateSnapshot = { rate: exchangeRate({ baseCurrency: USD, quoteCurrency: VES, value: "36.4512" }), effectiveDate: "2026-08-13", capturedAt: "2026-08-13T12:00:00.000Z", source: { kind: "official", authority: "BCV", reference: null } };

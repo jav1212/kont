@@ -1,10 +1,10 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { Money } from "@kontave/monetary-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { GoodsReceiptId, GoodsReceiptLineId, PurchaseReturnId, PurchaseReturnLineId, SupplierId } from "./identifiers.js";
-import { PurchasingFailure } from "./purchasing-failure.js";
-import type { PurchaseQuantity } from "./quantity.js";
-import { purchaseInstant, type PurchaseDate, type PurchaseInstant } from "./temporal.js";
+import type { GoodsReceiptId, GoodsReceiptLineId, PurchaseReturnId, PurchaseReturnLineId, SupplierId } from "./identifiers";
+import { PurchasingFailure } from "./purchasing-failure";
+import type { PurchaseQuantity } from "./quantity";
+import { purchaseInstant, type PurchaseDate, type PurchaseInstant } from "./temporal";
 
 export interface PurchaseReturnLine {
   readonly id: PurchaseReturnLineId;

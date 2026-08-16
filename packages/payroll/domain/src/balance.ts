@@ -1,8 +1,8 @@
 import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
-import type { PayrollBalanceCode, PayrollRelationshipId } from "./identifiers.js";
-import type { PayrollBalanceDimension, PayrollUnit } from "./element.js";
+import type { PayrollBalanceCode, PayrollRelationshipId } from "./identifiers";
+import type { PayrollBalanceDimension, PayrollUnit } from "./element";
 import type { ExactDecimal } from "@kontave/monetary-domain";
-import { PayrollFailure } from "./payroll-failure.js";
+import { PayrollFailure } from "./payroll-failure";
 
 export interface PayrollBalanceDefinition { readonly code: PayrollBalanceCode; readonly name: string; readonly unit: PayrollUnit; readonly currency: CurrencyDefinition | null; readonly dimensions: readonly PayrollBalanceDimension[]; }
 export interface PayrollBalanceResult { readonly balanceCode: PayrollBalanceCode; readonly relationshipId: PayrollRelationshipId; readonly dimension: PayrollBalanceDimension; readonly value: Money | ExactDecimal; }

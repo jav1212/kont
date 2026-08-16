@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { approvedPurchaseOrderFixture, goodsReceiptFixture, supplierFixture } from "../src/index.js";
+import { approvedPurchaseOrderFixture, goodsReceiptFixture, supplierFixture } from "../src/index";
 
 test("purchasing fixtures share company, supplier, product and order references", () => {
   const supplier = supplierFixture();

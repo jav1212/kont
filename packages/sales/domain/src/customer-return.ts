@@ -1,9 +1,9 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { CustomerId, CustomerReturnId, CustomerReturnLineId, GoodsDispatchId, GoodsDispatchLineId } from "./identifiers.js";
-import type { SalesQuantity } from "./quantity.js";
-import { SalesFailure } from "./sales-failure.js";
-import { salesInstant, type SalesDate, type SalesInstant } from "./temporal.js";
+import type { CustomerId, CustomerReturnId, CustomerReturnLineId, GoodsDispatchId, GoodsDispatchLineId } from "./identifiers";
+import type { SalesQuantity } from "./quantity";
+import { SalesFailure } from "./sales-failure";
+import { salesInstant, type SalesDate, type SalesInstant } from "./temporal";
 
 export interface CustomerReturnLine {
   readonly id: CustomerReturnLineId;

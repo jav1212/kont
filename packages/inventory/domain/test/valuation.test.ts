@@ -9,7 +9,7 @@ import {
   quantity,
   stockEffect,
   stockEffectId,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2);
 const COMPANY_ID = companyId("company-1");

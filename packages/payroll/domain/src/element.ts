@@ -1,7 +1,7 @@
 import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary-domain";
-import type { PayrollBalanceCode, PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers.js";
-import { requireLocalDate } from "./period.js";
-import { PayrollFailure } from "./payroll-failure.js";
+import type { PayrollBalanceCode, PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers";
+import { requireLocalDate } from "./period";
+import { PayrollFailure } from "./payroll-failure";
 
 export type PayrollElementClassification =
   | "regular_earning" | "supplemental_earning" | "employee_deduction" | "employer_contribution" | "tax" | "reimbursement" | "informational";

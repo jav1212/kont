@@ -3,8 +3,8 @@ import { ArrowDownToLine, ArrowUpFromLine, ChevronRight, Plus, RefreshCw, Search
 import type { NativeInventoryFlowPageDto, NativeInventoryOperationDetailDto, NativeInventoryOperationReason, NativeProductDto, NativeUnitOfMeasure } from "@kontave/native-api-contracts";
 import { codedErrorFeedback, successFeedback } from "@kontave/client-feedback-application";
 import { Button, CurrencyFlag, DatePeriodPicker, OptionPicker, Skeleton, StatusBadge, presentFeedback } from "@kontave/ui-dom";
-import type { DesktopInventoryDashboardSnapshot, DesktopInventoryFlowQuery } from "../../shared/desktop-api.js";
-import { runExclusiveMutation } from "./client-interaction.js";
+import type { DesktopInventoryDashboardSnapshot, DesktopInventoryFlowQuery } from "../../shared/desktop-api";
+import { runExclusiveMutation } from "./client-interaction";
 
 type Mode="inputs"|"outputs"|"operations";
 const REASONS:readonly NativeInventoryOperationReason[]=["opening_balance","purchase_receipt","sales_issue","customer_return","supplier_return","transfer","stock_count_adjustment","self_consumption","production_consumption","production_output","reversal"];

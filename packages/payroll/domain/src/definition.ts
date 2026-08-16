@@ -1,8 +1,8 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { CurrencyDefinition } from "@kontave/monetary-domain";
-import type { PayrollDefinitionId } from "./identifiers.js";
-import type { PayrollFrequency } from "./period.js";
-import { PayrollFailure } from "./payroll-failure.js";
+import type { PayrollDefinitionId } from "./identifiers";
+import type { PayrollFrequency } from "./period";
+import { PayrollFailure } from "./payroll-failure";
 
 export interface PayrollDefinition {
   readonly id: PayrollDefinitionId; readonly companyId: CompanyId; readonly code: string; readonly name: string;

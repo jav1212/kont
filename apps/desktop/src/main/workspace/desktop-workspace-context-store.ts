@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 import type { ModuleCode } from "@kontave/modules-domain";
 import { companyId, organizationId, type CompanyId, type OrganizationId } from "@kontave/organizations-domain";
 import type { PersistedWorkspaceContext, WorkspaceContextStore } from "@kontave/workspace-context-application/coordinator";
-import { DesktopWorkspaceCompanyStore } from "./desktop-workspace-company-store.js";
-import { DesktopWorkspaceModuleStore } from "./desktop-workspace-module-store.js";
-import { DesktopWorkspaceSelectionStore } from "./desktop-workspace-selection-store.js";
+import { DesktopWorkspaceCompanyStore } from "./desktop-workspace-company-store";
+import { DesktopWorkspaceModuleStore } from "./desktop-workspace-module-store";
+import { DesktopWorkspaceSelectionStore } from "./desktop-workspace-selection-store";
 
 export class DesktopWorkspaceContextStore implements WorkspaceContextStore {
   private readonly filePath = join(app.getPath("userData"), "workspace-context-v2.json");

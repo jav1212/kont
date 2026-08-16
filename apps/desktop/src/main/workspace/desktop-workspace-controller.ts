@@ -8,7 +8,7 @@ import {
   type WorkspaceContextSnapshot,
   type WorkspaceContextStatus,
 } from "@kontave/workspace-context-application/coordinator";
-import { DESKTOP_IPC, type DesktopWorkspaceResult, type DesktopWorkspaceState } from "../../shared/desktop-api.js";
+import { DESKTOP_IPC, type DesktopWorkspaceResult, type DesktopWorkspaceState } from "../../shared/desktop-api";
 
 export class DesktopWorkspaceController {
   private state: DesktopWorkspaceState = { status: "unavailable" };

@@ -1,4 +1,4 @@
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 import "flag-icons/css/flag-icons.min.css";
 
 export interface CurrencyFlagProps {

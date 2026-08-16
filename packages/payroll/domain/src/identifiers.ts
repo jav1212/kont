@@ -1,4 +1,4 @@
-import { PayrollFailure } from "./payroll-failure.js";
+import { PayrollFailure } from "./payroll-failure";
 
 declare const payrollDefinitionIdBrand: unique symbol;
 declare const payrollRelationshipIdBrand: unique symbol;

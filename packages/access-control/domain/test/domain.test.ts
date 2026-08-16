@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuthorizationSource, PERMISSIONS, SameOrganizationPolicy, permissionCode } from "../src/index.js";
+import { AuthorizationSource, PERMISSIONS, SameOrganizationPolicy, permissionCode } from "../src/index";
 
 test("permission catalog rejects unknown and misspelled permissions", () => {
   assert.equal(permissionCode(PERMISSIONS.BILLING_READ), "billing.read");

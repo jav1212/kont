@@ -3,7 +3,7 @@ import test from "node:test";
 import { AuthorizationDenied, AuthorizationReason, AuthorizationSource, PERMISSIONS, type PermissionCode } from "@kontave/access-control-domain";
 import { BillingFailure, Currency, money, type BillingAccount, type OrganizationEntitlements } from "@kontave/billing-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
-import { ApplyBillingCredit, GetBillingOverview, ListBillingPaymentMethods, type BillingAuthorizationContext, type BillingCreditLedgerRepository, type OrganizationBillingAuthorization, type OrganizationBillingRepository } from "../src/index.js";
+import { ApplyBillingCredit, GetBillingOverview, ListBillingPaymentMethods, type BillingAuthorizationContext, type BillingCreditLedgerRepository, type OrganizationBillingAuthorization, type OrganizationBillingRepository } from "../src/index";
 const orgId = organizationId("org-1"); const actorId = userId("user-1");
 const context: BillingAuthorizationContext = { requestId: "request-1", source: AuthorizationSource.Desktop, occurredAt: new Date(0).toISOString() };
 const account: BillingAccount = { id: "account-1", organizationId: orgId, legalName: "Kontave", taxId: null, billingEmail: null, countryCode: "VE", currency: Currency.Usd };

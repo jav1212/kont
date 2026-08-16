@@ -1,10 +1,10 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import { addMoney, moneyFromMinor, sameCurrency, subtractMoney, type CurrencyDefinition, type Money } from "@kontave/monetary-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { CustomerId, SalesOrderId, SalesOrderLineId } from "./identifiers.js";
-import type { SalesQuantity } from "./quantity.js";
-import { SalesFailure } from "./sales-failure.js";
-import type { SalesDate } from "./temporal.js";
+import type { CustomerId, SalesOrderId, SalesOrderLineId } from "./identifiers";
+import type { SalesQuantity } from "./quantity";
+import { SalesFailure } from "./sales-failure";
+import type { SalesDate } from "./temporal";
 
 export type SalesOrderStatus = "draft" | "approved" | "closed" | "cancelled";
 export type SalesLineKind = "stock" | "service";

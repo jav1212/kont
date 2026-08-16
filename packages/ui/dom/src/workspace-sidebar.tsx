@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "./button.js";
-import { LogoFull, LogoMark } from "./logo.js";
-import { classNames } from "./internal/class-names.js";
-import { Text } from "./text.js";
-import { SubscriptionPlanBadge } from "./subscription-plan-badge.js";
-import { ImageWithFallback } from "./image-with-fallback.js";
+import { Button } from "./button";
+import { LogoFull, LogoMark } from "./logo";
+import { classNames } from "./internal/class-names";
+import { Text } from "./text";
+import { SubscriptionPlanBadge } from "./subscription-plan-badge";
+import { ImageWithFallback } from "./image-with-fallback";
 
 export type WorkspaceSidebarPresentation = "persistent" | "collapsed" | "drawer";
 

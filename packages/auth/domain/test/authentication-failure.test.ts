@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { AuthenticationFailure, assertPasswordAccepted, evaluatePassword } from "../src/index.js";
+import { AuthenticationFailure, assertPasswordAccepted, evaluatePassword } from "../src/index";
 
 test("authentication failures expose a stable domain code", () => {
   const failure = new AuthenticationFailure("SESSION_EXPIRED", "La sesión expiró.");

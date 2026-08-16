@@ -3,7 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Boxes, RefreshCw, Repeat2 } from "luc
 import { Button, CurrencyFlag, DatePeriodPicker, OptionPicker, Skeleton, presentFeedback } from "@kontave/ui-dom";
 import { codedErrorFeedback } from "@kontave/client-feedback-application";
 import type { NativeInventoryDashboardChartPointDto, NativeRecentInventoryMovementDto } from "@kontave/native-api-contracts";
-import type { DesktopAuthState, DesktopInventoryDashboardQuery, DesktopInventoryDashboardSnapshot } from "../../shared/desktop-api.js";
+import type { DesktopAuthState, DesktopInventoryDashboardQuery, DesktopInventoryDashboardSnapshot } from "../../shared/desktop-api";
 
 interface InventoryDashboardViewProps {
   readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;

@@ -9,7 +9,7 @@ import {
   type ExactDecimal,
   type Money,
 } from "@kontave/monetary-domain";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { VenezuelanPayrollFailure } from "./failure";
 
 export function percentageOf(amount: Money, ratePercent: ExactDecimal): Money {
   requireNonNegativeMoney(amount);

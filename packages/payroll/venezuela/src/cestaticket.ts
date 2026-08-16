@@ -14,8 +14,8 @@ import {
   type Money,
   type MoneyConversion,
 } from "@kontave/monetary-domain";
-import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment.js";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
+import { VenezuelanPayrollFailure } from "./failure";
 import {
   CESTATICKET_DECREE_4805,
   CESTATICKET_EXECUTIVE_ADJUSTMENT_2023,
@@ -25,7 +25,7 @@ import {
   CESTATICKET_SCS_371_2025,
   CESTATICKET_SCS_712_2024,
   type VenezuelanLegalSource,
-} from "./rules.js";
+} from "./rules";
 
 export type CestaticketAmountAuthority =
   | "official_gazette"

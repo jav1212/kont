@@ -7,7 +7,7 @@ import {
   exactDecimal,
   multiplyDecimal,
   quantizeDecimal,
-} from "../src/index.js";
+} from "../src/index";
 
 test("exact decimals preserve value without binary floating-point conversion", () => {
   const result = multiplyDecimal(exactDecimal("10.25"), exactDecimal("36.4512"));

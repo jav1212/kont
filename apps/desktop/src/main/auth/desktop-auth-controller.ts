@@ -15,7 +15,7 @@ import {
   type DesktopEmailPasswordCommand,
   type DesktopPasswordCommand,
   type DesktopPendingEmail,
-} from "../../shared/desktop-api.js";
+} from "../../shared/desktop-api";
 
 export class DesktopAuthController {
   private readonly authentication: AuthenticationService;

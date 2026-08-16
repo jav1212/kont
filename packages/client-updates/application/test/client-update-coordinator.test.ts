@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { ClientUpdateProvider } from "../src/index.js";
-import { ClientUpdateCoordinator, ClientUpdateFailure } from "../src/index.js";
+import type { ClientUpdateProvider } from "../src/index";
+import { ClientUpdateCoordinator, ClientUpdateFailure } from "../src/index";
 import type { ClientUpdateRelease } from "@kontave/client-updates-contracts";
 
 const installed = {

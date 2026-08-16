@@ -4,7 +4,7 @@ import { PERMISSIONS, permissionCode } from "@kontave/access-control-domain";
 import { Platform } from "@kontave/modules-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
 import { SETTINGS_ENTRIES, SETTINGS_SECTIONS } from "@kontave/settings-contracts";
-import { ResolveAvailableSettings, StaticSettingsCatalog, type SettingsResolutionContext } from "../src/index.js";
+import { ResolveAvailableSettings, StaticSettingsCatalog, type SettingsResolutionContext } from "../src/index";
 
 function context(overrides: Partial<SettingsResolutionContext> = {}): SettingsResolutionContext {
   return { platform: Platform.Web, connectivity: "online", userId: userId("user-1"), organizationId: organizationId("org-1"), companyId: companyId("company-1"), installationId: "browser-1", permissions: new Set(), availableModules: new Set(), ...overrides };

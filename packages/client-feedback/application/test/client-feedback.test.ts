@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   PresentFeedback, ResolveUnexpectedFailure, codedErrorFeedback, errorFeedback, reportedFailureFeedback,
   type ClientFeedback, type FeedbackPresenter, type IncidentReporter,
-} from "../src/index.js";
+} from "../src/index";
 
 class RecordingPresenter implements FeedbackPresenter {
   readonly presented: ClientFeedback[] = [];

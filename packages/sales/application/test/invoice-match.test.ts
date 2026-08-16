@@ -8,7 +8,7 @@ import {
   CustomerInvoiceMatch, SalesFailure, customerInvoiceMatchId, salesInstant, salesQuantity,
 } from "@kontave/sales-domain";
 import { SALES_COMPANY_ID, SALES_CUSTOMER_ID, SALES_ORDER_LINE_ID, SALES_VES, customerFixture } from "@kontave/sales-testing";
-import { ConfirmCustomerInvoiceMatch, type SalesCommitPort } from "../src/index.js";
+import { ConfirmCustomerInvoiceMatch, type SalesCommitPort } from "../src/index";
 
 test("invoice match validates the issued fiscal recipient and explicit unit mapping", async () => {
   const document = fiscalInvoiceFixture({ companyId: SALES_COMPANY_ID }).issue({

@@ -10,8 +10,8 @@ import { presentFeedback } from "@kontave/ui-dom";
 import type {
   DesktopAuthState, DesktopBillingPlanState, DesktopCurrentUserState, DesktopSettingsSnapshot,
   DesktopWorkspaceState,
-} from "../../shared/desktop-api.js";
-import { runSettingsMutation } from "./client-interaction.js";
+} from "../../shared/desktop-api";
+import { runSettingsMutation } from "./client-interaction";
 
 export type DesktopSettingsDestination =
   | "settings.profile" | "settings.appearance" | "settings.security"

@@ -12,7 +12,7 @@ import {
   type SignInCommand,
   type VerifyPasswordRecoveryCodeCommand,
   type VerifyRegistrationCodeCommand,
-} from "../src/index.js";
+} from "../src/index";
 
 const session: AuthenticatedSession = { identity: { userId: "user-1", email: "user@example.com" }, expiresAt: null };
 

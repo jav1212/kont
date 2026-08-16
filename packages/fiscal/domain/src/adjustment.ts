@@ -1,5 +1,5 @@
 import { compareDecimal, exactDecimal, type ExactDecimal, type Money } from "@kontave/monetary-domain";
-import { FiscalFailure } from "./fiscal-failure.js";
+import { FiscalFailure } from "./fiscal-failure";
 
 export type FiscalAdjustmentKind = "discount" | "surcharge";
 export type FiscalAdjustmentScope = "line" | "document";

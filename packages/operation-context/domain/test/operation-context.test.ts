@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { currency, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
-import { OperationContextFailure, createOperationalDefaults, localDate } from "../src/index.js";
+import { OperationContextFailure, createOperationalDefaults, localDate } from "../src/index";
 
 const USD = currency("USD", 2);
 const VES = currency("VES", 2);

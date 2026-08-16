@@ -16,7 +16,7 @@ import {
   type PersistedWorkspaceContext,
   type WorkspaceContextStore,
 } from "@kontave/workspace-context-application/coordinator";
-import type { WorkspacePortfolioEntry } from "../src/index.js";
+import type { WorkspacePortfolioEntry } from "../src/index";
 
 const actor = userId("actor");
 

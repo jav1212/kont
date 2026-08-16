@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
-import { DESKTOP_IPC, type DesktopBillingPlanState } from "../../shared/desktop-api.js";
-import { DesktopBillingPlanSource } from "./desktop-billing-plan-source.js";
+import { DESKTOP_IPC, type DesktopBillingPlanState } from "../../shared/desktop-api";
+import { DesktopBillingPlanSource } from "./desktop-billing-plan-source";
 
 export class DesktopBillingPlanController {
   private state: DesktopBillingPlanState = { status: "unavailable" };

@@ -18,7 +18,7 @@ import {
   UpdateOrganizationMembership,
   type OrganizationDirectory,
   type OrganizationMembersRepository,
-} from "../src/index.js";
+} from "../src/index";
 
 const ownerId = userId("user-1");
 const ownOrganizationId = organizationId("org-1");

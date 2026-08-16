@@ -5,8 +5,8 @@ import{Archive,Building2,CircleDollarSign,History,Info,Package,RefreshCw,Save,Ta
 import type{NativeProductCategoryDto,NativeProductDetailDto,NativeProductUnitEconomicsDto,NativeUnitOfMeasure}from"@kontave/native-api-contracts";
 import{codedErrorFeedback,successFeedback}from"@kontave/client-feedback-application";
 import{Button,CurrencyFlag,DatePicker,OptionPicker,Skeleton,StatusBadge,presentFeedback}from"@kontave/ui-dom";
-import{runExclusiveMutation}from"./client-interaction.js";
-import type{DesktopInventoryDashboardSnapshot}from"../../shared/desktop-api.js";
+import{runExclusiveMutation}from"./client-interaction";
+import type{DesktopInventoryDashboardSnapshot}from"../../shared/desktop-api";
 
 export function ProductDetailPage({companyId,onTitleChange,organizationId,productId,userId}:{readonly companyId:string;readonly onTitleChange?:(title:string)=>void;readonly organizationId:string;readonly productId:string;readonly userId:string}){
  const[product,setProduct]=useState<NativeProductDetailDto>();const[categories,setCategories]=useState<readonly NativeProductCategoryDto[]>([]);const[insights,setInsights]=useState<NativeProductUnitEconomicsDto>();const[presentation,setPresentation]=useState<DesktopInventoryDashboardSnapshot>();const[displayCurrency,setDisplayCurrency]=useState("VES");const[granularity,setGranularity]=useState<"day"|"week"|"month">("month");const[reload,setReload]=useState(0);

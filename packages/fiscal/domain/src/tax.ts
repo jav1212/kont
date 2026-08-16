@@ -1,6 +1,6 @@
 import { compareDecimal, exactDecimal, sameCurrency, type ExactDecimal, type Money } from "@kontave/monetary-domain";
-import type { FiscalDocumentLineId } from "./identifiers.js";
-import { FiscalFailure } from "./fiscal-failure.js";
+import type { FiscalDocumentLineId } from "./identifiers";
+import { FiscalFailure } from "./fiscal-failure";
 
 export type FiscalTaxCategory = "taxable" | "exempt" | "exonerated" | "not_subject" | "perceived" | "other";
 export type FiscalTaxCalculationMode = "tax_exclusive" | "tax_inclusive";

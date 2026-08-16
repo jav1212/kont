@@ -5,7 +5,7 @@ import { inventoryOperationId, stockEffectId } from "@kontave/inventory-domain";
 import { currency, moneyFromDecimal } from "@kontave/monetary-domain";
 import { productId, UnitOfMeasure } from "@kontave/products-domain";
 import { goodsReceiptId, goodsReceiptLineId, purchaseDate, purchaseInstant, purchaseQuantity, purchaseReturnId, purchaseReturnLineId, supplierId, type PurchaseReceiptConfirmed, type PurchaseReturnConfirmed } from "@kontave/purchasing-domain";
-import { purchaseReceiptInventoryPosting, purchaseReturnInventoryOperation, reversePurchaseReceiptInventoryOperation } from "../src/index.js";
+import { purchaseReceiptInventoryPosting, purchaseReturnInventoryOperation, reversePurchaseReceiptInventoryOperation } from "../src/index";
 
 const VES = currency("VES", 2);
 const receiptEvent: PurchaseReceiptConfirmed = {

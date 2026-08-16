@@ -5,7 +5,7 @@ import {
   ClientConnectivityFailure,
   ConnectivityMonitor,
   type ConnectivityProbe,
-} from "../src/index.js";
+} from "../src/index";
 
 const NOW = "2026-08-14T16:00:00.000Z";
 const clock = { now: () => NOW };

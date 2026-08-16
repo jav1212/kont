@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fiscalInvoiceFixture } from "../src/index.js";
+import { fiscalInvoiceFixture } from "../src/index";
 
 test("fiscal invoice fixture is a reconciled draft", () => {
   const invoice = fiscalInvoiceFixture();

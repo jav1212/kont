@@ -3,7 +3,7 @@ import test from "node:test";
 import { AuthorizationSource, PERMISSIONS, type PermissionCode } from "@kontave/access-control-domain";
 import { BillingCycle, BillingFailure, Currency, ManualPaymentMethod, ManualPaymentStatus, money, type OrganizationEntitlements } from "@kontave/billing-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
-import { SubmitManualPaymentRequest, type BillingAuthorizationContext, type OrganizationBillingAuthorization, type OrganizationBillingRepository } from "../src/index.js";
+import { SubmitManualPaymentRequest, type BillingAuthorizationContext, type OrganizationBillingAuthorization, type OrganizationBillingRepository } from "../src/index";
 
 const organization = organizationId("organization-1");
 const actor = userId("user-1");

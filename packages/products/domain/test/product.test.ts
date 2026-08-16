@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { companyId } from "@kontave/companies-domain";
-import { Product, ProductFailure, ProductStatus, UnitOfMeasure, barcode, productCategoryId, productId, rehydrateSku, sku } from "../src/index.js";
+import { Product, ProductFailure, ProductStatus, UnitOfMeasure, barcode, productCategoryId, productId, rehydrateSku, sku } from "../src/index";
 
 const COMPANY_ID = companyId("company-1");
 

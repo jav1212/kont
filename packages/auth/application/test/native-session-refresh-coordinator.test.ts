@@ -6,7 +6,7 @@ import {
   NativeSessionRefreshCoordinator,
   type AuthenticationGateway,
   type SignInCommand,
-} from "../src/index.js";
+} from "../src/index";
 
 const session: AuthenticatedSession = {
   identity: { userId: "user-1", email: "user@example.com" },

@@ -13,8 +13,8 @@ import type {
   NativeUpdateUserPreferencesDto,
   NativeUserPreferencesDto,
 } from "@kontave/native-api-contracts";
-import type { DesktopSettingsResult, DesktopSettingsSnapshot } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopSettingsResult, DesktopSettingsSnapshot } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopSettingsController {
   private readonly client: NativeApiClient;

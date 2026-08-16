@@ -8,9 +8,9 @@ import {
   type ExactDecimal,
   type Money,
 } from "@kontave/monetary-domain";
-import { maximumMoney, minimumMoney, multiplyMoney, percentageOf, requireNonNegativeDecimal, requireNonNegativeMoney } from "./calculation.js";
-import { VenezuelanPayrollFailure } from "./failure.js";
-import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment.js";
+import { maximumMoney, minimumMoney, multiplyMoney, percentageOf, requireNonNegativeDecimal, requireNonNegativeMoney } from "./calculation";
+import { VenezuelanPayrollFailure } from "./failure";
+import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
 
 export type IvssEmployerRisk = "minimum" | "medium" | "maximum";
 export interface IvssAssessment {

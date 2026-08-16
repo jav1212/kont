@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export type SidebarPresentation = "expanded" | "collapsed" | "overlay";
 

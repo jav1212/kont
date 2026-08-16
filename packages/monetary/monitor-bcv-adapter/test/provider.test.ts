@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { FixedCurrencyCatalog } from "@kontave/monetary-application";
 import { currency } from "@kontave/monetary-domain";
-import { decodeMonitorBcvEntries, MonitorBcvProvider, type Clock, type MonitorBcvTransport } from "../src/index.js";
+import { decodeMonitorBcvEntries, MonitorBcvProvider, type Clock, type MonitorBcvTransport } from "../src/index";
 
 const VES = currency("VES", 2), USD = currency("USD", 2), EUR = currency("EUR", 2), JPY = currency("JPY", 0);
 const clock: Clock = { now: () => new Date("2026-08-13T12:30:00Z"), today: () => "2026-08-13" };

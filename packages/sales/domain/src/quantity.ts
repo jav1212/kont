@@ -1,6 +1,6 @@
 import { compareDecimal, exactDecimal, type ExactDecimal } from "@kontave/monetary-domain";
 import type { UnitOfMeasure } from "@kontave/products-domain";
-import { SalesFailure } from "./sales-failure.js";
+import { SalesFailure } from "./sales-failure";
 
 export interface SalesQuantity {
   readonly amount: ExactDecimal;

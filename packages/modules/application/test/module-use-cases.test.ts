@@ -3,7 +3,7 @@ import test from "node:test";
 import { organizationId } from "@kontave/organizations-domain";
 import { ModuleCapability, ModuleCode, ModuleLifecycleStatus, Platform, moduleId } from "@kontave/modules-domain";
 import { InMemoryModuleCatalog, InMemoryModuleEntitlements, InMemoryOrganizationModules } from "@kontave/modules-testing";
-import { InstallModule, ListAvailableOrganizationModules, RequireModuleCapability, SuspendModule } from "../src/index.js";
+import { InstallModule, ListAvailableOrganizationModules, RequireModuleCapability, SuspendModule } from "../src/index";
 
 const organization = organizationId("organization-1");
 const inventory = { id: moduleId("inventory-id"), code: ModuleCode.Inventory, name: "Inventory", status: ModuleLifecycleStatus.Active, capabilities: [ModuleCapability.InventoryProducts], dependencies: [] as ModuleCode[], supportedPlatforms: [Platform.Web, Platform.Desktop] };

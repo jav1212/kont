@@ -11,7 +11,7 @@ import type {
   WorkspaceModuleSource,
   WorkspacePortfolioEntry,
   WorkspacePortfolioSource,
-} from "./index.js";
+} from "./index";
 
 export interface PersistedWorkspaceContext {
   readonly organizationId: OrganizationId | null;

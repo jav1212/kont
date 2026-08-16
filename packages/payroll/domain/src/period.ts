@@ -1,4 +1,4 @@
-import { PayrollFailure } from "./payroll-failure.js";
+import { PayrollFailure } from "./payroll-failure";
 
 export type PayrollFrequency = "weekly" | "biweekly" | "monthly" | "custom";
 export interface PayrollPeriod { readonly start: string; readonly end: string; readonly paymentDate: string; readonly frequency: PayrollFrequency; readonly sequence: string; }

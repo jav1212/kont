@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { currency } from "@kontave/monetary-domain";
-import { PayrollRun, payrollDefinitionId, payrollPeriod, payrollRunId } from "../src/index.js";
+import { PayrollRun, payrollDefinitionId, payrollPeriod, payrollRunId } from "../src/index";
 
 const VES = currency("VES", 2);
 test("confirmed payroll is immutable and must be reversed with a reason", () => {

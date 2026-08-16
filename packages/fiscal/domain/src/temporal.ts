@@ -1,4 +1,4 @@
-import { FiscalFailure } from "./fiscal-failure.js";
+import { FiscalFailure } from "./fiscal-failure";
 
 declare const fiscalDateBrand: unique symbol;
 declare const fiscalInstantBrand: unique symbol;

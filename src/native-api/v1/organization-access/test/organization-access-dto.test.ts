@@ -3,7 +3,7 @@ import test from "node:test";
 import { OrganizationAccessPathKind } from "@kontave/organization-delegations-domain";
 import { OrganizationRelationship, organizationId, userId, type OrganizationRelationship as OrganizationRelationshipValue } from "@kontave/organizations-domain";
 import type { WorkspacePortfolioEntry } from "@kontave/workspace-context-application";
-import { toAccessibleOrganizationDto } from "../organization-access-dto.js";
+import { toAccessibleOrganizationDto } from "../organization-access-dto";
 
 const actor = userId("user-1");
 

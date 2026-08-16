@@ -8,9 +8,9 @@ import "@fontsource/darker-grotesque/latin-600.css";
 import "@fontsource/darker-grotesque/latin-700.css";
 import "@fontsource/darker-grotesque/latin-800.css";
 import "@fontsource/darker-grotesque/latin-900.css";
-import { App } from "./app.js";
-import { handleGlobalInteractionAction, interactionGate } from "./client-interaction.js";
-import { applyDesktopTheme } from "./desktop-theme.js";
+import { App } from "./app";
+import { handleGlobalInteractionAction, interactionGate } from "./client-interaction";
+import { applyDesktopTheme } from "./desktop-theme";
 import "./styles.css";
 import "./inventory-operations.css";
 

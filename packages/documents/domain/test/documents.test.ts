@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { documentName, validateStoredFile } from "../src/index.js";
+import { documentName, validateStoredFile } from "../src/index";
 
 test("normalizes portable document names and file metadata", () => {
   assert.equal(documentName("  Comprobante.pdf "), "Comprobante.pdf");

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PortalAvailability, type PortalStatus } from "@kontave/platform-status-domain";
-import { GetPlatformStatus, type PlatformStatusRepository } from "../src/index.js";
+import { GetPlatformStatus, type PlatformStatusRepository } from "../src/index";
 
 class Repository implements PlatformStatusRepository {
   async listActivePortalStatuses(): Promise<readonly PortalStatus[]> {

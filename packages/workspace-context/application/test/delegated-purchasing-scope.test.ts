@@ -3,7 +3,7 @@ import test from "node:test";
 import { PERMISSIONS, permissionCode } from "@kontave/access-control-domain";
 import { DelegatedScope, OrganizationAccessPathKind, organizationDelegationId } from "@kontave/organization-delegations-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
-import { DelegatedPermissionScopePolicy } from "../src/index.js";
+import { DelegatedPermissionScopePolicy } from "../src/index";
 
 test("purchasing permissions require the explicit purchases delegation scope", () => {
   const base = {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ProfileFailure } from "@kontave/profile-application";
-import { SupabaseProfileDetailsReader, type ProfileRowSource } from "../src/index.js";
+import { SupabaseProfileDetailsReader, type ProfileRowSource } from "../src/index";
 
 function sourceWith(result: { readonly data: unknown; readonly error: { readonly message: string } | null }): ProfileRowSource {
   return { async findByUserId() { return result; } };

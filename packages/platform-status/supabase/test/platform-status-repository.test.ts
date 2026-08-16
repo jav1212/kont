@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PortalAvailability } from "@kontave/platform-status-domain";
-import { SupabasePlatformStatusRepository } from "../src/index.js";
+import { SupabasePlatformStatusRepository } from "../src/index";
 
 test("maps a portal without checks to unknown", async () => {
   const query = {

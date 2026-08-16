@@ -3,8 +3,8 @@ import {
   type InteractionBlockLease,
   type InteractionBlockActionKind,
 } from "@kontave/client-interaction-application";
-import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api.js";
-import { desktopConnectivityStore } from "./connectivity-store.js";
+import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api";
+import { desktopConnectivityStore } from "./connectivity-store";
 
 export const interactionGate = new GlobalInteractionGate();
 

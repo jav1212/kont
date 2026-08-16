@@ -7,7 +7,7 @@ import {
   customerId, customerReturnId, customerReturnLineId, goodsDispatchId, goodsDispatchLineId,
   salesDate, salesInstant, salesQuantity, type CustomerReturnConfirmed, type SalesDispatchConfirmed,
 } from "@kontave/sales-domain";
-import { customerReturnInventoryPosting, salesDispatchInventoryOperation } from "../src/index.js";
+import { customerReturnInventoryPosting, salesDispatchInventoryOperation } from "../src/index";
 
 const dispatchEvent: SalesDispatchConfirmed = {
   type: "sales.dispatch_confirmed", eventId: "sales-dispatch:dispatch-1:v1", operationKey: "sales-dispatch:dispatch-1:v1",

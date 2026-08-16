@@ -1,9 +1,9 @@
 import type { EmployeeId } from "@kontave/employees-domain";
 import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
-import type { PayrollDefinitionId, PayrollRelationshipId } from "./identifiers.js";
-import type { PayrollPeriod } from "./period.js";
-import { requireLocalDate } from "./period.js";
-import { PayrollFailure } from "./payroll-failure.js";
+import type { PayrollDefinitionId, PayrollRelationshipId } from "./identifiers";
+import type { PayrollPeriod } from "./period";
+import { requireLocalDate } from "./period";
+import { PayrollFailure } from "./payroll-failure";
 
 export type CompensationBasis =
   | { readonly kind: "monthly_salary"; readonly amount: Money }

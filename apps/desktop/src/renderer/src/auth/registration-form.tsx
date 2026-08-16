@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { errorFeedback, successFeedback } from "@kontave/client-feedback-application";
 import { Button, Card, presentFeedback, TextField } from "@kontave/ui-dom";
-import type { DesktopAuthState } from "../../../shared/desktop-api.js";
-import { PasswordRequirements } from "./password-requirements.js";
-import { AuthHeading } from "./sign-in-form.js";
+import type { DesktopAuthState } from "../../../shared/desktop-api";
+import { PasswordRequirements } from "./password-requirements";
+import { AuthHeading } from "./sign-in-form";
 
 type RegistrationStage = "credentials" | "verification";
 

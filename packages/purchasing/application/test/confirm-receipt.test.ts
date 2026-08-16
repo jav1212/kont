@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { exactDecimal } from "@kontave/monetary-domain";
-import { ConfirmGoodsReceipt, PostPurchasingEventToInventory, type PurchasingCommitPort } from "../src/index.js";
+import { ConfirmGoodsReceipt, PostPurchasingEventToInventory, type PurchasingCommitPort } from "../src/index";
 import { PurchasingFailure, type GoodsReceipt, type PurchaseReceiptConfirmed, type PurchaseReceiptReversed, type PurchaseReturn, type PurchaseReturnConfirmed, type SupplierInvoiceMatch } from "@kontave/purchasing-domain";
 import { PURCHASING_ORDER_LINE_ID, approvedPurchaseOrderFixture, goodsReceiptFixture, supplierFixture } from "@kontave/purchasing-testing";
 

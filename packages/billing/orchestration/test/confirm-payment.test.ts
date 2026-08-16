@@ -3,7 +3,7 @@ import test from "node:test";
 import { Currency, money } from "@kontave/billing-domain";
 import { organizationId } from "@kontave/organizations-domain";
 import { PaymentEventType, PaymentProvider, PaymentStatus, type PaymentConfirmed } from "@kontave/payments-domain";
-import { ConfirmPayment } from "../src/index.js";
+import { ConfirmPayment } from "../src/index";
 
 test("coordinates payment, referral and outbox without coupling their domains", async () => {
   const organization = organizationId("00000000-0000-4000-8000-000000000001");

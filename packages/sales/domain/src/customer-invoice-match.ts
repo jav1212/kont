@@ -1,10 +1,10 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal-domain";
 import { addMoney, moneyFromMinor, sameCurrency, type CurrencyDefinition, type Money } from "@kontave/monetary-domain";
-import type { CustomerId, CustomerInvoiceMatchId, GoodsDispatchLineId, SalesOrderLineId } from "./identifiers.js";
-import type { SalesQuantity } from "./quantity.js";
-import { SalesFailure } from "./sales-failure.js";
-import { salesInstant, type SalesInstant } from "./temporal.js";
+import type { CustomerId, CustomerInvoiceMatchId, GoodsDispatchLineId, SalesOrderLineId } from "./identifiers";
+import type { SalesQuantity } from "./quantity";
+import { SalesFailure } from "./sales-failure";
+import { salesInstant, type SalesInstant } from "./temporal";
 
 export interface CustomerInvoiceAllocation {
   readonly fiscalLineId: FiscalDocumentLineId;

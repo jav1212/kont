@@ -9,12 +9,12 @@ import {
   type Money,
   type MoneyConversion,
 } from "@kontave/monetary-domain";
-import { VenezuelanPayrollFailure } from "./failure.js";
+import { VenezuelanPayrollFailure } from "./failure";
 import {
   ECONOMIC_WAR_BONUS_DECREE_4805,
   SOCIOECONOMIC_INCOME_ADJUSTMENT_2026,
   type VenezuelanLegalSource,
-} from "./rules.js";
+} from "./rules";
 
 export type SocioeconomicBenefitCoverage = "public_active_worker" | "private_employer_adoption";
 export type SocioeconomicBenefitAdoptionKind =

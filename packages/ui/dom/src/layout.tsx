@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export function PageShell({ className, ...props }: ComponentPropsWithoutRef<"main">) {
   return <main {...props} className={classNames("kt-page", className)} />;

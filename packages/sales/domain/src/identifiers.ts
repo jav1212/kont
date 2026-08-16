@@ -1,4 +1,4 @@
-import { SalesFailure } from "./sales-failure.js";
+import { SalesFailure } from "./sales-failure";
 
 declare const customerIdBrand: unique symbol;
 declare const salesOrderIdBrand: unique symbol;

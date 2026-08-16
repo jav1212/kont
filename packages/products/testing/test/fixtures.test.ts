@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ProductStatus } from "@kontave/products-domain";
-import { productFixture } from "../src/index.js";
+import { productFixture } from "../src/index";
 
 test("canonical product fixture exposes a stable active product", () => {
   const product = productFixture();

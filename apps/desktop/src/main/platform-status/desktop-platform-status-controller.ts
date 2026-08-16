@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
-import { DESKTOP_IPC, type DesktopPlatformStatusState } from "../../shared/desktop-api.js";
-import { DesktopPlatformStatusSource } from "./desktop-platform-status-source.js";
+import { DESKTOP_IPC, type DesktopPlatformStatusState } from "../../shared/desktop-api";
+import { DesktopPlatformStatusSource } from "./desktop-platform-status-source";
 
 export class DesktopPlatformStatusController {
   private state: DesktopPlatformStatusState = { status: "unavailable" };

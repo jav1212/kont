@@ -1,6 +1,6 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import type { CustomerId } from "./identifiers.js";
-import { SalesFailure } from "./sales-failure.js";
+import type { CustomerId } from "./identifiers";
+import { SalesFailure } from "./sales-failure";
 
 export type CustomerStatus = "active" | "inactive";
 export interface CustomerState {

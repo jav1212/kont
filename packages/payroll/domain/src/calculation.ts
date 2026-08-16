@@ -2,12 +2,12 @@ import {
   addDecimal, addMoney, exactDecimal, moneyFromMinor, moneyToDecimal, multiplyDecimal, quantizeMoney, sameCurrency,
   type CurrencyDefinition, type ExactDecimal,
 } from "@kontave/monetary-domain";
-import type { PayrollElementDefinition, PayrollElementEntry, PayrollInputValue, PayrollProcessingPhase } from "./element.js";
-import type { PayrollElementCode } from "./identifiers.js";
-import { PayrollFailure } from "./payroll-failure.js";
-import type { PayrollCalculationMessage, PayrollElementResult, PayrollPolicyReference, PayrollResultBalances, PayrollRunResult } from "./result.js";
-import type { PayrollWorkerSnapshot } from "./relationship.js";
-import type { PayrollPeriod } from "./period.js";
+import type { PayrollElementDefinition, PayrollElementEntry, PayrollInputValue, PayrollProcessingPhase } from "./element";
+import type { PayrollElementCode } from "./identifiers";
+import { PayrollFailure } from "./payroll-failure";
+import type { PayrollCalculationMessage, PayrollElementResult, PayrollPolicyReference, PayrollResultBalances, PayrollRunResult } from "./result";
+import type { PayrollWorkerSnapshot } from "./relationship";
+import type { PayrollPeriod } from "./period";
 
 const PHASE_ORDER: Readonly<Record<PayrollProcessingPhase, number>> = { base_earnings: 10, supplemental_earnings: 20, taxable_bases: 30, employee_deductions: 40, employer_contributions: 50, net_pay: 60, informational: 70 };
 

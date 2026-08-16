@@ -10,7 +10,7 @@ import {
   RevokeAuthenticatedSession,
   type CredentialSecurityPort,
   type NativeSessionRegistry,
-} from "../src/index.js";
+} from "../src/index";
 
 const currentId = authenticatedSessionId("11111111-1111-1111-1111-111111111111");
 const otherId = authenticatedSessionId("22222222-2222-2222-2222-222222222222");

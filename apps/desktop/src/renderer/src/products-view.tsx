@@ -3,8 +3,8 @@ import { Archive, ArrowDown, ArrowUp, Boxes, ChevronRight, PackagePlus, Plus, Re
 import type { NativeProductCategoryDto, NativeProductDetailDto, NativeProductDto, NativeProductListDto, NativeProductMovementDto, NativeUnitOfMeasure } from "@kontave/native-api-contracts";
 import { codedErrorFeedback, successFeedback } from "@kontave/client-feedback-application";
 import { Button, OptionPicker, Skeleton, StatusBadge, presentFeedback } from "@kontave/ui-dom";
-import type { DesktopProductListQuery } from "../../shared/desktop-api.js";
-import { runExclusiveMutation } from "./client-interaction.js";
+import type { DesktopProductListQuery } from "../../shared/desktop-api";
+import { runExclusiveMutation } from "./client-interaction";
 
 interface ProductsViewProps { readonly organizationId:string;readonly companyId:string;readonly onOpenProduct?:(productId:string)=>void }
 type ProductStatusFilter = "active"|"inactive"|"all";

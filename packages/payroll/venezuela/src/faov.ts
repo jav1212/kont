@@ -1,6 +1,6 @@
 import { exactDecimal, type Money } from "@kontave/monetary-domain";
-import { percentageOf } from "./calculation.js";
-import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment.js";
+import { percentageOf } from "./calculation";
+import { reconcileStatutoryObligation, type StatutoryObligationAssessment } from "./assessment";
 
 export interface FaovAssessment {
   readonly employee: StatutoryObligationAssessment;

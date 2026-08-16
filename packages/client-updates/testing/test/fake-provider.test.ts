@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { FakeClientUpdateProvider } from "../src/index.js";
+import { FakeClientUpdateProvider } from "../src/index";
 
 test("fake provider records deterministic update operations", async () => {
   const installed = {

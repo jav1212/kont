@@ -12,7 +12,7 @@ import {
   type ActiveWorkspaceSelectionStore,
   type WorkspacePortfolioEntry,
   type WorkspacePortfolioSource,
-} from "../src/index.js";
+} from "../src/index";
 
 const actor = userId("user-1");
 

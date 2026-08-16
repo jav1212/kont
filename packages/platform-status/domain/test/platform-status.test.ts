@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { PortalAvailability, summarizePlatformStatus, type PortalStatus } from "../src/index.js";
+import { PortalAvailability, summarizePlatformStatus, type PortalStatus } from "../src/index";
 
 function portal(id: string, status: PortalAvailability, checkedAt: string | null = null): PortalStatus {
   return { id, slug: id, name: id, category: "fiscal", logoUrl: null, status, responseTimeMs: null, checkedAt };

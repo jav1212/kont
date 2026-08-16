@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
-import { FixedConnectivityClock, QueueConnectivityProbe } from "../src/index.js";
+import { FixedConnectivityClock, QueueConnectivityProbe } from "../src/index";
 
 test("connectivity test doubles produce deterministic observations", async () => {
   const probe = new QueueConnectivityProbe();

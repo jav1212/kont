@@ -1,6 +1,6 @@
 import type { NativePlatformStatusDto, NativePortalAvailability } from "@kontave/native-api-contracts";
-import type { DesktopPlatformStatusState } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopPlatformStatusState } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopPlatformStatusSource {
   constructor(

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button } from "./button.js";
-import { classNames } from "./internal/class-names.js";
+import { Button } from "./button";
+import { classNames } from "./internal/class-names";
 
 export interface OptionPickerEntry<TValue extends string> {
   readonly value: TValue;

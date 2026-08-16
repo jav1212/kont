@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Incident } from "@kontave/observability-application";
-import { FailingIncidentRecorder, RecordingIncidentRecorder } from "../src/index.js";
+import { FailingIncidentRecorder, RecordingIncidentRecorder } from "../src/index";
 
 const incident = { code: "KNT-20260813-ABCDEF12" } as Incident;
 

@@ -6,7 +6,7 @@ import {
 } from "@kontave/organization-delegations-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
 import type { WorkspacePortfolioEntry, WorkspacePortfolioSource } from "@kontave/workspace-context-application";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopWorkspacePortfolioSource implements WorkspacePortfolioSource {
   constructor(

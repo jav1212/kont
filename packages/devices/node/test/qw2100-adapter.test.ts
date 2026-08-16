@@ -8,7 +8,7 @@ import {
   type SerialConnectionOptions,
   type SerialPortDescriptor,
   type SerialPortProvider,
-} from "../src/index.js";
+} from "../src/index";
 
 class TestSerialConnection implements SerialConnection {
   isOpen = false;

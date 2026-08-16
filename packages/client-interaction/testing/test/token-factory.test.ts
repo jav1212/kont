@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { GlobalInteractionGate } from "@kontave/client-interaction-application";
-import { SequentialInteractionBlockTokenFactory } from "../src/index.js";
+import { SequentialInteractionBlockTokenFactory } from "../src/index";
 
 test("the test token factory makes interaction leases deterministic", () => {
   const tokens = new SequentialInteractionBlockTokenFactory("lease");

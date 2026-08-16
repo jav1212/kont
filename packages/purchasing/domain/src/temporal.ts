@@ -1,4 +1,4 @@
-import { PurchasingFailure } from "./purchasing-failure.js";
+import { PurchasingFailure } from "./purchasing-failure";
 
 declare const purchaseDateBrand: unique symbol;
 declare const purchaseInstantBrand: unique symbol;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { VENEZUELAN_IVA } from "@kontave/taxation-venezuela";
-import { venezuelanProductTaxProfileFixture, venezuelanVatRuleFixture } from "../src/index.js";
+import { venezuelanProductTaxProfileFixture, venezuelanVatRuleFixture } from "../src/index";
 
 test("taxation fixtures expose matching product classifications and rules", () => {
   const profile = venezuelanProductTaxProfileFixture("exempt");

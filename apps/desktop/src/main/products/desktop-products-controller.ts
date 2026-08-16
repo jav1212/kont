@@ -4,8 +4,8 @@ import type {
   NativeOrganizationDto, NativeProductDto, NativeProductListDto, NativeProductMovementPageDto, NativeProductReplenishmentPolicyDto, NativeProductSalePricingDto, NativeProductTaxationDto, NativeProductUnitEconomicsDto,
   NativeUpdateProductCategoryDto, NativeUpdateProductDto, NativeUpdateProductInventoryProfileDto, NativeUpdateProductSalePricingDto, NativeUpdateProductTaxationDto,
 } from "@kontave/native-api-contracts";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
-import type { DesktopProductCategoryOverviewQuery, DesktopProductInsightsQuery, DesktopProductListQuery, DesktopProductMovementQuery, DesktopProductsResult } from "../../shared/desktop-api.js";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+import type { DesktopProductCategoryOverviewQuery, DesktopProductInsightsQuery, DesktopProductListQuery, DesktopProductMovementQuery, DesktopProductsResult } from "../../shared/desktop-api";
 
 export class DesktopProductsController {
   private readonly client: NativeApiClient;

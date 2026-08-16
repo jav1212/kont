@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
-import { DESKTOP_IPC, type DesktopCurrentUserState } from "../../shared/desktop-api.js";
-import { DesktopCurrentUserSource } from "./desktop-current-user-source.js";
+import { DESKTOP_IPC, type DesktopCurrentUserState } from "../../shared/desktop-api";
+import { DesktopCurrentUserSource } from "./desktop-current-user-source";
 import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
 
 export class DesktopCurrentUserController {

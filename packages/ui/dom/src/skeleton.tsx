@@ -1,6 +1,6 @@
 import type { CSSProperties, HTMLAttributes } from "react";
 import type { SkeletonContract } from "@kontave/ui-contracts";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export interface SkeletonProps extends SkeletonContract, Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   readonly decorative?: boolean;

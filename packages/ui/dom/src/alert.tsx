@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 import type { UiIntent } from "@kontave/ui-contracts";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export interface AlertProps extends ComponentPropsWithoutRef<"div"> {
   readonly intent?: Extract<UiIntent, "info" | "success" | "warning" | "danger">;

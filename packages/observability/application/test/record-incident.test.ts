@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { RecordIncident, UuidIncidentCodeGenerator, type Clock, type Incident, type IncidentRecorder } from "../src/index.js";
+import { RecordIncident, UuidIncidentCodeGenerator, type Clock, type Incident, type IncidentRecorder } from "../src/index";
 
 const NOW = new Date("2026-08-13T18:00:00.000Z");
 const clock: Clock = { now: () => NOW };

@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export interface SubscriptionPlanBadgeProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
   readonly planName: string;

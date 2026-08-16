@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";import test from "node:test";
-import{GetPurchasingDashboard,PurchasingDashboardFailure,validatePurchasingDashboardQuery,type PurchasingDashboardQuery,type PurchasingDashboardReader}from"../src/index.js";
+import{GetPurchasingDashboard,PurchasingDashboardFailure,validatePurchasingDashboardQuery,type PurchasingDashboardQuery,type PurchasingDashboardReader}from"../src/index";
 const query={actorUserId:"user" as PurchasingDashboardQuery["actorUserId"],organizationId:"organization" as PurchasingDashboardQuery["organizationId"],companyId:"company" as PurchasingDashboardQuery["companyId"],from:"2024-01-01",to:"2024-12-31",granularity:"day",recentLimit:5}as const;
 test("accepts an inclusive 366-day leap-year range",()=>assert.equal(validatePurchasingDashboardQuery(query).to,"2024-12-31"));
 test("rejects periods longer than 366 days",()=>assert.throws(()=>validatePurchasingDashboardQuery({...query,to:"2025-01-01"}),PurchasingDashboardFailure));

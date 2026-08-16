@@ -1,10 +1,10 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal-domain";
 import { addMoney, moneyFromMinor, sameCurrency, type CurrencyDefinition, type Money } from "@kontave/monetary-domain";
-import type { GoodsReceiptLineId, PurchaseOrderLineId, SupplierId, SupplierInvoiceMatchId } from "./identifiers.js";
-import { PurchasingFailure } from "./purchasing-failure.js";
-import type { PurchaseQuantity } from "./quantity.js";
-import { purchaseInstant, type PurchaseInstant } from "./temporal.js";
+import type { GoodsReceiptLineId, PurchaseOrderLineId, SupplierId, SupplierInvoiceMatchId } from "./identifiers";
+import { PurchasingFailure } from "./purchasing-failure";
+import type { PurchaseQuantity } from "./quantity";
+import { purchaseInstant, type PurchaseInstant } from "./temporal";
 
 export interface SupplierInvoiceAllocation {
   readonly fiscalLineId: FiscalDocumentLineId;

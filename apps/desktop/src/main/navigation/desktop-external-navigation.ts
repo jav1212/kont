@@ -1,5 +1,5 @@
 import { shell } from "electron";
-import type { DesktopExternalDestination, DesktopExternalNavigationResult } from "../../shared/desktop-api.js";
+import type { DesktopExternalDestination, DesktopExternalNavigationResult } from "../../shared/desktop-api";
 
 const DESTINATION_PATHS: Readonly<Record<DesktopExternalDestination, string>> = {
   settings: "/settings/members",

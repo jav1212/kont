@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { errorFeedback } from "@kontave/client-feedback-application";
 import { Button, Card, presentFeedback, TextField } from "@kontave/ui-dom";
-import { PasswordRequirements } from "./password-requirements.js";
-import { AuthHeading } from "./sign-in-form.js";
+import { PasswordRequirements } from "./password-requirements";
+import { AuthHeading } from "./sign-in-form";
 
 type RecoveryStage = "email" | "verification" | "password" | "success";
 

@@ -10,7 +10,7 @@ import {
   stockCountId,
   stockCountLineId,
   stockEffectId,
-} from "../src/index.js";
+} from "../src/index";
 
 test("confirmed stock count preserves evidence and creates a separate adjustment", () => {
   const count = StockCount.draft({

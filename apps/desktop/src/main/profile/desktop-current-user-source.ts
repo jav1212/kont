@@ -1,6 +1,6 @@
 import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
-import type { DesktopCurrentUserState } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopCurrentUserState } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopCurrentUserSource {
   constructor(

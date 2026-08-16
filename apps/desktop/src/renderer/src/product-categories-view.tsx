@@ -3,8 +3,8 @@ import { Archive, ArrowDown, ArrowUp, ChevronRight, Folders, Plus, RefreshCw, Se
 import type { NativeProductCategoryOverviewDto, NativeProductCategoryOverviewItemDto, NativeProductDto } from "@kontave/native-api-contracts";
 import { codedErrorFeedback, successFeedback } from "@kontave/client-feedback-application";
 import { Button, OptionPicker, Skeleton, StatusBadge, presentFeedback } from "@kontave/ui-dom";
-import type { DesktopProductCategoryOverviewQuery } from "../../shared/desktop-api.js";
-import { runExclusiveMutation } from "./client-interaction.js";
+import type { DesktopProductCategoryOverviewQuery } from "../../shared/desktop-api";
+import { runExclusiveMutation } from "./client-interaction";
 
 interface ProductCategoriesViewProps { readonly organizationId:string;readonly companyId:string }
 type CategoryStatus="active"|"inactive"|"all";

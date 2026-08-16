@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { userId, type UserId } from "@kontave/organizations-domain";
 import { ColorScheme, PreferencesFailure, type UserPreferences } from "@kontave/preferences-domain";
-import { GetEffectiveUserPreferences, UpdateUserPreferences, type PreferencesClock, type UserPreferencesRepository } from "../src/index.js";
+import { GetEffectiveUserPreferences, UpdateUserPreferences, type PreferencesClock, type UserPreferencesRepository } from "../src/index";
 
 class MemoryRepository implements UserPreferencesRepository {
   value: UserPreferences | null = null;

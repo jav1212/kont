@@ -17,7 +17,7 @@ import {
   purchaseReturnId,
   purchaseReturnLineId,
   supplierId,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2);
 const company = companyId("company-1");

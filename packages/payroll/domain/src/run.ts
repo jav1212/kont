@@ -1,9 +1,9 @@
 import type { CurrencyDefinition, Money } from "@kontave/monetary-domain";
 import { addMoney, moneyFromMinor, sameCurrency } from "@kontave/monetary-domain";
-import type { PayrollDefinitionId, PayrollRunId } from "./identifiers.js";
-import type { PayrollPeriod } from "./period.js";
-import { PayrollFailure } from "./payroll-failure.js";
-import type { PayrollRunResult } from "./result.js";
+import type { PayrollDefinitionId, PayrollRunId } from "./identifiers";
+import type { PayrollPeriod } from "./period";
+import { PayrollFailure } from "./payroll-failure";
+import type { PayrollRunResult } from "./result";
 
 export type PayrollRunType = "regular" | "off_cycle" | "final" | "retroactive" | "correction" | "simulation";
 export type PayrollRunStatus = "draft" | "calculated" | "calculated_with_warnings" | "approved" | "confirmed" | "reversed";

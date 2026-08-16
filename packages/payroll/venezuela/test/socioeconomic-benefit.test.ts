@@ -11,7 +11,7 @@ import {
   assessSocioeconomicBenefit,
   CURRENT_SOCIOECONOMIC_BENEFIT_RULE,
   VenezuelanPayrollFailure,
-} from "../src/index.js";
+} from "../src/index";
 
 const USD = currency("USD", 2);
 const VES = currency("VES", 2);

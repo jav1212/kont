@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export interface LogoProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   readonly size?: number;

@@ -5,7 +5,7 @@ import { currency, moneyFromDecimal } from "@kontave/monetary-domain";
 import {
   calculatePayrollRelationship, decimalInput, moneyInput, orderDefinitions, payrollElementCode, payrollElementDefinition,
   payrollElementEntry, payrollElementEntryId, payrollPeriod, payrollRelationshipId, type PayrollElementDefinition, type PayrollWorkerSnapshot,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2); const relationshipId = payrollRelationshipId("rel-1");
 const period = payrollPeriod({ start: "2026-08-01", end: "2026-08-15", paymentDate: "2026-08-15", frequency: "biweekly", sequence: "2026-08-Q1" });

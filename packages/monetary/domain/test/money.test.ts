@@ -9,7 +9,7 @@ import {
   moneyToDecimal,
   quantizeMoney,
   subtractMoney,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2);
 const USD = currency("USD", 2);

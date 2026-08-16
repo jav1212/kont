@@ -4,7 +4,7 @@ import { BillingCreditEntryType, Currency, money, type BillingCreditBalance } fr
 import { organizationId, type OrganizationId } from "@kontave/organizations-domain";
 import { AttributionStatus, RewardStatus, RewardType, type ReferralAttribution } from "@kontave/referrals-domain";
 import { InMemoryReferralsRepository } from "@kontave/referrals-testing";
-import { AttachReferral, GrantReferralReward, type BillingCreditIssuer } from "../src/index.js";
+import { AttachReferral, GrantReferralReward, type BillingCreditIssuer } from "../src/index";
 
 const referrer = organizationId("00000000-0000-4000-8000-000000000001");
 const referred = organizationId("00000000-0000-4000-8000-000000000002");

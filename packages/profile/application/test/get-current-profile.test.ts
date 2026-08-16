@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GetCurrentProfile, type ProfileDetailsReader } from "../src/index.js";
+import { GetCurrentProfile, type ProfileDetailsReader } from "../src/index";
 
 test("combines the authenticated identity with its presentation details", async () => {
   const reader: ProfileDetailsReader = {

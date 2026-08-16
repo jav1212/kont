@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { errorFeedback } from "@kontave/client-feedback-application";
-import { RecordingFeedbackPresenter, RecordingIncidentReporter } from "../src/index.js";
+import { RecordingFeedbackPresenter, RecordingIncidentReporter } from "../src/index";
 
 test("client feedback test doubles retain semantic calls", async () => {
   const presenter = new RecordingFeedbackPresenter();

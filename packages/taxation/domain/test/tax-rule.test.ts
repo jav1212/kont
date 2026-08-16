@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { exactDecimal } from "@kontave/monetary-domain";
-import { TaxationFailure, resolveTaxRule, taxCode, taxRule, taxRuleId, taxationDate } from "../src/index.js";
+import { TaxationFailure, resolveTaxRule, taxCode, taxRule, taxRuleId, taxationDate } from "../src/index";
 
 const IVA = taxCode("IVA");
 

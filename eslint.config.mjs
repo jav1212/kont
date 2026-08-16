@@ -20,6 +20,21 @@ const eslintConfig = defineConfig([
   ]),
   {
     rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\.\\.?\\/.*\\.js$/]",
+          message: "Los imports TypeScript relativos deben omitir la extensión .js.",
+        },
+        {
+          selector: "ExportNamedDeclaration[source.value=/^\\.\\.?\\/.*\\.js$/], ExportAllDeclaration[source.value=/^\\.\\.?\\/.*\\.js$/]",
+          message: "Los exports TypeScript relativos deben omitir la extensión .js.",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\.?\\/.*\\.js$/]",
+          message: "Los imports dinámicos TypeScript relativos deben omitir la extensión .js.",
+        },
+      ],
       // Honor _ prefix convention: _name signals intentionally unused
       "@typescript-eslint/no-unused-vars": ["warn", {
         varsIgnorePattern: "^_",

@@ -27,33 +27,33 @@ import type {
   DesktopPlatformStatusState,
   DesktopWorkspaceState,
   DesktopWorkspaceEntry,
-} from "../../shared/desktop-api.js";
+} from "../../shared/desktop-api";
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
-import { AuthExperience } from "./auth/auth-experience.js";
+import { AuthExperience } from "./auth/auth-experience";
 import {
   clientInteractionAvailable,
   restoreDesktopSession,
   synchronizeAuthenticationInteraction,
   synchronizeWorkspaceBlock,
-} from "./client-interaction.js";
-import { desktopConnectivityStore } from "./connectivity-store.js";
-import { applyDesktopTheme } from "./desktop-theme.js";
-import { DesktopSettingsView } from "./settings-view.js";
-import { DesktopSettingsDetailView, type DesktopSettingsDestination } from "./settings-detail-view.js";
-import { InventoryDashboardView } from "./inventory-dashboard-view.js";
+} from "./client-interaction";
+import { desktopConnectivityStore } from "./connectivity-store";
+import { applyDesktopTheme } from "./desktop-theme";
+import { DesktopSettingsView } from "./settings-view";
+import { DesktopSettingsDetailView, type DesktopSettingsDestination } from "./settings-detail-view";
+import { InventoryDashboardView } from "./inventory-dashboard-view";
 import { SalesDashboardView } from "./sales-dashboard-view";
-import { PurchasingDashboardView } from "./purchasing-dashboard-view.js";
-import { ProductsView } from "./products-view.js";
-import { ProductCategoriesView } from "./product-categories-view.js";
-import { ProductDetailPage } from "./product-detail-page.js";
-import { InventoryOperationsView } from "./inventory-operations-view.js";
-import { resolveDesktopSettings } from "./desktop-settings.js";
+import { PurchasingDashboardView } from "./purchasing-dashboard-view";
+import { ProductsView } from "./products-view";
+import { ProductCategoriesView } from "./product-categories-view";
+import { ProductDetailPage } from "./product-detail-page";
+import { InventoryOperationsView } from "./inventory-operations-view";
+import { resolveDesktopSettings } from "./desktop-settings";
 import {
   defaultModuleNavigationTarget,
   desktopBreadcrumbs,
   desktopStaticNavigationTarget,
   moduleNavigationSections,
-} from "./module-navigation.js";
+} from "./module-navigation";
 
 const DESKTOP_COMPACT_QUERY = "(max-width: 70rem)";
 const DESKTOP_SIDEBAR_PINNED_KEY = "kontave.desktop.sidebar-pinned";

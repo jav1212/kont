@@ -6,7 +6,7 @@ import { productId, UnitOfMeasure } from "@kontave/products-domain";
 import {
   CustomerReturn, GoodsDispatch, SalesFailure, SalesOrder, customerId, customerReturnId, customerReturnLineId,
   goodsDispatchId, goodsDispatchLineId, salesDate, salesOrderId, salesOrderLineId, salesQuantity,
-} from "../src/index.js";
+} from "../src/index";
 
 const VES = currency("VES", 2);
 const company = companyId("company-1");

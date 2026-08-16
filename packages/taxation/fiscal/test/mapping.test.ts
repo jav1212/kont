@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { currency, exactDecimal, moneyFromDecimal } from "@kontave/monetary-domain";
 import { taxCode, taxDecision } from "@kontave/taxation-domain";
-import { toFiscalTaxDetermination } from "../src/index.js";
+import { toFiscalTaxDetermination } from "../src/index";
 
 const VES = currency("VES", 2);
 

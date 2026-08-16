@@ -5,10 +5,10 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DeviceManager, type ManagerSnapshot } from "../core/device-manager.js";
-import { configPath, loadConfig, saveConfig } from "../core/config.js";
-import { Logger } from "../core/logger.js";
-import { DeviceGateway } from "../gateway/device-gateway.js";
+import { DeviceManager, type ManagerSnapshot } from "../core/device-manager";
+import { configPath, loadConfig, saveConfig } from "../core/config";
+import { Logger } from "../core/logger";
+import { DeviceGateway } from "../gateway/device-gateway";
 
 let tray: Tray | null = null; let window: BrowserWindow | null = null; let manager: DeviceManager | null = null; let updates: ClientUpdateCoordinator | null = null;
 const logger = new Logger();

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceSessionEvent } from "@kontave/device-contracts";
-import { DeviceManager, ExponentialBackoffPolicy, type DeviceAdapter, type DeviceCandidate, type DeviceEventSink, type DeviceLogger, type DeviceSession, type Sleeper } from "../src/index.js";
+import { DeviceManager, ExponentialBackoffPolicy, type DeviceAdapter, type DeviceCandidate, type DeviceEventSink, type DeviceLogger, type DeviceSession, type Sleeper } from "../src/index";
 
 class TestScannerAdapter implements DeviceAdapter {
   readonly id: string;

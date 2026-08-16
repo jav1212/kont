@@ -1,7 +1,7 @@
 import { forwardRef, useId, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import type { FieldLoadingState } from "@kontave/ui-contracts";
-import { classNames } from "./internal/class-names.js";
-import { FieldSkeleton } from "./skeleton.js";
+import { classNames } from "./internal/class-names";
+import { FieldSkeleton } from "./skeleton";
 
 export interface TextFieldProps extends Omit<ComponentPropsWithoutRef<"input">, "size">, FieldLoadingState {
   readonly label: string;

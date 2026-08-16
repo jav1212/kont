@@ -8,14 +8,14 @@ import {
   type ExactDecimal,
   type Money,
 } from "@kontave/monetary-domain";
-import { fiscalAdjustment, type FiscalAdjustment } from "./adjustment.js";
-import { FiscalFailure } from "./fiscal-failure.js";
-import type { FiscalDocumentId, FiscalDocumentLineId, FiscalNumber } from "./identifiers.js";
-import { fiscalNumber } from "./identifiers.js";
-import { fiscalParty, type FiscalPartySnapshot } from "./party.js";
-import { fiscalPaymentAllocation, type FiscalPaymentAllocation } from "./payment-allocation.js";
-import { fiscalTaxDetermination, type FiscalTaxDetermination, type FiscalTaxSummary } from "./tax.js";
-import { fiscalDate, fiscalInstant, type FiscalDate, type FiscalInstant } from "./temporal.js";
+import { fiscalAdjustment, type FiscalAdjustment } from "./adjustment";
+import { FiscalFailure } from "./fiscal-failure";
+import type { FiscalDocumentId, FiscalDocumentLineId, FiscalNumber } from "./identifiers";
+import { fiscalNumber } from "./identifiers";
+import { fiscalParty, type FiscalPartySnapshot } from "./party";
+import { fiscalPaymentAllocation, type FiscalPaymentAllocation } from "./payment-allocation";
+import { fiscalTaxDetermination, type FiscalTaxDetermination, type FiscalTaxSummary } from "./tax";
+import { fiscalDate, fiscalInstant, type FiscalDate, type FiscalInstant } from "./temporal";
 
 export type FiscalDocumentType = "invoice" | "credit_note" | "debit_note";
 export type FiscalDocumentDirection = "issued" | "received";

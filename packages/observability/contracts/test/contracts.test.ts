@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isIncidentCode, isIncidentSeverity, isIncidentSource } from "../src/index.js";
+import { isIncidentCode, isIncidentSeverity, isIncidentSource } from "../src/index";
 
 test("validates stable incident transport values", () => {
   assert.equal(isIncidentCode("KNT-20260813-ABCDEF12"), true);

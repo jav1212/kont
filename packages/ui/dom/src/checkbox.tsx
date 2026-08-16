@@ -1,7 +1,7 @@
 import { forwardRef, useId, type ComponentPropsWithoutRef } from "react";
 import type { FieldLoadingState } from "@kontave/ui-contracts";
-import { classNames } from "./internal/class-names.js";
-import { Skeleton } from "./skeleton.js";
+import { classNames } from "./internal/class-names";
+import { Skeleton } from "./skeleton";
 
 export interface CheckboxProps extends Omit<ComponentPropsWithoutRef<"input">, "type">, FieldLoadingState {
   readonly label: string;

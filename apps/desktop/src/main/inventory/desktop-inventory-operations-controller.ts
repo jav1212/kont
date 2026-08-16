@@ -1,7 +1,7 @@
 import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
 import type { NativeCreateInventoryOperationDto, NativeInventoryFlowPageDto, NativeInventoryOperationDetailDto, NativeReverseInventoryOperationDto, NativeUpdateInventoryOperationDto } from "@kontave/native-api-contracts";
-import type { DesktopInventoryFlowQuery, DesktopInventoryResult } from "../../shared/desktop-api.js";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request.js";
+import type { DesktopInventoryFlowQuery, DesktopInventoryResult } from "../../shared/desktop-api";
+import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopInventoryOperationsController {
   private readonly client: NativeApiClient;

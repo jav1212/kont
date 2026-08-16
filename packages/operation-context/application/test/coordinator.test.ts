@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { currency, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
 import { localDate, type OperationalDefaults } from "@kontave/operation-context-domain";
-import { OperationContextCoordinator, type OperationContextStore, type OperationExchangeRateResolver } from "../src/index.js";
+import { OperationContextCoordinator, type OperationContextStore, type OperationExchangeRateResolver } from "../src/index";
 
 const USD = currency("USD", 2), VES = currency("VES", 2);
 const key = { userId: userId("user"), organizationId: organizationId("organization"), companyId: companyId("company") };

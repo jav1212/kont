@@ -1,7 +1,7 @@
 import type { ExactDecimal, Money } from "@kontave/monetary-domain";
-import type { PayrollElementClassification, PayrollProcessingPhase } from "./element.js";
-import type { PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers.js";
-import type { PayrollWorkerSnapshot } from "./relationship.js";
+import type { PayrollElementClassification, PayrollProcessingPhase } from "./element";
+import type { PayrollElementCode, PayrollElementEntryId, PayrollRelationshipId } from "./identifiers";
+import type { PayrollWorkerSnapshot } from "./relationship";
 
 export interface PayrollPolicyReference { readonly jurisdiction: string; readonly code: string; readonly version: string; readonly effectiveFrom: string; }
 export interface PayrollCalculationTrace {

@@ -3,7 +3,7 @@ import { BadgeDollarSign, FileCheck2, FilePenLine, ReceiptText, RefreshCw, Shopp
 import { Button, CurrencyFlag, DatePeriodPicker, OptionPicker, Skeleton, presentFeedback } from "@kontave/ui-dom";
 import { codedErrorFeedback } from "@kontave/client-feedback-application";
 import type { NativePurchasingDashboardDayDto } from "@kontave/native-api-contracts";
-import type { DesktopAuthState, DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardSnapshot } from "../../shared/desktop-api.js";
+import type { DesktopAuthState, DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardSnapshot } from "../../shared/desktop-api";
 
 interface Failure { readonly code: string; readonly message: string; readonly requestId: string | null }
 interface Props { readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>; readonly organizationId: string; readonly companyId: string }

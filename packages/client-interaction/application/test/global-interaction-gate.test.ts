@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ClientInteractionFailure, GlobalInteractionGate } from "../src/index.js";
+import { ClientInteractionFailure, GlobalInteractionGate } from "../src/index";
 
 function block(message: string, priority: number) {
   return { kind: "exclusive_operation" as const, state: "working" as const, message, priority };

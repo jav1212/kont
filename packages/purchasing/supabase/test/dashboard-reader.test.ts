@@ -1,4 +1,4 @@
-import assert from"node:assert/strict";import test from"node:test";import{SupabasePurchasingDashboardReader}from"../src/index.js";
+import assert from"node:assert/strict";import test from"node:test";import{SupabasePurchasingDashboardReader}from"../src/index";
 const query={actorUserId:"user",organizationId:"org",companyId:"company",from:"2026-08-01",to:"2026-08-31",granularity:"day",recentLimit:5}as never;
 const empty={period:{from:"2026-08-01",to:"2026-08-31",granularity:"day"},summary:{confirmedPurchaseTotal:{amount:"0",currency:"VES"},vatCreditTotal:{amount:"0",currency:"VES"},vatWithheldTotal:{amount:"0",currency:"VES"},confirmedDocumentCount:0,draftDocumentCount:0},daily:[],topSuppliers:[],recentDocuments:[],generatedAt:"2026-08-16T00:00:00Z"};
 test("decodes an empty exact snapshot",async()=>{const reader=new SupabasePurchasingDashboardReader({rpc:async()=>({data:empty,error:null})}as never);assert.equal((await reader.read(query)).summary.confirmedPurchaseTotal.amount,"0")});

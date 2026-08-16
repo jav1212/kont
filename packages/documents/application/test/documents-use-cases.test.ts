@@ -3,7 +3,7 @@ import test from "node:test";
 import { companyId } from "@kontave/companies-domain";
 import { documentId, type StoredDocument } from "@kontave/documents-domain";
 import { organizationId, userId } from "@kontave/organizations-domain";
-import { DeleteDocument, type DocumentsRepository, type DocumentStorage } from "../src/index.js";
+import { DeleteDocument, type DocumentsRepository, type DocumentStorage } from "../src/index";
 
 const organization = organizationId("organization-1");
 const document: StoredDocument = {

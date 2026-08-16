@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { classNames } from "./internal/class-names.js";
+import { classNames } from "./internal/class-names";
 
 export type PortalStatusAvailability = "operational" | "degraded" | "down" | "unknown";
 

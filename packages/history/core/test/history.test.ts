@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyHistory, recordHistory, redoHistory, undoHistory } from "../src/index.js";
+import { emptyHistory, recordHistory, redoHistory, undoHistory } from "../src/index";
 
 test("undo and redo restore complete snapshots with the same action", () => {
   let history = recordHistory(

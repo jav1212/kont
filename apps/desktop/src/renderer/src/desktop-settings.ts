@@ -4,8 +4,8 @@ import { companyId, organizationId, userId } from "@kontave/organizations-domain
 import { ResolveAvailableSettings, StaticSettingsCatalog } from "@kontave/settings-application";
 import { SETTINGS_ENTRIES, SETTINGS_SECTIONS, type SettingsMessageKey } from "@kontave/settings-contracts";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
-import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api.js";
-import type { DesktopSettingsSection } from "./settings-view.js";
+import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api";
+import type { DesktopSettingsSection } from "./settings-view";
 
 const resolver = new ResolveAvailableSettings(new StaticSettingsCatalog(SETTINGS_SECTIONS, SETTINGS_ENTRIES));
 

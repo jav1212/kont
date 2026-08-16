@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Currency, limit, money } from "../src/index.js";
+import { Currency, limit, money } from "../src/index";
 
 test("usage limits never expose a negative remaining value", () => {
   assert.deepEqual(limit(5, 3), { used: 5, maximum: 3, remaining: 0 });
