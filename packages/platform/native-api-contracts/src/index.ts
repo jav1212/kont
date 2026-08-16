@@ -53,6 +53,13 @@ export type NativeApiErrorCode =
   | "INVENTORY_PROFILE_VERSION_CONFLICT"
   | "INVENTORY_PROFILE_INVALID"
   | "INVENTORY_REPOSITORY_UNAVAILABLE"
+  | "INVENTORY_OPERATION_INVALID"
+  | "INVENTORY_OPERATION_NOT_FOUND"
+  | "INVENTORY_OPERATION_VERSION_CONFLICT"
+  | "INVENTORY_OPERATION_TRANSITION_INVALID"
+  | "INVENTORY_OPERATION_ACCESS_DENIED"
+  | "INVENTORY_NEGATIVE_STOCK"
+  | "INVENTORY_PERIOD_CLOSED"
   | "PRODUCT_IDENTIFIER_INVALID"
   | "PRODUCT_INVALID"
   | "PRODUCT_CATEGORY_INVALID"
@@ -239,6 +246,17 @@ export interface NativeInventoryDashboardDto {
   readonly recentOutboundMovements:readonly NativeRecentInventoryMovementDto[];
   readonly generatedAt: string;
 }
+
+export type NativeInventoryOperationReason="opening_balance"|"purchase_receipt"|"sales_issue"|"customer_return"|"supplier_return"|"transfer"|"stock_count_adjustment"|"self_consumption"|"production_consumption"|"production_output"|"reversal";
+export type NativeInventoryOperationStatus="draft"|"posted"|"reversed";
+export type NativeInventoryOperationSourceKind="purchasing"|"sales"|"inventory"|"production"|"migration";
+export interface NativeInventoryFlowItemDto{readonly id:string;readonly operationId:string;readonly effectiveDate:string;readonly direction:"inbound"|"outbound";readonly reason:NativeInventoryOperationReason;readonly status:NativeInventoryOperationStatus;readonly product:{readonly id:string;readonly sku:string;readonly name:string};readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};readonly unitCost:NativeInventoryAmountDto|null;readonly totalCost:NativeInventoryAmountDto|null;readonly source:{readonly kind:NativeInventoryOperationSourceKind;readonly documentId:string};readonly reference:string|null;readonly notes:string|null;readonly postedAt:string|null}
+export interface NativeInventoryFlowPageDto{readonly items:readonly NativeInventoryFlowItemDto[];readonly nextCursor:string|null;readonly total:number;readonly summary:{readonly movementCount:number;readonly totalValue:NativeInventoryAmountDto;readonly quantities:readonly{readonly unit:NativeUnitOfMeasure;readonly value:string}[]}}
+export interface NativeInventoryOperationDetailDto{readonly id:string;readonly companyId:string;readonly reason:NativeInventoryOperationReason;readonly effectiveDate:string;readonly status:NativeInventoryOperationStatus;readonly version:number;readonly source:{readonly kind:NativeInventoryOperationSourceKind;readonly documentId:string};readonly reference:string|null;readonly notes:string|null;readonly postedAt:string|null;readonly reversalOf:string|null;readonly reversedBy:string|null;readonly lines:readonly{readonly id:string;readonly productId:string;readonly productName:string;readonly productSku:string;readonly direction:"inbound"|"outbound";readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};readonly unitCost:NativeInventoryAmountDto|null;readonly movementId:string|null}[];readonly capabilities:{readonly canPost:boolean;readonly canReverse:boolean;readonly canEditMetadata:boolean}}
+export interface NativeCreateInventoryOperationDto{readonly reason:"opening_balance"|"stock_count_adjustment"|"self_consumption";readonly effectiveDate:string;readonly reference?:string|null;readonly notes?:string|null;readonly lines:readonly{readonly productId:string;readonly direction:"inbound"|"outbound";readonly quantity:string;readonly unit:NativeUnitOfMeasure;readonly unitCost?:string|null}[]}
+export interface NativeInventoryOperationVersionDto{readonly expectedVersion:number}
+export interface NativeUpdateInventoryOperationDto extends NativeInventoryOperationVersionDto{readonly effectiveDate?:string;readonly reference?:string|null;readonly notes?:string|null}
+export interface NativeReverseInventoryOperationDto extends NativeInventoryOperationVersionDto{readonly effectiveDate:string;readonly reason:string}
 
 export type NativeUnitOfMeasure="each"|"kilogram"|"gram"|"meter"|"square_meter"|"cubic_meter"|"liter"|"gallon"|"box"|"roll"|"package";
 export interface NativeProductCategoryDto{readonly id:string;readonly name:string;readonly description:string|null;readonly status:"active"|"inactive";readonly version:number}

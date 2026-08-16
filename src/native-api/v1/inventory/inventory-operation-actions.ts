@@ -1,0 +1,4 @@
+import { CreateInventoryOperation, GetInventoryOperation, ListInventoryFlows, PostInventoryOperation, ReverseInventoryOperation,UpdateInventoryOperation } from "@kontave/inventory-application";
+import { createSupabaseInventoryOperationsRepository } from "@kontave/inventory-supabase";
+
+export function createInventoryOperationActions(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error("Native inventory operations infrastructure is not configured.");const repository=createSupabaseInventoryOperationsRepository({url,serviceRoleKey:key});return{list:new ListInventoryFlows(repository),get:new GetInventoryOperation(repository),create:new CreateInventoryOperation(repository),update:new UpdateInventoryOperation(repository),post:new PostInventoryOperation(repository),reverse:new ReverseInventoryOperation(repository)};}

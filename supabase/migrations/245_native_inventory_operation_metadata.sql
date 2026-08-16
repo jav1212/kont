@@ -1,0 +1,9 @@
+-- Draft metadata is editable with optimistic concurrency. Published facts remain immutable.
+create or replace function public.update_native_inventory_operation(p_actor_user_id uuid,p_organization_id uuid,p_company_id text,p_operation_id text,p_expected_version integer,p_changes jsonb)returns jsonb language plpgsql security definer set search_path=public as $$
+declare v_tenant uuid;v_found integer;
+begin v_tenant:=public.native_products_assert_access(p_actor_user_id,p_organization_id,p_company_id);
+ if exists(select 1 from public.shared_inventory_operations where tenant_id=v_tenant and company_id=p_company_id and id=p_operation_id and status<>'draft')then raise exception'INVENTORY_OPERATION_TRANSITION_INVALID';end if;
+ update public.shared_inventory_operations set effective_date=case when p_changes?'effectiveDate'then(p_changes->>'effectiveDate')::date else effective_date end,reference=case when p_changes?'reference'then nullif(btrim(p_changes->>'reference'),'')else reference end,notes=case when p_changes?'notes'then nullif(btrim(p_changes->>'notes'),'')else notes end,version=version+1,updated_at=now()where tenant_id=v_tenant and company_id=p_company_id and id=p_operation_id and status='draft'and version=p_expected_version;get diagnostics v_found=row_count;
+ if v_found=0 then if exists(select 1 from public.shared_inventory_operations where tenant_id=v_tenant and company_id=p_company_id and id=p_operation_id)then raise exception'INVENTORY_OPERATION_VERSION_CONFLICT';else raise exception'INVENTORY_OPERATION_NOT_FOUND';end if;end if;return public.native_inventory_operation_json(v_tenant,p_operation_id);end$$;
+revoke all on function public.update_native_inventory_operation(uuid,uuid,text,text,integer,jsonb)from public,anon,authenticated;
+grant execute on function public.update_native_inventory_operation(uuid,uuid,text,text,integer,jsonb)to service_role;

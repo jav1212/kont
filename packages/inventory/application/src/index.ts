@@ -3,6 +3,8 @@ import type { CompanyId as CatalogCompanyId } from "@kontave/companies-domain";
 import type { ReplenishmentPolicy } from "@kontave/inventory-domain";
 import type { ProductId, UnitOfMeasure } from "@kontave/products-domain";
 
+export * from "./inventory-operations";
+
 export type InventoryDashboardGranularity = "day";
 export interface InventoryDashboardQuery {
   readonly actorUserId: UserId;
