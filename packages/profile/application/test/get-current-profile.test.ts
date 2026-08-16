@@ -6,7 +6,7 @@ test("combines the authenticated identity with its presentation details", async 
   const reader: ProfileDetailsReader = {
     async findByUserId(userId) {
       assert.equal(userId, "user-1");
-      return { displayName: "Ada Lovelace", avatarUrl: "https://example.com/ada.png" };
+      return { displayName: "Ada Lovelace", avatarUrl: "https://example.com/ada.png", version: 1 };
     },
   };
 
@@ -17,6 +17,7 @@ test("combines the authenticated identity with its presentation details", async 
     email: "ada@example.com",
     displayName: "Ada Lovelace",
     avatarUrl: "https://example.com/ada.png",
+    version: 1,
   });
 });
 
@@ -30,5 +31,6 @@ test("keeps a valid identity usable when no profile row exists", async () => {
     email: null,
     displayName: null,
     avatarUrl: null,
+    version: 0,
   });
 });

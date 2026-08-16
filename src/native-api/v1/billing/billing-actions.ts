@@ -1,6 +1,6 @@
-import { GetBillingEntitlements, GetBillingOverview, GetBillingUsage, ListBillingInvoices, ListBillingPaymentMethods, ListBillingSubscriptions, type OrganizationBillingAuthorization } from "@kontave/billing-application";
+import { CreatePaymentReceiptUpload, GetBillingEntitlements, GetBillingOverview, GetBillingUsage, ListBillingInvoices, ListBillingPaymentMethods, ListBillingPlans, ListBillingSubscriptions, ListManualPaymentRequests, SubmitManualPaymentRequest, type OrganizationBillingAuthorization } from "@kontave/billing-application";
 import { createSupabaseAuthorization } from "@kontave/access-control-supabase";
-import { createOrganizationBillingRepository } from "@kontave/billing-supabase";
+import { createOrganizationBillingRepository, createPaymentReceiptStorage } from "@kontave/billing-supabase";
 
 export function createBillingActions() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,5 +20,9 @@ export function createBillingActions() {
     usage: new GetBillingUsage(repository, authorization),
     invoices: new ListBillingInvoices(repository, authorization),
     paymentMethods: new ListBillingPaymentMethods(repository, authorization),
+    plans: new ListBillingPlans(repository, authorization),
+    manualPaymentRequests: new ListManualPaymentRequests(repository, authorization),
+    submitManualPaymentRequest: new SubmitManualPaymentRequest(repository, authorization),
+    createPaymentReceiptUpload: new CreatePaymentReceiptUpload(repository, authorization, createPaymentReceiptStorage({ url, serviceRoleKey })),
   };
 }

@@ -22,3 +22,17 @@ export async function GET(request: Request, context: { params: Promise<{ organiz
     return organizationErrorResponse(cause, requestId);
   }
 }
+
+export async function PATCH(request: Request, context: { params: Promise<{ organizationId: string }> }): Promise<Response> {
+  const requestId = crypto.randomUUID();
+  try {
+    const identity = await authenticateNativeRequest(request);
+    if (!identity) return nativeError("INVALID_ACCESS_TOKEN", "La sesión no es válida o expiró.", requestId, 401);
+    const params = await context.params;
+    const body = await request.json() as { name?: string; expectedVersion?: number };
+    if (!Number.isSafeInteger(body.expectedVersion)) return nativeError("INVALID_REQUEST", "expectedVersion es requerido.", requestId, 400);
+    const organization = await createOrganizationActions().updateOrganization.execute({ actorUserId: userId(identity.userId), organizationId: organizationId(params.organizationId), name: body.name, expectedVersion: body.expectedVersion! });
+    const access = await createOrganizationActions().getOrganization.execute(userId(identity.userId), organization.id);
+    return nativeSuccess(toOrganizationDto({ ...access, organization }), requestId);
+  } catch (cause: unknown) { return organizationErrorResponse(cause, requestId); }
+}

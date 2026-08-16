@@ -6,8 +6,10 @@ import type {
   SignInCommand,
   VerifyPasswordRecoveryCodeCommand,
   VerifyRegistrationCodeCommand,
+  CredentialSecurityPort,
+  NativeSessionRegistry,
 } from "@kontave/auth-application";
-import { AuthenticationFailure, type AuthenticatedIdentity, type AuthenticatedSession, type RefreshedAuthenticatedSession } from "@kontave/auth-domain";
+import { AuthenticationFailure, authenticatedSessionId, type AuthenticatedIdentity, type AuthenticatedSession, type NativeSessionClient, type RefreshedAuthenticatedSession } from "@kontave/auth-domain";
 
 export interface SupabaseAuthConfiguration {
   readonly url: string;
@@ -30,6 +32,24 @@ export function createSupabaseAccessTokenVerifier(configuration: SupabaseAuthCon
   });
   return new SupabaseAccessTokenVerifier(client);
 }
+
+export function createSupabaseNativeSessionRegistry(configuration:{readonly url:string;readonly serviceRoleKey:string}):NativeSessionRegistry{return new SupabaseNativeSessionRegistry(createClient(configuration.url,configuration.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}))}
+export function createSupabaseCredentialSecurity(configuration:SupabaseAuthConfiguration):CredentialSecurityPort{return new SupabaseCredentialSecurity(configuration)}
+
+class SupabaseCredentialSecurity implements CredentialSecurityPort{
+ constructor(private readonly configuration:SupabaseAuthConfiguration){}
+ async changePassword(accessToken:string,newPassword:string){const client=createClient(this.configuration.url,this.configuration.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{headers:{Authorization:`Bearer ${accessToken}`}}});const{error}=await client.auth.updateUser({password:newPassword});if(error)throw mapProviderFailure(error,"PROVIDER_UNAVAILABLE","No se pudo cambiar la contraseña.")}
+}
+class SupabaseNativeSessionRegistry implements NativeSessionRegistry{
+ constructor(private readonly client:SupabaseClient){}
+ async observe(input:Parameters<NativeSessionRegistry["observe"]>[0]){const{error}=await this.client.rpc("observe_native_device_session",{p_session_id:input.id,p_user_id:input.userId,p_client:input.client,p_device_name:input.deviceName,p_operating_system:input.operatingSystem});if(error)throw sessionFailure(error)}
+ async list(userId:string){const{data,error}=await this.client.rpc("list_native_device_sessions",{p_user_id:userId});if(error)throw sessionFailure(error);return((data??[])as Record<string,unknown>[]).map(row=>({id:authenticatedSessionId(String(row.id)),userId:String(row.user_id),client:readClient(row.client),deviceName:nullable(row.device_name),operatingSystem:nullable(row.operating_system),createdAt:String(row.created_at),lastSeenAt:String(row.last_seen_at),revokedAt:nullable(row.revoked_at)}))}
+ async revoke(input:Parameters<NativeSessionRegistry["revoke"]>[0]){const{error}=await this.client.rpc("revoke_native_device_session",{p_user_id:input.userId,p_session_id:input.sessionId});if(error)throw sessionFailure(error)}
+ async revokeOthers(input:Parameters<NativeSessionRegistry["revokeOthers"]>[0]){const{error}=await this.client.rpc("revoke_other_native_device_sessions",{p_user_id:input.userId,p_current_session_id:input.currentSessionId});if(error)throw sessionFailure(error)}
+}
+function nullable(value:unknown){return value===null||value===undefined?null:String(value)}
+function readClient(value:unknown):NativeSessionClient{if(value==="web"||value==="desktop"||value==="mobile")return value;throw new AuthenticationFailure("PROVIDER_UNAVAILABLE","La metadata de sesión no es válida.")}
+function sessionFailure(error:{message?:string}){const message=error.message??"";if(message.includes("SESSION_REVOKED"))return new AuthenticationFailure("SESSION_REVOKED","La sesión fue revocada.");if(message.includes("SESSION_NOT_FOUND"))return new AuthenticationFailure("SESSION_NOT_FOUND","La sesión no existe.");return new AuthenticationFailure("PROVIDER_UNAVAILABLE","No se pudo administrar la sesión.",{cause:error})}
 
 class SupabaseAuthenticationGateway implements AuthenticationProvider {
   constructor(private readonly client: SupabaseClient) {}
@@ -174,9 +194,11 @@ class SupabaseAccessTokenVerifier implements AccessTokenVerifier {
   async verify(accessToken: string): Promise<AuthenticatedIdentity | null> {
     const { data, error } = await this.client.auth.getUser(accessToken);
     if (error || !data.user) return null;
-    return { userId: data.user.id, email: data.user.email ?? null };
+    return { userId: data.user.id, email: data.user.email ?? null, sessionId: readSessionId(accessToken) };
   }
 }
+
+function readSessionId(accessToken:string):string|null{try{const payload=accessToken.split(".")[1];if(!payload)return null;const normalized=payload.replaceAll("-","+").replaceAll("_","/");const decoded=JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length/4)*4,"=")))as{session_id?:unknown};return typeof decoded.session_id==="string"?decoded.session_id:null}catch{return null}}
 
 function mapSession(session: Session): AuthenticatedSession {
   return {

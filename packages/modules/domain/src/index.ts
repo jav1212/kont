@@ -55,6 +55,7 @@ export enum ModuleCapability {
   InventoryMovements = "inventory.movements",
   AccountingEntries = "accounting.entries",
   AccountingPeriods = "accounting.periods",
+  DocumentsFiles = "documents.files",
 }
 
 export interface ModuleDefinition {

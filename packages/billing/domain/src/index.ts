@@ -5,6 +5,8 @@ export enum BillingCycle { Monthly = "monthly", Quarterly = "quarterly", Annual 
 export enum SubscriptionStatus { Trial = "trial", Active = "active", Suspended = "suspended", Cancelled = "cancelled" }
 export enum InvoiceStatus { Draft = "draft", Open = "open", Paid = "paid", Void = "void", Uncollectible = "uncollectible" }
 export enum PaymentMethodKind { Card = "card", BankTransfer = "bank_transfer", Cash = "cash", Other = "other" }
+export enum ManualPaymentMethod { Transfer = "transfer", Cash = "cash", Credit = "credit" }
+export enum ManualPaymentStatus { Pending = "pending", Approved = "approved", Rejected = "rejected" }
 
 export interface Money { readonly minorAmount: bigint; readonly currency: Currency }
 export interface BillingAccount {
@@ -46,6 +48,35 @@ export interface Invoice {
   readonly issuedAt: string | null;
   readonly dueAt: string | null;
   readonly paidAt: string | null;
+}
+export interface BillingPlan {
+  readonly id: string;
+  readonly name: string;
+  readonly maxCompanies: number | null;
+  readonly maxEmployeesPerCompany: number | null;
+  readonly monthlyPrice: Money;
+  readonly quarterlyPrice: Money;
+  readonly annualPrice: Money;
+  readonly productCode: string | null;
+  readonly contactOnly: boolean;
+}
+export interface ManualPaymentRequest {
+  readonly id: string;
+  readonly organizationId: OrganizationId;
+  readonly planId: string;
+  readonly billingCycle: BillingCycle;
+  readonly amount: Money;
+  readonly discount: Money;
+  readonly paymentMethod: ManualPaymentMethod;
+  readonly receiptStorageKey: string | null;
+  readonly status: ManualPaymentStatus;
+  readonly notes: string | null;
+  readonly submittedAt: string;
+  readonly reviewedAt: string | null;
+}
+export interface PaymentReceiptUpload {
+  readonly uploadUrl: string;
+  readonly storageKey: string;
 }
 export interface Limit { readonly used: number; readonly maximum: number | null; readonly remaining: number | null }
 export interface OrganizationEntitlements {
@@ -97,7 +128,7 @@ export interface BillingCreditApplication {
   readonly appliedAt: string;
 }
 
-export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE" | "BILLING_CREDIT_INSUFFICIENT" | "BILLING_INVOICE_NOT_APPLICABLE" | "BILLING_CURRENCY_MISMATCH";
+export type BillingFailureCode = "BILLING_ACCESS_DENIED" | "BILLING_ACCOUNT_NOT_FOUND" | "BILLING_REPOSITORY_UNAVAILABLE" | "BILLING_CREDIT_INSUFFICIENT" | "BILLING_INVOICE_NOT_APPLICABLE" | "BILLING_CURRENCY_MISMATCH" | "BILLING_PLAN_NOT_FOUND" | "BILLING_PLAN_CONTACT_REQUIRED" | "BILLING_PAYMENT_REQUEST_INVALID" | "BILLING_RECEIPT_INVALID" | "BILLING_RECEIPT_UNAVAILABLE";
 export class BillingFailure extends Error {
   constructor(readonly code: BillingFailureCode, message: string, options?: ErrorOptions) {
     super(message, options);

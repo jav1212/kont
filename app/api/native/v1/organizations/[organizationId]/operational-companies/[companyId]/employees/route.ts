@@ -31,8 +31,8 @@ export async function GET(request: Request, context: { params: Promise<{ organiz
     });
     await createCompanyActions().getOperational.execute(organization, company);
     const modules = createModulesInfrastructure({ url, serviceRoleKey });
-    await new RequireCompanyModuleCapability(modules.catalog, modules.companyActivations).execute(company, ModuleCapability.PayrollEmployees);
-    return nativeSuccess((await createEmployeeActions().list.execute(company)).map(toEmployeeDto), requestId);
+    await new RequireCompanyModuleCapability(modules.catalog, modules.companyActivations).execute(organization, company, ModuleCapability.PayrollEmployees);
+    return nativeSuccess((await createEmployeeActions().list.execute(organization, company)).map(toEmployeeDto), requestId);
   } catch (cause) {
     console.error("native.employees.failed", { requestId, cause });
     return nativeError("INTERNAL_ERROR", "No se pudieron obtener los empleados.", requestId, 500);

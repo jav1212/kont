@@ -8,3 +8,17 @@ test("company owns its legal and operational invariants", () => {
   assert.equal(company.legalName, "Cliente CA");
   assert.equal(company.suspend().status, CompanyStatus.Suspended);
 });
+
+test("legacy seven-digit Venezuelan tax identifiers are canonicalized", () => {
+  assert.equal(taxId("j-3122611-0"), "J-03122611-0");
+});
+
+test("legacy Venezuelan tax identifier separators are canonicalized", () => {
+  assert.equal(taxId("J31226110"), "J-03122611-0");
+  assert.equal(taxId("J-03.122.611-0"), "J-03122611-0");
+  assert.equal(taxId("j 03122611 0"), "J-03122611-0");
+});
+
+test("invalid Venezuelan tax identifiers remain rejected", () => {
+  assert.throws(() => taxId("J-123-0"), /invalid/);
+});

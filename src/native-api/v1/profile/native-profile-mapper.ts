@@ -7,5 +7,6 @@ export function toNativeCurrentUserDto(profile: CurrentProfile): NativeCurrentUs
     email: profile.email,
     displayName: profile.displayName,
     avatarUrl: profile.avatarUrl,
+    version: profile.version,
   };
 }

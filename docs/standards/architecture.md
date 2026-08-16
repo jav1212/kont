@@ -1,5 +1,7 @@
 # Estándar de arquitectura
 
+Los datos operativos de empresa tienen una sola fuente de verdad: el modelo `public.shared_*` utilizado por Web, Desktop y Mobile. Véase ADR 0030. No se crean copias por cliente ni por esquema de tenant; los contratos modernos se traducen en el adaptador de persistencia y los identificadores compuestos siempre se acotan por organización o tenant.
+
 ## Dependencias
 
 ```text

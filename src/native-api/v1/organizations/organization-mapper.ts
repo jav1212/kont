@@ -8,6 +8,8 @@ export function toOrganizationDto(access: OrganizationAccess): NativeOrganizatio
     slug: access.organization.slug,
     role: access.membership.role,
     permissions: access.membership.permissions,
+    logoUrl: access.organization.logoUrl,
+    version: access.organization.version,
   };
 }
 

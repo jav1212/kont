@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { EvaluateAuthorization, RequireAuthorization, type AccessControlAdministration, type AccessControlRepository, type AuthorizationAudit } from "@kontave/access-control-application";
-import { Role, membershipId, permissionCode, roleId, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionCode } from "@kontave/access-control-domain";
-import { authorizationSnapshotRowSchema, roleRowSchema, type RoleRow } from "./persistence-codecs";
+import { AccessControlFailure, Role, membershipId, permissionCode, roleId, type AuthorizationDecision, type AuthorizationRequest, type AuthorizationSnapshot, type PermissionCode } from "@kontave/access-control-domain";
+import { authorizationSnapshotRowSchema, permissionRowSchema, roleRowSchema, type RoleRow } from "./persistence-codecs";
 
 export interface AccessControlSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
 export function createSupabaseAuthorization(configuration: AccessControlSupabaseConfiguration) {
@@ -30,6 +30,8 @@ export class SupabaseAuthorizationAudit implements AuthorizationAudit {
 }
 export class SupabaseAccessControlAdministration implements AccessControlAdministration {
   constructor(private readonly client: SupabaseClient) {}
+  async listPermissions(){const{data,error}=await this.client.from("access_control_permissions").select("code,resource,action,description").order("resource").order("action");if(error)throw error;return permissionRowSchema.array().parse(data??[]).map(row=>({...row,code:permissionCode(row.code)}));}
+  async listRoles(organizationId:string){const{data,error}=await this.client.from("organization_roles").select("id,organization_id,code,name,description,kind,status,version,organization_role_permissions(permission_code)").eq("organization_id",organizationId).eq("status","active").order("name");if(error)throw error;return roleRowSchema.array().parse(data??[]).map(mapRole);}
   async findRole(targetRoleId: ReturnType<typeof roleId>): Promise<Role | null> {
     const { data, error } = await this.client.from("organization_roles").select("id,organization_id,code,name,description,kind,status,version,organization_role_permissions(permission_code)").eq("id", targetRoleId).maybeSingle();
     if (error) throw error; if (!data) return null;
@@ -39,6 +41,10 @@ export class SupabaseAccessControlAdministration implements AccessControlAdminis
   async assignRole(targetMembershipId: string, targetRoleId: ReturnType<typeof roleId>) { const { error } = await this.client.rpc("access_control_assign_membership_role", { p_membership_id: targetMembershipId, p_role_id: targetRoleId }); if (error) throw error; }
   async replacePermissions(targetRoleId: ReturnType<typeof roleId>, permissions: readonly PermissionCode[]) { const { error } = await this.client.rpc("access_control_replace_role_permissions", { p_role_id: targetRoleId, p_permissions: permissions }); if (error) throw error; }
   async archiveRole(targetRoleId: ReturnType<typeof roleId>) { const { error } = await this.client.from("organization_roles").update({ status: "archived", updated_at: new Date().toISOString() }).eq("id", targetRoleId).eq("kind", "custom"); if (error) throw error; }
+  async createRole(input:{organizationId:string;name:string;description:string;permissions:readonly PermissionCode[];idempotencyKey:string}){const{data,error}=await this.client.rpc("access_control_create_role",{p_organization_id:input.organizationId,p_name:input.name,p_description:input.description,p_permissions:input.permissions,p_idempotency_key:input.idempotencyKey}).single();if(error)throw mapWriteError(error);return mapRole(roleRowSchema.parse(data));}
+  async updateRole(input:{roleId:ReturnType<typeof roleId>;name?:string;description?:string;permissions?:readonly PermissionCode[];expectedVersion:number}){const{data,error}=await this.client.rpc("access_control_update_role",{p_role_id:input.roleId,p_expected_version:input.expectedVersion,p_name:input.name,p_description:input.description,p_permissions:input.permissions,p_update_name:input.name!==undefined,p_update_description:input.description!==undefined,p_update_permissions:input.permissions!==undefined}).single();if(error)throw mapWriteError(error);return mapRole(roleRowSchema.parse(data));}
+  async archiveRoleVersioned(targetRoleId:ReturnType<typeof roleId>,expectedVersion:number){const{data,error}=await this.client.rpc("access_control_archive_role",{p_role_id:targetRoleId,p_expected_version:expectedVersion}).single();if(error)throw mapWriteError(error);return mapRole(roleRowSchema.parse(data));}
 }
+function mapWriteError(error:{message:string}){for(const [code,message] of [["ROLE_VERSION_CONFLICT","Role changed in another client."],["ROLE_IN_USE","A role in use cannot be archived."],["ROLE_NOT_FOUND","Role not found."],["ROLE_INVALID","Role data is invalid."]] as const){if(error.message.includes(code))return new AccessControlFailure(code,message);}return error;}
 function mapRole(row: RoleRow): Role { return new Role({ id: roleId(row.id), organizationId: row.organization_id, code: row.code, name: row.name, description: row.description, kind: row.kind, status: row.status, version: row.version, permissions: row.organization_role_permissions.map((item) => permissionCode(item.permission_code)) }); }
 export type { PermissionCode };

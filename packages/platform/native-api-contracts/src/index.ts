@@ -1,13 +1,27 @@
 export type NativeApiErrorCode =
   | "AUTHENTICATION_REQUIRED"
   | "INVALID_ACCESS_TOKEN"
+  | "SESSION_NOT_FOUND"
+  | "SESSION_REVOKED"
+  | "PASSWORD_POLICY_VIOLATION"
   | "INVALID_REQUEST"
   | "ORGANIZATION_NOT_FOUND"
   | "ORGANIZATION_ACCESS_DENIED"
+  | "ORGANIZATION_VERSION_CONFLICT"
+  | "ORGANIZATION_DATA_INVALID"
+  | "ORGANIZATION_LOGO_INVALID"
+  | "ORGANIZATION_REPOSITORY_UNAVAILABLE"
+  | "ROLE_NOT_FOUND" | "ROLE_VERSION_CONFLICT" | "ROLE_INVALID" | "ROLE_IN_USE" | "SYSTEM_ROLE_IMMUTABLE" | "CANNOT_GRANT_UNOWNED_PERMISSION" | "CANNOT_ASSIGN_OWNER" | "ROLE_OUTSIDE_ORGANIZATION" | "ACCESS_CONTROL_REPOSITORY_UNAVAILABLE"
+  | "MEMBERSHIP_NOT_FOUND" | "MEMBERSHIP_VERSION_CONFLICT" | "INVITATION_NOT_FOUND" | "INVITATION_INVALID" | "INVITATION_ALREADY_PENDING" | "INVITATION_VERSION_CONFLICT"
   | "COMPANY_NOT_FOUND"
   | "COMPANY_ACCESS_DENIED"
   | "BILLING_ACCESS_DENIED"
   | "BILLING_ACCOUNT_NOT_FOUND"
+  | "BILLING_PLAN_NOT_FOUND"
+  | "BILLING_PLAN_CONTACT_REQUIRED"
+  | "BILLING_PAYMENT_REQUEST_INVALID"
+  | "BILLING_RECEIPT_INVALID"
+  | "BILLING_RECEIPT_UNAVAILABLE"
   | "REFERRAL_ACCESS_DENIED"
   | "REFERRAL_NOT_FOUND"
   | "SELF_REFERRAL"
@@ -21,7 +35,24 @@ export type NativeApiErrorCode =
   | "PAYMENT_INVOICE_NOT_PAYABLE"
   | "PAYMENT_REPOSITORY_UNAVAILABLE"
   | "PROFILE_REPOSITORY_UNAVAILABLE"
+  | "PROFILE_DATA_INVALID"
+  | "PROFILE_VERSION_CONFLICT"
+  | "PROFILE_AVATAR_INVALID"
+  | "PROFILE_AVATAR_UNAVAILABLE"
+  | "PREFERENCES_INVALID"
+  | "PREFERENCES_VERSION_CONFLICT"
+  | "PREFERENCES_REPOSITORY_UNAVAILABLE"
   | "PLATFORM_STATUS_REPOSITORY_UNAVAILABLE"
+  | "DOCUMENT_INVALID"
+  | "DOCUMENT_NOT_FOUND"
+  | "DOCUMENT_VERSION_CONFLICT"
+  | "DOCUMENT_FOLDER_NOT_FOUND"
+  | "DOCUMENT_FOLDER_VERSION_CONFLICT"
+  | "DOCUMENT_FOLDER_NOT_EMPTY"
+  | "DOCUMENT_OUTSIDE_ORGANIZATION"
+  | "DOCUMENT_OUTSIDE_COMPANY"
+  | "DOCUMENT_STORAGE_UNAVAILABLE"
+  | "DOCUMENT_REPOSITORY_UNAVAILABLE"
   | "BILLING_CREDIT_INSUFFICIENT"
   | "BILLING_INVOICE_NOT_APPLICABLE"
   | "BILLING_CURRENCY_MISMATCH"
@@ -71,12 +102,30 @@ export interface NativeAuthenticatedUserDto {
 export interface NativeSessionDto {
   readonly user: NativeAuthenticatedUserDto;
 }
+export interface NativeAuthenticatedDeviceSessionDto{readonly id:string;readonly client:"web"|"desktop"|"mobile";readonly deviceName:string|null;readonly operatingSystem:string|null;readonly createdAt:string;readonly lastSeenAt:string;readonly current:boolean}
+export interface NativeChangePasswordDto{readonly newPassword:string;readonly revokeOtherSessions?:boolean}
 
 export interface NativeCurrentUserDto {
   readonly userId: string;
   readonly email: string | null;
   readonly displayName: string | null;
   readonly avatarUrl: string | null;
+  readonly version: number;
+}
+
+export interface NativeUpdateCurrentUserDto { readonly displayName?: string; readonly expectedVersion: number }
+
+export interface NativeUserPreferencesDto {
+  readonly appearance: { readonly colorScheme: "light" | "dark" | "system"; readonly density: "comfortable" | "compact" };
+  readonly regional: { readonly locale: string; readonly timeZone: string };
+  readonly version: number;
+  readonly updatedAt: string;
+}
+
+export interface NativeUpdateUserPreferencesDto {
+  readonly expectedVersion: number;
+  readonly appearance?: Partial<NativeUserPreferencesDto["appearance"]>;
+  readonly regional?: Partial<NativeUserPreferencesDto["regional"]>;
 }
 
 export interface NativeOrganizationDto {
@@ -85,7 +134,25 @@ export interface NativeOrganizationDto {
   readonly slug: string;
   readonly role: "owner" | "admin" | "accountant" | "seller" | "cashier";
   readonly permissions: readonly string[];
+  readonly logoUrl: string | null;
+  readonly version: number;
 }
+export interface NativeUpdateOrganizationDto { readonly name?: string; readonly expectedVersion: number }
+export interface NativePermissionDto { readonly code:string; readonly resource:string; readonly action:string; readonly description:string }
+export interface NativeRoleDto { readonly id:string;readonly organizationId:string;readonly code:string;readonly name:string;readonly description:string;readonly kind:"system"|"custom";readonly permissions:readonly string[];readonly status:"active"|"archived";readonly version:number }
+export interface NativeCreateRoleDto {readonly name:string;readonly description?:string;readonly permissions:readonly string[]}
+export interface NativeUpdateRoleDto {readonly name?:string;readonly description?:string;readonly permissions?:readonly string[];readonly expectedVersion:number}
+export interface NativeOrganizationMemberDto {readonly id:string;readonly kind:"membership"|"invitation";readonly organizationId:string;readonly userId:string|null;readonly email:string;readonly displayName:string|null;readonly avatarUrl:string|null;readonly roleId:string;readonly roleName:string;readonly status:"active"|"invited"|"suspended";readonly version:number;readonly joinedAt:string|null;readonly invitedAt:string|null;readonly expiresAt:string|null}
+export interface NativeCreateMemberInvitationDto{readonly email:string;readonly roleId:string;readonly expiresInDays?:number}
+export interface NativeResendMemberInvitationDto{readonly expectedVersion:number;readonly expiresInDays?:number}
+export interface NativeUpdateMembershipDto{readonly roleId?:string;readonly status?:"active"|"suspended";readonly expectedVersion:number}
+export interface NativeDocumentFolderDto{readonly id:string;readonly organizationId:string;readonly companyId:string|null;readonly parentId:string|null;readonly name:string;readonly createdBy:string;readonly version:number;readonly createdAt:string;readonly updatedAt:string}
+export interface NativeDocumentDto{readonly id:string;readonly organizationId:string;readonly companyId:string|null;readonly folderId:string|null;readonly name:string;readonly contentType:string|null;readonly sizeBytes:number|null;readonly uploadedBy:string;readonly version:number;readonly createdAt:string;readonly updatedAt:string}
+export interface NativeCreateDocumentFolderDto{readonly name:string;readonly companyId?:string|null;readonly parentId?:string|null}
+export interface NativeRenameDocumentFolderDto{readonly name:string;readonly expectedVersion:number}
+export interface NativeCreateDocumentUploadDto{readonly fileName:string}
+export interface NativeRegisterDocumentDto{readonly name:string;readonly storageKey:string;readonly companyId?:string|null;readonly folderId?:string|null;readonly contentType?:string|null;readonly sizeBytes?:number|null}
+export interface NativeMoveDocumentDto{readonly folderId:string|null;readonly expectedVersion:number}
 
 export interface NativeOrganizationCompanyDto {
   readonly id: string;
@@ -148,6 +215,25 @@ export interface NativeInvoiceDto {
 export interface NativePaymentMethodDto {
   readonly id: string; readonly kind: string; readonly provider: string; readonly displayLabel: string; readonly isDefault: boolean;
 }
+export interface NativeBillingPlanDto {
+  readonly id: string; readonly name: string; readonly maxCompanies: number | null;
+  readonly maxEmployeesPerCompany: number | null; readonly monthlyPrice: NativeMoneyDto;
+  readonly quarterlyPrice: NativeMoneyDto; readonly annualPrice: NativeMoneyDto;
+  readonly productCode: string | null; readonly contactOnly: boolean;
+}
+export interface NativeManualPaymentRequestDto {
+  readonly id: string; readonly planId: string; readonly billingCycle: "monthly" | "quarterly" | "annual";
+  readonly amount: NativeMoneyDto; readonly discount: NativeMoneyDto;
+  readonly paymentMethod: "transfer" | "cash" | "credit"; readonly hasReceipt: boolean;
+  readonly status: "pending" | "approved" | "rejected"; readonly notes: string | null;
+  readonly submittedAt: string; readonly reviewedAt: string | null;
+}
+export interface NativeSubmitManualPaymentRequestDto {
+  readonly planId: string; readonly billingCycle: "monthly" | "quarterly" | "annual";
+  readonly paymentMethod: "transfer" | "cash"; readonly receiptStorageKey?: string | null;
+}
+export interface NativeCreatePaymentReceiptUploadDto { readonly fileName: string; readonly contentType: string }
+export interface NativePaymentReceiptUploadDto { readonly uploadUrl: string; readonly storageKey: string }
 export interface NativeBillingOverviewDto {
   readonly account: NativeBillingAccountDto; readonly subscriptions: readonly NativeSubscriptionDto[];
   readonly entitlements: NativeEntitlementsDto; readonly usage: NativeUsageDto;

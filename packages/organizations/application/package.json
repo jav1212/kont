@@ -8,6 +8,6 @@
     "check": "tsc --noEmit",
     "test": "tsx --test test/**/*.test.ts"
   },
-  "dependencies": { "@kontave/organizations-domain": "workspace:*" },
+  "dependencies": { "@kontave/navigation-domain": "workspace:*", "@kontave/organizations-domain": "workspace:*" },
   "devDependencies": { "tsx": "^4.23.12", "typescript": "^5.9.2" }
 }

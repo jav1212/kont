@@ -13,10 +13,10 @@ export function createModulesInfrastructure(configuration: ModulesSupabaseConfig
 
 class SupabaseCompanyModuleActivations implements CompanyModuleActivationRepository {
   constructor(private readonly client: SupabaseClient) {}
-  async list(id: CompanyId) { const {data,error}=await this.client.from("company_module_activations").select("id,company_id,module_id,status,configuration_version,activated_at,suspended_at,module_catalog!inner(code)").eq("company_id",id);if(error)throw repositoryFailure(error);return companyModuleActivationRowSchema.array().parse((data??[]).map((row)=>({...row,module_code:relationCode(row.module_catalog)}))).map(mapCompanyActivation); }
-  async find(id: CompanyId, code: ModuleCode) { return (await this.list(id)).find((activation)=>activation.moduleCode===code)??null; }
-  async activate(id: CompanyId, definition: ModuleDefinition, occurredAt: string) { const {data,error}=await this.client.rpc("activate_company_module",{p_company_id:id,p_module_code:definition.code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
-  async suspend(id: CompanyId, code: ModuleCode, occurredAt: string) { const {data,error}=await this.client.rpc("suspend_company_module",{p_company_id:id,p_module_code:code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
+  async list(organization: OrganizationId,id: CompanyId) { const {data,error}=await this.client.rpc("list_shared_company_module_activations",{p_organization_id:organization,p_company_id:id});if(error)throw repositoryFailure(error);return companyModuleActivationRowSchema.array().parse(data??[]).map(mapCompanyActivation); }
+  async find(organization: OrganizationId,id: CompanyId, code: ModuleCode) { return (await this.list(organization,id)).find((activation)=>activation.moduleCode===code)??null; }
+  async activate(organization: OrganizationId,id: CompanyId, definition: ModuleDefinition, occurredAt: string) { const {data,error}=await this.client.rpc("activate_shared_company_module",{p_organization_id:organization,p_company_id:id,p_module_code:definition.code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
+  async suspend(organization: OrganizationId,id: CompanyId, code: ModuleCode, occurredAt: string) { const {data,error}=await this.client.rpc("suspend_shared_company_module",{p_organization_id:organization,p_company_id:id,p_module_code:code,p_occurred_at:occurredAt});if(error)throw mapModuleError(error);return mapCompanyActivation(companyModuleActivationRowSchema.parse(data)); }
 }
 
 class SupabaseModuleCatalog implements ModuleCatalogRepository {

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { CompanyRepository } from "@kontave/companies-application";
-import { Company, CompanyFailure, companyId, taxId, type CompanyId } from "@kontave/companies-domain";
+import { Company, CompanyCountry, CompanyFailure, CompanyStatus, companyId, taxId, type CompanyId } from "@kontave/companies-domain";
 import { organizationId, type OrganizationId } from "@kontave/organizations-domain";
 import { companyRowSchema } from "./persistence-codecs";
 
@@ -11,23 +11,33 @@ export function createCompanyRepository(configuration: { readonly url: string; r
 class SupabaseCompanyRepository implements CompanyRepository {
   constructor(private readonly client: SupabaseClient) {}
   async listByOrganization(target: OrganizationId) {
-    const { data, error } = await this.client.from("companies").select("id,organization_id,legacy_company_id,legal_name,trade_name,tax_id,country_code,status").eq("organization_id", target).order("legal_name");
+    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif").eq("organization_id", target).order("name");
     if (error) throw repositoryFailure(error);
     return companyRowSchema.array().parse(data ?? []).map(mapCompany);
   }
-  async findById(id: CompanyId) {
-    const { data, error } = await this.client.from("companies").select("id,organization_id,legacy_company_id,legal_name,trade_name,tax_id,country_code,status").eq("id", id).maybeSingle();
+  async findById(targetOrganizationId: OrganizationId, id: CompanyId) {
+    const { data, error } = await this.client.from("shared_companies").select("id,organization_id,name,rif").eq("organization_id", targetOrganizationId).eq("id", id).maybeSingle();
     if (error) throw repositoryFailure(error);
     return data ? mapCompany(companyRowSchema.parse(data)) : null;
   }
   async save(company: Company) {
-    const { error } = await this.client.from("companies").upsert({ id: company.id, organization_id: company.organizationId, legacy_company_id: company.legacyCompanyId, legal_name: company.legalName, trade_name: company.tradeName, tax_id: company.taxId, country_code: company.country, status: company.status, updated_at: new Date().toISOString() });
+    const { error } = await this.client.from("shared_companies").update({ name: company.legalName, rif: company.taxId, updated_at: new Date().toISOString() }).eq("id", company.id).eq("organization_id", company.organizationId);
     if (error) throw repositoryFailure(error);
   }
 }
 
 function mapCompany(row: ReturnType<typeof companyRowSchema.parse>) {
-  return new Company({ id: companyId(row.id), organizationId: organizationId(row.organization_id), legacyCompanyId: row.legacy_company_id, legalName: row.legal_name, tradeName: row.trade_name, taxId: row.tax_id ? taxId(row.tax_id) : null, country: row.country_code, status: row.status });
+  return new Company({ id: companyId(row.id), organizationId: organizationId(row.organization_id), legacyCompanyId: row.id, legalName: row.name, tradeName: null, taxId: readLegacyTaxId(row.rif), country: CompanyCountry.Venezuela, status: CompanyStatus.Active });
+}
+
+/** A corrupt optional RIF must not make every company in a legacy workspace unavailable. */
+function readLegacyTaxId(value: string | null) {
+  if (!value) return null;
+  try { return taxId(value); }
+  catch (cause: unknown) {
+    if (cause instanceof CompanyFailure && cause.code === "COMPANY_INVALID") return null;
+    throw cause;
+  }
 }
 
 function repositoryFailure(cause: unknown) {

@@ -4,6 +4,9 @@ import {
   type AuthenticatedIdentity,
   type AuthenticatedSession,
   type RefreshedAuthenticatedSession,
+  type AuthenticatedDeviceSession,
+  type AuthenticatedSessionId,
+  type NativeSessionClient,
 } from "@kontave/auth-domain";
 
 export const authenticationCodeLength = 8;
@@ -62,6 +65,86 @@ export interface PasswordRecoveryPort {
 
 export interface AccessTokenVerifier {
   verify(accessToken: string): Promise<AuthenticatedIdentity | null>;
+}
+
+export interface NativeSessionRegistry {
+  observe(input: {
+    readonly id: AuthenticatedSessionId;
+    readonly userId: string;
+    readonly client: NativeSessionClient;
+    readonly deviceName: string | null;
+    readonly operatingSystem: string | null;
+  }): Promise<void>;
+  list(userId: string): Promise<readonly Omit<AuthenticatedDeviceSession, "current">[]>;
+  revoke(input: { readonly userId: string; readonly sessionId: AuthenticatedSessionId }): Promise<void>;
+  revokeOthers(input: { readonly userId: string; readonly currentSessionId: AuthenticatedSessionId }): Promise<void>;
+}
+
+export interface CredentialSecurityPort {
+  changePassword(accessToken: string, newPassword: string): Promise<void>;
+}
+
+export class ObserveNativeSession {
+  constructor(private readonly registry: NativeSessionRegistry) {}
+
+  execute(input: Parameters<NativeSessionRegistry["observe"]>[0]): Promise<void> {
+    return this.registry.observe(input);
+  }
+}
+
+export class ListAuthenticatedSessions {
+  constructor(private readonly registry: NativeSessionRegistry) {}
+
+  async execute(userId: string, currentSessionId: AuthenticatedSessionId): Promise<readonly AuthenticatedDeviceSession[]> {
+    return (await this.registry.list(userId)).map((session) => ({
+      ...session,
+      current: session.id === currentSessionId,
+    }));
+  }
+}
+
+export class RevokeAuthenticatedSession {
+  constructor(private readonly registry: NativeSessionRegistry) {}
+
+  execute(input: {
+    readonly userId: string;
+    readonly sessionId: AuthenticatedSessionId;
+    readonly currentSessionId: AuthenticatedSessionId;
+  }): Promise<void> {
+    if (input.sessionId === input.currentSessionId) {
+      throw new AuthenticationFailure("INVALID_INPUT", "Usa cerrar sesión para revocar la sesión actual.");
+    }
+    return this.registry.revoke(input);
+  }
+}
+
+export class RevokeOtherAuthenticatedSessions {
+  constructor(private readonly registry: NativeSessionRegistry) {}
+
+  execute(input: { readonly userId: string; readonly currentSessionId: AuthenticatedSessionId }): Promise<void> {
+    return this.registry.revokeOthers(input);
+  }
+}
+
+export class ChangePassword {
+  constructor(
+    private readonly credentials: CredentialSecurityPort,
+    private readonly sessions: NativeSessionRegistry,
+  ) {}
+
+  async execute(input: {
+    readonly userId: string;
+    readonly accessToken: string;
+    readonly currentSessionId: AuthenticatedSessionId;
+    readonly newPassword: string;
+    readonly revokeOtherSessions: boolean;
+  }): Promise<void> {
+    assertPasswordAccepted(input.newPassword);
+    await this.credentials.changePassword(input.accessToken, input.newPassword);
+    if (input.revokeOtherSessions) {
+      await this.sessions.revokeOthers({ userId: input.userId, currentSessionId: input.currentSessionId });
+    }
+  }
 }
 
 export type AuthenticationGateway = CredentialSignInPort & SessionPort;

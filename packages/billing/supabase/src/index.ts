@@ -1,14 +1,17 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { BillingCreditLedgerRepository, OrganizationBillingRepository } from "@kontave/billing-application";
-import { BillingFailure, Currency, limit, money, type BillingAccount, type BillingCreditApplication, type BillingCreditBalance, type Invoice, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type Subscription } from "@kontave/billing-domain";
+import type { BillingCreditLedgerRepository, OrganizationBillingRepository, PaymentReceiptStorage } from "@kontave/billing-application";
+import { BillingFailure, Currency, limit, money, type BillingAccount, type BillingCreditApplication, type BillingCreditBalance, type BillingPlan, type Invoice, type ManualPaymentRequest, type OrganizationEntitlements, type OrganizationUsage, type PaymentMethod, type PaymentReceiptUpload, type Subscription } from "@kontave/billing-domain";
 import type { OrganizationId } from "@kontave/organizations-domain";
-import { billingAccountRowSchema, billingCreditApplicationRowSchema, entitlementRowSchema, invoiceRowSchema, paymentMethodRowSchema, subscriptionRowSchema } from "./persistence-codecs";
+import { billingAccountRowSchema, billingCreditApplicationRowSchema, billingPlanRowSchema, entitlementRowSchema, invoiceRowSchema, manualPaymentRequestRowSchema, paymentMethodRowSchema, subscriptionRowSchema } from "./persistence-codecs";
 
 export interface BillingSupabaseConfiguration { readonly url: string; readonly serviceRoleKey: string }
 export function createOrganizationBillingRepository(configuration: BillingSupabaseConfiguration): OrganizationBillingRepository {
   return new SupabaseOrganizationBillingRepository(createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }));
+}
+export function createPaymentReceiptStorage(configuration: BillingSupabaseConfiguration): PaymentReceiptStorage {
+  return new SupabasePaymentReceiptStorage(createBillingClient(configuration));
 }
 export function createBillingCreditLedger(configuration: BillingSupabaseConfiguration): BillingCreditLedgerRepository {
   return new SupabaseBillingCreditLedger(createBillingClient(configuration));
@@ -144,6 +147,40 @@ class SupabaseOrganizationBillingRepository implements OrganizationBillingReposi
       }));
     });
   }
+  async listPlans(): Promise<readonly BillingPlan[]> {
+    return this.guard(async () => {
+      const { data, error } = await this.client.from("plans")
+        .select("id,name,max_companies,max_employees_per_company,price_monthly_usd,price_quarterly_usd,price_annual_usd,is_contact_only,products(slug)")
+        .eq("is_active", true).order("price_monthly_usd", { ascending: true });
+      if (error) throw error;
+      return billingPlanRowSchema.array().parse(data ?? []).map(mapPlan);
+    });
+  }
+  async listManualPaymentRequests(organizationId: OrganizationId): Promise<readonly ManualPaymentRequest[]> {
+    return this.guard(async () => {
+      const { data, error } = await this.client.rpc("list_organization_manual_payment_requests", { p_organization_id: organizationId });
+      if (error) throw error;
+      return manualPaymentRequestRowSchema.array().parse(data ?? []).map(mapManualPaymentRequest);
+    });
+  }
+  async createManualPaymentRequest(input: Parameters<OrganizationBillingRepository["createManualPaymentRequest"]>[0]): Promise<ManualPaymentRequest> {
+    return this.guard(async () => {
+      const { data, error } = await this.client.rpc("submit_organization_manual_payment_request", {
+        p_organization_id: input.organizationId,
+        p_plan_id: input.planId,
+        p_billing_cycle: input.billingCycle,
+        p_payment_method: input.paymentMethod,
+        p_receipt_storage_key: input.receiptStorageKey,
+      });
+      if (error) {
+        if (error.message.includes("BILLING_PLAN_NOT_FOUND")) throw new BillingFailure("BILLING_PLAN_NOT_FOUND", "El plan no existe o no está disponible.");
+        if (error.message.includes("BILLING_PLAN_CONTACT_REQUIRED")) throw new BillingFailure("BILLING_PLAN_CONTACT_REQUIRED", "Este plan requiere atención comercial.");
+        if (error.message.includes("BILLING_RECEIPT_INVALID")) throw new BillingFailure("BILLING_RECEIPT_INVALID", "El comprobante no pertenece a la organización.");
+        throw error;
+      }
+      return mapManualPaymentRequest(manualPaymentRequestRowSchema.parse(data));
+    });
+  }
   private async guard<T>(operation: () => Promise<T>): Promise<T> {
     try { return await operation(); }
     catch (cause: unknown) {
@@ -151,6 +188,25 @@ class SupabaseOrganizationBillingRepository implements OrganizationBillingReposi
       throw new BillingFailure("BILLING_REPOSITORY_UNAVAILABLE", "No se pudo consultar la facturación.", { cause });
     }
   }
+}
+
+class SupabasePaymentReceiptStorage implements PaymentReceiptStorage {
+  constructor(private readonly client: SupabaseClient) {}
+  async createUpload(input: { readonly organizationId: OrganizationId; readonly fileName: string; readonly contentType: string }): Promise<PaymentReceiptUpload> {
+    const safeName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const storageKey = `${input.organizationId}/${crypto.randomUUID()}/${safeName}`;
+    const { data, error } = await this.client.storage.from("billing-payment-receipts").createSignedUploadUrl(storageKey);
+    if (error) throw new BillingFailure("BILLING_RECEIPT_UNAVAILABLE", "No se pudo preparar la carga del comprobante.", { cause: error });
+    return { uploadUrl: data.signedUrl, storageKey: data.path };
+  }
+}
+
+function usd(value: string | number) { return money(BigInt(Math.round(Number(value) * 100)), Currency.Usd); }
+function mapPlan(row: ReturnType<typeof billingPlanRowSchema.parse>): BillingPlan {
+  return { id: row.id, name: row.name, maxCompanies: row.max_companies, maxEmployeesPerCompany: row.max_employees_per_company, monthlyPrice: usd(row.price_monthly_usd), quarterlyPrice: usd(row.price_quarterly_usd), annualPrice: usd(row.price_annual_usd), productCode: row.products?.slug ?? null, contactOnly: row.is_contact_only };
+}
+function mapManualPaymentRequest(row: ReturnType<typeof manualPaymentRequestRowSchema.parse>): ManualPaymentRequest {
+  return { id: row.id, organizationId: row.organization_id as OrganizationId, planId: row.plan_id, billingCycle: row.billing_cycle, amount: usd(row.amount_usd), discount: usd(row.discount_usd), paymentMethod: row.payment_method, receiptStorageKey: row.receipt_storage_key, status: row.status, notes: row.notes, submittedAt: row.submitted_at, reviewedAt: row.reviewed_at };
 }
 function mergeLimits(values: readonly (number | null)[]): number | null {
   if (values.length === 0) return 0;

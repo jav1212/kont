@@ -17,3 +17,4 @@ export const authorizationSnapshotRowSchema = z.object({
 });
 export type RoleRow = z.infer<typeof roleRowSchema>;
 export type AuthorizationSnapshotRow = z.infer<typeof authorizationSnapshotRowSchema>;
+export const permissionRowSchema=z.object({code:z.string(),resource:z.string(),action:z.string(),description:z.string()});

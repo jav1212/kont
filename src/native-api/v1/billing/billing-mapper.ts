@@ -1,5 +1,7 @@
 import type { NativeBillingAccountDto, NativeBillingOverviewDto, NativeEntitlementsDto, NativeInvoiceDto, NativePaymentMethodDto, NativeSubscriptionDto, NativeUsageDto } from "@kontave/native-api-contracts";
 import type { BillingAccount, BillingOverview, Invoice, OrganizationEntitlements, OrganizationUsage, PaymentMethod, Subscription } from "@kontave/billing-domain";
+import type { BillingPlan, ManualPaymentRequest } from "@kontave/billing-domain";
+import type { NativeBillingPlanDto, NativeManualPaymentRequestDto } from "@kontave/native-api-contracts";
 
 export const toBillingAccountDto = (value: BillingAccount): NativeBillingAccountDto => ({ ...value, organizationId: value.organizationId });
 export const toSubscriptionDto = (value: Subscription): NativeSubscriptionDto => ({
@@ -22,3 +24,6 @@ export const toBillingOverviewDto = (value: BillingOverview): NativeBillingOverv
   account: toBillingAccountDto(value.account), subscriptions: value.subscriptions.map(toSubscriptionDto),
   entitlements: toEntitlementsDto(value.entitlements), usage: toUsageDto(value.usage),
 });
+const toMoneyDto = (value: { readonly minorAmount: bigint; readonly currency: "USD" | "VES" }) => ({ minorAmount: value.minorAmount.toString(), currency: value.currency });
+export const toBillingPlanDto = (value: BillingPlan): NativeBillingPlanDto => ({ ...value, monthlyPrice: toMoneyDto(value.monthlyPrice), quarterlyPrice: toMoneyDto(value.quarterlyPrice), annualPrice: toMoneyDto(value.annualPrice) });
+export const toManualPaymentRequestDto = (value: ManualPaymentRequest): NativeManualPaymentRequestDto => ({ id: value.id, planId: value.planId, billingCycle: value.billingCycle, amount: toMoneyDto(value.amount), discount: toMoneyDto(value.discount), paymentMethod: value.paymentMethod, hasReceipt: value.receiptStorageKey !== null, status: value.status, notes: value.notes, submittedAt: value.submittedAt, reviewedAt: value.reviewedAt });

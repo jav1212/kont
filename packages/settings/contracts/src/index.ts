@@ -13,7 +13,7 @@ export type SettingsSectionId = "account" | "organization" | "company" | "applic
 export type SettingsEntryId =
   | "account.profile" | "account.appearance" | "account.security"
   | "organization.general" | "organization.members" | "organization.roles" | "organization.billing"
-  | "company.documents" | "application.devices";
+  | "application.devices";
 export type SettingsMessageKey = `settings.${string}`;
 export type SettingsIconKey = "profile" | "appearance" | "security" | "organization" | "members" | "roles" | "billing" | "documents" | "devices";
 
@@ -40,7 +40,6 @@ export interface SettingsEntryDefinition {
 const everyPlatform = Object.freeze([Platform.Web, Platform.Desktop, Platform.Mobile]);
 const authenticated = Object.freeze([SettingsContextRequirement.AuthenticatedUser]);
 const organization = Object.freeze([SettingsContextRequirement.AuthenticatedUser, SettingsContextRequirement.ActiveOrganization]);
-const company = Object.freeze([...organization, SettingsContextRequirement.ActiveCompany]);
 
 export const SETTINGS_SECTIONS: readonly SettingsSectionDefinition[] = Object.freeze([
   { id: "account", labelKey: "settings.section.account", order: 10 },
@@ -57,7 +56,6 @@ export const SETTINGS_ENTRIES: readonly SettingsEntryDefinition[] = Object.freez
   entry("organization.members", "organization", SettingsEntryKind.Administration, SettingsScope.Organization, "members", "settings.members", 20, everyPlatform, organization, [], [permissionCode(PERMISSIONS.MEMBERS_READ)], [permissionCode(PERMISSIONS.MEMBERS_INVITE)], false),
   entry("organization.roles", "organization", SettingsEntryKind.Administration, SettingsScope.Organization, "roles", "settings.roles", 30, everyPlatform, organization, [], [permissionCode(PERMISSIONS.ROLES_READ)], [permissionCode(PERMISSIONS.ROLES_MANAGE)], false),
   entry("organization.billing", "organization", SettingsEntryKind.Administration, SettingsScope.Organization, "billing", "settings.billing", 40, everyPlatform, organization, [], [permissionCode(PERMISSIONS.BILLING_READ)], [permissionCode(PERMISSIONS.BILLING_MANAGE)], false),
-  entry("company.documents", "company", SettingsEntryKind.Configuration, SettingsScope.Company, "documents", "settings.company-documents", 10, everyPlatform, company, [], [permissionCode(PERMISSIONS.COMPANIES_READ)], [permissionCode(PERMISSIONS.COMPANIES_UPDATE)], false),
   entry("application.devices", "application", SettingsEntryKind.Configuration, SettingsScope.Installation, "devices", "settings.devices", 10, [Platform.Web, Platform.Desktop], [SettingsContextRequirement.AuthenticatedUser, SettingsContextRequirement.Installation], [], [], [], true),
 ]);
 

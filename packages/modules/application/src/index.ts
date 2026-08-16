@@ -32,10 +32,10 @@ export interface ModuleEntitlementService {
 }
 
 export interface CompanyModuleActivationRepository {
-  list(companyId: CompanyId): Promise<readonly CompanyModuleActivation[]>;
-  find(companyId: CompanyId, code: ModuleCode): Promise<CompanyModuleActivation | null>;
-  activate(companyId: CompanyId, definition: ModuleDefinition, occurredAt: string): Promise<CompanyModuleActivation>;
-  suspend(companyId: CompanyId, code: ModuleCode, occurredAt: string): Promise<CompanyModuleActivation>;
+  list(organizationId: OrganizationId, companyId: CompanyId): Promise<readonly CompanyModuleActivation[]>;
+  find(organizationId: OrganizationId, companyId: CompanyId, code: ModuleCode): Promise<CompanyModuleActivation | null>;
+  activate(organizationId: OrganizationId, companyId: CompanyId, definition: ModuleDefinition, occurredAt: string): Promise<CompanyModuleActivation>;
+  suspend(organizationId: OrganizationId, companyId: CompanyId, code: ModuleCode, occurredAt: string): Promise<CompanyModuleActivation>;
 }
 
 export class ActivateCompanyModule {
@@ -45,15 +45,15 @@ export class ActivateCompanyModule {
     if (!installed || installed.status !== ModuleInstallationStatus.Active) {
       throw new ModuleFailure("MODULE_NOT_ACTIVE", "The module is not active for the organization.");
     }
-    return this.companyModules.activate(companyId, await requireDefinition(this.catalog, code), occurredAt);
+    return this.companyModules.activate(organizationId, companyId, await requireDefinition(this.catalog, code), occurredAt);
   }
 }
 
 export class RequireCompanyModuleCapability {
   constructor(private readonly catalog: ModuleCatalogRepository, private readonly activations: CompanyModuleActivationRepository) {}
-  async execute(companyId: CompanyId, capability: ModuleCapability): Promise<void> {
+  async execute(organizationId: OrganizationId, companyId: CompanyId, capability: ModuleCapability): Promise<void> {
     const providers = (await this.catalog.list()).filter((definition) => moduleProvides(definition, capability));
-    const active = await this.activations.list(companyId);
+    const active = await this.activations.list(organizationId, companyId);
     const allowed = providers.some((provider) => active.some((activation) => activation.moduleId === provider.id && activation.status === CompanyModuleActivationStatus.Active));
     if (!allowed) throw new ModuleFailure("COMPANY_MODULE_NOT_ACTIVE", "The module capability is not active for this company.");
   }

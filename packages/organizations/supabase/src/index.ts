@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
-  OrganizationDirectory,
   OrganizationPresentationDirectory,
+  OrganizationLogoStorage,
+  OrganizationRepository,
+  OrganizationMembersRepository,
 } from "@kontave/organizations-application";
 import {
   OrganizationFailure,
@@ -17,6 +19,7 @@ import {
   type Permission,
   type UserId,
 } from "@kontave/organizations-domain";
+import { z } from "zod";
 import {
   companyRowSchema,
   membershipRowSchema,
@@ -32,16 +35,31 @@ export interface OrganizationsSupabaseConfiguration {
   readonly serviceRoleKey: string;
 }
 
+const memberProjectionSchema=z.object({id:z.string(),kind:z.enum(["membership","invitation"]),organization_id:z.string(),user_id:z.string().nullable(),email:z.string(),display_name:z.string().nullable(),avatar_url:z.string().nullable(),role_id:z.string(),role_name:z.string(),status:z.enum(["active","invited","suspended"]),version:z.number().int().positive(),joined_at:z.string().nullable(),invited_at:z.string().nullable(),expires_at:z.string().nullable()});
+const invitationResultSchema=z.object({member:memberProjectionSchema,created:z.boolean()});
+export class SupabaseOrganizationMembersRepository implements OrganizationMembersRepository{
+ constructor(private readonly client:SupabaseClient){}
+ async list(id:OrganizationId){const{data,error}=await this.client.rpc("list_organization_members_native",{p_organization_id:id});if(error)throw memberFailure(error);return memberProjectionSchema.array().parse(data??[]).map(mapMember)}
+ async invite(input:Parameters<OrganizationMembersRepository["invite"]>[0]){const{data,error}=await this.client.rpc("invite_organization_member_native",{p_organization_id:input.organizationId,p_actor_user_id:input.actorUserId,p_email:input.email,p_role_id:input.roleId,p_raw_token:input.rawToken,p_token_hash:input.tokenHash,p_idempotency_key:input.idempotencyKey,p_expires_at:input.expiresAt}).single();if(error)throw memberFailure(error);const result=invitationResultSchema.parse(data);return{member:mapMember(result.member),created:result.created}}
+ async resend(input:Parameters<OrganizationMembersRepository["resend"]>[0]){const{data,error}=await this.client.rpc("resend_organization_invitation_native",{p_organization_id:input.organizationId,p_actor_user_id:input.actorUserId,p_invitation_id:input.invitationId,p_raw_token:input.rawToken,p_token_hash:input.tokenHash,p_expires_at:input.expiresAt,p_expected_version:input.expectedVersion}).single();if(error)throw memberFailure(error);return mapMember(memberProjectionSchema.parse(data))}
+ async revokeInvitation(input:Parameters<OrganizationMembersRepository["revokeInvitation"]>[0]){const{error}=await this.client.rpc("revoke_organization_invitation_native",{p_organization_id:input.organizationId,p_actor_user_id:input.actorUserId,p_invitation_id:input.invitationId,p_expected_version:input.expectedVersion});if(error)throw memberFailure(error)}
+ async update(input:Parameters<OrganizationMembersRepository["update"]>[0]){const{data,error}=await this.client.rpc("update_organization_membership_native",{p_organization_id:input.organizationId,p_actor_user_id:input.actorUserId,p_membership_id:input.membershipId,p_role_id:input.roleId,p_status:input.status,p_expected_version:input.expectedVersion,p_update_role:input.roleId!==undefined,p_update_status:input.status!==undefined}).single();if(error)throw memberFailure(error);return mapMember(memberProjectionSchema.parse(data))}
+ async revoke(input:Parameters<OrganizationMembersRepository["revoke"]>[0]){const{error}=await this.client.rpc("revoke_organization_membership_native",{p_organization_id:input.organizationId,p_actor_user_id:input.actorUserId,p_membership_id:input.membershipId,p_expected_version:input.expectedVersion});if(error)throw memberFailure(error)}
+}
+export function createOrganizationMembersRepository(configuration:OrganizationsSupabaseConfiguration){return new SupabaseOrganizationMembersRepository(createClient(configuration.url,configuration.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}))}
+function mapMember(row:z.infer<typeof memberProjectionSchema>){return{id:row.id,kind:row.kind,organizationId:organizationId(row.organization_id),userId:row.user_id?userId(row.user_id):null,email:row.email,displayName:row.display_name,avatarUrl:row.avatar_url,roleId:row.role_id,roleName:row.role_name,status:row.status,version:row.version,joinedAt:row.joined_at,invitedAt:row.invited_at,expiresAt:row.expires_at}}
+function memberFailure(error:{message?:string}){const message=error.message??"";for(const[code,label]of [["ORGANIZATION_ACCESS_DENIED","No tienes permiso para administrar miembros."],["MEMBERSHIP_NOT_FOUND","La membresía no existe."],["MEMBERSHIP_VERSION_CONFLICT","La membresía cambió en otro cliente."],["INVITATION_VERSION_CONFLICT","La invitación cambió en otro cliente."],["INVITATION_ALREADY_PENDING","Ya existe una invitación pendiente."],["INVITATION_INVALID","La invitación no es válida."],["INVITATION_NOT_FOUND","La invitación no existe."]]as const)if(message.includes(code))return new OrganizationFailure(code,label);return repositoryFailure(error)}
+
 export function createOrganizationsDirectory(
   configuration: OrganizationsSupabaseConfiguration,
-): OrganizationDirectory & OrganizationPresentationDirectory {
+): OrganizationRepository & OrganizationPresentationDirectory {
   const client = createClient(configuration.url, configuration.serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return new SupabaseOrganizationDirectory(client);
 }
 
-class SupabaseOrganizationDirectory implements OrganizationDirectory, OrganizationPresentationDirectory {
+class SupabaseOrganizationDirectory implements OrganizationRepository, OrganizationPresentationDirectory {
   constructor(private readonly client: SupabaseClient) {}
 
   async listAccessForUser(targetUserId: UserId): Promise<readonly OrganizationAccess[]> {
@@ -57,7 +75,7 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
 
       const { data: organizationData, error: organizationError } = await this.client
         .from("organizations")
-        .select("id,legacy_tenant_id,name,slug,status")
+        .select("id,legacy_tenant_id,name,slug,status,avatar_url,version")
         .in("id", memberships.map((membership) => membership.organization_id));
       if (organizationError) throw organizationError;
       const organizations = new Map(organizationRowSchema.array().parse(organizationData ?? []).map((row) => [row.id, row]));
@@ -76,6 +94,8 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
             name: organization.name,
             slug: organization.slug,
             status: organization.status,
+            logoUrl: organization.avatar_url,
+            version: organization.version,
           },
           membership: {
             organizationId: organizationId(membership.organization_id),
@@ -94,6 +114,23 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
   async findAccess(targetUserId: UserId, targetOrganizationId: OrganizationId): Promise<OrganizationAccess | null> {
     const access = await this.listAccessForUser(targetUserId);
     return access.find((entry) => entry.organization.id === targetOrganizationId) ?? null;
+  }
+
+  async update(targetOrganizationId: OrganizationId, changes: { readonly name?: string; readonly logoUrl?: string | null }, expectedVersion: number) {
+    const { data, error } = await this.client.rpc("update_organization_native", {
+      p_organization_id: targetOrganizationId,
+      p_expected_version: expectedVersion,
+      p_name: changes.name,
+      p_logo_url: changes.logoUrl,
+      p_update_name: changes.name !== undefined,
+      p_update_logo_url: changes.logoUrl !== undefined,
+    }).single();
+    if (error) {
+      if (error.code === "P0001" && error.message.includes("ORGANIZATION_VERSION_CONFLICT")) throw new OrganizationFailure("ORGANIZATION_VERSION_CONFLICT", "La organización cambió en otro cliente.");
+      throw repositoryFailure(error);
+    }
+    const row = organizationRowSchema.parse(data);
+    return { id: organizationId(row.id), name: row.name, slug: row.slug, status: row.status, logoUrl: row.avatar_url, version: row.version };
   }
 
   async listByOrganizationIds(
@@ -191,6 +228,25 @@ class SupabaseOrganizationDirectory implements OrganizationDirectory, Organizati
       result.set(role, current);
     }
     return result;
+  }
+}
+
+export class SupabaseOrganizationLogoStorage implements OrganizationLogoStorage {
+  private readonly client: SupabaseClient;
+  constructor(configuration: OrganizationsSupabaseConfiguration) { this.client = createClient(configuration.url, configuration.serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } }); }
+  async upload(targetOrganizationId: OrganizationId, logo: { readonly bytes: Uint8Array; readonly contentType: string }): Promise<string> {
+    const extension = logo.contentType === "image/png" ? "png" : logo.contentType === "image/webp" ? "webp" : "jpg";
+    const path = `${targetOrganizationId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await this.client.storage.from("organization-logos").upload(path, logo.bytes, { contentType: logo.contentType });
+    if (error) throw new OrganizationFailure("ORGANIZATION_REPOSITORY_UNAVAILABLE", "No se pudo guardar el logo.", { cause: error });
+    return this.client.storage.from("organization-logos").getPublicUrl(path).data.publicUrl;
+  }
+  async deleteByPublicUrl(targetOrganizationId: OrganizationId, publicUrl: string): Promise<void> {
+    const marker = "/storage/v1/object/public/organization-logos/";
+    const path = decodeURIComponent(new URL(publicUrl).pathname.split(marker)[1] ?? "");
+    if (!path.startsWith(`${targetOrganizationId}/`)) return;
+    const { error } = await this.client.storage.from("organization-logos").remove([path]);
+    if (error) throw new OrganizationFailure("ORGANIZATION_REPOSITORY_UNAVAILABLE", "No se pudo eliminar el logo.", { cause: error });
   }
 }
 

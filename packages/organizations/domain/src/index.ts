@@ -9,6 +9,8 @@ export type UserId = string & { readonly [userIdBrand]: true };
 export enum OrganizationStatus { Active = "active", Suspended = "suspended" }
 export enum OrganizationRole { Owner = "owner", Admin = "admin", Accountant = "accountant", Seller = "seller", Cashier = "cashier" }
 export enum MembershipStatus { Active = "active", Suspended = "suspended" }
+export type OrganizationMemberStatus = "active" | "invited" | "suspended";
+export interface OrganizationMemberProjection { readonly id:string;readonly kind:"membership"|"invitation";readonly organizationId:OrganizationId;readonly userId:UserId|null;readonly email:string;readonly displayName:string|null;readonly avatarUrl:string|null;readonly roleId:string;readonly roleName:string;readonly status:OrganizationMemberStatus;readonly version:number;readonly joinedAt:string|null;readonly invitedAt:string|null;readonly expiresAt:string|null }
 export const OrganizationRelationship = { Personal: "personal", Member: "member", Delegated: "delegated" } as const;
 export type OrganizationRelationship = typeof OrganizationRelationship[keyof typeof OrganizationRelationship];
 export type Permission = `${string}.${string}` | "*";
@@ -18,6 +20,8 @@ export interface Organization {
   readonly name: string;
   readonly slug: string;
   readonly status: OrganizationStatus;
+  readonly logoUrl: string | null;
+  readonly version: number;
 }
 
 export interface OrganizationMembership {
@@ -47,6 +51,15 @@ export interface OrganizationAccess {
 export type OrganizationFailureCode =
   | "ORGANIZATION_NOT_FOUND"
   | "ORGANIZATION_ACCESS_DENIED"
+  | "ORGANIZATION_VERSION_CONFLICT"
+  | "ORGANIZATION_DATA_INVALID"
+  | "ORGANIZATION_LOGO_INVALID"
+  | "MEMBERSHIP_NOT_FOUND"
+  | "MEMBERSHIP_VERSION_CONFLICT"
+  | "INVITATION_NOT_FOUND"
+  | "INVITATION_INVALID"
+  | "INVITATION_ALREADY_PENDING"
+  | "INVITATION_VERSION_CONFLICT"
   | "COMPANY_NOT_FOUND"
   | "COMPANY_ACCESS_DENIED"
   | "ORGANIZATION_REPOSITORY_UNAVAILABLE";

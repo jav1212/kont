@@ -6,8 +6,11 @@ declare const permissionBrand: unique symbol;
 export type RoleId = string & { readonly [roleIdBrand]: true };
 export type MembershipId = string & { readonly [membershipIdBrand]: true };
 export type PermissionCode = PermissionValue & { readonly [permissionBrand]: true };
+export interface PermissionDefinition { readonly code: PermissionCode; readonly resource: string; readonly action: string; readonly description: string }
 
 export const PERMISSIONS = {
+  ORGANIZATIONS_READ: "organizations.read",
+  ORGANIZATIONS_UPDATE: "organizations.update",
   BILLING_READ: "billing.read",
   BILLING_INVOICES_READ: "billing.invoices.read",
   BILLING_PAYMENT_METHODS_READ: "billing.payment_methods.read",
@@ -133,7 +136,7 @@ export class RequiredPermissionPolicy implements Policy {
 export class AuthorizationDenied extends Error {
   constructor(readonly decision: AuthorizationDecision) { super("Access denied."); this.name = "AuthorizationDenied"; }
 }
-export type AccessControlFailureCode = "CANNOT_GRANT_UNOWNED_PERMISSION" | "CANNOT_ASSIGN_OWNER" | "SYSTEM_ROLE_IMMUTABLE" | "ROLE_IN_USE" | "ROLE_OUTSIDE_ORGANIZATION";
+export type AccessControlFailureCode = "CANNOT_GRANT_UNOWNED_PERMISSION" | "CANNOT_ASSIGN_OWNER" | "SYSTEM_ROLE_IMMUTABLE" | "ROLE_IN_USE" | "ROLE_OUTSIDE_ORGANIZATION" | "ROLE_NOT_FOUND" | "ROLE_VERSION_CONFLICT" | "ROLE_INVALID" | "ACCESS_CONTROL_REPOSITORY_UNAVAILABLE";
 export class AccessControlFailure extends Error { constructor(readonly code: AccessControlFailureCode, message: string) { super(message); this.name = "AccessControlFailure"; } }
 function deny(reason: AuthorizationReason, policy: Policy): AuthorizationDecision { return { allowed: false, reason, matchedPolicy: policy.name, policyVersion: policy.version }; }
 function identifier(value: string, field: string): string { const normalized = value.trim(); if (!normalized || normalized.length > 128) throw new TypeError(`${field} is invalid.`); return normalized; }

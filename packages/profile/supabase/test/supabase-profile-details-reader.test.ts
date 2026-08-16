@@ -9,13 +9,14 @@ function sourceWith(result: { readonly data: unknown; readonly error: { readonly
 
 test("maps the legacy profiles row to portable presentation details", async () => {
   const reader = new SupabaseProfileDetailsReader(sourceWith({
-    data: { id: "user-1", name: "  Ada Lovelace  ", avatar_url: "https://example.com/ada.png" },
+    data: { id: "user-1", name: "  Ada Lovelace  ", avatar_url: "https://example.com/ada.png", version: 1 },
     error: null,
   }));
 
   assert.deepEqual(await reader.findByUserId("user-1"), {
     displayName: "Ada Lovelace",
     avatarUrl: "https://example.com/ada.png",
+    version: 1,
   });
 });
 

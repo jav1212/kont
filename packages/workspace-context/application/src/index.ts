@@ -47,7 +47,7 @@ export class ResolveCompanyExecutionContext {
     readonly occurredAt: string;
   }): Promise<CompanyExecutionContext> {
     const accessPath = await this.accessPaths.execute(input);
-    const company = await this.companies.findById(input.companyId);
+    const company = await this.companies.findById(input.targetOrganizationId, input.companyId);
     if (!company) throw new CompanyFailure("COMPANY_NOT_FOUND", "The company does not exist.");
     company.assertBelongsTo(input.targetOrganizationId);
     company.assertOperational();

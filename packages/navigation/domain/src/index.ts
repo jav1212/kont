@@ -80,8 +80,8 @@ export const NAVIGATION_DESTINATIONS = [
   { id: "settings.members", label: "Miembros", parentId: "settings" },
   { id: "settings.roles", label: "Roles y permisos", parentId: "settings" },
   { id: "settings.billing", label: "Facturación", parentId: "settings" },
-  { id: "settings.company-documents", label: "Documentos y reportes", parentId: "settings" },
   { id: "settings.devices", label: "Dispositivos", parentId: "settings" },
+  { id: "organization.invitation.accept", label: "Aceptar invitación", parentId: "home" },
 ] as const satisfies readonly NavigationNode[];
 
 export type NavigationDestinationId = typeof NAVIGATION_DESTINATIONS[number]["id"];
@@ -100,6 +100,7 @@ export interface NavigationParametersByDestination {
   readonly "accounting.journal-entry": { readonly entryId: string };
   readonly "companies.detail": { readonly companyId: string };
   readonly "tools.portal-status-detail": { readonly portalSlug: string };
+  readonly "organization.invitation.accept": { readonly token: string };
 }
 
 type DynamicNavigationDestinationId = keyof NavigationParametersByDestination;
@@ -142,6 +143,7 @@ const REQUIRED_PARAMETERS: Readonly<Partial<Record<NavigationDestinationId, read
   "accounting.journal-entry": ["entryId"],
   "companies.detail": ["companyId"],
   "tools.portal-status-detail": ["portalSlug"],
+  "organization.invitation.accept": ["token"],
 });
 
 export class NavigationCatalog<TId extends string = NavigationDestinationId> {

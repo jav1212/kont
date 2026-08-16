@@ -1,6 +1,29 @@
 export interface AuthenticatedIdentity {
   readonly userId: string;
   readonly email: string | null;
+  readonly sessionId?: string | null;
+}
+
+declare const authenticatedSessionIdBrand: unique symbol;
+export type AuthenticatedSessionId = string & { readonly [authenticatedSessionIdBrand]: true };
+export type NativeSessionClient = "web" | "desktop" | "mobile";
+export interface AuthenticatedDeviceSession {
+  readonly id: AuthenticatedSessionId;
+  readonly userId: string;
+  readonly client: NativeSessionClient;
+  readonly deviceName: string | null;
+  readonly operatingSystem: string | null;
+  readonly createdAt: string;
+  readonly lastSeenAt: string;
+  readonly current: boolean;
+  readonly revokedAt: string | null;
+}
+export function authenticatedSessionId(value: string): AuthenticatedSessionId {
+  const normalized = value.trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalized)) {
+    throw new AuthenticationFailure("INVALID_INPUT", "El identificador de sesión no es válido.");
+  }
+  return normalized as AuthenticatedSessionId;
 }
 
 export interface AuthenticatedSession {
@@ -28,6 +51,8 @@ export type AuthenticationFailureCode =
   | "RATE_LIMITED"
   | "RECOVERY_NOT_VERIFIED"
   | "SESSION_EXPIRED"
+  | "SESSION_NOT_FOUND"
+  | "SESSION_REVOKED"
   | "VERIFICATION_CODE_INVALID";
 
 export class AuthenticationFailure extends Error {

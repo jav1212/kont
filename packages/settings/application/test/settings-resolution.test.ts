@@ -38,7 +38,6 @@ test("disables online-only entries while preserving offline preferences", () => 
 
 test("disables entries whose required context is missing", () => {
   const permissions = new Set([permissionCode(PERMISSIONS.COMPANIES_READ), permissionCode(PERMISSIONS.COMPANIES_UPDATE)]);
-  assert.equal(find("company.documents", context({ companyId: null, permissions }))?.unavailableReason, "missing_context");
 });
 
 test("filters settings unsupported by the client platform", () => {

@@ -96,11 +96,13 @@ export function companyId(value: string): CompanyId {
 }
 
 export function taxId(value: string): TaxId {
-  const normalized = value.trim().toUpperCase().replace(/\s+/g, "");
-  if (!/^[VEJPGC]-\d{8}-\d$/.test(normalized)) {
-    throw new CompanyFailure("COMPANY_INVALID", "The Venezuelan tax identifier is invalid.");
-  }
-  return normalized as TaxId;
+  const compact = value.trim().toUpperCase().replace(/[.\-\s]/g, "");
+  // Historical records may omit the leading zero from the eight-digit RIF
+  // body or use dots/no separators. Only those presentation variants are
+  // canonicalized; every semantic component remains mandatory.
+  const parts = /^([VEJPGC])(\d{7,8})(\d)$/.exec(compact);
+  if (!parts) throw new CompanyFailure("COMPANY_INVALID", "The Venezuelan tax identifier is invalid.");
+  return `${parts[1]}-${parts[2]!.padStart(8, "0")}-${parts[3]}` as TaxId;
 }
 
 function requiredName(value: string): string {
