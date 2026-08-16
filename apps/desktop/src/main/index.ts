@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, powerMonitor, shell } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, powerMonitor, shell } from "electron";
 import { join } from "node:path";
 import type { DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
 import { DeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices-core";
@@ -352,9 +352,7 @@ async function runAuthOperation<T>(operation: (controller: DesktopAuthController
 }
 
 function createWindow(): void {
-  const icon = app.isPackaged
-    ? join(process.resourcesPath, "kontave-icon.png")
-    : join(app.getAppPath(), "../../packages/ui/brand-assets/src/kontave-icon.png");
+  const icon = appIconPath();
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -406,7 +404,24 @@ function createWindow(): void {
   }
 }
 
+function appIconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, "kontave-app-icon.png")
+    : join(app.getAppPath(), "../../packages/ui/brand-assets/src/kontave-app-icon.png");
+}
+
+function applyDesktopApplicationIcon(): void {
+  if (process.platform !== "darwin" || !app.dock) return;
+  const icon = nativeImage.createFromPath(appIconPath());
+  if (icon.isEmpty()) {
+    console.error(JSON.stringify({ level: "error", code: "DESKTOP_APP_ICON_INVALID" }));
+    return;
+  }
+  app.dock.setIcon(icon);
+}
+
 app.whenReady().then(() => {
+  applyDesktopApplicationIcon();
   const supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL ?? import.meta.env.KONTAVE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? import.meta.env.KONTAVE_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {

@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     "./kontave-icon.png": "./src/kontave-icon.png",
+    "./kontave-app-icon.png": "./src/kontave-app-icon.png",
+    "./kontave-app-icon.svg": "./src/kontave-app-icon.svg",
     "./kontave-mark.svg": "./src/kontave-mark.svg"
   },
   "files": ["src"]

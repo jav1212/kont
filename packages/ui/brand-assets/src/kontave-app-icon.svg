@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kontave">
+  <title>Kontave</title>
+  <rect x="12" y="12" width="488" height="488" rx="108" fill="#0B0C14"/>
+  <text x="104" y="348" font-family="Arial Black, Helvetica Neue, Arial, sans-serif" font-weight="900" font-size="300" fill="#fff" letter-spacing="-8">K</text>
+  <circle cx="370" cy="360" r="42" fill="#FF4A18"/>
+</svg>

@@ -66,15 +66,19 @@
     "files": ["out/**/*", "package.json"],
     "extraResources": [
       {
-        "from": "../../packages/ui/brand-assets/src/kontave-icon.png",
-        "to": "kontave-icon.png"
+        "from": "../../packages/ui/brand-assets/src/kontave-app-icon.png",
+        "to": "kontave-app-icon.png"
       }
     ],
     "directories": { "output": "release" },
     "win": {
       "target": ["nsis"],
-      "icon": "../../packages/ui/brand-assets/src/kontave-icon.png",
+      "icon": "../../packages/ui/brand-assets/src/kontave-app-icon.png",
       "artifactName": "Kontave-Desktop-Setup.${ext}"
+    },
+    "mac": {
+      "icon": "../../packages/ui/brand-assets/src/kontave-app-icon.png",
+      "category": "public.app-category.business"
     },
     "nsis": {
       "oneClick": false,
