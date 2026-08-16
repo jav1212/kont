@@ -13,9 +13,9 @@ import {
   subtractMoney,
 } from "@kontave/monetary-domain";
 import type { ProductId, UnitOfMeasure } from "@kontave/products-domain";
-import type { InventoryLocationId, StockEffectId, StockLotId } from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
-import type { StockEffect } from "./operation.js";
+import type { InventoryLocationId, StockEffectId, StockLotId } from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
+import type { StockEffect } from "./operation";
 import {
   absoluteQuantity,
   addQuantity,
@@ -24,7 +24,7 @@ import {
   isPositiveQuantity,
   isZeroQuantity,
   type Quantity,
-} from "./quantity.js";
+} from "./quantity";
 
 export interface UnitCost {
   readonly amount: ExactDecimal;

@@ -4,6 +4,7 @@ export type InventoryFailureCode =
   | "INVENTORY_QUANTITY_INVALID"
   | "INVENTORY_QUANTITY_UNIT_MISMATCH"
   | "INVENTORY_PROFILE_INVALID"
+  | "INVENTORY_PROFILE_VERSION_CONFLICT"
   | "INVENTORY_PROFILE_INACTIVE"
   | "INVENTORY_LOCATION_INVALID"
   | "INVENTORY_LOT_INVALID"
@@ -20,7 +21,8 @@ export type InventoryFailureCode =
   | "INVENTORY_COUNT_INVALID"
   | "INVENTORY_VALUATION_INVALID"
   | "INVENTORY_VALUATION_METHOD_UNSUPPORTED"
-  | "INVENTORY_CURRENCY_MISMATCH";
+  | "INVENTORY_CURRENCY_MISMATCH"
+  | "INVENTORY_REPOSITORY_UNAVAILABLE";
 
 export class InventoryFailure extends Error {
   constructor(readonly code: InventoryFailureCode, message: string, options?: ErrorOptions) {

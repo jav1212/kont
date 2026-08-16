@@ -7,21 +7,21 @@ import type {
   StockCountLineId,
   StockEffectId,
   StockLotId,
-} from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
+} from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
 import {
   InventoryOperation,
   stockEffect,
   type InventoryOperationSource,
   type StockEffect,
-} from "./operation.js";
+} from "./operation";
 import {
   isNegativeQuantity,
   isZeroQuantity,
   subtractQuantity,
   type Quantity,
-} from "./quantity.js";
-import { instant, localDate, type Instant, type LocalDate } from "./temporal.js";
+} from "./quantity";
+import { instant, localDate, type Instant, type LocalDate } from "./temporal";
 
 export interface StockCountLine {
   readonly id: StockCountLineId;

@@ -1,6 +1,6 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import type { ProductCategoryId } from "./identifiers.js";
-import { ProductFailure } from "./product-failure.js";
+import type { ProductCategoryId } from "./identifiers";
+import { ProductFailure } from "./product-failure";
 
 export enum ProductCategoryStatus { Active = "active", Inactive = "inactive" }
 

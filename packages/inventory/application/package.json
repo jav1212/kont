@@ -5,6 +5,6 @@
   "type": "module",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "check": "tsc --noEmit", "test": "tsx --test test/**/*.test.ts" },
-  "dependencies": { "@kontave/organizations-domain": "workspace:*" },
+  "dependencies": { "@kontave/companies-domain": "workspace:*", "@kontave/inventory-domain": "workspace:*", "@kontave/organizations-domain": "workspace:*", "@kontave/products-domain": "workspace:*" },
   "devDependencies": { "@kontave/organizations-domain": "workspace:*", "tsx": "^4.23.12", "typescript": "^5.9.2" }
 }

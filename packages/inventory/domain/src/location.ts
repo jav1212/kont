@@ -1,6 +1,6 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import type { InventoryLocationId } from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
+import type { InventoryLocationId } from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
 
 export type InventoryLocationStatus = "active" | "inactive";
 

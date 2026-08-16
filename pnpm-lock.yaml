@@ -95,6 +95,9 @@ importers:
       '@kontave/inventory-application':
         specifier: workspace:*
         version: link:packages/inventory/application
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:packages/inventory/domain
       '@kontave/inventory-supabase':
         specifier: workspace:*
         version: link:packages/inventory/supabase
@@ -179,6 +182,15 @@ importers:
       '@kontave/preferences-supabase':
         specifier: workspace:*
         version: link:packages/preferences/supabase
+      '@kontave/products-application':
+        specifier: workspace:*
+        version: link:packages/products/application
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:packages/products/domain
+      '@kontave/products-supabase':
+        specifier: workspace:*
+        version: link:packages/products/supabase
       '@kontave/profile-application':
         specifier: workspace:*
         version: link:packages/profile/application
@@ -1231,9 +1243,18 @@ importers:
 
   packages/inventory/application:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:../domain
       '@kontave/organizations-domain':
         specifier: workspace:*
         version: link:../../organizations/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
     devDependencies:
       tsx:
         specifier: ^4.23.12
@@ -1263,9 +1284,18 @@ importers:
 
   packages/inventory/supabase:
     dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
       '@kontave/inventory-application':
         specifier: workspace:*
         version: link:../application
+      '@kontave/inventory-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../../products/domain
       '@supabase/supabase-js':
         specifier: ^2.99.1
         version: 2.99.1
@@ -1974,11 +2004,58 @@ importers:
         specifier: ^5.9.2
         version: 5.9.3
 
+  packages/products/application:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/organizations-domain':
+        specifier: workspace:*
+        version: link:../../organizations/domain
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@kontave/products-testing':
+        specifier: workspace:*
+        version: link:../testing
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/products/domain:
     dependencies:
       '@kontave/companies-domain':
         specifier: workspace:*
         version: link:../../companies/domain
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/products/supabase:
+    dependencies:
+      '@kontave/companies-domain':
+        specifier: workspace:*
+        version: link:../../companies/domain
+      '@kontave/products-application':
+        specifier: workspace:*
+        version: link:../application
+      '@kontave/products-domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@supabase/supabase-js':
+        specifier: ^2.99.1
+        version: 2.99.1
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       tsx:
         specifier: ^4.23.12

@@ -1,7 +1,7 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import type { Barcode, ProductCategoryId, ProductId, Sku } from "./identifiers.js";
-import { ProductFailure } from "./product-failure.js";
-import type { UnitOfMeasure } from "./unit-of-measure.js";
+import type { Barcode, ProductCategoryId, ProductId, Sku } from "./identifiers";
+import { ProductFailure } from "./product-failure";
+import type { UnitOfMeasure } from "./unit-of-measure";
 
 export enum ProductStatus { Active = "active", Inactive = "inactive" }
 

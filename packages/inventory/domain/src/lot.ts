@@ -1,8 +1,8 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { StockLotId } from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
-import { localDate, type LocalDate } from "./temporal.js";
+import type { StockLotId } from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
+import { localDate, type LocalDate } from "./temporal";
 
 export type StockLotStatus = "active" | "blocked" | "depleted";
 

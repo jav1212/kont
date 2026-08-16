@@ -1,7 +1,7 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { StockEffect } from "./operation.js";
-import { InventoryFailure } from "./inventory-failure.js";
+import type { StockEffect } from "./operation";
+import { InventoryFailure } from "./inventory-failure";
 
 export type TrackingPolicy =
   | { readonly method: "none" }

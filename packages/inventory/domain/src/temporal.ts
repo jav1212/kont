@@ -1,4 +1,4 @@
-import { InventoryFailure } from "./inventory-failure.js";
+import { InventoryFailure } from "./inventory-failure";
 
 declare const localDateBrand: unique symbol;
 declare const instantBrand: unique symbol;

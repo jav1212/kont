@@ -1,4 +1,7 @@
 import type { CompanyId, OrganizationId, UserId } from "@kontave/organizations-domain";
+import type { CompanyId as CatalogCompanyId } from "@kontave/companies-domain";
+import type { ReplenishmentPolicy } from "@kontave/inventory-domain";
+import type { ProductId, UnitOfMeasure } from "@kontave/products-domain";
 
 export type InventoryDashboardGranularity = "day";
 export interface InventoryDashboardQuery {
@@ -38,12 +41,19 @@ export interface RecentInventoryDocument {
   readonly transactionCurrency: string;
   readonly sourceTotal: string | null;
 }
+export interface RecentInventoryMovement {
+  readonly id:string;readonly productId:string;readonly productName:string;readonly productSku:string;readonly effectiveDate:string;
+  readonly movementType:string;readonly direction:"inbound"|"outbound";
+  readonly quantity:{readonly value:string;readonly unit:UnitOfMeasure};readonly totalCost:InventoryAmount;readonly reference:string|null;
+}
 export interface InventoryDashboardSnapshot {
   readonly period: { readonly from: string; readonly to: string; readonly granularity: InventoryDashboardGranularity };
   readonly summary: InventoryDashboardSummary;
   readonly charts: readonly InventoryDashboardChartPoint[];
   readonly recentSales: readonly RecentInventoryDocument[];
   readonly recentPurchases: readonly RecentInventoryDocument[];
+  readonly recentInboundMovements:readonly RecentInventoryMovement[];
+  readonly recentOutboundMovements:readonly RecentInventoryMovement[];
   readonly generatedAt: string;
 }
 
@@ -76,3 +86,6 @@ function validDate(value: string): string {
   return value;
 }
 function invalid(message:string){return new InventoryDashboardFailure("INVENTORY_DASHBOARD_INVALID",message)}
+
+export interface ReplenishmentPolicyRepository { update(input:{readonly actorUserId:UserId;readonly organizationId:OrganizationId;readonly companyId:CatalogCompanyId;readonly productId:ProductId;readonly minimumQuantity:string|null;readonly expectedVersion:number}):Promise<ReplenishmentPolicy> }
+export class UpdateReplenishmentPolicy { constructor(private readonly repository:ReplenishmentPolicyRepository){} execute(input:{readonly actorUserId:UserId;readonly organizationId:OrganizationId;readonly companyId:CatalogCompanyId;readonly productId:ProductId;readonly minimumQuantity:string|null;readonly expectedVersion:number}){if(!Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<1)throw new InventoryDashboardFailure("INVENTORY_DASHBOARD_INVALID","expectedVersion is invalid.");if(input.minimumQuantity!==null&&(!/^\d+(?:\.\d{1,4})?$/.test(input.minimumQuantity)||Number(input.minimumQuantity)<0))throw new InventoryDashboardFailure("INVENTORY_DASHBOARD_INVALID","minimumQuantity is invalid.");return this.repository.update(input);} }

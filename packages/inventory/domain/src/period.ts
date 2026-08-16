@@ -1,6 +1,6 @@
 import type { CompanyId } from "@kontave/companies-domain";
-import { InventoryFailure } from "./inventory-failure.js";
-import { instant, inventoryMonth, monthOf, type Instant, type InventoryMonth, type LocalDate } from "./temporal.js";
+import { InventoryFailure } from "./inventory-failure";
+import { instant, inventoryMonth, monthOf, type Instant, type InventoryMonth, type LocalDate } from "./temporal";
 
 export type InventoryPeriodStatus = "open" | "closed";
 

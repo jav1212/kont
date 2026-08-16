@@ -1,10 +1,10 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { InventoryLocationId, StockLotId } from "./identifiers.js";
-import type { InventoryProfile } from "./inventory-profile.js";
-import { InventoryFailure } from "./inventory-failure.js";
-import type { StockEffect } from "./operation.js";
-import { addQuantity, isNegativeQuantity, type Quantity } from "./quantity.js";
+import type { InventoryLocationId, StockLotId } from "./identifiers";
+import type { InventoryProfile } from "./inventory-profile";
+import { InventoryFailure } from "./inventory-failure";
+import type { StockEffect } from "./operation";
+import { addQuantity, isNegativeQuantity, type Quantity } from "./quantity";
 
 export interface StockPositionState {
   readonly companyId: CompanyId;

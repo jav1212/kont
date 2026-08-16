@@ -12,9 +12,9 @@ import {
   subtractMoney,
 } from "@kontave/monetary-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { InventoryLocationId, StockEffectId, StockLotId } from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
-import type { StockEffect } from "./operation.js";
+import type { InventoryLocationId, StockEffectId, StockLotId } from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
+import type { StockEffect } from "./operation";
 import {
   absoluteQuantity,
   addQuantity,
@@ -25,9 +25,9 @@ import {
   subtractQuantity,
   zeroQuantity,
   type Quantity,
-} from "./quantity.js";
-import type { UnitCost, ValuationEffect, ValuationPosition } from "./valuation.js";
-import { ValuationPosition as PositiveValuationPosition } from "./valuation.js";
+} from "./quantity";
+import type { UnitCost, ValuationEffect, ValuationPosition } from "./valuation";
+import { ValuationPosition as PositiveValuationPosition } from "./valuation";
 
 export interface NegativeStockExposure {
   readonly sourceEffectId: StockEffectId;

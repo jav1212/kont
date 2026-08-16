@@ -50,6 +50,24 @@ export type NativeApiErrorCode =
   | "INVENTORY_DASHBOARD_INVALID"
   | "INVENTORY_DASHBOARD_ACCESS_DENIED"
   | "INVENTORY_DASHBOARD_UNAVAILABLE"
+  | "INVENTORY_PROFILE_VERSION_CONFLICT"
+  | "INVENTORY_PROFILE_INVALID"
+  | "INVENTORY_REPOSITORY_UNAVAILABLE"
+  | "PRODUCT_IDENTIFIER_INVALID"
+  | "PRODUCT_INVALID"
+  | "PRODUCT_CATEGORY_INVALID"
+  | "PRODUCT_NOT_FOUND"
+  | "PRODUCT_CATEGORY_NOT_FOUND"
+  | "PRODUCT_VERSION_CONFLICT"
+  | "PRODUCT_CATEGORY_VERSION_CONFLICT"
+  | "PRODUCT_DUPLICATE_SKU"
+  | "PRODUCT_DUPLICATE_BARCODE"
+  | "PRODUCT_DUPLICATE_CATEGORY"
+  | "PRODUCT_OUTSIDE_COMPANY"
+  | "PRODUCT_ACCESS_DENIED"
+  | "PRODUCT_TRANSITION_INVALID"
+  | "PRODUCT_LOCATION_TRACKING_UNAVAILABLE"
+  | "PRODUCT_REPOSITORY_UNAVAILABLE"
   | "PLATFORM_STATUS_REPOSITORY_UNAVAILABLE"
   | "DOCUMENT_INVALID"
   | "DOCUMENT_NOT_FOUND"
@@ -202,14 +220,49 @@ export interface NativeRecentInventoryDocumentDto {
   readonly transactionCurrency: string;
   readonly sourceTotal: string | null;
 }
+export interface NativeRecentInventoryMovementDto{
+  readonly id:string;readonly productId:string;readonly productName:string;readonly productSku:string;readonly effectiveDate:string;
+  readonly movementType:string;readonly direction:"inbound"|"outbound";
+  readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};
+  readonly totalCost:NativeInventoryAmountDto;readonly reference:string|null;
+}
 export interface NativeInventoryDashboardDto {
   readonly period: { readonly from: string; readonly to: string; readonly granularity: "day" };
   readonly summary: NativeInventoryDashboardSummaryDto;
   readonly charts: readonly NativeInventoryDashboardChartPointDto[];
   readonly recentSales: readonly NativeRecentInventoryDocumentDto[];
   readonly recentPurchases: readonly NativeRecentInventoryDocumentDto[];
+  readonly recentInboundMovements:readonly NativeRecentInventoryMovementDto[];
+  readonly recentOutboundMovements:readonly NativeRecentInventoryMovementDto[];
   readonly generatedAt: string;
 }
+
+export type NativeUnitOfMeasure="each"|"kilogram"|"gram"|"meter"|"square_meter"|"cubic_meter"|"liter"|"gallon"|"box"|"roll"|"package";
+export interface NativeProductCategoryDto{readonly id:string;readonly name:string;readonly description:string|null;readonly status:"active"|"inactive";readonly version:number}
+export interface NativeProductInventorySummaryDto{
+  readonly onHand:{readonly quantity:string;readonly unit:NativeUnitOfMeasure};
+  readonly replenishment:{readonly minimumQuantity:string|null;readonly state:"available"|"low"|"out";readonly version:number;readonly updatedAt:string};
+  readonly valuation:{readonly unitCost:string;readonly totalValue:string;readonly currency:"VES"};
+}
+export interface NativeProductDto{
+  readonly id:string;readonly sku:string;readonly barcodes:readonly string[];readonly name:string;readonly description:string|null;
+  readonly category:NativeProductCategoryDto|null;readonly baseUnit:NativeUnitOfMeasure;readonly status:"active"|"inactive";
+  readonly inventory:NativeProductInventorySummaryDto|null;readonly updatedAt:string;readonly version:number;
+}
+export interface NativeProductListDto{
+  readonly items:readonly NativeProductDto[];readonly nextCursor:string|null;readonly total:number;
+  readonly summary:{readonly active:number;readonly inactive:number;readonly lowStock:number;readonly outOfStock:number;readonly inventoryValue:{readonly amount:string;readonly currency:"VES"}};
+}
+export interface NativeProductDetailDto extends NativeProductDto{readonly capabilities:{readonly inventoryEnabled:boolean;readonly locationTracking:boolean;readonly lotTracking:boolean}}
+export interface NativeCreateProductDto{readonly sku:string;readonly barcodes?:readonly string[];readonly name:string;readonly description?:string|null;readonly categoryId?:string|null;readonly baseUnit:NativeUnitOfMeasure}
+export interface NativeUpdateProductDto{readonly sku?:string;readonly barcodes?:readonly string[];readonly name?:string;readonly description?:string|null;readonly categoryId?:string|null;readonly baseUnit?:NativeUnitOfMeasure;readonly expectedVersion:number}
+export interface NativeProductVersionDto{readonly expectedVersion:number}
+export interface NativeUpdateProductInventoryProfileDto{readonly minimumQuantity:string|null;readonly expectedVersion:number}
+export interface NativeProductReplenishmentPolicyDto{readonly productId:string;readonly unit:NativeUnitOfMeasure;readonly minimumQuantity:string|null;readonly version:number;readonly updatedAt:string}
+export interface NativeCreateProductCategoryDto{readonly name:string;readonly description?:string|null}
+export interface NativeUpdateProductCategoryDto{readonly name?:string;readonly description?:string|null;readonly expectedVersion:number}
+export interface NativeProductMovementDto{readonly id:string;readonly effectiveDate:string;readonly type:string;readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};readonly unitCost:{readonly amount:string;readonly currency:"VES"};readonly totalCost:{readonly amount:string;readonly currency:"VES"};readonly balanceQuantity:string;readonly reference:string|null;readonly notes:string|null;readonly createdAt:string}
+export interface NativeProductMovementPageDto{readonly items:readonly NativeProductMovementDto[];readonly nextCursor:string|null}
 
 export interface NativeOrganizationDto {
   readonly id: string;

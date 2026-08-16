@@ -1,4 +1,4 @@
-import { InventoryFailure } from "./inventory-failure.js";
+import { InventoryFailure } from "./inventory-failure";
 
 declare const inventoryLocationIdBrand: unique symbol;
 declare const inventoryOperationIdBrand: unique symbol;

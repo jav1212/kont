@@ -1,16 +1,16 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import { addDecimal, exactDecimal } from "@kontave/monetary-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { InventoryLocationId, InventoryOperationId, StockEffectId, StockLotId } from "./identifiers.js";
-import { InventoryFailure } from "./inventory-failure.js";
+import type { InventoryLocationId, InventoryOperationId, StockEffectId, StockLotId } from "./identifiers";
+import { InventoryFailure } from "./inventory-failure";
 import {
   isNegativeQuantity,
   isPositiveQuantity,
   isZeroQuantity,
   negateQuantity,
   type Quantity,
-} from "./quantity.js";
-import { instant, localDate, type Instant, type LocalDate } from "./temporal.js";
+} from "./quantity";
+import { instant, localDate, type Instant, type LocalDate } from "./temporal";
 
 export type InventoryOperationReason =
   | "opening_balance"

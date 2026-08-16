@@ -7,7 +7,7 @@ import {
   subtractDecimal,
 } from "@kontave/monetary-domain";
 import type { UnitOfMeasure } from "@kontave/products-domain";
-import { InventoryFailure } from "./inventory-failure.js";
+import { InventoryFailure } from "./inventory-failure";
 
 export interface Quantity {
   readonly amount: ExactDecimal;
