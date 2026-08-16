@@ -52,10 +52,22 @@ La experiencia autenticada utiliza una composición específica para teléfono:
 - top bar con marca `K.`, selector central `Kontave.` y avatar de cuenta;
 - selector contextual de workspace, empresa y módulo desde la marca central;
 - contenido inicial determinado por el módulo activo;
-- navegación inferior flotante con `Inicio` y `Más`;
+- navegación inferior flotante con `Inicio`, `BCV` y `Más`;
 - menú de cuenta presentado como bottom sheet al seleccionar el avatar.
 
 El menú de cuenta reúne perfil, facturación, estado de portales, ayuda, configuración y cierre de sesión. Su backdrop usa una transición uniforme de enfoque; no se desplaza junto al sheet.
+
+## Calculadora BCV
+
+El destino `BCV` reproduce de forma nativa el núcleo de la calculadora disponible en producción:
+
+- consulta las tasas oficiales desde `/api/bcv/rates`;
+- prioriza USD, EUR y CNY y permite seleccionar las demás monedas publicadas;
+- convierte divisas a bolívares y bolívares a divisas;
+- muestra la fecha efectiva, tasa activa y listado de tasas disponibles;
+- permite actualizar manualmente y reporta errores mediante el feedback Mobile.
+
+El acceso HTTP vive en `src/bcv/mobile-bcv-source.ts`; la pantalla no importa componentes ni hooks de la aplicación Web.
 
 ## Navegación
 
@@ -108,6 +120,7 @@ La sesión se almacena mediante adaptadores seguros por plataforma. Las solicitu
 | `GET /api/native/v1/organizations/{organizationId}/operational-companies` | Empresas operativas |
 | `GET /api/native/v1/organizations/{organizationId}/companies` | Presentación y logos empresariales |
 | `GET /api/native/v1/organizations/{organizationId}/modules/available?platform=mobile` | Módulos compatibles |
+| `GET /api/bcv/rates` | Tasas oficiales usadas por la calculadora BCV |
 
 ## Estructura
 

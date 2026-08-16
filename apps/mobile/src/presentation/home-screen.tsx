@@ -5,12 +5,14 @@ import type { NavigationTarget } from "@kontave/navigation-domain";
 import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Button, Heading, Screen, Text, nativeTheme } from "@kontave/ui-native";
 import { useAuth } from "../auth/auth-context";
+import { BcvCalculatorScreen } from "./bcv-calculator-screen";
 import { mobileBreadcrumbs, mobileModuleIcon, mobileModuleNavigation, mobileStaticNavigationTarget, type MobileIconName } from "../navigation/mobile-navigation";
 import { MobileWorkspaceProvider, useMobileWorkspace } from "../workspace/mobile-workspace";
 
-type AppTab = "home" | "module" | "activity" | "more";
+type AppTab = "home" | "bcv" | "module" | "activity" | "more";
 const TABS: readonly { readonly id: AppTab; readonly label: string; readonly icon: MobileIconName; readonly activeIcon: MobileIconName }[] = [
   { id: "home", label: "Inicio", icon: "home-outline", activeIcon: "home" },
+  { id: "bcv", label: "BCV", icon: "calculator-outline", activeIcon: "calculator" },
   { id: "more", label: "Más", icon: "ellipsis-horizontal-circle-outline", activeIcon: "ellipsis-horizontal-circle" },
 ];
 
@@ -30,7 +32,7 @@ function WorkspaceShell(): React.JSX.Element {
 
   return <View style={styles.shell}>
     <WorkspaceHeader onGoHome={() => { setTarget(null); setTab("home"); }} onOpenSelector={() => setSelectorOpen(true)} onOpenProfile={() => setAccountOpen(true)} />
-    <View style={styles.body}>{target && tab === "module" ? <DestinationPreview target={target} onBack={() => { setTarget(null); setTab("home"); }} /> : tab === "home" ? <HomeTab onOpenDestination={(id) => { const next = mobileStaticNavigationTarget(id); if (next) { setTarget(next); setTab("module"); } }} /> : tab === "module" ? <ModuleTab activeTarget={target} onOpen={(id) => { const next = mobileStaticNavigationTarget(id); if (next) setTarget(next); }} /> : tab === "activity" ? <ActivityTab /> : <MoreTab />}</View>
+    <View style={styles.body}>{target && tab === "module" ? <DestinationPreview target={target} onBack={() => { setTarget(null); setTab("home"); }} /> : tab === "home" ? <HomeTab onOpenDestination={(id) => { const next = mobileStaticNavigationTarget(id); if (next) { setTarget(next); setTab("module"); } }} /> : tab === "bcv" ? <BcvCalculatorScreen /> : tab === "module" ? <ModuleTab activeTarget={target} onOpen={(id) => { const next = mobileStaticNavigationTarget(id); if (next) setTarget(next); }} /> : tab === "activity" ? <ActivityTab /> : <MoreTab />}</View>
     <BottomNavigation active={tab} onSelect={(next) => { setTarget(null); setTab(next); }} />
     <ContextSelector visible={selectorOpen} onClose={() => setSelectorOpen(false)} />
     <AccountSheet visible={accountOpen} onClose={() => setAccountOpen(false)} onOpenMore={() => { setAccountOpen(false); setTarget(null); setTab("more"); }} />
