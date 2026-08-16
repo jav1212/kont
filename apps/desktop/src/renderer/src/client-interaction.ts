@@ -114,7 +114,7 @@ export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
 }
 
-export async function runSettingsMutation<T>(message: string, operation: () => Promise<T>): Promise<T> {
+export async function runExclusiveMutation<T>(message: string, operation: () => Promise<T>): Promise<T> {
   settingsOperations += 1;
   settingsLease ??= interactionGate.acquire({
     kind: "exclusive_operation",
@@ -133,6 +133,8 @@ export async function runSettingsMutation<T>(message: string, operation: () => P
     }
   }
 }
+
+export const runSettingsMutation = runExclusiveMutation;
 
 export function synchronizeWorkspaceBlock(workspace: DesktopWorkspaceState): void {
   latestWorkspaceState = workspace;

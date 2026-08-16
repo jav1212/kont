@@ -133,7 +133,7 @@ function ChartLabels({ points }: { readonly points: readonly NativeInventoryDash
 function ChartEmpty() { return <div className="inventory-chart__empty">Sin actividad en el período</div>; }
 
 function MovementTable({ movements, empty, formatValue, title }: { readonly movements: readonly NativeRecentInventoryMovementDto[]; readonly empty: string; readonly formatValue: (value: string) => string; readonly title: string }) {
-  return <article className="inventory-documents"><header><h3>{title}</h3></header>{movements.length ? <div className="inventory-documents__list">{movements.map((movement) => <div key={movement.id}><div><strong>{movement.productName}</strong><span>{movement.productSku} · {movementTypeLabel(movement.movementType)}</span></div><div><strong>{formatValue(movement.totalCost.amount)}</strong><span>{formatDecimalQuantity(movement.quantity.value)} {unitLabel(movement.quantity.unit)} · {formatShortDate(movement.effectiveDate)}</span></div></div>)}</div> : <p className="inventory-documents__empty">{empty}</p>}</article>;
+  return <article className="inventory-documents"><header><h3>{title}</h3></header>{movements.length ? <div className="inventory-documents__list">{movements.map((movement) => <div key={movement.id}><div><strong>{movement.productName}</strong><span>{[movement.productSku || null, movementTypeLabel(movement.movementType), movement.reference].filter(Boolean).join(" · ")}</span></div><div><strong>{formatValue(movement.totalCost.amount)}</strong><span>{formatDecimalQuantity(movement.quantity.value)} {unitLabel(movement.quantity.unit)} · {formatShortDate(movement.effectiveDate)}</span></div></div>)}</div> : <p className="inventory-documents__empty">{empty}</p>}</article>;
 }
 
 function InventoryDashboardSkeleton() {
@@ -147,7 +147,7 @@ function formatAmount(value: string, currency: string, rate: { readonly value: s
 }
 function formatShortDate(value: string): string { return new Intl.DateTimeFormat("es-VE", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)); }
 function movementTypeLabel(value:string):string{return({entrada:"Entrada",entrada_compra:"Entrada",entrada_produccion:"Entrada de producción",ajuste_positivo:"Ajuste positivo",devolucion_salida:"Devolución de salida",devolucion_venta:"Devolución",salida:"Salida",salida_venta:"Salida",salida_produccion:"Salida de producción",ajuste_negativo:"Ajuste negativo",devolucion_entrada:"Devolución de entrada",devolucion_compra:"Devolución",autoconsumo:"Autoconsumo"}as Record<string,string>)[value]??value;}
-function formatDecimalQuantity(value:string):string{return new Intl.NumberFormat("es-VE",{maximumFractionDigits:4}).format(Number(value));}
+function formatDecimalQuantity(value:string):string{const [integer="0",fraction=""]=value.split(".");const sign=integer.startsWith("-")?"-":"";const digits=integer.replace("-","").replace(/^0+(?=\d)/,"");const grouped=digits.replace(/\B(?=(\d{3})+(?!\d))/g,".");const decimals=fraction.replace(/0+$/,"");return `${sign}${grouped}${decimals?`,${decimals}`:""}`;}
 function unitLabel(value:NativeRecentInventoryMovementDto["quantity"]["unit"]):string{return({each:"unid.",kilogram:"kg",gram:"g",meter:"m",square_meter:"m²",cubic_meter:"m³",liter:"l",gallon:"gal",box:"caja",roll:"rollo",package:"paquete"})[value];}
 function formatRate(value: string): string { return new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(Number(value)); }
 function currencyName(code: string): string {

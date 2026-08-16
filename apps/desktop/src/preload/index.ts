@@ -108,6 +108,20 @@ const api: KontaveDesktopApi = {
       query,
     ),
   },
+  products: {
+    permissions: (organizationId) => ipcRenderer.invoke(DESKTOP_IPC.getProductPermissions, organizationId),
+    list: (organizationId, companyId, query) => ipcRenderer.invoke(DESKTOP_IPC.listProducts, organizationId, companyId, query),
+    get: (organizationId, companyId, productId) => ipcRenderer.invoke(DESKTOP_IPC.getProduct, organizationId, companyId, productId),
+    create: (organizationId, companyId, command) => ipcRenderer.invoke(DESKTOP_IPC.createProduct, organizationId, companyId, command),
+    update: (organizationId, companyId, productId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProduct, organizationId, companyId, productId, command),
+    setStatus: (organizationId, companyId, productId, active, expectedVersion) => ipcRenderer.invoke(DESKTOP_IPC.setProductStatus, organizationId, companyId, productId, active, expectedVersion),
+    movements: (organizationId, companyId, productId, query) => ipcRenderer.invoke(DESKTOP_IPC.listProductMovements, organizationId, companyId, productId, query),
+    updateInventoryProfile: (organizationId, companyId, productId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProductInventoryProfile, organizationId, companyId, productId, command),
+    categories: (organizationId, companyId, status) => ipcRenderer.invoke(DESKTOP_IPC.listProductCategories, organizationId, companyId, status),
+    createCategory: (organizationId, companyId, command) => ipcRenderer.invoke(DESKTOP_IPC.createProductCategory, organizationId, companyId, command),
+    updateCategory: (organizationId, companyId, categoryId, command) => ipcRenderer.invoke(DESKTOP_IPC.updateProductCategory, organizationId, companyId, categoryId, command),
+    setCategoryStatus: (organizationId, companyId, categoryId, active, expectedVersion) => ipcRenderer.invoke(DESKTOP_IPC.setProductCategoryStatus, organizationId, companyId, categoryId, active, expectedVersion),
+  },
 };
 
 contextBridge.exposeInMainWorld("kontave", api);

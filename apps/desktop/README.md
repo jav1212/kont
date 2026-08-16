@@ -77,7 +77,9 @@ Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. D
 
 El contexto operativo conserva por usuario, organización y empresa la fecha efectiva, moneda de presentación y tasa seleccionada. El proceso principal de Desktop inicializa su coordinador portable mediante un store HTTP autenticado; el renderer recibe únicamente el snapshot resultante.
 
-El tablero de Inventario termina su período en la fecha efectiva del contexto y presenta valores reales de entradas, salidas, movimientos, valoración y documentos recientes. Los nombres técnicos `recentSales` y `recentPurchases` del contrato se presentan como “Más salidas” y “Más entradas”, porque la interfaz describe el flujo físico del inventario y no presupone órdenes que no existen.
+El tablero de Inventario termina su período en la fecha efectiva del contexto y presenta valores reales de entradas, salidas, movimientos y valoración. Las listas recientes consumen `recentInboundMovements` y `recentOutboundMovements`; no interpretan compras o ventas como flujo físico. Los campos comerciales heredados se conservan únicamente por compatibilidad del contrato.
+
+La pantalla de Productos consume el read model compuesto de `products` e `inventory`: identidad, categorías y ciclo de vida pertenecen a Productos; existencia, reposición, movimientos y valoración pertenecen a Inventario. Desktop conserva decimales como strings, trata los cursores como opacos y nunca persiste stock, costos ni versiones como fuente de verdad. Las mutaciones usan concurrencia optimista y no se reintentan automáticamente ante conflictos `409`.
 
 ### Configuración y preferencias
 
@@ -148,6 +150,12 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 | `GET /api/native/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
 | `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/operation-context` | Fecha, moneda y tasa efectivas |
 | `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard` | Snapshot agregado del tablero de Inventario |
+| `GET/POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products` | Listado paginado y creación de productos |
+| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}` | Detalle y edición de productos |
+| `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física |
+| `PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile` | Stock mínimo versionado |
+| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements` | Historial auditable de sólo lectura |
+| `GET/POST/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories` | Administración de categorías |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
 

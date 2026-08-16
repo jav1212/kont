@@ -11,6 +11,17 @@ import type {
   NativeInventoryDashboardDto,
   NativeExchangeRateSetDto,
   NativeOperationalDefaultsDto,
+  NativeCreateProductCategoryDto,
+  NativeCreateProductDto,
+  NativeProductCategoryDto,
+  NativeProductDetailDto,
+  NativeProductDto,
+  NativeProductListDto,
+  NativeProductMovementPageDto,
+  NativeProductReplenishmentPolicyDto,
+  NativeUpdateProductCategoryDto,
+  NativeUpdateProductDto,
+  NativeUpdateProductInventoryProfileDto,
   NativeManualPaymentRequestDto,
   NativeOrganizationDto,
   NativeOrganizationMemberDto,
@@ -65,7 +76,23 @@ export const DESKTOP_IPC = {
   revokeSettingsSession: "settings:session-revoke",
   revokeOtherSettingsSessions: "settings:sessions-revoke-others",
   getInventoryDashboard: "inventory:dashboard",
+  listProducts: "products:list",
+  getProductPermissions: "products:permissions",
+  getProduct: "products:get",
+  createProduct: "products:create",
+  updateProduct: "products:update",
+  setProductStatus: "products:status",
+  listProductMovements: "products:movements",
+  updateProductInventoryProfile: "products:inventory-profile",
+  listProductCategories: "products:categories-list",
+  createProductCategory: "products:categories-create",
+  updateProductCategory: "products:categories-update",
+  setProductCategoryStatus: "products:categories-status",
 } as const;
+
+export interface DesktopProductListQuery { readonly search?: string;readonly status?: "active"|"inactive"|"all";readonly categoryId?: string;readonly stock?: "all"|"available"|"low"|"out";readonly sort?: "name"|"sku"|"stock"|"value"|"updatedAt";readonly direction?: "asc"|"desc";readonly cursor?: string;readonly limit?: number }
+export interface DesktopProductMovementQuery { readonly cursor?: string;readonly limit?: number;readonly from?: string;readonly to?: string;readonly type?: string }
+export type DesktopProductsResult<T> = { readonly ok:true;readonly value:T } | { readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null} };
 
 export interface DesktopInventoryDashboardSnapshot {
   readonly operationContext: NativeOperationalDefaultsDto;
@@ -281,5 +308,19 @@ export interface KontaveDesktopApi {
   };
   readonly inventory: {
     getDashboard(userId: string, organizationId: string, companyId: string, query?: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult>;
+  };
+  readonly products: {
+    permissions(organizationId:string):Promise<DesktopProductsResult<readonly string[]>>;
+    list(organizationId:string,companyId:string,query?:DesktopProductListQuery):Promise<DesktopProductsResult<NativeProductListDto>>;
+    get(organizationId:string,companyId:string,productId:string):Promise<DesktopProductsResult<NativeProductDetailDto>>;
+    create(organizationId:string,companyId:string,command:NativeCreateProductDto):Promise<DesktopProductsResult<NativeProductDto>>;
+    update(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductDto):Promise<DesktopProductsResult<NativeProductDto>>;
+    setStatus(organizationId:string,companyId:string,productId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<NativeProductDto>>;
+    movements(organizationId:string,companyId:string,productId:string,query?:DesktopProductMovementQuery):Promise<DesktopProductsResult<NativeProductMovementPageDto>>;
+    updateInventoryProfile(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductInventoryProfileDto):Promise<DesktopProductsResult<NativeProductReplenishmentPolicyDto>>;
+    categories(organizationId:string,companyId:string,status?:"active"|"inactive"|"all"):Promise<DesktopProductsResult<readonly NativeProductCategoryDto[]>>;
+    createCategory(organizationId:string,companyId:string,command:NativeCreateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
+    updateCategory(organizationId:string,companyId:string,categoryId:string,command:NativeUpdateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
+    setCategoryStatus(organizationId:string,companyId:string,categoryId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
   };
 }

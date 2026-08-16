@@ -29,6 +29,7 @@ import { DesktopPlatformStatusController } from "./platform-status/desktop-platf
 import { DesktopPlatformStatusSource } from "./platform-status/desktop-platform-status-source.js";
 import { DesktopSettingsController } from "./settings/desktop-settings-controller.js";
 import { DesktopInventoryDashboardController } from "./inventory/desktop-inventory-dashboard-controller.js";
+import { DesktopProductsController } from "./products/desktop-products-controller.js";
 
 let mainWindow: BrowserWindow | undefined;
 let updates: ClientUpdateCoordinator | undefined;
@@ -40,6 +41,7 @@ let platformStatus: DesktopPlatformStatusController | undefined;
 let connectivity: ConnectivityMonitor | undefined;
 let settings: DesktopSettingsController | undefined;
 let inventoryDashboard: DesktopInventoryDashboardController | undefined;
+let products: DesktopProductsController | undefined;
 let connectivityInterval: ReturnType<typeof setInterval> | undefined;
 let previousConnectivityAvailability: ConnectivitySnapshot["availability"] = "unknown";
 let initialization: Promise<void> | undefined;
@@ -164,6 +166,18 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.getInventoryDashboard, (_event, actorId: unknown, organizationId: unknown, companyId: unknown, query: unknown) => (
     inventoryDashboardController().getDashboard(actorId, organizationId, companyId, query)
   ));
+  ipcMain.handle(DESKTOP_IPC.listProducts, (_event, organizationId, companyId, query) => productsController().list(organizationId, companyId, query));
+  ipcMain.handle(DESKTOP_IPC.getProductPermissions, (_event, organizationId) => productsController().permissions(organizationId));
+  ipcMain.handle(DESKTOP_IPC.getProduct, (_event, organizationId, companyId, productId) => productsController().get(organizationId, companyId, productId));
+  ipcMain.handle(DESKTOP_IPC.createProduct, (_event, organizationId, companyId, command) => productsController().create(organizationId, companyId, command));
+  ipcMain.handle(DESKTOP_IPC.updateProduct, (_event, organizationId, companyId, productId, command) => productsController().update(organizationId, companyId, productId, command));
+  ipcMain.handle(DESKTOP_IPC.setProductStatus, (_event, organizationId, companyId, productId, active, expectedVersion) => productsController().setStatus(organizationId, companyId, productId, active, expectedVersion));
+  ipcMain.handle(DESKTOP_IPC.listProductMovements, (_event, organizationId, companyId, productId, query) => productsController().movements(organizationId, companyId, productId, query));
+  ipcMain.handle(DESKTOP_IPC.updateProductInventoryProfile, (_event, organizationId, companyId, productId, command) => productsController().updateInventoryProfile(organizationId, companyId, productId, command));
+  ipcMain.handle(DESKTOP_IPC.listProductCategories, (_event, organizationId, companyId, status) => productsController().categories(organizationId, companyId, status));
+  ipcMain.handle(DESKTOP_IPC.createProductCategory, (_event, organizationId, companyId, command) => productsController().createCategory(organizationId, companyId, command));
+  ipcMain.handle(DESKTOP_IPC.updateProductCategory, (_event, organizationId, companyId, categoryId, command) => productsController().updateCategory(organizationId, companyId, categoryId, command));
+  ipcMain.handle(DESKTOP_IPC.setProductCategoryStatus, (_event, organizationId, companyId, categoryId, active, expectedVersion) => productsController().setCategoryStatus(organizationId, companyId, categoryId, active, expectedVersion));
 }
 
 function updateCoordinator(): ClientUpdateCoordinator {
@@ -209,6 +223,11 @@ function settingsController(): DesktopSettingsController {
 function inventoryDashboardController(): DesktopInventoryDashboardController {
   if (!inventoryDashboard) throw new Error("Desktop inventory dashboard is not initialized.");
   return inventoryDashboard;
+}
+
+function productsController(): DesktopProductsController {
+  if (!products) throw new Error("Desktop products are not initialized.");
+  return products;
 }
 
 async function synchronizeWorkspace(state: Awaited<ReturnType<DesktopAuthController["initialize"]>>) {
@@ -446,6 +465,7 @@ app.whenReady().then(() => {
   const apiBaseUrl = import.meta.env.KONTAVE_API_URL ?? "https://kontave.com";
   settings = new DesktopSettingsController(apiBaseUrl, authenticatedRequest);
   inventoryDashboard = new DesktopInventoryDashboardController(apiBaseUrl, authenticatedRequest);
+  products = new DesktopProductsController(apiBaseUrl, authenticatedRequest);
   connectivity = new ConnectivityMonitor({
     probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
     failureThreshold: 3,
