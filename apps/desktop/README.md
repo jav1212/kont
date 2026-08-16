@@ -77,7 +77,7 @@ Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. D
 
 Settings resuelve qué opciones son visibles y si están disponibles, deshabilitadas o en modo de sólo lectura según plataforma, contexto, permisos, módulos y conectividad. Cada capability continúa siendo propietaria de sus datos; Settings no implementa un repositorio genérico de valores.
 
-La capability portable de Preferences ya existe, pero Desktop todavía no consume directamente `@kontave/preferences-domain` ni `@kontave/preferences-application`. Su integración queda pendiente hasta disponer de un adaptador persistente que implemente `UserPreferencesRepository`.
+Desktop consume Preferences mediante el contrato HTTP nativo y conserva la arquitectura hexagonal: React llama una operación IPC tipada, el proceso principal utiliza `@kontave/native-api-client` y el endpoint adapta la capability portable a Supabase. El renderer no conoce HTTP ni persistencia ni depende directamente del repositorio de preferencias.
 
 ### Experiencia del cliente
 
@@ -90,6 +90,8 @@ La capability portable de Preferences ya existe, pero Desktop todavía no consum
 - `@kontave/client-updates-electron`
 
 Cubren conectividad, bloqueos globales, errores copiables, recuperación y actualizaciones de la aplicación.
+
+Las cargas exclusivas de Configuración se presentan mediante `GlobalInteractionGate`; no se renderizan mensajes de carga o error dentro de las pantallas. Los resultados exitosos y fallidos utilizan el sistema global de toasts. Cuando el backend devuelve un error, el toast muestra el tipo técnico y su acción copia el `requestId` único para soporte.
 
 ### Perfil, plan y estado
 
@@ -136,6 +138,22 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 | `GET /api/native/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
+
+## Configuración nativa
+
+El catálogo portable decide qué opciones aparecen según plataforma, permisos, conectividad y contexto activo. Las pantallas disponibles en Desktop cubren:
+
+- Perfil personal y actualización del nombre.
+- Tema y densidad sincronizados con las preferencias del usuario.
+- Cambio de contraseña y sesiones autenticadas.
+- Información general de la organización.
+- Consulta de miembros, invitaciones, roles y permisos.
+- Resumen de facturación, uso, planes y solicitudes de pago.
+- Dispositivos conectados a la instalación.
+
+La carga del snapshot utiliza single-flight por organización y empresa. Esto evita solicitudes duplicadas durante `React.StrictMode` y comparte una única operación cuando dos consumidores solicitan el mismo contexto simultáneamente. Un repositorio opcional sin permiso o no instalado no debe impedir cargar las demás secciones.
+
+Documentos y empleados no pertenecen a la pantalla de Configuración: sus flujos se implementan dentro de los módulos Documentos y Empresas/Nómina respectivamente.
 
 ## Estructura
 
