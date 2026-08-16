@@ -1,4 +1,4 @@
-import { TaxationFailure } from "./taxation-failure.js";
+import { TaxationFailure } from "./taxation-failure";
 
 declare const taxationDateBrand: unique symbol;
 export type TaxationDate = string & { readonly [taxationDateBrand]: true };

@@ -1,9 +1,9 @@
 import type { CompanyId } from "@kontave/companies-domain";
 import type { ProductId } from "@kontave/products-domain";
-import type { ProductTaxProfileId, TaxCode } from "./identifiers.js";
-import { includesDate, rangesOverlap, taxationDate, type TaxationDate } from "./temporal.js";
-import type { TaxTreatment } from "./tax-rule.js";
-import { TaxationFailure } from "./taxation-failure.js";
+import type { ProductTaxProfileId, TaxCode } from "./identifiers";
+import { includesDate, rangesOverlap, taxationDate, type TaxationDate } from "./temporal";
+import type { TaxTreatment } from "./tax-rule";
+import { TaxationFailure } from "./taxation-failure";
 
 export interface ProductTaxAssignment {
   readonly taxCode: TaxCode;

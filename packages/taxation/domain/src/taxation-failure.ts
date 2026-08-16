@@ -8,7 +8,11 @@ export type TaxationFailureCode =
   | "TAXATION_RULE_MISSING"
   | "TAXATION_RULE_AMBIGUOUS"
   | "TAXATION_DECISION_INVALID"
-  | "TAXATION_CURRENCY_MISMATCH";
+  | "TAXATION_CURRENCY_MISMATCH"
+  | "TAXATION_PROFILE_NOT_FOUND"
+  | "TAXATION_VERSION_CONFLICT"
+  | "TAXATION_ACCESS_DENIED"
+  | "TAXATION_REPOSITORY_UNAVAILABLE";
 
 export class TaxationFailure extends Error {
   constructor(readonly code: TaxationFailureCode, message: string, options?: ErrorOptions) {

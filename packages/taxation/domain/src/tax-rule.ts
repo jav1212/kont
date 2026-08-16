@@ -1,7 +1,7 @@
 import { compareDecimal, exactDecimal, type ExactDecimal } from "@kontave/monetary-domain";
-import type { TaxCode, TaxRuleId } from "./identifiers.js";
-import { includesDate, taxationDate, type TaxationDate } from "./temporal.js";
-import { TaxationFailure } from "./taxation-failure.js";
+import type { TaxCode, TaxRuleId } from "./identifiers";
+import { includesDate, taxationDate, type TaxationDate } from "./temporal";
+import { TaxationFailure } from "./taxation-failure";
 
 export type TaxTreatment = "taxed" | "exempt" | "exonerated" | "not_subject";
 export type TaxCalculationMode = "tax_exclusive" | "tax_inclusive";

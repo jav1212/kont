@@ -1,2 +1,2 @@
-export * from "./igtf-policy.js";
-export * from "./iva-policy.js";
+export * from "./igtf-policy";
+export * from "./iva-policy";

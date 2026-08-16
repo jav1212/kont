@@ -1,7 +1,7 @@
 import { compareDecimal, exactDecimal, sameCurrency, type ExactDecimal, type Money } from "@kontave/monetary-domain";
-import type { TaxCode } from "./identifiers.js";
-import type { TaxCalculationMode, TaxTreatment } from "./tax-rule.js";
-import { TaxationFailure } from "./taxation-failure.js";
+import type { TaxCode } from "./identifiers";
+import type { TaxCalculationMode, TaxTreatment } from "./tax-rule";
+import { TaxationFailure } from "./taxation-failure";
 
 export type TaxDecisionSource =
   | { readonly kind: "line"; readonly reference: string }

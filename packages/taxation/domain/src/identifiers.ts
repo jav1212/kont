@@ -1,4 +1,4 @@
-import { TaxationFailure } from "./taxation-failure.js";
+import { TaxationFailure } from "./taxation-failure";
 
 declare const taxProfileIdBrand: unique symbol;
 declare const taxRuleIdBrand: unique symbol;

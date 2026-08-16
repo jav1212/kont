@@ -68,6 +68,9 @@ export type NativeApiErrorCode =
   | "PRODUCT_TRANSITION_INVALID"
   | "PRODUCT_LOCATION_TRACKING_UNAVAILABLE"
   | "PRODUCT_REPOSITORY_UNAVAILABLE"
+  | "PRICING_INVALID" | "PRICING_NOT_FOUND" | "PRICING_PRODUCT_NOT_FOUND" | "PRICING_VERSION_CONFLICT" | "PRICING_ACCESS_DENIED" | "PRICING_REPOSITORY_UNAVAILABLE"
+  | "TAXATION_IDENTIFIER_INVALID" | "TAXATION_DATE_INVALID" | "TAXATION_PROFILE_INVALID" | "TAXATION_ASSIGNMENT_OVERLAP" | "TAXATION_CLASSIFICATION_MISSING" | "TAXATION_RULE_INVALID" | "TAXATION_RULE_MISSING" | "TAXATION_RULE_AMBIGUOUS" | "TAXATION_DECISION_INVALID" | "TAXATION_CURRENCY_MISMATCH" | "TAXATION_PROFILE_NOT_FOUND" | "TAXATION_VERSION_CONFLICT" | "TAXATION_ACCESS_DENIED" | "TAXATION_REPOSITORY_UNAVAILABLE"
+  | "PRODUCT_INSIGHTS_INVALID" | "PRODUCT_INSIGHTS_NOT_FOUND" | "PRODUCT_INSIGHTS_ACCESS_DENIED" | "PRODUCT_INSIGHTS_UNAVAILABLE"
   | "PLATFORM_STATUS_REPOSITORY_UNAVAILABLE"
   | "DOCUMENT_INVALID"
   | "DOCUMENT_NOT_FOUND"
@@ -255,7 +258,14 @@ export interface NativeProductListDto{
   readonly items:readonly NativeProductDto[];readonly nextCursor:string|null;readonly total:number;
   readonly summary:{readonly active:number;readonly inactive:number;readonly lowStock:number;readonly outOfStock:number;readonly inventoryValue:{readonly amount:string;readonly currency:"VES"}};
 }
-export interface NativeProductDetailDto extends NativeProductDto{readonly capabilities:{readonly inventoryEnabled:boolean;readonly locationTracking:boolean;readonly lotTracking:boolean}}
+export type NativeProductSalePricingPolicyDto={readonly mode:"fixed";readonly amount:string;readonly currency:string}|{readonly mode:"markup";readonly percentage:string;readonly currency:string};
+export interface NativeProductSalePricingDto{readonly policy:NativeProductSalePricingPolicyDto|null;readonly version:number;readonly updatedAt:string}
+export interface NativeUpdateProductSalePricingDto{readonly policy:NativeProductSalePricingPolicyDto|null;readonly expectedVersion:number}
+export interface NativeProductTaxationDto{readonly profileId:string;readonly taxCode:string;readonly treatment:"taxed"|"exempt"|"exonerated"|"not_subject";readonly effectiveFrom:string;readonly effectiveTo:string|null;readonly resolvedRate:string;readonly legalBasis:string;readonly ruleVersion:string;readonly version:number}
+export interface NativeUpdateProductTaxationDto{readonly treatment:"taxed"|"exempt"|"exonerated"|"not_subject";readonly effectiveFrom:string;readonly legalBasis:string;readonly expectedVersion:number}
+export interface NativeProductUnitEconomicsAggregateDto{readonly weightedAverageUnitAmount:{readonly amount:string;readonly currency:"VES"};readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};readonly observations:number}
+export interface NativeProductUnitEconomicsDto{readonly period:{readonly from:string;readonly to:string;readonly granularity:"day"|"week"|"month"};readonly latestAcquisition:{readonly effectiveDate:string;readonly sourceUnitAmount:{readonly amount:string;readonly currency:string};readonly unitAmount:{readonly amount:string;readonly currency:"VES"};readonly exchangeRate:string|null;readonly quantity:{readonly value:string;readonly unit:NativeUnitOfMeasure};readonly reference:string|null;readonly documentId:string}|null;readonly points:readonly{readonly bucketStart:string;readonly acquisition:NativeProductUnitEconomicsAggregateDto|null;readonly realizedSale:NativeProductUnitEconomicsAggregateDto|null}[];readonly coverage:{readonly confirmedAcquisitions:number;readonly confirmedSales:number;readonly legacyRecordedOutboundPrices:number};readonly generatedAt:string}
+export interface NativeProductDetailDto extends NativeProductDto{readonly salePricing:NativeProductSalePricingDto|null;readonly taxation:NativeProductTaxationDto|null;readonly productType:"merchandise";readonly valuationMethod:"weighted_average";readonly vat:{readonly code:"general"|"exempt";readonly rate:string}|null;readonly capabilities:{readonly inventoryEnabled:boolean;readonly locationTracking:boolean;readonly lotTracking:boolean;readonly salePricing:boolean;readonly vatConfiguration:boolean;readonly valuationMethodChange:boolean}}
 export interface NativeCreateProductDto{readonly sku:string;readonly barcodes?:readonly string[];readonly name:string;readonly description?:string|null;readonly categoryId?:string|null;readonly baseUnit:NativeUnitOfMeasure}
 export interface NativeUpdateProductDto{readonly sku?:string;readonly barcodes?:readonly string[];readonly name?:string;readonly description?:string|null;readonly categoryId?:string|null;readonly baseUnit?:NativeUnitOfMeasure;readonly expectedVersion:number}
 export interface NativeProductVersionDto{readonly expectedVersion:number}
