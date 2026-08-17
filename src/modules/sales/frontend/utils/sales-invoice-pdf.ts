@@ -154,15 +154,18 @@ export async function generateSalesInvoicePdf(data: SalesInvoicePdfData): Promis
     };
 
     for (const item of data.items) {
-        if (y + 6 > 240) { // page break safeguard
+        const currencyNote = item.currencyCode && item.currencyCode !== "VES" && item.sourceUnitAmount != null
+            ? `\n${item.currencyCode} ${formatN(item.sourceUnitAmount)} · BCV ${formatN(item.exchangeRate ?? 0, 4)}` : "";
+        // Keep a readable gutter before the right-aligned quantity column. A
+        // line that reaches colQty can otherwise render underneath its digits.
+        const descriptionWidth = colQty - colDesc - 14;
+        const lines = doc.splitTextToSize(item.description + currencyNote, descriptionWidth) as string[];
+        const rowH  = Math.max(6, lines.length * 4 + 1);
+        if (y + rowH > 240) { // page break safeguard
             doc.addPage();
             y = 20;
         }
-        const currencyNote = item.currencyCode && item.currencyCode !== "VES" && item.sourceUnitAmount != null
-            ? `\n${item.currencyCode} ${formatN(item.sourceUnitAmount)} · BCV ${formatN(item.exchangeRate ?? 0, 4)}` : "";
-        const lines = doc.splitTextToSize(item.description + currencyNote, 105) as string[];
-        const rowH  = Math.max(6, lines.length * 4 + 1);
-        renderText(doc, lines.join('\n'), colDesc, y + 4, 8.5, false, COLORS.ink, "left");
+        lines.forEach((line, index) => renderText(doc, line, colDesc, y + 4 + index * 4, 8.5, false, COLORS.ink, "left", descriptionWidth));
         renderMono(doc, formatN(item.quantity), colQty,   y + 4, 8.5, false, COLORS.inkMed, "right");
         renderMono(doc, formatN(item.unitPrice), colPrice, y + 4, 8.5, false, COLORS.inkMed, "right");
         renderMono(doc, VAT_LABEL[item.vatRate] ?? '—', colVat, y + 4, 8.5, false, COLORS.inkMed, "center");

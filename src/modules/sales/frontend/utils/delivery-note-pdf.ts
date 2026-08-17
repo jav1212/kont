@@ -170,5 +170,5 @@ export async function buildDeliveryNotePdf(data: DeliveryNotePdfData): Promise<j
 
 export async function generateDeliveryNotePdf(data: DeliveryNotePdfData): Promise<void> {
     const doc = await buildDeliveryNotePdf(data);
-    doc.save(safeFilename(`nota-entrega-${data.document.number}.pdf`));
+    doc.save(`${safeFilename(`nota-entrega-${data.document.number}`)}.pdf`);
 }
