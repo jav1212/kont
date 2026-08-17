@@ -262,11 +262,6 @@ export default function NuevaSalidaManualPage() {
                 notify.error("No hay tasa BCV disponible para esta fecha. Cambia la fecha o usa Bs.");
                 return false;
             }
-            const prod = getProduct(item.productId);
-            if (prod && item.quantity > prod.currentStock) {
-                notify.error(`Stock insuficiente para "${prod.name}": disponible ${fmtN(prod.currentStock)}`);
-                return false;
-            }
         }
         return true;
     }

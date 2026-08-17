@@ -259,11 +259,6 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
         if (!product?.id) { notify.error(`Código de barras no registrado: ${scan.barcode}`); return; }
         setItems((current) => {
-            const requested = current.filter((item) => item.productId === product.id).reduce((sum, item) => sum + item.quantity, 0);
-            if (requested + 1 > product.currentStock) {
-                notify.error(`Stock insuficiente para ${product.name}: disponible ${fmtN(product.currentStock)}`);
-                return current;
-            }
             const existing = current.findIndex((item) => item.productId === product.id);
             if (existing >= 0) return current.map((item, index) => index === existing ? { ...item, quantity: item.quantity + 1, totalLine: round2((item.quantity + 1) * item.unitPrice), baseIVA: round2((item.quantity + 1) * item.unitPrice) } : item);
             const empty = current.findIndex((item) => !item.productId && !item.description.trim());
@@ -418,18 +413,14 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
             if ((it.quantity ?? 0) <= 0) { notify.error("La cantidad debe ser mayor a 0"); return false; }
             if (!isLocalCurrency(it.currency) && !getRate(it.currency)) { notify.error(`Falta la tasa BCV de ${normalizeCurrencyCode(it.currency)}`); return false; }
         }
-        const requestedByProduct = new Map<string, number>();
+        const selectedProductIds = new Set<string>();
         for (const item of items) {
             if (!item.productId) continue;
-            requestedByProduct.set(item.productId, (requestedByProduct.get(item.productId) ?? 0) + item.quantity);
+            selectedProductIds.add(item.productId);
         }
-        for (const [productId, requested] of requestedByProduct) {
+        for (const productId of selectedProductIds) {
             const product = products.find((candidate) => candidate.id === productId);
             if (!product) { notify.error("Uno de los productos seleccionados ya no está disponible"); return false; }
-            if (requested > product.currentStock) {
-                notify.error(`Stock insuficiente para ${product.name}: disponible ${fmtN(product.currentStock)}`);
-                return false;
-            }
         }
         return true;
     }
@@ -470,7 +461,7 @@ export function SalesInvoiceForm({ invoiceId }: SalesInvoiceFormProps) {
         setConfirming(true);
         const saved = await saveSalesInvoice(buildInvoice(), itemsForSave());
         if (!saved) { setConfirming(false); return; }
-        const confirmed = await confirmSalesInvoice(saved.id!);
+        const confirmed = await confirmSalesInvoice(saved.id!, { allowNegativeStock: true });
         if (confirmed && companyId) await loadProducts(companyId, true);
         setConfirming(false);
         if (confirmed && !isExistingInvoice) {

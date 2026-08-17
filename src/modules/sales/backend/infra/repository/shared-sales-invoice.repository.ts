@@ -99,8 +99,8 @@ const invoicePayload = (invoice: SalesInvoice): Record<string, unknown> => ({
     tasa_dolar: invoice.dollarRate ?? invoice.exchangeRates?.find((rate) => normalizeCurrencyCode(rate.currencyCode) === normalizeCurrencyCode(invoice.currency))?.vesPerUnit ?? null, tasa_decimales: invoice.rateDecimals ?? null,
     currency_code: normalizeCurrencyCode(invoice.currency), exchange_rates: invoice.exchangeRates ?? [], taxes: invoice.impuestos ?? [],
     descuento_tipo: invoice.descuentoTipo ?? null, descuento_valor: invoice.descuentoValor ?? null,
-    descuento_monto: invoice.descuentoMonto ?? null, descuento_moneda: invoice.descuentoMoneda ?? "VES", recargo_tipo: invoice.recargoTipo ?? null,
-    recargo_valor: invoice.recargoValor ?? null, recargo_monto: invoice.recargoMonto ?? null, recargo_moneda: invoice.recargoMoneda ?? "VES",
+    descuento_monto: invoice.descuentoMonto ?? null, descuento_moneda: normalizeCurrencyCode(invoice.descuentoMoneda), recargo_tipo: invoice.recargoTipo ?? null,
+    recargo_valor: invoice.recargoValor ?? null, recargo_monto: invoice.recargoMonto ?? null, recargo_moneda: normalizeCurrencyCode(invoice.recargoMoneda),
     igtf_percepcion_aplica: invoice.igtfPerceptionApplies ?? false,
     igtf_percepcion_concepto: invoice.igtfPerceptionConcept ?? null,
     igtf_percepcion_porcentaje: invoice.igtfPerceptionPercentage ?? 0,
@@ -113,9 +113,9 @@ const itemPayload = (item: SalesInvoiceItem): Record<string, unknown> => ({
     cantidad: item.quantity, precio_unitario: item.unitPrice, total_linea: item.totalLine,
     iva_alicuota: item.vatRate, moneda: item.currency, precio_moneda: item.currencyPrice ?? null,
     tasa_dolar: item.exchangeRate ?? item.dollarRate ?? null, descuento_tipo: item.descuentoTipo ?? null,
-    descuento_valor: item.descuentoValor ?? null, descuento_monto: item.descuentoMonto ?? null, descuento_moneda: item.descuentoMoneda ?? "VES",
+    descuento_valor: item.descuentoValor ?? null, descuento_monto: item.descuentoMonto ?? null, descuento_moneda: normalizeCurrencyCode(item.descuentoMoneda),
     recargo_tipo: item.recargoTipo ?? null, recargo_valor: item.recargoValor ?? null,
-    recargo_monto: item.recargoMonto ?? null, recargo_moneda: item.recargoMoneda ?? "VES", base_iva: item.baseIVA ?? null,
+    recargo_monto: item.recargoMonto ?? null, recargo_moneda: normalizeCurrencyCode(item.recargoMoneda), base_iva: item.baseIVA ?? null,
     iva_incluido: item.ivaIncluido ?? false,
 });
 
