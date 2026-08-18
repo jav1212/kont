@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ModuleCode } from "@kontave/modules-domain";
 import type { CurrentUserDto } from "@kontave/client-contracts";
+import { RemoteProfilePort } from "@kontave/client-remote";
 import { companyId, organizationId } from "@kontave/organizations-domain";
 import { WorkspaceContextCoordinator, type WorkspaceContextStatus } from "@kontave/workspace-context-application/coordinator";
 import { createMobileApi } from "../api/mobile-api";
@@ -22,6 +23,7 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
   const auth = useAuth();
   const { feedback, interaction } = useClientExperience();
   const api = useMemo(() => createMobileApi(auth.authenticatedFetch), [auth.authenticatedFetch]);
+  const profile = useMemo(() => new RemoteProfilePort(api), [api]);
   const coordinator = useMemo(() => new WorkspaceContextCoordinator(new MobileWorkspacePortfolioSource(api), new MobileWorkspaceCompanySource(api), new MobileWorkspaceModuleSource(api), new MobileWorkspaceContextStore()), [api]);
   const [state, setState] = useState<WorkspaceContextStatus>(coordinator.current);
   const [user, setUser] = useState<CurrentUserDto | null>(null);
@@ -39,9 +41,9 @@ export function MobileWorkspaceProvider({ children }: { readonly children: React
   }, [feedback, state]);
   useEffect(() => {
     let active = true;
-    void Promise.all([coordinator.restore(), api.get<CurrentUserDto>("/api/client/v1/me")]).then(([, value]) => { if (active) setUser(value); }).catch(() => undefined);
+    void Promise.all([coordinator.restore(), profile.current()]).then(([, value]) => { if (active) setUser(value); }).catch(() => undefined);
     return () => { active = false; };
-  }, [api, coordinator]);
+  }, [coordinator, profile]);
 
   const selectWorkspace = useCallback(async (id: string) => {
     const lease = interaction.acquire({ kind: "exclusive_operation", state: "working", priority: 500, message: "Cambiando workspace", description: "Estamos preparando empresas, módulos y permisos." });

@@ -1,6 +1,12 @@
-import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
+import {
+  KontaveRemoteClient,
+  KontaveRemoteFailure,
+  RemoteAuthenticationPort,
+  RemoteBillingPort,
+  RemoteOrganizationsPort,
+  RemoteProfilePort,
+} from "@kontave/client-remote";
 import type {
-  AuthenticatedDeviceSessionDto,
   BillingOverviewDto,
   BillingPlanDto,
   CurrentUserDto,
@@ -17,15 +23,22 @@ import type { DesktopSettingsResult, DesktopSettingsSnapshot } from "../../share
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopSettingsController {
-  private readonly client: KontaveRemoteClient;
+  private readonly authentication: RemoteAuthenticationPort;
+  private readonly billing: RemoteBillingPort;
+  private readonly organizations: RemoteOrganizationsPort;
+  private readonly profile: RemoteProfilePort;
   private readonly snapshotsInFlight = new Map<string, Promise<DesktopSettingsResult<DesktopSettingsSnapshot>>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new KontaveRemoteClient({
+    const transport = new KontaveRemoteClient({
       baseUrl,
       platform: "desktop",
       authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init),
     });
+    this.authentication = new RemoteAuthenticationPort(transport);
+    this.billing = new RemoteBillingPort(transport);
+    this.organizations = new RemoteOrganizationsPort(transport);
+    this.profile = new RemoteProfilePort(transport);
   }
 
   getSnapshot(organizationId: unknown, companyId: unknown): Promise<DesktopSettingsResult<DesktopSettingsSnapshot>> {
@@ -42,26 +55,25 @@ export class DesktopSettingsController {
   private async loadSnapshot(organizationId: string | null, _companyId: string | null): Promise<DesktopSettingsResult<DesktopSettingsSnapshot>> {
     try {
       const [profile, preferences, sessions] = await Promise.all([
-        this.client.get<CurrentUserDto>("/api/client/v1/me"),
-        this.client.get<UserPreferencesDto>("/api/client/v1/me/preferences"),
-        this.client.get<readonly AuthenticatedDeviceSessionDto[]>("/api/client/v1/auth/sessions"),
+        this.profile.current(),
+        this.profile.preferences(),
+        this.authentication.sessions(),
       ]);
       if (!organizationId) return success({ profile, preferences, organization: null, sessions, members: [], roles: [], billing: null, billingPlans: [], paymentRequests: [], documents: [] });
-      const root = `/api/client/v1/organizations/${encodeURIComponent(organizationId)}`;
       const [organization, members, roles, billing, billingPlans, paymentRequests] = await Promise.all([
-        this.client.get<OrganizationDto>(root),
-        this.optional(`${root}/members`, [] as readonly OrganizationMemberDto[]),
-        this.optional(`${root}/roles`, [] as readonly RoleDto[]),
-        this.optional<BillingOverviewDto | null>(`${root}/billing/overview`, null),
-        this.optional(`${root}/billing/plans`, [] as readonly BillingPlanDto[]),
-        this.optional(`${root}/billing/payment-requests`, [] as readonly ManualPaymentRequestDto[]),
+        this.organizations.get(organizationId),
+        this.optional(() => this.organizations.members(organizationId), [] as readonly OrganizationMemberDto[]),
+        this.optional(() => this.organizations.roles(organizationId), [] as readonly RoleDto[]),
+        this.optional<BillingOverviewDto | null>(() => this.billing.overview(organizationId), null),
+        this.optional(() => this.billing.plans(organizationId), [] as readonly BillingPlanDto[]),
+        this.optional(() => this.billing.paymentRequests(organizationId), [] as readonly ManualPaymentRequestDto[]),
       ]);
       return success({ profile, preferences, organization, sessions, members, roles, billing, billingPlans, paymentRequests, documents: [] });
     } catch (cause: unknown) { return failure(cause); }
   }
 
-  private async optional<T>(path: string, fallback: T): Promise<T> {
-    try { return await this.client.get<T>(path); }
+  private async optional<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+    try { return await operation(); }
     catch (cause: unknown) {
       if (cause instanceof KontaveRemoteFailure && isCapabilityUnavailable(cause.code)) return fallback;
       throw cause;
@@ -69,36 +81,31 @@ export class DesktopSettingsController {
   }
 
   updateProfile(command: unknown): Promise<DesktopSettingsResult<CurrentUserDto>> {
-    return this.mutate("/api/client/v1/me", "PATCH", command as UpdateCurrentUserDto);
+    return execute(() => this.profile.update(command as UpdateCurrentUserDto));
   }
   updatePreferences(command: unknown): Promise<DesktopSettingsResult<UserPreferencesDto>> {
-    return this.mutate("/api/client/v1/me/preferences", "PATCH", command as UpdateUserPreferencesDto);
+    return execute(() => this.profile.updatePreferences(command as UpdateUserPreferencesDto));
   }
   updateOrganization(organizationId: unknown, command: unknown): Promise<DesktopSettingsResult<OrganizationDto>> {
     if (typeof organizationId !== "string" || !organizationId) return Promise.resolve(invalid("La organización no es válida."));
-    return this.mutate(`/api/client/v1/organizations/${encodeURIComponent(organizationId)}`, "PATCH", command as UpdateOrganizationDto);
+    return execute(() => this.organizations.update(organizationId, command as UpdateOrganizationDto));
   }
   changePassword(newPassword: unknown, revokeOtherSessions: unknown): Promise<DesktopSettingsResult<{ readonly changed: boolean }>> {
     if (typeof newPassword !== "string") return Promise.resolve(invalid("La contraseña no es válida."));
-    return this.mutate("/api/client/v1/auth/change-password", "POST", { newPassword, revokeOtherSessions: revokeOtherSessions === true });
+    return execute(() => this.authentication.changePassword({ newPassword, revokeOtherSessions: revokeOtherSessions === true }));
   }
   revokeSession(sessionId: unknown): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>> {
     if (typeof sessionId !== "string" || !sessionId) return Promise.resolve(invalid("La sesión no es válida."));
-    return this.mutate(`/api/client/v1/auth/sessions/${encodeURIComponent(sessionId)}`, "DELETE");
+    return execute(() => this.authentication.revokeSession(sessionId));
   }
   revokeOtherSessions(): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>> {
-    return this.mutate("/api/client/v1/auth/sessions", "DELETE");
+    return execute(() => this.authentication.revokeOtherSessions());
   }
+}
 
-  private async mutate<T>(path: string, method: "PATCH" | "POST" | "DELETE", body?: unknown): Promise<DesktopSettingsResult<T>> {
-    try {
-      const init: RequestInit = body === undefined
-        ? { method }
-        : { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
-      const value = await this.client.request<T>(path, init);
-      return success(value);
-    } catch (cause: unknown) { return failure(cause); }
-  }
+async function execute<T>(operation: () => Promise<T>): Promise<DesktopSettingsResult<T>> {
+  try { return success(await operation()); }
+  catch (cause: unknown) { return failure(cause); }
 }
 
 function success<T>(value: T): DesktopSettingsResult<T> { return { ok: true, value }; }

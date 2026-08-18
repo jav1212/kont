@@ -1,30 +1,22 @@
 import type { ConnectivityProbe } from "@kontave/client-connectivity-application";
 import type { ConnectivityProbeResult } from "@kontave/client-connectivity-contracts";
+import { RemoteConnectivityProbe } from "@kontave/client-remote";
 
+/** Desktop composition adapter for the portable remote reachability probe. */
 export class FetchConnectivityProbe implements ConnectivityProbe {
-  constructor(
-    private readonly healthUrl: string,
-    private readonly timeoutMs = 5_000,
-  ) {}
+  private readonly remote: RemoteConnectivityProbe;
 
-  async check(): Promise<ConnectivityProbeResult> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try {
-      const response = await fetch(this.healthUrl, {
-        method: "GET",
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      if (response.ok || response.status === 401 || response.status === 403) return { reachable: true };
-      return { reachable: false, reason: "service_unreachable" };
-    } catch (cause: unknown) {
-      if (cause instanceof Error && cause.name === "AbortError") {
-        return { reachable: false, reason: "probe_timeout" };
-      }
-      return { reachable: false, reason: "network_unreachable" };
-    } finally {
-      clearTimeout(timeout);
-    }
+  /**
+   * Creates the Desktop connectivity probe.
+   * @param baseUrl - Kontave API origin.
+   * @param timeoutMs - Maximum probe duration in milliseconds.
+   */
+  constructor(baseUrl: string, timeoutMs = 5_000) {
+    this.remote = new RemoteConnectivityProbe(baseUrl, globalThis.fetch, timeoutMs);
+  }
+
+  /** @returns Current Kontave service reachability. */
+  check(): Promise<ConnectivityProbeResult> {
+    return this.remote.check();
   }
 }

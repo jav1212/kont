@@ -1,6 +1,7 @@
 import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import { ModuleCode, type ModuleId } from "@kontave/modules-domain";
-import type { AccessibleOrganizationDto, CompanyDto, OrganizationCompanyDto } from "@kontave/client-contracts";
+import type { AccessibleOrganizationDto } from "@kontave/client-contracts";
+import { RemoteOrganizationsPort } from "@kontave/client-remote";
 import { DelegatedScope, OrganizationAccessPathKind, organizationDelegationId } from "@kontave/organization-delegations-domain";
 import { companyId, organizationId, userId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource, WorkspaceModuleSource, WorkspacePortfolioEntry, WorkspacePortfolioSource } from "@kontave/workspace-context-application";
@@ -11,19 +12,20 @@ import { readMobileSelection, writeMobileSelection } from "./mobile-selection-st
 type MobileApi = ReturnType<typeof createMobileApi>;
 
 export class MobileWorkspacePortfolioSource implements WorkspacePortfolioSource {
-  constructor(private readonly api: MobileApi) {}
+  private readonly organizations: RemoteOrganizationsPort;
+  constructor(api: MobileApi) { this.organizations = new RemoteOrganizationsPort(api); }
   async list(): Promise<readonly WorkspacePortfolioEntry[]> {
-    return (await this.api.get<readonly AccessibleOrganizationDto[]>("/api/client/v1/organization-access")).map(mapWorkspace);
+    return (await this.organizations.accessible()).map(mapWorkspace);
   }
 }
 
 export class MobileWorkspaceCompanySource implements WorkspaceCompanySource {
-  constructor(private readonly api: MobileApi) {}
+  private readonly organizations: RemoteOrganizationsPort;
+  constructor(api: MobileApi) { this.organizations = new RemoteOrganizationsPort(api); }
   async listByOrganization(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {
-    const basePath = `/api/client/v1/organizations/${encodeURIComponent(targetOrganizationId)}`;
     const [values, presentations] = await Promise.all([
-      this.api.get<readonly CompanyDto[]>(`${basePath}/operational-companies`),
-      this.api.get<readonly OrganizationCompanyDto[]>(`${basePath}/companies`),
+      this.organizations.operationalCompanies(targetOrganizationId),
+      this.organizations.companies(targetOrganizationId),
     ]);
     const presentationById = new Map(presentations.map((value) => [value.id, value]));
     const presentationByRif = new Map(presentations.filter((value) => value.rif).map((value) => [value.rif, value]));
@@ -40,9 +42,10 @@ export class MobileWorkspaceCompanySource implements WorkspaceCompanySource {
 }
 
 export class MobileWorkspaceModuleSource implements WorkspaceModuleSource {
-  constructor(private readonly api: MobileApi) {}
+  private readonly organizations: RemoteOrganizationsPort;
+  constructor(api: MobileApi) { this.organizations = new RemoteOrganizationsPort(api); }
   async listAvailable(targetOrganizationId: OrganizationId): Promise<readonly AvailableOrganizationModule[]> {
-    const values = await this.api.get<readonly { readonly id: string; readonly code: string; readonly name: string }[]>(`/api/client/v1/organizations/${encodeURIComponent(targetOrganizationId)}/modules/available?platform=mobile`);
+    const values = await this.organizations.modules(targetOrganizationId, "mobile");
     return values.map((value) => ({ id: value.id as ModuleId, code: readModuleCode(value.code), name: value.name }));
   }
 }

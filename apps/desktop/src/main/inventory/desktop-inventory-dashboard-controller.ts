@@ -2,21 +2,24 @@ import { OperationContextCoordinator, type OperationContextStore } from "@kontav
 import { createOperationalDefaults, localDate, type OperationContextKey, type OperationalDefaults } from "@kontave/operation-context-domain";
 import { currency, currencyCode, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
-import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
-import type { ExchangeRateSetDto, InventoryDashboardDto, OperationalDefaultsDto } from "@kontave/client-contracts";
+import { KontaveRemoteClient, KontaveRemoteFailure, RemoteInventoryPort, RemoteOperationContextPort } from "@kontave/client-remote";
+import type { OperationalDefaultsDto } from "@kontave/client-contracts";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 import type { DesktopInventoryDashboardQuery, DesktopInventoryDashboardResult } from "../../shared/desktop-api";
 
 export class DesktopInventoryDashboardController {
-  private readonly client: KontaveRemoteClient;
+  private readonly inventory: RemoteInventoryPort;
+  private readonly operationContext: RemoteOperationContextPort;
   private readonly dashboardsInFlight = new Map<string, Promise<DesktopInventoryDashboardResult>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new KontaveRemoteClient({
+    const transport = new KontaveRemoteClient({
       baseUrl,
       platform: "desktop",
       authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init),
     });
+    this.inventory = new RemoteInventoryPort(transport);
+    this.operationContext = new RemoteOperationContextPort(transport);
   }
 
   getDashboard(actorId: unknown, organization: unknown, company: unknown, rawQuery: unknown): Promise<DesktopInventoryDashboardResult> {
@@ -37,7 +40,7 @@ export class DesktopInventoryDashboardController {
   private async loadDashboard(actorId: string, organization: string, company: string, query: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult> {
     const key = { userId: userId(actorId as string), organizationId: organizationId(organization as string), companyId: companyId(company as string) };
     try {
-      const store = new RemoteOperationContextStore(this.client);
+      const store = new RemoteOperationContextStore(this.operationContext);
       const coordinator = new OperationContextCoordinator(store, {
         historical: async () => { throw new Error("Desktop delegates exchange-rate resolution to the native API."); },
       }, desktopClock);
@@ -46,10 +49,9 @@ export class DesktopInventoryDashboardController {
       if (state.status !== "ready") throw state.status === "failed" ? state.failure : new Error("El contexto operativo no está disponible.");
       const to = query.to ?? state.value.effectiveDate;
       const from = query.from ?? `${to.slice(0, 8)}01`;
-      const root = operationRoot(key);
       const [dashboard, exchangeRates] = await Promise.all([
-        this.client.get<InventoryDashboardDto>(`${root.replace("/operation-context", "/inventory/dashboard")}?from=${from}&to=${to}&granularity=day&limit=5`),
-        this.client.get<ExchangeRateSetDto>(`${root}/exchange-rates?date=${encodeURIComponent(to)}`),
+        this.inventory.dashboard(organization, company, { from, to, granularity: "day", limit: 5 }),
+        this.operationContext.exchangeRates(organization, company, to),
       ]);
       return { ok: true, value: { operationContext: encodeOperationalDefaults(state.value), exchangeRates, dashboard } };
     } catch (cause: unknown) {
@@ -59,15 +61,15 @@ export class DesktopInventoryDashboardController {
 }
 
 class RemoteOperationContextStore implements OperationContextStore {
-  constructor(private readonly client: KontaveRemoteClient) {}
+  constructor(private readonly remote: RemoteOperationContextPort) {}
   async load(key: OperationContextKey): Promise<OperationalDefaults | null> {
-    return decodeOperationalDefaults(await this.client.get<OperationalDefaultsDto>(operationRoot(key)), key);
+    return decodeOperationalDefaults(await this.remote.get(key.organizationId, key.companyId), key);
   }
   async save(value: OperationalDefaults, expectedVersion: number): Promise<OperationalDefaults> {
-    const dto = await this.client.request<OperationalDefaultsDto>(operationRoot(value.key), {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ expectedVersion, effectiveDate: value.effectiveDate, presentationCurrency: value.presentationCurrency }),
+    const dto = await this.remote.update(value.key.organizationId, value.key.companyId, {
+      expectedVersion,
+      effectiveDate: value.effectiveDate,
+      presentationCurrency: value.presentationCurrency,
     });
     return decodeOperationalDefaults(dto, value.key);
   }
@@ -78,10 +80,6 @@ const desktopClock = {
   now: () => new Date().toISOString(),
   today: () => localDate(new Date().toISOString().slice(0, 10)),
 };
-
-function operationRoot(key: OperationContextKey): string {
-  return `/api/client/v1/organizations/${encodeURIComponent(key.organizationId)}/companies/${encodeURIComponent(key.companyId)}/operation-context`;
-}
 
 function decodeOperationalDefaults(dto: OperationalDefaultsDto, key: OperationContextKey): OperationalDefaults {
   const selection = dto.exchangeRate.status === "unavailable"

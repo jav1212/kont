@@ -1,15 +1,17 @@
 import { localDate } from "@kontave/operation-context-domain";
-import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
-import type { ExchangeRateSetDto, OperationalDefaultsDto, PurchasingDashboardDto } from "@kontave/client-contracts";
+import { KontaveRemoteClient, KontaveRemoteFailure, RemoteOperationContextPort, RemotePurchasingPort } from "@kontave/client-remote";
 import type { DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardResult } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopPurchasingDashboardController {
-  private readonly client: KontaveRemoteClient;
+  private readonly purchasing: RemotePurchasingPort;
+  private readonly operationContext: RemoteOperationContextPort;
   private readonly inFlight = new Map<string, Promise<DesktopPurchasingDashboardResult>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new KontaveRemoteClient({ baseUrl, platform: "desktop", authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init) });
+    const transport = new KontaveRemoteClient({ baseUrl, platform: "desktop", authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init) });
+    this.purchasing = new RemotePurchasingPort(transport);
+    this.operationContext = new RemoteOperationContextPort(transport);
   }
 
   getDashboard(actor: unknown, organization: unknown, company: unknown, raw: unknown): Promise<DesktopPurchasingDashboardResult> {
@@ -26,14 +28,13 @@ export class DesktopPurchasingDashboardController {
 
   private async load(organization: string, company: string, query: DesktopPurchasingDashboardQuery): Promise<DesktopPurchasingDashboardResult> {
     try {
-      const root = `/api/client/v1/organizations/${encodeURIComponent(organization)}/companies/${encodeURIComponent(company)}`;
-      const context = await this.client.get<OperationalDefaultsDto>(`${root}/operation-context`);
+      const context = await this.operationContext.get(organization, company);
       const period = resolvePurchasingDashboardPeriod(context.effectiveDate, query);
       const limit = query.recentLimit ?? 5;
       const rateDate = period.to > context.effectiveDate ? context.effectiveDate : period.to;
       const [dashboard, exchangeRates] = await Promise.all([
-        this.client.get<PurchasingDashboardDto>(`${root}/purchasing/dashboard?from=${period.from}&to=${period.to}&granularity=day&limit=${limit}`),
-        this.client.get<ExchangeRateSetDto>(`${root}/operation-context/exchange-rates?date=${encodeURIComponent(rateDate)}`),
+        this.purchasing.dashboard(organization, company, { ...period, granularity: "day", limit }),
+        this.operationContext.exchangeRates(organization, company, rateDate),
       ]);
       return { ok: true, value: { operationContext: context, exchangeRates, dashboard } };
     } catch (cause) {

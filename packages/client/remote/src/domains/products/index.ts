@@ -5,6 +5,7 @@ import type {
   ProductMovementQuery,
   ProductsPort,
 } from "@kontave/client-contracts";
+import type { RemoteTransport } from "../../transport";
 import type {
   CreateProductCategoryDto,
   CreateProductDto,
@@ -27,29 +28,13 @@ import type {
   UpdateProductTaxationDto,
 } from "@kontave/client-contracts";
 
-interface ProductsRemoteTransport {
-  /**
-   * Reads and decodes one API resource.
-   * @param path - Relative Client API path.
-   * @returns The decoded response data.
-   */
-  get<T>(path: string): Promise<T>;
-  /**
-   * Sends a state-changing API request.
-   * @param path - Relative Client API path.
-   * @param init - HTTP method, headers and serialized body.
-   * @returns The decoded response data.
-   */
-  request<T>(path: string, init: RequestInit): Promise<T>;
-}
-
 /** Shared Products API adapter. No renderer owns or duplicates these paths. */
 export class RemoteProductsPort implements ProductsPort {
   /**
    * Binds every Products operation to one authenticated transport.
    * @param client - Platform-neutral transport used for all Products requests.
    */
-  constructor(private readonly client: ProductsRemoteTransport) {}
+  constructor(private readonly client: RemoteTransport) {}
 
   /** {@inheritDoc ProductsPort.permissions} */
   async permissions(organizationId: string): Promise<readonly string[]> {

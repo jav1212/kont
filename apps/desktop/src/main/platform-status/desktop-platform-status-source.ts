@@ -1,48 +1,36 @@
-import type { PlatformStatusDto, PortalAvailability } from "@kontave/client-contracts";
+import {
+  KontaveRemoteClient,
+  RemotePlatformStatusPort,
+} from "@kontave/client-remote";
 import type { DesktopPlatformStatusState } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
+/** Desktop composition adapter for portable platform-status reads. */
 export class DesktopPlatformStatusSource {
-  constructor(
-    private readonly baseUrl: string,
-    private readonly request: DesktopAuthenticatedRequest,
-  ) {}
+  private readonly platformStatus: RemotePlatformStatusPort;
 
-  async getCurrent(): Promise<DesktopPlatformStatusState> {
-    const response = await this.request.fetch(new URL("/api/client/v1/platform/status", this.baseUrl));
-    const payload: unknown = await response.json();
-    if (!response.ok) throw new Error(readApiError(payload));
-    const data = readStatus(payload);
-    return { status: "ready", availability: data.status, observedAt: data.observedAt };
+  /**
+   * Creates the source using Desktop's authenticated request mechanism.
+   * @param baseUrl - Kontave API origin.
+   * @param request - Desktop session-aware request adapter.
+   */
+  constructor(baseUrl: string, request: DesktopAuthenticatedRequest) {
+    this.platformStatus = new RemotePlatformStatusPort(
+      new KontaveRemoteClient({
+        baseUrl,
+        platform: "desktop",
+        authenticatedRequest: (input, init) => request.fetch(input, init),
+      }),
+    );
   }
-}
 
-function readStatus(payload: unknown): Pick<PlatformStatusDto, "status" | "observedAt"> {
-  const envelope = readRecord(payload, "La respuesta del estado de portales no es válida.");
-  const data = readRecord(envelope.data, "La respuesta del estado de portales no contiene datos válidos.");
-  return {
-    status: readAvailability(data.status),
-    observedAt: data.observedAt === null ? null : readTimestamp(data.observedAt),
-  };
-}
-
-function readAvailability(value: unknown): PortalAvailability {
-  if (value === "operational" || value === "degraded" || value === "down" || value === "unknown") return value;
-  throw new Error("El estado agregado de portales no es válido.");
-}
-
-function readTimestamp(value: unknown): string {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) throw new Error("La fecha del estado de portales no es válida.");
-  return value;
-}
-
-function readApiError(payload: unknown): string {
-  const envelope = readRecord(payload, "No se pudo obtener el estado de portales.");
-  const error = envelope.error && typeof envelope.error === "object" ? envelope.error as Record<string, unknown> : null;
-  return error && typeof error.message === "string" ? error.message : "No se pudo obtener el estado de portales.";
-}
-
-function readRecord(value: unknown, message: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(message);
-  return value as Record<string, unknown>;
+  /** @returns Latest aggregate platform availability for Desktop presentation. */
+  async getCurrent(): Promise<DesktopPlatformStatusState> {
+    const snapshot = await this.platformStatus.current();
+    return {
+      status: "ready",
+      availability: snapshot.status,
+      observedAt: snapshot.observedAt,
+    };
+  }
 }

@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Heading, Text, nativeTheme } from "@kontave/ui-native";
-import { MobileBcvFailure, MobileBcvSource, type MobileBcvRate } from "../bcv/mobile-bcv-source";
+import {
+  RemoteExchangeRatesFailure,
+  RemoteOfficialExchangeRatesPort,
+} from "@kontave/client-remote";
+import type { OfficialExchangeRateDto } from "@kontave/client-contracts";
 import { useAuth } from "../auth/auth-context";
 import { useClientExperience } from "../client-experience/mobile-client-experience";
+import { createMobileApi } from "../api/mobile-api";
+import { useMobileWorkspace } from "../workspace/mobile-workspace";
 
 type Direction = "to-ves" | "from-ves";
 const PRIORITY = ["USD", "EUR", "CNY"];
@@ -12,9 +18,11 @@ const KEYPAD: readonly (string | "backspace")[] = ["1", "2", "3", "4", "5", "6",
 
 export function BcvCalculatorScreen(): React.JSX.Element {
   const auth = useAuth();
+  const workspace = useMobileWorkspace();
   const { feedback } = useClientExperience();
-  const source = useMemo(() => new MobileBcvSource(auth.authenticatedFetch), [auth.authenticatedFetch]);
-  const [rates, setRates] = useState<readonly MobileBcvRate[]>([]);
+  const api = useMemo(() => createMobileApi(auth.authenticatedFetch), [auth.authenticatedFetch]);
+  const source = useMemo(() => new RemoteOfficialExchangeRatesPort(api), [api]);
+  const [rates, setRates] = useState<readonly OfficialExchangeRateDto[]>([]);
   const [date, setDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState("USD");
@@ -24,15 +32,23 @@ export function BcvCalculatorScreen(): React.JSX.Element {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const snapshot = await source.current();
+      const organizationId = workspace.state.snapshot.activeWorkspace?.organizationId;
+      const companyId = workspace.state.snapshot.activeCompany?.id;
+      if (!organizationId || !companyId) {
+        throw new RemoteExchangeRatesFailure(
+          "RATE_UNAVAILABLE",
+          "Selecciona una empresa para consultar su tasa oficial.",
+        );
+      }
+      const snapshot = await source.current(organizationId, companyId);
       setRates(snapshot.rates);
-      setDate(snapshot.date);
+      setDate(snapshot.effectiveDate);
       setCode((current) => snapshot.rates.some((rate) => rate.code === current) ? current : snapshot.rates[0]?.code ?? "USD");
     } catch (cause: unknown) {
-      const failure = cause instanceof MobileBcvFailure ? cause : new MobileBcvFailure("BCV_UNAVAILABLE", "No se pudo consultar el BCV.");
+      const failure = cause instanceof RemoteExchangeRatesFailure ? cause : new RemoteExchangeRatesFailure("RATE_UNAVAILABLE", "No se pudo consultar el BCV.");
       feedback.execute({ intent: "error", message: failure.message, description: `Código: ${failure.code}`, referenceCode: failure.code, deduplicationKey: "mobile-bcv-error" });
     } finally { setLoading(false); }
-  }, [feedback, source]);
+  }, [feedback, source, workspace.state.snapshot.activeCompany?.id, workspace.state.snapshot.activeWorkspace?.organizationId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -43,7 +59,7 @@ export function BcvCalculatorScreen(): React.JSX.Element {
   const activeRate = rates.find((rate) => rate.code === code) ?? null;
   const numericAmount = parseAmount(amount);
   const result = activeRate && Number.isFinite(numericAmount)
-    ? direction === "to-ves" ? numericAmount * activeRate.sell : numericAmount / activeRate.sell
+    ? direction === "to-ves" ? numericAmount * activeRate.value : numericAmount / activeRate.value
     : Number.NaN;
   const originCode = direction === "to-ves" ? code : "VES";
   const targetCode = direction === "to-ves" ? "VES" : code;
@@ -61,7 +77,7 @@ export function BcvCalculatorScreen(): React.JSX.Element {
   return <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
     <View style={styles.headingRow}><View style={styles.flex}><Text style={styles.eyebrow}>TASA OFICIAL</Text><Heading style={styles.title}>Calculadora BCV</Heading><Text style={styles.subtitle}>Convierte montos rápidamente usando la tasa oficial disponible.</Text></View><Pressable accessibilityLabel="Actualizar tasas" disabled={loading} onPress={() => { void load(); }} style={({ pressed }) => [styles.refresh, pressed && styles.pressed]}>{loading ? <ActivityIndicator color={nativeTheme.color.primary} /> : <Ionicons name="refresh" size={23} color={nativeTheme.color.primary} />}</Pressable></View>
 
-    <Pressable accessibilityLabel="Cambiar moneda" disabled={!activeRate} onPress={selectNextCurrency} style={({ pressed }) => [styles.ratePill, pressed && styles.pressed]}><View style={styles.liveDot} /><Text style={styles.pillMuted}>BCV</Text><View style={styles.pillDivider} />{activeRate ? <Text style={styles.pillRate}>1 {code} = {formatNumber(activeRate.sell, 2)} Bs</Text> : <Text style={styles.pillRate}>Consultando…</Text>}<View style={styles.pillDivider} /><Text style={styles.pillMuted}>{date ? formatRelativeDate(date) : "Hoy"}</Text><Ionicons name="chevron-down" size={14} color="#7A8293" /></Pressable>
+    <Pressable accessibilityLabel="Cambiar moneda" disabled={!activeRate} onPress={selectNextCurrency} style={({ pressed }) => [styles.ratePill, pressed && styles.pressed]}><View style={styles.liveDot} /><Text style={styles.pillMuted}>BCV</Text><View style={styles.pillDivider} />{activeRate ? <Text style={styles.pillRate}>1 {code} = {formatNumber(activeRate.value, 2)} Bs</Text> : <Text style={styles.pillRate}>Consultando…</Text>}<View style={styles.pillDivider} /><Text style={styles.pillMuted}>{date ? formatRelativeDate(date) : "Hoy"}</Text><Ionicons name="chevron-down" size={14} color="#7A8293" /></Pressable>
 
     <View style={styles.fintechCard}><View style={styles.cardGlow} /><View style={styles.amountTop}><Text style={styles.darkLabel}>MONTO</Text><Pressable accessibilityLabel="Limpiar monto" onPress={() => setAmount("")}><Text style={styles.clearAmount}>Limpiar</Text></Pressable></View><View style={styles.amountLine}><Text style={styles.symbol}>{currencySymbol(originCode)}</Text><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.amount, !amount && styles.amountEmpty]}>{amount || "0"}</Text><Text style={styles.originCode}>{originCode}</Text></View>
       <View style={styles.swapLine}><View style={styles.rule} /><Pressable accessibilityLabel="Invertir conversión" onPress={() => setDirection((current) => current === "to-ves" ? "from-ves" : "to-ves")} style={({ pressed }) => [styles.swap, pressed && styles.swapPressed]}><Ionicons name="swap-vertical" size={19} color="#FFFFFF" /></Pressable><View style={styles.rule} /></View>
