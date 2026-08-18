@@ -498,7 +498,7 @@ app.whenReady().then(() => {
   purchasingDashboard = new DesktopPurchasingDashboardController(apiBaseUrl,authenticatedRequest);
   products = new DesktopProductsController(apiBaseUrl, authenticatedRequest);
   connectivity = new ConnectivityMonitor({
-    probe: new FetchConnectivityProbe(new URL("/api/native/v1/organization-access", apiBaseUrl).toString()),
+    probe: new FetchConnectivityProbe(new URL("/api/client/v1/organization-access", apiBaseUrl).toString()),
     failureThreshold: 3,
     unexpectedFailureObserver: {
       record: (cause) => console.error(JSON.stringify({

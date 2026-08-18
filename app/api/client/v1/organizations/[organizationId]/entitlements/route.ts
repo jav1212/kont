@@ -1,0 +1,22 @@
+import { createBillingActions } from "@/src/client-api/v1/billing/billing-actions";
+import { executeBillingRequest } from "@/src/client-api/v1/billing/execute-billing-request";
+import { toEntitlementsDto } from "@/src/client-api/v1/billing/billing-mapper";
+export const dynamic = "force-dynamic";
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ organizationId: string }> },
+) {
+  const { organizationId } = await context.params;
+  return executeBillingRequest(
+    request,
+    organizationId,
+    async (actor, organization, authorization) =>
+      toEntitlementsDto(
+        await createBillingActions().entitlements.execute(
+          actor,
+          organization,
+          authorization,
+        ),
+      ),
+  );
+}

@@ -20,10 +20,10 @@ Los proveedores existentes se almacenan en `public.shared_inventory_suppliers` y
 
 La solución debe seguir el patrón nativo ya usado por Productos y Categorías:
 
-- contratos portables en `@kontave/native-api-contracts`;
+- contratos portables en `@kontave/client-contracts`;
 - dominio y aplicación independientes de React, Electron, HTTP y Supabase;
 - adaptador de persistencia en `@kontave/purchasing-supabase`;
-- endpoints bajo `/api/native/v1`;
+- endpoints bajo `/api/client/v1`;
 - controlador en el proceso principal de Desktop;
 - API tipada compartida, IPC y exposición segura mediante preload;
 - vista React específica del renderer usando `@kontave/ui-dom`.
@@ -182,14 +182,14 @@ Los casos de uso deben devolver errores esperados tipados para entrada inválida
 
 ### Native API
 
-Agregar contratos DTO y comandos en `@kontave/native-api-contracts` y endpoints bajo:
+Agregar contratos DTO y comandos en `@kontave/client-contracts` y endpoints bajo:
 
-- `GET /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers`;
-- `POST /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers`;
-- `GET /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId`;
-- `PATCH /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId`;
-- `POST /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId/activate`;
-- `POST /api/native/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId/deactivate`.
+- `GET /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers`;
+- `POST /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers`;
+- `GET /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId`;
+- `PATCH /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId`;
+- `POST /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId/activate`;
+- `POST /api/client/v1/organizations/:organizationId/companies/:companyId/suppliers/:supplierId/deactivate`.
 
 El GET de colección acepta `search`, `status`, `sort`, `direction`, `cursor` y `limit`. Los endpoints deben validar parámetros en el borde, usar el contexto autenticado nativo, ejecutar los casos de uso mediante composición/factory y devolver el envelope y los códigos de error estándar de la API nativa.
 

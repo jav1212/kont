@@ -32,7 +32,8 @@ La solución se organizará bajo una responsabilidad arquitectónica explícita:
 
 ```text
 packages/client/
-  application/   Kernel y orquestación portable
+  contracts/     Contrato serializable del cliente y sus features
+  runtime/       Kernel y orquestación portable
   remote/        Ensamblaje común de adaptadores API/Supabase
   react/         Context, Provider y hooks sin componentes visuales
   testing/       Suites contractuales y dobles reutilizables
@@ -41,7 +42,8 @@ packages/client/
 Los nombres públicos previstos son:
 
 ```text
-@kontave/client-application
+@kontave/client-contracts
+@kontave/client-runtime
 @kontave/client-remote
 @kontave/client-react
 @kontave/client-testing
@@ -53,7 +55,7 @@ genérico para código compartido.
 
 ## Kernel de aplicación
 
-`@kontave/client-application` compondrá sesión, workspace, módulos y features.
+`@kontave/client-runtime` compondrá sesión, workspace, módulos y features.
 Dependerá solamente de paquetes portables de dominio, aplicación y contratos.
 
 ```ts
@@ -116,10 +118,9 @@ Agregar una capacidad remota requerirá actualizar el kernel y este ensamblaje
 una sola vez. Las aplicaciones no reconstruirán individualmente los mismos
 repositorios o clientes HTTP.
 
-El actual `@kontave/native-api-client` podrá evolucionar de forma retrocompatible
-hacia un cliente de API neutral, porque la API compartida dejará de ser una
-preocupación exclusiva de clientes nativos. El cambio de nombre no forma parte
-obligatoria de la primera iteración.
+El transporte HTTP neutral pertenece a `@kontave/client-remote`. No existirán
+clientes API separados por renderer: Desktop, Mobile y Web utilizarán el mismo
+ensamblaje remoto e inyectarán únicamente los mecanismos propios de plataforma.
 
 Los adaptadores verdaderamente específicos permanecerán en su plataforma:
 
@@ -140,7 +141,7 @@ Providers y suscripciones a stores portables. No contendrá componentes visuales
 ni dependerá de un renderer específico.
 
 ```text
-@kontave/client-application
+@kontave/client-runtime
             |
 @kontave/client-react
        /          \
@@ -198,13 +199,15 @@ catálogo de navegación; iconos y componentes permanecerán en cada renderer.
 ## Dependencias permitidas
 
 ```text
-dominio <- aplicación <- client-application <- client-react <- apps/*
+dominio <- aplicación <- client-runtime <- client-react <- apps/*
                          ^
                          |
                     client-remote
 ```
 
-- `client-application` puede depender de paquetes de dominio, aplicación y
+- `client-contracts` expone únicamente estados, comandos, resultados y eventos
+  serializables, sin dependencias de framework o transporte.
+- `client-runtime` puede depender de paquetes de dominio, aplicación y
   contratos portables.
 - `client-remote` puede implementar puertos mediante contratos API, Supabase y
   transporte remoto.

@@ -1,6 +1,6 @@
 import type { AvailableOrganizationModule } from "@kontave/modules-application";
 import { ModuleCode, type ModuleId } from "@kontave/modules-domain";
-import type { NativeAccessibleOrganizationDto, NativeCompanyDto, NativeOrganizationCompanyDto } from "@kontave/native-api-contracts";
+import type { AccessibleOrganizationDto, CompanyDto, OrganizationCompanyDto } from "@kontave/client-contracts";
 import { DelegatedScope, OrganizationAccessPathKind, organizationDelegationId } from "@kontave/organization-delegations-domain";
 import { companyId, organizationId, userId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource, WorkspaceModuleSource, WorkspacePortfolioEntry, WorkspacePortfolioSource } from "@kontave/workspace-context-application";
@@ -13,17 +13,17 @@ type MobileApi = ReturnType<typeof createMobileApi>;
 export class MobileWorkspacePortfolioSource implements WorkspacePortfolioSource {
   constructor(private readonly api: MobileApi) {}
   async list(): Promise<readonly WorkspacePortfolioEntry[]> {
-    return (await this.api.get<readonly NativeAccessibleOrganizationDto[]>("/api/native/v1/organization-access")).map(mapWorkspace);
+    return (await this.api.get<readonly AccessibleOrganizationDto[]>("/api/client/v1/organization-access")).map(mapWorkspace);
   }
 }
 
 export class MobileWorkspaceCompanySource implements WorkspaceCompanySource {
   constructor(private readonly api: MobileApi) {}
   async listByOrganization(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {
-    const basePath = `/api/native/v1/organizations/${encodeURIComponent(targetOrganizationId)}`;
+    const basePath = `/api/client/v1/organizations/${encodeURIComponent(targetOrganizationId)}`;
     const [values, presentations] = await Promise.all([
-      this.api.get<readonly NativeCompanyDto[]>(`${basePath}/operational-companies`),
-      this.api.get<readonly NativeOrganizationCompanyDto[]>(`${basePath}/companies`),
+      this.api.get<readonly CompanyDto[]>(`${basePath}/operational-companies`),
+      this.api.get<readonly OrganizationCompanyDto[]>(`${basePath}/companies`),
     ]);
     const presentationById = new Map(presentations.map((value) => [value.id, value]));
     const presentationByRif = new Map(presentations.filter((value) => value.rif).map((value) => [value.rif, value]));
@@ -42,7 +42,7 @@ export class MobileWorkspaceCompanySource implements WorkspaceCompanySource {
 export class MobileWorkspaceModuleSource implements WorkspaceModuleSource {
   constructor(private readonly api: MobileApi) {}
   async listAvailable(targetOrganizationId: OrganizationId): Promise<readonly AvailableOrganizationModule[]> {
-    const values = await this.api.get<readonly { readonly id: string; readonly code: string; readonly name: string }[]>(`/api/native/v1/organizations/${encodeURIComponent(targetOrganizationId)}/modules/available?platform=mobile`);
+    const values = await this.api.get<readonly { readonly id: string; readonly code: string; readonly name: string }[]>(`/api/client/v1/organizations/${encodeURIComponent(targetOrganizationId)}/modules/available?platform=mobile`);
     return values.map((value) => ({ id: value.id as ModuleId, code: readModuleCode(value.code), name: value.name }));
   }
 }
@@ -67,7 +67,7 @@ export class MobileWorkspaceContextStore implements WorkspaceContextStore {
 }
 
 function emptyContext(): PersistedWorkspaceContext { return { organizationId: null, companyId: null, moduleCode: null }; }
-function mapWorkspace(dto: NativeAccessibleOrganizationDto): WorkspacePortfolioEntry {
+function mapWorkspace(dto: AccessibleOrganizationDto): WorkspacePortfolioEntry {
   return { organizationId: organizationId(dto.organizationId), name: dto.name, avatarUrl: dto.avatarUrl, relationship: dto.relationship, accessPath: {
     kind: readAccessPathKind(dto.accessPath.kind), actorUserId: userId(dto.accessPath.actorUserId), actingOrganizationId: organizationId(dto.accessPath.actingOrganizationId), targetOrganizationId: organizationId(dto.accessPath.targetOrganizationId),
     delegationId: dto.accessPath.delegationId ? organizationDelegationId(dto.accessPath.delegationId) : null, scopes: dto.accessPath.scopes.map(readScope),

@@ -3,48 +3,48 @@ import type { DeviceDescriptor, DeviceEvent, DeviceLifecycleState } from "@konta
 import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
 import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
 import type {
-  NativeAuthenticatedDeviceSessionDto,
-  NativeBillingOverviewDto,
-  NativeBillingPlanDto,
-  NativeCurrentUserDto,
-  NativeDocumentDto,
-  NativeInventoryDashboardDto,
-  NativeSalesDashboardDto,
-  NativePurchasingDashboardDto,
-  NativeInventoryFlowPageDto,
-  NativeInventoryOperationDetailDto,
-  NativeCreateInventoryOperationDto,
-  NativeUpdateInventoryOperationDto,
-  NativeReverseInventoryOperationDto,
-  NativeExchangeRateSetDto,
-  NativeOperationalDefaultsDto,
-  NativeCreateProductCategoryDto,
-  NativeCreateProductDto,
-  NativeProductCategoryDto,
-  NativeProductCategoryOverviewDto,
-  NativeProductCategoryOverviewItemDto,
-  NativeProductDetailDto,
-  NativeProductDto,
-  NativeProductListDto,
-  NativeProductMovementPageDto,
-  NativeProductSalePricingDto,
-  NativeProductTaxationDto,
-  NativeProductUnitEconomicsDto,
-  NativeUpdateProductSalePricingDto,
-  NativeUpdateProductTaxationDto,
-  NativeProductReplenishmentPolicyDto,
-  NativeUpdateProductCategoryDto,
-  NativeUpdateProductDto,
-  NativeUpdateProductInventoryProfileDto,
-  NativeManualPaymentRequestDto,
-  NativeOrganizationDto,
-  NativeOrganizationMemberDto,
-  NativeRoleDto,
-  NativeUpdateCurrentUserDto,
-  NativeUpdateOrganizationDto,
-  NativeUpdateUserPreferencesDto,
-  NativeUserPreferencesDto,
-} from "@kontave/native-api-contracts";
+  AuthenticatedDeviceSessionDto,
+  BillingOverviewDto,
+  BillingPlanDto,
+  CurrentUserDto,
+  DocumentDto,
+  InventoryDashboardDto,
+  SalesDashboardDto,
+  PurchasingDashboardDto,
+  InventoryFlowPageDto,
+  InventoryOperationDetailDto,
+  CreateInventoryOperationDto,
+  UpdateInventoryOperationDto,
+  ReverseInventoryOperationDto,
+  ExchangeRateSetDto,
+  OperationalDefaultsDto,
+  CreateProductCategoryDto,
+  CreateProductDto,
+  ProductCategoryDto,
+  ProductCategoryOverviewDto,
+  ProductCategoryOverviewItemDto,
+  ProductDetailDto,
+  ProductDto,
+  ProductListDto,
+  ProductMovementPageDto,
+  ProductSalePricingDto,
+  ProductTaxationDto,
+  ProductUnitEconomicsDto,
+  UpdateProductSalePricingDto,
+  UpdateProductTaxationDto,
+  ProductReplenishmentPolicyDto,
+  UpdateProductCategoryDto,
+  UpdateProductDto,
+  UpdateProductInventoryProfileDto,
+  ManualPaymentRequestDto,
+  OrganizationDto,
+  OrganizationMemberDto,
+  RoleDto,
+  UpdateCurrentUserDto,
+  UpdateOrganizationDto,
+  UpdateUserPreferencesDto,
+  UserPreferencesDto,
+} from "@kontave/client-contracts";
 
 export const DESKTOP_IPC = {
   getAuthState: "auth:state",
@@ -126,9 +126,9 @@ export interface DesktopProductInsightsQuery {readonly from:string;readonly to:s
 export type DesktopProductsResult<T> = { readonly ok:true;readonly value:T } | { readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null} };
 
 export interface DesktopInventoryDashboardSnapshot {
-  readonly operationContext: NativeOperationalDefaultsDto;
-  readonly exchangeRates: NativeExchangeRateSetDto;
-  readonly dashboard: NativeInventoryDashboardDto;
+  readonly operationContext: OperationalDefaultsDto;
+  readonly exchangeRates: ExchangeRateSetDto;
+  readonly dashboard: InventoryDashboardDto;
 }
 
 export interface DesktopInventoryDashboardQuery {
@@ -140,7 +140,7 @@ export type DesktopInventoryDashboardResult =
   | { readonly ok: true; readonly value: DesktopInventoryDashboardSnapshot }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
 
-export interface DesktopSalesDashboardSnapshot {readonly operationContext:NativeOperationalDefaultsDto;readonly exchangeRates:NativeExchangeRateSetDto;readonly dashboard:NativeSalesDashboardDto}
+export interface DesktopSalesDashboardSnapshot {readonly operationContext:OperationalDefaultsDto;readonly exchangeRates:ExchangeRateSetDto;readonly dashboard:SalesDashboardDto}
 export interface DesktopSalesDashboardQuery {
   readonly from?: string;
   readonly to?: string;
@@ -149,7 +149,7 @@ export interface DesktopSalesDashboardQuery {
 }
 export type DesktopSalesDashboardResult={readonly ok:true;readonly value:DesktopSalesDashboardSnapshot}|{readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null}};
 
-export interface DesktopPurchasingDashboardSnapshot{readonly operationContext:NativeOperationalDefaultsDto;readonly exchangeRates:NativeExchangeRateSetDto;readonly dashboard:NativePurchasingDashboardDto}
+export interface DesktopPurchasingDashboardSnapshot{readonly operationContext:OperationalDefaultsDto;readonly exchangeRates:ExchangeRateSetDto;readonly dashboard:PurchasingDashboardDto}
 export interface DesktopPurchasingDashboardQuery{readonly from?:string;readonly to?:string;readonly recentLimit?:number}
 export type DesktopPurchasingDashboardResult={readonly ok:true;readonly value:DesktopPurchasingDashboardSnapshot}|{readonly ok:false;readonly error:{readonly code:string;readonly message:string;readonly requestId:string|null}};
 
@@ -161,16 +161,16 @@ export interface DesktopInventoryFlowQuery {
 export type DesktopInventoryResult<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly requestId: string | null } };
 
 export interface DesktopSettingsSnapshot {
-  readonly profile: NativeCurrentUserDto;
-  readonly preferences: NativeUserPreferencesDto;
-  readonly organization: NativeOrganizationDto | null;
-  readonly sessions: readonly NativeAuthenticatedDeviceSessionDto[];
-  readonly members: readonly NativeOrganizationMemberDto[];
-  readonly roles: readonly NativeRoleDto[];
-  readonly billing: NativeBillingOverviewDto | null;
-  readonly billingPlans: readonly NativeBillingPlanDto[];
-  readonly paymentRequests: readonly NativeManualPaymentRequestDto[];
-  readonly documents: readonly NativeDocumentDto[];
+  readonly profile: CurrentUserDto;
+  readonly preferences: UserPreferencesDto;
+  readonly organization: OrganizationDto | null;
+  readonly sessions: readonly AuthenticatedDeviceSessionDto[];
+  readonly members: readonly OrganizationMemberDto[];
+  readonly roles: readonly RoleDto[];
+  readonly billing: BillingOverviewDto | null;
+  readonly billingPlans: readonly BillingPlanDto[];
+  readonly paymentRequests: readonly ManualPaymentRequestDto[];
+  readonly documents: readonly DocumentDto[];
 }
 
 export type DesktopSettingsResult<T> =
@@ -350,43 +350,43 @@ export interface KontaveDesktopApi {
   };
   readonly settings: {
     getSnapshot(organizationId: string | null, companyId: string | null): Promise<DesktopSettingsResult<DesktopSettingsSnapshot>>;
-    updateProfile(command: NativeUpdateCurrentUserDto): Promise<DesktopSettingsResult<NativeCurrentUserDto>>;
-    updatePreferences(command: NativeUpdateUserPreferencesDto): Promise<DesktopSettingsResult<NativeUserPreferencesDto>>;
-    updateOrganization(organizationId: string, command: NativeUpdateOrganizationDto): Promise<DesktopSettingsResult<NativeOrganizationDto>>;
+    updateProfile(command: UpdateCurrentUserDto): Promise<DesktopSettingsResult<CurrentUserDto>>;
+    updatePreferences(command: UpdateUserPreferencesDto): Promise<DesktopSettingsResult<UserPreferencesDto>>;
+    updateOrganization(organizationId: string, command: UpdateOrganizationDto): Promise<DesktopSettingsResult<OrganizationDto>>;
     changePassword(newPassword: string, revokeOtherSessions: boolean): Promise<DesktopSettingsResult<{ readonly changed: boolean }>>;
     revokeSession(sessionId: string): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
     revokeOtherSessions(): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>>;
   };
   readonly inventory: {
     getDashboard(userId: string, organizationId: string, companyId: string, query?: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult>;
-    entries(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
-    outputs(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
-    operations(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<NativeInventoryFlowPageDto>>;
-    operation(organizationId:string,companyId:string,operationId:string):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
-    createOperation(organizationId:string,companyId:string,command:NativeCreateInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
-    updateOperation(organizationId:string,companyId:string,operationId:string,command:NativeUpdateInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
-    postOperation(organizationId:string,companyId:string,operationId:string,expectedVersion:number):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
-    reverseOperation(organizationId:string,companyId:string,operationId:string,command:NativeReverseInventoryOperationDto):Promise<DesktopInventoryResult<NativeInventoryOperationDetailDto>>;
+    entries(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<InventoryFlowPageDto>>;
+    outputs(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<InventoryFlowPageDto>>;
+    operations(organizationId:string,companyId:string,query:DesktopInventoryFlowQuery):Promise<DesktopInventoryResult<InventoryFlowPageDto>>;
+    operation(organizationId:string,companyId:string,operationId:string):Promise<DesktopInventoryResult<InventoryOperationDetailDto>>;
+    createOperation(organizationId:string,companyId:string,command:CreateInventoryOperationDto):Promise<DesktopInventoryResult<InventoryOperationDetailDto>>;
+    updateOperation(organizationId:string,companyId:string,operationId:string,command:UpdateInventoryOperationDto):Promise<DesktopInventoryResult<InventoryOperationDetailDto>>;
+    postOperation(organizationId:string,companyId:string,operationId:string,expectedVersion:number):Promise<DesktopInventoryResult<InventoryOperationDetailDto>>;
+    reverseOperation(organizationId:string,companyId:string,operationId:string,command:ReverseInventoryOperationDto):Promise<DesktopInventoryResult<InventoryOperationDetailDto>>;
   };
   readonly sales:{getDashboard(userId:string,organizationId:string,companyId:string,query?:DesktopSalesDashboardQuery):Promise<DesktopSalesDashboardResult>};
   readonly purchasing:{getDashboard(userId:string,organizationId:string,companyId:string,query?:DesktopPurchasingDashboardQuery):Promise<DesktopPurchasingDashboardResult>};
   readonly products: {
     permissions(organizationId:string):Promise<DesktopProductsResult<readonly string[]>>;
-    list(organizationId:string,companyId:string,query?:DesktopProductListQuery):Promise<DesktopProductsResult<NativeProductListDto>>;
-    get(organizationId:string,companyId:string,productId:string):Promise<DesktopProductsResult<NativeProductDetailDto>>;
-    create(organizationId:string,companyId:string,command:NativeCreateProductDto):Promise<DesktopProductsResult<NativeProductDto>>;
-    update(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductDto):Promise<DesktopProductsResult<NativeProductDto>>;
-    setStatus(organizationId:string,companyId:string,productId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<NativeProductDto>>;
-    movements(organizationId:string,companyId:string,productId:string,query?:DesktopProductMovementQuery):Promise<DesktopProductsResult<NativeProductMovementPageDto>>;
-    updateInventoryProfile(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductInventoryProfileDto):Promise<DesktopProductsResult<NativeProductReplenishmentPolicyDto>>;
-    categories(organizationId:string,companyId:string,status?:"active"|"inactive"|"all"):Promise<DesktopProductsResult<readonly NativeProductCategoryDto[]>>;
-    createCategory(organizationId:string,companyId:string,command:NativeCreateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
-    updateCategory(organizationId:string,companyId:string,categoryId:string,command:NativeUpdateProductCategoryDto):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
-    setCategoryStatus(organizationId:string,companyId:string,categoryId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<NativeProductCategoryDto>>;
-    getCategory(organizationId:string,companyId:string,categoryId:string):Promise<DesktopProductsResult<NativeProductCategoryOverviewItemDto>>;
-    categoryOverview(organizationId:string,companyId:string,query?:DesktopProductCategoryOverviewQuery):Promise<DesktopProductsResult<NativeProductCategoryOverviewDto>>;
-    unitEconomics(organizationId:string,companyId:string,productId:string,query:DesktopProductInsightsQuery):Promise<DesktopProductsResult<NativeProductUnitEconomicsDto>>;
-    updateSalePricing(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductSalePricingDto):Promise<DesktopProductsResult<NativeProductSalePricingDto>>;
-    updateTaxation(organizationId:string,companyId:string,productId:string,command:NativeUpdateProductTaxationDto):Promise<DesktopProductsResult<NativeProductTaxationDto>>;
+    list(organizationId:string,companyId:string,query?:DesktopProductListQuery):Promise<DesktopProductsResult<ProductListDto>>;
+    get(organizationId:string,companyId:string,productId:string):Promise<DesktopProductsResult<ProductDetailDto>>;
+    create(organizationId:string,companyId:string,command:CreateProductDto):Promise<DesktopProductsResult<ProductDto>>;
+    update(organizationId:string,companyId:string,productId:string,command:UpdateProductDto):Promise<DesktopProductsResult<ProductDto>>;
+    setStatus(organizationId:string,companyId:string,productId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<ProductDto>>;
+    movements(organizationId:string,companyId:string,productId:string,query?:DesktopProductMovementQuery):Promise<DesktopProductsResult<ProductMovementPageDto>>;
+    updateInventoryProfile(organizationId:string,companyId:string,productId:string,command:UpdateProductInventoryProfileDto):Promise<DesktopProductsResult<ProductReplenishmentPolicyDto>>;
+    categories(organizationId:string,companyId:string,status?:"active"|"inactive"|"all"):Promise<DesktopProductsResult<readonly ProductCategoryDto[]>>;
+    createCategory(organizationId:string,companyId:string,command:CreateProductCategoryDto):Promise<DesktopProductsResult<ProductCategoryDto>>;
+    updateCategory(organizationId:string,companyId:string,categoryId:string,command:UpdateProductCategoryDto):Promise<DesktopProductsResult<ProductCategoryDto>>;
+    setCategoryStatus(organizationId:string,companyId:string,categoryId:string,active:boolean,expectedVersion:number):Promise<DesktopProductsResult<ProductCategoryDto>>;
+    getCategory(organizationId:string,companyId:string,categoryId:string):Promise<DesktopProductsResult<ProductCategoryOverviewItemDto>>;
+    categoryOverview(organizationId:string,companyId:string,query?:DesktopProductCategoryOverviewQuery):Promise<DesktopProductsResult<ProductCategoryOverviewDto>>;
+    unitEconomics(organizationId:string,companyId:string,productId:string,query:DesktopProductInsightsQuery):Promise<DesktopProductsResult<ProductUnitEconomicsDto>>;
+    updateSalePricing(organizationId:string,companyId:string,productId:string,command:UpdateProductSalePricingDto):Promise<DesktopProductsResult<ProductSalePricingDto>>;
+    updateTaxation(organizationId:string,companyId:string,productId:string,command:UpdateProductTaxationDto):Promise<DesktopProductsResult<ProductTaxationDto>>;
   };
 }

@@ -1,0 +1,14 @@
+import {
+  executeMemberRequest,
+  membersRead,
+} from "@/src/client-api/v1/members/member-http";
+type C = { params: Promise<{ organizationId: string }> };
+export async function GET(request: Request, c: C) {
+  const p = await c.params;
+  return executeMemberRequest(
+    request,
+    p.organizationId,
+    membersRead,
+    (a, _actor, organization) => a.list.execute(organization),
+  );
+}

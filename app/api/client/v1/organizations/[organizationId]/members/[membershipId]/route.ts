@@ -1,0 +1,43 @@
+import type { UpdateMembershipDto } from "@kontave/client-contracts";
+import {
+  executeMemberRequest,
+  membersRevoke,
+  membersUpdate,
+} from "@/src/client-api/v1/members/member-http";
+type C = { params: Promise<{ organizationId: string; membershipId: string }> };
+export async function PATCH(request: Request, c: C) {
+  const p = await c.params,
+    b = (await request.json()) as UpdateMembershipDto;
+  return executeMemberRequest(
+    request,
+    p.organizationId,
+    membersUpdate,
+    (a, actor, organization) =>
+      a.update.execute({
+        organizationId: organization,
+        actorUserId: actor,
+        membershipId: p.membershipId,
+        expectedVersion: b.expectedVersion,
+        ...(b.roleId === undefined ? {} : { roleId: b.roleId }),
+        ...(b.status === undefined ? {} : { status: b.status }),
+      }),
+  );
+}
+export async function DELETE(request: Request, c: C) {
+  const p = await c.params,
+    b = (await request.json()) as { expectedVersion: number };
+  return executeMemberRequest(
+    request,
+    p.organizationId,
+    membersRevoke,
+    async (a, actor, organization) => {
+      await a.revoke.execute({
+        organizationId: organization,
+        actorUserId: actor,
+        membershipId: p.membershipId,
+        expectedVersion: b.expectedVersion,
+      });
+      return { revoked: true };
+    },
+  );
+}

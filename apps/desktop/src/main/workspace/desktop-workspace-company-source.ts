@@ -1,4 +1,4 @@
-import type { NativeOrganizationCompanyDto } from "@kontave/native-api-contracts";
+import type { OrganizationCompanyDto } from "@kontave/client-contracts";
 import { companyId, organizationId, type OrganizationCompany, type OrganizationId } from "@kontave/organizations-domain";
 import type { WorkspaceCompanySource } from "@kontave/workspace-context-application";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
@@ -8,7 +8,7 @@ export class DesktopWorkspaceCompanySource implements WorkspaceCompanySource {
 
   async listByOrganization(targetOrganizationId: OrganizationId): Promise<readonly OrganizationCompany[]> {
     const response = await this.request.fetch(new URL(
-      `/api/native/v1/organizations/${encodeURIComponent(targetOrganizationId)}/companies`,
+      `/api/client/v1/organizations/${encodeURIComponent(targetOrganizationId)}/companies`,
       this.baseUrl,
     ));
     const payload: unknown = await response.json();
@@ -23,7 +23,7 @@ function readCompanies(payload: unknown): readonly OrganizationCompany[] {
   return envelope.data.map((value) => mapCompany(readCompanyDto(value)));
 }
 
-function readCompanyDto(value: unknown): NativeOrganizationCompanyDto {
+function readCompanyDto(value: unknown): OrganizationCompanyDto {
   const item = readRecord(value, "La empresa recibida no es válida.");
   return {
     id: readText(item.id),
@@ -34,7 +34,7 @@ function readCompanyDto(value: unknown): NativeOrganizationCompanyDto {
   };
 }
 
-function mapCompany(value: NativeOrganizationCompanyDto): OrganizationCompany {
+function mapCompany(value: OrganizationCompanyDto): OrganizationCompany {
   return { id: companyId(value.id), organizationId: organizationId(value.organizationId), name: value.name, rif: value.rif, logoUrl: value.logoUrl };
 }
 

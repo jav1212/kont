@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron";
 import { DESKTOP_IPC, type DesktopCurrentUserState } from "../../shared/desktop-api";
 import { DesktopCurrentUserSource } from "./desktop-current-user-source";
-import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
+import type { CurrentUserDto } from "@kontave/client-contracts";
 
 export class DesktopCurrentUserController {
   private state: DesktopCurrentUserState = { status: "unavailable" };
@@ -25,7 +25,7 @@ export class DesktopCurrentUserController {
 
   clear(): DesktopCurrentUserState { return this.update({ status: "unavailable" }); }
 
-  synchronize(user: NativeCurrentUserDto): DesktopCurrentUserState {
+  synchronize(user: CurrentUserDto): DesktopCurrentUserState {
     return this.update({
       status: "ready",
       user: {

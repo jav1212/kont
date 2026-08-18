@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Boxes, RefreshCw, Repeat2 } from "lucide-react";
 import { Button, CurrencyFlag, DatePeriodPicker, OptionPicker, Skeleton, presentFeedback } from "@kontave/ui-dom";
 import { codedErrorFeedback } from "@kontave/client-feedback-application";
-import type { NativeInventoryDashboardChartPointDto, NativeRecentInventoryMovementDto } from "@kontave/native-api-contracts";
+import type { InventoryDashboardChartPointDto, RecentInventoryMovementDto } from "@kontave/client-contracts";
 import type { DesktopAuthState, DesktopInventoryDashboardQuery, DesktopInventoryDashboardSnapshot } from "../../shared/desktop-api";
 
 interface InventoryDashboardViewProps {
@@ -106,7 +106,7 @@ function ChartCard({ children, title }: { readonly children: React.ReactNode; re
   return <article className="inventory-chart-card"><header><h3>{title}</h3></header>{children}</article>;
 }
 
-function FlowChart({ points }: { readonly points: readonly NativeInventoryDashboardChartPointDto[] }) {
+function FlowChart({ points }: { readonly points: readonly InventoryDashboardChartPointDto[] }) {
   const width = 320; const height = 128;
   const values = points.flatMap((point) => [Number(point.inboundValue.amount), Number(point.outboundValue.amount)]);
   const max = Math.max(1, ...values);
@@ -119,21 +119,21 @@ function FlowChart({ points }: { readonly points: readonly NativeInventoryDashbo
   return <div className="inventory-chart"><div className="inventory-chart__legend"><span className="is-inbound">Entradas</span><span className="is-outbound">Salidas</span></div><svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Entradas y salidas del período"><polyline className="is-inbound" points={path("inboundValue")} /><polyline className="is-outbound" points={path("outboundValue")} /></svg><ChartLabels points={points} /></div>;
 }
 
-function BarChart({ field, points }: { readonly field: "inboundValue" | "movementCount"; readonly points: readonly NativeInventoryDashboardChartPointDto[] }) {
+function BarChart({ field, points }: { readonly field: "inboundValue" | "movementCount"; readonly points: readonly InventoryDashboardChartPointDto[] }) {
   const values = points.map((point) => field === "movementCount" ? point.movementCount : Number(point.inboundValue.amount));
   const max = Math.max(1, ...values);
   if (!points.length) return <ChartEmpty />;
   return <div className="inventory-chart inventory-chart--bars"><div className="inventory-chart__bars">{values.map((value, index) => <span key={points[index]?.date} style={{ height: `${Math.max(3, value / max * 100)}%` }} />)}</div><ChartLabels points={points} /></div>;
 }
 
-function ChartLabels({ points }: { readonly points: readonly NativeInventoryDashboardChartPointDto[] }) {
+function ChartLabels({ points }: { readonly points: readonly InventoryDashboardChartPointDto[] }) {
   const visible = useMemo(() => points.length <= 6 ? points : points.filter((_, index) => index === 0 || index === points.length - 1 || index % Math.ceil(points.length / 5) === 0), [points]);
   return <div className="inventory-chart__labels">{visible.map((point) => <span key={point.date}>{formatShortDate(point.date)}</span>)}</div>;
 }
 
 function ChartEmpty() { return <div className="inventory-chart__empty">Sin actividad en el período</div>; }
 
-function MovementTable({ movements, empty, formatValue, title }: { readonly movements: readonly NativeRecentInventoryMovementDto[]; readonly empty: string; readonly formatValue: (value: string) => string; readonly title: string }) {
+function MovementTable({ movements, empty, formatValue, title }: { readonly movements: readonly RecentInventoryMovementDto[]; readonly empty: string; readonly formatValue: (value: string) => string; readonly title: string }) {
   return <article className="inventory-documents"><header><h3>{title}</h3></header>{movements.length ? <div className="inventory-documents__list">{movements.map((movement) => <div key={movement.id}><div><strong>{movement.productName}</strong><span>{[movement.productSku || null, movementTypeLabel(movement.movementType), movement.reference].filter(Boolean).join(" · ")}</span></div><div><strong>{formatValue(movement.totalCost.amount)}</strong><span>{formatDecimalQuantity(movement.quantity.value)} {unitLabel(movement.quantity.unit)} · {formatShortDate(movement.effectiveDate)}</span></div></div>)}</div> : <p className="inventory-documents__empty">{empty}</p>}</article>;
 }
 
@@ -149,7 +149,7 @@ function formatAmount(value: string, currency: string, rate: { readonly value: s
 function formatShortDate(value: string): string { return new Intl.DateTimeFormat("es-VE", { day: "2-digit", month: "short", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)); }
 function movementTypeLabel(value:string):string{return({entrada:"Entrada",entrada_compra:"Entrada",entrada_produccion:"Entrada de producción",ajuste_positivo:"Ajuste positivo",devolucion_salida:"Devolución de salida",devolucion_venta:"Devolución",salida:"Salida",salida_venta:"Salida",salida_produccion:"Salida de producción",ajuste_negativo:"Ajuste negativo",devolucion_entrada:"Devolución de entrada",devolucion_compra:"Devolución",autoconsumo:"Autoconsumo"}as Record<string,string>)[value]??value;}
 function formatDecimalQuantity(value:string):string{const [integer="0",fraction=""]=value.split(".");const sign=integer.startsWith("-")?"-":"";const digits=integer.replace("-","").replace(/^0+(?=\d)/,"");const grouped=digits.replace(/\B(?=(\d{3})+(?!\d))/g,".");const decimals=fraction.replace(/0+$/,"");return `${sign}${grouped}${decimals?`,${decimals}`:""}`;}
-function unitLabel(value:NativeRecentInventoryMovementDto["quantity"]["unit"]):string{return({each:"unid.",kilogram:"kg",gram:"g",meter:"m",square_meter:"m²",cubic_meter:"m³",liter:"l",gallon:"gal",box:"caja",roll:"rollo",package:"paquete"})[value];}
+function unitLabel(value:RecentInventoryMovementDto["quantity"]["unit"]):string{return({each:"unid.",kilogram:"kg",gram:"g",meter:"m",square_meter:"m²",cubic_meter:"m³",liter:"l",gallon:"gal",box:"caja",roll:"rollo",package:"paquete"})[value];}
 function formatRate(value: string): string { return new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 6 }).format(Number(value)); }
 function currencyName(code: string): string {
   return new Intl.DisplayNames(["es-VE"], { type: "currency" }).of(code) ?? code;

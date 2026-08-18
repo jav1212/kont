@@ -1,0 +1,39 @@
+import type { UpdateProductInventoryProfileDto } from "@kontave/client-contracts";
+import { productId } from "@kontave/products-domain";
+import { createReplenishmentActions } from "@/src/client-api/v1/inventory/replenishment-actions";
+import {
+  executeProductRequest,
+  productsUpdate,
+} from "@/src/client-api/v1/products/product-http";
+type C = {
+  params: Promise<{
+    organizationId: string;
+    companyId: string;
+    productId: string;
+  }>;
+};
+export async function PATCH(request: Request, c: C) {
+  const p = await c.params,
+    b = (await request.json()) as UpdateProductInventoryProfileDto;
+  return executeProductRequest(
+    request,
+    p.organizationId,
+    p.companyId,
+    productsUpdate,
+    async (_a, context) => {
+      const value = await createReplenishmentActions().update.execute({
+        ...context,
+        productId: productId(p.productId),
+        minimumQuantity: b.minimumQuantity,
+        expectedVersion: b.expectedVersion,
+      });
+      return {
+        productId: value.productId,
+        unit: value.unit,
+        minimumQuantity: value.minimumQuantity,
+        version: value.version,
+        updatedAt: value.updatedAt,
+      };
+    },
+  );
+}

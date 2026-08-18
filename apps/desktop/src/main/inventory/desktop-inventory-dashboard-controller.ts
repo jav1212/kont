@@ -2,20 +2,20 @@ import { OperationContextCoordinator, type OperationContextStore } from "@kontav
 import { createOperationalDefaults, localDate, type OperationContextKey, type OperationalDefaults } from "@kontave/operation-context-domain";
 import { currency, currencyCode, exchangeRate } from "@kontave/monetary-domain";
 import { companyId, organizationId, userId } from "@kontave/organizations-domain";
-import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
-import type { NativeExchangeRateSetDto, NativeInventoryDashboardDto, NativeOperationalDefaultsDto } from "@kontave/native-api-contracts";
+import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
+import type { ExchangeRateSetDto, InventoryDashboardDto, OperationalDefaultsDto } from "@kontave/client-contracts";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 import type { DesktopInventoryDashboardQuery, DesktopInventoryDashboardResult } from "../../shared/desktop-api";
 
 export class DesktopInventoryDashboardController {
-  private readonly client: NativeApiClient;
+  private readonly client: KontaveRemoteClient;
   private readonly dashboardsInFlight = new Map<string, Promise<DesktopInventoryDashboardResult>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new NativeApiClient({
+    this.client = new KontaveRemoteClient({
       baseUrl,
-      client: "desktop",
-      authenticatedFetch: (input, init) => authenticatedRequest.fetch(input, init),
+      platform: "desktop",
+      authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init),
     });
   }
 
@@ -37,7 +37,7 @@ export class DesktopInventoryDashboardController {
   private async loadDashboard(actorId: string, organization: string, company: string, query: DesktopInventoryDashboardQuery): Promise<DesktopInventoryDashboardResult> {
     const key = { userId: userId(actorId as string), organizationId: organizationId(organization as string), companyId: companyId(company as string) };
     try {
-      const store = new NativeOperationContextStore(this.client);
+      const store = new RemoteOperationContextStore(this.client);
       const coordinator = new OperationContextCoordinator(store, {
         historical: async () => { throw new Error("Desktop delegates exchange-rate resolution to the native API."); },
       }, desktopClock);
@@ -48,8 +48,8 @@ export class DesktopInventoryDashboardController {
       const from = query.from ?? `${to.slice(0, 8)}01`;
       const root = operationRoot(key);
       const [dashboard, exchangeRates] = await Promise.all([
-        this.client.get<NativeInventoryDashboardDto>(`${root.replace("/operation-context", "/inventory/dashboard")}?from=${from}&to=${to}&granularity=day&limit=5`),
-        this.client.get<NativeExchangeRateSetDto>(`${root}/exchange-rates?date=${encodeURIComponent(to)}`),
+        this.client.get<InventoryDashboardDto>(`${root.replace("/operation-context", "/inventory/dashboard")}?from=${from}&to=${to}&granularity=day&limit=5`),
+        this.client.get<ExchangeRateSetDto>(`${root}/exchange-rates?date=${encodeURIComponent(to)}`),
       ]);
       return { ok: true, value: { operationContext: encodeOperationalDefaults(state.value), exchangeRates, dashboard } };
     } catch (cause: unknown) {
@@ -58,13 +58,13 @@ export class DesktopInventoryDashboardController {
   }
 }
 
-class NativeOperationContextStore implements OperationContextStore {
-  constructor(private readonly client: NativeApiClient) {}
+class RemoteOperationContextStore implements OperationContextStore {
+  constructor(private readonly client: KontaveRemoteClient) {}
   async load(key: OperationContextKey): Promise<OperationalDefaults | null> {
-    return decodeOperationalDefaults(await this.client.get<NativeOperationalDefaultsDto>(operationRoot(key)), key);
+    return decodeOperationalDefaults(await this.client.get<OperationalDefaultsDto>(operationRoot(key)), key);
   }
   async save(value: OperationalDefaults, expectedVersion: number): Promise<OperationalDefaults> {
-    const dto = await this.client.request<NativeOperationalDefaultsDto>(operationRoot(value.key), {
+    const dto = await this.client.request<OperationalDefaultsDto>(operationRoot(value.key), {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ expectedVersion, effectiveDate: value.effectiveDate, presentationCurrency: value.presentationCurrency }),
@@ -80,10 +80,10 @@ const desktopClock = {
 };
 
 function operationRoot(key: OperationContextKey): string {
-  return `/api/native/v1/organizations/${encodeURIComponent(key.organizationId)}/companies/${encodeURIComponent(key.companyId)}/operation-context`;
+  return `/api/client/v1/organizations/${encodeURIComponent(key.organizationId)}/companies/${encodeURIComponent(key.companyId)}/operation-context`;
 }
 
-function decodeOperationalDefaults(dto: NativeOperationalDefaultsDto, key: OperationContextKey): OperationalDefaults {
+function decodeOperationalDefaults(dto: OperationalDefaultsDto, key: OperationContextKey): OperationalDefaults {
   const selection = dto.exchangeRate.status === "unavailable"
     ? { status: "unavailable" as const, effectiveDate: localDate(dto.exchangeRate.effectiveDate) }
     : { status: "resolved" as const, value: {
@@ -99,7 +99,7 @@ function decodeOperationalDefaults(dto: NativeOperationalDefaultsDto, key: Opera
   return createOperationalDefaults({ key, effectiveDate: localDate(dto.effectiveDate), presentationCurrency: currencyCode(dto.presentationCurrency), exchangeRate: selection, version: dto.version, updatedAt: dto.updatedAt });
 }
 
-function encodeOperationalDefaults(value: OperationalDefaults): NativeOperationalDefaultsDto {
+function encodeOperationalDefaults(value: OperationalDefaults): OperationalDefaultsDto {
   return {
     effectiveDate: value.effectiveDate,
     presentationCurrency: value.presentationCurrency,
@@ -134,16 +134,16 @@ function readQuery(value: unknown): DesktopInventoryDashboardQuery | null {
 }
 
 function failure(cause: unknown, fallbackCode: string): DesktopInventoryDashboardResult {
-  const nativeFailure = findNativeApiFailure(cause);
-  if (nativeFailure) return { ok: false, error: { code: nativeFailure.code, message: nativeFailure.message, requestId: nativeFailure.requestId ?? crypto.randomUUID() } };
+  const remoteFailure = findRemoteFailure(cause);
+  if (remoteFailure) return { ok: false, error: { code: remoteFailure.code, message: remoteFailure.message, requestId: remoteFailure.requestId ?? crypto.randomUUID() } };
   return { ok: false, error: { code: fallbackCode, message: cause instanceof Error ? cause.message : "No se pudo cargar el tablero de inventario.", requestId: crypto.randomUUID() } };
 }
 
-function findNativeApiFailure(cause: unknown): NativeApiFailure | null {
+function findRemoteFailure(cause: unknown): KontaveRemoteFailure | null {
   let current = cause;
   const visited = new Set<unknown>();
   while (current instanceof Error && !visited.has(current)) {
-    if (current instanceof NativeApiFailure) return current;
+    if (current instanceof KontaveRemoteFailure) return current;
     visited.add(current);
     current = current.cause;
   }

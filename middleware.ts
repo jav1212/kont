@@ -59,7 +59,7 @@ const isAdminPublic = (p: string) =>
     p === '/admin/forgot-password' ||
     p === '/admin/reset-password';
 
-const isNativeApi = (p: string) => p.startsWith('/api/native/v1/');
+const isNativeApi = (p: string) => p.startsWith('/api/client/v1/');
 
 function nativeApiOrigin(request: NextRequest): string | null {
     const origin = request.headers.get('origin');
@@ -251,6 +251,6 @@ export const config = {
         '/herramientas/:path*',
         '/admin',
         '/admin/:path*',
-        '/api/native/v1/:path*',
+        '/api/client/v1/:path*',
     ],
 };

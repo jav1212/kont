@@ -1,4 +1,4 @@
-import type { NativeCurrentUserDto } from "@kontave/native-api-contracts";
+import type { CurrentUserDto } from "@kontave/client-contracts";
 import type { DesktopCurrentUserState } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
@@ -9,14 +9,14 @@ export class DesktopCurrentUserSource {
   ) {}
 
   async getCurrent(): Promise<DesktopCurrentUserState> {
-    const response = await this.request.fetch(new URL("/api/native/v1/me", this.baseUrl));
+    const response = await this.request.fetch(new URL("/api/client/v1/me", this.baseUrl));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return { status: "ready", user: readCurrentUser(payload) };
   }
 }
 
-function readCurrentUser(payload: unknown): NativeCurrentUserDto {
+function readCurrentUser(payload: unknown): CurrentUserDto {
   const envelope = readRecord(payload, "La respuesta del perfil no es válida.");
   const data = readRecord(envelope.data, "La respuesta del perfil no contiene datos válidos.");
   return {

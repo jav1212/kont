@@ -59,6 +59,9 @@ importers:
       '@kontave/billing-supabase':
         specifier: workspace:*
         version: link:packages/billing/supabase
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:packages/client/contracts
       '@kontave/companies-application':
         specifier: workspace:*
         version: link:packages/companies/application
@@ -122,9 +125,6 @@ importers:
       '@kontave/monetary-monitor-bcv-adapter':
         specifier: workspace:*
         version: link:packages/monetary/monitor-bcv-adapter
-      '@kontave/native-api-contracts':
-        specifier: workspace:*
-        version: link:packages/platform/native-api-contracts
       '@kontave/operation-context-application':
         specifier: workspace:*
         version: link:packages/operation-context/application
@@ -363,12 +363,18 @@ importers:
       '@kontave/client-connectivity-contracts':
         specifier: workspace:*
         version: link:../../packages/client-connectivity/contracts
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:../../packages/client/contracts
       '@kontave/client-feedback-application':
         specifier: workspace:*
         version: link:../../packages/client-feedback/application
       '@kontave/client-interaction-application':
         specifier: workspace:*
         version: link:../../packages/client-interaction/application
+      '@kontave/client-remote':
+        specifier: workspace:*
+        version: link:../../packages/client/remote
       '@kontave/client-updates-application':
         specifier: workspace:*
         version: link:../../packages/client-updates/application
@@ -399,12 +405,6 @@ importers:
       '@kontave/monetary-domain':
         specifier: workspace:*
         version: link:../../packages/monetary/domain
-      '@kontave/native-api-client':
-        specifier: workspace:*
-        version: link:../../packages/platform/native-api-client
-      '@kontave/native-api-contracts':
-        specifier: workspace:*
-        version: link:../../packages/platform/native-api-contracts
       '@kontave/navigation-domain':
         specifier: workspace:*
         version: link:../../packages/navigation/domain
@@ -539,12 +539,18 @@ importers:
       '@kontave/client-connectivity-contracts':
         specifier: workspace:*
         version: link:../../packages/client-connectivity/contracts
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:../../packages/client/contracts
       '@kontave/client-feedback-application':
         specifier: workspace:*
         version: link:../../packages/client-feedback/application
       '@kontave/client-interaction-application':
         specifier: workspace:*
         version: link:../../packages/client-interaction/application
+      '@kontave/client-remote':
+        specifier: workspace:*
+        version: link:../../packages/client/remote
       '@kontave/client-updates-application':
         specifier: workspace:*
         version: link:../../packages/client-updates/application
@@ -560,12 +566,6 @@ importers:
       '@kontave/modules-domain':
         specifier: workspace:*
         version: link:../../packages/modules/domain
-      '@kontave/native-api-client':
-        specifier: workspace:*
-        version: link:../../packages/platform/native-api-client
-      '@kontave/native-api-contracts':
-        specifier: workspace:*
-        version: link:../../packages/platform/native-api-contracts
       '@kontave/navigation-domain':
         specifier: workspace:*
         version: link:../../packages/navigation/domain
@@ -966,6 +966,41 @@ importers:
         specifier: workspace:*
         version: link:../application
       '@kontave/client-updates-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client/contracts:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client/remote:
+    dependencies:
+      '@kontave/client-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/client/runtime:
+    dependencies:
+      '@kontave/client-contracts':
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
@@ -1943,25 +1978,6 @@ importers:
       '@kontave/platform-status-domain':
         specifier: workspace:*
         version: link:../domain
-    devDependencies:
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/platform/native-api-client:
-    dependencies:
-      '@kontave/native-api-contracts':
-        specifier: workspace:*
-        version: link:../native-api-contracts
-    devDependencies:
-      tsx:
-        specifier: ^4.23.12
-        version: 4.23.12
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.3
-
-  packages/platform/native-api-contracts:
     devDependencies:
       typescript:
         specifier: ^5.9.2

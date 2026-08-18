@@ -9,7 +9,7 @@ export class DesktopWorkspaceModuleSource implements WorkspaceModuleSource {
 
   async listAvailable(organizationId: OrganizationId): Promise<readonly AvailableOrganizationModule[]> {
     const response = await this.request.fetch(new URL(
-      `/api/native/v1/organizations/${encodeURIComponent(organizationId)}/modules/available?platform=desktop`,
+      `/api/client/v1/organizations/${encodeURIComponent(organizationId)}/modules/available?platform=desktop`,
       this.baseUrl,
     ));
     const payload: unknown = await response.json();

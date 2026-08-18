@@ -1,4 +1,4 @@
-import type { NativeAccessibleOrganizationDto } from "@kontave/native-api-contracts";
+import type { AccessibleOrganizationDto } from "@kontave/client-contracts";
 import {
   DelegatedScope,
   OrganizationAccessPathKind,
@@ -15,20 +15,20 @@ export class DesktopWorkspacePortfolioSource implements WorkspacePortfolioSource
   ) {}
 
   async list(): Promise<readonly WorkspacePortfolioEntry[]> {
-    const response = await this.request.fetch(new URL("/api/native/v1/organization-access", this.baseUrl));
+    const response = await this.request.fetch(new URL("/api/client/v1/organization-access", this.baseUrl));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     return readPortfolio(payload).map(toAccessibleOrganization);
   }
 }
 
-function readPortfolio(payload: unknown): readonly NativeAccessibleOrganizationDto[] {
+function readPortfolio(payload: unknown): readonly AccessibleOrganizationDto[] {
   const record = readRecord(payload, "La respuesta del portafolio no es válida.");
   if (!Array.isArray(record.data)) throw new Error("La respuesta del portafolio no contiene datos válidos.");
   return record.data.map(readWorkspaceDto);
 }
 
-function readWorkspaceDto(value: unknown): NativeAccessibleOrganizationDto {
+function readWorkspaceDto(value: unknown): AccessibleOrganizationDto {
   const record = readRecord(value, "El espacio de trabajo recibido no es válido.");
   const accessPath = readRecord(record.accessPath, "La ruta de acceso recibida no es válida.");
   return {
@@ -49,7 +49,7 @@ function readWorkspaceDto(value: unknown): NativeAccessibleOrganizationDto {
   };
 }
 
-function toAccessibleOrganization(dto: NativeAccessibleOrganizationDto): WorkspacePortfolioEntry {
+function toAccessibleOrganization(dto: AccessibleOrganizationDto): WorkspacePortfolioEntry {
   const kind = dto.accessPath.kind === OrganizationAccessPathKind.DirectMembership
     ? OrganizationAccessPathKind.DirectMembership
     : dto.accessPath.kind === OrganizationAccessPathKind.DelegatedOrganization
@@ -71,7 +71,7 @@ function toAccessibleOrganization(dto: NativeAccessibleOrganizationDto): Workspa
   };
 }
 
-function readRelationship(value: unknown, accessPathKind: unknown): NativeAccessibleOrganizationDto["relationship"] {
+function readRelationship(value: unknown, accessPathKind: unknown): AccessibleOrganizationDto["relationship"] {
   if (value === "personal" || value === "member" || value === "delegated") return value;
   // Additive compatibility with older v1 deployments. A direct membership is
   // never promoted to personal without explicit backend evidence.

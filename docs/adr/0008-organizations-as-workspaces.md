@@ -26,10 +26,10 @@ La migración se aplicará y verificará separadamente antes de habilitar los en
 
 ## API nativa
 
-- `GET /api/native/v1/organizations`
-- `GET /api/native/v1/organizations/:organizationId`
-- `GET /api/native/v1/organizations/:organizationId/companies`
-- `GET /api/native/v1/organizations/:organizationId/companies/:companyId`
+- `GET /api/client/v1/organizations`
+- `GET /api/client/v1/organizations/:organizationId`
+- `GET /api/client/v1/organizations/:organizationId/companies`
+- `GET /api/client/v1/organizations/:organizationId/companies/:companyId`
 
 Cada operación verifica el token y la membresía activa en la capa de aplicación. Los identificadores recibidos por HTTP se convierten a tipos nominales antes de invocar casos de uso.
 

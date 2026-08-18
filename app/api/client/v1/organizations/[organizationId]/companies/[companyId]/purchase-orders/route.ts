@@ -1,0 +1,14 @@
+import { executeInventoryDashboardRequest } from "@/src/client-api/v1/inventory/execute-inventory-dashboard-request";
+export const dynamic = "force-dynamic";
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ organizationId: string; companyId: string }> },
+) {
+  const p = await context.params;
+  return executeInventoryDashboardRequest(
+    request,
+    p.organizationId,
+    p.companyId,
+    "purchases",
+  );
+}

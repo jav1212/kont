@@ -1,15 +1,15 @@
 import { localDate } from "@kontave/operation-context-domain";
-import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
-import type { NativeExchangeRateSetDto, NativeOperationalDefaultsDto, NativePurchasingDashboardDto } from "@kontave/native-api-contracts";
+import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
+import type { ExchangeRateSetDto, OperationalDefaultsDto, PurchasingDashboardDto } from "@kontave/client-contracts";
 import type { DesktopPurchasingDashboardQuery, DesktopPurchasingDashboardResult } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopPurchasingDashboardController {
-  private readonly client: NativeApiClient;
+  private readonly client: KontaveRemoteClient;
   private readonly inFlight = new Map<string, Promise<DesktopPurchasingDashboardResult>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new NativeApiClient({ baseUrl, client: "desktop", authenticatedFetch: (input, init) => authenticatedRequest.fetch(input, init) });
+    this.client = new KontaveRemoteClient({ baseUrl, platform: "desktop", authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init) });
   }
 
   getDashboard(actor: unknown, organization: unknown, company: unknown, raw: unknown): Promise<DesktopPurchasingDashboardResult> {
@@ -26,14 +26,14 @@ export class DesktopPurchasingDashboardController {
 
   private async load(organization: string, company: string, query: DesktopPurchasingDashboardQuery): Promise<DesktopPurchasingDashboardResult> {
     try {
-      const root = `/api/native/v1/organizations/${encodeURIComponent(organization)}/companies/${encodeURIComponent(company)}`;
-      const context = await this.client.get<NativeOperationalDefaultsDto>(`${root}/operation-context`);
+      const root = `/api/client/v1/organizations/${encodeURIComponent(organization)}/companies/${encodeURIComponent(company)}`;
+      const context = await this.client.get<OperationalDefaultsDto>(`${root}/operation-context`);
       const period = resolvePurchasingDashboardPeriod(context.effectiveDate, query);
       const limit = query.recentLimit ?? 5;
       const rateDate = period.to > context.effectiveDate ? context.effectiveDate : period.to;
       const [dashboard, exchangeRates] = await Promise.all([
-        this.client.get<NativePurchasingDashboardDto>(`${root}/purchasing/dashboard?from=${period.from}&to=${period.to}&granularity=day&limit=${limit}`),
-        this.client.get<NativeExchangeRateSetDto>(`${root}/operation-context/exchange-rates?date=${encodeURIComponent(rateDate)}`),
+        this.client.get<PurchasingDashboardDto>(`${root}/purchasing/dashboard?from=${period.from}&to=${period.to}&granularity=day&limit=${limit}`),
+        this.client.get<ExchangeRateSetDto>(`${root}/operation-context/exchange-rates?date=${encodeURIComponent(rateDate)}`),
       ]);
       return { ok: true, value: { operationContext: context, exchangeRates, dashboard } };
     } catch (cause) {
@@ -66,4 +66,4 @@ function readQuery(value: unknown): DesktopPurchasingDashboardQuery | null {
 
 function monthEnd(month: string): string { const [year, monthNumber] = month.split("-").map(Number) as [number, number]; return new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10); }
 function failure(cause: unknown, fallback: string): DesktopPurchasingDashboardResult { const native = findFailure(cause); return native ? { ok: false, error: { code: native.code, message: native.message, requestId: native.requestId ?? null } } : { ok: false, error: { code: fallback, message: cause instanceof Error ? cause.message : "No se pudo cargar el tablero de compras.", requestId: null } }; }
-function findFailure(cause: unknown): NativeApiFailure | null { let current = cause; const seen = new Set<unknown>(); while (current instanceof Error && !seen.has(current)) { if (current instanceof NativeApiFailure) return current; seen.add(current); current = current.cause; } return null; }
+function findFailure(cause: unknown): KontaveRemoteFailure | null { let current = cause; const seen = new Set<unknown>(); while (current instanceof Error && !seen.has(current)) { if (current instanceof KontaveRemoteFailure) return current; seen.add(current); current = current.cause; } return null; }

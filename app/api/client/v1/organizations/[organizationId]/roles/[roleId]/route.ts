@@ -1,0 +1,46 @@
+import { permissionCode, roleId } from "@kontave/access-control-domain";
+import type { UpdateRoleDto } from "@kontave/client-contracts";
+import {
+  executeRoleRequest,
+  rolesManage,
+  toRoleDto,
+} from "@/src/client-api/v1/access-control/access-control-http";
+type C = { params: Promise<{ organizationId: string; roleId: string }> };
+export async function PATCH(request: Request, c: C) {
+  const p = await c.params,
+    b = (await request.json()) as UpdateRoleDto;
+  return executeRoleRequest(
+    request,
+    p.organizationId,
+    rolesManage,
+    async (a, s) =>
+      toRoleDto(
+        await a.updateRole.execute({
+          actor: s,
+          organizationId: p.organizationId,
+          roleId: roleId(p.roleId),
+          expectedVersion: b.expectedVersion,
+          ...(b.name === undefined ? {} : { name: b.name }),
+          ...(b.description === undefined
+            ? {}
+            : { description: b.description }),
+          ...(b.permissions === undefined
+            ? {}
+            : { permissions: b.permissions.map(permissionCode) }),
+        }),
+      ),
+  );
+}
+export async function DELETE(request: Request, c: C) {
+  const p = await c.params,
+    b = (await request.json()) as { expectedVersion: number };
+  return executeRoleRequest(request, p.organizationId, rolesManage, async (a) =>
+    toRoleDto(
+      await a.archiveRole.execute({
+        organizationId: p.organizationId,
+        roleId: roleId(p.roleId),
+        expectedVersion: b.expectedVersion,
+      }),
+    ),
+  );
+}

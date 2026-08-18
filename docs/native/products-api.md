@@ -4,16 +4,16 @@ The Products screen is a composed read model. `products` owns catalog identity a
 
 ## Routes
 
-- `GET|POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products`
-- `GET|PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}`
-- `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/activate`
-- `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/deactivate`
-- `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements`
-- `PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile`
-- `GET|POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories`
-- `PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}`
-- `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}/activate`
-- `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}/deactivate`
+- `GET|POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products`
+- `GET|PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}`
+- `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/activate`
+- `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/deactivate`
+- `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements`
+- `PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile`
+- `GET|POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories`
+- `PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}`
+- `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}/activate`
+- `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}/deactivate`
 
 All successful responses use `{ data, meta: { requestId } }`. All expected failures use `{ error: { code, message, requestId } }`.
 

@@ -48,7 +48,7 @@
     "@kontave/auth-application": "workspace:*",
     "@kontave/auth-domain": "workspace:*",
     "@kontave/auth-supabase": "workspace:*",
-    "@kontave/native-api-contracts": "workspace:*",
+    "@kontave/client-contracts": "workspace:*",
     "@kontave/monetary-application": "workspace:*",
     "@kontave/monetary-domain": "workspace:*",
     "@kontave/monetary-monitor-bcv-adapter": "workspace:*",

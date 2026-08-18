@@ -27,9 +27,9 @@ El adaptador usa service role únicamente detrás de casos de uso que verifican 
 
 ## API nativa
 
-- `GET /api/native/v1/organizations/:id/billing`
-- `GET /api/native/v1/organizations/:id/subscription`
-- `GET /api/native/v1/organizations/:id/entitlements`
-- `GET /api/native/v1/organizations/:id/usage`
-- `GET /api/native/v1/organizations/:id/invoices`
-- `GET /api/native/v1/organizations/:id/payment-methods`
+- `GET /api/client/v1/organizations/:id/billing`
+- `GET /api/client/v1/organizations/:id/subscription`
+- `GET /api/client/v1/organizations/:id/entitlements`
+- `GET /api/client/v1/organizations/:id/usage`
+- `GET /api/client/v1/organizations/:id/invoices`
+- `GET /api/client/v1/organizations/:id/payment-methods`

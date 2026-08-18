@@ -31,7 +31,7 @@ export default defineConfig({
         "@kontave/auth-supabase",
         "@kontave/client-connectivity-application",
         "@kontave/client-connectivity-contracts",
-        "@kontave/native-api-contracts",
+        "@kontave/client-contracts",
         "@kontave/monetary-domain",
         "@kontave/operation-context-application",
         "@kontave/operation-context-domain",

@@ -14,7 +14,7 @@ export class DesktopBillingPlanSource {
 
   async getForOrganization(organizationId: string): Promise<DesktopBillingPlanState> {
     const response = await this.request.fetch(new URL(
-      `/api/native/v1/organizations/${encodeURIComponent(organizationId)}/billing/overview`,
+      `/api/client/v1/organizations/${encodeURIComponent(organizationId)}/billing/overview`,
       this.baseUrl,
     ));
     const payload: unknown = await response.json();

@@ -1,30 +1,30 @@
-import { NativeApiClient, NativeApiFailure } from "@kontave/native-api-client";
+import { KontaveRemoteClient, KontaveRemoteFailure } from "@kontave/client-remote";
 import type {
-  NativeAuthenticatedDeviceSessionDto,
-  NativeBillingOverviewDto,
-  NativeBillingPlanDto,
-  NativeCurrentUserDto,
-  NativeManualPaymentRequestDto,
-  NativeOrganizationDto,
-  NativeOrganizationMemberDto,
-  NativeRoleDto,
-  NativeUpdateCurrentUserDto,
-  NativeUpdateOrganizationDto,
-  NativeUpdateUserPreferencesDto,
-  NativeUserPreferencesDto,
-} from "@kontave/native-api-contracts";
+  AuthenticatedDeviceSessionDto,
+  BillingOverviewDto,
+  BillingPlanDto,
+  CurrentUserDto,
+  ManualPaymentRequestDto,
+  OrganizationDto,
+  OrganizationMemberDto,
+  RoleDto,
+  UpdateCurrentUserDto,
+  UpdateOrganizationDto,
+  UpdateUserPreferencesDto,
+  UserPreferencesDto,
+} from "@kontave/client-contracts";
 import type { DesktopSettingsResult, DesktopSettingsSnapshot } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
 export class DesktopSettingsController {
-  private readonly client: NativeApiClient;
+  private readonly client: KontaveRemoteClient;
   private readonly snapshotsInFlight = new Map<string, Promise<DesktopSettingsResult<DesktopSettingsSnapshot>>>();
 
   constructor(baseUrl: string, authenticatedRequest: DesktopAuthenticatedRequest) {
-    this.client = new NativeApiClient({
+    this.client = new KontaveRemoteClient({
       baseUrl,
-      client: "desktop",
-      authenticatedFetch: (input, init) => authenticatedRequest.fetch(input, init),
+      platform: "desktop",
+      authenticatedRequest: (input, init) => authenticatedRequest.fetch(input, init),
     });
   }
 
@@ -42,19 +42,19 @@ export class DesktopSettingsController {
   private async loadSnapshot(organizationId: string | null, _companyId: string | null): Promise<DesktopSettingsResult<DesktopSettingsSnapshot>> {
     try {
       const [profile, preferences, sessions] = await Promise.all([
-        this.client.get<NativeCurrentUserDto>("/api/native/v1/me"),
-        this.client.get<NativeUserPreferencesDto>("/api/native/v1/me/preferences"),
-        this.client.get<readonly NativeAuthenticatedDeviceSessionDto[]>("/api/native/v1/auth/sessions"),
+        this.client.get<CurrentUserDto>("/api/client/v1/me"),
+        this.client.get<UserPreferencesDto>("/api/client/v1/me/preferences"),
+        this.client.get<readonly AuthenticatedDeviceSessionDto[]>("/api/client/v1/auth/sessions"),
       ]);
       if (!organizationId) return success({ profile, preferences, organization: null, sessions, members: [], roles: [], billing: null, billingPlans: [], paymentRequests: [], documents: [] });
-      const root = `/api/native/v1/organizations/${encodeURIComponent(organizationId)}`;
+      const root = `/api/client/v1/organizations/${encodeURIComponent(organizationId)}`;
       const [organization, members, roles, billing, billingPlans, paymentRequests] = await Promise.all([
-        this.client.get<NativeOrganizationDto>(root),
-        this.optional(`${root}/members`, [] as readonly NativeOrganizationMemberDto[]),
-        this.optional(`${root}/roles`, [] as readonly NativeRoleDto[]),
-        this.optional<NativeBillingOverviewDto | null>(`${root}/billing/overview`, null),
-        this.optional(`${root}/billing/plans`, [] as readonly NativeBillingPlanDto[]),
-        this.optional(`${root}/billing/payment-requests`, [] as readonly NativeManualPaymentRequestDto[]),
+        this.client.get<OrganizationDto>(root),
+        this.optional(`${root}/members`, [] as readonly OrganizationMemberDto[]),
+        this.optional(`${root}/roles`, [] as readonly RoleDto[]),
+        this.optional<BillingOverviewDto | null>(`${root}/billing/overview`, null),
+        this.optional(`${root}/billing/plans`, [] as readonly BillingPlanDto[]),
+        this.optional(`${root}/billing/payment-requests`, [] as readonly ManualPaymentRequestDto[]),
       ]);
       return success({ profile, preferences, organization, sessions, members, roles, billing, billingPlans, paymentRequests, documents: [] });
     } catch (cause: unknown) { return failure(cause); }
@@ -63,31 +63,31 @@ export class DesktopSettingsController {
   private async optional<T>(path: string, fallback: T): Promise<T> {
     try { return await this.client.get<T>(path); }
     catch (cause: unknown) {
-      if (cause instanceof NativeApiFailure && isCapabilityUnavailable(cause.code)) return fallback;
+      if (cause instanceof KontaveRemoteFailure && isCapabilityUnavailable(cause.code)) return fallback;
       throw cause;
     }
   }
 
-  updateProfile(command: unknown): Promise<DesktopSettingsResult<NativeCurrentUserDto>> {
-    return this.mutate("/api/native/v1/me", "PATCH", command as NativeUpdateCurrentUserDto);
+  updateProfile(command: unknown): Promise<DesktopSettingsResult<CurrentUserDto>> {
+    return this.mutate("/api/client/v1/me", "PATCH", command as UpdateCurrentUserDto);
   }
-  updatePreferences(command: unknown): Promise<DesktopSettingsResult<NativeUserPreferencesDto>> {
-    return this.mutate("/api/native/v1/me/preferences", "PATCH", command as NativeUpdateUserPreferencesDto);
+  updatePreferences(command: unknown): Promise<DesktopSettingsResult<UserPreferencesDto>> {
+    return this.mutate("/api/client/v1/me/preferences", "PATCH", command as UpdateUserPreferencesDto);
   }
-  updateOrganization(organizationId: unknown, command: unknown): Promise<DesktopSettingsResult<NativeOrganizationDto>> {
+  updateOrganization(organizationId: unknown, command: unknown): Promise<DesktopSettingsResult<OrganizationDto>> {
     if (typeof organizationId !== "string" || !organizationId) return Promise.resolve(invalid("La organización no es válida."));
-    return this.mutate(`/api/native/v1/organizations/${encodeURIComponent(organizationId)}`, "PATCH", command as NativeUpdateOrganizationDto);
+    return this.mutate(`/api/client/v1/organizations/${encodeURIComponent(organizationId)}`, "PATCH", command as UpdateOrganizationDto);
   }
   changePassword(newPassword: unknown, revokeOtherSessions: unknown): Promise<DesktopSettingsResult<{ readonly changed: boolean }>> {
     if (typeof newPassword !== "string") return Promise.resolve(invalid("La contraseña no es válida."));
-    return this.mutate("/api/native/v1/auth/change-password", "POST", { newPassword, revokeOtherSessions: revokeOtherSessions === true });
+    return this.mutate("/api/client/v1/auth/change-password", "POST", { newPassword, revokeOtherSessions: revokeOtherSessions === true });
   }
   revokeSession(sessionId: unknown): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>> {
     if (typeof sessionId !== "string" || !sessionId) return Promise.resolve(invalid("La sesión no es válida."));
-    return this.mutate(`/api/native/v1/auth/sessions/${encodeURIComponent(sessionId)}`, "DELETE");
+    return this.mutate(`/api/client/v1/auth/sessions/${encodeURIComponent(sessionId)}`, "DELETE");
   }
   revokeOtherSessions(): Promise<DesktopSettingsResult<{ readonly revoked: boolean }>> {
-    return this.mutate("/api/native/v1/auth/sessions", "DELETE");
+    return this.mutate("/api/client/v1/auth/sessions", "DELETE");
   }
 
   private async mutate<T>(path: string, method: "PATCH" | "POST" | "DELETE", body?: unknown): Promise<DesktopSettingsResult<T>> {
@@ -104,7 +104,7 @@ export class DesktopSettingsController {
 function success<T>(value: T): DesktopSettingsResult<T> { return { ok: true, value }; }
 function invalid<T>(message: string): DesktopSettingsResult<T> { return { ok: false, error: { code: "INVALID_REQUEST", message, requestId: null } }; }
 function failure<T>(cause: unknown): DesktopSettingsResult<T> {
-  if (cause instanceof NativeApiFailure) return { ok: false, error: { code: cause.code, message: cause.message, requestId: cause.requestId } };
+  if (cause instanceof KontaveRemoteFailure) return { ok: false, error: { code: cause.code, message: cause.message, requestId: cause.requestId } };
   return { ok: false, error: { code: "UNEXPECTED", message: "No se pudo completar la operación.", requestId: null } };
 }
 

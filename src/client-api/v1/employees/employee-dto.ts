@@ -1,0 +1,19 @@
+import type { EmployeeDto } from "@kontave/client-contracts";
+import type { Employee } from "@kontave/employees-domain";
+export function toEmployeeDto(employee: Employee): EmployeeDto {
+  return {
+    id: employee.id,
+    companyId: employee.companyId,
+    legacyEmployeeId: employee.legacyEmployeeId,
+    nationalId: employee.person.nationalId,
+    fullName: employee.person.fullName,
+    position: employee.employment.position,
+    hiredOn: employee.employment.hiredOn,
+    employmentType: employee.employment.type,
+    status: employee.status,
+    monthlySalaryMinor: employee.compensation.monthlySalaryMinor.toString(),
+    currency: employee.compensation.currency,
+    compensationEffectiveFrom: employee.compensation.effectiveFrom,
+    version: employee.version,
+  };
+}

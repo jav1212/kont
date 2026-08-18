@@ -25,7 +25,7 @@ corepack pnpm --filter @kontave/desktop typecheck
 Desktop obtiene los módulos disponibles mediante:
 
 ```http
-GET /api/native/v1/organizations/{organizationId}/modules/available?platform=desktop
+GET /api/client/v1/organizations/{organizationId}/modules/available?platform=desktop
 ```
 
 El sidebar puede presentar los siguientes códigos definidos por `@kontave/modules-domain`:
@@ -93,7 +93,7 @@ La pantalla visible como “Departamentos” administra `product-categories`; el
 
 Settings resuelve qué opciones son visibles y si están disponibles, deshabilitadas o en modo de sólo lectura según plataforma, contexto, permisos, módulos y conectividad. Cada capability continúa siendo propietaria de sus datos; Settings no implementa un repositorio genérico de valores.
 
-Desktop consume Preferences mediante el contrato HTTP nativo y conserva la arquitectura hexagonal: React llama una operación IPC tipada, el proceso principal utiliza `@kontave/native-api-client` y el endpoint adapta la capability portable a Supabase. El renderer no conoce HTTP ni persistencia ni depende directamente del repositorio de preferencias.
+Desktop consume Preferences mediante el contrato HTTP compartido y conserva la arquitectura hexagonal: React llama una operación IPC tipada, el proceso principal utiliza `@kontave/client-remote` y el endpoint adapta la capability portable a Supabase. El renderer no conoce HTTP ni persistencia ni depende directamente del repositorio de preferencias.
 
 ### Experiencia del cliente
 
@@ -111,8 +111,8 @@ Las cargas exclusivas de Configuración se presentan mediante `GlobalInteraction
 
 ### Perfil, plan y estado
 
-- `@kontave/native-api-contracts`
-- `@kontave/native-api-client`
+- `@kontave/client-contracts`
+- `@kontave/client-remote`
 
 Desktop consume contratos tipados y un cliente HTTP común para perfil, preferencias, seguridad, organización, miembros, roles, facturación, documentos y estado de plataforma. El cliente se ejecuta en el proceso principal sobre el coordinador único de renovación de sesión.
 
@@ -136,35 +136,35 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 
 | Endpoint | Uso |
 |---|---|
-| `GET /api/native/v1/me` | Perfil personal |
-| `GET /api/native/v1/organization-access` | Organizaciones accesibles |
-| `GET /api/native/v1/organizations/{organizationId}/companies` | Empresas de la organización activa |
-| `GET /api/native/v1/organizations/{organizationId}/modules/available?platform=desktop` | Módulos instalados y compatibles |
-| `GET /api/native/v1/organizations/{organizationId}/billing/overview` | Plan y resumen de facturación |
-| `GET /api/native/v1/platform/status` | Estado de portales |
-| `GET/PATCH /api/native/v1/me` | Consulta y edición del perfil |
-| `GET/PATCH /api/native/v1/me/preferences` | Apariencia y preferencias regionales |
-| `POST /api/native/v1/auth/change-password` | Cambio de contraseña |
-| `GET/DELETE /api/native/v1/auth/sessions` | Consulta y revocación de sesiones |
-| `GET/PATCH /api/native/v1/organizations/{organizationId}` | Información de la organización |
-| `GET /api/native/v1/organizations/{organizationId}/members` | Miembros e invitaciones |
-| `GET /api/native/v1/organizations/{organizationId}/roles` | Roles y permisos |
-| `GET /api/native/v1/organizations/{organizationId}/billing/plans` | Planes disponibles |
-| `GET /api/native/v1/organizations/{organizationId}/billing/payment-requests` | Solicitudes de pago |
-| `GET /api/native/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/operation-context` | Fecha, moneda y tasa efectivas |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard` | Snapshot agregado del tablero de Inventario |
-| `GET/POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products` | Listado paginado y creación de productos |
-| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}` | Detalle y edición de productos |
-| `POST /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física |
-| `PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile` | Stock mínimo versionado |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements` | Historial auditable de sólo lectura |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/unit-economics` | Comparación ponderada de adquisición y venta realizada |
-| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/sale-pricing` | Política comercial versionada |
-| `GET/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/tax-profile` | Tratamiento tributario versionado |
-| `GET/POST/PATCH /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories` | Administración de categorías |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/overview` | Vista paginada y resumen de “Departamentos” |
-| `GET /api/native/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}` | Detalle de categoría y cantidad de productos |
+| `GET /api/client/v1/me` | Perfil personal |
+| `GET /api/client/v1/organization-access` | Organizaciones accesibles |
+| `GET /api/client/v1/organizations/{organizationId}/companies` | Empresas de la organización activa |
+| `GET /api/client/v1/organizations/{organizationId}/modules/available?platform=desktop` | Módulos instalados y compatibles |
+| `GET /api/client/v1/organizations/{organizationId}/billing/overview` | Plan y resumen de facturación |
+| `GET /api/client/v1/platform/status` | Estado de portales |
+| `GET/PATCH /api/client/v1/me` | Consulta y edición del perfil |
+| `GET/PATCH /api/client/v1/me/preferences` | Apariencia y preferencias regionales |
+| `POST /api/client/v1/auth/change-password` | Cambio de contraseña |
+| `GET/DELETE /api/client/v1/auth/sessions` | Consulta y revocación de sesiones |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}` | Información de la organización |
+| `GET /api/client/v1/organizations/{organizationId}/members` | Miembros e invitaciones |
+| `GET /api/client/v1/organizations/{organizationId}/roles` | Roles y permisos |
+| `GET /api/client/v1/organizations/{organizationId}/billing/plans` | Planes disponibles |
+| `GET /api/client/v1/organizations/{organizationId}/billing/payment-requests` | Solicitudes de pago |
+| `GET /api/client/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/operation-context` | Fecha, moneda y tasa efectivas |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard` | Snapshot agregado del tablero de Inventario |
+| `GET/POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products` | Listado paginado y creación de productos |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}` | Detalle y edición de productos |
+| `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física |
+| `PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile` | Stock mínimo versionado |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements` | Historial auditable de sólo lectura |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/unit-economics` | Comparación ponderada de adquisición y venta realizada |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/sale-pricing` | Política comercial versionada |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/tax-profile` | Tratamiento tributario versionado |
+| `GET/POST/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories` | Administración de categorías |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/overview` | Vista paginada y resumen de “Departamentos” |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}` | Detalle de categoría y cantidad de productos |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
 

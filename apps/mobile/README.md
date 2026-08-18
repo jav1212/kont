@@ -115,11 +115,11 @@ La sesión se almacena mediante adaptadores seguros por plataforma. Las solicitu
 
 | Endpoint | Uso |
 |---|---|
-| `GET /api/native/v1/me` | Perfil personal |
-| `GET /api/native/v1/organization-access` | Workspaces disponibles |
-| `GET /api/native/v1/organizations/{organizationId}/operational-companies` | Empresas operativas |
-| `GET /api/native/v1/organizations/{organizationId}/companies` | Presentación y logos empresariales |
-| `GET /api/native/v1/organizations/{organizationId}/modules/available?platform=mobile` | Módulos compatibles |
+| `GET /api/client/v1/me` | Perfil personal |
+| `GET /api/client/v1/organization-access` | Workspaces disponibles |
+| `GET /api/client/v1/organizations/{organizationId}/operational-companies` | Empresas operativas |
+| `GET /api/client/v1/organizations/{organizationId}/companies` | Presentación y logos empresariales |
+| `GET /api/client/v1/organizations/{organizationId}/modules/available?platform=mobile` | Módulos compatibles |
 | `GET /api/bcv/rates` | Tasas oficiales usadas por la calculadora BCV |
 
 ## Estructura

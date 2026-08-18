@@ -1,4 +1,4 @@
-import type { NativePlatformStatusDto, NativePortalAvailability } from "@kontave/native-api-contracts";
+import type { PlatformStatusDto, PortalAvailability } from "@kontave/client-contracts";
 import type { DesktopPlatformStatusState } from "../../shared/desktop-api";
 import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
 
@@ -9,7 +9,7 @@ export class DesktopPlatformStatusSource {
   ) {}
 
   async getCurrent(): Promise<DesktopPlatformStatusState> {
-    const response = await this.request.fetch(new URL("/api/native/v1/platform/status", this.baseUrl));
+    const response = await this.request.fetch(new URL("/api/client/v1/platform/status", this.baseUrl));
     const payload: unknown = await response.json();
     if (!response.ok) throw new Error(readApiError(payload));
     const data = readStatus(payload);
@@ -17,7 +17,7 @@ export class DesktopPlatformStatusSource {
   }
 }
 
-function readStatus(payload: unknown): Pick<NativePlatformStatusDto, "status" | "observedAt"> {
+function readStatus(payload: unknown): Pick<PlatformStatusDto, "status" | "observedAt"> {
   const envelope = readRecord(payload, "La respuesta del estado de portales no es válida.");
   const data = readRecord(envelope.data, "La respuesta del estado de portales no contiene datos válidos.");
   return {
@@ -26,7 +26,7 @@ function readStatus(payload: unknown): Pick<NativePlatformStatusDto, "status" | 
   };
 }
 
-function readAvailability(value: unknown): NativePortalAvailability {
+function readAvailability(value: unknown): PortalAvailability {
   if (value === "operational" || value === "degraded" || value === "down" || value === "unknown") return value;
   throw new Error("El estado agregado de portales no es válido.");
 }

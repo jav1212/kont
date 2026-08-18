@@ -24,6 +24,7 @@ New code under `apps/` and `packages/` must follow these rules:
 - TypeScript imports and exports must remain extensionless. Do not add `.js` suffixes to TypeScript module specifiers; resolve compatibility through the workspace TypeScript/bundler configuration instead.
 - Apply DRY to shared business knowledge and contracts, not superficial visual similarity between platforms.
 - Comments explain intent, constraints, compatibility decisions, and non-obvious behavior. Do not narrate self-explanatory code.
+- Keep all new and modified code consistently formatted. Every public method, function, and constructor must have API-grade TSDoc: a clear purpose, `@param` for every parameter, `@returns`, `@throws` for expected failures, and relevant effects or concurrency constraints. Implementations may use `{@inheritDoc ...}` when a public contract already owns the complete documentation. Documentation must not merely restate the symbol name or narrate its implementation.
 - Do not add generic `utils`, `helpers`, or unbounded `shared` modules. Place code in the capability that owns it and expose it through the package public API.
 
 ### Production Web freeze

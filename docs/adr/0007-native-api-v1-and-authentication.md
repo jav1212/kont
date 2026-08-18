@@ -9,14 +9,14 @@ Kontave Web opera en producción y sus rutas actuales usan autenticación basada
 
 ## Decisión
 
-Las aplicaciones nativas consumirán endpoints nuevos bajo `/api/native/v1/*`. Ninguna implementación de esta API importará middleware, fábricas ni casos de uso heredados de Web salvo que hayan sido extraídos previamente a un puerto estable y verificado.
+Las aplicaciones nativas consumirán endpoints nuevos bajo `/api/client/v1/*`. Ninguna implementación de esta API importará middleware, fábricas ni casos de uso heredados de Web salvo que hayan sido extraídos previamente a un puerto estable y verificado.
 
 La autenticación se divide en:
 
 - `auth-domain`: identidad, sesión y fallos de dominio sin dependencias de framework.
 - `auth-application`: casos de uso y puertos de autenticación.
 - `auth-supabase`: adaptadores concretos de Supabase.
-- `native-api-contracts`: DTOs y envoltorios HTTP versionados.
+- `client-api-contracts`: DTOs y envoltorios HTTP versionados.
 
 Las capacidades portables incluyen inicio y restauración de sesión, registro de credenciales, verificación y reenvío de OTP, y recuperación de contraseña mediante OTP. Los nombres, teléfonos, referidos, aceptación de términos y demás pasos de onboarding pertenecen a sus capacidades dueñas y no al dominio de autenticación.
 

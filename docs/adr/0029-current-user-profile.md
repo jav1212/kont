@@ -9,7 +9,7 @@ Las aplicaciones nativas necesitan nombre visible y avatar del usuario autentica
 
 ## Decisión
 
-- La API expone `GET /api/native/v1/me` como una proyección pequeña del actor autenticado.
+- La API expone `GET /api/client/v1/me` como una proyección pequeña del actor autenticado.
 - `auth-domain` continúa siendo dueño de `userId` y `email`.
 - La capacidad `profile` compone la identidad con `displayName` y `avatarUrl` mediante un puerto de lectura de aplicación.
 - No se crea `profile-domain` mientras el perfil carezca de invariantes y comportamiento propios.
