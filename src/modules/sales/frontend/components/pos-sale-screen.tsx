@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Minus, Package, Plus, Search, ShoppingCart, Trash2, UserPlus, X } from "lucide-react";
 import { useCompany } from "@/src/modules/companies/frontend/hooks/use-companies";
 import { useInventory } from "@/src/modules/inventory/frontend/hooks/use-inventory";
@@ -15,8 +15,6 @@ import { CustomerCombobox } from "./customer-combobox";
 import { useDeviceSubscription } from "@/src/shared/frontend/devices/device-manager-provider";
 import { DeviceStatusControl } from "@/src/shared/frontend/devices/device-status-control";
 import { notify } from "@/src/shared/frontend/notify";
-import { generateSalesInvoicePdf } from "../utils/sales-invoice-pdf";
-import { generateDeliveryNotePdf } from "../utils/delivery-note-pdf";
 import type { SalesDocumentType } from "../../backend/domain/sales-invoice";
 import { getTodayIsoDate } from "@/src/shared/frontend/utils/local-date";
 import { ContextLink as Link } from "@/src/shared/frontend/components/context-link";
@@ -34,10 +32,92 @@ type CartLine = {
 const money = (value: number) => value.toLocaleString("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const stock = (value: number) => value.toLocaleString("es-VE", { maximumFractionDigits: 2 });
 const round2 = (value: number) => Math.round(value * 100) / 100;
+const CATALOG_PAGE_SIZE = 48;
+
+type CatalogProduct = {
+    product: Product;
+    searchText: string;
+    normalizedCode: string;
+    stockLabel: string;
+    unitPriceBs: number | null;
+};
+
+const PosProductCard = memo(function PosProductCard({ entry, onAdd }: {
+    entry: CatalogProduct;
+    onAdd: (product: Product) => void;
+}) {
+    const { product, stockLabel, unitPriceBs } = entry;
+    const noPrice = unitPriceBs == null || unitPriceBs <= 0;
+    const code = product.code || "SIN CÓDIGO";
+
+    return <button
+        type="button"
+        onClick={() => onAdd(product)}
+        aria-label={`Agregar ${product.name}`}
+        className="group flex min-h-36 min-w-0 flex-col rounded-xl border border-border-light bg-surface-1 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary-500/50 hover:shadow-md active:translate-y-0 sm:p-4"
+    >
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+            <span title={code} className="min-w-0 truncate font-mono text-[10px] text-[var(--text-tertiary)]">{code}</span>
+            <span className={`inline-flex shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-bold ${product.currentStock <= 0 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>
+                {stockLabel} {product.measureUnit}
+            </span>
+        </div>
+        <p className="mt-3 line-clamp-2 flex-1 text-[13px] font-semibold leading-snug text-foreground">{product.name}</p>
+        <div className="mt-3 grid w-full min-w-0 grid-cols-[auto_minmax(0,1fr)] items-end gap-2">
+            <span className="whitespace-nowrap text-[9px] uppercase text-[var(--text-tertiary)]">{product.vatType === "exento" ? "Exento" : "IVA 16%"}</span>
+            <span title={noPrice ? "Ingresar precio" : `Bs ${money(unitPriceBs)}`} className={`min-w-0 truncate text-right font-mono text-[14px] font-bold ${noPrice ? "text-amber-600" : "text-primary-500"}`}>
+                {noPrice ? "Ingresar precio" : `Bs ${money(unitPriceBs)}`}
+            </span>
+        </div>
+    </button>;
+});
+
+const PosProductCatalog = memo(function PosProductCatalog({ products, loading, onAdd }: {
+    products: CatalogProduct[];
+    loading: boolean;
+    onAdd: (product: Product) => void;
+}) {
+    const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        if (!sentinel || visibleCount >= products.length || typeof IntersectionObserver === "undefined") return;
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                setVisibleCount((current) => Math.min(current + CATALOG_PAGE_SIZE, products.length));
+            }
+        }, { rootMargin: "320px 0px" });
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [products.length, visibleCount]);
+
+    if (loading && products.length === 0) {
+        return <div aria-label="Cargando productos" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {Array.from({ length: 12 }, (_, index) => <div key={index} className="min-h-36 animate-pulse rounded-xl border border-border-light bg-surface-1 p-4"><div className="h-3 w-3/4 rounded bg-surface-3"/><div className="mt-5 h-4 w-full rounded bg-surface-3"/><div className="mt-2 h-4 w-2/3 rounded bg-surface-3"/><div className="mt-7 h-4 w-1/2 rounded bg-surface-3"/></div>)}
+        </div>;
+    }
+
+    if (products.length === 0) {
+        return <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-[var(--text-tertiary)]"><Package size={36} strokeWidth={1.3}/><p className="text-[13px]">No hay productos que coincidan.</p></div>;
+    }
+
+    const visibleProducts = products.slice(0, visibleCount);
+    return <>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            {visibleProducts.map((entry) => <PosProductCard key={entry.product.id} entry={entry} onAdd={onAdd}/>)}
+        </div>
+        {visibleCount < products.length && <div ref={sentinelRef} className="flex justify-center py-6">
+            <button type="button" onClick={() => setVisibleCount((current) => Math.min(current + CATALOG_PAGE_SIZE, products.length))} className="h-9 rounded-lg border border-border-light bg-surface-1 px-4 text-[11px] font-semibold text-[var(--text-secondary)] hover:border-primary-500/50 hover:text-primary-500">
+                Cargar más ({Math.min(CATALOG_PAGE_SIZE, products.length - visibleCount)})
+            </button>
+        </div>}
+    </>;
+});
 
 export function PosSaleScreen() {
     const { companyId, company } = useCompany();
-    const { products, departments, loadProducts, loadDepartments } = useInventory();
+    const { products, departments, loadingProducts, loadProducts, loadDepartments } = useInventory();
     const { customers, loadCustomers, saveCustomer, ensureConsumerFinal, saveSalesInvoice, confirmSalesInvoice } = useSales();
     const date = getTodayIsoDate();
     const { options: currencyOptions, appliedRates, getRate, publishedDate } = useInvoiceExchangeRates(date);
@@ -62,8 +142,21 @@ export function PosSaleScreen() {
 
     useEffect(() => {
         if (!companyId) return;
-        void Promise.all([loadProducts(companyId), loadDepartments(companyId), loadCustomers(companyId)]);
-        void ensureConsumerFinal(companyId).then((customer) => { if (customer?.id) setCustomerId(customer.id); });
+        let cancelled = false;
+        void Promise.all([loadProducts(companyId), loadDepartments(companyId), loadCustomers(companyId)])
+            .then(([, , loadedCustomers]) => {
+                if (cancelled) return;
+                const consumerFinalId = `consumer-final:${companyId}`;
+                const existing = loadedCustomers?.find((customer) => customer.id === consumerFinalId);
+                if (existing) {
+                    setCustomerId(existing.id!);
+                    return;
+                }
+                void ensureConsumerFinal(companyId).then((customer) => {
+                    if (!cancelled && customer?.id) setCustomerId(customer.id);
+                });
+            });
+        return () => { cancelled = true; };
     }, [companyId, ensureConsumerFinal, loadCustomers, loadDepartments, loadProducts]);
 
     const resolvePrice = useCallback((product: Product) => {
@@ -107,18 +200,41 @@ export function PosSaleScreen() {
         setPendingPrice(null);
     }
 
+    const preparedProducts = useMemo<CatalogProduct[]>(() => products
+        .filter((product) => product.active !== false)
+        .map((product) => {
+            const { resolved } = resolvePrice(product);
+            return {
+                product,
+                searchText: [product.name, product.code, product.barcode ?? ""].join("\u0000").toLocaleLowerCase("es"),
+                normalizedCode: product.code.toLocaleLowerCase("es"),
+                stockLabel: stock(product.currentStock),
+                unitPriceBs: resolved?.unitPriceBs ?? null,
+            };
+        })
+        .sort((a, b) => a.product.name.localeCompare(b.product.name, "es")), [products, resolvePrice]);
+
+    const productIndexes = useMemo(() => {
+        const byBarcode = new Map<string, Product>();
+        const byCode = new Map<string, Product>();
+        for (const entry of preparedProducts) {
+            if (entry.product.barcode) byBarcode.set(entry.product.barcode, entry.product);
+            if (entry.normalizedCode) byCode.set(entry.normalizedCode, entry.product);
+        }
+        return { byBarcode, byCode };
+    }, [preparedProducts]);
+
     useDeviceSubscription("sale", (scan) => {
-        const product = products.find((candidate) => candidate.active && candidate.barcode === scan.barcode);
+        const product = productIndexes.byBarcode.get(scan.barcode);
         if (!product) notify.error(`Código de barras no registrado: ${scan.barcode}`);
         else addResolvedProduct(product);
     });
 
-    const normalizedQuery = query.trim().toLocaleLowerCase("es");
-    const visibleProducts = useMemo(() => products
-        .filter((product) => product.active !== false)
-        .filter((product) => departmentId === "all" || (departmentId === "none" ? !product.departmentId : product.departmentId === departmentId))
-        .filter((product) => !normalizedQuery || [product.name, product.code, product.barcode ?? ""].some((value) => value.toLocaleLowerCase("es").includes(normalizedQuery)))
-        .sort((a, b) => a.name.localeCompare(b.name, "es")), [departmentId, normalizedQuery, products]);
+    const deferredQuery = useDeferredValue(query);
+    const normalizedQuery = deferredQuery.trim().toLocaleLowerCase("es");
+    const visibleProducts = useMemo(() => preparedProducts
+        .filter(({ product }) => departmentId === "all" || (departmentId === "none" ? !product.departmentId : product.departmentId === departmentId))
+        .filter((entry) => !normalizedQuery || entry.searchText.includes(normalizedQuery)), [departmentId, normalizedQuery, preparedProducts]);
 
     const headerAdjustment = useMemo<HeaderAdjustments>(() => ({
         ...emptyHeaderAdjustments(),
@@ -197,6 +313,7 @@ export function PosSaleScreen() {
                 exchangeRate: item.exchangeRate ?? item.dollarRate,
             }));
             if (completed.documentType === "nota_entrega") {
+                const { generateDeliveryNotePdf } = await import("../utils/delivery-note-pdf");
                 await generateDeliveryNotePdf({
                     issuer: { name: company.name, rif: company.rif ?? "", address: company.address, phone: company.phone, logoUrl: company.logoUrl, showLogoInPdf: company.showLogoInPdf },
                     customer: { name: customer.name, rif: customer.rif, address: customer.address },
@@ -212,6 +329,7 @@ export function PosSaleScreen() {
                 });
                 return;
             }
+            const { generateSalesInvoicePdf } = await import("../utils/sales-invoice-pdf");
             const bases = { exenta: 0, reducida_8: 0, general_16: 0 };
             (completed.items ?? []).forEach((item) => { bases[item.vatRate] += item.baseIVA ?? item.totalLine; });
             await generateSalesInvoicePdf({
@@ -227,8 +345,13 @@ export function PosSaleScreen() {
     function onSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
         if (event.key !== "Enter") return;
         event.preventDefault();
-        const exact = products.find((product) => product.active && (product.barcode === query.trim() || product.code.toLocaleLowerCase("es") === normalizedQuery));
-        const candidate = exact ?? (visibleProducts.length === 1 ? visibleProducts[0] : null);
+        const rawQuery = query.trim();
+        const immediateNormalizedQuery = rawQuery.toLocaleLowerCase("es");
+        const exact = productIndexes.byBarcode.get(rawQuery) ?? productIndexes.byCode.get(immediateNormalizedQuery);
+        const immediateMatches = preparedProducts
+            .filter(({ product }) => departmentId === "all" || (departmentId === "none" ? !product.departmentId : product.departmentId === departmentId))
+            .filter((entry) => !immediateNormalizedQuery || entry.searchText.includes(immediateNormalizedQuery));
+        const candidate = exact ?? (immediateMatches.length === 1 ? immediateMatches[0].product : null);
         if (candidate) addResolvedProduct(candidate);
     }
 
@@ -270,10 +393,7 @@ export function PosSaleScreen() {
                     <div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[var(--text-tertiary)]" size={17}/><input ref={searchRef} autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onSearchKeyDown} placeholder="Escanea o busca por nombre, código o código de barras…" style={{ paddingLeft: "3rem", paddingRight: "1rem" }} className="h-12 w-full rounded-xl border border-border-light bg-surface-1 text-[14px] shadow-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/10" /></div>
                     <div className="mt-3 flex gap-2 overflow-x-auto pb-1"><button type="button" onClick={() => setDepartmentId("all")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "all" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Todos</button>{departments.filter((department) => department.active).map((department) => <button key={department.id} type="button" onClick={() => setDepartmentId(department.id!)} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === department.id ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>{department.name}</button>)}<button type="button" onClick={() => setDepartmentId("none")} className={`shrink-0 rounded-lg border px-3 py-2 text-[11px] ${departmentId === "none" ? "border-primary-500 bg-primary-500/10 text-primary-500" : "border-border-light bg-surface-1 text-[var(--text-secondary)]"}`}>Sin departamento</button></div>
                 </div>
-                {visibleProducts.length === 0 ? <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-[var(--text-tertiary)]"><Package size={36} strokeWidth={1.3}/><p className="text-[13px]">No hay productos que coincidan.</p></div> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">{visibleProducts.map((product) => { const { resolved } = resolvePrice(product); const noPrice = !resolved || resolved.unitPriceBs <= 0; return <button key={product.id} type="button" onClick={() => addResolvedProduct(product)} className="group flex min-h-36 flex-col rounded-xl border border-border-light bg-surface-1 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary-500/50 hover:shadow-md active:translate-y-0">
-                    <div className="flex w-full items-start justify-between gap-2"><span className="font-mono text-[10px] text-[var(--text-tertiary)]">{product.code || "SIN CÓDIGO"}</span><span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${product.currentStock <= 0 ? "bg-amber-500/10 text-amber-600" : "bg-emerald-500/10 text-emerald-600"}`}>{stock(product.currentStock)} {product.measureUnit}</span></div>
-                    <p className="mt-3 line-clamp-2 flex-1 text-[13px] font-semibold leading-snug text-foreground">{product.name}</p><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[9px] uppercase text-[var(--text-tertiary)]">{product.vatType === "exento" ? "Exento" : "IVA 16%"}</span><span className={`font-mono text-[14px] font-bold ${noPrice ? "text-amber-600" : "text-primary-500"}`}>{noPrice ? "Ingresar precio" : `Bs ${money(resolved.unitPriceBs)}`}</span></div>
-                </button>; })}</div>}
+                <PosProductCatalog key={`${departmentId}\u0000${normalizedQuery}`} products={visibleProducts} loading={loadingProducts} onAdd={addResolvedProduct}/>
             </section>
             <aside className="hidden min-h-0 border-l border-border-light lg:block">{cartPanel}</aside>
         </div>
