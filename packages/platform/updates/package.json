@@ -1,0 +1,46 @@
+{
+  "name": "@kontave/client-updates",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./src/contracts/index.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./application": {
+      "types": "./src/application/index.ts",
+      "default": "./dist/application/index.js"
+    },
+    "./electron": {
+      "types": "./src/adapters/electron/index.ts",
+      "default": "./dist/adapters/electron/index.js"
+    },
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "pretest": "pnpm build",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "files": ["dist"],
+  "peerDependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "peerDependenciesMeta": {
+    "electron-updater": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron-updater": "^6.8.9",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}

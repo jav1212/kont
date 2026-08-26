@@ -48,7 +48,7 @@ El sidebar puede presentar los siguientes códigos definidos por `@kontave/modul
 | `companies`  | Empresas     | Gestión de empresas                                         |
 | `documents`  | Documentos   | Archivos y contratos                                        |
 
-Que un destino aparezca en la navegación no implica que toda su pantalla sea nativa todavía. `module-navigation.tsx` declara únicamente la presentación soportada por Desktop; los identificadores, etiquetas y jerarquía pertenecen a `@kontave/navigation-domain`.
+Que un destino aparezca en la navegación no implica que toda su pantalla sea nativa todavía. `module-navigation.tsx` declara únicamente la presentación soportada por Desktop; los identificadores, etiquetas y jerarquía pertenecen a `@kontave/navigation`.
 
 ## Packages utilizados
 
@@ -72,7 +72,7 @@ Coordinan organización, empresa y módulo activos. Las selecciones se persisten
 
 ### Navegación
 
-- `@kontave/navigation-domain`
+- `@kontave/navigation`
 
 Define destinos semánticos, jerarquía, parámetros dinámicos y breadcrumbs. Desktop no almacena rutas Web ni `href` como identidad de navegación.
 
@@ -94,8 +94,8 @@ La pantalla visible como “Departamentos” administra `product-categories`; el
 
 ### Configuración y preferencias
 
-- `@kontave/settings-contracts`
-- `@kontave/settings-application`
+- `@kontave/settings/contracts`
+- `@kontave/settings/application`
 - `@kontave/access-control/domain`
 
 Settings resuelve qué opciones son visibles y si están disponibles, deshabilitadas o en modo de sólo lectura según plataforma, contexto, permisos, módulos y conectividad. Cada capability continúa siendo propietaria de sus datos; Settings no implementa un repositorio genérico de valores.
@@ -104,13 +104,13 @@ Desktop consume Preferences mediante el contrato HTTP compartido y conserva la a
 
 ### Experiencia del cliente
 
-- `@kontave/client-connectivity-contracts`
-- `@kontave/client-connectivity-application`
-- `@kontave/client-interaction-application`
-- `@kontave/client-feedback-application`
-- `@kontave/client-updates-contracts`
-- `@kontave/client-updates-application`
-- `@kontave/client-updates-electron`
+- `@kontave/client-connectivity/contracts`
+- `@kontave/client-connectivity/application`
+- `@kontave/client-interaction/application`
+- `@kontave/client-feedback/application`
+- `@kontave/client-updates/contracts`
+- `@kontave/client-updates/application`
+- `@kontave/client-updates/electron`
 
 Cubren conectividad, bloqueos globales, errores copiables, recuperación y actualizaciones de la aplicación.
 
@@ -125,9 +125,9 @@ Desktop consume contratos tipados y un cliente HTTP común para perfil, preferen
 
 ### Dispositivos
 
-- `@kontave/device-contracts`
-- `@kontave/devices-core`
-- `@kontave/devices-node`
+- `@kontave/devices/contracts`
+- `@kontave/devices/core`
+- `@kontave/devices/node`
 
 Gestionan descubrimiento, conexión, reconexión y eventos de dispositivos. Electron y SerialPort permanecen fuera del dominio portable.
 

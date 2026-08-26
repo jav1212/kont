@@ -9,7 +9,7 @@ import {
   type NavigationDestinationId,
   type NavigationParametersByDestination,
   type NavigationTarget,
-} from "@kontave/navigation-domain";
+} from "@kontave/navigation";
 
 export type MobileIconName = ComponentProps<typeof Ionicons>["name"];
 export interface MobileNavigationItem { readonly id: NavigationDestinationId; readonly label: string; readonly icon: MobileIconName; }

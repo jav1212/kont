@@ -10,13 +10,13 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react";
-import type { SettingsAvailability } from "@kontave/settings-application";
+import type { SettingsAvailability } from "@kontave/settings/application";
 import type {
   SettingsEntryId,
   SettingsIconKey,
   SettingsSectionId,
-} from "@kontave/settings-contracts";
-import type { NavigationDestinationId } from "@kontave/navigation-domain";
+} from "@kontave/settings/contracts";
+import type { NavigationDestinationId } from "@kontave/navigation";
 
 /** Navigable entry displayed in a Desktop settings section. */
 export interface DesktopSettingsEntry {

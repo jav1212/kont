@@ -1,4 +1,4 @@
-import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates/contracts";
 /** Native application-update capability exposed by preload. */
 export interface DesktopUpdatesApi {
   getState(): Promise<ClientUpdateSnapshot>;

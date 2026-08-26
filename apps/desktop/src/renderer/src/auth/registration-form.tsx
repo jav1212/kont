@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import {
   errorFeedback,
   successFeedback,
-} from "@kontave/client-feedback-application";
+} from "@kontave/client-feedback/application";
 import { Button, Card, presentFeedback, TextField } from "@kontave/ui-dom";
 import type { DesktopAuthState } from "../../../renderer-bridge";
 import { PasswordRequirements } from "./password-requirements";

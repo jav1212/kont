@@ -24,7 +24,7 @@ import {
   Text,
   presentFeedback,
 } from "@kontave/ui-dom";
-import { codedErrorFeedback } from "@kontave/client-feedback-application";
+import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type {
   SalesDashboardDailyPointDto,
   SalesDashboardDocumentDto,

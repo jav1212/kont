@@ -4,7 +4,7 @@ import {
   type FiscalTaxCategory,
   type FiscalTaxDetermination,
   type FiscalTaxSource,
-} from "@kontave/fiscal-domain";
+} from "@kontave/fiscal/domain";
 import type { TaxDecision, TaxTreatment } from "@kontave/taxation-domain";
 
 export function toFiscalTaxDetermination(decision: TaxDecision): FiscalTaxDetermination {

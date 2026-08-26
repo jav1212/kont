@@ -6,7 +6,7 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "check": "tsc --noEmit", "test": "tsx --test test/**/*.test.ts" },
   "dependencies": {
-    "@kontave/fiscal-domain": "workspace:*",
+    "@kontave/fiscal": "workspace:*",
     "@kontave/taxation-domain": "workspace:*"
   },
   "devDependencies": {

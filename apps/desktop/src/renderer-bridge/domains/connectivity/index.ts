@@ -1,4 +1,4 @@
-import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
 /** Service-connectivity capability exposed by preload. */
 export interface DesktopConnectivityApi {
   getSnapshot(): Promise<ConnectivitySnapshot>;

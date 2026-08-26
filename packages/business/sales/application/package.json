@@ -11,14 +11,13 @@
     "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
-    "@kontave/fiscal-domain": "workspace:*",
+    "@kontave/fiscal": "workspace:*",
     "@kontave/monetary-domain": "workspace:*",
     "@kontave/organizations": "workspace:*",
     "@kontave/sales-domain": "workspace:*"
   },
   "devDependencies": {
     "@kontave/companies": "workspace:*",
-    "@kontave/fiscal-testing": "workspace:*",
     "@kontave/products-domain": "workspace:*",
     "@kontave/sales-testing": "workspace:*",
     "tsx": "^4.23.12",

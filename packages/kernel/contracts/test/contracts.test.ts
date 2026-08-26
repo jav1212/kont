@@ -13,7 +13,7 @@ test("presentation registries preserve explicit feature classifications", () => 
   };
   const registry = definePresentationRegistry<Features>({
     products: { status: "ready" },
-    inventory: { status: "planned", reason: "Native presentation pending" },
+    inventory: { status: "planned", reason: "Client presentation pending" },
   }) satisfies PresentationRegistry<Features>;
   assert.equal(registry.products.status, "ready");
   assert.ok(Object.isFrozen(registry));

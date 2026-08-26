@@ -1,6 +1,6 @@
-import type { DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceLifecycleState } from "@kontave/device-contracts";
-import { DeviceManager as CoreDeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices-core";
-import { DatalogicQw2100Adapter, NodeSerialPortProvider, type DatalogicQw2100Configuration } from "@kontave/devices-node";
+import type { DeviceDescriptor, DeviceEvent, DeviceFailure, DeviceLifecycleState } from "@kontave/devices/contracts";
+import { DeviceManager as CoreDeviceManager, ExponentialBackoffPolicy, type DeviceEventSink, type DeviceLogger } from "@kontave/devices/core";
+import { DatalogicQw2100Adapter, NodeSerialPortProvider, type DatalogicQw2100Configuration } from "@kontave/devices/node";
 import type { DeviceGateway } from "../gateway/device-gateway";
 import type { DeviceInfo, DeviceStatus } from "../protocol/contracts";
 import type { ManagerConfig } from "./config";

@@ -184,7 +184,7 @@ export class AccessTokenRejectedFailure extends Error {
 
 export type SessionExpiredSubscriber = (failure: AuthenticationFailure) => void;
 
-/** Coordinates token renewal for every authenticated native operation. */
+/** Coordinates token renewal for every authenticated client operation. */
 export class SessionRefreshCoordinator {
   private refreshFlight: Promise<RefreshedAuthenticatedSession> | null = null;
   private expirationFlight: Promise<AuthenticationFailure> | null = null;

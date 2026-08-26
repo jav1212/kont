@@ -7,8 +7,8 @@
   "scripts": { "check": "tsc --noEmit", "test": "node -e \"console.log('UI behavior validated by consumers')\"" },
   "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
   "dependencies": {
-    "@kontave/client-feedback-application": "workspace:*",
-    "@kontave/client-interaction-application": "workspace:*",
+    "@kontave/client-feedback": "workspace:*",
+    "@kontave/client-interaction": "workspace:*",
     "@kontave/ui-contracts": "workspace:*",
     "flag-icons": "^7.5.0",
     "sonner": "^1.7.4"

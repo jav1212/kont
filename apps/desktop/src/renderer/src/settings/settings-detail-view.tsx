@@ -14,7 +14,7 @@ import type { KontaveTheme } from "@kontave/design-tokens";
 import {
   errorFeedback,
   successFeedback,
-} from "@kontave/client-feedback-application";
+} from "@kontave/client-feedback/application";
 import {
   Button,
   FieldSkeleton,

@@ -1,0 +1,30 @@
+{
+  "name": "@kontave/observability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts/index.ts",
+    "./application": "./src/application/index.ts",
+    "./supabase": "./src/adapters/supabase/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.99.1"
+  },
+  "peerDependenciesMeta": {
+    "@supabase/supabase-js": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.99.1",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.2"
+  }
+}

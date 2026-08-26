@@ -2,17 +2,23 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import type {
   GlobalInteractionGate,
   InteractionBlockActionKind,
-} from "@kontave/client-interaction-application";
+} from "@kontave/client-interaction/application";
 import { Button } from "./button";
 import { LogoMark } from "./logo";
 import { Text } from "./text";
 
+/** Inputs required to enforce the global interaction gate in a DOM client. */
 export interface GlobalInteractionBoundaryProps {
   readonly gate: GlobalInteractionGate;
   readonly children: ReactNode;
   readonly onAction: (token: string, action: InteractionBlockActionKind) => void;
 }
 
+/**
+ * Blocks DOM interaction and presents the highest-priority active lease.
+ * @param props - Gate, protected application content, and action callback.
+ * @returns The protected application and an accessible modal boundary when blocked.
+ */
 export function GlobalInteractionBoundary({ children, gate, onAction }: GlobalInteractionBoundaryProps) {
   const snapshot = useSyncExternalStore(gate.subscribe, gate.getSnapshot, gate.getSnapshot);
   const blocked = snapshot.status === "blocked";
@@ -57,6 +63,11 @@ export function GlobalInteractionBoundary({ children, gate, onAction }: GlobalIn
   </>;
 }
 
+/**
+ * Renders the status animation used by global interaction presentation.
+ * @param props - Current interaction lifecycle state.
+ * @returns An accessible visual status indicator.
+ */
 export function LoadingAnimation({ state = "working" }: { readonly state?: "working" | "waiting" | "failed" }) {
   return <div
     className="kt-loading-animation"

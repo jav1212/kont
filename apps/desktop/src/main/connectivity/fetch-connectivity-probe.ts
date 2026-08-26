@@ -1,5 +1,5 @@
-import type { ConnectivityProbe } from "@kontave/client-connectivity-application";
-import type { ConnectivityProbeResult } from "@kontave/client-connectivity-contracts";
+import type { ConnectivityProbe } from "@kontave/client-connectivity/application";
+import type { ConnectivityProbeResult } from "@kontave/client-connectivity/contracts";
 import { RemoteConnectivityProbe } from "@kontave/client-remote";
 
 /** Desktop composition adapter for the portable remote reachability probe. */

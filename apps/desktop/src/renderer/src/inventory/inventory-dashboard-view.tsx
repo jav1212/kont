@@ -14,7 +14,7 @@ import {
   Skeleton,
   presentFeedback,
 } from "@kontave/ui-dom";
-import { codedErrorFeedback } from "@kontave/client-feedback-application";
+import { codedErrorFeedback } from "@kontave/client-feedback/application";
 import type {
   InventoryDashboardChartPointDto,
   RecentInventoryMovementDto,

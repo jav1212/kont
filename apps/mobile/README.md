@@ -43,7 +43,7 @@ El selector central muestra:
 - icono propio del módulo;
 - búsqueda por nombre o RIF cuando existen más de cinco empresas.
 
-Durante un cambio de contexto, Mobile adquiere un bloqueo `exclusive_operation` mediante `@kontave/client-interaction-application`. La selección queda cubierta por una pantalla de carga completa, opaca y no interactiva hasta que empresas, módulos, permisos y persistencia local estén listos. Un fallo conserva el contexto anterior y mantiene abierto el selector.
+Durante un cambio de contexto, Mobile adquiere un bloqueo `exclusive_operation` mediante `@kontave/client-interaction/application`. La selección queda cubierta por una pantalla de carga completa, opaca y no interactiva hasta que empresas, módulos, permisos y persistencia local estén listos. Un fallo conserva el contexto anterior y mantiene abierto el selector.
 
 ## Shell Mobile
 
@@ -71,7 +71,7 @@ El acceso HTTP vive en `src/bcv/mobile-bcv-source.ts`; la pantalla no importa co
 
 ## Navegación
 
-`@kontave/navigation-domain` es propietario de los identificadores, etiquetas, jerarquías, parámetros dinámicos y breadcrumbs. Mobile conserva `NavigationTarget` como estado semántico y `mobile-navigation.ts` declara únicamente la matriz de destinos e iconos presentables en teléfono.
+`@kontave/navigation` es propietario de los identificadores, etiquetas, jerarquías, parámetros dinámicos y breadcrumbs. Mobile conserva `NavigationTarget` como estado semántico y `mobile-navigation.ts` declara únicamente la matriz de destinos e iconos presentables en teléfono.
 
 Cambiar el módulo activo restablece su destino inicial. Los destinos no soportados se rechazan antes de modificar el estado.
 
@@ -79,12 +79,12 @@ Cambiar el módulo activo restablece su destino inicial. Los destinos no soporta
 
 Mobile consume:
 
-- `@kontave/client-connectivity-contracts`
-- `@kontave/client-connectivity-application`
-- `@kontave/client-interaction-application`
-- `@kontave/client-feedback-application`
-- `@kontave/client-updates-contracts`
-- `@kontave/client-updates-application`
+- `@kontave/client-connectivity/contracts`
+- `@kontave/client-connectivity/application`
+- `@kontave/client-interaction/application`
+- `@kontave/client-feedback/application`
+- `@kontave/client-updates/contracts`
+- `@kontave/client-updates/application`
 
 Estas capacidades proporcionan:
 
@@ -99,7 +99,7 @@ Estas capacidades proporcionan:
 
 En Web, la prueba de conectividad usa una solicitud `HEAD` en modo `no-cors`; una respuesta opaca confirma alcance de red sin confundir restricciones CORS con indisponibilidad del servicio.
 
-`@kontave/client-updates-electron` es un adaptador exclusivo de Desktop y nunca debe importarse desde Mobile. `ExpoClientUpdateProvider` implementa en Mobile el mismo puerto `ClientUpdateProvider`.
+`@kontave/client-updates/electron` es un adaptador exclusivo de Desktop y nunca debe importarse desde Mobile. `ExpoClientUpdateProvider` implementa en Mobile el mismo puerto `ClientUpdateProvider`.
 
 Expo Updates se considera deshabilitado en Expo Go y builds de desarrollo que no tengan configuración OTA. En esos entornos el coordinador informa que la aplicación está al día y no intenta descargar.
 

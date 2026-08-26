@@ -1,5 +1,5 @@
 import type { CompanyId } from "@kontave/companies/domain";
-import type { FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal-domain";
+import type { FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal/domain";
 import { addMoney, moneyFromMinor, sameCurrency, type CurrencyDefinition, type Money } from "@kontave/monetary-domain";
 import type { GoodsReceiptLineId, PurchaseOrderLineId, SupplierId, SupplierInvoiceMatchId } from "./identifiers";
 import { PurchasingFailure } from "./purchasing-failure";

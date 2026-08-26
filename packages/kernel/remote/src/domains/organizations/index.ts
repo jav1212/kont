@@ -58,9 +58,9 @@ export class RemoteOrganizationsPort implements OrganizationsPort {
   }
 
   /**
-   * Lists organization companies using the native operational model.
+   * Lists organization companies using the client operational model.
    * @param organizationId - Organization identifier.
-   * @returns Operational companies available to native clients.
+   * @returns Operational companies available to client applications.
    */
   operationalCompanies(organizationId: string): Promise<readonly CompanyDto[]> {
     return this.transport.get(`${root(organizationId)}/operational-companies`);

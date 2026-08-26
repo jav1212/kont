@@ -103,7 +103,7 @@ test("official rates use the company operation-context endpoint", async () => {
   );
 });
 
-test("domain adapters own every native Client API route", async () => {
+test("domain adapters own every Client API route", async () => {
   const paths: string[] = [];
   const transport: RemoteTransport = {
     get: async <T>(path: string) => {

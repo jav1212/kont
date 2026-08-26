@@ -4,12 +4,12 @@ import * as Clipboard from "expo-clipboard";
 import * as Updates from "expo-updates";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from "react-native";
-import { ConnectivityMonitor, type ConnectivityProbe } from "@kontave/client-connectivity-application";
-import type { ConnectivityProbeResult, ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
-import { PresentFeedback, codedErrorFeedback, type ClientFeedback, type FeedbackHandle, type FeedbackPresenter } from "@kontave/client-feedback-application";
-import { GlobalInteractionGate, type InteractionBlock, type InteractionBlockLease } from "@kontave/client-interaction-application";
-import { ClientUpdateCoordinator, ClientUpdateFailure, type ClientUpdateCheckResult, type ClientUpdateProvider } from "@kontave/client-updates-application";
-import type { ClientUpdateCapabilities, ClientUpdateRelease, ClientUpdateSnapshot, InstalledClientRelease } from "@kontave/client-updates-contracts";
+import { ConnectivityMonitor, type ConnectivityProbe } from "@kontave/client-connectivity/application";
+import type { ConnectivityProbeResult, ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
+import { PresentFeedback, codedErrorFeedback, type ClientFeedback, type FeedbackHandle, type FeedbackPresenter } from "@kontave/client-feedback/application";
+import { GlobalInteractionGate, type InteractionBlock, type InteractionBlockLease } from "@kontave/client-interaction/application";
+import { ClientUpdateCoordinator, ClientUpdateFailure, type ClientUpdateCheckResult, type ClientUpdateProvider } from "@kontave/client-updates/application";
+import type { ClientUpdateCapabilities, ClientUpdateRelease, ClientUpdateSnapshot, InstalledClientRelease } from "@kontave/client-updates/contracts";
 import { Button, Text, nativeTheme } from "@kontave/ui-native";
 
 interface ClientExperienceValue {

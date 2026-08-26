@@ -31,12 +31,12 @@ import type { KontaveTheme } from "@kontave/design-tokens";
 import {
   codedErrorFeedback,
   errorFeedback,
-} from "@kontave/client-feedback-application";
+} from "@kontave/client-feedback/application";
 import {
   dynamicNavigationTarget,
   type NavigationTarget,
-} from "@kontave/navigation-domain";
-import type { SettingsEntryId } from "@kontave/settings-contracts";
+} from "@kontave/navigation";
+import type { SettingsEntryId } from "@kontave/settings/contracts";
 import {
   Alert,
   Breadcrumbs,
@@ -61,7 +61,7 @@ import type {
   DesktopWorkspaceState,
   DesktopWorkspaceEntry,
 } from "../../renderer-bridge";
-import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates/contracts";
 import { AuthExperience } from "./auth/auth-experience";
 import {
   clientInteractionAvailable,
@@ -241,6 +241,7 @@ function DesktopAppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeModuleId =
     workspace.status === "ready" ? workspace.activeModuleId : null;
+  const [navigationModuleId, setNavigationModuleId] = useState(activeModuleId);
   const [activeNavigationTarget, setActiveNavigationTarget] =
     useState<NavigationTarget | null>(() =>
       defaultModuleNavigationTarget(activeModuleId),
@@ -251,13 +252,11 @@ function DesktopAppShell({
     desktopConnectivityStore.getSnapshot,
   );
 
-  // Module changes intentionally reset navigation to that module's portable default.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(
-    () =>
-      setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId)),
-    [activeModuleId],
-  );
+  // A module owns its navigation history; switching modules starts at its portable default.
+  if (navigationModuleId !== activeModuleId) {
+    setNavigationModuleId(activeModuleId);
+    setActiveNavigationTarget(defaultModuleNavigationTarget(activeModuleId));
+  }
   useEffect(
     () =>
       localStorage.setItem(DESKTOP_SIDEBAR_PINNED_KEY, String(sidebarPinned)),

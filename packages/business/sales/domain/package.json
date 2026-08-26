@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@kontave/companies": "workspace:*",
-    "@kontave/fiscal-domain": "workspace:*",
+    "@kontave/fiscal": "workspace:*",
     "@kontave/monetary-domain": "workspace:*",
     "@kontave/products-domain": "workspace:*"
   },

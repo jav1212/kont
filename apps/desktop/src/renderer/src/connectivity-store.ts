@@ -1,4 +1,4 @@
-import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
 
 const INITIAL_SNAPSHOT: ConnectivitySnapshot = Object.freeze({
   availability: "unknown",

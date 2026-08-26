@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { errorFeedback } from "@kontave/client-feedback-application";
+import { errorFeedback } from "@kontave/client-feedback/application";
 import {
   Button,
   Card,

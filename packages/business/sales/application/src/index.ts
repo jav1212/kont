@@ -1,4 +1,4 @@
-import type { FiscalDocument, FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal-domain";
+import type { FiscalDocument, FiscalDocumentId, FiscalDocumentLineId } from "@kontave/fiscal/domain";
 import { addDecimal, compareDecimal, exactDecimal, sameCurrency, type ExactDecimal } from "@kontave/monetary-domain";
 import {
   SalesFailure,

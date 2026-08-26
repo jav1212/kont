@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, Menu, nativeImage, shell, Tray } from "electron";
-import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
-import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
+import { ClientUpdateCoordinator } from "@kontave/client-updates/application";
+import { createElectronClientUpdateProvider } from "@kontave/client-updates/electron";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";

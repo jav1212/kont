@@ -13,7 +13,7 @@ El historial nativo del navegador resuelve la edición de texto dentro de `input
 
 Cada formulario operacional editable puede mantener un historial Memento propio con estados `past`, `present` y `future`. Los mementos contienen exclusivamente el modelo editable necesario para reproducir el borrador; no incluyen carga, errores, foco, paneles transitorios ni resultados que puedan derivarse.
 
-El algoritmo portable vive en `@kontave/history-core`. No importa React, Next.js, Electron, React Native, persistencia ni entidades de negocio. Los hooks, atajos y controles visuales son adaptadores de presentación y permanecen fuera del core.
+El algoritmo portable vive en `@kontave/history`. No importa React, Next.js, Electron, React Native, persistencia ni entidades de negocio. Los hooks, atajos y controles visuales son adaptadores de presentación y permanecen fuera del paquete.
 
 Las modificaciones relacionadas se registran como una acción semántica y atómica con nombre. Las ediciones repetidas de un mismo campo pueden agruparse durante una ventana breve, mientras que agregar o eliminar líneas, seleccionar productos, escanear códigos y aplicar cambios masivos producen entradas independientes.
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import type { ModuleCode } from "@kontave/modules-domain";
-import type { NavigationTarget } from "@kontave/navigation-domain";
+import type { NavigationTarget } from "@kontave/navigation";
 import { ActivityIndicator, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Button, Heading, Screen, Text, nativeTheme } from "@kontave/ui-native";
 import { useAuth } from "../auth/auth-context";
@@ -141,7 +141,7 @@ function ChoiceList({ values, activeId, searchable = false, onSelect }: { readon
 function EntityAvatar({ imageUrl, label, fallbackIcon, selected = false }: { readonly imageUrl?: string | null | undefined; readonly label: string; readonly fallbackIcon?: MobileIconName; readonly selected?: boolean }): React.JSX.Element {
   const [failed, setFailed] = useState(false);
   const initial = label.trim().charAt(0).toUpperCase() || "K";
-  return <View style={[styles.entityAvatar, selected && styles.entityAvatarActive]}>{imageUrl && !failed ? <Image accessibilityLabel={`Logo de ${label}`} onError={() => setFailed(true)} resizeMode="cover" source={{ uri: imageUrl }} style={styles.entityAvatarImage} /> : fallbackIcon ? <Ionicons name={fallbackIcon} size={21} color={nativeTheme.color.primary} /> : <Text style={[styles.entityAvatarInitial, selected && styles.entityAvatarInitialActive]}>{initial}</Text>}</View>;
+  return <View style={[styles.entityAvatar, selected && styles.entityAvatarActive]}>{imageUrl && !failed ? <Image alt={`Logo de ${label}`} onError={() => setFailed(true)} resizeMode="cover" source={{ uri: imageUrl }} style={styles.entityAvatarImage} /> : fallbackIcon ? <Ionicons name={fallbackIcon} size={21} color={nativeTheme.color.primary} /> : <Text style={[styles.entityAvatarInitial, selected && styles.entityAvatarInitialActive]}>{initial}</Text>}</View>;
 }
 
 function normalizeSearch(value: string): string { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-VE").trim(); }

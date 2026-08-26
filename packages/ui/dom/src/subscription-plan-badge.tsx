@@ -5,7 +5,7 @@ export interface SubscriptionPlanBadgeProps extends Omit<ComponentPropsWithoutRe
   readonly planName: string;
 }
 
-/** Portable account-plan treatment shared by native DOM clients. */
+/** Portable account-plan treatment shared by DOM clients. */
 export function SubscriptionPlanBadge({ className, planName, ...props }: SubscriptionPlanBadgeProps) {
   return <span {...props} className={classNames("kt-subscription-plan-badge", className)}>
     {sentenceCase(planName)}

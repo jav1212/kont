@@ -157,7 +157,7 @@ class SupabaseAuthenticationGateway implements AuthenticationProvider {
       throw new AuthenticationFailure("PROVIDER_UNAVAILABLE", "No se pudo renovar la sesión.", { cause: error });
     }
     // Supabase persists refreshSession() results through the configured
-    // SupportedStorage, which is DesktopSecureStorage in the native client.
+    // SupportedStorage, which is DesktopSecureStorage in the installed desktop client.
     return {
       session: mapSession(data.session),
       credentials: { accessToken: data.session.access_token, refreshToken: data.session.refresh_token },

@@ -6,7 +6,7 @@
   "exports": { ".": "./src/index.tsx" },
   "scripts": {
     "check": "tsc --noEmit",
-    "test": "node -e \"console.log('Native UI behavior is validated by consumers')\""
+    "test": "node -e \"console.log('React Native adapter behavior is validated by consumers')\""
   },
   "peerDependencies": {
     "react": "^19.0.0",

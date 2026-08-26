@@ -7,23 +7,23 @@ import {
   powerMonitor,
 } from "electron";
 import { join } from "node:path";
-import type { DeviceEvent, DeviceFailure } from "@kontave/device-contracts";
+import type { DeviceEvent, DeviceFailure } from "@kontave/devices/contracts";
 import {
   DeviceManager,
   ExponentialBackoffPolicy,
   type DeviceEventSink,
   type DeviceLogger,
-} from "@kontave/devices-core";
+} from "@kontave/devices/core";
 import {
   DatalogicQw2100Adapter,
   NodeSerialPortProvider,
-} from "@kontave/devices-node";
+} from "@kontave/devices/node";
 import { createSupabaseAuthenticationGateway } from "@kontave/auth/supabase";
 import { AuthenticationFailure } from "@kontave/auth/domain";
-import { ConnectivityMonitor } from "@kontave/client-connectivity-application";
-import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
-import { ClientUpdateCoordinator } from "@kontave/client-updates-application";
-import { createElectronClientUpdateProvider } from "@kontave/client-updates-electron";
+import { ConnectivityMonitor } from "@kontave/client-connectivity/application";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
+import { ClientUpdateCoordinator } from "@kontave/client-updates/application";
+import { createElectronClientUpdateProvider } from "@kontave/client-updates/electron";
 import { createRemoteKontavePorts } from "@kontave/client-remote";
 import {
   createKontaveApplicationClient,

@@ -1,5 +1,5 @@
 import type { CompanyId } from "@kontave/companies/domain";
-import type { FiscalDocumentType } from "@kontave/fiscal-domain";
+import type { FiscalDocumentType } from "@kontave/fiscal/domain";
 import type { CurrencyCode, ExactDecimal } from "@kontave/monetary-domain";
 import type { OrganizationId, UserId } from "@kontave/organizations/domain";
 import type { PurchasingDocumentId, SupplierId } from "@kontave/purchasing-domain";

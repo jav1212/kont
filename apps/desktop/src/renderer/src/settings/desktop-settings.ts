@@ -12,13 +12,13 @@ import {
 import {
   ResolveAvailableSettings,
   StaticSettingsCatalog,
-} from "@kontave/settings-application";
+} from "@kontave/settings/application";
 import {
   SETTINGS_ENTRIES,
   SETTINGS_SECTIONS,
   type SettingsMessageKey,
-} from "@kontave/settings-contracts";
-import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+} from "@kontave/settings/contracts";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
 import type {
   DesktopAuthState,
   DesktopWorkspaceState,
@@ -58,6 +58,11 @@ const messages: Readonly<Partial<Record<SettingsMessageKey, string>>> = {
     "Scanners, impresoras y equipos conectados.",
 };
 
+/**
+ * Resolves portable settings into Desktop presentation sections.
+ * @param input - Authenticated identity, connectivity evidence, and active workspace state.
+ * @returns Ordered settings sections containing entries visible to the Desktop client.
+ */
 export function resolveDesktopSettings(input: {
   readonly auth: Extract<DesktopAuthState, { status: "authenticated" }>;
   readonly connectivity: ConnectivitySnapshot;
@@ -83,7 +88,7 @@ export function resolveDesktopSettings(input: {
     companyId: workspace?.activeCompanyId
       ? companyId(workspace.activeCompanyId)
       : null,
-    // Settings resolution only needs evidence that this native installation exists.
+    // Settings resolution only needs evidence that this Desktop installation exists.
     // A durable installation identity can replace this sentinel when that capability is introduced.
     installationId: "kontave-desktop",
     permissions: resolvePermissions(activeWorkspace?.scopes ?? []),

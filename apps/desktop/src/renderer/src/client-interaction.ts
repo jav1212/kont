@@ -2,13 +2,14 @@ import {
   GlobalInteractionGate,
   type InteractionBlockLease,
   type InteractionBlockActionKind,
-} from "@kontave/client-interaction-application";
+} from "@kontave/client-interaction/application";
 import type {
   DesktopAuthState,
   DesktopWorkspaceState,
 } from "../../renderer-bridge";
 import { desktopConnectivityStore } from "./connectivity-store";
 
+/** Global interaction gate shared by the Desktop renderer composition root. */
 export const interactionGate = new GlobalInteractionGate();
 
 const startupLease: InteractionBlockLease = interactionGate.acquire({
@@ -29,6 +30,11 @@ let latestWorkspaceState: DesktopWorkspaceState = { status: "loading" };
 
 desktopConnectivityStore.subscribe(synchronizeConnectivityBlock);
 
+/**
+ * Restores the Desktop session once while coordinating startup presentation.
+ * @returns The shared session-restoration promise.
+ * @throws The original authentication or connectivity initialization failure.
+ */
 export function restoreDesktopSession(): Promise<DesktopAuthState> {
   sessionRestoration ??= Promise.all([
     window.kontave.auth.getState(),
@@ -55,6 +61,12 @@ export function restoreDesktopSession(): Promise<DesktopAuthState> {
   return sessionRestoration;
 }
 
+/**
+ * Dispatches a user action for the currently presented interaction block.
+ * @param token - Token identifying the block visible to the user.
+ * @param action - Portable action selected by the user.
+ * @returns Nothing.
+ */
 export function handleGlobalInteractionAction(
   token: string,
   action: InteractionBlockActionKind,
@@ -121,10 +133,21 @@ function presentWorkspaceFailure(code: string, message: string): void {
     });
 }
 
+/**
+ * Reports whether Desktop currently accepts unrestricted interaction.
+ * @returns `true` when the global gate has no active blocks.
+ */
 export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
 }
 
+/**
+ * Executes an asynchronous mutation under one shared exclusive-operation lease.
+ * @param message - User-facing description of the in-progress operation.
+ * @param operation - Mutation to execute while interaction is blocked.
+ * @returns The mutation result.
+ * @throws The original mutation failure after releasing the lease safely.
+ */
 export async function runExclusiveMutation<T>(
   message: string,
   operation: () => Promise<T>,
@@ -148,8 +171,14 @@ export async function runExclusiveMutation<T>(
   }
 }
 
+/** Backward-compatible semantic alias for exclusive settings mutations. */
 export const runSettingsMutation = runExclusiveMutation;
 
+/**
+ * Synchronizes the workspace restoration block with the latest Desktop state.
+ * @param workspace - Current portable workspace state.
+ * @returns Nothing.
+ */
 export function synchronizeWorkspaceBlock(
   workspace: DesktopWorkspaceState,
 ): void {
@@ -195,6 +224,11 @@ export function synchronizeWorkspaceBlock(
     });
 }
 
+/**
+ * Synchronizes interaction blocking with Desktop authentication state.
+ * @param state - Current portable Desktop authentication state.
+ * @returns Nothing.
+ */
 export function synchronizeAuthenticationInteraction(
   state: DesktopAuthState,
 ): void {

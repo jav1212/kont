@@ -35,7 +35,7 @@ import {
   type NavigationDestinationId,
   type NavigationParametersByDestination,
   type NavigationTarget,
-} from "@kontave/navigation-domain";
+} from "@kontave/navigation";
 import type { WorkspaceSidebarSection } from "@kontave/ui-dom";
 
 type DynamicDestinationId = keyof NavigationParametersByDestination;

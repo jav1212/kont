@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { DeviceEvent } from "@kontave/device-contracts";
-import type { ClientUpdateSnapshot } from "@kontave/client-updates-contracts";
-import type { ConnectivitySnapshot } from "@kontave/client-connectivity-contracts";
+import type { DeviceEvent } from "@kontave/devices/contracts";
+import type { ClientUpdateSnapshot } from "@kontave/client-updates/contracts";
+import type { ConnectivitySnapshot } from "@kontave/client-connectivity/contracts";
 import {
   DESKTOP_IPC,
   type DesktopBillingPlanState,

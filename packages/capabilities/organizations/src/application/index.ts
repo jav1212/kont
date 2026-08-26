@@ -8,7 +8,7 @@ import {
   type OrganizationId,
   type UserId,
 } from "../domain";
-import { dynamicNavigationTarget, type NavigationTarget } from "@kontave/navigation-domain";
+import { dynamicNavigationTarget, type NavigationTarget } from "@kontave/navigation";
 
 export interface OrganizationDirectory {
   listAccessForUser(userId: UserId): Promise<readonly OrganizationAccess[]>;

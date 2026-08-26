@@ -22,7 +22,7 @@ import type {
 import {
   codedErrorFeedback,
   successFeedback,
-} from "@kontave/client-feedback-application";
+} from "@kontave/client-feedback/application";
 import {
   Button,
   OptionPicker,

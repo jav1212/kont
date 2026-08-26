@@ -1,5 +1,9 @@
 {
   "extends": "../../../../tooling/typescript/base.json",
-  "compilerOptions": { "noEmit": true },
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

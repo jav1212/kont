@@ -24,7 +24,7 @@ export class RemoteExchangeRatesFailure extends Error {
   }
 }
 
-/** Portable official-rate adapter backed by the native operation context. */
+/** Portable official-rate adapter backed by the operation context. */
 export class RemoteOfficialExchangeRatesPort
   implements OfficialExchangeRatesPort
 {

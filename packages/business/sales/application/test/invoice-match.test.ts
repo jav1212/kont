@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fiscalInvoiceFixture } from "@kontave/fiscal-testing";
-import { fiscalDocumentLineId } from "@kontave/fiscal-domain";
+import { fiscalDocumentLineId } from "@kontave/fiscal/domain";
+import { fiscalInvoiceFixture } from "@kontave/fiscal/testing";
 import { moneyFromDecimal } from "@kontave/monetary-domain";
 import { UnitOfMeasure } from "@kontave/products-domain";
 import {

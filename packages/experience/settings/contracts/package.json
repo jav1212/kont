@@ -1,1 +1,0 @@
-{"name":"@kontave/settings-contracts","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts"},"scripts":{"check":"tsc --noEmit"},"dependencies":{"@kontave/access-control":"workspace:*","@kontave/modules-domain":"workspace:*","@kontave/navigation-domain":"workspace:*"},"devDependencies":{"typescript":"^5.9.2"}}

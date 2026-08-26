@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/index.ts",
+    "src/contracts/**/*.ts",
+    "src/application/**/*.ts",
+    "src/adapters/electron/**/*.ts"
+  ]
+}

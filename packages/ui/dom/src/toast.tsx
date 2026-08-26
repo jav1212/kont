@@ -4,7 +4,7 @@ import {
   type ClientFeedback,
   type FeedbackHandle,
   type FeedbackPresenter,
-} from "@kontave/client-feedback-application";
+} from "@kontave/client-feedback/application";
 
 type CopyText = (value: string) => void | Promise<void>;
 

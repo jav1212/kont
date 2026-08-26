@@ -2,7 +2,7 @@ import type {
   DeviceDescriptor,
   DeviceEvent,
   DeviceLifecycleState,
-} from "@kontave/device-contracts";
+} from "@kontave/devices/contracts";
 /** Current lifecycle and optional identity of the attached device. */
 export interface DesktopDeviceStatus {
   readonly state: DeviceLifecycleState;
