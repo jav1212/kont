@@ -28,15 +28,18 @@ export function useSales() {
 
     // ── Customers ──────────────────────────────────────────────────────────────
 
-    const loadCustomers = useCallback(async (companyId: string) => {
+    const loadCustomers = useCallback(async (companyId: string): Promise<Customer[] | null> => {
         setLoadingCustomers(true);
         try {
             const res = await apiFetch(`/api/sales/customers?companyId=${encodeURIComponent(companyId)}`);
             const json = await res.json();
-            if (!res.ok) { notify.error(json.error ?? 'Error al cargar clientes'); return; }
-            setCustomers(json.data ?? []);
+            if (!res.ok) { notify.error(json.error ?? 'Error al cargar clientes'); return null; }
+            const data = (json.data ?? []) as Customer[];
+            setCustomers(data);
+            return data;
         } catch (e) {
             reportError('Error de red', e);
+            return null;
         } finally {
             setLoadingCustomers(false);
         }
