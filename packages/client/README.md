@@ -12,6 +12,11 @@ Las aplicaciones proporcionan únicamente mecanismos propios de plataforma. Los
 endpoints, DTOs y traducción de errores pertenecen a `client-remote`; la
 orquestación y el estado funcional pertenecen a `client-runtime`.
 
+`createRemoteKontavePorts` construye todos los adaptadores remotos sobre un solo
+transporte autenticado. `createKontaveApplicationClient` recibe esos puertos,
+crea el registro exhaustivo de features y administra su ciclo de vida. Ningún
+renderer debe volver a instanciar un `Remote*Port` por pantalla o controlador.
+
 ## Organización interna
 
 - Cada capacidad vive bajo `src/domains/<dominio>/` y expone su contrato mediante
@@ -23,6 +28,7 @@ orquestación y el estado funcional pertenecen a `client-runtime`.
 - El `src/index.ts` de cada paquete es exclusivamente su API pública compatible;
   los consumidores no importan archivos internos.
 
-El runtime se migra por verticales tomando Desktop como referencia funcional.
-Una capacidad no se considera portable hasta que su integración deja de vivir
-en `apps/desktop` y puede consumirse mediante el contrato del cliente.
+Desktop es el primer host del runtime completo. Inicia una única instancia del
+cliente en Electron main, publica su lifecycle mediante un context bridge
+aislado y conserva en la aplicación solamente adaptadores nativos, validación
+IPC y coordinación de presentación.

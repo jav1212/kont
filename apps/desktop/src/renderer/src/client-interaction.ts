@@ -3,7 +3,10 @@ import {
   type InteractionBlockLease,
   type InteractionBlockActionKind,
 } from "@kontave/client-interaction-application";
-import type { DesktopAuthState, DesktopWorkspaceState } from "../../shared/desktop-api";
+import type {
+  DesktopAuthState,
+  DesktopWorkspaceState,
+} from "../../renderer-bridge";
 import { desktopConnectivityStore } from "./connectivity-store";
 
 export const interactionGate = new GlobalInteractionGate();
@@ -52,9 +55,13 @@ export function restoreDesktopSession(): Promise<DesktopAuthState> {
   return sessionRestoration;
 }
 
-export function handleGlobalInteractionAction(token: string, action: InteractionBlockActionKind): void {
+export function handleGlobalInteractionAction(
+  token: string,
+  action: InteractionBlockActionKind,
+): void {
   const snapshot = interactionGate.getSnapshot();
-  if (snapshot.status !== "blocked" || snapshot.activeBlock.token !== token) return;
+  if (snapshot.status !== "blocked" || snapshot.activeBlock.token !== token)
+    return;
 
   if (action === "retry") {
     if (snapshot.activeBlock.kind === "connectivity") {
@@ -69,7 +76,8 @@ export function handleGlobalInteractionAction(token: string, action: Interaction
         referenceCode: null,
         actions: [],
       });
-      void window.kontave.workspace.refresh()
+      void window.kontave.workspace
+        .refresh()
         .then((result) => {
           if (result.ok) {
             synchronizeWorkspaceBlock(result.value);
@@ -77,10 +85,12 @@ export function handleGlobalInteractionAction(token: string, action: Interaction
           }
           presentWorkspaceFailure(result.error.code, result.error.message);
         })
-        .catch(() => presentWorkspaceFailure(
-          "DESKTOP_WORKSPACE_REFRESH_FAILED",
-          "No fue posible comunicar el reintento con el proceso principal.",
-        ));
+        .catch(() =>
+          presentWorkspaceFailure(
+            "DESKTOP_WORKSPACE_REFRESH_FAILED",
+            "No fue posible comunicar el reintento con el proceso principal.",
+          ),
+        );
       return;
     }
     window.location.reload();
@@ -103,18 +113,22 @@ function presentWorkspaceFailure(code: string, message: string): void {
     ],
   };
   if (workspaceLease) workspaceLease.update(input);
-  else workspaceLease = interactionGate.acquire({
-    kind: "unexpected_failure",
-    priority: 650,
-    ...input,
-  });
+  else
+    workspaceLease = interactionGate.acquire({
+      kind: "unexpected_failure",
+      priority: 650,
+      ...input,
+    });
 }
 
 export function clientInteractionAvailable(): boolean {
   return interactionGate.getSnapshot().status === "available";
 }
 
-export async function runExclusiveMutation<T>(message: string, operation: () => Promise<T>): Promise<T> {
+export async function runExclusiveMutation<T>(
+  message: string,
+  operation: () => Promise<T>,
+): Promise<T> {
   settingsOperations += 1;
   settingsLease ??= interactionGate.acquire({
     kind: "exclusive_operation",
@@ -136,7 +150,9 @@ export async function runExclusiveMutation<T>(message: string, operation: () => 
 
 export const runSettingsMutation = runExclusiveMutation;
 
-export function synchronizeWorkspaceBlock(workspace: DesktopWorkspaceState): void {
+export function synchronizeWorkspaceBlock(
+  workspace: DesktopWorkspaceState,
+): void {
   latestWorkspaceState = workspace;
   if (!authenticated) {
     workspaceLease?.release();
@@ -150,34 +166,38 @@ export function synchronizeWorkspaceBlock(workspace: DesktopWorkspaceState): voi
     return;
   }
 
-  const input = workspace.status === "loading"
-    ? {
-      state: "working" as const,
-      message: "Restaurando tu espacio de trabajo",
-      description: "Estamos obteniendo el contexto de tu cuenta.",
-      referenceCode: null,
-      actions: [],
-    }
-    : {
-      state: "failed" as const,
-      message: "No pudimos cargar tu espacio de trabajo",
-      description: "Revisa tu sesión o vuelve a intentarlo.",
-      referenceCode: "DESKTOP_WORKSPACE_REFRESH_FAILED",
-      actions: [
-        { kind: "retry" as const, label: "Reintentar" },
-        { kind: "exit" as const, label: "Salir" },
-      ],
-    };
+  const input =
+    workspace.status === "loading"
+      ? {
+          state: "working" as const,
+          message: "Restaurando tu espacio de trabajo",
+          description: "Estamos obteniendo el contexto de tu cuenta.",
+          referenceCode: null,
+          actions: [],
+        }
+      : {
+          state: "failed" as const,
+          message: "No pudimos cargar tu espacio de trabajo",
+          description: "Revisa tu sesión o vuelve a intentarlo.",
+          referenceCode: "DESKTOP_WORKSPACE_REFRESH_FAILED",
+          actions: [
+            { kind: "retry" as const, label: "Reintentar" },
+            { kind: "exit" as const, label: "Salir" },
+          ],
+        };
 
   if (workspaceLease) workspaceLease.update(input);
-  else workspaceLease = interactionGate.acquire({
-    kind: workspace.status === "loading" ? "startup" : "unexpected_failure",
-    priority: 650,
-    ...input,
-  });
+  else
+    workspaceLease = interactionGate.acquire({
+      kind: workspace.status === "loading" ? "startup" : "unexpected_failure",
+      priority: 650,
+      ...input,
+    });
 }
 
-export function synchronizeAuthenticationInteraction(state: DesktopAuthState): void {
+export function synchronizeAuthenticationInteraction(
+  state: DesktopAuthState,
+): void {
   authenticated = state.status === "authenticated";
   if (authenticated) synchronizeWorkspaceBlock(latestWorkspaceState);
   else {
@@ -188,8 +208,9 @@ export function synchronizeAuthenticationInteraction(state: DesktopAuthState): v
 
 function synchronizeConnectivityBlock(): void {
   const connectivity = desktopConnectivityStore.getSnapshot();
-  const unavailable = connectivity.availability === "unavailable"
-    || (connectivity.availability === "unknown" && connectivity.reason !== null);
+  const unavailable =
+    connectivity.availability === "unavailable" ||
+    (connectivity.availability === "unknown" && connectivity.reason !== null);
 
   if (unavailable) {
     connectivityLease ??= interactionGate.acquire({
@@ -203,7 +224,10 @@ function synchronizeConnectivityBlock(): void {
     return;
   }
 
-  if (connectivity.availability === "available" || connectivity.availability === "degraded") {
+  if (
+    connectivity.availability === "available" ||
+    connectivity.availability === "degraded"
+  ) {
     connectivityLease?.release();
     connectivityLease = null;
   }

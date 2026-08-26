@@ -46,4 +46,3 @@ export interface MoveDocumentDto {
   readonly folderId: string | null;
   readonly expectedVersion: number;
 }
-

@@ -1,4 +1,7 @@
-import type { PlatformStatusDto, PlatformStatusPort } from "@kontave/client-contracts";
+import type {
+  PlatformStatusDto,
+  PlatformStatusPort,
+} from "@kontave/client-contracts";
 import type { RemoteTransport } from "../../transport";
 
 /** Remote adapter for monitored government-platform availability. */

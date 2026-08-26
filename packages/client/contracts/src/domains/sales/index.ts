@@ -58,5 +58,9 @@ export interface SalesDashboardQuery {
 /** Application-facing port for sales read models. */
 export interface SalesPort {
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Dashboard query. @returns Sales dashboard. */
-  dashboard(organizationId: string, companyId: string, query: SalesDashboardQuery): Promise<SalesDashboardDto>;
+  dashboard(
+    organizationId: string,
+    companyId: string,
+    query: SalesDashboardQuery,
+  ): Promise<SalesDashboardDto>;
 }

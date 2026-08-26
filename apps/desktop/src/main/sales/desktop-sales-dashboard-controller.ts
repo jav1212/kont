@@ -9,16 +9,22 @@ import {
   type OperationalDefaults,
 } from "@kontave/operation-context-domain";
 import { currency, currencyCode, exchangeRate } from "@kontave/monetary-domain";
-import { companyId, organizationId, userId } from "@kontave/organizations-domain";
 import {
-  KontaveRemoteClient,
-  KontaveRemoteFailure,
-  RemoteOperationContextPort,
-  RemoteSalesPort,
-} from "@kontave/client-remote";
-import type { OperationalDefaultsDto } from "@kontave/client-contracts";
-import type { DesktopSalesDashboardResult } from "../../shared/desktop-api";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+  companyId,
+  organizationId,
+  userId,
+} from "@kontave/organizations-domain";
+import type {
+  ClientPortFeature,
+  OperationalDefaultsDto,
+  OperationContextPort,
+  SalesPort,
+} from "@kontave/client-contracts";
+import type { DesktopSalesDashboardResult } from "../../renderer-bridge";
+import {
+  findClientOperationFailure,
+  requireClientValue,
+} from "../client/client-operation";
 
 type ValidSalesDashboardQuery = {
   readonly from?: string;
@@ -29,27 +35,20 @@ type ValidSalesDashboardQuery = {
 
 /** Coordinates Desktop sales presentation with portable remote adapters. */
 export class DesktopSalesDashboardController {
-  private readonly operationContext: RemoteOperationContextPort;
-  private readonly sales: RemoteSalesPort;
   private readonly inFlight = new Map<
     string,
     Promise<DesktopSalesDashboardResult>
   >();
 
   /**
-   * Creates the controller using Desktop's authenticated request mechanism.
-   * @param baseUrl - Kontave API origin.
-   * @param request - Desktop session-aware request adapter.
+   * Creates the controller over portable client features.
+   * @param operationContext - Portable operational-context feature.
+   * @param sales - Portable sales feature.
    */
-  constructor(baseUrl: string, request: DesktopAuthenticatedRequest) {
-    const transport = new KontaveRemoteClient({
-      baseUrl,
-      platform: "desktop",
-      authenticatedRequest: (input, init) => request.fetch(input, init),
-    });
-    this.operationContext = new RemoteOperationContextPort(transport);
-    this.sales = new RemoteSalesPort(transport);
-  }
+  constructor(
+    private readonly operationContext: ClientPortFeature<OperationContextPort>,
+    private readonly sales: ClientPortFeature<SalesPort>,
+  ) {}
 
   /**
    * Loads and coalesces a sales dashboard request.
@@ -79,7 +78,10 @@ export class DesktopSalesDashboardController {
     const query = readQuery(raw);
     if (!query)
       return Promise.resolve(
-        failure(new Error("El período no es válido."), "SALES_DASHBOARD_INVALID"),
+        failure(
+          new Error("El período no es válido."),
+          "SALES_DASHBOARD_INVALID",
+        ),
       );
     const requestKey = `${actor}:${organization}:${company}:${query.from ?? "default"}:${query.to ?? "default"}:${query.granularity}:${query.recentLimit}`;
     const current = this.inFlight.get(requestKey);
@@ -125,7 +127,7 @@ export class DesktopSalesDashboardController {
           : new Error("El contexto operativo no está disponible.");
       const to = query.to ?? state.value.effectiveDate;
       const from = query.from ?? `${to.slice(0, 8)}01`;
-      const [dashboard, rates] = await Promise.all([
+      const [dashboardResult, ratesResult] = await Promise.all([
         this.sales.dashboard(organization, company, {
           from,
           to,
@@ -134,6 +136,8 @@ export class DesktopSalesDashboardController {
         }),
         this.operationContext.exchangeRates(organization, company, to),
       ]);
+      const dashboard = requireClientValue(dashboardResult);
+      const rates = requireClientValue(ratesResult);
       return {
         ok: true,
         value: {
@@ -149,10 +153,14 @@ export class DesktopSalesDashboardController {
 }
 
 class ContextStore implements OperationContextStore {
-  constructor(private readonly remote: RemoteOperationContextPort) {}
+  constructor(
+    private readonly remote: ClientPortFeature<OperationContextPort>,
+  ) {}
 
   async load(key: OperationContextKey): Promise<OperationalDefaults> {
-    const dto = await this.remote.get(key.organizationId, key.companyId);
+    const dto = requireClientValue(
+      await this.remote.get(key.organizationId, key.companyId),
+    );
     const selection =
       dto.exchangeRate.status === "unavailable"
         ? {
@@ -163,10 +171,7 @@ class ContextStore implements OperationContextStore {
             status: "resolved" as const,
             value: {
               rate: exchangeRate({
-                baseCurrency: currency(
-                  dto.exchangeRate.value.baseCurrency,
-                  2,
-                ),
+                baseCurrency: currency(dto.exchangeRate.value.baseCurrency, 2),
                 quoteCurrency: currency(
                   dto.exchangeRate.value.quoteCurrency,
                   2,
@@ -249,8 +254,7 @@ function readQuery(value: unknown): ValidSalesDashboardQuery | null {
     const from = localDate(query.from);
     const to = localDate(query.to);
     return from <= to &&
-      (Date.parse(`${to}T00:00:00Z`) -
-        Date.parse(`${from}T00:00:00Z`)) /
+      (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
         86_400_000 <=
         365
       ? { from, to, granularity, recentLimit: Number(recentLimit) }
@@ -264,21 +268,16 @@ function failure(
   cause: unknown,
   fallback: string,
 ): DesktopSalesDashboardResult {
-  let current = cause;
-  const seen = new Set<unknown>();
-  while (current instanceof Error && !seen.has(current)) {
-    if (current instanceof KontaveRemoteFailure)
-      return {
-        ok: false,
-        error: {
-          code: current.code,
-          message: current.message,
-          requestId: current.requestId ?? null,
-        },
-      };
-    seen.add(current);
-    current = current.cause;
-  }
+  const clientFailure = findClientOperationFailure(cause);
+  if (clientFailure)
+    return {
+      ok: false,
+      error: {
+        code: clientFailure.code,
+        message: clientFailure.message,
+        requestId: clientFailure.requestId,
+      },
+    };
   return {
     ok: false,
     error: {

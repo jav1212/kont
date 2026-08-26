@@ -14,41 +14,48 @@ function developmentContentSecurityPolicy(): Plugin {
     transformIndexHtml(html) {
       // React Fast Refresh injects a local inline preamble in development.
       // Packaged builds retain the strict policy declared in index.html.
-      return html.replace("script-src 'self';", "script-src 'self' 'unsafe-inline';");
+      return html.replace(
+        "script-src 'self';",
+        "script-src 'self' 'unsafe-inline';",
+      );
     },
   };
 }
 
 export default defineConfig({
-    main: {
-      // Desktop shares the workspace environment with the production Web app.
-      // Only the main process receives the Supabase configuration.
-      envDir: workspaceRoot,
-      envPrefix: ["MAIN_VITE_", "VITE_", "NEXT_PUBLIC_", "KONTAVE_"],
-      plugins: [externalizeDepsPlugin({ exclude: [
-        "@kontave/auth-application",
-        "@kontave/auth-domain",
-        "@kontave/auth-supabase",
-        "@kontave/client-connectivity-application",
-        "@kontave/client-connectivity-contracts",
-        "@kontave/client-contracts",
-        "@kontave/monetary-domain",
-        "@kontave/operation-context-application",
-        "@kontave/operation-context-domain",
-        "@kontave/organization-delegations-domain",
-        "@kontave/organizations-domain",
-        "@kontave/workspace-context-application",
-      ] })],
-    },
-    preload: {
-      // Sandboxed preload scripts must be self-contained CommonJS bundles.
-      build: {
-        lib: {
-          entry: resolve(desktopRoot, "src/preload/index.ts"),
-          formats: ["cjs"],
-          fileName: () => "index.js",
-        },
+  main: {
+    // Desktop shares the workspace environment with the production Web app.
+    // Only the main process receives the Supabase configuration.
+    envDir: workspaceRoot,
+    envPrefix: ["MAIN_VITE_", "VITE_", "NEXT_PUBLIC_", "KONTAVE_"],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: [
+          "@kontave/auth-application",
+          "@kontave/auth-domain",
+          "@kontave/auth-supabase",
+          "@kontave/client-connectivity-application",
+          "@kontave/client-connectivity-contracts",
+          "@kontave/client-contracts",
+          "@kontave/monetary-domain",
+          "@kontave/operation-context-application",
+          "@kontave/operation-context-domain",
+          "@kontave/organization-delegations-domain",
+          "@kontave/organizations-domain",
+          "@kontave/workspace-context-application",
+        ],
+      }),
+    ],
+  },
+  preload: {
+    // Sandboxed preload scripts must be self-contained CommonJS bundles.
+    build: {
+      lib: {
+        entry: resolve(desktopRoot, "src/preload/index.ts"),
+        formats: ["cjs"],
+        fileName: () => "index.js",
       },
     },
-    renderer: { plugins: [react(), developmentContentSecurityPolicy()] },
-  });
+  },
+  renderer: { plugins: [react(), developmentContentSecurityPolicy()] },
+});

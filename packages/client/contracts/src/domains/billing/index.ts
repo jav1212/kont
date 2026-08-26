@@ -107,5 +107,7 @@ export interface BillingPort {
   /** @param organizationId - Billing owner. @returns Available plans. */
   plans(organizationId: string): Promise<readonly BillingPlanDto[]>;
   /** @param organizationId - Billing owner. @returns Manual payment requests. */
-  paymentRequests(organizationId: string): Promise<readonly ManualPaymentRequestDto[]>;
+  paymentRequests(
+    organizationId: string,
+  ): Promise<readonly ManualPaymentRequestDto[]>;
 }

@@ -1,8 +1,30 @@
 import {
-  Activity, Archive, ArrowRightLeft, BarChart3, BookOpen, Boxes, Building2,
-  Calculator, CalendarDays, DollarSign, FileText, Files, Gauge, HandCoins,
-  History, Landmark, Package, PenLine, Settings, ShoppingCart, Truck, Upload,
-  UserMinus, Users, WalletCards, Wrench,
+  Activity,
+  Archive,
+  ArrowRightLeft,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  Building2,
+  Calculator,
+  CalendarDays,
+  DollarSign,
+  FileText,
+  Files,
+  Gauge,
+  HandCoins,
+  History,
+  Landmark,
+  Package,
+  PenLine,
+  Settings,
+  ShoppingCart,
+  Truck,
+  Upload,
+  UserMinus,
+  Users,
+  WalletCards,
+  Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import {
@@ -17,7 +39,10 @@ import {
 import type { WorkspaceSidebarSection } from "@kontave/ui-dom";
 
 type DynamicDestinationId = keyof NavigationParametersByDestination;
-type StaticDestinationId = Exclude<NavigationDestinationId, DynamicDestinationId>;
+type StaticDestinationId = Exclude<
+  NavigationDestinationId,
+  DynamicDestinationId
+>;
 
 interface NavigationItemPresentation {
   readonly id: StaticDestinationId;
@@ -27,16 +52,38 @@ interface NavigationItemPresentation {
 }
 
 /** Desktop support matrix. Business labels and hierarchy remain catalog-owned. */
-const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPresentation[]>> = {
+const DESKTOP_DESTINATIONS: Readonly<
+  Record<string, readonly NavigationItemPresentation[]>
+> = {
   payroll: [
     { id: "payroll.dashboard", icon: <Gauge /> },
     { id: "payroll.employees", icon: <Users /> },
     { id: "payroll.settings", icon: <Settings /> },
     { id: "payroll.calculator", icon: <Calculator />, group: "Operaciones" },
-    { id: "payroll.vacations", icon: <CalendarDays />, group: "Operaciones", beta: true },
-    { id: "payroll.profit-sharing", icon: <HandCoins />, group: "Operaciones", beta: true },
-    { id: "payroll.social-benefits", icon: <Landmark />, group: "Operaciones", beta: true },
-    { id: "payroll.liquidations", icon: <UserMinus />, group: "Operaciones", beta: true },
+    {
+      id: "payroll.vacations",
+      icon: <CalendarDays />,
+      group: "Operaciones",
+      beta: true,
+    },
+    {
+      id: "payroll.profit-sharing",
+      icon: <HandCoins />,
+      group: "Operaciones",
+      beta: true,
+    },
+    {
+      id: "payroll.social-benefits",
+      icon: <Landmark />,
+      group: "Operaciones",
+      beta: true,
+    },
+    {
+      id: "payroll.liquidations",
+      icon: <UserMinus />,
+      group: "Operaciones",
+      beta: true,
+    },
     { id: "payroll.ari", icon: <FileText />, group: "Operaciones", beta: true },
     { id: "payroll.history", icon: <History />, group: "Histórico" },
   ],
@@ -56,10 +103,18 @@ const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPrese
   inventory: [
     { id: "inventory.dashboard", icon: <Gauge /> },
     { id: "inventory.products", icon: <Package />, group: "Catálogos" },
-    { id: "inventory.product-categories", icon: <Building2 />, group: "Catálogos" },
+    {
+      id: "inventory.product-categories",
+      icon: <Building2 />,
+      group: "Catálogos",
+    },
     { id: "inventory.inputs", icon: <ArrowRightLeft />, group: "Operaciones" },
     { id: "inventory.outputs", icon: <Boxes />, group: "Operaciones" },
-    { id: "inventory.operations", icon: <ArrowRightLeft />, group: "Operaciones" },
+    {
+      id: "inventory.operations",
+      icon: <ArrowRightLeft />,
+      group: "Operaciones",
+    },
     { id: "inventory.purchase-ledger", icon: <BookOpen />, group: "Reportes" },
     { id: "inventory.sales-ledger", icon: <BookOpen />, group: "Reportes" },
     { id: "inventory.period-report", icon: <BarChart3 />, group: "Reportes" },
@@ -67,16 +122,36 @@ const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPrese
   accounting: [
     { id: "accounting.dashboard", icon: <Gauge /> },
     { id: "accounting.charts", icon: <BookOpen />, group: "Configuración" },
-    { id: "accounting.accounts", icon: <WalletCards />, group: "Configuración" },
-    { id: "accounting.periods", icon: <CalendarDays />, group: "Configuración" },
+    {
+      id: "accounting.accounts",
+      icon: <WalletCards />,
+      group: "Configuración",
+    },
+    {
+      id: "accounting.periods",
+      icon: <CalendarDays />,
+      group: "Configuración",
+    },
     { id: "accounting.journal", icon: <PenLine />, group: "Contabilidad" },
-    { id: "accounting.trial-balance", icon: <BarChart3 />, group: "Contabilidad" },
-    { id: "accounting.financial-statements", icon: <FileText />, group: "Reportes" },
+    {
+      id: "accounting.trial-balance",
+      icon: <BarChart3 />,
+      group: "Contabilidad",
+    },
+    {
+      id: "accounting.financial-statements",
+      icon: <FileText />,
+      group: "Reportes",
+    },
   ],
   tools: [
     { id: "tools.dashboard", icon: <Wrench /> },
     { id: "tools.exchange-rates", icon: <DollarSign />, group: "Conversores" },
-    { id: "tools.seniat-calendar", icon: <CalendarDays />, group: "Calendarios" },
+    {
+      id: "tools.seniat-calendar",
+      icon: <CalendarDays />,
+      group: "Calendarios",
+    },
     { id: "tools.platform-status", icon: <Activity />, group: "Monitoreo" },
   ],
   companies: [{ id: "companies", icon: <Building2 /> }],
@@ -87,26 +162,26 @@ const DESKTOP_DESTINATIONS: Readonly<Record<string, readonly NavigationItemPrese
   ],
 };
 
-const supportedDestinations = new Set<StaticDestinationId>(
-  [
-    ...Object.values(DESKTOP_DESTINATIONS).flatMap((items) => items.map(({ id }) => id)),
-    "settings",
-    "settings.profile",
-    "settings.appearance",
-    "settings.security",
-    "settings.organization",
-    "settings.members",
-    "settings.roles",
-    "settings.billing",
-    "settings.devices",
-  ],
-);
+const supportedDestinations = new Set<StaticDestinationId>([
+  ...Object.values(DESKTOP_DESTINATIONS).flatMap((items) =>
+    items.map(({ id }) => id),
+  ),
+  "settings",
+  "settings.profile",
+  "settings.appearance",
+  "settings.security",
+  "settings.organization",
+  "settings.members",
+  "settings.roles",
+  "settings.billing",
+  "settings.devices",
+]);
 
 export function moduleNavigationSections(
   moduleId: string | null,
   activeTarget: NavigationTarget | null,
 ): readonly WorkspaceSidebarSection[] {
-  const items = moduleId ? DESKTOP_DESTINATIONS[moduleId] ?? [] : [];
+  const items = moduleId ? (DESKTOP_DESTINATIONS[moduleId] ?? []) : [];
   const groups = new Map<string, NavigationItemPresentation[]>();
   for (const item of items) {
     const group = item.group ?? "";
@@ -126,16 +201,25 @@ export function moduleNavigationSections(
   }));
 }
 
-export function defaultModuleNavigationTarget(moduleId: string | null): NavigationTarget | null {
-  const destination = moduleId ? DESKTOP_DESTINATIONS[moduleId]?.[0] : undefined;
+export function defaultModuleNavigationTarget(
+  moduleId: string | null,
+): NavigationTarget | null {
+  const destination = moduleId
+    ? DESKTOP_DESTINATIONS[moduleId]?.[0]
+    : undefined;
   return destination ? staticNavigationTarget(destination.id) : null;
 }
 
-export function desktopStaticNavigationTarget(id: string): NavigationTarget | null {
+export function desktopStaticNavigationTarget(
+  id: string,
+): NavigationTarget | null {
   if (!supportedDestinations.has(id as StaticDestinationId)) return null;
   return staticNavigationTarget(id as StaticDestinationId);
 }
 
-export function desktopBreadcrumbs(target: NavigationTarget | null, labels:Readonly<Record<string,string>>={}): readonly BreadcrumbEntry[] {
-  return target ? resolveBreadcrumbs(target,labels) : [];
+export function desktopBreadcrumbs(
+  target: NavigationTarget | null,
+  labels: Readonly<Record<string, string>> = {},
+): readonly BreadcrumbEntry[] {
+  return target ? resolveBreadcrumbs(target, labels) : [];
 }

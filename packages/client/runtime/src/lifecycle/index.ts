@@ -1,3 +1,4 @@
+import { ClientLifecycleStatus } from "@kontave/client-contracts";
 import type {
   ClientFailure,
   ClientFeatureRegistry,
@@ -42,7 +43,7 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
     ClientSubscriber<ClientLifecycleSnapshot>
   >();
   private lifecycle: ClientLifecycleSnapshot = Object.freeze({
-    status: "stopped",
+    status: ClientLifecycleStatus.Stopped,
   });
   private transition: Promise<void> | null = null;
 
@@ -66,7 +67,7 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
   };
 
   async start(): Promise<void> {
-    if (this.lifecycle.status === "ready") return;
+    if (this.lifecycle.status === ClientLifecycleStatus.Ready) return;
     if (this.transition) return this.transition;
     this.transition = this.runStart();
     try {
@@ -78,7 +79,7 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
 
   async stop(): Promise<void> {
     if (this.transition) await this.transition;
-    if (this.lifecycle.status === "stopped") return;
+    if (this.lifecycle.status === ClientLifecycleStatus.Stopped) return;
     this.transition = this.runStop();
     try {
       await this.transition;
@@ -88,20 +89,20 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
   }
 
   private async runStart(): Promise<void> {
-    this.publish({ status: "starting" });
+    this.publish({ status: ClientLifecycleStatus.Starting });
     const started: ClientRuntimeModule[] = [];
     try {
       for (const module of this.modules) {
         await module.start();
         started.push(module);
       }
-      this.publish({ status: "ready" });
+      this.publish({ status: ClientLifecycleStatus.Ready });
     } catch (cause: unknown) {
       for (const module of started.reverse())
         await safelyStop(module, this.options.observeUnexpectedFailure);
       this.options.observeUnexpectedFailure?.(cause);
       this.publish({
-        status: "failed",
+        status: ClientLifecycleStatus.Failed,
         failure: normalizeFailure(cause, "CLIENT_START_FAILED"),
       });
       throw cause;
@@ -109,7 +110,7 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
   }
 
   private async runStop(): Promise<void> {
-    this.publish({ status: "stopping" });
+    this.publish({ status: ClientLifecycleStatus.Stopping });
     let firstFailure: unknown;
     for (const module of [...this.modules].reverse()) {
       try {
@@ -121,12 +122,12 @@ class DefaultKontaveClient<TFeatures extends ClientFeatureRegistry>
     }
     if (firstFailure !== undefined) {
       this.publish({
-        status: "failed",
+        status: ClientLifecycleStatus.Failed,
         failure: normalizeFailure(firstFailure, "CLIENT_STOP_FAILED"),
       });
       throw firstFailure;
     }
-    this.publish({ status: "stopped" });
+    this.publish({ status: ClientLifecycleStatus.Stopped });
   }
 
   private publish(snapshot: ClientLifecycleSnapshot): void {
@@ -174,4 +175,3 @@ function normalizeFailure(cause: unknown, fallbackCode: string): ClientFailure {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-

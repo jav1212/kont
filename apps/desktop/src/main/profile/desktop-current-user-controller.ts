@@ -1,5 +1,8 @@
 import type { BrowserWindow } from "electron";
-import { DESKTOP_IPC, type DesktopCurrentUserState } from "../../shared/desktop-api";
+import {
+  DESKTOP_IPC,
+  type DesktopCurrentUserState,
+} from "../../renderer-bridge";
 import { DesktopCurrentUserSource } from "./desktop-current-user-source";
 import type { CurrentUserDto } from "@kontave/client-contracts";
 
@@ -11,7 +14,9 @@ export class DesktopCurrentUserController {
     private readonly getWindow: () => BrowserWindow | undefined,
   ) {}
 
-  getState(): DesktopCurrentUserState { return this.state; }
+  getState(): DesktopCurrentUserState {
+    return this.state;
+  }
 
   async initialize(): Promise<DesktopCurrentUserState> {
     this.update({ status: "loading" });
@@ -23,7 +28,9 @@ export class DesktopCurrentUserController {
     }
   }
 
-  clear(): DesktopCurrentUserState { return this.update({ status: "unavailable" }); }
+  clear(): DesktopCurrentUserState {
+    return this.update({ status: "unavailable" });
+  }
 
   synchronize(user: CurrentUserDto): DesktopCurrentUserState {
     return this.update({

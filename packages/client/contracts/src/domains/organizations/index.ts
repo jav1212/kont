@@ -143,13 +143,19 @@ export interface OrganizationsPort {
   /** @param organizationId - Organization identifier. @returns Organization details. */
   get(organizationId: string): Promise<OrganizationDto>;
   /** @param organizationId - Organization identifier. @param command - Versioned changes. @returns Updated organization. */
-  update(organizationId: string, command: UpdateOrganizationDto): Promise<OrganizationDto>;
+  update(
+    organizationId: string,
+    command: UpdateOrganizationDto,
+  ): Promise<OrganizationDto>;
   /** @param organizationId - Organization identifier. @returns Presentation companies. */
   companies(organizationId: string): Promise<readonly OrganizationCompanyDto[]>;
   /** @param organizationId - Organization identifier. @returns Operational companies. */
   operationalCompanies(organizationId: string): Promise<readonly CompanyDto[]>;
   /** @param organizationId - Organization identifier. @param platform - Target platform. @returns Available modules. */
-  modules(organizationId: string, platform: "desktop" | "mobile" | "web"): Promise<readonly AvailableOrganizationModuleDto[]>;
+  modules(
+    organizationId: string,
+    platform: "desktop" | "mobile" | "web",
+  ): Promise<readonly AvailableOrganizationModuleDto[]>;
   /** @param organizationId - Organization identifier. @returns Organization members. */
   members(organizationId: string): Promise<readonly OrganizationMemberDto[]>;
   /** @param organizationId - Organization identifier. @returns Organization roles. */

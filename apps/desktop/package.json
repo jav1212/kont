@@ -26,6 +26,7 @@
     "@kontave/client-feedback-application": "workspace:*",
     "@kontave/client-interaction-application": "workspace:*",
     "@kontave/client-remote": "workspace:*",
+    "@kontave/client-runtime": "workspace:*",
     "@kontave/client-updates-application": "workspace:*",
     "@kontave/client-updates-contracts": "workspace:*",
     "@kontave/client-updates-electron": "workspace:*",

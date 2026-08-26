@@ -29,4 +29,3 @@ export interface ReferralOverviewDto {
   readonly rewards: readonly ReferralRewardDto[];
   readonly balance: MoneyDto;
 }
-

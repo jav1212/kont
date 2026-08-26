@@ -1,31 +1,20 @@
-import {
-  KontaveRemoteClient,
-  RemoteProfilePort,
-} from "@kontave/client-remote";
-import type { DesktopCurrentUserState } from "../../shared/desktop-api";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+import type { ClientPortFeature, ProfilePort } from "@kontave/client-contracts";
+import type { DesktopCurrentUserState } from "../../renderer-bridge";
+import { requireClientValue } from "../client/client-operation";
 
 /** Desktop composition adapter for the portable current-user remote port. */
 export class DesktopCurrentUserSource {
-  private readonly profile: RemoteProfilePort;
-
   /**
-   * Creates the source using Desktop's authenticated request mechanism.
-   * @param baseUrl - Kontave API origin.
-   * @param request - Desktop session-aware request adapter.
+   * Creates the source over the portable profile feature.
+   * @param profile - Runtime-managed profile feature.
    */
-  constructor(baseUrl: string, request: DesktopAuthenticatedRequest) {
-    this.profile = new RemoteProfilePort(
-      new KontaveRemoteClient({
-        baseUrl,
-        platform: "desktop",
-        authenticatedRequest: (input, init) => request.fetch(input, init),
-      }),
-    );
-  }
+  constructor(private readonly profile: ClientPortFeature<ProfilePort>) {}
 
   /** @returns Current profile mapped to Desktop presentation state. */
   async getCurrent(): Promise<DesktopCurrentUserState> {
-    return { status: "ready", user: await this.profile.current() };
+    return {
+      status: "ready",
+      user: requireClientValue(await this.profile.current()),
+    };
   }
 }

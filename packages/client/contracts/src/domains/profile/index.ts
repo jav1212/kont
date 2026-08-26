@@ -36,5 +36,7 @@ export interface ProfilePort {
   /** @param command - Versioned profile changes. @returns Updated profile. */
   update(command: UpdateCurrentUserDto): Promise<CurrentUserDto>;
   /** @param command - Versioned preference changes. @returns Updated preferences. */
-  updatePreferences(command: UpdateUserPreferencesDto): Promise<UserPreferencesDto>;
+  updatePreferences(
+    command: UpdateUserPreferencesDto,
+  ): Promise<UserPreferencesDto>;
 }

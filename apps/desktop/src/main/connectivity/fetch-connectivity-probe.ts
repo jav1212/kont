@@ -12,7 +12,11 @@ export class FetchConnectivityProbe implements ConnectivityProbe {
    * @param timeoutMs - Maximum probe duration in milliseconds.
    */
   constructor(baseUrl: string, timeoutMs = 5_000) {
-    this.remote = new RemoteConnectivityProbe(baseUrl, globalThis.fetch, timeoutMs);
+    this.remote = new RemoteConnectivityProbe(
+      baseUrl,
+      globalThis.fetch,
+      timeoutMs,
+    );
   }
 
   /** @returns Current Kontave service reachability. */

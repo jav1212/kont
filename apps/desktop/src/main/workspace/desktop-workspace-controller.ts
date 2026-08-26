@@ -8,7 +8,11 @@ import {
   type WorkspaceContextSnapshot,
   type WorkspaceContextStatus,
 } from "@kontave/workspace-context-application/coordinator";
-import { DESKTOP_IPC, type DesktopWorkspaceResult, type DesktopWorkspaceState } from "../../shared/desktop-api";
+import {
+  DESKTOP_IPC,
+  type DesktopWorkspaceResult,
+  type DesktopWorkspaceState,
+} from "../../renderer-bridge";
 
 export class DesktopWorkspaceController {
   private state: DesktopWorkspaceState = { status: "unavailable" };
@@ -20,19 +24,25 @@ export class DesktopWorkspaceController {
     coordinator.subscribe((state) => this.update(mapStatus(state)));
   }
 
-  getState(): DesktopWorkspaceState { return this.state; }
+  getState(): DesktopWorkspaceState {
+    return this.state;
+  }
 
-  markUnavailable(): DesktopWorkspaceState { return this.update({ status: "unavailable" }); }
+  markUnavailable(): DesktopWorkspaceState {
+    return this.update({ status: "unavailable" });
+  }
 
   async initialize(): Promise<DesktopWorkspaceState> {
     const state = await this.coordinator.restore();
-    if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) throw state.error;
+    if (state.status === "failed" && !hasValidSnapshot(state.snapshot))
+      throw state.error;
     return this.state;
   }
 
   async refresh(): Promise<DesktopWorkspaceState> {
     const state = await this.coordinator.refresh();
-    if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) throw state.error;
+    if (state.status === "failed" && !hasValidSnapshot(state.snapshot))
+      throw state.error;
     return this.state;
   }
 
@@ -46,37 +56,60 @@ export class DesktopWorkspaceController {
   }
 
   async select(input: unknown): Promise<DesktopWorkspaceResult> {
-    if (typeof input !== "string") return invalidResult("WORKSPACE_NOT_AVAILABLE", "El espacio de trabajo no es válido.");
-    return this.toResult(await this.coordinator.selectWorkspace(organizationId(input)));
+    if (typeof input !== "string")
+      return invalidResult(
+        "WORKSPACE_NOT_AVAILABLE",
+        "El espacio de trabajo no es válido.",
+      );
+    return this.toResult(
+      await this.coordinator.selectWorkspace(organizationId(input)),
+    );
   }
 
   async selectModule(input: unknown): Promise<DesktopWorkspaceResult> {
-    if (typeof input !== "string" || !isModuleCode(input)) return invalidResult("MODULE_NOT_AVAILABLE", "El módulo no es válido.");
-    return this.toResult(await this.coordinator.selectModule(input as ModuleCode));
+    if (typeof input !== "string" || !isModuleCode(input))
+      return invalidResult("MODULE_NOT_AVAILABLE", "El módulo no es válido.");
+    return this.toResult(
+      await this.coordinator.selectModule(input as ModuleCode),
+    );
   }
 
   async selectCompany(input: unknown): Promise<DesktopWorkspaceResult> {
-    if (typeof input !== "string") return invalidResult("COMPANY_NOT_AVAILABLE", "La empresa no es válida.");
-    return this.toResult(await this.coordinator.selectCompany(companyId(input)));
+    if (typeof input !== "string")
+      return invalidResult("COMPANY_NOT_AVAILABLE", "La empresa no es válida.");
+    return this.toResult(
+      await this.coordinator.selectCompany(companyId(input)),
+    );
   }
 
   private toResult(status: WorkspaceContextStatus): DesktopWorkspaceResult {
     return status.status === "failed"
-      ? { ok: false, error: { code: status.error.code, message: status.error.message } }
+      ? {
+          ok: false,
+          error: { code: status.error.code, message: status.error.message },
+        }
       : { ok: true, value: this.state };
   }
 
   private update(state: DesktopWorkspaceState): DesktopWorkspaceState {
     this.state = state;
-    this.getWindow()?.webContents.send(DESKTOP_IPC.workspaceStateChanged, state);
+    this.getWindow()?.webContents.send(
+      DESKTOP_IPC.workspaceStateChanged,
+      state,
+    );
     return state;
   }
 }
 
 function mapStatus(state: WorkspaceContextStatus): DesktopWorkspaceState {
   if (state.status === "idle") return { status: "unavailable" };
-  if ((state.status === "loading" || state.status === "refreshing") && !hasValidSnapshot(state.snapshot)) return { status: "loading" };
-  if (state.status === "failed" && !hasValidSnapshot(state.snapshot)) return { status: "unavailable" };
+  if (
+    (state.status === "loading" || state.status === "refreshing") &&
+    !hasValidSnapshot(state.snapshot)
+  )
+    return { status: "loading" };
+  if (state.status === "failed" && !hasValidSnapshot(state.snapshot))
+    return { status: "unavailable" };
   return mapSnapshot(state.snapshot);
 }
 
@@ -84,12 +117,17 @@ function hasValidSnapshot(snapshot: WorkspaceContextSnapshot): boolean {
   return snapshot.activeWorkspace !== null || snapshot.portfolio.length > 0;
 }
 
-function mapSnapshot(snapshot: WorkspaceContextSnapshot): DesktopWorkspaceState {
+function mapSnapshot(
+  snapshot: WorkspaceContextSnapshot,
+): DesktopWorkspaceState {
   return {
     status: "ready",
     activeWorkspaceId: snapshot.activeWorkspace?.organizationId ?? null,
     activeModuleId: snapshot.activeModule?.code ?? null,
-    modules: snapshot.modules.map((module) => ({ id: module.code, name: module.name })),
+    modules: snapshot.modules.map((module) => ({
+      id: module.code,
+      name: module.name,
+    })),
     activeCompanyId: snapshot.activeCompany?.id ?? null,
     companies: snapshot.companies.map((company) => ({
       id: company.id,
@@ -101,19 +139,32 @@ function mapSnapshot(snapshot: WorkspaceContextSnapshot): DesktopWorkspaceState 
       id: entry.organizationId,
       name: entry.name,
       ...(entry.avatarUrl ? { avatarUrl: entry.avatarUrl } : {}),
-      access: entry.accessPath.kind === OrganizationAccessPathKind.DirectMembership ? "direct" : "delegated",
+      access:
+        entry.accessPath.kind === OrganizationAccessPathKind.DirectMembership
+          ? "direct"
+          : "delegated",
       relationship: entry.relationship,
       scopes: entry.accessPath.scopes,
     })),
   };
 }
 
-function invalidResult(code: WorkspaceContextFailure["code"], message: string): DesktopWorkspaceResult {
+function invalidResult(
+  code: WorkspaceContextFailure["code"],
+  message: string,
+): DesktopWorkspaceResult {
   return { ok: false, error: { code, message } };
 }
 
 function isModuleCode(value: string): boolean {
-  return value === "payroll" || value === "purchases" || value === "sales"
-    || value === "inventory" || value === "accounting" || value === "tools"
-    || value === "companies" || value === "documents";
+  return (
+    value === "payroll" ||
+    value === "purchases" ||
+    value === "sales" ||
+    value === "inventory" ||
+    value === "accounting" ||
+    value === "tools" ||
+    value === "companies" ||
+    value === "documents"
+  );
 }

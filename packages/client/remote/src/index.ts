@@ -1,3 +1,4 @@
+export * from "./composition";
 export * from "./domains/authentication";
 export * from "./domains/billing";
 export * from "./domains/connectivity";

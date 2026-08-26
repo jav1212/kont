@@ -5,7 +5,10 @@ import {
   RegistrationService,
   type AuthenticationProvider,
 } from "@kontave/auth-application";
-import { AuthenticationFailure, type AuthenticatedSession } from "@kontave/auth-domain";
+import {
+  AuthenticationFailure,
+  type AuthenticatedSession,
+} from "@kontave/auth-domain";
 import type { BrowserWindow } from "electron";
 import {
   DESKTOP_IPC,
@@ -15,7 +18,7 @@ import {
   type DesktopEmailPasswordCommand,
   type DesktopPasswordCommand,
   type DesktopPendingEmail,
-} from "../../shared/desktop-api";
+} from "../../renderer-bridge";
 
 export class DesktopAuthController {
   private readonly authentication: AuthenticationService;
@@ -23,7 +26,10 @@ export class DesktopAuthController {
   private readonly recovery: PasswordRecoveryService;
   private state: DesktopAuthState = { status: "loading" };
 
-  constructor(provider: AuthenticationProvider, private readonly getWindow: () => BrowserWindow | undefined) {
+  constructor(
+    provider: AuthenticationProvider,
+    private readonly getWindow: () => BrowserWindow | undefined,
+  ) {
     this.authentication = new AuthenticationService(provider);
     this.registration = new RegistrationService(provider);
     this.recovery = new PasswordRecoveryService(provider);
@@ -32,9 +38,13 @@ export class DesktopAuthController {
 
   readonly sessions: NativeSessionRefreshCoordinator;
 
-  getState(): DesktopAuthState { return this.state; }
+  getState(): DesktopAuthState {
+    return this.state;
+  }
 
-  getAccessToken(): Promise<string | null> { return this.authentication.getAccessToken(); }
+  getAccessToken(): Promise<string | null> {
+    return this.authentication.getAccessToken();
+  }
 
   async initialize(): Promise<DesktopAuthState> {
     const session = await this.authentication.restoreSession();
@@ -93,17 +103,26 @@ export class DesktopAuthController {
 }
 
 function mapSession(session: AuthenticatedSession): DesktopAuthState {
-  return { status: "authenticated", user: { id: session.identity.userId, email: session.identity.email } };
+  return {
+    status: "authenticated",
+    user: { id: session.identity.userId, email: session.identity.email },
+  };
 }
 
 function readEmailPassword(input: unknown): DesktopEmailPasswordCommand {
   const candidate = readRecord(input);
-  return { email: readBoundedString(candidate, "email", 254), password: readBoundedString(candidate, "password", 1024) };
+  return {
+    email: readBoundedString(candidate, "email", 254),
+    password: readBoundedString(candidate, "password", 1024),
+  };
 }
 
 function readEmailCode(input: unknown): DesktopEmailCodeCommand {
   const candidate = readRecord(input);
-  return { email: readBoundedString(candidate, "email", 254), code: readBoundedString(candidate, "code", 64) };
+  return {
+    email: readBoundedString(candidate, "email", 254),
+    code: readBoundedString(candidate, "code", 64),
+  };
 }
 
 function readEmail(input: unknown): DesktopEmailCommand {
@@ -119,12 +138,20 @@ function readRecord(input: unknown): Record<string, unknown> {
   return input as Record<string, unknown>;
 }
 
-function readBoundedString(input: Record<string, unknown>, field: string, maximumLength: number): string {
+function readBoundedString(
+  input: Record<string, unknown>,
+  field: string,
+  maximumLength: number,
+): string {
   const value = input[field];
-  if (typeof value !== "string" || value.length > maximumLength) throw invalidRequest();
+  if (typeof value !== "string" || value.length > maximumLength)
+    throw invalidRequest();
   return value;
 }
 
 function invalidRequest(): AuthenticationFailure {
-  return new AuthenticationFailure("INVALID_INPUT", "Solicitud de autenticación inválida.");
+  return new AuthenticationFailure(
+    "INVALID_INPUT",
+    "Solicitud de autenticación inválida.",
+  );
 }

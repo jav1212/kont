@@ -4,6 +4,13 @@ Cliente nativo de Kontave construido con Electron, React y `electron-vite`. La a
 
 La aplicación Web de producción no depende de Desktop y no debe modificarse como parte del desarrollo de este cliente.
 
+El proceso principal crea una única composición mediante
+`createRemoteKontavePorts` y `createKontaveApplicationClient`. Todas las
+operaciones funcionales de Products, Inventory, Purchasing, Sales, Profile,
+Billing, Organizations, Platform Status y seguridad atraviesan las features de
+ese runtime. Los controladores Desktop solo validan IPC o coordinan snapshots de
+presentación; no construyen transportes ni adaptadores remotos propios.
+
 ## Desarrollo
 
 Desde la raíz del monorepo:
@@ -30,16 +37,16 @@ GET /api/client/v1/organizations/{organizationId}/modules/available?platform=des
 
 El sidebar puede presentar los siguientes códigos definidos por `@kontave/modules-domain`:
 
-| Código | Módulo | Navegación disponible |
-|---|---|---|
-| `payroll` | Nómina | Tablero, empleados, configuración, calculadoras e historial |
-| `purchases` | Compras | Tablero, proveedores, importación y archivo |
-| `sales` | Ventas | Tablero, punto de venta, clientes, archivo e IGTF |
-| `inventory` | Inventario | Productos, departamentos, operaciones y reportes |
-| `accounting` | Contabilidad | Planes, cuentas, períodos, diario y reportes |
-| `tools` | Herramientas | Divisas, calendario SENIAT y estado de portales |
-| `companies` | Empresas | Gestión de empresas |
-| `documents` | Documentos | Archivos y contratos |
+| Código       | Módulo       | Navegación disponible                                       |
+| ------------ | ------------ | ----------------------------------------------------------- |
+| `payroll`    | Nómina       | Tablero, empleados, configuración, calculadoras e historial |
+| `purchases`  | Compras      | Tablero, proveedores, importación y archivo                 |
+| `sales`      | Ventas       | Tablero, punto de venta, clientes, archivo e IGTF           |
+| `inventory`  | Inventario   | Productos, departamentos, operaciones y reportes            |
+| `accounting` | Contabilidad | Planes, cuentas, períodos, diario y reportes                |
+| `tools`      | Herramientas | Divisas, calendario SENIAT y estado de portales             |
+| `companies`  | Empresas     | Gestión de empresas                                         |
+| `documents`  | Documentos   | Archivos y contratos                                        |
 
 Que un destino aparezca en la navegación no implica que toda su pantalla sea nativa todavía. `module-navigation.tsx` declara únicamente la presentación soportada por Desktop; los identificadores, etiquetas y jerarquía pertenecen a `@kontave/navigation-domain`.
 
@@ -134,37 +141,37 @@ Proveen tokens, branding y componentes DOM globales como sidebar, breadcrumbs, f
 
 ## Endpoints nativos consumidos
 
-| Endpoint | Uso |
-|---|---|
-| `GET /api/client/v1/me` | Perfil personal |
-| `GET /api/client/v1/organization-access` | Organizaciones accesibles |
-| `GET /api/client/v1/organizations/{organizationId}/companies` | Empresas de la organización activa |
-| `GET /api/client/v1/organizations/{organizationId}/modules/available?platform=desktop` | Módulos instalados y compatibles |
-| `GET /api/client/v1/organizations/{organizationId}/billing/overview` | Plan y resumen de facturación |
-| `GET /api/client/v1/platform/status` | Estado de portales |
-| `GET/PATCH /api/client/v1/me` | Consulta y edición del perfil |
-| `GET/PATCH /api/client/v1/me/preferences` | Apariencia y preferencias regionales |
-| `POST /api/client/v1/auth/change-password` | Cambio de contraseña |
-| `GET/DELETE /api/client/v1/auth/sessions` | Consulta y revocación de sesiones |
-| `GET/PATCH /api/client/v1/organizations/{organizationId}` | Información de la organización |
-| `GET /api/client/v1/organizations/{organizationId}/members` | Miembros e invitaciones |
-| `GET /api/client/v1/organizations/{organizationId}/roles` | Roles y permisos |
-| `GET /api/client/v1/organizations/{organizationId}/billing/plans` | Planes disponibles |
-| `GET /api/client/v1/organizations/{organizationId}/billing/payment-requests` | Solicitudes de pago |
-| `GET /api/client/v1/organizations/{organizationId}/documents` | Documentos del contexto activo |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/operation-context` | Fecha, moneda y tasa efectivas |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard` | Snapshot agregado del tablero de Inventario |
-| `GET/POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products` | Listado paginado y creación de productos |
-| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}` | Detalle y edición de productos |
-| `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física |
-| `PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile` | Stock mínimo versionado |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements` | Historial auditable de sólo lectura |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/unit-economics` | Comparación ponderada de adquisición y venta realizada |
-| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/sale-pricing` | Política comercial versionada |
-| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/tax-profile` | Tratamiento tributario versionado |
-| `GET/POST/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories` | Administración de categorías |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/overview` | Vista paginada y resumen de “Departamentos” |
-| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}` | Detalle de categoría y cantidad de productos |
+| Endpoint                                                                                                              | Uso                                                    |
+| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `GET /api/client/v1/me`                                                                                               | Perfil personal                                        |
+| `GET /api/client/v1/organization-access`                                                                              | Organizaciones accesibles                              |
+| `GET /api/client/v1/organizations/{organizationId}/companies`                                                         | Empresas de la organización activa                     |
+| `GET /api/client/v1/organizations/{organizationId}/modules/available?platform=desktop`                                | Módulos instalados y compatibles                       |
+| `GET /api/client/v1/organizations/{organizationId}/billing/overview`                                                  | Plan y resumen de facturación                          |
+| `GET /api/client/v1/platform/status`                                                                                  | Estado de portales                                     |
+| `GET/PATCH /api/client/v1/me`                                                                                         | Consulta y edición del perfil                          |
+| `GET/PATCH /api/client/v1/me/preferences`                                                                             | Apariencia y preferencias regionales                   |
+| `POST /api/client/v1/auth/change-password`                                                                            | Cambio de contraseña                                   |
+| `GET/DELETE /api/client/v1/auth/sessions`                                                                             | Consulta y revocación de sesiones                      |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}`                                                             | Información de la organización                         |
+| `GET /api/client/v1/organizations/{organizationId}/members`                                                           | Miembros e invitaciones                                |
+| `GET /api/client/v1/organizations/{organizationId}/roles`                                                             | Roles y permisos                                       |
+| `GET /api/client/v1/organizations/{organizationId}/billing/plans`                                                     | Planes disponibles                                     |
+| `GET /api/client/v1/organizations/{organizationId}/billing/payment-requests`                                          | Solicitudes de pago                                    |
+| `GET /api/client/v1/organizations/{organizationId}/documents`                                                         | Documentos del contexto activo                         |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/operation-context`                           | Fecha, moneda y tasa efectivas                         |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/inventory/dashboard`                         | Snapshot agregado del tablero de Inventario            |
+| `GET/POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products`                               | Listado paginado y creación de productos               |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}`                  | Detalle y edición de productos                         |
+| `POST /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/{activate,deactivate}` | Ciclo de vida sin eliminación física                   |
+| `PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/inventory-profile`    | Stock mínimo versionado                                |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/movements`              | Historial auditable de sólo lectura                    |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/unit-economics`         | Comparación ponderada de adquisición y venta realizada |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/sale-pricing`     | Política comercial versionada                          |
+| `GET/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/products/{productId}/tax-profile`      | Tratamiento tributario versionado                      |
+| `GET/POST/PATCH /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories`               | Administración de categorías                           |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/overview`                 | Vista paginada y resumen de “Departamentos”            |
+| `GET /api/client/v1/organizations/{organizationId}/companies/{companyId}/product-categories/{categoryId}`             | Detalle de categoría y cantidad de productos           |
 
 Las pantallas de Configuración no realizan HTTP desde React: consumen operaciones IPC cerradas y el proceso principal aplica autenticación, renovación y errores tipados.
 
@@ -188,17 +195,32 @@ Documentos y empleados no pertenecen a la pantalla de Configuración: sus flujos
 
 ```text
 src/
-├── main/       Proceso principal, controladores y adaptadores nativos
-├── preload/    Puente IPC tipado y superficie expuesta al renderer
-├── renderer/   React, composición visual y adaptadores de presentación
-└── shared/     Contrato IPC compartido entre main, preload y renderer
+├── main/             Proceso principal, composición y adaptadores nativos
+├── preload/          Implementación mínima del context bridge
+├── renderer-bridge/  Protocolo IPC y proyecciones serializables por dominio
+└── renderer/
+    └── src/
+        ├── auth/
+        ├── inventory/
+        ├── products/
+        ├── purchasing/
+        ├── sales/
+        └── settings/ Presentación React organizada por capacidad
 ```
 
 Reglas de dependencia:
 
 - `renderer` no accede directamente a Node, Electron, Supabase ni secretos.
-- `preload` expone solamente operaciones incluidas en `shared/desktop-api.ts`.
+- `packages/client` posee los contratos y la orquestación funcional del cliente.
+- `renderer-bridge` no crea un segundo cliente: adapta contratos de
+  `@kontave/client-contracts` y define únicamente proyecciones necesarias para
+  cruzar IPC de forma serializable.
+- `renderer-bridge/domains/<capacidad>` mantiene cada contrato en la carpeta de
+  su dominio; `core` y `protocol` no contienen conocimiento de negocio.
+- `preload` expone una operación cerrada por caso de uso y nunca entrega
+  `ipcRenderer`, eventos Electron ni canales elegidos por el renderer.
 - `main` implementa HTTP, almacenamiento seguro, Electron y dispositivos.
+- Todo handler IPC valida que el emisor sea el frame principal confiable.
 - Los packages portables no importan desde `apps/desktop`.
 - Desktop puede depender de packages; los packages nunca dependen de Desktop.
 

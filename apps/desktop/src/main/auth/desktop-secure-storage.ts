@@ -4,7 +4,10 @@ import { dirname, join } from "node:path";
 import type { SupportedStorage } from "@supabase/supabase-js";
 
 export class DesktopSecureStorage implements SupportedStorage {
-  private readonly filePath = join(app.getPath("userData"), "secure-auth-session.json");
+  private readonly filePath = join(
+    app.getPath("userData"),
+    "secure-auth-session.json",
+  );
 
   async getItem(key: string): Promise<string | null> {
     const values = await this.readValues();
@@ -28,7 +31,10 @@ export class DesktopSecureStorage implements SupportedStorage {
 
   private async readValues(): Promise<Record<string, string>> {
     try {
-      return JSON.parse(await readFile(this.filePath, "utf8")) as Record<string, string>;
+      return JSON.parse(await readFile(this.filePath, "utf8")) as Record<
+        string,
+        string
+      >;
     } catch (cause: unknown) {
       if (isMissingFile(cause)) return {};
       throw cause;
@@ -38,7 +44,10 @@ export class DesktopSecureStorage implements SupportedStorage {
   private async writeValues(values: Record<string, string>): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
     const temporaryPath = `${this.filePath}.tmp`;
-    await writeFile(temporaryPath, JSON.stringify(values), { encoding: "utf8", mode: 0o600 });
+    await writeFile(temporaryPath, JSON.stringify(values), {
+      encoding: "utf8",
+      mode: 0o600,
+    });
     try {
       await rename(temporaryPath, this.filePath);
     } catch (cause: unknown) {
@@ -48,7 +57,10 @@ export class DesktopSecureStorage implements SupportedStorage {
   }
 
   private assertEncryptionAvailable(): void {
-    if (!safeStorage.isEncryptionAvailable()) throw new Error("El almacenamiento seguro del sistema no está disponible.");
+    if (!safeStorage.isEncryptionAvailable())
+      throw new Error(
+        "El almacenamiento seguro del sistema no está disponible.",
+      );
   }
 }
 

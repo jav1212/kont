@@ -28,18 +28,27 @@ export const desktopConnectivityStore = {
   },
 
   initialize(): Promise<ConnectivitySnapshot> {
-    initialization ??= window.kontave.connectivity.getSnapshot().then((next) => {
-      if (!initialized) {
-        window.kontave.connectivity.subscribe(publish);
-        window.addEventListener("online", () => void desktopConnectivityStore.refresh());
-        window.addEventListener("offline", () => void desktopConnectivityStore.refresh());
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") void desktopConnectivityStore.refresh();
-        });
-        initialized = true;
-      }
-      return publish(next);
-    });
+    initialization ??= window.kontave.connectivity
+      .getSnapshot()
+      .then((next) => {
+        if (!initialized) {
+          window.kontave.connectivity.subscribe(publish);
+          window.addEventListener(
+            "online",
+            () => void desktopConnectivityStore.refresh(),
+          );
+          window.addEventListener(
+            "offline",
+            () => void desktopConnectivityStore.refresh(),
+          );
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible")
+              void desktopConnectivityStore.refresh();
+          });
+          initialized = true;
+        }
+        return publish(next);
+      });
     return initialization;
   },
 

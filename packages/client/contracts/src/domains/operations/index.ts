@@ -49,9 +49,20 @@ export interface ExchangeRateSetDto {
 /** Application-facing port for company operational defaults and exchange rates. */
 export interface OperationContextPort {
   /** @param organizationId - Owning organization. @param companyId - Operational company. @returns Operational defaults. */
-  get(organizationId: string, companyId: string): Promise<OperationalDefaultsDto>;
+  get(
+    organizationId: string,
+    companyId: string,
+  ): Promise<OperationalDefaultsDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param command - Versioned update. @returns Updated defaults. */
-  update(organizationId: string, companyId: string, command: UpdateOperationalDefaultsDto): Promise<OperationalDefaultsDto>;
+  update(
+    organizationId: string,
+    companyId: string,
+    command: UpdateOperationalDefaultsDto,
+  ): Promise<OperationalDefaultsDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param date - Effective date. @returns Resolved rates. */
-  exchangeRates(organizationId: string, companyId: string, date: string): Promise<ExchangeRateSetDto>;
+  exchangeRates(
+    organizationId: string,
+    companyId: string,
+    date: string,
+  ): Promise<ExchangeRateSetDto>;
 }

@@ -1,32 +1,23 @@
-import {
-  KontaveRemoteClient,
-  RemotePlatformStatusPort,
-} from "@kontave/client-remote";
-import type { DesktopPlatformStatusState } from "../../shared/desktop-api";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+import type {
+  ClientPortFeature,
+  PlatformStatusPort,
+} from "@kontave/client-contracts";
+import type { DesktopPlatformStatusState } from "../../renderer-bridge";
+import { requireClientValue } from "../client/client-operation";
 
 /** Desktop composition adapter for portable platform-status reads. */
 export class DesktopPlatformStatusSource {
-  private readonly platformStatus: RemotePlatformStatusPort;
-
   /**
-   * Creates the source using Desktop's authenticated request mechanism.
-   * @param baseUrl - Kontave API origin.
-   * @param request - Desktop session-aware request adapter.
+   * Creates the source over the portable platform-status feature.
+   * @param platformStatus - Runtime-managed platform-status feature.
    */
-  constructor(baseUrl: string, request: DesktopAuthenticatedRequest) {
-    this.platformStatus = new RemotePlatformStatusPort(
-      new KontaveRemoteClient({
-        baseUrl,
-        platform: "desktop",
-        authenticatedRequest: (input, init) => request.fetch(input, init),
-      }),
-    );
-  }
+  constructor(
+    private readonly platformStatus: ClientPortFeature<PlatformStatusPort>,
+  ) {}
 
   /** @returns Latest aggregate platform availability for Desktop presentation. */
   async getCurrent(): Promise<DesktopPlatformStatusState> {
-    const snapshot = await this.platformStatus.current();
+    const snapshot = requireClientValue(await this.platformStatus.current());
     return {
       status: "ready",
       availability: snapshot.status,

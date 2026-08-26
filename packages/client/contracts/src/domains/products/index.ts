@@ -21,7 +21,11 @@ import type {
 
 export * from "./dtos";
 
-import type { ClientFailure, ClientFeature } from "../../core";
+import type {
+  ClientFailure,
+  ClientFeature,
+  ClientResultPort,
+} from "../../core";
 
 export interface ProductListQuery {
   readonly search?: string;
@@ -56,10 +60,6 @@ export interface ProductInsightsQuery {
   readonly to: string;
   readonly granularity: "day" | "week" | "month";
 }
-
-export type ClientOperationResult<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: ClientFailure };
 
 export type ProductsSnapshot =
   | { readonly status: "idle"; readonly list: null }
@@ -312,17 +312,9 @@ export interface ProductsPort {
   ): Promise<ProductTaxationDto>;
 }
 
-type ResultifyPort<TPort> = {
-  readonly [TKey in keyof TPort]: TPort[TKey] extends (
-    ...args: infer TArguments
-  ) => Promise<infer TValue>
-    ? (...args: TArguments) => Promise<ClientOperationResult<TValue>>
-    : never;
-};
-
 /**
  * Observable Products facade exposed to renderers. It preserves every documented
  * Products operation while converting expected adapter failures into result data.
  */
 export type ProductsFeature = ClientFeature<ProductsSnapshot> &
-  ResultifyPort<ProductsPort>;
+  ClientResultPort<ProductsPort>;

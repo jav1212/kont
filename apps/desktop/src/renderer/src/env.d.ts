@@ -1,7 +1,9 @@
-import type { KontaveDesktopApi } from "../../shared/desktop-api";
+import type { KontaveRendererBridge } from "../../renderer-bridge";
 
 declare global {
-  interface Window { readonly kontave: KontaveDesktopApi; }
+  interface Window {
+    readonly kontave: KontaveRendererBridge;
+  }
 }
 
 export {};

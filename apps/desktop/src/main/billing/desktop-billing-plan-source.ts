@@ -1,29 +1,18 @@
-import {
-  KontaveRemoteClient,
-  RemoteBillingPort,
-} from "@kontave/client-remote";
-import type { SubscriptionDto } from "@kontave/client-contracts";
-import type { DesktopBillingPlanState } from "../../shared/desktop-api";
-import type { DesktopAuthenticatedRequest } from "../auth/desktop-authenticated-request";
+import type {
+  BillingPort,
+  ClientPortFeature,
+  SubscriptionDto,
+} from "@kontave/client-contracts";
+import type { DesktopBillingPlanState } from "../../renderer-bridge";
+import { requireClientValue } from "../client/client-operation";
 
 /** Desktop composition adapter for portable organization billing reads. */
 export class DesktopBillingPlanSource {
-  private readonly billing: RemoteBillingPort;
-
   /**
-   * Creates the source using Desktop's authenticated request mechanism.
-   * @param baseUrl - Kontave API origin.
-   * @param request - Desktop session-aware request adapter.
+   * Creates the source over the portable billing feature.
+   * @param billing - Runtime-managed billing feature.
    */
-  constructor(baseUrl: string, request: DesktopAuthenticatedRequest) {
-    this.billing = new RemoteBillingPort(
-      new KontaveRemoteClient({
-        baseUrl,
-        platform: "desktop",
-        authenticatedRequest: (input, init) => request.fetch(input, init),
-      }),
-    );
-  }
+  constructor(private readonly billing: ClientPortFeature<BillingPort>) {}
 
   /**
    * Loads the selected organization plan.
@@ -33,7 +22,9 @@ export class DesktopBillingPlanSource {
   async getForOrganization(
     organizationId: string,
   ): Promise<DesktopBillingPlanState> {
-    const overview = await this.billing.overview(organizationId);
+    const overview = requireClientValue(
+      await this.billing.overview(organizationId),
+    );
     return {
       status: "ready",
       organizationId,

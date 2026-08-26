@@ -207,21 +207,60 @@ export interface ReverseInventoryOperationDto
 /** Application-facing port for inventory dashboards and operations. */
 export interface InventoryPort {
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Dashboard query. @returns Inventory dashboard. */
-  dashboard(organizationId: string, companyId: string, query: InventoryDashboardQuery): Promise<InventoryDashboardDto>;
+  dashboard(
+    organizationId: string,
+    companyId: string,
+    query: InventoryDashboardQuery,
+  ): Promise<InventoryDashboardDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Flow query. @returns Inbound flow. */
-  entries(organizationId: string, companyId: string, query: InventoryFlowQuery): Promise<InventoryFlowPageDto>;
+  entries(
+    organizationId: string,
+    companyId: string,
+    query: InventoryFlowQuery,
+  ): Promise<InventoryFlowPageDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Flow query. @returns Outbound flow. */
-  outputs(organizationId: string, companyId: string, query: InventoryFlowQuery): Promise<InventoryFlowPageDto>;
+  outputs(
+    organizationId: string,
+    companyId: string,
+    query: InventoryFlowQuery,
+  ): Promise<InventoryFlowPageDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Operation query. @returns Manual operations. */
-  operations(organizationId: string, companyId: string, query: InventoryFlowQuery): Promise<InventoryFlowPageDto>;
+  operations(
+    organizationId: string,
+    companyId: string,
+    query: InventoryFlowQuery,
+  ): Promise<InventoryFlowPageDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param operationId - Operation identifier. @returns Operation detail. */
-  operation(organizationId: string, companyId: string, operationId: string): Promise<InventoryOperationDetailDto>;
+  operation(
+    organizationId: string,
+    companyId: string,
+    operationId: string,
+  ): Promise<InventoryOperationDetailDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param command - Creation command. @returns Created operation. */
-  create(organizationId: string, companyId: string, command: CreateInventoryOperationDto): Promise<InventoryOperationDetailDto>;
+  create(
+    organizationId: string,
+    companyId: string,
+    command: CreateInventoryOperationDto,
+  ): Promise<InventoryOperationDetailDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param operationId - Operation identifier. @param command - Update command. @returns Updated operation. */
-  update(organizationId: string, companyId: string, operationId: string, command: UpdateInventoryOperationDto): Promise<InventoryOperationDetailDto>;
+  update(
+    organizationId: string,
+    companyId: string,
+    operationId: string,
+    command: UpdateInventoryOperationDto,
+  ): Promise<InventoryOperationDetailDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param operationId - Operation identifier. @param expectedVersion - Required version. @returns Posted operation. */
-  post(organizationId: string, companyId: string, operationId: string, expectedVersion: number): Promise<InventoryOperationDetailDto>;
+  post(
+    organizationId: string,
+    companyId: string,
+    operationId: string,
+    expectedVersion: number,
+  ): Promise<InventoryOperationDetailDto>;
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param operationId - Operation identifier. @param command - Reversal command. @returns Reversed operation. */
-  reverse(organizationId: string, companyId: string, operationId: string, command: ReverseInventoryOperationDto): Promise<InventoryOperationDetailDto>;
+  reverse(
+    organizationId: string,
+    companyId: string,
+    operationId: string,
+    command: ReverseInventoryOperationDto,
+  ): Promise<InventoryOperationDetailDto>;
 }

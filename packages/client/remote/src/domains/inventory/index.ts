@@ -202,7 +202,8 @@ function operationRoot(organizationId: string, companyId: string): string {
 }
 
 function segment(value: string): string {
-  if (!value.trim()) throw new Error("La operación de Inventario no es válida.");
+  if (!value.trim())
+    throw new Error("La operación de Inventario no es válida.");
   return encodeURIComponent(value);
 }
 

@@ -375,6 +375,9 @@ importers:
       '@kontave/client-remote':
         specifier: workspace:*
         version: link:../../packages/client/remote
+      '@kontave/client-runtime':
+        specifier: workspace:*
+        version: link:../../packages/client/runtime
       '@kontave/client-updates-application':
         specifier: workspace:*
         version: link:../../packages/client-updates/application

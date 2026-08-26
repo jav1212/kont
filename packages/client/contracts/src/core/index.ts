@@ -1,9 +1,11 @@
-export type ClientLifecycleStatus =
-  | "stopped"
-  | "starting"
-  | "ready"
-  | "stopping"
-  | "failed";
+/** Stable lifecycle values for the portable client runtime. */
+export enum ClientLifecycleStatus {
+  Stopped = "stopped",
+  Starting = "starting",
+  Ready = "ready",
+  Stopping = "stopping",
+  Failed = "failed",
+}
 
 export interface ClientFailure {
   readonly code: string;
@@ -12,9 +14,55 @@ export interface ClientFailure {
   readonly requestId: string | null;
 }
 
+/** Serializable outcome returned by commands crossing a client boundary. */
+export type ClientOperationResult<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: ClientFailure };
+
+/**
+ * Converts an asynchronous application port into a renderer-safe result port.
+ * Expected failures become serializable values instead of crossing IPC or
+ * another transport as framework-specific exceptions.
+ */
+export type ClientResultPort<TPort> = {
+  readonly [TKey in keyof TPort]: TPort[TKey] extends (
+    ...arguments_: infer TArguments
+  ) => Promise<infer TValue>
+    ? (...arguments_: TArguments) => Promise<ClientOperationResult<TValue>>
+    : never;
+};
+
+/** Stable lifecycle values for a portable client capability. */
+export enum ClientCapabilityStatus {
+  Stopped = "stopped",
+  Ready = "ready",
+  Failed = "failed",
+}
+
+/** Lifecycle state shared by stateless port-backed client features. */
+export type ClientCapabilitySnapshot =
+  | { readonly status: ClientCapabilityStatus.Stopped }
+  | { readonly status: ClientCapabilityStatus.Ready }
+  | {
+      readonly status: ClientCapabilityStatus.Failed;
+      readonly failure: ClientFailure;
+    };
+
+/** Observable, renderer-safe facade for an application port. */
+export type ClientPortFeature<TPort> = ClientFeature<ClientCapabilitySnapshot> &
+  ClientResultPort<TPort>;
+
 export type ClientLifecycleSnapshot =
-  | { readonly status: Exclude<ClientLifecycleStatus, "failed"> }
-  | { readonly status: "failed"; readonly failure: ClientFailure };
+  | {
+      readonly status: Exclude<
+        ClientLifecycleStatus,
+        ClientLifecycleStatus.Failed
+      >;
+    }
+  | {
+      readonly status: ClientLifecycleStatus.Failed;
+      readonly failure: ClientFailure;
+    };
 
 export type ClientSubscriber<T> = (snapshot: T) => void;
 export type ClientUnsubscribe = () => void;
@@ -88,4 +136,3 @@ export function definePresentationRegistry<
 >(registry: PresentationRegistry<TFeatures>): PresentationRegistry<TFeatures> {
   return Object.freeze({ ...registry });
 }
-

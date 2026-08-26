@@ -19,4 +19,3 @@ export interface BillingCreditApplicationDto {
   readonly amount: MoneyDto;
   readonly appliedAt: string;
 }
-

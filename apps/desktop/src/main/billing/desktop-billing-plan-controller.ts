@@ -1,5 +1,8 @@
 import type { BrowserWindow } from "electron";
-import { DESKTOP_IPC, type DesktopBillingPlanState } from "../../shared/desktop-api";
+import {
+  DESKTOP_IPC,
+  type DesktopBillingPlanState,
+} from "../../renderer-bridge";
 import { DesktopBillingPlanSource } from "./desktop-billing-plan-source";
 
 export class DesktopBillingPlanController {
@@ -10,9 +13,13 @@ export class DesktopBillingPlanController {
     private readonly getWindow: () => BrowserWindow | undefined,
   ) {}
 
-  getState(): DesktopBillingPlanState { return this.state; }
+  getState(): DesktopBillingPlanState {
+    return this.state;
+  }
 
-  async initialize(organizationId: string | null): Promise<DesktopBillingPlanState> {
+  async initialize(
+    organizationId: string | null,
+  ): Promise<DesktopBillingPlanState> {
     if (!organizationId) return this.clear();
     this.update({ status: "loading" });
     try {
@@ -23,7 +30,9 @@ export class DesktopBillingPlanController {
     }
   }
 
-  clear(): DesktopBillingPlanState { return this.update({ status: "unavailable" }); }
+  clear(): DesktopBillingPlanState {
+    return this.update({ status: "unavailable" });
+  }
 
   private update(state: DesktopBillingPlanState): DesktopBillingPlanState {
     this.state = state;

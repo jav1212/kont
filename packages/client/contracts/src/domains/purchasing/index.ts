@@ -74,5 +74,9 @@ export interface PurchasingDashboardQuery {
 /** Application-facing port for purchasing read models. */
 export interface PurchasingPort {
   /** @param organizationId - Owning organization. @param companyId - Operational company. @param query - Dashboard query. @returns Purchasing dashboard. */
-  dashboard(organizationId: string, companyId: string, query: PurchasingDashboardQuery): Promise<PurchasingDashboardDto>;
+  dashboard(
+    organizationId: string,
+    companyId: string,
+    query: PurchasingDashboardQuery,
+  ): Promise<PurchasingDashboardDto>;
 }

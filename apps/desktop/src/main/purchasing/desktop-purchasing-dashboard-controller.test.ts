@@ -10,8 +10,14 @@ test("defaults to the complete month of the company effective date", () => {
 });
 
 test("preserves an explicitly selected period", () => {
-  assert.deepEqual(resolvePurchasingDashboardPeriod("2026-08-16", { from: "2026-07-01", to: "2026-07-31" }), {
-    from: "2026-07-01",
-    to: "2026-07-31",
-  });
+  assert.deepEqual(
+    resolvePurchasingDashboardPeriod("2026-08-16", {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    }),
+    {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    },
+  );
 });

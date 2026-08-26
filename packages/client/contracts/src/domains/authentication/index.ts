@@ -25,7 +25,9 @@ export interface AuthenticationPort {
   /** @returns All device sessions belonging to the current user. */
   sessions(): Promise<readonly AuthenticatedDeviceSessionDto[]>;
   /** @param command - Password change request. @returns Change confirmation. */
-  changePassword(command: ChangePasswordDto): Promise<{ readonly changed: boolean }>;
+  changePassword(
+    command: ChangePasswordDto,
+  ): Promise<{ readonly changed: boolean }>;
   /** @param sessionId - Session to revoke. @returns Revocation confirmation. */
   revokeSession(sessionId: string): Promise<{ readonly revoked: boolean }>;
   /** @returns Confirmation after revoking every other session. */
